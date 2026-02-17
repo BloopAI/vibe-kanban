@@ -14,7 +14,7 @@ use serde_json::json;
 use sqlx::error::Error as SqlxError;
 use thiserror::Error;
 use tokio::time::interval;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::services::{
     analytics::AnalyticsContext,
@@ -32,6 +32,17 @@ enum PrMonitorError {
     WorkspaceError(#[from] WorkspaceError),
     #[error(transparent)]
     Sqlx(#[from] SqlxError),
+}
+
+impl PrMonitorError {
+    fn is_environmental(&self) -> bool {
+        matches!(
+            self,
+            PrMonitorError::GitHostError(
+                GitHostError::CliNotInstalled { .. } | GitHostError::NotAGitRepository(_)
+            )
+        )
+    }
 }
 
 /// Service to monitor PRs and update task status when they are merged
@@ -91,10 +102,17 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
 
         for pr_merge in open_prs {
             if let Err(e) = self.check_pr_status(&pr_merge).await {
-                error!(
-                    "Error checking PR #{} for workspace {}: {}",
-                    pr_merge.pr_info.number, pr_merge.workspace_id, e
-                );
+                if e.is_environmental() {
+                    warn!(
+                        "Skipping PR #{} for workspace {} due to environmental error: {}",
+                        pr_merge.pr_info.number, pr_merge.workspace_id, e
+                    );
+                } else {
+                    error!(
+                        "Error checking PR #{} for workspace {}: {}",
+                        pr_merge.pr_info.number, pr_merge.workspace_id, e
+                    );
+                }
             }
         }
         Ok(())

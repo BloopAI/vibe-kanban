@@ -89,44 +89,11 @@ impl StandardCodingAgentExecutor for Amp {
         _reset_to_message_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        // 1) Fork the thread synchronously to obtain new thread id
         let builder = self.build_command_builder()?;
-        let fork_line = builder.build_follow_up(&[
-            "threads".to_string(),
-            "fork".to_string(),
-            session_id.to_string(),
-        ])?;
-        let (fork_program, fork_args) = fork_line.into_resolved().await?;
-        let fork_output = Command::new(fork_program)
-            .kill_on_drop(true)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .current_dir(current_dir)
-            .env("NPM_CONFIG_LOGLEVEL", "error")
-            .args(&fork_args)
-            .output()
-            .await?;
-        let stdout_str = String::from_utf8_lossy(&fork_output.stdout);
-        let new_thread_id = stdout_str
-            .lines()
-            .rev()
-            .find(|l| !l.trim().is_empty())
-            .unwrap_or("")
-            .trim()
-            .to_string();
-        if new_thread_id.is_empty() {
-            return Err(ExecutorError::Io(std::io::Error::other(
-                "AMP threads fork did not return a thread id",
-            )));
-        }
-
-        tracing::debug!("AMP threads fork -> new thread id: {}", new_thread_id);
-
-        // 2) Continue using the new thread id
         let continue_line = builder.build_follow_up(&[
             "threads".to_string(),
             "continue".to_string(),
-            new_thread_id.clone(),
+            session_id.to_string(),
         ])?;
         let (continue_program, continue_args) = continue_line.into_resolved().await?;
 
@@ -157,11 +124,15 @@ impl StandardCodingAgentExecutor for Amp {
         Ok(child.into())
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Process stdout logs (Amp's stream JSON output) using Claude's log processor
-        ClaudeLogProcessor::process_logs(
+        let h1 = ClaudeLogProcessor::process_logs(
             msg_store.clone(),
             current_dir,
             entry_index_provider.clone(),
@@ -169,7 +140,9 @@ impl StandardCodingAgentExecutor for Amp {
         );
 
         // Process stderr logs using the standard stderr processor
-        normalize_stderr_logs(msg_store, entry_index_provider);
+        let h2 = normalize_stderr_logs(msg_store, entry_index_provider);
+
+        vec![h1, h2]
     }
 
     // MCP configuration methods

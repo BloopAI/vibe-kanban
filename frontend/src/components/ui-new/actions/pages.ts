@@ -216,6 +216,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
           { type: 'action', action: Actions.RepoOpenInIDE },
           { type: 'action', action: Actions.RepoSettings },
           { type: 'action', action: Actions.GitCreatePR },
+          { type: 'action', action: Actions.GitLinkPR },
           { type: 'action', action: Actions.GitMerge },
           { type: 'action', action: Actions.GitPush },
           { type: 'action', action: Actions.GitRebase },

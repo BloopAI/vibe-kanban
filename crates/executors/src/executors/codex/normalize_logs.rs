@@ -41,6 +41,7 @@ use crate::{
         utils::{
             ConversationPatch, EntryIndexProvider,
             patch::{add_normalized_entry, replace_normalized_entry, upsert_normalized_entry},
+            shell_command_parsing::{CommandCategory, unwrap_shell_command},
         },
     },
 };
@@ -87,7 +88,7 @@ impl ToNormalizedEntry for CommandState {
             entry_type: NormalizedEntryType::ToolUse {
                 tool_name: "bash".to_string(),
                 action_type: ActionType::CommandRun {
-                    command: self.command.clone(),
+                    command: unwrap_shell_command(&self.command).to_string(),
                     result: Some(CommandRunResult {
                         exit_status: self
                             .exit_code
@@ -98,6 +99,7 @@ impl ToNormalizedEntry for CommandState {
                             build_command_output(Some(&self.stdout), Some(&self.stderr))
                         },
                     }),
+                    category: CommandCategory::from_command(&self.command),
                 },
                 status: self.status.clone(),
             },
@@ -436,7 +438,10 @@ const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
 ];
 
 /// Codex-specific stderr normalizer that filters noisy internal messages.
-fn normalize_codex_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
+fn normalize_codex_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
         let mut processor = PlainTextLogProcessor::builder()
@@ -464,15 +469,18 @@ fn normalize_codex_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: E
                 msg_store.push_patch(patch);
             }
         }
-    });
+    })
 }
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_codex_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_codex_stderr_logs(msg_store.clone(), entry_index.clone());
 
     let worktree_path_str = worktree_path.to_string_lossy().to_string();
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         let mut state = LogState::new(entry_index.clone());
         let mut stdout_lines = msg_store.stdout_lines_stream();
 
@@ -1218,6 +1226,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 fn handle_jsonrpc_response(

@@ -17,7 +17,7 @@ use crate::{
     config::RemoteServerConfig,
     db,
     github_app::GitHubAppService,
-    mail::LoopsMailer,
+    mail::{LoopsMailer, Mailer, NoopMailer},
     r2::R2Service,
     routes,
 };
@@ -80,9 +80,18 @@ impl Server {
         let oauth_token_validator =
             Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone()));
 
-        let api_key = std::env::var("LOOPS_EMAIL_API_KEY")
-            .context("LOOPS_EMAIL_API_KEY environment variable is required")?;
-        let mailer = Arc::new(LoopsMailer::new(api_key));
+        let mailer: Arc<dyn Mailer> = match std::env::var("LOOPS_EMAIL_API_KEY") {
+            Ok(api_key) if !api_key.is_empty() => {
+                tracing::info!("Email service (Loops) configured");
+                Arc::new(LoopsMailer::new(api_key))
+            }
+            _ => {
+                tracing::info!(
+                    "LOOPS_EMAIL_API_KEY not set. Email notifications (invitations, review updates) will be disabled."
+                );
+                Arc::new(NoopMailer)
+            }
+        };
 
         let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {
             anyhow::anyhow!(

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import {
   ActionType,
+  BaseAgentCapability,
   NormalizedEntry,
   ToolStatus,
   ToolResult,
@@ -15,6 +16,7 @@ import {
   usePersistedExpanded,
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
+import { useUserSystem } from '@/components/ConfigProvider';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetProcess';
@@ -50,6 +52,7 @@ import {
   FileTextIcon,
   ListMagnifyingGlassIcon,
   GlobeIcon,
+  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 
 type Props = {
@@ -265,6 +268,7 @@ function renderToolUseEntry(
 
 function NewDisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
+  const { capabilities } = useUserSystem();
   const {
     entry,
     aggregatedGroup,
@@ -275,6 +279,12 @@ function NewDisplayConversationEntry(props: Props) {
     taskAttempt,
     resetAction,
   } = props;
+  const executorCanFork = !!(
+    taskAttempt?.session?.executor &&
+    capabilities?.[taskAttempt.session.executor]?.includes(
+      BaseAgentCapability.SESSION_FORK
+    )
+  );
 
   // Handle aggregated groups (consecutive file_read or search entries)
   if (aggregatedGroup) {
@@ -314,6 +324,7 @@ function NewDisplayConversationEntry(props: Props) {
           expansionKey={expansionKey}
           workspaceId={taskAttempt?.id}
           executionProcessId={executionProcessId}
+          executorCanFork={executorCanFork}
           resetAction={resetAction}
         />
       );
@@ -538,12 +549,14 @@ function UserMessageEntry({
   expansionKey,
   workspaceId,
   executionProcessId,
+  executorCanFork,
   resetAction,
 }: {
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
   executionProcessId: string | undefined;
+  executorCanFork: boolean;
   resetAction: UseResetProcessResult;
 }) {
   const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
@@ -564,8 +577,11 @@ function UserMessageEntry({
     }
   };
 
-  // Only show edit button if we have a process ID and not already in edit mode
-  const canEdit = !!executionProcessId && !isInEditMode && !isResetPending;
+  // Only show actions when we have a process ID and not already in edit mode
+  const canShowActions =
+    !!executionProcessId && !isInEditMode && !isResetPending;
+  // Edit/retry/reset is not supported when the executor doesn't have the fork capability
+  const canEdit = canShowActions && executorCanFork;
   // Only show reset if we have a process ID, not in edit mode, not pending, and not first process
   const canReset = canEdit && canResetProcess(executionProcessId);
 
@@ -854,20 +870,27 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
 
       const { action_type, status, tool_name } = entryType;
       let summary = '';
+      let content = patchEntry.content.content;
+      let command: string | undefined;
       if (action_type.action === 'file_read') {
         summary = action_type.path;
       } else if (action_type.action === 'search') {
         summary = action_type.query;
       } else if (action_type.action === 'web_fetch') {
         summary = action_type.url;
+      } else if (action_type.action === 'command_run') {
+        summary = action_type.command;
+        command = action_type.command;
+        content = action_type.result?.output ?? '';
       }
 
       return {
         summary,
         status,
         expansionKey: patchEntry.patchKey,
-        content: patchEntry.content.content,
+        content,
         toolName: tool_name,
+        command,
       };
     });
   }, [group.entries]);
@@ -876,7 +899,7 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
     (index: number) => {
       const entry = aggregatedEntries[index];
       if (entry && entry.content) {
-        viewToolContentInPanel(entry.toolName, entry.content);
+        viewToolContentInPanel(entry.toolName, entry.content, entry.command);
       }
     },
     [aggregatedEntries, viewToolContentInPanel]
@@ -899,6 +922,18 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
         return { label: 'Search', icon: ListMagnifyingGlassIcon, unit: 'file' };
       case 'web_fetch':
         return { label: 'Fetched', icon: GlobeIcon, unit: 'URL' };
+      case 'command_run_read':
+        return { label: 'Read', icon: FileTextIcon, unit: 'command' };
+      case 'command_run_search':
+        return {
+          label: 'Search',
+          icon: ListMagnifyingGlassIcon,
+          unit: 'command',
+        };
+      case 'command_run_edit':
+        return { label: 'Edit', icon: PencilSimpleIcon, unit: 'command' };
+      case 'command_run_fetch':
+        return { label: 'Fetch', icon: GlobeIcon, unit: 'command' };
     }
   };
   const { label, icon, unit } = getDisplayProps();

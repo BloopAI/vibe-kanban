@@ -991,6 +991,45 @@ export const Actions = {
     },
   },
 
+  GitLinkPR: {
+    id: 'git-link-pr',
+    label: 'Link Pull Request',
+    icon: LinkIcon,
+    requiresTarget: ActionTargetType.GIT,
+    isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos && !ctx.hasOpenPR,
+    execute: async (ctx, workspaceId, repoId) => {
+      const result = await attemptsApi.attachPr(workspaceId, {
+        repo_id: repoId,
+      });
+
+      if (result.success && result.data.pr_attached && result.data.pr_number) {
+        invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        ctx.queryClient.invalidateQueries({
+          queryKey: ['branch-status'],
+        });
+
+        await ConfirmDialog.show({
+          title: 'Pull Request Linked',
+          message: `Linked PR #${result.data.pr_number}${result.data.pr_url ? ` — ${result.data.pr_url}` : ''}`,
+          confirmText: 'OK',
+          showCancelButton: false,
+          variant: 'success',
+        });
+      } else if (result.success && !result.data.pr_attached) {
+        await ConfirmDialog.show({
+          title: 'No Pull Request Found',
+          message:
+            'No open pull request was found matching this branch. Make sure a PR exists for this branch on the remote.',
+          confirmText: 'OK',
+          showCancelButton: false,
+          variant: 'info',
+        });
+      } else if (!result.success) {
+        throw new Error(result.message || 'Failed to attach PR');
+      }
+    },
+  },
+
   GitMerge: {
     id: 'git-merge',
     label: 'Merge',
@@ -1187,8 +1226,13 @@ export const Actions = {
     icon: GearIcon,
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: (ctx, _workspaceId, repoId) => {
-      ctx.navigate(`/settings/repos?repoId=${repoId}`);
+    execute: async (_ctx, _workspaceId, repoId) => {
+      await SettingsDialog.show({
+        initialSection: 'repos',
+        initialState: {
+          repoId,
+        },
+      });
     },
   },
 

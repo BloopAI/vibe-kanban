@@ -18,19 +18,22 @@ use crate::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
         stderr_processor::normalize_stderr_logs,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
     // stderr normalization
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_stderr_logs(msg_store.clone(), entry_index.clone());
 
     // stdout normalization (main loop)
     let worktree_path = worktree_path.to_path_buf();
     // Type aliases to simplify complex state types and appease clippy
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         type ToolStates = std::collections::HashMap<String, PartialToolCallData>;
 
         let mut stored_session_id = false;
@@ -363,7 +366,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             output: None,
                         })
                     };
-                    ActionType::CommandRun { command, result }
+                    ActionType::CommandRun {
+                        command: command.clone(),
+                        result,
+                        category: CommandCategory::from_command(&command),
+                    }
                 }
                 agent_client_protocol::ToolKind::Delete => ActionType::FileEdit {
                     path: tc
@@ -604,6 +611,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 struct PartialToolCallData {

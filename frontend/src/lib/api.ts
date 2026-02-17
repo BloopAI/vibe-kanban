@@ -90,6 +90,8 @@ import {
   OpenPrInfo,
   GitRemote,
   ListPrsError,
+  AttachExistingPrRequest,
+  AttachPrResponse,
   CreateWorkspaceFromPrBody,
   CreateWorkspaceFromPrResponse,
   CreateFromPrError,
@@ -697,6 +699,21 @@ export const attemptsApi = {
       body: JSON.stringify(data),
     });
     return handleApiResponseAsResult<string, PrError>(response);
+  },
+
+  /** Try to auto-attach a PR by matching the workspace branch */
+  attachPr: async (
+    attemptId: string,
+    data: AttachExistingPrRequest
+  ): Promise<Result<AttachPrResponse, PrError>> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/pr/attach`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponseAsResult<AttachPrResponse, PrError>(response);
   },
 
   startDevServer: async (attemptId: string): Promise<ExecutionProcess[]> => {

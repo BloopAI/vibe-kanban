@@ -46,6 +46,8 @@ pub enum GitHostError {
     RepoNotFoundOrNoAccess(String),
     #[error("{provider} CLI is not installed or not available in PATH")]
     CliNotInstalled { provider: ProviderKind },
+    #[error("Not a git repository: {0}")]
+    NotAGitRepository(String),
     #[error("Unsupported git hosting provider")]
     UnsupportedProvider,
     #[error("CLI returned unexpected output: {0}")]
@@ -60,6 +62,7 @@ impl GitHostError {
                 | GitHostError::InsufficientPermissions(_)
                 | GitHostError::RepoNotFoundOrNoAccess(_)
                 | GitHostError::CliNotInstalled { .. }
+                | GitHostError::NotAGitRepository(_)
                 | GitHostError::UnsupportedProvider
         )
     }

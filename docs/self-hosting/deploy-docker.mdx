@@ -1,0 +1,294 @@
+---
+title: "Deploy with Docker Compose"
+description: "Deploy Vibe Kanban Cloud on any server using Docker Compose"
+---
+
+This guide covers deploying Vibe Kanban Cloud on any Linux server using Docker Compose. This approach works with any cloud provider (AWS, DigitalOcean, Hetzner, etc.) or on-premises server.
+
+## Prerequisites
+
+- A Linux server with:
+  - **Docker** and **Docker Compose** v2.0+ installed
+  - **2GB RAM** minimum (4GB recommended)
+  - **10GB disk space**
+  - A **domain name** pointing to your server
+- **SSL certificate** (we'll use Caddy for automatic HTTPS)
+- OAuth credentials from [GitHub](https://github.com/settings/developers) or [Google](https://console.cloud.google.com/apis/credentials)
+
+## Step 1: Prepare Your Server
+
+SSH into your server and install Docker if not already installed:
+
+```bash
+# Install Docker (Ubuntu/Debian)
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER
+
+# Log out and back in for group changes to take effect
+```
+
+Clone the Vibe Kanban repository:
+
+```bash
+git clone https://github.com/BloopAI/vibe-kanban.git
+cd vibe-kanban
+```
+
+## Step 2: Configure OAuth
+
+Update your OAuth application callback URLs to use your domain:
+
+<Tabs>
+<Tab title="GitHub">
+- **Authorization callback URL**: `https://your-domain.com/v1/oauth/github/callback`
+</Tab>
+
+<Tab title="Google">
+- **Authorized redirect URI**: `https://your-domain.com/v1/oauth/google/callback`
+</Tab>
+</Tabs>
+
+## Step 3: Create Environment File
+
+Generate a secure JWT secret:
+
+```bash
+openssl rand -base64 48
+```
+
+Create `.env.remote` in the repository root:
+
+```env .env.remote
+# Required secrets
+VIBEKANBAN_REMOTE_JWT_SECRET=<your_generated_jwt_secret>
+ELECTRIC_ROLE_PASSWORD=<secure_password_for_electric>
+DB_PASSWORD=<secure_database_password>
+
+# Your domain
+DOMAIN=your-domain.com
+
+# OAuth — configure at least one provider. Leave the other empty or remove it.
+GITHUB_OAUTH_CLIENT_ID=your_github_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+
+# Email (optional — leave empty to disable invitation emails)
+LOOPS_EMAIL_API_KEY=
+```
+
+## Step 4: Create Production Docker Compose
+
+Create `docker-compose.prod.yml` in the `crates/remote` directory:
+
+```yaml docker-compose.prod.yml
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - remote-server
+
+  remote-db:
+    image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=logical"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: remote
+      POSTGRES_USER: remote
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-remote}
+    volumes:
+      - remote-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U remote -d remote"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  electric:
+    image: electricsql/electric:1.3.3
+    working_dir: /app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://electric_sync:${ELECTRIC_ROLE_PASSWORD}@remote-db:5432/remote?sslmode=disable
+      PG_PROXY_PORT: 65432
+      LOGICAL_PUBLISHER_HOST: electric
+      AUTH_MODE: insecure
+      ELECTRIC_INSECURE: true
+      ELECTRIC_MANUAL_TABLE_PUBLISHING: true
+      ELECTRIC_USAGE_REPORTING: false
+      ELECTRIC_FEATURE_FLAGS: allow_subqueries,tagged_subqueries
+    volumes:
+      - electric-data:/app/persistent
+    depends_on:
+      remote-db:
+        condition: service_healthy
+      remote-server:
+        condition: service_healthy
+
+  remote-server:
+    build:
+      context: ../..
+      dockerfile: crates/remote/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      RUST_LOG: info,remote=info
+      SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD:-remote}@remote-db:5432/remote
+      SERVER_LISTEN_ADDR: 0.0.0.0:8081
+      ELECTRIC_URL: http://electric:3000
+      SERVER_PUBLIC_BASE_URL: https://${DOMAIN}
+      GITHUB_OAUTH_CLIENT_ID: ${GITHUB_OAUTH_CLIENT_ID:-}
+      GITHUB_OAUTH_CLIENT_SECRET: ${GITHUB_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
+      ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD}
+      LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  remote-db-data:
+  electric-data:
+  caddy_data:
+  caddy_config:
+```
+
+## Step 5: Create Caddyfile
+
+Create a `Caddyfile` in the `crates/remote` directory for automatic HTTPS:
+
+```text Caddyfile
+{$DOMAIN} {
+    reverse_proxy remote-server:8081
+}
+```
+
+## Step 6: Deploy
+
+```bash
+cd crates/remote
+
+# Build and start all services
+docker compose --env-file ../../.env.remote -f docker-compose.prod.yml up -d --build
+
+# View logs
+docker compose -f docker-compose.prod.yml logs -f
+```
+
+<Info>
+The first build takes 10-15 minutes. Subsequent deployments are faster as Docker caches the build layers.
+</Info>
+
+## Step 7: Verify Deployment
+
+1. Open `https://your-domain.com` in your browser
+2. You should see the Vibe Kanban Cloud login page
+3. Sign in with your OAuth provider
+4. Create your first organisation and project
+
+## Updating
+
+To update to a new version:
+
+```bash
+cd vibe-kanban
+git pull origin main
+
+cd crates/remote
+docker compose --env-file ../../.env.remote -f docker-compose.prod.yml up -d --build
+```
+
+## Backup and Restore
+
+### Backup Database
+
+```bash
+docker compose -f docker-compose.prod.yml exec remote-db \
+  pg_dump -U remote remote > backup_$(date +%Y%m%d).sql
+```
+
+### Restore Database
+
+```bash
+docker compose -f docker-compose.prod.yml exec -T remote-db \
+  psql -U remote remote < backup_20240101.sql
+```
+
+## Monitoring
+
+### View Logs
+
+```bash
+# All services
+docker compose -f docker-compose.prod.yml logs -f
+
+# Specific service
+docker compose -f docker-compose.prod.yml logs -f remote-server
+```
+
+### Check Service Health
+
+```bash
+docker compose -f docker-compose.prod.yml ps
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="SSL certificate issues">
+Caddy automatically obtains SSL certificates from Let's Encrypt. Ensure:
+- Your domain's DNS is correctly pointing to your server
+- Ports 80 and 443 are open in your firewall
+- Your domain is correctly set in the environment
+</Accordion>
+
+<Accordion title="Database connection refused">
+The server may start before the database is ready. Check:
+
+```bash
+docker compose -f docker-compose.prod.yml logs remote-db
+docker compose -f docker-compose.prod.yml restart remote-server
+```
+</Accordion>
+
+<Accordion title="ElectricSQL fails to connect">
+ElectricSQL requires the `electric_sync` database user, which the Remote Server creates automatically on first startup. If ElectricSQL cannot connect:
+
+1. Check that the Remote Server started successfully and ran its migrations
+2. Verify `ELECTRIC_ROLE_PASSWORD` matches in both your `.env.remote` and the Electric service config
+3. Restart ElectricSQL after the Remote Server is healthy:
+
+```bash
+docker compose -f docker-compose.prod.yml restart electric
+```
+</Accordion>
+
+<Accordion title="Out of memory errors">
+If the build fails with memory errors, you may need a server with more RAM or add swap:
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+```
+</Accordion>
+</AccordionGroup>

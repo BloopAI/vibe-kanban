@@ -25,7 +25,7 @@ use crate::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,
         plain_text_processor::PlainTextLogProcessor,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 
@@ -59,6 +59,9 @@ impl CursorAgent {
 
         if self.force.unwrap_or(false) {
             builder = builder.extend_params(["--force"]);
+        } else {
+            // trusting the current directory is a minimum requirement for cursor to run
+            builder = builder.extend_params(["--trust"]);
         }
 
         if let Some(model) = &self.model {
@@ -150,13 +153,17 @@ impl StandardCodingAgentExecutor for CursorAgent {
         Ok(child.into())
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
 
         // Custom stderr processor for Cursor that detects login errors
         let msg_store_stderr = msg_store.clone();
         let entry_index_provider_stderr = entry_index_provider.clone();
-        tokio::spawn(async move {
+        let h1 = tokio::spawn(async move {
             let mut stderr = msg_store_stderr.stderr_chunked_stream();
             let mut processor = PlainTextLogProcessor::builder()
                 .normalized_entry_producer(Box::new(|content: String| {
@@ -200,7 +207,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
 
         // Process Cursor stdout JSONL with typed serde models
         let current_dir = worktree_path.to_path_buf();
-        tokio::spawn(async move {
+        let h2 = tokio::spawn(async move {
             let mut lines = msg_store.stdout_lines_stream();
 
             // Assistant streaming coalescer state
@@ -416,6 +423,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
                                         exit_status,
                                         output,
                                     }),
+                                    category: CommandCategory::from_command(&args.command),
                                 };
                             } else if let CursorToolCall::Mcp { args, result } = &tool_call {
                                 // Extract a human-readable text from content array using typed deserialization
@@ -487,6 +495,8 @@ impl StandardCodingAgentExecutor for CursorAgent {
                 }
             }
         });
+
+        vec![h1, h2]
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
@@ -808,6 +818,7 @@ impl CursorToolCall {
                     ActionType::CommandRun {
                         command: cmd.clone(),
                         result: None,
+                        category: CommandCategory::from_command(cmd),
                     },
                     cmd.to_string(),
                 )

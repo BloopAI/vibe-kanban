@@ -36,7 +36,13 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{ExecutorError, StandardCodingAgentExecutor},
-    logs::{NormalizedEntry, NormalizedEntryError, NormalizedEntryType, utils::ConversationPatch},
+    logs::{
+        NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
+        utils::{
+            ConversationPatch,
+            patch::{convert_replace_to_add, is_add_or_replace, patch_entry_path},
+        },
+    },
     profile::ExecutorProfileId,
 };
 use futures::{StreamExt, future, stream::BoxStream};
@@ -957,8 +963,8 @@ pub trait ContainerService {
                 return None;
             };
 
-            // Spawn normalizer on populated store
-            match executor_action.typ() {
+            // Spawn normalizer on populated store and collect JoinHandles
+            let handles = match executor_action.typ() {
                 ExecutorActionType::CodingAgentInitialRequest(request) => {
                     #[cfg(feature = "qa-mode")]
                     {
@@ -966,7 +972,7 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                     #[cfg(not(feature = "qa-mode"))]
                     {
@@ -975,7 +981,7 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                 }
                 ExecutorActionType::CodingAgentFollowUpRequest(request) => {
@@ -985,7 +991,7 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                     #[cfg(not(feature = "qa-mode"))]
                     {
@@ -994,19 +1000,19 @@ pub trait ContainerService {
                         executor.normalize_logs(
                             temp_store.clone(),
                             &request.effective_dir(&current_dir),
-                        );
+                        )
                     }
                 }
                 #[cfg(feature = "qa-mode")]
                 ExecutorActionType::ReviewRequest(_request) => {
                     let executor = QaMockExecutor;
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    executor.normalize_logs(temp_store.clone(), &current_dir)
                 }
                 #[cfg(not(feature = "qa-mode"))]
                 ExecutorActionType::ReviewRequest(request) => {
                     let executor = ExecutorConfigs::get_cached()
                         .get_coding_agent_or_default(&request.executor_profile_id);
-                    executor.normalize_logs(temp_store.clone(), &current_dir);
+                    executor.normalize_logs(temp_store.clone(), &current_dir)
                 }
                 _ => {
                     tracing::debug!(
@@ -1015,16 +1021,74 @@ pub trait ContainerService {
                     );
                     return None;
                 }
+            };
+            // Await all normalizer tasks, then push Ready so the dedup
+            // stream knows when to flush its buffer and terminate.
+            {
+                let store = temp_store.clone();
+                tokio::spawn(async move {
+                    for handle in handles {
+                        let _ = handle.await;
+                    }
+                    store.push(LogMsg::Ready);
+                });
             }
-            Some(NormalizedLogStream::Messages(
-                temp_store
-                    .history_plus_stream()
-                    .filter(|msg| future::ready(matches!(msg, Ok(LogMsg::JsonPatch(..)))))
-                    .chain(futures::stream::once(async {
-                        Ok::<_, std::io::Error>(LogMsg::Finished)
-                    }))
-                    .boxed(),
-            ))
+
+            // Stream normalized patches, deduplicating consecutive patches
+            // that target the same path (only the final state matters for
+            // historical replay). The Ready sentinel flushes the buffer.
+            enum PatchOrDone {
+                Patch(Patch),
+                Done,
+            }
+
+            let stream = temp_store
+                .history_plus_stream()
+                .filter_map(|msg| async move {
+                    match msg {
+                        Ok(LogMsg::JsonPatch(patch)) => Some(PatchOrDone::Patch(patch)),
+                        Ok(LogMsg::Ready) => Some(PatchOrDone::Done),
+                        _ => None,
+                    }
+                });
+
+            let deduped = futures::stream::unfold(
+                (stream.boxed(), None::<Patch>),
+                |(mut stream, buffered)| async move {
+                    match stream.next().await {
+                        Some(PatchOrDone::Patch(patch)) => {
+                            let Some(prev) = buffered else {
+                                // First patch — just buffer it
+                                return Some((None, (stream, Some(patch))));
+                            };
+                            if patch_entry_path(&patch) == patch_entry_path(&prev)
+                                && is_add_or_replace(&patch)
+                                && is_add_or_replace(&prev)
+                            {
+                                // Same path, both add/replace — replace buffer
+                                Some((None, (stream, Some(patch))))
+                            } else {
+                                // Different — emit prev, buffer new
+                                Some((Some(prev), (stream, Some(patch))))
+                            }
+                        }
+                        Some(PatchOrDone::Done) | None => {
+                            // Sentinel or stream end: flush buffer and terminate
+                            if let Some(prev) = buffered {
+                                return Some((Some(prev), (stream, None)));
+                            }
+                            None
+                        }
+                    }
+                },
+            )
+            .filter_map(|opt| async move { opt })
+            .map(|p| Ok::<_, std::io::Error>(LogMsg::JsonPatch(convert_replace_to_add(p))))
+            .chain(futures::stream::once(async {
+                Ok::<_, std::io::Error>(LogMsg::Finished)
+            }));
+
+            Some(NormalizedLogStream::Messages(deduped.boxed()))
         }
     }
 
@@ -1423,14 +1487,14 @@ pub trait ContainerService {
             #[cfg(feature = "qa-mode")]
             {
                 let executor = QaMockExecutor;
-                executor.normalize_logs(msg_store, &working_dir);
+                let _ = executor.normalize_logs(msg_store, &working_dir);
             }
             #[cfg(not(feature = "qa-mode"))]
             {
                 if let Some(executor) =
                     ExecutorConfigs::get_cached().get_coding_agent(executor_profile_id)
                 {
-                    executor.normalize_logs(msg_store, &working_dir);
+                    let _ = executor.normalize_logs(msg_store, &working_dir);
                 } else {
                     tracing::error!(
                         "Failed to resolve profile '{:?}' for normalization",
