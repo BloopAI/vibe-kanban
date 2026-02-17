@@ -7,10 +7,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{get, post},
 };
-use db::models::{
-    project::SearchResult,
-    repo::{Repo, UpdateRepo},
-};
+use db::models::repo::{Repo, SearchResult, UpdateRepo};
 use deployment::Deployment;
 use git::{GitBranch, GitRemote};
 use serde::{Deserialize, Serialize};

@@ -8,6 +8,23 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+#[derive(Debug, Serialize, TS)]
+pub struct SearchResult {
+    pub path: String,
+    pub is_file: bool,
+    pub match_type: SearchMatchType,
+    /// Ranking score based on git history (higher = more recently/frequently edited)
+    #[serde(default)]
+    pub score: i64,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub enum SearchMatchType {
+    FileName,
+    DirectoryName,
+    FullPath,
+}
+
 #[derive(Debug, Error)]
 pub enum RepoError {
     #[error(transparent)]

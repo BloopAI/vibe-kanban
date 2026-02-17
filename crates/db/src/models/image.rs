@@ -25,20 +25,6 @@ pub struct CreateImage {
     pub hash: String,
 }
 
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-pub struct TaskImage {
-    pub id: Uuid,
-    pub task_id: Uuid,
-    pub image_id: Uuid,
-    pub created_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct CreateTaskImage {
-    pub task_id: Uuid,
-    pub image_id: Uuid,
-}
-
 impl Image {
     pub async fn create(pool: &SqlitePool, data: &CreateImage) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
@@ -125,9 +111,9 @@ impl Image {
         .await
     }
 
-    pub async fn find_by_task_id(
+    pub async fn find_by_workspace_id(
         pool: &SqlitePool,
-        task_id: Uuid,
+        workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
             Image,
@@ -140,10 +126,10 @@ impl Image {
                       i.created_at as "created_at!: DateTime<Utc>",
                       i.updated_at as "updated_at!: DateTime<Utc>"
                FROM images i
-               JOIN task_images ti ON i.id = ti.image_id
-               WHERE ti.task_id = $1
-               ORDER BY ti.created_at"#,
-            task_id
+               JOIN workspace_images wi ON i.id = wi.image_id
+               WHERE wi.workspace_id = $1
+               ORDER BY wi.created_at"#,
+            workspace_id
         )
         .fetch_all(pool)
         .await
@@ -168,64 +154,44 @@ impl Image {
                       i.created_at as "created_at!: DateTime<Utc>",
                       i.updated_at as "updated_at!: DateTime<Utc>"
                FROM images i
-               LEFT JOIN task_images ti ON i.id = ti.image_id
-               WHERE ti.task_id IS NULL"#
+               LEFT JOIN workspace_images wi ON i.id = wi.image_id
+               WHERE wi.workspace_id IS NULL"#
         )
         .fetch_all(pool)
         .await
     }
 }
 
-impl TaskImage {
-    /// Associate multiple images with a task, skipping duplicates.
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+pub struct WorkspaceImage {
+    pub id: Uuid,
+    pub workspace_id: Uuid,
+    pub image_id: Uuid,
+    pub created_at: DateTime<Utc>,
+}
+
+impl WorkspaceImage {
+    /// Associate multiple images with a workspace, skipping duplicates.
     pub async fn associate_many_dedup(
         pool: &SqlitePool,
-        task_id: Uuid,
+        workspace_id: Uuid,
         image_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
         for &image_id in image_ids {
             let id = Uuid::new_v4();
             sqlx::query!(
-                r#"INSERT INTO task_images (id, task_id, image_id)
+                r#"INSERT INTO workspace_images (id, workspace_id, image_id)
                    SELECT $1, $2, $3
                    WHERE NOT EXISTS (
-                       SELECT 1 FROM task_images WHERE task_id = $2 AND image_id = $3
+                       SELECT 1 FROM workspace_images WHERE workspace_id = $2 AND image_id = $3
                    )"#,
                 id,
-                task_id,
+                workspace_id,
                 image_id
             )
             .execute(pool)
             .await?;
         }
         Ok(())
-    }
-
-    pub async fn delete_by_task_id(pool: &SqlitePool, task_id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(r#"DELETE FROM task_images WHERE task_id = $1"#, task_id)
-            .execute(pool)
-            .await?;
-        Ok(())
-    }
-
-    /// Check if an image is associated with a specific task.
-    pub async fn is_associated(
-        pool: &SqlitePool,
-        task_id: Uuid,
-        image_id: Uuid,
-    ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query_scalar!(
-            r#"SELECT EXISTS(
-                SELECT 1
-                FROM task_images
-                WHERE task_id = $1 AND image_id = $2
-               ) AS "exists!: bool"
-            "#,
-            task_id,
-            image_id
-        )
-        .fetch_one(pool)
-        .await?;
-        Ok(result)
     }
 }

@@ -8,20 +8,14 @@ use uuid::Uuid;
 /// Maximum length for auto-generated workspace names (derived from first user prompt)
 const WORKSPACE_NAME_MAX_LEN: usize = 60;
 
-use super::{
-    project::Project,
-    task::Task,
-    workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
-};
+use super::workspace_repo::{RepoWithTargetBranch, WorkspaceRepo};
 
 #[derive(Debug, Error)]
 pub enum WorkspaceError {
     #[error(transparent)]
     Database(#[from] sqlx::Error),
-    #[error("Task not found")]
-    TaskNotFound,
-    #[error("Project not found")]
-    ProjectNotFound,
+    #[error("Workspace not found")]
+    WorkspaceNotFound,
     #[error("Validation error: {0}")]
     ValidationError(String),
     #[error("Branch not found: {0}")]
@@ -31,14 +25,12 @@ pub enum WorkspaceError {
 #[derive(Debug, Clone, Serialize)]
 pub struct ContainerInfo {
     pub workspace_id: Uuid,
-    pub task_id: Uuid,
-    pub project_id: Uuid,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Workspace {
     pub id: Uuid,
-    pub task_id: Uuid,
+    pub task_id: Option<Uuid>,
     pub container_ref: Option<String>,
     pub branch: String,
     pub agent_working_dir: Option<String>,
@@ -66,17 +58,6 @@ impl std::ops::Deref for WorkspaceWithStatus {
     }
 }
 
-/// GitHub PR creation parameters
-pub struct CreatePrParams<'a> {
-    pub workspace_id: Uuid,
-    pub task_id: Uuid,
-    pub project_id: Uuid,
-    pub github_token: &'a str,
-    pub title: &'a str,
-    pub body: Option<&'a str>,
-    pub base_branch: Option<&'a str>,
-}
-
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateFollowUpAttempt {
     pub prompt: String,
@@ -92,8 +73,6 @@ pub struct AttemptResumeContext {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkspaceContext {
     pub workspace: Workspace,
-    pub task: Task,
-    pub project: Project,
     pub workspace_repos: Vec<RepoWithTargetBranch>,
 }
 
@@ -104,57 +83,27 @@ pub struct CreateWorkspace {
 }
 
 impl Workspace {
-    pub async fn parent_task(&self, pool: &SqlitePool) -> Result<Option<Task>, sqlx::Error> {
-        Task::find_by_id(pool, self.task_id).await
-    }
-
-    /// Fetch all workspaces, optionally filtered by task_id. Newest first.
-    pub async fn fetch_all(
-        pool: &SqlitePool,
-        task_id: Option<Uuid>,
-    ) -> Result<Vec<Self>, WorkspaceError> {
-        let workspaces = match task_id {
-            Some(tid) => sqlx::query_as!(
-                Workspace,
-                r#"SELECT id AS "id!: Uuid",
-                              task_id AS "task_id!: Uuid",
-                              container_ref,
-                              branch,
-                              agent_working_dir,
-                              setup_completed_at AS "setup_completed_at: DateTime<Utc>",
-                              created_at AS "created_at!: DateTime<Utc>",
-                              updated_at AS "updated_at!: DateTime<Utc>",
-                              archived AS "archived!: bool",
-                              pinned AS "pinned!: bool",
-                              name
-                       FROM workspaces
-                       WHERE task_id = $1
-                       ORDER BY created_at DESC"#,
-                tid
-            )
-            .fetch_all(pool)
-            .await
-            .map_err(WorkspaceError::Database)?,
-            None => sqlx::query_as!(
-                Workspace,
-                r#"SELECT id AS "id!: Uuid",
-                              task_id AS "task_id!: Uuid",
-                              container_ref,
-                              branch,
-                              agent_working_dir,
-                              setup_completed_at AS "setup_completed_at: DateTime<Utc>",
-                              created_at AS "created_at!: DateTime<Utc>",
-                              updated_at AS "updated_at!: DateTime<Utc>",
-                              archived AS "archived!: bool",
-                              pinned AS "pinned!: bool",
-                              name
-                       FROM workspaces
-                       ORDER BY created_at DESC"#
-            )
-            .fetch_all(pool)
-            .await
-            .map_err(WorkspaceError::Database)?,
-        };
+    /// Fetch all workspaces. Newest first.
+    pub async fn fetch_all(pool: &SqlitePool) -> Result<Vec<Self>, WorkspaceError> {
+        let workspaces = sqlx::query_as!(
+            Workspace,
+            r#"SELECT id AS "id!: Uuid",
+                          task_id AS "task_id: Uuid",
+                          container_ref,
+                          branch,
+                          agent_working_dir,
+                          setup_completed_at AS "setup_completed_at: DateTime<Utc>",
+                          created_at AS "created_at!: DateTime<Utc>",
+                          updated_at AS "updated_at!: DateTime<Utc>",
+                          archived AS "archived!: bool",
+                          pinned AS "pinned!: bool",
+                          name
+                   FROM workspaces
+                   ORDER BY created_at DESC"#
+        )
+        .fetch_all(pool)
+        .await
+        .map_err(WorkspaceError::Database)?;
 
         Ok(workspaces)
     }
@@ -166,23 +115,13 @@ impl Workspace {
     ) -> Result<WorkspaceContext, WorkspaceError> {
         let workspace = Workspace::find_by_id(pool, workspace_id)
             .await?
-            .ok_or(WorkspaceError::TaskNotFound)?;
-
-        let task = Task::find_by_id(pool, workspace.task_id)
-            .await?
-            .ok_or(WorkspaceError::TaskNotFound)?;
-
-        let project = Project::find_by_id(pool, task.project_id)
-            .await?
-            .ok_or(WorkspaceError::ProjectNotFound)?;
+            .ok_or(WorkspaceError::WorkspaceNotFound)?;
 
         let workspace_repos =
             WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace_id).await?;
 
         Ok(WorkspaceContext {
             workspace,
-            task,
-            project,
             workspace_repos,
         })
     }
@@ -234,7 +173,7 @@ impl Workspace {
         sqlx::query_as!(
             Workspace,
             r#"SELECT  id                AS "id!: Uuid",
-                       task_id           AS "task_id!: Uuid",
+                       task_id           AS "task_id: Uuid",
                        container_ref,
                        branch,
                        agent_working_dir,
@@ -256,7 +195,7 @@ impl Workspace {
         sqlx::query_as!(
             Workspace,
             r#"SELECT  id                AS "id!: Uuid",
-                       task_id           AS "task_id!: Uuid",
+                       task_id           AS "task_id: Uuid",
                        container_ref,
                        branch,
                        agent_working_dir,
@@ -289,8 +228,8 @@ impl Workspace {
     }
 
     /// Find workspaces that are expired and eligible for cleanup.
-    /// Uses accelerated cleanup (1 hour) for archived workspaces OR tasks not in progress/review.
-    /// Uses standard cleanup (72 hours) only for non-archived workspaces on active tasks.
+    /// Uses accelerated cleanup (1 hour) for archived workspaces.
+    /// Uses standard cleanup (72 hours) for non-archived workspaces.
     pub async fn find_expired_for_cleanup(
         pool: &SqlitePool,
     ) -> Result<Vec<Workspace>, sqlx::Error> {
@@ -299,7 +238,7 @@ impl Workspace {
             r#"
             SELECT
                 w.id as "id!: Uuid",
-                w.task_id as "task_id!: Uuid",
+                w.task_id as "task_id: Uuid",
                 w.container_ref,
                 w.branch as "branch!",
                 w.agent_working_dir,
@@ -310,7 +249,6 @@ impl Workspace {
                 w.pinned as "pinned!: bool",
                 w.name
             FROM workspaces w
-            JOIN tasks t ON w.task_id = t.id
             LEFT JOIN sessions s ON w.id = s.workspace_id
             LEFT JOIN execution_processes ep ON s.id = ep.session_id AND ep.completed_at IS NOT NULL
             WHERE w.container_ref IS NOT NULL
@@ -323,7 +261,7 @@ impl Workspace {
             GROUP BY w.id, w.container_ref, w.updated_at
             HAVING datetime('now', 'localtime',
                 CASE
-                    WHEN w.archived = 1 OR t.status NOT IN ('inprogress', 'inreview')
+                    WHEN w.archived = 1
                     THEN '-1 hours'
                     ELSE '-72 hours'
                 END
@@ -351,13 +289,13 @@ impl Workspace {
         pool: &SqlitePool,
         data: &CreateWorkspace,
         id: Uuid,
-        task_id: Uuid,
+        task_id: Option<Uuid>,
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
             r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", task_id as "task_id!: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
+               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
             id,
             task_id,
             Option::<String>::None,
@@ -390,11 +328,8 @@ impl Workspace {
         container_ref: &str,
     ) -> Result<ContainerInfo, sqlx::Error> {
         let result = sqlx::query!(
-            r#"SELECT w.id as "workspace_id!: Uuid",
-                      w.task_id as "task_id!: Uuid",
-                      t.project_id as "project_id!: Uuid"
+            r#"SELECT w.id as "workspace_id!: Uuid"
                FROM workspaces w
-               JOIN tasks t ON w.task_id = t.id
                WHERE w.container_ref = ?"#,
             container_ref
         )
@@ -404,8 +339,6 @@ impl Workspace {
 
         Ok(ContainerInfo {
             workspace_id: result.workspace_id,
-            task_id: result.task_id,
-            project_id: result.project_id,
         })
     }
 
@@ -521,7 +454,7 @@ impl Workspace {
         let records = sqlx::query!(
             r#"SELECT
                 w.id AS "id!: Uuid",
-                w.task_id AS "task_id!: Uuid",
+                w.task_id AS "task_id: Uuid",
                 w.container_ref,
                 w.branch,
                 w.agent_working_dir,
@@ -622,7 +555,7 @@ impl Workspace {
         let rec = sqlx::query!(
             r#"SELECT
                 w.id AS "id!: Uuid",
-                w.task_id AS "task_id!: Uuid",
+                w.task_id AS "task_id: Uuid",
                 w.container_ref,
                 w.branch,
                 w.agent_working_dir,

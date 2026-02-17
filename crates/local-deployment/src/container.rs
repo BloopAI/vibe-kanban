@@ -20,7 +20,6 @@ use db::{
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         session::{Session, SessionError},
-        task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
     },
@@ -602,8 +601,6 @@ impl LocalContainerService {
                     && let Some(analytics) = &analytics
                 {
                     analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
-                        "task_id": ctx.task.id.to_string(),
-                        "project_id": ctx.task.project_id.to_string(),
                         "workspace_id": ctx.workspace.id.to_string(),
                         "session_id": ctx.session.id.to_string(),
                         "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
@@ -818,14 +815,14 @@ impl LocalContainerService {
 
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(
+            .copy_images_by_workspace_to_worktree(
                 workspace_dir,
-                workspace.task_id,
+                workspace.id,
                 workspace.agent_working_dir.as_deref(),
             )
             .await
         {
-            tracing::warn!("Failed to copy task images to workspace: {}", e);
+            tracing::warn!("Failed to copy workspace images to workspace: {}", e);
         }
 
         Ok(())
@@ -1042,13 +1039,9 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError> {
-        let task = workspace
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
+        let label = workspace.name.as_deref().unwrap_or("workspace");
         let workspace_dir_name =
-            LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
+            LocalContainerService::dir_name_from_workspace(&workspace.id, label);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
         let workspace_repos =
@@ -1125,12 +1118,9 @@ impl ContainerService for LocalContainerService {
         let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
             PathBuf::from(container_ref)
         } else {
-            let task = workspace
-                .parent_task(&self.db.pool)
-                .await?
-                .ok_or(sqlx::Error::RowNotFound)?;
+            let label = workspace.name.as_deref().unwrap_or("workspace");
             let workspace_dir_name =
-                LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
+                LocalContainerService::dir_name_from_workspace(&workspace.id, label);
             WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
         };
 
@@ -1324,18 +1314,6 @@ impl ContainerService for LocalContainerService {
         }
         if let Some(handle) = db_stream_handle {
             let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
-        }
-
-        // Update task status to InReview when execution is stopped
-        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await
-            && !matches!(
-                ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::DevServer
-            )
-            && let Err(e) =
-                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
-        {
-            tracing::error!("Failed to update task status to InReview: {e}");
         }
 
         tracing::debug!(

@@ -20,8 +20,6 @@ pub struct ContainerQuery {
 
 #[derive(Debug, Serialize)]
 pub struct ContainerInfo {
-    pub project_id: Uuid,
-    pub task_id: Uuid,
     pub attempt_id: Uuid,
 }
 
@@ -35,8 +33,6 @@ pub async fn get_container_info(
             .map_err(ApiError::Database)?;
 
     Ok(ResponseJson(ApiResponse::success(ContainerInfo {
-        project_id: info.project_id,
-        task_id: info.task_id,
         attempt_id: info.workspace_id,
     })))
 }

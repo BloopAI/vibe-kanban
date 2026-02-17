@@ -6,7 +6,6 @@ pub mod image;
 pub mod merge;
 pub mod migration_state;
 pub mod project;
-pub mod project_repo;
 pub mod repo;
 pub mod scratch;
 pub mod session;

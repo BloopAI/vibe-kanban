@@ -9,7 +9,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
-use db::models::{task::Task, workspace::Workspace};
+use db::models::{image::Image, workspace::Workspace};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::{container::ContainerService, image::ImageError};
@@ -31,6 +31,16 @@ pub struct ImageMetadataQuery {
     pub path: String,
 }
 
+/// List all images associated with a workspace.
+pub async fn get_workspace_images(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<ImageResponse>>>, ApiError> {
+    let images = Image::find_by_workspace_id(&deployment.db().pool, workspace.id).await?;
+    let image_responses = images.into_iter().map(ImageResponse::from_image).collect();
+    Ok(ResponseJson(ApiResponse::success(image_responses)))
+}
+
 /// Upload an image and immediately copy it to the workspace's worktree.
 /// This allows images to be available in the container before follow-up is sent.
 pub async fn upload_image(
@@ -38,13 +48,8 @@ pub async fn upload_image(
     State(deployment): State<DeploymentImpl>,
     multipart: Multipart,
 ) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
-    // Get the task for this attempt
-    let task = Task::find_by_id(&deployment.db().pool, workspace.task_id)
-        .await?
-        .ok_or_else(|| ApiError::Image(ImageError::NotFound))?;
-
-    // Process upload (store in cache, associate with task)
-    let image_response = process_image_upload(&deployment, multipart, Some(task.id)).await?;
+    // Process upload (store in cache, associate with workspace)
+    let image_response = process_image_upload(&deployment, multipart, Some(workspace.id)).await?;
 
     let container_ref = deployment
         .container()
@@ -240,6 +245,7 @@ async fn load_workspace_with_wildcard(
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let metadata_router = Router::new()
+        .route("/", get(get_workspace_images))
         .route("/metadata", get(get_image_metadata))
         .route(
             "/upload",

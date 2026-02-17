@@ -42,8 +42,6 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
         tool_call_id: &str,
         cancel: CancellationToken,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
-        super::ensure_task_in_review(&self.db.pool, self.execution_process_id).await;
-
         let request = ApprovalRequest::from_create(
             CreateApprovalRequest {
                 tool_name: tool_name.to_string(),
@@ -61,14 +59,19 @@ impl ExecutorApprovalService for ExecutorApprovalBridge {
 
         let approval_id = request.id.clone();
 
-        let task_name = ExecutionProcess::load_context(&self.db.pool, self.execution_process_id)
-            .await
-            .map(|ctx| ctx.task.title)
-            .unwrap_or_else(|_| "Unknown task".to_string());
+        let workspace_name =
+            ExecutionProcess::load_context(&self.db.pool, self.execution_process_id)
+                .await
+                .map(|ctx| {
+                    ctx.workspace
+                        .name
+                        .unwrap_or_else(|| ctx.workspace.branch.clone())
+                })
+                .unwrap_or_else(|_| "Unknown workspace".to_string());
 
         self.notification_service
             .notify(
-                &format!("Approval Needed: {}", task_name),
+                &format!("Approval Needed: {}", workspace_name),
                 &format!("Tool '{}' requires approval", tool_name),
             )
             .await;

@@ -1,9 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use db::models::{
-    project::{SearchMatchType, SearchResult},
-    repo::Repo as RepoModel,
-};
+use db::models::repo::{Repo as RepoModel, SearchMatchType, SearchResult};
 use git::{GitService, GitServiceError};
 use sqlx::SqlitePool;
 use thiserror::Error;

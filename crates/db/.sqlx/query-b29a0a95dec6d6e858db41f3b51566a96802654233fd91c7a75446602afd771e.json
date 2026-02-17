@@ -1,0 +1,12 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO workspace_images (id, workspace_id, image_id)\n                   SELECT $1, $2, $3\n                   WHERE NOT EXISTS (\n                       SELECT 1 FROM workspace_images WHERE workspace_id = $2 AND image_id = $3\n                   )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "b29a0a95dec6d6e858db41f3b51566a96802654233fd91c7a75446602afd771e"
+}
