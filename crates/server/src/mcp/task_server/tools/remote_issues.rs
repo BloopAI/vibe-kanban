@@ -90,7 +90,7 @@ struct IssueSummary {
     #[schemars(
         description = "Status of the most recent pull request: 'open', 'merged', or 'closed'"
     )]
-    latest_pr_status: Option<String>,
+    latest_pr_status: Option<PullRequestStatus>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -100,7 +100,7 @@ struct PullRequestSummary {
     #[schemars(description = "URL of the pull request")]
     url: String,
     #[schemars(description = "Status of the pull request: 'open', 'merged', or 'closed'")]
-    status: String,
+    status: PullRequestStatus,
     #[schemars(description = "When the PR was merged, if applicable")]
     merged_at: Option<String>,
     #[schemars(description = "Target branch for the PR")]
@@ -570,7 +570,7 @@ impl TaskServer {
             updated_at: issue.updated_at.to_rfc3339(),
             pull_request_count: pull_requests.pull_requests.len(),
             latest_pr_url: latest_pr.map(|pr| pr.url.clone()),
-            latest_pr_status: latest_pr.map(|pr| Self::pr_status_label(pr.status).to_string()),
+            latest_pr_status: latest_pr.map(|pr| pr.status),
         }
     }
 
@@ -605,19 +605,11 @@ impl TaskServer {
                 .map(|pr| PullRequestSummary {
                     number: pr.number,
                     url: pr.url,
-                    status: Self::pr_status_label(pr.status).to_string(),
+                    status: pr.status,
                     merged_at: pr.merged_at.map(|dt| dt.to_rfc3339()),
                     target_branch_name: pr.target_branch_name,
                 })
                 .collect(),
-        }
-    }
-
-    fn pr_status_label(status: PullRequestStatus) -> &'static str {
-        match status {
-            PullRequestStatus::Open => "open",
-            PullRequestStatus::Merged => "merged",
-            PullRequestStatus::Closed => "closed",
         }
     }
 
