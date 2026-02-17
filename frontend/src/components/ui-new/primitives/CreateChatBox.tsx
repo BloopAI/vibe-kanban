@@ -161,7 +161,7 @@ export function CreateChatBox({
         </>
       }
       footerLeft={
-        <>
+        <div className="flex items-center gap-base">
           <ToolbarIconButton
             icon={PaperclipIcon}
             aria-label={t('tasks:taskFormDialog.attachImage')}
@@ -177,18 +177,20 @@ export function CreateChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
-          <span className="h-3 w-px bg-border/70" aria-hidden="true" />
-          <button
-            type="button"
-            onClick={onEditRepos}
-            title={repoSummaryTitle}
-            disabled={isDisabled}
-            className="max-w-[320px] truncate text-sm text-normal hover:text-high disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {repoSummaryLabel}
-          </button>
+          <div className="flex items-center gap-half">
+            <span className="h-3 w-px bg-border/70" aria-hidden="true" />
+            <button
+              type="button"
+              onClick={onEditRepos}
+              title={repoSummaryTitle}
+              disabled={isDisabled}
+              className="max-w-[320px] truncate text-sm text-normal hover:text-high disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {repoSummaryLabel}
+            </button>
+          </div>
           {linkedIssue && (
-            <>
+            <div className="flex items-center gap-half">
               <span className="h-3 w-px bg-border/70" aria-hidden="true" />
               <div
                 className="inline-flex items-center gap-half whitespace-nowrap text-sm text-low"
@@ -207,12 +209,13 @@ export function CreateChatBox({
                   <XIcon className="size-icon-xs" weight="bold" />
                 </button>
               </div>
-            </>
+            </div>
           )}
-        </>
+        </div>
       }
       footerRight={
         <PrimaryButton
+          className="ml-base"
           onClick={onSend}
           disabled={!canSend}
           actionIcon={isSending ? 'spinner' : undefined}
