@@ -163,11 +163,16 @@ export function ModelSelectorContainer({
 
   const supportsPermissions = (config?.permissions.length ?? 0) > 0;
 
+  const defaultPermissionPolicy = config?.permissions.includes(
+    PermissionPolicy.AUTO
+  )
+    ? PermissionPolicy.AUTO
+    : null;
   const permissionPolicy = supportsPermissions
     ? executorConfig?.permission_policy &&
       config?.permissions.includes(executorConfig.permission_policy)
       ? executorConfig.permission_policy
-      : null
+      : defaultPermissionPolicy
     : null;
 
   // LRU persistence (on popover close)
