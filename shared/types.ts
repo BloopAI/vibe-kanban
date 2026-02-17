@@ -50,9 +50,9 @@ export type CreateTask = { project_id: string, title: string, description: strin
 
 export type UpdateTask = { title: string | null, description: string | null, status: TaskStatus | null, parent_workspace_id: string | null, image_ids: Array<string> | null, };
 
-export type DraftFollowUpData = { message: string, executor_config: ExecutorConfig, };
+export type DraftFollowUpData = { message: string, };
 
-export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, executor_config: ExecutorConfig | null, linked_issue: DraftWorkspaceLinkedIssue | null, };
+export type DraftWorkspaceData = { message: string, project_id: string | null, repos: Array<DraftWorkspaceRepo>, linked_issue: DraftWorkspaceLinkedIssue | null, };
 
 export type DraftWorkspaceLinkedIssue = { issue_id: string, simple_id: string, title: string, remote_project_id: string, };
 
@@ -282,6 +282,8 @@ export type CurrentUserResponse = { user_id: string, };
 
 export type CreateFollowUpAttempt = { prompt: string, executor_config: ExecutorConfig, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
+export type QueueMessageRequest = { message: string, executor_config: ExecutorConfig, };
+
 export type ResetProcessRequest = { process_id: string, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: string, };
@@ -470,15 +472,17 @@ export type SendMessageShortcut = "ModifierEnter" | "Enter";
 
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
+export type QueuedFollowUpData = { message: string, executor_config: ExecutorConfig, };
+
 export type QueuedMessage = { 
 /**
  * The session this message is queued for
  */
 session_id: string, 
 /**
- * The follow-up data (message + variant)
+ * The follow-up data (message + executor config)
  */
-data: DraftFollowUpData, 
+data: QueuedFollowUpData, 
 /**
  * Timestamp when the message was queued
  */

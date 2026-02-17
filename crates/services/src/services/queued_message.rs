@@ -2,18 +2,25 @@ use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
 use dashmap::DashMap;
-use db::models::scratch::DraftFollowUpData;
+use executors::profile::ExecutorConfig;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
+
+/// Queue payload for a follow-up message.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct QueuedFollowUpData {
+    pub message: String,
+    pub executor_config: ExecutorConfig,
+}
 
 /// Represents a queued follow-up message for a session
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct QueuedMessage {
     /// The session this message is queued for
     pub session_id: Uuid,
-    /// The follow-up data (message + variant)
-    pub data: DraftFollowUpData,
+    /// The follow-up data (message + executor config)
+    pub data: QueuedFollowUpData,
     /// Timestamp when the message was queued
     pub queued_at: DateTime<Utc>,
 }
@@ -43,7 +50,7 @@ impl QueuedMessageService {
     }
 
     /// Queue a message for a session. Replaces any existing queued message.
-    pub fn queue_message(&self, session_id: Uuid, data: DraftFollowUpData) -> QueuedMessage {
+    pub fn queue_message(&self, session_id: Uuid, data: QueuedFollowUpData) -> QueuedMessage {
         let queued = QueuedMessage {
             session_id,
             data,

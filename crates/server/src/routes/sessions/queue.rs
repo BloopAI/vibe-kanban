@@ -2,11 +2,11 @@ use axum::{
     Extension, Json, Router, extract::State, middleware::from_fn_with_state,
     response::Json as ResponseJson, routing::get,
 };
-use db::models::{scratch::DraftFollowUpData, session::Session};
+use db::models::session::Session;
 use deployment::Deployment;
 use executors::profile::ExecutorConfig;
 use serde::Deserialize;
-use services::services::queued_message::QueueStatus;
+use services::services::queued_message::{QueueStatus, QueuedFollowUpData};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
@@ -25,7 +25,7 @@ pub async fn queue_message(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<QueueMessageRequest>,
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
-    let data = DraftFollowUpData {
+    let data = QueuedFollowUpData {
         message: payload.message,
         executor_config: payload.executor_config,
     };

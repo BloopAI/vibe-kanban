@@ -50,6 +50,7 @@ import { useVariant } from '@/hooks/useVariant';
 import type {
   DraftFollowUpData,
   ExecutorProfileId,
+  QueueMessageRequest,
   QueueStatus,
 } from 'shared/types';
 import { getLatestConfigFromProcesses } from '@/utils/executor';
@@ -138,7 +139,7 @@ export function TaskFollowUpSection({
     isLoading: isScratchLoading,
   } = useScratch(ScratchType.DRAFT_FOLLOW_UP, sessionId ?? '');
 
-  // Derive the message and variant from scratch
+  // Derive the message from scratch
   const scratchData: DraftFollowUpData | undefined =
     scratch?.payload?.type === 'DRAFT_FOLLOW_UP'
       ? scratch.payload.data
@@ -161,18 +162,11 @@ export function TaskFollowUpSection({
     return profiles?.[latestProfileId.executor] ?? null;
   }, [latestProfileId, profiles]);
 
-  // Variant selection with priority: user selection > scratch > process
+  // Variant selection with priority: user selection > process
   const { selectedVariant, setSelectedVariant: setVariantFromHook } =
     useVariant({
       processVariant: latestProfileId?.variant ?? null,
-      scratchVariant: scratchData?.executor_config?.variant,
     });
-
-  // Ref to track current variant for use in message save callback
-  const variantRef = useRef<string | null>(selectedVariant);
-  useEffect(() => {
-    variantRef.current = selectedVariant;
-  }, [selectedVariant]);
 
   // Refs to stabilize callbacks - avoid re-creating callbacks when these values change
   const scratchRef = useRef(scratch);
@@ -180,24 +174,20 @@ export function TaskFollowUpSection({
     scratchRef.current = scratch;
   }, [scratch]);
 
-  // Save scratch helper (used for both message and variant changes)
+  // Save scratch helper
   // Uses scratchRef to avoid callback invalidation when scratch updates
   const saveToScratch = useCallback(
-    async (message: string, variant: string | null) => {
-      if (!workspaceId || !latestProfileId?.executor) return;
+    async (message: string) => {
+      if (!workspaceId) return;
       // Don't create empty scratch entries - only save if there's actual content,
-      // a variant is selected, or scratch already exists (to allow clearing a draft)
-      if (!message.trim() && !variant && !scratchRef.current) return;
+      // or scratch already exists (to allow clearing a draft)
+      if (!message.trim() && !scratchRef.current) return;
       try {
         await updateScratch({
           payload: {
             type: 'DRAFT_FOLLOW_UP',
             data: {
               message,
-              executor_config: {
-                executor: latestProfileId.executor,
-                variant,
-              },
             },
           },
         });
@@ -205,26 +195,20 @@ export function TaskFollowUpSection({
         console.error('Failed to save follow-up draft', e);
       }
     },
-    [workspaceId, updateScratch, latestProfileId?.executor]
+    [workspaceId, updateScratch]
   );
 
-  // Wrapper to update variant and save to scratch immediately
   const setSelectedVariant = useCallback(
     (variant: string | null) => {
       setVariantFromHook(variant);
-      // Save immediately when user changes variant
-      saveToScratch(localMessage, variant);
     },
-    [setVariantFromHook, saveToScratch, localMessage]
+    [setVariantFromHook]
   );
 
-  // Debounced save for message changes (uses current variant from ref)
+  // Debounced save for message changes
   const { debounced: setFollowUpMessage, cancel: cancelDebouncedSave } =
     useDebouncedCallback(
-      useCallback(
-        (value: string) => saveToScratch(value, variantRef.current),
-        [saveToScratch]
-      ),
+      useCallback((value: string) => saveToScratch(value), [saveToScratch]),
       500
     );
 
@@ -259,7 +243,7 @@ export function TaskFollowUpSection({
     : null;
 
   const queueMutation = useMutation({
-    mutationFn: (data: DraftFollowUpData) => queueApi.queue(sessionId!, data),
+    mutationFn: (data: QueueMessageRequest) => queueApi.queue(sessionId!, data),
     onSuccess: (status) => {
       queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
     },
@@ -434,7 +418,7 @@ export function TaskFollowUpSection({
     // Cancel any pending debounced save and save immediately before queueing
     // This prevents the race condition where the debounce fires after queueing
     cancelDebouncedSave();
-    await saveToScratch(localMessage, selectedVariant);
+    await saveToScratch(localMessage);
 
     // Combine all the content that would be sent (same as follow-up send)
     const { prompt } = buildAgentPrompt(

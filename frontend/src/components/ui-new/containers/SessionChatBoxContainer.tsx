@@ -6,7 +6,6 @@ import {
   type Session,
   type ToolStatus,
   type BaseCodingAgent,
-  type ExecutorConfig,
 } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -317,7 +316,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const {
     localMessage,
     setLocalMessage,
-    scratchData,
     isScratchLoading,
     hasInitialValue,
     saveToScratch,
@@ -376,11 +374,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     );
   }, [needsExecutorSelection, latestConfig?.executor, session?.executor]);
 
-  const scratchConfig = useMemo<ExecutorConfig | null | undefined>(() => {
-    if (!hasInitialValue) return undefined;
-    return scratchData?.executor_config ?? null;
-  }, [hasInitialValue, scratchData?.executor_config]);
-
   // Local executor + variant state with preference defaults.
   const {
     executorConfig,
@@ -393,10 +386,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     setOverrides: setExecutorOverrides,
   } = useLocalExecutorConfig({
     profiles,
-    initialConfig: scratchConfig,
     preferredProfile: config?.executor_profile,
     lockedExecutor,
-    onPersist: (cfg) => void saveToScratch(localMessageRef.current, cfg),
     resetKey: scratchId,
   });
   const { data: presetOptions } = usePresetOptions(
@@ -491,7 +482,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
     cancelDebouncedSave();
-    await saveToScratch(localMessage, executorConfig);
+    await saveToScratch(localMessage);
     await queueMessage(prompt, executorConfig);
 
     // Clear local state after queueing (same as handleSend)
@@ -514,22 +505,10 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const handleEditorChange = useCallback(
     (value: string) => {
       if (isQueued) cancelQueue();
-      if (executorConfig) {
-        handleMessageChange(value, executorConfig);
-      } else {
-        setLocalMessage(value);
-      }
+      handleMessageChange(value);
       if (sendError) clearError();
     },
-    [
-      isQueued,
-      cancelQueue,
-      handleMessageChange,
-      executorConfig,
-      sendError,
-      clearError,
-      setLocalMessage,
-    ]
+    [isQueued, cancelQueue, handleMessageChange, sendError, clearError]
   );
 
   // Handle feedback submission

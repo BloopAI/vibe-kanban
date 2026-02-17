@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import type { DraftWorkspaceData, ExecutorConfig, Repo } from 'shared/types';
+import type { DraftWorkspaceData, Repo } from 'shared/types';
 import { ScratchType } from 'shared/types';
 import {
   PROJECT_ISSUES_SHAPE,
@@ -9,7 +9,6 @@ import {
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
-import { useUserSystem } from '@/components/ConfigProvider';
 import { useShape } from '@/lib/electric/hooks';
 import { attemptsApi, projectsApi } from '@/lib/api';
 
@@ -49,7 +48,6 @@ interface DraftState {
   repos: SelectedRepo[];
   message: string;
   linkedIssue: LinkedIssue | null;
-  executorConfig: ExecutorConfig | null;
 }
 
 type DraftAction =
@@ -67,11 +65,7 @@ type DraftAction =
   | { type: 'CLEAR_REPOS' }
   | { type: 'CLEAR' }
   | { type: 'CLEAR_LINKED_ISSUE' }
-  | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string }
-  | {
-      type: 'SET_EXECUTOR_CONFIG';
-      config: ExecutorConfig | null;
-    };
+  | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string };
 
 // ============================================================================
 // Reducer
@@ -84,7 +78,6 @@ const draftInitialState: DraftState = {
   repos: [],
   message: '',
   linkedIssue: null,
-  executorConfig: null,
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -166,9 +159,6 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
         },
       };
 
-    case 'SET_EXECUTOR_CONFIG':
-      return { ...state, executorConfig: action.config };
-
     default:
       return state;
   }
@@ -232,7 +222,6 @@ interface UseCreateModeStateResult {
   isLoading: boolean;
   hasInitialValue: boolean;
   linkedIssue: LinkedIssue | null;
-  executorConfig: ExecutorConfig | null;
 
   // Actions
   setSelectedProjectId: (id: string | null) => void;
@@ -243,7 +232,6 @@ interface UseCreateModeStateResult {
   setTargetBranch: (repoId: string, branch: string) => void;
   clearDraft: () => Promise<void>;
   clearLinkedIssue: () => void;
-  setExecutorConfig: (config: ExecutorConfig | null) => void;
 }
 
 export function useCreateModeState({
@@ -259,7 +247,6 @@ export function useCreateModeState({
   const location = useLocation();
   const navigate = useNavigate();
   const { projectsById, isLoading: projectsLoading } = useProjects();
-  const { profiles } = useUserSystem();
   const scratchId = draftId ?? DRAFT_WORKSPACE_ID;
 
   const {
@@ -281,18 +268,6 @@ export function useCreateModeState({
   );
   const hasInitialized = useRef(false);
 
-  // Profile validator
-  const isValidProfile = useCallback(
-    (config: ExecutorConfig | null): boolean => {
-      if (!config || !profiles) return false;
-      const { executor, variant } = config;
-      if (!(executor in profiles)) return false;
-      if (variant === null || variant === undefined) return true;
-      return variant in profiles[executor];
-    },
-    [profiles]
-  );
-
   // ============================================================================
   // Single initialization effect
   // ============================================================================
@@ -300,7 +275,6 @@ export function useCreateModeState({
     if (hasInitialized.current) return;
     if (scratchLoading) return;
     if (!projectsById) return;
-    if (!profiles) return;
 
     hasInitialized.current = true;
     const navState = navStateRef.current;
@@ -326,18 +300,15 @@ export function useCreateModeState({
       scratch,
       initialProjectId,
       projectsById,
-      isValidProfile,
       dispatch,
     });
   }, [
     scratchLoading,
     projectsById,
-    profiles,
     initialState,
     draftId,
     initialProjectId,
     scratch,
-    isValidProfile,
     navigate,
     location.pathname,
     location.search,
@@ -452,10 +423,7 @@ export function useCreateModeState({
   const { debounced: debouncedSave } = useDebouncedCallback(
     async (data: DraftWorkspaceData) => {
       const isEmpty =
-        !data.message.trim() &&
-        !data.project_id &&
-        data.repos.length === 0 &&
-        !data.executor_config;
+        !data.message.trim() && !data.project_id && data.repos.length === 0;
 
       if (isEmpty && !scratch) return;
 
@@ -480,7 +448,6 @@ export function useCreateModeState({
         repo_id: r.repo.id,
         target_branch: r.targetBranch ?? '',
       })),
-      executor_config: state.executorConfig ?? null,
       linked_issue: state.linkedIssue
         ? {
             issue_id: state.linkedIssue.issueId,
@@ -496,7 +463,6 @@ export function useCreateModeState({
     state.projectId,
     state.repos,
     state.linkedIssue,
-    state.executorConfig,
     debouncedSave,
   ]);
 
@@ -585,10 +551,6 @@ export function useCreateModeState({
     dispatch({ type: 'CLEAR_LINKED_ISSUE' });
   }, []);
 
-  const setExecutorConfig = useCallback((config: ExecutorConfig | null) => {
-    dispatch({ type: 'SET_EXECUTOR_CONFIG', config });
-  }, []);
-
   return {
     selectedProjectId: state.projectId,
     repos,
@@ -597,7 +559,6 @@ export function useCreateModeState({
     isLoading: scratchLoading,
     hasInitialValue: state.phase === 'ready',
     linkedIssue: state.linkedIssue,
-    executorConfig: state.executorConfig,
     setSelectedProjectId,
     setMessage,
     addRepo,
@@ -606,7 +567,6 @@ export function useCreateModeState({
     setTargetBranch,
     clearDraft,
     clearLinkedIssue,
-    setExecutorConfig,
   };
 }
 
@@ -619,7 +579,6 @@ interface InitializeParams {
   scratch: ReturnType<typeof useScratch>['scratch'];
   initialProjectId: string | undefined;
   projectsById: Record<string, { id: string; created_at: unknown }>;
-  isValidProfile: (config: ExecutorConfig | null) => boolean;
   dispatch: React.Dispatch<DraftAction>;
 }
 
@@ -628,7 +587,6 @@ async function initializeState({
   scratch,
   initialProjectId,
   projectsById,
-  isValidProfile,
   dispatch,
 }: InitializeParams): Promise<void> {
   try {
@@ -680,14 +638,6 @@ async function initializeState({
       // Restore project if it still exists
       if (scratchData.project_id && scratchData.project_id in projectsById) {
         restoredData.projectId = scratchData.project_id;
-      }
-
-      // Restore executor config if profile is still valid
-      if (
-        scratchData.executor_config &&
-        isValidProfile(scratchData.executor_config)
-      ) {
-        restoredData.executorConfig = scratchData.executor_config;
       }
 
       // Restore linked issue

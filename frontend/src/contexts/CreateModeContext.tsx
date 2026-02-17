@@ -1,6 +1,6 @@
 import { useContext, useMemo, type ReactNode } from 'react';
 import { createHmrContext } from '@/lib/hmrContext.ts';
-import type { Repo, ExecutorConfig } from 'shared/types';
+import type { Repo } from 'shared/types';
 import {
   useCreateModeState,
   type CreateModeInitialState,
@@ -34,10 +34,6 @@ interface CreateModeContextValue {
   linkedIssue: LinkedIssue | null;
   /** Clear the linked issue */
   clearLinkedIssue: () => void;
-  /** Persisted executor config (model selector state) */
-  executorConfig: ExecutorConfig | null;
-  /** Update executor config (triggers debounced scratch save) */
-  setExecutorConfig: (config: ExecutorConfig | null) => void;
 }
 
 const CreateModeContext = createHmrContext<CreateModeContextValue | null>(
@@ -105,8 +101,6 @@ export function CreateModeProvider({
       hasInitialValue: state.hasInitialValue,
       linkedIssue: state.linkedIssue,
       clearLinkedIssue: state.clearLinkedIssue,
-      executorConfig: state.executorConfig,
-      setExecutorConfig: state.setExecutorConfig,
     }),
     [
       state.selectedProjectId,
@@ -123,8 +117,6 @@ export function CreateModeProvider({
       state.hasInitialValue,
       state.linkedIssue,
       state.clearLinkedIssue,
-      state.executorConfig,
-      state.setExecutorConfig,
     ]
   );
 

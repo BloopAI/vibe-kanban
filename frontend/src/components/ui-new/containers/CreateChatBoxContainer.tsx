@@ -37,8 +37,6 @@ export function CreateChatBoxContainer({
     hasInitialValue,
     linkedIssue,
     clearLinkedIssue,
-    executorConfig: draftConfig,
-    setExecutorConfig: setDraftConfig,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace({
@@ -93,11 +91,6 @@ export function CreateChatBoxContainer({
     noKeyboard: true,
   });
 
-  const scratchConfig = useMemo(() => {
-    if (!hasInitialValue) return undefined; // still loading
-    return draftConfig ?? null;
-  }, [hasInitialValue, draftConfig]);
-
   const {
     executorConfig,
     effectiveExecutor,
@@ -109,9 +102,7 @@ export function CreateChatBoxContainer({
     setOverrides: setExecutorOverrides,
   } = useLocalExecutorConfig({
     profiles,
-    initialConfig: scratchConfig,
     preferredProfile: config?.executor_profile,
-    onPersist: (cfg) => setDraftConfig(cfg),
   });
   const { data: presetOptions } = usePresetOptions(
     effectiveExecutor,

@@ -34,10 +34,8 @@ function pickVariant(
 
 interface UseLocalExecutorConfigOptions {
   profiles: Record<string, ExecutorProfile> | null;
-  initialConfig: ExecutorConfig | null | undefined;
   preferredProfile: ExecutorProfileId | null | undefined;
   lockedExecutor?: BaseCodingAgent | null;
-  onPersist?: (config: ExecutorConfig) => void;
   resetKey?: string | null;
 }
 
@@ -54,10 +52,8 @@ interface UseLocalExecutorConfigResult {
 
 export function useLocalExecutorConfig({
   profiles,
-  initialConfig,
   preferredProfile,
   lockedExecutor = null,
-  onPersist,
   resetKey,
 }: UseLocalExecutorConfigOptions): UseLocalExecutorConfigResult {
   const [localConfig, setLocalConfig] = useState<ExecutorConfig | null>(null);
@@ -126,9 +122,8 @@ export function useLocalExecutorConfig({
   const executorConfig = useMemo(() => {
     if (!profiles) return null;
     if (localConfig) return normalizeConfig(localConfig);
-    if (initialConfig === undefined) return null;
-    return normalizeConfig(initialConfig);
-  }, [profiles, localConfig, initialConfig, normalizeConfig]);
+    return normalizeConfig(null);
+  }, [profiles, localConfig, normalizeConfig]);
 
   const effectiveExecutor = executorConfig?.executor ?? null;
   const selectedVariant = executorConfig?.variant ?? null;
@@ -139,13 +134,6 @@ export function useLocalExecutorConfig({
   const variantOptions = useMemo(
     () => getVariantOptions(effectiveExecutor, profiles),
     [effectiveExecutor, profiles]
-  );
-
-  const persist = useCallback(
-    (next: ExecutorConfig | null) => {
-      if (next) onPersist?.(next);
-    },
-    [onPersist]
   );
 
   const setExecutor = useCallback(
@@ -161,9 +149,8 @@ export function useLocalExecutorConfig({
       );
       const next: ExecutorConfig = { executor, variant: nextVariant };
       setLocalConfig(next);
-      persist(next);
     },
-    [lockedExecutor, profiles, preferredProfile, persist]
+    [lockedExecutor, profiles, preferredProfile]
   );
 
   const setVariant = useCallback(
@@ -172,9 +159,8 @@ export function useLocalExecutorConfig({
       const next = normalizeConfig({ ...executorConfig, variant });
       if (!next) return;
       setLocalConfig(next);
-      persist(next);
     },
-    [executorConfig, normalizeConfig, persist]
+    [executorConfig, normalizeConfig]
   );
 
   const setOverrides = useCallback(
@@ -192,9 +178,8 @@ export function useLocalExecutorConfig({
       const next = normalizeConfig(merged);
       if (!next) return;
       setLocalConfig(next);
-      persist(next);
     },
-    [executorConfig, lockedExecutor, normalizeConfig, persist]
+    [executorConfig, lockedExecutor, normalizeConfig]
   );
 
   return {
