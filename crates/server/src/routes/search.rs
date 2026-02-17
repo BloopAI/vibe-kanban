@@ -53,7 +53,7 @@ pub async fn search_files(
     };
 
     let results = deployment
-        .project()
+        .repo()
         .search_files(
             deployment.file_search_cache().as_ref(),
             &repos,

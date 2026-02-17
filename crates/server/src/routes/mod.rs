@@ -19,7 +19,6 @@ pub mod images;
 pub mod migration;
 pub mod oauth;
 pub mod organizations;
-pub mod projects;
 pub mod remote;
 pub mod repo;
 pub mod scratch;
@@ -36,7 +35,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(containers::router(&deployment))
-        .merge(projects::router(&deployment))
         .merge(tasks::router(&deployment))
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))

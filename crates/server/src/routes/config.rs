@@ -197,14 +197,6 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
-
-    if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
-        // Spawn auto project setup as background task to avoid blocking config response
-        let deployment_clone = deployment.clone();
-        tokio::spawn(async move {
-            deployment_clone.trigger_auto_project_setup().await;
-        });
-    }
 }
 
 async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {

@@ -5,9 +5,8 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    execution_process::ExecutionProcessError, project::ProjectError,
-    project_repo::ProjectRepoError, repo::RepoError, scratch::ScratchError, session::SessionError,
-    workspace::WorkspaceError,
+    execution_process::ExecutionProcessError, repo::RepoError, scratch::ScratchError,
+    session::SessionError, workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
@@ -20,7 +19,6 @@ use services::services::{
     git_host::GitHostError,
     image::ImageError,
     migration::MigrationError,
-    project::ProjectServiceError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
     worktree_manager::WorktreeError,
@@ -31,8 +29,6 @@ use utils::response::ApiResponse;
 #[derive(Debug, Error, ts_rs::TS)]
 #[ts(type = "string")]
 pub enum ApiError {
-    #[error(transparent)]
-    Project(#[from] ProjectError),
     #[error(transparent)]
     Repo(#[from] RepoError),
     #[error(transparent)]
@@ -249,12 +245,6 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let info = match &self {
-            ApiError::Project(ProjectError::Database(_)) => ErrorInfo::internal("ProjectError"),
-            ApiError::Project(ProjectError::ProjectNotFound) => {
-                ErrorInfo::not_found("ProjectError", "Project not found.")
-            }
-            ApiError::Project(ProjectError::CreateFailed(_)) => ErrorInfo::internal("ProjectError"),
-
             ApiError::Repo(RepoError::Database(_)) => ErrorInfo::internal("RepoError"),
             ApiError::Repo(RepoError::NotFound) => {
                 ErrorInfo::not_found("RepoError", "Repository not found.")
@@ -478,40 +468,6 @@ impl IntoResponse for ApiError {
     }
 }
 
-impl From<ProjectServiceError> for ApiError {
-    fn from(err: ProjectServiceError) -> Self {
-        match err {
-            ProjectServiceError::Database(db_err) => ApiError::Database(db_err),
-            ProjectServiceError::Io(io_err) => ApiError::Io(io_err),
-            ProjectServiceError::Project(proj_err) => ApiError::Project(proj_err),
-            ProjectServiceError::PathNotFound(path) => {
-                ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
-            }
-            ProjectServiceError::PathNotDirectory(path) => {
-                ApiError::BadRequest(format!("Path is not a directory: {}", path.display()))
-            }
-            ProjectServiceError::NotGitRepository(path) => {
-                ApiError::BadRequest(format!("Path is not a git repository: {}", path.display()))
-            }
-            ProjectServiceError::DuplicateGitRepoPath => ApiError::Conflict(
-                "A project with this git repository path already exists".to_string(),
-            ),
-            ProjectServiceError::DuplicateRepositoryName => ApiError::Conflict(
-                "A repository with this name already exists in the project".to_string(),
-            ),
-            ProjectServiceError::RepositoryNotFound => {
-                ApiError::BadRequest("Repository not found".to_string())
-            }
-            ProjectServiceError::GitError(msg) => {
-                ApiError::BadRequest(format!("Git operation failed: {}", msg))
-            }
-            ProjectServiceError::RemoteClient(msg) => {
-                ApiError::BadRequest(format!("Remote client error: {}", msg))
-            }
-        }
-    }
-}
-
 impl From<RepoServiceError> for ApiError {
     fn from(err: RepoServiceError) -> Self {
         match err {
@@ -535,20 +491,6 @@ impl From<RepoServiceError> for ApiError {
             }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
-            }
-        }
-    }
-}
-
-impl From<ProjectRepoError> for ApiError {
-    fn from(err: ProjectRepoError) -> Self {
-        match err {
-            ProjectRepoError::Database(db_err) => ApiError::Database(db_err),
-            ProjectRepoError::NotFound => {
-                ApiError::BadRequest("Repository not found in project".to_string())
-            }
-            ProjectRepoError::AlreadyExists => {
-                ApiError::Conflict("Repository already exists in project".to_string())
             }
         }
     }

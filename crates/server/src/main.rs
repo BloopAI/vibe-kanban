@@ -72,24 +72,10 @@ async fn main() -> Result<(), VibeKanbanError> {
     deployment
         .track_if_analytics_allowed("session_start", serde_json::json!({}))
         .await;
-
-    // Pre-warm file search cache for most active projects
-    let deployment_for_cache = deployment.clone();
-    tokio::spawn(async move {
-        if let Err(e) = deployment_for_cache
-            .file_search_cache()
-            .warm_most_active(&deployment_for_cache.db().pool, 3)
-            .await
-        {
-            tracing::warn!("Failed to warm file search cache: {}", e);
-        }
-    });
-
     // Preload global executor options cache for all executors with DEFAULT presets
     tokio::spawn(async move {
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
-
     let app_router = routes::router(deployment.clone());
 
     let port = std::env::var("BACKEND_PORT")
