@@ -15,9 +15,11 @@ import {
 } from 'shared/remote-types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useProjects } from '@/hooks/useProjects';
 import { useShape } from '@/lib/electric/hooks';
 import { attemptsApi, projectsApi } from '@/lib/api';
+import { getLatestConfigFromProcesses } from '@/utils/executor';
 
 // ============================================================================
 // Types
@@ -329,8 +331,12 @@ export function useCreateModeState({
   const initialProjectIdRef = useRef(initialProjectId);
   const hasAttemptedRepoDefaults = useRef(false);
   const hasAttemptedExecutorDefaults = useRef(false);
-  const [preferredExecutorConfig, setPreferredExecutorConfig] =
-    useState<ExecutorConfig | null>(null);
+  const [sourceSessionId, setSourceSessionId] = useState<string | undefined>(
+    undefined
+  );
+  const [sourceSessionExecutor, setSourceSessionExecutor] = useState<
+    ExecutorConfig['executor'] | null
+  >(null);
 
   const sourceWorkspaceId = useMemo(() => {
     if (state.linkedIssue) {
@@ -342,6 +348,18 @@ export function useCreateModeState({
     }
     return lastWorkspaceId;
   }, [state.linkedIssue, remoteWorkspaces, localWorkspaceIds, lastWorkspaceId]);
+
+  const { executionProcesses: sourceSessionProcesses } =
+    useExecutionProcesses(sourceSessionId);
+
+  const preferredExecutorConfig = useMemo(() => {
+    const fromProcesses = getLatestConfigFromProcesses(sourceSessionProcesses);
+    if (fromProcesses) return fromProcesses;
+    if (sourceSessionExecutor) {
+      return { executor: sourceSessionExecutor };
+    }
+    return null;
+  }, [sourceSessionProcesses, sourceSessionExecutor]);
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -431,7 +449,7 @@ export function useCreateModeState({
   ]);
 
   // ============================================================================
-  // Auto-select executor config for new drafts
+  // Load source session metadata for executor defaults
   // ============================================================================
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -446,12 +464,11 @@ export function useCreateModeState({
     attemptsApi
       .getWithSession(sourceWorkspaceId)
       .then((workspaceWithSession) => {
-        const executor = workspaceWithSession.session?.executor;
-        if (!executor) return;
-
-        setPreferredExecutorConfig({
-          executor: executor as ExecutorConfig['executor'],
-        });
+        setSourceSessionId(workspaceWithSession.session?.id ?? undefined);
+        setSourceSessionExecutor(
+          (workspaceWithSession.session
+            ?.executor as ExecutorConfig['executor']) ?? null
+        );
       })
       .catch((error) => {
         console.error(
