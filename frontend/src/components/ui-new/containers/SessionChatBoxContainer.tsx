@@ -6,6 +6,7 @@ import {
   type Session,
   type ToolStatus,
   type BaseCodingAgent,
+  type ExecutorConfig,
 } from 'shared/types';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
@@ -18,7 +19,8 @@ import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/hooks/useTodos';
 import { getLatestConfigFromProcesses } from '@/utils/executor';
-import { useExecutorConfig } from '@/hooks/useExecutorConfig';
+import { useLocalExecutorConfig } from '@/hooks/useLocalExecutorConfig';
+import { usePresetOptions } from '@/hooks/usePresetOptions';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
 import { useSessionSend } from '@/hooks/useSessionSend';
@@ -365,25 +367,42 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     noKeyboard: true,
   });
 
-  // Unified executor + variant + model selector options resolution
+  const lockedExecutor = useMemo<BaseCodingAgent | null>(() => {
+    if (needsExecutorSelection) return null;
+    return (
+      latestConfig?.executor ??
+      (session?.executor as BaseCodingAgent | undefined) ??
+      null
+    );
+  }, [needsExecutorSelection, latestConfig?.executor, session?.executor]);
+
+  const scratchConfig = useMemo<ExecutorConfig | null | undefined>(() => {
+    if (!hasInitialValue) return undefined;
+    return scratchData?.executor_config ?? null;
+  }, [hasInitialValue, scratchData?.executor_config]);
+
+  // Local executor + variant state with preference defaults.
   const {
     executorConfig,
     effectiveExecutor,
     selectedVariant,
     executorOptions,
     variantOptions,
-    presetOptions,
     setExecutor: handleExecutorChange,
     setVariant: setSelectedVariant,
     setOverrides: setExecutorOverrides,
-  } = useExecutorConfig({
+  } = useLocalExecutorConfig({
     profiles,
-    lastUsedConfig: latestConfig,
-    scratchConfig: scratchData?.executor_config ?? undefined,
-    configExecutorProfile: config?.executor_profile,
-    selectionMode: needsExecutorSelection ? 'explicit' : 'resume',
+    initialConfig: scratchConfig,
+    preferredProfile: config?.executor_profile,
+    lockedExecutor,
     onPersist: (cfg) => void saveToScratch(localMessageRef.current, cfg),
+    resetKey: scratchId,
   });
+  const { data: presetOptions } = usePresetOptions(
+    effectiveExecutor,
+    selectedVariant
+  );
 
   // Navigate to agent settings to customise variants
   const handleCustomise = () => {

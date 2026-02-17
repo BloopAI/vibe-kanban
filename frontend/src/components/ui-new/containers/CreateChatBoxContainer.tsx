@@ -5,7 +5,8 @@ import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { useExecutorConfig } from '@/hooks/useExecutorConfig';
+import { useLocalExecutorConfig } from '@/hooks/useLocalExecutorConfig';
+import { usePresetOptions } from '@/hooks/usePresetOptions';
 import { areProfilesEqual } from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, Repo } from 'shared/types';
@@ -103,18 +104,19 @@ export function CreateChatBoxContainer({
     selectedVariant,
     executorOptions,
     variantOptions,
-    presetOptions,
     setExecutor: setSelectedExecutor,
     setVariant: setSelectedVariant,
     setOverrides: setExecutorOverrides,
-  } = useExecutorConfig({
+  } = useLocalExecutorConfig({
     profiles,
-    lastUsedConfig: null,
-    scratchConfig,
-    configExecutorProfile: config?.executor_profile,
-    selectionMode: 'explicit',
+    initialConfig: scratchConfig,
+    preferredProfile: config?.executor_profile,
     onPersist: (cfg) => setDraftConfig(cfg),
   });
+  const { data: presetOptions } = usePresetOptions(
+    effectiveExecutor,
+    selectedVariant
+  );
 
   const effectiveProfileId = useMemo<ExecutorProfileId | null>(
     () =>
