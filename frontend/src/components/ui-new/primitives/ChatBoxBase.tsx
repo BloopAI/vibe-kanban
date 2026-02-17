@@ -199,9 +199,9 @@ export function ChatBoxBase({
           sendShortcut={config?.send_message_shortcut}
         />
         {/* Footer - Controls */}
-        <div className="flex items-end justify-between gap-base">
-          <div className="min-w-0 flex-1">
-            {modelSelector && (
+        <div className="flex flex-col gap-base md:flex-row md:items-end md:justify-between">
+          {modelSelector && (
+            <div className="w-full md:min-w-0 md:flex-1">
               <ModelSelectorContainer
                 agent={modelSelector.agent}
                 workspaceId={modelSelector.workspaceId}
@@ -213,9 +213,9 @@ export function ChatBoxBase({
                 executorConfig={modelSelector.executorConfig}
                 presetOptions={modelSelector.presetOptions}
               />
-            )}
-          </div>
-          <div className="shrink-0 flex items-end gap-base">
+            </div>
+          )}
+          <div className="flex w-full items-end justify-between gap-base md:w-auto md:shrink-0 md:justify-end">
             <Toolbar className="gap-double">{footerLeft}</Toolbar>
             <div className="flex gap-base">{footerRight}</div>
           </div>
