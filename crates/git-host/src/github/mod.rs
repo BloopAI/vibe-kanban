@@ -12,7 +12,7 @@ use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 
-use super::{
+use crate::{
     GitHostProvider,
     types::{CreatePrRequest, GitHostError, OpenPrInfo, ProviderKind, UnifiedPrComment},
 };
@@ -50,7 +50,7 @@ impl GitHubProvider {
         cli: &GhCli,
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
-    ) -> Result<Vec<super::types::PrComment>, GitHostError> {
+    ) -> Result<Vec<crate::types::PrComment>, GitHostError> {
         let cli = cli.clone();
         let repo_info = repo_info.clone();
 
@@ -90,7 +90,7 @@ impl GitHubProvider {
         cli: &GhCli,
         repo_info: &GitHubRepoInfo,
         pr_number: i64,
-    ) -> Result<Vec<super::types::PrReviewComment>, GitHostError> {
+    ) -> Result<Vec<crate::types::PrReviewComment>, GitHostError> {
         let cli = cli.clone();
         let repo_info = repo_info.clone();
 

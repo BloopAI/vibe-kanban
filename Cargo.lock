@@ -3189,6 +3189,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "git-host"
+version = "0.1.13"
+dependencies = [
+ "async-trait",
+ "backon",
+ "chrono",
+ "db",
+ "enum_dispatch",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "ts-rs 11.0.1",
+ "url",
+ "utils",
+]
+
+[[package]]
 name = "git2"
 version = "0.20.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7389,6 +7409,7 @@ dependencies = [
  "executors",
  "futures-util",
  "git",
+ "git-host",
  "git2",
  "local-deployment",
  "mime_guess",
@@ -7434,11 +7455,11 @@ dependencies = [
  "db",
  "dirs 5.0.1",
  "dunce",
- "enum_dispatch",
  "executors",
  "fst",
  "futures",
  "git",
+ "git-host",
  "git2",
  "ignore",
  "json-patch",

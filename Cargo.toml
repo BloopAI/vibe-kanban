@@ -8,6 +8,7 @@ members = [
     "crates/services",
     "crates/utils",
     "crates/git",
+    "crates/git-host",
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",
