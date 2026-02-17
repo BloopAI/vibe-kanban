@@ -5,7 +5,6 @@ import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { useMultiRepoBranches } from '@/hooks/useRepoBranches';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import {
   areProfilesEqual,
@@ -33,7 +32,6 @@ export function CreateChatBoxContainer({
   const {
     repos,
     targetBranches,
-    setTargetBranch,
     message,
     setMessage,
     selectedProjectId,
@@ -62,33 +60,6 @@ export function CreateChatBoxContainer({
 
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;
-
-  // Auto-select branch for repos that don't have one yet
-  const repoIds = useMemo(() => repos.map((r) => r.id), [repos]);
-  const { branchesByRepo } = useMultiRepoBranches(repoIds);
-
-  useEffect(() => {
-    repos.forEach((repo) => {
-      if (targetBranches[repo.id]) return;
-      const branches = branchesByRepo[repo.id];
-      if (!branches) return;
-
-      // Priority 1: default_target_branch if configured
-      if (
-        repo.default_target_branch &&
-        branches.some((b) => b.name === repo.default_target_branch)
-      ) {
-        setTargetBranch(repo.id, repo.default_target_branch);
-        return;
-      }
-
-      // Priority 2: current checked-out branch
-      const currentBranch = branches.find((b) => b.is_current);
-      if (currentBranch) {
-        setTargetBranch(repo.id, currentBranch.name);
-      }
-    });
-  }, [repos, branchesByRepo, targetBranches, setTargetBranch]);
 
   // Attachment handling - insert markdown and track image IDs
   const handleInsertMarkdown = useCallback(
@@ -192,9 +163,14 @@ export function CreateChatBoxContainer({
     [repos, targetBranches]
   );
 
+  const hasSelectedBranchesForAllRepos = repos.every(
+    (repo) => !!targetBranches[repo.id]
+  );
+
   // Determine if we can submit
   const canSubmit =
     hasSelectedRepos &&
+    hasSelectedBranchesForAllRepos &&
     message.trim().length > 0 &&
     effectiveExecutor !== null &&
     projectId !== null;
@@ -273,7 +249,7 @@ export function CreateChatBoxContainer({
         executor_config: executorConfig,
         repos: repos.map((r) => ({
           repo_id: r.id,
-          target_branch: targetBranches[r.id] ?? 'main',
+          target_branch: targetBranches[r.id]!,
         })),
         linked_issue: linkedIssue
           ? {
@@ -315,11 +291,13 @@ export function CreateChatBoxContainer({
   const displayError =
     hasAttemptedSubmit && repos.length === 0
       ? 'Add at least one repository to create a workspace'
-      : createWorkspace.error
-        ? createWorkspace.error instanceof Error
-          ? createWorkspace.error.message
-          : 'Failed to create workspace'
-        : null;
+      : hasAttemptedSubmit && !hasSelectedBranchesForAllRepos
+        ? 'Select a branch for every repository before creating a workspace'
+        : createWorkspace.error
+          ? createWorkspace.error instanceof Error
+            ? createWorkspace.error.message
+            : 'Failed to create workspace'
+          : null;
 
   // Wait for initial value to be applied before rendering
   // This ensures the editor mounts with content ready, so autoFocus works correctly
