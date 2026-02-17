@@ -161,7 +161,7 @@ export function CreateChatBox({
         </>
       }
       footerLeft={
-        <div className="flex items-center gap-base">
+        <div className="flex items-center gap-half">
           <ToolbarIconButton
             icon={PaperclipIcon}
             aria-label={t('tasks:taskFormDialog.attachImage')}
