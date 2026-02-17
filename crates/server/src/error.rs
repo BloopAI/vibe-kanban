@@ -253,11 +253,8 @@ impl IntoResponse for ApiError {
             ApiError::Workspace(WorkspaceError::Database(_)) => {
                 ErrorInfo::internal("WorkspaceError")
             }
-            ApiError::Workspace(WorkspaceError::TaskNotFound) => {
-                ErrorInfo::not_found("WorkspaceError", "Task not found.")
-            }
-            ApiError::Workspace(WorkspaceError::ProjectNotFound) => {
-                ErrorInfo::not_found("WorkspaceError", "Project not found.")
+            ApiError::Workspace(WorkspaceError::WorkspaceNotFound) => {
+                ErrorInfo::not_found("WorkspaceError", "Workspace not found.")
             }
             ApiError::Workspace(WorkspaceError::ValidationError(msg)) => {
                 ErrorInfo::bad_request("WorkspaceError", msg.clone())

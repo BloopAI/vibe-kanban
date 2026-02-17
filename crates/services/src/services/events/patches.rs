@@ -1,6 +1,5 @@
 use db::models::{
-    execution_process::ExecutionProcess, scratch::Scratch, task::TaskWithAttemptStatus,
-    workspace::WorkspaceWithStatus,
+    execution_process::ExecutionProcess, scratch::Scratch, workspace::WorkspaceWithStatus,
 };
 use json_patch::{AddOperation, Patch, PatchOperation, RemoveOperation, ReplaceOperation};
 use uuid::Uuid;
@@ -8,44 +7,6 @@ use uuid::Uuid;
 // Shared helper to escape JSON Pointer segments
 fn escape_pointer_segment(s: &str) -> String {
     s.replace('~', "~0").replace('/', "~1")
-}
-
-/// Helper functions for creating task-specific patches
-pub mod task_patch {
-    use super::*;
-
-    fn task_path(task_id: Uuid) -> String {
-        format!("/tasks/{}", escape_pointer_segment(&task_id.to_string()))
-    }
-
-    /// Create patch for adding a new task
-    pub fn add(task: &TaskWithAttemptStatus) -> Patch {
-        Patch(vec![PatchOperation::Add(AddOperation {
-            path: task_path(task.id)
-                .try_into()
-                .expect("Task path should be valid"),
-            value: serde_json::to_value(task).expect("Task serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for updating an existing task
-    pub fn replace(task: &TaskWithAttemptStatus) -> Patch {
-        Patch(vec![PatchOperation::Replace(ReplaceOperation {
-            path: task_path(task.id)
-                .try_into()
-                .expect("Task path should be valid"),
-            value: serde_json::to_value(task).expect("Task serialization should not fail"),
-        })])
-    }
-
-    /// Create patch for removing a task
-    pub fn remove(task_id: Uuid) -> Patch {
-        Patch(vec![PatchOperation::Remove(RemoveOperation {
-            path: task_path(task_id)
-                .try_into()
-                .expect("Task path should be valid"),
-        })])
-    }
 }
 
 /// Helper functions for creating execution process-specific patches

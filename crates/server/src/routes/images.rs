@@ -1,22 +1,16 @@
-use std::path::Path as StdPath;
-
 use axum::{
     Router,
     body::Body,
-    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
+    extract::{DefaultBodyLimit, Multipart, Path, State},
     http::{StatusCode, header},
     response::{Json as ResponseJson, Response},
     routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
-use db::models::{
-    image::{Image, TaskImage},
-    task::Task,
-};
+use db::models::image::{Image, WorkspaceImage};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::image::ImageError;
-use sqlx::Error as SqlxError;
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
@@ -54,12 +48,6 @@ impl ImageResponse {
     }
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ImageMetadataQuery {
-    /// Path relative to worktree root, e.g., ".vibe-images/screenshot.png"
-    pub path: String,
-}
-
 /// Metadata response for image files, used for rendering in WYSIWYG editor
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct ImageMetadata {
@@ -82,7 +70,7 @@ pub async fn upload_image(
 pub(crate) async fn process_image_upload(
     deployment: &DeploymentImpl,
     mut multipart: Multipart,
-    link_task_id: Option<Uuid>,
+    link_workspace_id: Option<Uuid>,
 ) -> Result<ImageResponse, ApiError> {
     let image_service = deployment.image();
 
@@ -96,10 +84,10 @@ pub(crate) async fn process_image_upload(
             let data = field.bytes().await?;
             let image = image_service.store_image(&data, &filename).await?;
 
-            if let Some(task_id) = link_task_id {
-                TaskImage::associate_many_dedup(
+            if let Some(workspace_id) = link_workspace_id {
+                WorkspaceImage::associate_many_dedup(
                     &deployment.db().pool,
-                    task_id,
+                    workspace_id,
                     std::slice::from_ref(&image.id),
                 )
                 .await?;
@@ -112,7 +100,7 @@ pub(crate) async fn process_image_upload(
                         "image_id": image.id.to_string(),
                         "size_bytes": image.size_bytes,
                         "mime_type": image.mime_type,
-                        "task_id": link_task_id.map(|id| id.to_string()),
+                        "workspace_id": link_workspace_id.map(|id| id.to_string()),
                     }),
                 )
                 .await;
@@ -122,19 +110,6 @@ pub(crate) async fn process_image_upload(
     }
 
     Err(ApiError::Image(ImageError::NotFound))
-}
-
-pub async fn upload_task_image(
-    Path(task_id): Path<Uuid>,
-    State(deployment): State<DeploymentImpl>,
-    multipart: Multipart,
-) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
-    Task::find_by_id(&deployment.db().pool, task_id)
-        .await?
-        .ok_or(ApiError::Database(SqlxError::RowNotFound))?;
-
-    let image_response = process_image_upload(&deployment, multipart, Some(task_id)).await?;
-    Ok(ResponseJson(ApiResponse::success(image_response)))
 }
 
 /// Serve an image file by ID
@@ -180,78 +155,6 @@ pub async fn delete_image(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-pub async fn get_task_images(
-    Path(task_id): Path<Uuid>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<ImageResponse>>>, ApiError> {
-    let images = Image::find_by_task_id(&deployment.db().pool, task_id).await?;
-    let image_responses = images.into_iter().map(ImageResponse::from_image).collect();
-    Ok(ResponseJson(ApiResponse::success(image_responses)))
-}
-
-/// Get metadata for an image associated with a task.
-/// The path should be in the format `.vibe-images/{uuid}.{ext}`.
-pub async fn get_task_image_metadata(
-    Path(task_id): Path<Uuid>,
-    State(deployment): State<DeploymentImpl>,
-    Query(query): Query<ImageMetadataQuery>,
-) -> Result<ResponseJson<ApiResponse<ImageMetadata>>, ApiError> {
-    let not_found_response = || ImageMetadata {
-        exists: false,
-        file_name: None,
-        path: Some(query.path.clone()),
-        size_bytes: None,
-        format: None,
-        proxy_url: None,
-    };
-
-    // Validate path starts with .vibe-images/
-    let vibe_images_prefix = format!("{}/", utils::path::VIBE_IMAGES_DIR);
-    if !query.path.starts_with(&vibe_images_prefix) {
-        return Ok(ResponseJson(ApiResponse::success(not_found_response())));
-    }
-
-    // Reject paths with .. to prevent traversal
-    if query.path.contains("..") {
-        return Ok(ResponseJson(ApiResponse::success(not_found_response())));
-    }
-
-    // Extract the filename from the path (e.g., "uuid.png" from ".vibe-images/uuid.png")
-    let file_name = match query.path.strip_prefix(&vibe_images_prefix) {
-        Some(name) if !name.is_empty() => name,
-        _ => return Ok(ResponseJson(ApiResponse::success(not_found_response()))),
-    };
-
-    // Look up the image by file_path (which is just the filename in the images table)
-    let image = match Image::find_by_file_path(&deployment.db().pool, file_name).await? {
-        Some(img) => img,
-        None => return Ok(ResponseJson(ApiResponse::success(not_found_response()))),
-    };
-
-    // Verify the image is associated with this task
-    let is_associated = TaskImage::is_associated(&deployment.db().pool, task_id, image.id).await?;
-    if !is_associated {
-        return Ok(ResponseJson(ApiResponse::success(not_found_response())));
-    }
-
-    // Get format from extension
-    let format = StdPath::new(file_name)
-        .extension()
-        .map(|ext| ext.to_string_lossy().to_lowercase());
-
-    // Build the proxy URL
-    let proxy_url = format!("/api/images/{}/file", image.id);
-
-    Ok(ResponseJson(ApiResponse::success(ImageMetadata {
-        exists: true,
-        file_name: Some(image.original_name),
-        path: Some(query.path),
-        size_bytes: Some(image.size_bytes),
-        format,
-        proxy_url: Some(proxy_url),
-    })))
-}
-
 pub fn routes() -> Router<DeploymentImpl> {
     Router::new()
         .route(
@@ -260,10 +163,4 @@ pub fn routes() -> Router<DeploymentImpl> {
         )
         .route("/{id}/file", get(serve_image))
         .route("/{id}", delete(delete_image))
-        .route("/task/{task_id}", get(get_task_images))
-        .route("/task/{task_id}/metadata", get(get_task_image_metadata))
-        .route(
-            "/task/{task_id}/upload",
-            post(upload_task_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)),
-        )
 }

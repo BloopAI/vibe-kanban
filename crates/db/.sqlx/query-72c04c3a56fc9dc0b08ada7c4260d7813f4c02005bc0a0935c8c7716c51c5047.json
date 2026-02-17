@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id!: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name\n               FROM    workspaces\n               WHERE   rowid = $1",
+  "query": "SELECT id AS \"id!: Uuid\",\n                          task_id AS \"task_id: Uuid\",\n                          container_ref,\n                          branch,\n                          agent_working_dir,\n                          setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                          created_at AS \"created_at!: DateTime<Utc>\",\n                          updated_at AS \"updated_at!: DateTime<Utc>\",\n                          archived AS \"archived!: bool\",\n                          pinned AS \"pinned!: bool\",\n                          name\n                   FROM workspaces\n                   ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -9,7 +9,7 @@
         "type_info": "Blob"
       },
       {
-        "name": "task_id!: Uuid",
+        "name": "task_id: Uuid",
         "ordinal": 1,
         "type_info": "Blob"
       },
@@ -31,7 +31,7 @@
       {
         "name": "setup_completed_at: DateTime<Utc>",
         "ordinal": 5,
-        "type_info": "Datetime"
+        "type_info": "Text"
       },
       {
         "name": "created_at!: DateTime<Utc>",
@@ -60,11 +60,11 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
-      false,
+      true,
       true,
       false,
       true,
@@ -76,5 +76,5 @@
       true
     ]
   },
-  "hash": "265392a2e833b8f0bc7ac317b6c82e12e935a964ae34faea00b2c7f15e988b39"
+  "hash": "72c04c3a56fc9dc0b08ada7c4260d7813f4c02005bc0a0935c8c7716c51c5047"
 }

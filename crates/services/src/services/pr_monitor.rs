@@ -6,7 +6,6 @@ use db::{
     DBService,
     models::{
         merge::{Merge, MergeStatus, PrMerge},
-        task::{Task, TaskStatus},
         workspace::{Workspace, WorkspaceError},
     },
 };
@@ -142,16 +141,15 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
             self.sync_pr_to_remote(pr_merge, &pr_status.status, pr_status.merge_commit_sha)
                 .await;
 
-            // If the PR was merged, update the task status to done
+            // If the PR was merged, archive the workspace
             if matches!(&pr_status.status, MergeStatus::Merged)
                 && let Some(workspace) =
                     Workspace::find_by_id(&self.db.pool, pr_merge.workspace_id).await?
             {
                 info!(
-                    "PR #{} was merged, updating task {} to done and archiving workspace",
-                    pr_merge.pr_info.number, workspace.task_id
+                    "PR #{} was merged, archiving workspace {}",
+                    pr_merge.pr_info.number, workspace.id
                 );
-                Task::update_status(&self.db.pool, workspace.task_id, TaskStatus::Done).await?;
                 if !workspace.pinned
                     && let Err(e) = self.container.archive_workspace(workspace.id).await
                 {
@@ -159,16 +157,12 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 }
 
                 // Track analytics event
-                if let Some(analytics) = &self.analytics
-                    && let Ok(Some(task)) = Task::find_by_id(&self.db.pool, workspace.task_id).await
-                {
+                if let Some(analytics) = &self.analytics {
                     analytics.analytics_service.track_event(
                         &analytics.user_id,
                         "pr_merged",
                         Some(json!({
-                            "task_id": workspace.task_id.to_string(),
                             "workspace_id": workspace.id.to_string(),
-                            "project_id": task.project_id.to_string(),
                         })),
                     );
                 }

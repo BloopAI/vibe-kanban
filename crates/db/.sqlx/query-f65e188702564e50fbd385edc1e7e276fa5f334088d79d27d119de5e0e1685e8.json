@@ -1,0 +1,92 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT\n                w.id AS \"id!: Uuid\",\n                w.task_id AS \"task_id: Uuid\",\n                w.container_ref,\n                w.branch,\n                w.agent_working_dir,\n                w.setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                w.created_at AS \"created_at!: DateTime<Utc>\",\n                w.updated_at AS \"updated_at!: DateTime<Utc>\",\n                w.archived AS \"archived!: bool\",\n                w.pinned AS \"pinned!: bool\",\n                w.name,\n\n                CASE WHEN EXISTS (\n                    SELECT 1\n                    FROM sessions s\n                    JOIN execution_processes ep ON ep.session_id = s.id\n                    WHERE s.workspace_id = w.id\n                      AND ep.status = 'running'\n                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n                    LIMIT 1\n                ) THEN 1 ELSE 0 END AS \"is_running!: i64\",\n\n                CASE WHEN (\n                    SELECT ep.status\n                    FROM sessions s\n                    JOIN execution_processes ep ON ep.session_id = s.id\n                    WHERE s.workspace_id = w.id\n                      AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')\n                    ORDER BY ep.created_at DESC\n                    LIMIT 1\n                ) IN ('failed','killed') THEN 1 ELSE 0 END AS \"is_errored!: i64\"\n\n            FROM workspaces w\n            WHERE w.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "task_id: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      },
+      {
+        "name": "container_ref",
+        "ordinal": 2,
+        "type_info": "Text"
+      },
+      {
+        "name": "branch",
+        "ordinal": 3,
+        "type_info": "Text"
+      },
+      {
+        "name": "agent_working_dir",
+        "ordinal": 4,
+        "type_info": "Text"
+      },
+      {
+        "name": "setup_completed_at: DateTime<Utc>",
+        "ordinal": 5,
+        "type_info": "Text"
+      },
+      {
+        "name": "created_at!: DateTime<Utc>",
+        "ordinal": 6,
+        "type_info": "Text"
+      },
+      {
+        "name": "updated_at!: DateTime<Utc>",
+        "ordinal": 7,
+        "type_info": "Text"
+      },
+      {
+        "name": "archived!: bool",
+        "ordinal": 8,
+        "type_info": "Integer"
+      },
+      {
+        "name": "pinned!: bool",
+        "ordinal": 9,
+        "type_info": "Integer"
+      },
+      {
+        "name": "name",
+        "ordinal": 10,
+        "type_info": "Text"
+      },
+      {
+        "name": "is_running!: i64",
+        "ordinal": 11,
+        "type_info": "Null"
+      },
+      {
+        "name": "is_errored!: i64",
+        "ordinal": 12,
+        "type_info": "Null"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "f65e188702564e50fbd385edc1e7e276fa5f334088d79d27d119de5e0e1685e8"
+}

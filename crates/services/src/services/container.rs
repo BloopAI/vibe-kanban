@@ -20,7 +20,6 @@ use db::{
         },
         repo::Repo,
         session::{CreateSession, Session, SessionError},
-        task::{Task, TaskStatus},
         workspace::{Workspace, WorkspaceError},
         workspace_repo::WorkspaceRepo,
     },
@@ -178,28 +177,6 @@ pub trait ContainerService {
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError>;
 
-    /// Check if a task has any running execution processes
-    async fn has_running_processes(&self, task_id: Uuid) -> Result<bool, ContainerError> {
-        let workspaces = Workspace::fetch_all(&self.db().pool, Some(task_id)).await?;
-
-        for workspace in workspaces {
-            let sessions = Session::find_by_workspace_id(&self.db().pool, workspace.id).await?;
-            for session in sessions {
-                if let Ok(processes) =
-                    ExecutionProcess::find_by_session_id(&self.db().pool, session.id, false).await
-                {
-                    for process in processes {
-                        if process.status == ExecutionProcessStatus::Running {
-                            return Ok(true);
-                        }
-                    }
-                }
-            }
-        }
-
-        Ok(false)
-    }
-
     /// A context is finalized when
     /// - Always when the execution process has failed or been killed
     /// - Never when the run reason is DevServer
@@ -238,28 +215,27 @@ pub trait ContainerService {
         action.next_action.is_none()
     }
 
-    /// Finalize task execution by updating status to InReview and sending notifications
+    /// Finalize workspace execution by sending notifications
     async fn finalize_task(&self, ctx: &ExecutionContext) {
-        if let Err(e) =
-            Task::update_status(&self.db().pool, ctx.task.id, TaskStatus::InReview).await
-        {
-            tracing::error!("Failed to update task status to InReview: {e}");
-        }
-
         // Skip notification if process was intentionally killed by user
         if matches!(ctx.execution_process.status, ExecutionProcessStatus::Killed) {
             return;
         }
 
-        let title = format!("Task Complete: {}", ctx.task.title);
+        let workspace_name = ctx
+            .workspace
+            .name
+            .as_deref()
+            .unwrap_or(&ctx.workspace.branch);
+        let title = format!("Workspace Complete: {}", workspace_name);
         let message = match ctx.execution_process.status {
             ExecutionProcessStatus::Completed => format!(
                 "✅ '{}' completed successfully\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
+                workspace_name, ctx.workspace.branch, ctx.session.executor
             ),
             ExecutionProcessStatus::Failed => format!(
                 "❌ '{}' execution failed\nBranch: {:?}\nExecutor: {:?}",
-                ctx.task.title, ctx.workspace.branch, ctx.session.executor
+                workspace_name, ctx.workspace.branch, ctx.session.executor
             ),
             _ => {
                 tracing::warn!(
@@ -324,25 +300,6 @@ pub trait ContainerService {
             }
             // Process marked as failed
             tracing::info!("Marked orphaned execution process {} as failed", process.id);
-            // Update task status to InReview for coding agent and setup script failures
-            if matches!(
-                process.run_reason,
-                ExecutionProcessRunReason::CodingAgent
-                    | ExecutionProcessRunReason::SetupScript
-                    | ExecutionProcessRunReason::CleanupScript
-            ) && let Ok(Some(session)) =
-                Session::find_by_id(&self.db().pool, process.session_id).await
-                && let Ok(Some(workspace)) =
-                    Workspace::find_by_id(&self.db().pool, session.workspace_id).await
-                && let Ok(Some(task)) = workspace.parent_task(&self.db().pool).await
-                && let Err(e) =
-                    Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await
-            {
-                tracing::error!(
-                    "Failed to update task status to InReview for orphaned session: {}",
-                    e
-                );
-            }
         }
         Ok(())
     }
@@ -1129,16 +1086,11 @@ pub trait ContainerService {
     async fn start_workspace(
         &self,
         workspace: &Workspace,
-        executor_config: ExecutorConfig,
+        executor_profile_id: ExecutorProfileId,
+        prompt: Option<String>,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
         self.create(workspace).await?;
-
-        // Get parent task
-        let task = workspace
-            .parent_task(&self.db().pool)
-            .await?
-            .ok_or(SqlxError::RowNotFound)?;
 
         let repos = WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace.id).await?;
 
@@ -1150,14 +1102,15 @@ pub trait ContainerService {
         let session = Session::create(
             &self.db().pool,
             &CreateSession {
-                executor: Some(executor_config.executor.to_string()),
+                executor: Some(executor_profile_id.executor.to_string()),
             },
             Uuid::new_v4(),
             workspace.id,
         )
         .await?;
 
-        let prompt = task.to_prompt();
+        let executor_config = ExecutorConfig::from(executor_profile_id);
+        let prompt = prompt.unwrap_or_else(|| workspace.name.clone().unwrap_or_default());
 
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
@@ -1225,16 +1178,6 @@ pub trait ContainerService {
         executor_action: &ExecutorAction,
         run_reason: &ExecutionProcessRunReason,
     ) -> Result<ExecutionProcess, ContainerError> {
-        // Update task status to InProgress when starting an execution
-        let task = workspace
-            .parent_task(&self.db().pool)
-            .await?
-            .ok_or(SqlxError::RowNotFound)?;
-        if task.status != TaskStatus::InProgress
-            && run_reason != &ExecutionProcessRunReason::DevServer
-        {
-            Task::update_status(&self.db().pool, task.id, TaskStatus::InProgress).await?;
-        }
         // Create new execution process record
         // Capture current HEAD per repository as the "before" commit for this execution
         let repositories =
@@ -1325,8 +1268,6 @@ pub trait ContainerService {
                     update_error
                 );
             }
-            Task::update_status(&self.db().pool, task.id, TaskStatus::InReview).await?;
-
             // Emit stderr error message
             let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));
             if let Ok(json_line) = serde_json::to_string(&log_message) {

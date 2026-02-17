@@ -5,7 +5,7 @@ use std::{
 };
 
 use dashmap::DashMap;
-use db::models::project::{SearchMatchType, SearchResult};
+use db::models::repo::{SearchMatchType, SearchResult};
 use fst::{Map, MapBuilder};
 use git::GitService;
 use ignore::WalkBuilder;
