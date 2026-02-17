@@ -41,7 +41,7 @@ import { CreateRemoteProjectDialog } from '@/components/dialogs/org/CreateRemote
 import { DeleteRemoteProjectDialog } from '@/components/dialogs/org/DeleteRemoteProjectDialog';
 import { useShape } from '@/lib/electric/hooks';
 import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
-import { generateUuid } from '@/lib/uuid';
+
 import {
   PROJECTS_SHAPE,
   PROJECT_MUTATION,
@@ -522,7 +522,7 @@ export function RemoteProjectsSettingsSection({
   }, []);
 
   const handleStatusAdd = useCallback(() => {
-    const newId = generateUuid();
+    const newId = crypto.randomUUID();
     const maxSortOrder = localStatuses.reduce(
       (max, status) => Math.max(max, status.sort_order),
       0

@@ -19,7 +19,6 @@ import {
   SlidersHorizontalIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { generateUuid } from '@/lib/uuid';
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
 import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
 import {
@@ -400,7 +399,7 @@ export function KanbanDisplaySettingsContainer({
   }, []);
 
   const handleAddColumn = useCallback(() => {
-    const newId = generateUuid();
+    const newId = crypto.randomUUID();
     const maxSortOrder = localStatuses.reduce(
       (max, s) => Math.max(max, s.sort_order),
       0
