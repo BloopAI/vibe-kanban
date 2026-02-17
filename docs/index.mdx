@@ -4,120 +4,97 @@ description: "Orchestrate AI coding agents from a single interface. Describe wha
 sidebarTitle: "Home"
 ---
 
-Vibe Kanban is an open-source orchestration layer for AI coding agents. You describe a task in plain English, an agent writes the code, and you review it — all from one interface that keeps your main branch safe.
+If you've used Claude Code, Codex, or Gemini to write code, you know the problem: the agent rewrites half your files, you're not sure what changed, and your working branch is a mess. Rolling back means cherry-picking through diffs. Running multiple agents on different tasks means juggling terminal sessions and hoping they don't step on each other.
+
+Vibe Kanban gives every task its own git worktree — a dedicated branch and directory that's completely isolated from your main branch and from every other task. You describe what you want, the agent builds it, and you review the result as a clean diff. If you like it, open a PR. If you don't, delete the worktree. Your repo was never touched.
 
 ```bash
 npx vibe-kanban
 ```
 
-That's it. Opens in your browser, no account required.
+One command, opens in your browser, no account needed.
 
 <Frame>
-  <img src="/images/vibe-kanban-screenshot-overview.png" alt="Vibe Kanban showing a kanban board with tasks and an agent conversation with code changes" />
+  <img src="/images/vibe-kanban-screenshot-overview.png" alt="Vibe Kanban showing a kanban board with tasks alongside an agent conversation with code changes" />
 </Frame>
 
 ---
 
-## Two ways to work
+## Workspaces
 
-Vibe Kanban gives you two complementary interfaces: **Workspaces** for hands-on coding with agents, and **Cloud** for team-level project management.
-
-### Workspaces — your AI coding environment
-
-Each workspace is an isolated environment for one task. You get your own git branch, a conversation with an agent, a diff viewer, and a live preview — all in a single screen.
+A [workspace](/workspaces/index) is the core unit. You get a four-panel layout: conversation with the agent on the left, code diffs on the right, plus a [git panel](/workspaces/git-operations), terminal, and [live preview](/workspaces/preview).
 
 <Frame>
-  <img src="/images/workspaces-overview.png" alt="Workspace interface showing conversation panel, code diffs, git panel, and terminal in a four-panel layout" />
+  <img src="/images/workspaces-overview.png" alt="Workspace showing the four-panel layout — sidebar, conversation, code changes, and git panel" />
 </Frame>
 
-You describe what you want. The agent writes the code. You review every line, hover to leave inline comments, and iterate until it's right. Then open a pull request — your main branch was never touched.
+The part that matters most is the [changes panel](/workspaces/changes). You see every file the agent modified, every line added or removed. Hover over a line and a comment icon appears — click it and write what's wrong. The agent reads your comment and adjusts the code. This back-and-forth is what turns "AI-generated code" into code you actually trust.
 
-<Frame caption="Review changes and leave inline comments — the agent reads your feedback and adjusts">
-  <img src="/images/workspaces-inline-comments.png" alt="Code diff view with inline review comments and an add comment dialog" />
+<Frame caption="Inline comments on diffs — the agent reads these and updates its code">
+  <img src="/images/workspaces-inline-comments.png" alt="Code diff with inline review comments and an add review comment dialog" />
 </Frame>
 
-### Cloud — kanban board for your team
+When you're satisfied, click **Open pull request** and the workspace branch becomes a PR. You can also run [multiple agents in parallel sessions](/workspaces/sessions) on the same task — useful when you want to compare how Claude Code and Codex approach the same problem.
 
-Cloud adds a shared kanban board, issues with IDs, priorities, assignees, and real-time sync. Your team sees the same board, and anyone can spin up a workspace to start working on an issue.
+---
 
-<Frame caption="Manage issues on a kanban board with customisable status columns">
+## Cloud
+
+Workspaces work great for solo developers. But if you're on a team and need to coordinate who's working on what, you need more structure.
+
+Cloud adds a shared [kanban board](/cloud/kanban-board). You create [issues](/cloud/issues) with titles, descriptions, priorities, and assignees, then drag them across **To do**, **In progress**, **In review**, and **Done** columns. Standard stuff — but the difference is every issue can have a workspace attached to it.
+
+<Frame>
   <img src="/images/cloud/project-kanban-board.png" alt="Kanban board showing To do, In progress, In review, and Done columns with issue cards" />
 </Frame>
 
-Create issues, assign them, drag them across columns, and link workspaces to track progress — all synced in real-time across your team.
+When you create an issue, there's a toggle: **Create draft workspace immediately**. Turn it on, and Vibe Kanban creates the issue and opens a workspace for it at the same time. Your teammate sees the issue on the board, opens the workspace, picks an agent, and starts working. The kanban card updates as the workspace progresses. [Learn more about Cloud →](/cloud/index)
 
-<Frame caption="Create issues with descriptions, priorities, and assignees directly from the board">
-  <img src="/images/cloud/issue-overview.png" alt="Issue creation panel alongside the kanban board" />
+<Frame caption="Issue creation with the option to launch a workspace immediately">
+  <img src="/images/cloud/issue-overview.png" alt="Issue creation panel with title, description, priority, assignee, and a toggle to create a workspace" />
 </Frame>
 
 ---
 
-## How it works
+## Supported agents
 
-<Steps>
-<Step title="Describe what you want">
-  Open a workspace, pick a coding agent, and type what you need — "add a dark mode toggle" or "fix the login redirect bug". The agent starts working immediately.
-</Step>
+Vibe Kanban works with ten coding agents:
 
-<Step title="Review the changes">
-  Every change happens in an isolated git worktree. You see line-by-line diffs, hover to leave inline comments, and send feedback back to the agent — just like a code review.
-</Step>
-
-<Step title="Ship it">
-  When you're happy, click **Open pull request** in the workspace. Your main branch was never touched.
-</Step>
-</Steps>
-
----
-
-## Why Vibe Kanban?
-
-<CardGroup cols={3}>
-  <Card title="Isolated by default" icon="shield-check">
-    Every task runs in its own git worktree. Agents cannot touch your main branch or interfere with each other.
+<CardGroup cols={2}>
+  <Card title="Claude Code" icon="https://www.vibekanban.com/images/logos/claude.svg" href="/agents/claude-code">
+    Anthropic's CLI agent
   </Card>
-
-  <Card title="Any agent, one interface" icon="arrow-right-arrow-left">
-    Claude Code, Codex, Gemini, Copilot, Amp, Cursor — switch between agents without changing your workflow.
+  <Card title="OpenAI Codex" icon="https://www.vibekanban.com/images/logos/openai-logo.svg" href="/agents/openai-codex">
+    OpenAI's CLI agent
   </Card>
-
-  <Card title="Real code review" icon="code-compare">
-    Line-by-line diffs, inline comments, and feedback loops. You stay in control of what gets merged.
+  <Card title="Gemini CLI" icon="https://www.vibekanban.com/images/logos/gemini-logo.svg" href="/agents/gemini-cli">
+    Google's CLI agent
+  </Card>
+  <Card title="GitHub Copilot" icon="https://www.vibekanban.com/images/logos/github-copilot-logo.svg" href="/agents/github-copilot">
+    GitHub's CLI agent
   </Card>
 </CardGroup>
 
-<CardGroup cols={3}>
-  <Card title="Built-in preview" icon="browser">
-    See your app running live as the agent makes changes. Test across desktop, tablet, and mobile viewports.
-  </Card>
-
-  <Card title="Multi-repo workspaces" icon="folder-tree">
-    Work across frontend and backend repositories in a single workspace. The agent sees both.
-  </Card>
-
-  <Card title="Team kanban board" icon="table-columns">
-    Shared issues, priorities, assignees, and real-time sync. Manage work across your whole team.
-  </Card>
-</CardGroup>
+Plus **Amp**, **Cursor Agent CLI**, **OpenCode**, **Droid**, **Claude Code Router**, and **Qwen Code**. [See all agents →](/supported-coding-agents)
 
 ---
 
-## Explore the docs
+## Where to go from here
 
 <CardGroup cols={2}>
   <Card title="Get started" icon="rocket" href="/getting-started">
-    Install Vibe Kanban and complete your first task in under five minutes
+    Install, connect an agent, and go from zero to pull request
   </Card>
 
   <Card title="Workspaces" icon="window" href="/workspaces/index">
-    Learn the workspace interface — sessions, changes, preview, and more
+    Sessions, changes, preview, terminal, and multi-repo support
   </Card>
 
   <Card title="Cloud & Teams" icon="cloud" href="/cloud/index">
-    Set up team collaboration with shared projects and real-time sync
+    Shared projects, issues, kanban board, and team management
   </Card>
 
-  <Card title="Supported Agents" icon="robot" href="/supported-coding-agents">
-    See every agent Vibe Kanban supports and how to configure them
+  <Card title="Settings" icon="gear" href="/settings/general">
+    Themes, default agents, git config, and MCP server connections
   </Card>
 </CardGroup>
