@@ -491,7 +491,8 @@ fn is_valid_challenge(challenge: &str) -> bool {
 }
 
 fn is_allowed_return_to(url: &Url, public_origin: &str) -> bool {
-    if url.scheme() == "http" && matches!(url.host_str(), Some("127.0.0.1" | "localhost" | "[::1]"))
+    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    if url.scheme() == "http" && matches!(url.host_str(), Some(host | "localhost" | "[::1]"))
     {
         return true;
     }
