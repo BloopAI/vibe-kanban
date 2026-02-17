@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { DraftWorkspaceData, ExecutorConfig, Repo } from 'shared/types';
 import { ScratchType } from 'shared/types';
-import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
+import {
+  PROJECT_ISSUES_SHAPE,
+  type Workspace as RemoteWorkspace,
+} from 'shared/remote-types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useShape } from '@/lib/electric/hooks';
-import { projectsApi } from '@/lib/api';
+import { attemptsApi, projectsApi } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -57,6 +60,7 @@ type DraftAction =
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
+  | { type: 'SET_REPOS_IF_EMPTY'; repos: SelectedRepo[] }
   | { type: 'REMOVE_REPO'; repoId: string }
   | { type: 'SET_TARGET_BRANCH'; repoId: string; branch: string }
   | { type: 'SET_MESSAGE'; message: string }
@@ -117,6 +121,12 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
       };
     }
 
+    case 'SET_REPOS_IF_EMPTY':
+      if (state.repos.length > 0) {
+        return state;
+      }
+      return { ...state, repos: action.repos };
+
     case 'REMOVE_REPO':
       return {
         ...state,
@@ -170,6 +180,34 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
 
 const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
+function getLatestWorkspaceIdForRemoteProject({
+  remoteWorkspaces,
+  localWorkspaceIds,
+  remoteProjectId,
+}: {
+  remoteWorkspaces: RemoteWorkspace[];
+  localWorkspaceIds: Set<string>;
+  remoteProjectId: string;
+}): string | null {
+  let latestWorkspaceId: string | null = null;
+  let latestUpdatedAt = Number.NEGATIVE_INFINITY;
+
+  for (const workspace of remoteWorkspaces) {
+    if (!workspace.issue_id) continue;
+    if (workspace.project_id !== remoteProjectId) continue;
+    if (!workspace.local_workspace_id) continue;
+    if (!localWorkspaceIds.has(workspace.local_workspace_id)) continue;
+
+    const updatedAt = new Date(workspace.updated_at).getTime();
+    if (updatedAt > latestUpdatedAt) {
+      latestUpdatedAt = updatedAt;
+      latestWorkspaceId = workspace.local_workspace_id;
+    }
+  }
+
+  return latestWorkspaceId;
+}
+
 // ============================================================================
 // Hook
 // ============================================================================
@@ -178,6 +216,10 @@ interface UseCreateModeStateParams {
   initialProjectId?: string;
   initialState?: CreateModeInitialState | null;
   draftId?: string | null;
+  remoteWorkspaces: RemoteWorkspace[];
+  localWorkspaceIds: Set<string>;
+  localWorkspacesLoading: boolean;
+  remoteWorkspacesLoading: boolean;
 }
 
 interface UseCreateModeStateResult {
@@ -207,6 +249,10 @@ export function useCreateModeState({
   initialProjectId,
   initialState,
   draftId,
+  remoteWorkspaces,
+  localWorkspaceIds,
+  localWorkspacesLoading,
+  remoteWorkspacesLoading,
 }: UseCreateModeStateParams): UseCreateModeStateResult {
   const location = useLocation();
   const navigate = useNavigate();
@@ -300,6 +346,7 @@ export function useCreateModeState({
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
   const initialProjectIdRef = useRef(initialProjectId);
+  const hasAttemptedIssueRepoDefaults = useRef(false);
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -345,6 +392,54 @@ export function useCreateModeState({
         console.error('[useCreateModeState] Failed to fetch projects:', e);
       });
   }, [state.phase, state.projectId, projectsById, projectsLoading]);
+
+  // ============================================================================
+  // Auto-select repos/branches for linked issue drafts
+  // ============================================================================
+  useEffect(() => {
+    if (state.phase !== 'ready') return;
+    if (hasAttemptedIssueRepoDefaults.current) return;
+    if (!state.linkedIssue) return;
+    if (state.repos.length > 0) return;
+    if (localWorkspacesLoading || remoteWorkspacesLoading) return;
+
+    hasAttemptedIssueRepoDefaults.current = true;
+
+    const sourceWorkspaceId = getLatestWorkspaceIdForRemoteProject({
+      remoteWorkspaces,
+      localWorkspaceIds,
+      remoteProjectId: state.linkedIssue.remoteProjectId,
+    });
+    if (!sourceWorkspaceId) return;
+
+    attemptsApi
+      .getRepos(sourceWorkspaceId)
+      .then((repos) => {
+        if (repos.length === 0) return;
+
+        dispatch({
+          type: 'SET_REPOS_IF_EMPTY',
+          repos: repos.map((repo) => ({
+            repo,
+            targetBranch: repo.target_branch || null,
+          })),
+        });
+      })
+      .catch((error) => {
+        console.error(
+          '[useCreateModeState] Failed to load issue-based repo defaults:',
+          error
+        );
+      });
+  }, [
+    state.phase,
+    state.linkedIssue,
+    state.repos.length,
+    localWorkspacesLoading,
+    remoteWorkspacesLoading,
+    remoteWorkspaces,
+    localWorkspaceIds,
+  ]);
 
   // ============================================================================
   // Persistence to scratch (debounced)

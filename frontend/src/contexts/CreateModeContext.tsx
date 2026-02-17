@@ -6,6 +6,7 @@ import {
   type CreateModeInitialState,
 } from '@/hooks/useCreateModeState';
 import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+import { useUserContext } from '@/contexts/remote/UserContext';
 import { useTask } from '@/hooks/useTask';
 
 interface LinkedIssue {
@@ -56,8 +57,22 @@ export function CreateModeProvider({
   draftId,
 }: CreateModeProviderProps) {
   // Fetch most recent workspace to seed project selection only
-  const { workspaces: activeWorkspaces, archivedWorkspaces } = useWorkspaces();
+  const {
+    workspaces: activeWorkspaces,
+    archivedWorkspaces,
+    isLoading: localWorkspacesLoading,
+  } = useWorkspaces();
+  const { workspaces: remoteWorkspaces, isLoading: remoteWorkspacesLoading } =
+    useUserContext();
   const mostRecentWorkspace = activeWorkspaces[0] ?? archivedWorkspaces[0];
+  const localWorkspaceIds = useMemo(
+    () =>
+      new Set([
+        ...activeWorkspaces.map((workspace) => workspace.id),
+        ...archivedWorkspaces.map((workspace) => workspace.id),
+      ]),
+    [activeWorkspaces, archivedWorkspaces]
+  );
 
   const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
     enabled: !!mostRecentWorkspace?.taskId,
@@ -67,6 +82,10 @@ export function CreateModeProvider({
     initialProjectId: lastWorkspaceTask?.project_id,
     initialState,
     draftId,
+    remoteWorkspaces,
+    localWorkspaceIds,
+    localWorkspacesLoading,
+    remoteWorkspacesLoading,
   });
 
   const value = useMemo<CreateModeContextValue>(
