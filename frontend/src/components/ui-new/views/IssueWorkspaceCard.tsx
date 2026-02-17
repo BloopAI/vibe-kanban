@@ -186,10 +186,10 @@ export function IssueWorkspaceCard({
               <DropdownMenuContent align="end">
                 {onUnlink && (
                   <DropdownMenuItem
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUnlink();
-                  }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onUnlink();
+                    }}
                   >
                     <LinkBreakIcon className="size-icon-xs" />
                     {t('workspaces.unlinkFromIssue')}
