@@ -69,7 +69,7 @@ interface ChatBoxBaseProps {
   // Footer right content (action buttons)
   footerRight: ReactNode;
 
-  // Model selector (rendered below editor)
+  // Model selector (rendered on the left side of the footer row)
   modelSelector?: ChatBoxModelSelector;
 
   // Banner content (queued message indicator, feedback mode indicator)
@@ -198,26 +198,27 @@ export function ChatBoxBase({
           localImages={localImages}
           sendShortcut={config?.send_message_shortcut}
         />
-        {modelSelector && (
-          <div>
-            <ModelSelectorContainer
-              agent={modelSelector.agent}
-              workspaceId={modelSelector.workspaceId}
-              onAdvancedSettings={modelSelector.onAdvancedSettings}
-              presets={modelSelector.presets}
-              selectedPreset={modelSelector.selectedPreset}
-              onPresetSelect={modelSelector.onPresetSelect}
-              onOverrideChange={modelSelector.onOverrideChange}
-              executorConfig={modelSelector.executorConfig}
-              presetOptions={modelSelector.presetOptions}
-            />
-          </div>
-        )}
-
         {/* Footer - Controls */}
-        <div className="flex items-end justify-between">
-          <Toolbar className="flex-1 gap-double">{footerLeft}</Toolbar>
-          <div className="flex gap-base">{footerRight}</div>
+        <div className="flex items-end justify-between gap-base">
+          <div className="min-w-0 flex-1">
+            {modelSelector && (
+              <ModelSelectorContainer
+                agent={modelSelector.agent}
+                workspaceId={modelSelector.workspaceId}
+                onAdvancedSettings={modelSelector.onAdvancedSettings}
+                presets={modelSelector.presets}
+                selectedPreset={modelSelector.selectedPreset}
+                onPresetSelect={modelSelector.onPresetSelect}
+                onOverrideChange={modelSelector.onOverrideChange}
+                executorConfig={modelSelector.executorConfig}
+                presetOptions={modelSelector.presetOptions}
+              />
+            )}
+          </div>
+          <div className="shrink-0 flex items-end gap-base">
+            <Toolbar className="gap-double">{footerLeft}</Toolbar>
+            <div className="flex gap-base">{footerRight}</div>
+          </div>
         </div>
       </div>
     </div>
