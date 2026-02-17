@@ -1,11 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useReducer,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { DraftWorkspaceData, ExecutorConfig, Repo } from 'shared/types';
 import { ScratchType } from 'shared/types';
@@ -15,11 +8,10 @@ import {
 } from 'shared/remote-types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
-import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useProjects } from '@/hooks/useProjects';
+import { useWorkspaceCreateDefaults } from '@/hooks/useWorkspaceCreateDefaults';
 import { useShape } from '@/lib/electric/hooks';
-import { attemptsApi, projectsApi } from '@/lib/api';
-import { getLatestConfigFromProcesses } from '@/utils/executor';
+import { projectsApi } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -329,14 +321,6 @@ export function useCreateModeState({
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
   const initialProjectIdRef = useRef(initialProjectId);
-  const hasAttemptedRepoDefaults = useRef(false);
-  const hasAttemptedExecutorDefaults = useRef(false);
-  const [sourceSessionId, setSourceSessionId] = useState<string | undefined>(
-    undefined
-  );
-  const [sourceSessionExecutor, setSourceSessionExecutor] = useState<
-    ExecutorConfig['executor'] | null
-  >(null);
 
   const sourceWorkspaceId = useMemo(() => {
     if (state.linkedIssue) {
@@ -349,17 +333,16 @@ export function useCreateModeState({
     return lastWorkspaceId;
   }, [state.linkedIssue, remoteWorkspaces, localWorkspaceIds, lastWorkspaceId]);
 
-  const { executionProcesses: sourceSessionProcesses } =
-    useExecutionProcesses(sourceSessionId);
+  const shouldLoadWorkspaceDefaults =
+    state.phase === 'ready' &&
+    !localWorkspacesLoading &&
+    (!state.linkedIssue || !remoteWorkspacesLoading);
 
-  const preferredExecutorConfig = useMemo(() => {
-    const fromProcesses = getLatestConfigFromProcesses(sourceSessionProcesses);
-    if (fromProcesses) return fromProcesses;
-    if (sourceSessionExecutor) {
-      return { executor: sourceSessionExecutor };
-    }
-    return null;
-  }, [sourceSessionProcesses, sourceSessionExecutor]);
+  const { preferredRepos, preferredExecutorConfig } =
+    useWorkspaceCreateDefaults({
+      sourceWorkspaceId,
+      enabled: shouldLoadWorkspaceDefaults,
+    });
 
   useEffect(() => {
     if (state.phase !== 'ready') return;
@@ -407,82 +390,21 @@ export function useCreateModeState({
   }, [state.phase, state.projectId, projectsById, projectsLoading]);
 
   // ============================================================================
-  // Auto-select repos/branches for new drafts
+  // Auto-apply repos/branches defaults for fresh drafts
   // ============================================================================
   useEffect(() => {
-    if (state.phase !== 'ready') return;
-    if (hasAttemptedRepoDefaults.current) return;
+    if (!shouldLoadWorkspaceDefaults) return;
     if (state.repos.length > 0) return;
-    if (localWorkspacesLoading) return;
-    if (state.linkedIssue && remoteWorkspacesLoading) return;
+    if (preferredRepos.length === 0) return;
 
-    hasAttemptedRepoDefaults.current = true;
-
-    if (!sourceWorkspaceId) return;
-
-    attemptsApi
-      .getRepos(sourceWorkspaceId)
-      .then((repos) => {
-        if (repos.length === 0) return;
-
-        dispatch({
-          type: 'SET_REPOS_IF_EMPTY',
-          repos: repos.map((repo) => ({
-            repo,
-            targetBranch: repo.target_branch || null,
-          })),
-        });
-      })
-      .catch((error) => {
-        console.error(
-          '[useCreateModeState] Failed to load repo defaults:',
-          error
-        );
-      });
-  }, [
-    state.phase,
-    state.linkedIssue,
-    state.repos.length,
-    sourceWorkspaceId,
-    localWorkspacesLoading,
-    remoteWorkspacesLoading,
-  ]);
-
-  // ============================================================================
-  // Load source session metadata for executor defaults
-  // ============================================================================
-  useEffect(() => {
-    if (state.phase !== 'ready') return;
-    if (hasAttemptedExecutorDefaults.current) return;
-    if (localWorkspacesLoading) return;
-    if (state.linkedIssue && remoteWorkspacesLoading) return;
-
-    hasAttemptedExecutorDefaults.current = true;
-
-    if (!sourceWorkspaceId) return;
-
-    attemptsApi
-      .getWithSession(sourceWorkspaceId)
-      .then((workspaceWithSession) => {
-        setSourceSessionId(workspaceWithSession.session?.id ?? undefined);
-        setSourceSessionExecutor(
-          (workspaceWithSession.session
-            ?.executor as ExecutorConfig['executor']) ?? null
-        );
-      })
-      .catch((error) => {
-        console.error(
-          '[useCreateModeState] Failed to load executor defaults:',
-          error
-        );
-      });
-  }, [
-    state.phase,
-    state.linkedIssue,
-    sourceWorkspaceId,
-    localWorkspacesLoading,
-    remoteWorkspacesLoading,
-  ]);
+    dispatch({
+      type: 'SET_REPOS_IF_EMPTY',
+      repos: preferredRepos.map((repo) => ({
+        repo,
+        targetBranch: repo.target_branch || null,
+      })),
+    });
+  }, [shouldLoadWorkspaceDefaults, state.repos.length, preferredRepos]);
 
   // ============================================================================
   // Persistence to scratch (debounced)
