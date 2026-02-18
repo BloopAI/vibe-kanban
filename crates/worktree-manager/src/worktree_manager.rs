@@ -8,6 +8,7 @@ use std::{
 static WORKSPACE_DIR_OVERRIDE: OnceLock<PathBuf> = OnceLock::new();
 
 use git::{GitService, GitServiceError};
+use git2::Repository;
 use thiserror::Error;
 use tracing::{debug, info, trace};
 use utils::{path::normalize_macos_private_alias, shell::resolve_executable_path};
@@ -70,11 +71,23 @@ impl WorktreeManager {
             let base_branch_owned = base_branch.to_string();
 
             tokio::task::spawn_blocking(move || {
-                GitService::new().create_branch(
-                    &repo_path_owned,
+                let repo = Repository::open(&repo_path_owned)?;
+                let mut base_branch_ref =
+                    GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
+                // If the base branch is remote, fetch latest before branching
+                if base_branch_ref.is_remote() {
+                    let git = GitService::new();
+                    git.fetch_branch_from_remote(&repo, &base_branch_ref)?;
+                    // Re-lookup to get fresh OID from disk after fetch
+                    base_branch_ref =
+                        GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
+                }
+                repo.branch(
                     &branch_name_owned,
-                    &base_branch_owned,
-                )
+                    &base_branch_ref.peel_to_commit()?,
+                    false,
+                )?;
+                Ok::<(), GitServiceError>(())
             })
             .await
             .map_err(|e| WorktreeError::TaskJoin(format!("Task join error: {e}")))??;

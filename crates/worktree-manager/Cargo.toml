@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 git = { path = "../git" }
+git2 = { workspace = true }
 utils = { path = "../utils" }
 tokio = { workspace = true }
 thiserror = { workspace = true }
