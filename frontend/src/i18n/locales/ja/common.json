@@ -153,7 +153,6 @@
     "loading": "読み込み中...",
     "notFound": "ワークスペースが見つかりません",
     "notFoundDescription": "このワークスペースは削除されたか、リンクが正しくない可能性があります。",
-    "goToWorkspaces": "ワークスペース一覧へ",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
     "viewArchive": "アーカイブを表示",

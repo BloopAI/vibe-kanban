@@ -153,7 +153,6 @@
     "loading": "加载中...",
     "notFound": "未找到工作区",
     "notFoundDescription": "此工作区可能已被删除，或链接不正确。",
-    "goToWorkspaces": "前往工作区",
     "selectToStart": "选择一个工作区开始",
     "draft": "草稿",
     "viewArchive": "查看归档",

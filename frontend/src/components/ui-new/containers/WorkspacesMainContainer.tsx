@@ -59,8 +59,8 @@ export const WorkspacesMainContainer = forwardRef<
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
   }, [selectedWorkspace, selectedSession]);
 
-  const handleGoToWorkspaces = useCallback(() => {
-    navigate('/workspaces');
+  const handleCreateWorkspace = useCallback(() => {
+    navigate('/workspaces/create');
   }, [navigate]);
 
   const handleScrollToPreviousMessage = useCallback(() => {
@@ -89,7 +89,7 @@ export const WorkspacesMainContainer = forwardRef<
       onSelectSession={onSelectSession}
       isLoading={isLoading}
       isError={isError}
-      onGoToWorkspaces={handleGoToWorkspaces}
+      onCreateWorkspace={handleCreateWorkspace}
       containerRef={containerRef}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}

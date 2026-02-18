@@ -2,11 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react';
 
 interface WorkspaceNotFoundProps {
-  onGoToWorkspaces?: () => void;
+  onCreateWorkspace?: () => void;
 }
 
 export function WorkspaceNotFound({
-  onGoToWorkspaces,
+  onCreateWorkspace,
 }: WorkspaceNotFoundProps) {
   const { t } = useTranslation('common');
 
@@ -19,12 +19,12 @@ export function WorkspaceNotFound({
           {t('workspaces.notFoundDescription')}
         </p>
       </div>
-      {onGoToWorkspaces && (
+      {onCreateWorkspace && (
         <button
-          onClick={onGoToWorkspaces}
+          onClick={onCreateWorkspace}
           className="mt-half rounded-sm px-base py-half text-cta h-cta bg-brand hover:bg-brand-hover text-on-brand"
         >
-          {t('workspaces.goToWorkspaces')}
+          {t('workspaces.newWorkspace')}
         </button>
       )}
     </div>
