@@ -51,6 +51,7 @@ export function RetryEditorInline({
 
   const { selectedVariant, setSelectedVariant } = useVariant({
     processVariant: processProfile?.variant ?? null,
+    scratchVariant: undefined,
   });
 
   const retryMutation = useRetryProcess(

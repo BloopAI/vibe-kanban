@@ -18,7 +18,7 @@ use db::{
         },
         execution_process_repo_state::ExecutionProcessRepoState,
         repo::Repo,
-        scratch::{Scratch, ScratchType},
+        scratch::{DraftFollowUpData, Scratch, ScratchType},
         session::{Session, SessionError},
         task::{Task, TaskStatus},
         workspace::Workspace,
@@ -48,7 +48,7 @@ use services::services::{
     diff_stream::{self, DiffStreamHandle},
     image::ImageService,
     notification::NotificationService,
-    queued_message::{QueuedFollowUpData, QueuedMessageService},
+    queued_message::QueuedMessageService,
     remote_client::RemoteClient,
     remote_sync,
     workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
@@ -891,7 +891,7 @@ impl LocalContainerService {
     async fn start_queued_follow_up(
         &self,
         ctx: &ExecutionContext,
-        queued_data: &QueuedFollowUpData,
+        queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
         let executor_profile_id = queued_data.executor_config.profile_id();
 

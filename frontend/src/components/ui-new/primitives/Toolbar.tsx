@@ -1,4 +1,3 @@
-import * as React from 'react';
 import {
   type Icon,
   SortAscendingIcon,
@@ -7,7 +6,6 @@ import {
   UserIcon,
   TagIcon,
 } from '@phosphor-icons/react';
-import type * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import {
@@ -58,14 +56,11 @@ function ToolbarIconButton({
 }
 
 interface ToolbarDropdownProps {
-  label?: string;
+  label: string;
   icon?: Icon;
   children?: React.ReactNode;
   className?: string;
   disabled?: boolean;
-  size?: 'default' | 'sm';
-  showCaret?: boolean;
-  align?: DropdownMenuPrimitive.DropdownMenuContentProps['align'];
 }
 
 function ToolbarDropdown({
@@ -74,9 +69,6 @@ function ToolbarDropdown({
   children,
   className,
   disabled,
-  size = 'default',
-  showCaret = true,
-  align,
 }: ToolbarDropdownProps) {
   const { t } = useTranslation('common');
 
@@ -87,10 +79,8 @@ function ToolbarDropdown({
         label={label}
         className={className}
         disabled={disabled}
-        size={size}
-        showCaret={showCaret}
       />
-      <DropdownMenuContent align={align}>
+      <DropdownMenuContent>
         {children ?? (
           <>
             <DropdownMenuLabel>{t('toolbar.sortBy')}</DropdownMenuLabel>
@@ -118,13 +108,4 @@ function ToolbarDropdown({
   );
 }
 
-interface ToolbarDropdownButtonProps
-  extends React.ComponentPropsWithoutRef<typeof DropdownMenuTriggerButton> {}
-
-const ToolbarDropdownButton = React.forwardRef<
-  React.ElementRef<typeof DropdownMenuTriggerButton>,
-  ToolbarDropdownButtonProps
->((props, ref) => <DropdownMenuTriggerButton ref={ref} {...props} />);
-ToolbarDropdownButton.displayName = 'ToolbarDropdownButton';
-
-export { Toolbar, ToolbarIconButton, ToolbarDropdown, ToolbarDropdownButton };
+export { Toolbar, ToolbarIconButton, ToolbarDropdown };

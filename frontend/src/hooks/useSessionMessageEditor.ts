@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScratchType, type DraftFollowUpData } from 'shared/types';
+import {
+  ScratchType,
+  type DraftFollowUpData,
+  type ExecutorConfig,
+} from 'shared/types';
 import { useScratch } from './useScratch';
 import { useDebouncedCallback } from './useDebouncedCallback';
 
@@ -13,20 +17,23 @@ interface UseSessionMessageEditorResult {
   localMessage: string;
   /** Set local message directly */
   setLocalMessage: (value: string) => void;
-  /** Scratch data (message) */
+  /** Scratch data (message and variant) */
   scratchData: DraftFollowUpData | undefined;
   /** Whether scratch is loading */
   isScratchLoading: boolean;
   /** Whether the initial value has been applied from scratch */
   hasInitialValue: boolean;
-  /** Save message to scratch */
-  saveToScratch: (message: string) => Promise<void>;
+  /** Save message and executor config to scratch */
+  saveToScratch: (
+    message: string,
+    executorConfig: ExecutorConfig
+  ) => Promise<void>;
   /** Delete the draft scratch */
   clearDraft: () => Promise<void>;
   /** Cancel pending debounced save */
   cancelDebouncedSave: () => void;
   /** Handle message change with debounced save */
-  handleMessageChange: (value: string) => void;
+  handleMessageChange: (value: string, executorConfig: ExecutorConfig) => void;
 }
 
 /**
@@ -52,7 +59,7 @@ export function useSessionMessageEditor({
   const [hasInitialValue, setHasInitialValue] = useState(false);
 
   const saveToScratch = useCallback(
-    async (message: string) => {
+    async (message: string, executorConfig: ExecutorConfig) => {
       if (!scratchId) return;
       try {
         await updateScratch({
@@ -60,6 +67,7 @@ export function useSessionMessageEditor({
             type: 'DRAFT_FOLLOW_UP',
             data: {
               message,
+              executor_config: executorConfig,
             },
           },
         });
@@ -93,10 +101,11 @@ export function useSessionMessageEditor({
   }, [isScratchLoading, scratchData?.message]);
 
   // Handle message change with debounced save
+  // Pass executor profile at call-time to avoid stale closure
   const handleMessageChange = useCallback(
-    (value: string) => {
+    (value: string, executorConfig: ExecutorConfig) => {
       setLocalMessage(value);
-      debouncedSave(value);
+      debouncedSave(value, executorConfig);
     },
     [debouncedSave]
   );

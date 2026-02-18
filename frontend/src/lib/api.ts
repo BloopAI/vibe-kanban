@@ -49,7 +49,7 @@ import {
   AvailabilityInfo,
   BaseCodingAgent,
   ExecutorConfig,
-  QueueMessageRequest,
+  DraftFollowUpData,
   AgentPresetOptionsQuery,
   RunAgentSetupRequest,
   RunAgentSetupResponse,
@@ -1448,7 +1448,7 @@ export const queueApi = {
    */
   queue: async (
     sessionId: string,
-    data: QueueMessageRequest
+    data: DraftFollowUpData
   ): Promise<QueueStatus> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
       method: 'POST',

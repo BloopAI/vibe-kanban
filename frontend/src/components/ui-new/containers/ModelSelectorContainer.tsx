@@ -15,6 +15,7 @@ import { toPrettyCase } from '@/utils/string';
 import {
   getModelKey,
   getRecentModelEntries,
+  getRecentReasoningByModel,
   touchRecentModel,
   updateRecentModelEntries,
   setRecentReasoning,
@@ -25,7 +26,9 @@ import {
   escapeAttributeValue,
   parseModelId,
   appendPresetModel,
+  resolveDefaultModelId,
   isModelAvailable,
+  resolveDefaultReasoningId,
 } from '@/utils/modelSelector';
 import { profilesApi } from '@/lib/api';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -33,15 +36,12 @@ import { useModelSelectorConfig } from '@/hooks/useExecutorDiscovery';
 import { ModelSelectorPopover } from '../primitives/model-selector/ModelSelectorPopover';
 import {
   DropdownMenu,
+  DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTriggerButton,
 } from '../primitives/Dropdown';
-import {
-  Toolbar,
-  ToolbarDropdown,
-  ToolbarDropdownButton,
-} from '../primitives/Toolbar';
 
 interface ModelSelectorContainerProps {
   agent: BaseCodingAgent | null;
@@ -92,7 +92,9 @@ export function ModelSelectorContainer({
     },
   };
 
-  const resolvedPreset = selectedPreset;
+  const resolvedPreset =
+    selectedPreset ??
+    (presets.includes('DEFAULT') ? 'DEFAULT' : (presets[0] ?? null));
 
   const {
     config: streamConfig,
@@ -126,48 +128,103 @@ export function ModelSelectorContainer({
     [executorConfig?.model_id, hasProviders]
   );
 
+  const fallbackProviderId = availableProviderIds[0] ?? null;
   const resolvedConfigProviderId = resolveProviderId(configProviderId);
-  const selectedProviderId = resolvedConfigProviderId;
 
-  const selectedModelId = useMemo(() => {
-    if (!config || !configModelId) return null;
-    if (selectedProviderId) {
-      return isModelAvailable(config, selectedProviderId, configModelId)
-        ? configModelId
-        : null;
-    }
+  const { providerId: presetProviderId } = useMemo(
+    () => parseModelId(presetOptions?.model_id, hasProviders),
+    [presetOptions?.model_id, hasProviders]
+  );
+  const resolvedPresetProviderId = resolveProviderId(presetProviderId);
 
-    const selectedModelLower = configModelId.toLowerCase();
-    const hasModelMatch = config.models.some(
-      (model) => model.id.toLowerCase() === selectedModelLower
-    );
-    return hasModelMatch ? configModelId : null;
-  }, [config, configModelId, selectedProviderId]);
+  const hasDefaultModel = Boolean(config?.default_model);
+  const selectedProviderId =
+    resolvedConfigProviderId ??
+    resolvedPresetProviderId ??
+    (hasDefaultModel ? fallbackProviderId : null);
+
+  const defaultModelId = config
+    ? resolveDefaultModelId(
+        config.models,
+        selectedProviderId,
+        config.default_model,
+        hasProviders
+      )
+    : null;
+
+  const { modelId: presetModelId } = useMemo(
+    () => parseModelId(presetOptions?.model_id, hasProviders),
+    [presetOptions?.model_id, hasProviders]
+  );
+
+  const presetModelMatchesProvider =
+    !selectedProviderId ||
+    !resolvedPresetProviderId ||
+    resolvedPresetProviderId === selectedProviderId;
+  const resolvedPresetModelId = presetModelMatchesProvider
+    ? presetModelId
+    : null;
+
+  const selectedModelId = (() => {
+    const candidate = configModelId ?? resolvedPresetModelId ?? defaultModelId;
+    if (!candidate || !config || !selectedProviderId) return candidate;
+    const hasMatch = isModelAvailable(config, selectedProviderId, candidate);
+    return hasMatch
+      ? candidate
+      : resolveDefaultModelId(
+          config.models,
+          selectedProviderId,
+          config.default_model,
+          hasProviders
+        );
+  })();
 
   const selectedModel = config
     ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
     : null;
 
-  const selectedReasoningId = useMemo(() => {
-    const reasoningId = executorConfig?.reasoning_id ?? null;
-    if (!reasoningId || !selectedModel) return null;
-    return selectedModel.reasoning_options.some(
-      (option) => option.id === reasoningId
-    )
-      ? reasoningId
+  const recentReasoningByModel = getRecentReasoningByModel(profiles, agent);
+
+  const presetReasoningId =
+    resolvedPresetModelId && selectedModelId === resolvedPresetModelId
+      ? (presetOptions?.reasoning_id ?? null)
       : null;
-  }, [executorConfig?.reasoning_id, selectedModel]);
+
+  const recentReasoningId = useMemo(() => {
+    if (!selectedModel || !recentReasoningByModel) return null;
+    const key = selectedModel.provider_id
+      ? `${selectedModel.provider_id}/${selectedModel.id}`
+      : selectedModel.id;
+    const keyLower = key.toLowerCase();
+    for (const [k, v] of Object.entries(recentReasoningByModel)) {
+      if (k.toLowerCase() === keyLower) {
+        if (selectedModel.reasoning_options.some((o) => o.id === v)) return v;
+      }
+    }
+    return null;
+  }, [selectedModel, recentReasoningByModel]);
+
+  const selectedReasoningId =
+    executorConfig?.reasoning_id ??
+    presetReasoningId ??
+    recentReasoningId ??
+    resolveDefaultReasoningId(selectedModel?.reasoning_options ?? []);
+
+  const defaultAgentId =
+    config?.agents.find((entry) => entry.is_default)?.id ?? null;
 
   const selectedAgentId =
-    executorConfig?.agent_id !== undefined ? executorConfig.agent_id : null;
+    executorConfig?.agent_id !== undefined
+      ? executorConfig.agent_id
+      : (presetOptions?.agent_id ?? defaultAgentId);
 
   const supportsPermissions = (config?.permissions.length ?? 0) > 0;
 
+  const basePermissionPolicy = supportsPermissions
+    ? (presetOptions?.permission_policy ?? config?.permissions[0] ?? null)
+    : null;
   const permissionPolicy = supportsPermissions
-    ? executorConfig?.permission_policy &&
-      config?.permissions.includes(executorConfig.permission_policy)
-      ? executorConfig.permission_policy
-      : null
+    ? (executorConfig?.permission_policy ?? basePermissionPolicy)
     : null;
 
   // LRU persistence (on popover close)
@@ -253,13 +310,11 @@ export function ModelSelectorContainer({
           })()
         : null;
     pendingReasoningRef.current = null;
-    setIsOpen(false);
   };
 
   const handleReasoningSelect = (reasoningId: string | null) => {
     onOverrideChange({ reasoning_id: reasoningId });
     pendingReasoningRef.current = reasoningId;
-    setIsOpen(false);
   };
 
   const handleAgentSelect = (id: string | null) => {
@@ -331,16 +386,16 @@ export function ModelSelectorContainer({
 
   if (!config) {
     return (
-      <Toolbar className="max-w-full min-w-0 overflow-x-auto">
+      <div className="flex flex-wrap items-center gap-base">
         <DropdownMenu>
-          <ToolbarDropdownButton size="sm" label={loadingLabel} disabled />
+          <DropdownMenuTriggerButton size="sm" label={loadingLabel} disabled />
         </DropdownMenu>
-      </Toolbar>
+      </div>
     );
   }
 
   const showModelSelector = loadingModels || config.models.length > 0;
-  const showDefaultOption = config.models.length > 0;
+  const showDefaultOption = !config.default_model && config.models.length > 0;
   const displaySelectedModel = showModelSelector
     ? getSelectedModel(config.models, selectedProviderId, selectedModelId)
     : null;
@@ -368,44 +423,46 @@ export function ModelSelectorContainer({
   const permissionIcon = permissionMeta?.icon ?? HandIcon;
 
   return (
-    <Toolbar className="max-w-full min-w-0 overflow-x-auto">
-      <ToolbarDropdown
-        size="sm"
-        icon={SlidersHorizontalIcon}
-        label={
-          resolvedPreset && resolvedPreset.toLowerCase() !== 'default'
-            ? presetLabel
-            : undefined
-        }
-        showCaret={false}
-        align="start"
-      >
-        <DropdownMenuLabel>{t('modelSelector.preset')}</DropdownMenuLabel>
-        {presets.length > 0 ? (
-          presets.map((preset) => (
-            <DropdownMenuItem
-              key={preset}
-              icon={preset === resolvedPreset ? CheckIcon : undefined}
-              onClick={() => onPresetSelect?.(preset)}
-            >
-              {toPrettyCase(preset)}
-            </DropdownMenuItem>
-          ))
-        ) : (
-          <DropdownMenuItem disabled>{presetLabel}</DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem icon={GearIcon} onClick={onAdvancedSettings}>
-          {t('modelSelector.custom')}
-        </DropdownMenuItem>
-      </ToolbarDropdown>
+    <div className="flex flex-wrap items-center gap-base">
+      <DropdownMenu>
+        <DropdownMenuTriggerButton
+          size="sm"
+          icon={SlidersHorizontalIcon}
+          label={
+            resolvedPreset?.toLowerCase() !== 'default'
+              ? presetLabel
+              : undefined
+          }
+          showCaret={false}
+        />
+        <DropdownMenuContent align="start">
+          <DropdownMenuLabel>{t('modelSelector.preset')}</DropdownMenuLabel>
+          {presets.length > 0 ? (
+            presets.map((preset) => (
+              <DropdownMenuItem
+                key={preset}
+                icon={preset === resolvedPreset ? CheckIcon : undefined}
+                onClick={() => onPresetSelect?.(preset)}
+              >
+                {toPrettyCase(preset)}
+              </DropdownMenuItem>
+            ))
+          ) : (
+            <DropdownMenuItem disabled>{presetLabel}</DropdownMenuItem>
+          )}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem icon={GearIcon} onClick={onAdvancedSettings}>
+            {t('modelSelector.custom')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {showModelSelector && (
         <ModelSelectorPopover
           isOpen={isOpen}
           onOpenChange={handleOpenChange}
           trigger={
-            <ToolbarDropdownButton
+            <DropdownMenuTriggerButton
               size="sm"
               label={modelLabel}
               disabled={loadingModels}
@@ -429,52 +486,59 @@ export function ModelSelectorContainer({
         />
       )}
 
-      {config.permissions.length > 0 && (
-        <ToolbarDropdown
-          size="sm"
-          icon={permissionIcon}
-          showCaret={false}
-          align="start"
-        >
-          <DropdownMenuLabel>
-            {t('modelSelector.permissions')}
-          </DropdownMenuLabel>
-          {config.permissions.map((policy) => {
-            const meta = permissionMetaByPolicy[policy];
-            return (
-              <DropdownMenuItem
-                key={policy}
-                icon={meta?.icon ?? HandIcon}
-                onClick={() => handlePermissionPolicyChange(policy)}
-              >
-                {meta?.label ?? toPrettyCase(policy)}
-              </DropdownMenuItem>
-            );
-          })}
-        </ToolbarDropdown>
+      {permissionPolicy && config.permissions.length > 0 && (
+        <DropdownMenu>
+          <DropdownMenuTriggerButton
+            size="sm"
+            icon={permissionIcon}
+            showCaret={false}
+          />
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>
+              {t('modelSelector.permissions')}
+            </DropdownMenuLabel>
+            {config.permissions.map((policy) => {
+              const meta = permissionMetaByPolicy[policy];
+              return (
+                <DropdownMenuItem
+                  key={policy}
+                  icon={meta?.icon ?? HandIcon}
+                  onClick={() => handlePermissionPolicyChange(policy)}
+                >
+                  {meta?.label ?? toPrettyCase(policy)}
+                </DropdownMenuItem>
+              );
+            })}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
 
       {config.agents.length > 0 && (
-        <ToolbarDropdown size="sm" label={agentLabel} align="start">
-          <DropdownMenuLabel>{t('modelSelector.agent')}</DropdownMenuLabel>
-          <DropdownMenuItem
-            icon={selectedAgentId === null ? CheckIcon : undefined}
-            onClick={() => handleAgentSelect(null)}
-          >
-            {t('modelSelector.default')}
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {config.agents.map((agentOption) => (
+        <DropdownMenu>
+          <DropdownMenuTriggerButton size="sm" label={agentLabel} />
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>{t('modelSelector.agent')}</DropdownMenuLabel>
             <DropdownMenuItem
-              key={agentOption.id}
-              icon={agentOption.id === selectedAgentId ? CheckIcon : undefined}
-              onClick={() => handleAgentSelect(agentOption.id)}
+              icon={selectedAgentId === null ? CheckIcon : undefined}
+              onClick={() => handleAgentSelect(null)}
             >
-              {agentOption.label}
+              {t('modelSelector.default')}
             </DropdownMenuItem>
-          ))}
-        </ToolbarDropdown>
+            <DropdownMenuSeparator />
+            {config.agents.map((agentOption) => (
+              <DropdownMenuItem
+                key={agentOption.id}
+                icon={
+                  agentOption.id === selectedAgentId ? CheckIcon : undefined
+                }
+                onClick={() => handleAgentSelect(agentOption.id)}
+              >
+                {agentOption.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
-    </Toolbar>
+    </div>
   );
 }

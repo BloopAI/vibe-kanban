@@ -5,11 +5,13 @@ import { useCreateMode } from '@/contexts/CreateModeContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { useLocalExecutorConfig } from '@/hooks/useLocalExecutorConfig';
-import { usePresetOptions } from '@/hooks/usePresetOptions';
-import { areProfilesEqual } from '@/utils/executor';
+import { useExecutorConfig } from '@/hooks/useExecutorConfig';
+import {
+  areProfilesEqual,
+  getSortedExecutorVariantKeys,
+} from '@/utils/executor';
 import { splitMessageToTitleDescription } from '@/utils/string';
-import type { ExecutorProfileId, Repo } from 'shared/types';
+import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
@@ -30,7 +32,6 @@ export function CreateChatBoxContainer({
   const {
     repos,
     targetBranches,
-    preferredExecutorConfig,
     message,
     setMessage,
     selectedProjectId,
@@ -38,6 +39,8 @@ export function CreateChatBoxContainer({
     hasInitialValue,
     linkedIssue,
     clearLinkedIssue,
+    executorConfig: draftConfig,
+    setExecutorConfig: setDraftConfig,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace({
@@ -92,24 +95,26 @@ export function CreateChatBoxContainer({
     noKeyboard: true,
   });
 
+  const scratchConfig = useMemo(() => {
+    if (!hasInitialValue) return undefined; // still loading
+    return draftConfig ?? null;
+  }, [hasInitialValue, draftConfig]);
+
   const {
     executorConfig,
     effectiveExecutor,
     selectedVariant,
     executorOptions,
     variantOptions,
-    setExecutor: setSelectedExecutor,
-    setVariant: setSelectedVariant,
+    presetOptions,
     setOverrides: setExecutorOverrides,
-  } = useLocalExecutorConfig({
+  } = useExecutorConfig({
     profiles,
-    preferredProfile: config?.executor_profile,
-    preferredConfig: preferredExecutorConfig,
+    lastUsedConfig: null,
+    scratchConfig,
+    configExecutorProfile: config?.executor_profile,
+    onPersist: (cfg) => setDraftConfig(cfg),
   });
-  const { data: presetOptions } = usePresetOptions(
-    effectiveExecutor,
-    selectedVariant
-  );
 
   const effectiveProfileId = useMemo<ExecutorProfileId | null>(
     () =>
@@ -172,12 +177,51 @@ export function CreateChatBoxContainer({
 
   const handlePresetSelect = (presetId: string | null) => {
     if (!effectiveExecutor) return;
-    setSelectedVariant(presetId);
+    setDraftConfig({
+      ...draftConfig,
+      executor: effectiveExecutor,
+      variant: presetId,
+    });
   };
 
   const handleCustomise = () => {
     SettingsDialog.show({ initialSection: 'agents' });
   };
+
+  // Handle executor change - use saved variant if switching to default executor
+  const handleExecutorChange = useCallback(
+    (executor: BaseCodingAgent) => {
+      const executorProfile = profiles?.[executor];
+      if (!executorProfile) {
+        setDraftConfig({ executor, variant: null });
+        return;
+      }
+
+      const variants = getSortedExecutorVariantKeys(executorProfile);
+      let targetVariant: string | null = null;
+
+      // If switching to user's default executor, use their saved variant
+      if (
+        config?.executor_profile?.executor === executor &&
+        config?.executor_profile?.variant
+      ) {
+        const savedVariant = config.executor_profile.variant;
+        if (variants.includes(savedVariant)) {
+          targetVariant = savedVariant;
+        }
+      }
+
+      // Fallback to DEFAULT or first available
+      if (!targetVariant) {
+        targetVariant = variants.includes('DEFAULT')
+          ? 'DEFAULT'
+          : (variants[0] ?? null);
+      }
+
+      setDraftConfig({ executor, variant: targetVariant });
+    },
+    [profiles, setDraftConfig, config?.executor_profile]
+  );
 
   // Handle submit
   const handleSubmit = useCallback(async () => {
@@ -308,7 +352,7 @@ export function CreateChatBoxContainer({
                   executor={{
                     selected: effectiveExecutor,
                     options: executorOptions,
-                    onChange: setSelectedExecutor,
+                    onChange: handleExecutorChange,
                   }}
                   saveAsDefault={{
                     checked: saveAsDefault,
