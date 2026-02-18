@@ -50,6 +50,19 @@ async fn main() -> Result<(), VibeKanbanError> {
         std::fs::create_dir_all(asset_dir())?;
     }
 
+    // Copy old database to new location for safe downgrades
+    let old_db = asset_dir().join("db.sqlite");
+    let new_db = asset_dir().join("db.v2.sqlite");
+    if !new_db.exists() && old_db.exists() {
+        tracing::info!(
+            "Copying database to new location: {:?} -> {:?}",
+            old_db,
+            new_db
+        );
+        std::fs::copy(&old_db, &new_db).expect("Failed to copy database file");
+        tracing::info!("Database copy complete");
+    }
+
     let deployment = DeploymentImpl::new().await?;
     deployment.update_sentry_scope().await?;
     deployment

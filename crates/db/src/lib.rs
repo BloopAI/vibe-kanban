@@ -76,7 +76,7 @@ impl DBService {
     pub async fn new() -> Result<DBService, Error> {
         let database_url = format!(
             "sqlite://{}",
-            asset_dir().join("db.sqlite").to_string_lossy()
+            asset_dir().join("db.v2.sqlite").to_string_lossy()
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
@@ -112,7 +112,7 @@ impl DBService {
     {
         let database_url = format!(
             "sqlite://{}",
-            asset_dir().join("db.sqlite").to_string_lossy()
+            asset_dir().join("db.v2.sqlite").to_string_lossy()
         );
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
