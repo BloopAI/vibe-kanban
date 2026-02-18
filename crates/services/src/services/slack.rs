@@ -67,6 +67,23 @@ struct SlashCommand {
     channel_id: Option<String>,
 }
 
+/// Events API payload wrapper (Socket Mode wraps the event callback)
+#[derive(Debug, Deserialize)]
+struct EventsApiPayload {
+    event: Option<EventPayload>,
+}
+
+/// Individual event within an Events API callback
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct EventPayload {
+    #[serde(rename = "type")]
+    event_type: Option<String>,
+    text: Option<String>,
+    user: Option<String>,
+    channel: Option<String>,
+}
+
 /// Acknowledgement message sent back over WebSocket
 #[derive(Debug, Serialize)]
 struct Acknowledge {
@@ -203,8 +220,59 @@ impl SlackService {
                         }
                     }
                 }
-                "interactive" | "events_api" => {
-                    // Acknowledge but don't act on these for now
+                "events_api" => {
+                    // Acknowledge immediately
+                    if let Some(envelope_id) = &envelope.envelope_id {
+                        let ack = Acknowledge {
+                            envelope_id: envelope_id.clone(),
+                            payload: None,
+                        };
+                        let ack_json = serde_json::to_string(&ack)?;
+                        write.send(Message::Text(ack_json.into())).await?;
+                    }
+
+                    // Handle app_mention events
+                    if let Some(payload) = &envelope.payload {
+                        if let Ok(events_payload) =
+                            serde_json::from_value::<EventsApiPayload>(payload.clone())
+                        {
+                            if let Some(event) = events_payload.event {
+                                if event.event_type.as_deref() == Some("app_mention") {
+                                    // Strip the @mention from the text to get the trigger ID
+                                    let trigger_id = event
+                                        .text
+                                        .as_deref()
+                                        .map(|t| {
+                                            // Text looks like "<@U123ABC> some text"
+                                            // Strip the mention prefix
+                                            let trimmed = if let Some(rest) = t.split('>').nth(1) {
+                                                rest.trim()
+                                            } else {
+                                                t.trim()
+                                            };
+                                            if trimmed.is_empty() {
+                                                "slack".to_string()
+                                            } else {
+                                                format!("slack:{}", trimmed)
+                                            }
+                                        })
+                                        .unwrap_or_else(|| "slack".to_string());
+
+                                    info!(
+                                        "Slack app_mention from user {:?} in channel {:?}: trigger={}",
+                                        event.user, event.channel, trigger_id
+                                    );
+
+                                    if let Err(e) = tick_trigger.send(TickTrigger { trigger_id }) {
+                                        error!("Failed to send tick trigger from Slack: {}", e);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                "interactive" => {
+                    // Acknowledge but don't act on interactive events
                     if let Some(envelope_id) = &envelope.envelope_id {
                         let ack = Acknowledge {
                             envelope_id: envelope_id.clone(),
