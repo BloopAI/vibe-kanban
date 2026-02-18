@@ -157,7 +157,7 @@ pub async fn sync_all_linked_workspaces(
     git: &GitService,
 ) {
     // Sync workspace stats
-    let workspaces = match Workspace::fetch_all(pool, None).await {
+    let workspaces = match Workspace::fetch_all(pool).await {
         Ok(ws) => ws,
         Err(e) => {
             error!("Failed to fetch workspaces for post-login sync: {}", e);

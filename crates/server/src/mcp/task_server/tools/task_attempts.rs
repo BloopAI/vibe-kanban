@@ -1,11 +1,7 @@
 use std::str::FromStr;
 
-use db::models::{
-    project::Project,
-    task::{CreateTask, TaskWithAttemptStatus},
-    workspace::Workspace,
-};
-use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
+use db::models::workspace::Workspace;
+use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -14,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::TaskServer;
-use crate::routes::{task_attempts::WorkspaceRepoInput, tasks::CreateAndStartTaskRequest};
+use crate::routes::task_attempts::{StartWorkspaceRequest, WorkspaceRepoInput};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpWorkspaceRepoInput {
@@ -109,24 +105,6 @@ impl TaskServer {
             }
         });
 
-        let mut executor_config = ExecutorConfig::new(base_executor);
-        executor_config.variant = variant;
-
-        // Derive project_id from first available project
-        let projects: Vec<Project> = match self
-            .send_json(self.client.get(self.url("/api/projects")))
-            .await
-        {
-            Ok(projects) => projects,
-            Err(e) => return Ok(e),
-        };
-        let project = match projects.first() {
-            Some(p) => p,
-            None => {
-                return Self::err("No projects found. Create a project first.", None::<&str>);
-            }
-        };
-
         let workspace_repos: Vec<WorkspaceRepoInput> = repos
             .into_iter()
             .map(|r| WorkspaceRepoInput {
@@ -135,33 +113,21 @@ impl TaskServer {
             })
             .collect();
 
-        let payload = CreateAndStartTaskRequest {
-            task: CreateTask::from_title_description(project.id, title, None),
-            executor_config,
+        let payload = StartWorkspaceRequest {
+            name: Some(title),
+            executor_profile_id: ExecutorProfileId {
+                executor: base_executor,
+                variant,
+            },
             repos: workspace_repos,
             linked_issue: None,
         };
 
-        // create-and-start returns the task; we need to fetch the workspace it created
-        let url = self.url("/api/tasks/create-and-start");
-        let task: TaskWithAttemptStatus =
-            match self.send_json(self.client.post(&url).json(&payload)).await {
-                Ok(task) => task,
-                Err(e) => return Ok(e),
-            };
-
-        // Fetch workspaces for this task to get the workspace ID
-        let url = self.url(&format!("/api/task-attempts?task_id={}", task.task.id));
-        let workspaces: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
-            Ok(workspaces) => workspaces,
+        let url = self.url("/api/task-attempts/start");
+        let workspace: Workspace = match self.send_json(self.client.post(&url).json(&payload)).await
+        {
+            Ok(workspace) => workspace,
             Err(e) => return Ok(e),
-        };
-
-        let workspace = match workspaces.first() {
-            Some(w) => w,
-            None => {
-                return Self::err("Workspace was not created.", None::<&str>);
-            }
         };
 
         // Link workspace to remote issue if issue_id is provided
