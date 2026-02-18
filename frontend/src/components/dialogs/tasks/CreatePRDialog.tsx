@@ -33,6 +33,7 @@ import type {
 import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { defineModal } from '@/lib/modals';
+import { splitMessageToTitleDescription } from '@/utils/string';
 
 interface CreatePRDialogProps {
   attempt: Workspace;
@@ -81,11 +82,40 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         return;
       }
 
-      setPrTitle('');
-      setPrBody('');
+      let isCancelled = false;
+
+      const initializePRFields = async () => {
+        try {
+          const firstUserMessage = await attemptsApi.getFirstUserMessage(
+            attempt.id
+          );
+
+          if (isCancelled) return;
+
+          if (firstUserMessage?.trim()) {
+            const { title, description } =
+              splitMessageToTitleDescription(firstUserMessage);
+            setPrTitle(title);
+            setPrBody(description ?? '');
+            return;
+          }
+        } catch {
+          // Fall back to empty fields if prompt loading fails.
+        }
+
+        if (isCancelled) return;
+        setPrTitle('');
+        setPrBody('');
+      };
+
+      initializePRFields();
       setError(null);
       setGhCliHelp(null);
-    }, [modal.visible, isLoaded, issueIdentifier]);
+
+      return () => {
+        isCancelled = true;
+      };
+    }, [attempt.id, modal.visible, isLoaded, issueIdentifier]);
 
     // Set default base branch when branches are loaded
     useEffect(() => {
