@@ -20,6 +20,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { getLatestConfigFromProcesses } from '@/utils/executor';
 import type {
   BaseCodingAgent,
   ExecutorProfileId,
@@ -82,7 +84,21 @@ const ResolveConflictsDialogImpl =
       const sessionExecutor =
         resolvedSession?.executor as BaseCodingAgent | null;
 
+      // Get the variant from the session's latest process
+      const resolvedSessionId = resolvedSession?.id;
+      const { executionProcesses: sessionProcesses } =
+        useExecutionProcesses(resolvedSessionId);
+      const sessionProfileFromProcesses =
+        useMemo((): ExecutorProfileId | null => {
+          const config = getLatestConfigFromProcesses(sessionProcesses);
+          if (!config) return null;
+          return { executor: config.executor, variant: config.variant ?? null };
+        }, [sessionProcesses]);
+
       const resolvedDefaultProfile = useMemo(() => {
+        // Prefer the full profile (executor+variant) from the session's processes
+        if (sessionProfileFromProcesses) return sessionProfileFromProcesses;
+        // Fall back to session executor with config variant hint while processes load
         if (sessionExecutor) {
           const variant =
             config?.executor_profile?.executor === sessionExecutor
@@ -91,7 +107,11 @@ const ResolveConflictsDialogImpl =
           return { executor: sessionExecutor, variant };
         }
         return config?.executor_profile ?? null;
-      }, [sessionExecutor, config?.executor_profile]);
+      }, [
+        sessionProfileFromProcesses,
+        sessionExecutor,
+        config?.executor_profile,
+      ]);
 
       // Default to creating a new session if no existing session
       const [createNewSession, setCreateNewSession] =

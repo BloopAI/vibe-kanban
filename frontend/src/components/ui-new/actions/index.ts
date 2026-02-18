@@ -460,7 +460,6 @@ export const Actions = {
         if (result.unlinkFromIssue) {
           await attemptsApi.unlinkFromIssue(workspaceId);
         }
-        ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
         });
