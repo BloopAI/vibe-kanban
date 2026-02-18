@@ -329,13 +329,64 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
             let _ = std::fs::remove_file(&slack_context_path);
         }
 
-        // Read tick.md from the tick repo
-        let tick_md_path = repo.path.join("tick.md");
-        let tick_content = match tokio::fs::read_to_string(&tick_md_path).await {
-            Ok(content) => content,
-            Err(e) => {
-                warn!("Failed to read tick.md, using default: {}", e);
-                DEFAULT_TICK_MD_CONTENT.to_string()
+        // Build task content: Slack-triggered ticks get a Slack-specific prompt,
+        // periodic ticks use tick.md
+        let tick_content = if let Some(slack_ctx) = &trigger.slack_context {
+            // Extract the user's message from trigger_id (format: "slack:<message>")
+            let user_message = trigger_id
+                .strip_prefix("slack:")
+                .unwrap_or("")
+                .to_string();
+
+            // Read the slack skill for reference
+            let slack_skill_path = repo.path.join("skills/slack.md");
+            let slack_skill = tokio::fs::read_to_string(&slack_skill_path)
+                .await
+                .unwrap_or_default();
+
+            format!(
+                "You were mentioned in Slack. Respond to the user's message by replying in the Slack thread.\n\
+                \n\
+                ## User's message\n\
+                \n\
+                {}\n\
+                \n\
+                ## Slack reply context\n\
+                \n\
+                A `slack_context.json` file is available with the channel and thread_ts for replying.\n\
+                A `slack.json` file contains the bot token for authentication.\n\
+                \n\
+                Reply in the Slack thread using:\n\
+                ```bash\n\
+                SLACK_CONFIG=$(cat slack.json)\n\
+                BOT_TOKEN=$(echo \"$SLACK_CONFIG\" | jq -r '.bot_token')\n\
+                \n\
+                curl -s -X POST https://slack.com/api/chat.postMessage \\\n\
+                  -H \"Authorization: Bearer $BOT_TOKEN\" \\\n\
+                  -H \"Content-Type: application/json\" \\\n\
+                  -d '{{\n\
+                    \"channel\": \"{}\",\n\
+                    \"thread_ts\": \"{}\",\n\
+                    \"text\": \"Your response here\"\n\
+                  }}'\n\
+                ```\n\
+                \n\
+                ## Available skills\n\
+                \n\
+                {}\n",
+                if user_message.is_empty() { "(no message)" } else { &user_message },
+                slack_ctx.channel,
+                slack_ctx.thread_ts,
+                slack_skill,
+            )
+        } else {
+            let tick_md_path = repo.path.join("tick.md");
+            match tokio::fs::read_to_string(&tick_md_path).await {
+                Ok(content) => content,
+                Err(e) => {
+                    warn!("Failed to read tick.md, using default: {}", e);
+                    DEFAULT_TICK_MD_CONTENT.to_string()
+                }
             }
         };
 
