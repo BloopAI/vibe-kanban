@@ -350,6 +350,8 @@ export function useCreateModeState({
   // Auto-select project when none selected
   // ============================================================================
   const hasAttemptedAutoSelect = useRef(false);
+  const repoDefaultsSourceRef = useRef<string | null>(null);
+  const hasAppliedRepoDefaultsRef = useRef(false);
   const initialProjectIdRef = useRef(initialProjectId);
   const sourceWorkspaceId = useMemo(() => {
     if (state.linkedIssue) {
@@ -378,7 +380,9 @@ export function useCreateModeState({
       !localWorkspacesLoading &&
       (!state.linkedIssue || !remoteWorkspacesLoading) &&
       hasResolvedPreferredRepos &&
-      (preferredRepos.length === 0 || state.repos.length > 0)) ||
+      (preferredRepos.length === 0 ||
+        state.repos.length > 0 ||
+        hasAppliedRepoDefaultsRef.current)) ||
     state.repos.length > 0;
 
   useEffect(() => {
@@ -430,7 +434,17 @@ export function useCreateModeState({
   // Auto-apply repos/branches defaults for fresh drafts
   // ============================================================================
   useEffect(() => {
+    if (repoDefaultsSourceRef.current === sourceWorkspaceId) return;
+    repoDefaultsSourceRef.current = sourceWorkspaceId;
+    hasAppliedRepoDefaultsRef.current = false;
+  }, [sourceWorkspaceId]);
+
+  useEffect(() => {
     if (!shouldLoadWorkspaceDefaults) return;
+    if (!hasResolvedPreferredRepos) return;
+    if (hasAppliedRepoDefaultsRef.current) return;
+
+    hasAppliedRepoDefaultsRef.current = true;
     if (state.repos.length > 0) return;
     if (preferredRepos.length === 0) return;
 
@@ -441,7 +455,12 @@ export function useCreateModeState({
         targetBranch: repo.target_branch || null,
       })),
     });
-  }, [shouldLoadWorkspaceDefaults, state.repos.length, preferredRepos]);
+  }, [
+    shouldLoadWorkspaceDefaults,
+    hasResolvedPreferredRepos,
+    state.repos.length,
+    preferredRepos,
+  ]);
 
   // ============================================================================
   // Persistence to scratch (debounced)
