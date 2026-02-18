@@ -40,6 +40,7 @@ export function CreateChatBoxContainer({
     hasResolvedInitialRepoDefaults,
     linkedIssue,
     clearLinkedIssue,
+    preferredExecutorConfig,
     executorConfig: draftConfig,
     setExecutorConfig: setDraftConfig,
   } = useCreateMode();
@@ -118,7 +119,7 @@ export function CreateChatBoxContainer({
     setOverrides: setExecutorOverrides,
   } = useExecutorConfig({
     profiles,
-    lastUsedConfig: null,
+    lastUsedConfig: preferredExecutorConfig,
     scratchConfig,
     configExecutorProfile: config?.executor_profile,
     onPersist: (cfg) => setDraftConfig(cfg),
