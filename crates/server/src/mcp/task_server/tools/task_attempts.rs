@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use super::TaskServer;
 use crate::routes::task_attempts::{
-    CreateAndStartWorkspaceRequestBody, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
+    CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
     WorkspaceRepoInput,
 };
 
@@ -180,7 +180,7 @@ impl TaskServer {
             }
         };
 
-        let create_and_start_payload = CreateAndStartWorkspaceRequestBody {
+        let create_and_start_payload = CreateAndStartWorkspaceRequest {
             name: Some(title.clone()),
             repos: workspace_repos,
             linked_issue,
