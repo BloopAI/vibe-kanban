@@ -58,6 +58,7 @@ pub struct TickService<C: ContainerService> {
     container: C,
     poll_interval: Duration,
     is_running: Arc<RwLock<bool>>,
+    current_workspace_id: Arc<RwLock<Option<Uuid>>>,
 }
 
 impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
@@ -74,6 +75,7 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
             container,
             poll_interval: Duration::from_secs(600), // 10 minutes
             is_running: Arc::new(RwLock::new(false)),
+            current_workspace_id: Arc::new(RwLock::new(None)),
         };
 
         tokio::spawn(async move {
@@ -99,6 +101,9 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
                 return;
             }
         };
+
+        // Archive any stale tick workspaces from a previous run
+        self.archive_stale_tick_workspaces(&project).await;
 
         let mut tick_interval = tokio::time::interval(self.poll_interval);
 
@@ -182,6 +187,43 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         Ok(project)
     }
 
+    /// Archive any non-archived tick workspaces left over from a previous service run.
+    /// This handles the case where the service restarted and lost its in-memory state.
+    async fn archive_stale_tick_workspaces(&self, project: &Project) {
+        let pool = &self.db.pool;
+        let tasks = match Task::find_by_project_id_with_attempt_status(pool, project.id).await {
+            Ok(tasks) => tasks,
+            Err(e) => {
+                warn!("Failed to query tick tasks for cleanup: {}", e);
+                return;
+            }
+        };
+
+        for task in tasks {
+            let workspaces = match Workspace::fetch_all(pool, Some(task.id)).await {
+                Ok(ws) => ws,
+                Err(e) => {
+                    warn!(
+                        "Failed to fetch workspaces for tick task {}: {}",
+                        task.id, e
+                    );
+                    continue;
+                }
+            };
+
+            for workspace in workspaces {
+                if !workspace.archived {
+                    if let Err(e) = self.container.archive_workspace(workspace.id).await {
+                        warn!(
+                            "Failed to archive stale tick workspace {}: {}",
+                            workspace.id, e
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     async fn execute_tick(&self, repo: &Repo, project: &Project) -> Result<(), TickServiceError> {
         // Check if another tick is still running
         {
@@ -194,6 +236,16 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
 
         // Mark as running
         *self.is_running.write().await = true;
+
+        // Archive the previous tick workspace so only the latest is visible
+        if let Some(prev_id) = *self.current_workspace_id.read().await {
+            if let Err(e) = self.container.archive_workspace(prev_id).await {
+                warn!(
+                    "Failed to archive previous tick workspace {}: {}",
+                    prev_id, e
+                );
+            }
+        }
 
         // Read tick.md from the tick repo
         let tick_md_path = repo.path.join("tick.md");
@@ -270,6 +322,7 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         {
             Ok(_execution_process) => {
                 info!("Tick workspace {} started successfully", workspace.id);
+                *self.current_workspace_id.write().await = Some(workspace.id);
                 self.spawn_completion_watcher(workspace.id, repo.clone());
             }
             Err(e) => {
