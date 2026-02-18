@@ -10,8 +10,6 @@ use super::TaskServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
-    #[schemars(description = "Optional task ID to scope workspace listing")]
-    task_id: Option<Uuid>,
     #[schemars(description = "Filter by archived state")]
     archived: Option<bool>,
     #[schemars(description = "Filter by pinned state")]
@@ -30,8 +28,6 @@ struct McpListWorkspacesRequest {
 struct WorkspaceSummary {
     #[schemars(description = "Workspace ID")]
     id: String,
-    #[schemars(description = "Optional parent task ID (legacy)")]
-    task_id: Option<String>,
     #[schemars(description = "Workspace branch")]
     branch: String,
     #[schemars(description = "Whether the workspace is archived")]
@@ -83,7 +79,6 @@ impl TaskServer {
     async fn list_workspaces(
         &self,
         Parameters(McpListWorkspacesRequest {
-            task_id,
             archived,
             pinned,
             branch,
@@ -98,9 +93,6 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
-        if let Some(task_filter) = task_id {
-            workspaces.retain(|w| w.task_id == Some(task_filter));
-        }
         if let Some(archived_filter) = archived {
             workspaces.retain(|w| w.archived == archived_filter);
         }
@@ -133,7 +125,6 @@ impl TaskServer {
             .take(limit)
             .map(|workspace| WorkspaceSummary {
                 id: workspace.id.to_string(),
-                task_id: workspace.task_id.map(|id| id.to_string()),
                 branch: workspace.branch,
                 archived: workspace.archived,
                 pinned: workspace.pinned,
