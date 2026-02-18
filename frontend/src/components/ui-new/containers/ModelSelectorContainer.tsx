@@ -386,11 +386,11 @@ export function ModelSelectorContainer({
 
   if (!config) {
     return (
-      <div className="flex flex-wrap items-center gap-base">
+      <>
         <DropdownMenu>
           <DropdownMenuTriggerButton size="sm" label={loadingLabel} disabled />
         </DropdownMenu>
-      </div>
+      </>
     );
   }
 
@@ -423,7 +423,7 @@ export function ModelSelectorContainer({
   const permissionIcon = permissionMeta?.icon ?? HandIcon;
 
   return (
-    <div className="flex flex-wrap items-center gap-base">
+    <>
       <DropdownMenu>
         <DropdownMenuTriggerButton
           size="sm"
@@ -539,6 +539,6 @@ export function ModelSelectorContainer({
           </DropdownMenuContent>
         </DropdownMenu>
       )}
-    </div>
+    </>
   );
 }
