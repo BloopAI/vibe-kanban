@@ -6,6 +6,7 @@ use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
+use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,
@@ -146,26 +147,36 @@ async fn main() -> Result<(), VibeKanbanError> {
     }
 
     let proxy_router: Router = preview_proxy::router();
-    let shutdown = shutdown_signal();
+    let shutdown_token = CancellationToken::new();
 
-    let main_server = axum::serve(main_listener, app_router);
-    let proxy_server = axum::serve(proxy_listener, proxy_router);
+    let main_shutdown = shutdown_token.clone();
+    let proxy_shutdown = shutdown_token.clone();
+
+    let main_server = axum::serve(main_listener, app_router)
+        .with_graceful_shutdown(async move { main_shutdown.cancelled().await });
+    let proxy_server = axum::serve(proxy_listener, proxy_router)
+        .with_graceful_shutdown(async move { proxy_shutdown.cancelled().await });
+
+    let main_handle = tokio::spawn(async move {
+        if let Err(e) = main_server.await {
+            tracing::error!("Main server error: {}", e);
+        }
+    });
+    let proxy_handle = tokio::spawn(async move {
+        if let Err(e) = proxy_server.await {
+            tracing::error!("Preview proxy error: {}", e);
+        }
+    });
 
     tokio::select! {
-        _ = shutdown => {
+        _ = shutdown_signal() => {
             tracing::info!("Shutdown signal received");
         }
-        result = main_server.into_future() => {
-            if let Err(e) = result {
-                tracing::error!("Main server error: {}", e);
-            }
-        }
-        result = proxy_server.into_future() => {
-            if let Err(e) = result {
-                tracing::error!("Preview proxy server error: {}", e);
-            }
-        }
+        _ = main_handle => {}
+        _ = proxy_handle => {}
     }
+
+    shutdown_token.cancel();
 
     perform_cleanup_actions(&deployment).await;
 
