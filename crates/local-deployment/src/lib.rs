@@ -22,6 +22,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
+    tick::TickService,
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
@@ -199,6 +200,13 @@ impl Deployment for LocalDeployment {
             let container = container.clone();
             let rc = remote_client.clone().ok();
             PrMonitorService::spawn(db, analytics, container, rc).await;
+        }
+        {
+            let db = db.clone();
+            let git = git.clone();
+            let config = config.clone();
+            let container = container.clone();
+            TickService::spawn(db, git, config, container).await;
         }
 
         let deployment = Self {
