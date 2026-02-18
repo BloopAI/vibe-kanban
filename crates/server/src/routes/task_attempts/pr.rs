@@ -702,7 +702,6 @@ pub async fn create_workspace_from_pr(
             agent_working_dir,
         },
         workspace_id,
-        None,
     )
     .await?;
 
