@@ -53,9 +53,9 @@ interface DraftState {
 
 type DraftAction =
   | {
-    type: 'INIT_COMPLETE';
-    data: Partial<Omit<DraftState, 'phase' | 'error'>>;
-  }
+      type: 'INIT_COMPLETE';
+      data: Partial<Omit<DraftState, 'phase' | 'error'>>;
+    }
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
@@ -68,9 +68,9 @@ type DraftAction =
   | { type: 'CLEAR_LINKED_ISSUE' }
   | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string }
   | {
-    type: 'SET_EXECUTOR_CONFIG';
-    config: ExecutorConfig | null;
-  };
+      type: 'SET_EXECUTOR_CONFIG';
+      config: ExecutorConfig | null;
+    };
 
 // ============================================================================
 // Reducer
@@ -445,11 +445,11 @@ export function useCreateModeState({
       executor_config: state.executorConfig ?? null,
       linked_issue: state.linkedIssue
         ? {
-          issue_id: state.linkedIssue.issueId,
-          simple_id: state.linkedIssue.simpleId ?? '',
-          title: state.linkedIssue.title ?? '',
-          remote_project_id: state.linkedIssue.remoteProjectId,
-        }
+            issue_id: state.linkedIssue.issueId,
+            simple_id: state.linkedIssue.simpleId ?? '',
+            title: state.linkedIssue.title ?? '',
+            remote_project_id: state.linkedIssue.remoteProjectId,
+          }
         : null,
     });
   }, [
@@ -579,24 +579,9 @@ interface InitializeParams {
 }
 
 async function resolveNavPreferredRepos(
-  preferredRepos: NonNullable<CreateModeInitialState['preferredRepos']>,
-  projectId: string | null | undefined
+  preferredRepos: NonNullable<CreateModeInitialState['preferredRepos']>
 ): Promise<SelectedRepo[]> {
   const reposById = new Map<string, Repo>();
-
-  if (projectId) {
-    try {
-      const projectRepos = await projectsApi.getRepositories(projectId);
-      for (const repo of projectRepos) {
-        reposById.set(repo.id, repo);
-      }
-    } catch (e) {
-      console.error(
-        '[useCreateModeState] Failed to fetch project repos for nav state:',
-        e
-      );
-    }
-  }
 
   const missingRepoIds = preferredRepos
     .map((r) => r.repo_id)
@@ -670,8 +655,7 @@ async function initializeState({
       // Handle preferred repos + target branches (e.g., from duplicate/spin-off)
       if (navState?.preferredRepos && navState.preferredRepos.length > 0) {
         const resolvedRepos = await resolveNavPreferredRepos(
-          navState.preferredRepos,
-          navState.project_id
+          navState.preferredRepos
         );
         if (resolvedRepos.length > 0) {
           data.repos = resolvedRepos;
