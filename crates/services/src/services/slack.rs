@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::Message;
 use tracing::{error, info, warn};
 
-use crate::services::tick::{TickTrigger, TickTriggerSender};
+use crate::services::tick::{SlackContext, TickTrigger, TickTriggerSender};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SlackConfig {
@@ -82,6 +82,7 @@ struct EventPayload {
     text: Option<String>,
     user: Option<String>,
     channel: Option<String>,
+    ts: Option<String>,
 }
 
 /// Acknowledgement message sent back over WebSocket
@@ -215,7 +216,10 @@ impl SlackService {
                             cmd.user_id, cmd.channel_id, trigger_id
                         );
 
-                        if let Err(e) = tick_trigger.send(TickTrigger { trigger_id }) {
+                        if let Err(e) = tick_trigger.send(TickTrigger {
+                            trigger_id,
+                            slack_context: None,
+                        }) {
                             error!("Failed to send tick trigger from Slack: {}", e);
                         }
                     }
@@ -258,12 +262,24 @@ impl SlackService {
                                         })
                                         .unwrap_or_else(|| "slack".to_string());
 
+                                    // Build Slack context for thread replies
+                                    let slack_context = match (&event.channel, &event.ts) {
+                                        (Some(channel), Some(ts)) => Some(SlackContext {
+                                            channel: channel.clone(),
+                                            thread_ts: ts.clone(),
+                                        }),
+                                        _ => None,
+                                    };
+
                                     info!(
-                                        "Slack app_mention from user {:?} in channel {:?}: trigger={}",
-                                        event.user, event.channel, trigger_id
+                                        "Slack app_mention from user {:?} in channel {:?} (ts={:?}): trigger={}",
+                                        event.user, event.channel, event.ts, trigger_id
                                     );
 
-                                    if let Err(e) = tick_trigger.send(TickTrigger { trigger_id }) {
+                                    if let Err(e) = tick_trigger.send(TickTrigger {
+                                        trigger_id,
+                                        slack_context,
+                                    }) {
                                         error!("Failed to send tick trigger from Slack: {}", e);
                                     }
                                 }

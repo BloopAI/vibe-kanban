@@ -24,6 +24,7 @@ pub async fn trigger_tick(
 ) -> Result<ResponseJson<ApiResponse<String>>, StatusCode> {
     let trigger = TickTrigger {
         trigger_id: request.trigger_id.clone(),
+        slack_context: None,
     };
 
     deployment

@@ -56,6 +56,14 @@ enum TickServiceError {
 #[derive(Debug, Clone)]
 pub struct TickTrigger {
     pub trigger_id: String,
+    /// Optional Slack context for replying in-thread
+    pub slack_context: Option<SlackContext>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct SlackContext {
+    pub channel: String,
+    pub thread_ts: String,
 }
 
 pub type TickTriggerSender = mpsc::UnboundedSender<TickTrigger>;
@@ -124,14 +132,17 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         loop {
             tokio::select! {
                 _ = tick_interval.tick() => {
-                    let trigger_id = PERIODIC_TRIGGER.to_string();
-                    if let Err(e) = self.execute_tick(&trigger_id, &repo, &project).await {
+                    let trigger = TickTrigger {
+                        trigger_id: PERIODIC_TRIGGER.to_string(),
+                        slack_context: None,
+                    };
+                    if let Err(e) = self.execute_tick(&trigger, &repo, &project).await {
                         error!("Periodic tick execution failed: {}", e);
                     }
                 }
                 Some(trigger) = self.trigger_rx.recv() => {
                     info!("Received external tick trigger: {}", trigger.trigger_id);
-                    if let Err(e) = self.execute_tick(&trigger.trigger_id, &repo, &project).await {
+                    if let Err(e) = self.execute_tick(&trigger, &repo, &project).await {
                         error!("Triggered tick execution failed ({}): {}", trigger.trigger_id, e);
                     }
                 }
@@ -261,14 +272,16 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
 
     async fn execute_tick(
         &self,
-        trigger_id: &str,
+        trigger: &TickTrigger,
         repo: &Repo,
         project: &Project,
     ) -> Result<(), TickServiceError> {
+        let trigger_id = &trigger.trigger_id;
+
         // Check if this trigger already has a running workspace
         {
             let active = self.active_workspaces.read().await;
-            if let Some(workspace_id) = active.get(trigger_id) {
+            if let Some(workspace_id) = active.get(trigger_id.as_str()) {
                 // Check if it's actually still running
                 let has_running =
                     ExecutionProcess::has_running_non_dev_server_processes_for_workspace(
@@ -301,6 +314,19 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
                 }
                 _ => {}
             }
+        }
+
+        // Write slack_context.json if this trigger came from Slack
+        let slack_context_path = repo.path.join("slack_context.json");
+        if let Some(slack_ctx) = &trigger.slack_context {
+            if let Ok(json) = serde_json::to_string_pretty(slack_ctx) {
+                if let Err(e) = std::fs::write(&slack_context_path, json) {
+                    warn!("Failed to write slack_context.json: {}", e);
+                }
+            }
+        } else {
+            // Remove stale context from a previous Slack-triggered tick
+            let _ = std::fs::remove_file(&slack_context_path);
         }
 
         // Read tick.md from the tick repo
