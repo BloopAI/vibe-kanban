@@ -4,7 +4,9 @@ description: "Install Vibe Kanban, connect a coding agent, and go from zero to p
 sidebarTitle: "Get Started"
 ---
 
-## Install
+Follow this guide to create your first issue and orchestrate a coding agent to work on it.
+
+## Launch Vibe Kanban
 
 ```bash
 npx vibe-kanban
@@ -18,7 +20,21 @@ Starts a local server and opens in your browser. No accounts, no config files.
 
 ---
 
-## Onboarding
+## Confirm your preferences
+
+On first launch you should confirm a few basics:
+
+- What coding agent you prefer using
+- Which IDE you prefer
+- Sound notification preferences
+
+<Frame>
+  <img src="https://via.placeholder.com/1400x840.png?text=Vibe+Kanban+preferences+(coding+agent,+IDE,+notifications)" alt="Placeholder image for preferences setup: coding agent, IDE, and sound notifications." />
+</Frame>
+
+---
+
+## Sign in to Vibe Kanban
 
 On first launch you'll see a sign-in screen with two options: **Continue with GitHub** or **Continue with Google**.
 
@@ -26,10 +42,25 @@ On first launch you'll see a sign-in screen with two options: **Continue with Gi
   <img src="/images/onboarding-sign-in.png" alt="Vibe Kanban onboarding screen showing Sign in to continue with GitHub and Google buttons" />
 </Frame>
 
-
 <Info>
 If you want to skip sign-in for now, click **More options** → **I understand, continue without signing in**. You'll still be able to create workspaces, but the kanban board, issues, and team features require an account. You can sign in later from the sidebar.
 </Info>
+
+If you signed in during this step, you're already set — a personal organisation and an **Initial Project** are created automatically. You can [create a team organisation](/cloud/organizations) and [invite members](/cloud/team-members) later.
+
+If you skipped sign-in, you can sign in any time by clicking **Sign in** in the bottom-left of the sidebar.
+
+<Frame>
+  <img src="/images/sidebar-sign-in-button.png" alt="Workspace sidebar showing the Sign in button in the bottom-left corner" />
+</Frame>
+
+[Sign in](/cloud/authentication) with GitHub or Google.
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+</Frame>
+
+## Log in to a coding agent
 
 Vibe Kanban doesn't have its own AI — it orchestrates agents you already have installed. You need at least one authenticated before you start:
 
@@ -64,24 +95,6 @@ Vibe Kanban also supports **GitHub Copilot**, **Amp**, **Cursor Agent CLI**, **O
 [See all supported agents →](/supported-coding-agents)
 </Tab>
 </Tabs>
-
----
-
-## Sign in
-
-If you signed in during onboarding, you're already set — a personal organisation and an **Initial Project** are created automatically. You can [create a team organisation](/cloud/organizations) and [invite members](/cloud/team-members) later.
-
-If you skipped sign-in, you can sign in any time by clicking **Sign in** in the bottom-left of the sidebar.
-
-<Frame>
-  <img src="/images/sidebar-sign-in-button.png" alt="Workspace sidebar showing the Sign in button in the bottom-left corner" />
-</Frame>
-
-[Sign in](/cloud/authentication) with GitHub or Google.
-
-<Frame>
-  <img style={{maxHeight: "300px"}} src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
-</Frame>
 
 ---
 
