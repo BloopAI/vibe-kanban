@@ -846,6 +846,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::ControlRequest { .. } => None,
             ClaudeJson::ControlResponse { .. } => None,
             ClaudeJson::ControlCancelRequest { .. } => None,
+            ClaudeJson::RateLimitEvent { session_id, .. } => session_id.clone(),
             ClaudeJson::Unknown { .. } => None,
         }
     }
@@ -1719,7 +1720,8 @@ impl ClaudeLogProcessor {
             }
             ClaudeJson::ControlRequest { .. }
             | ClaudeJson::ControlResponse { .. }
-            | ClaudeJson::ControlCancelRequest { .. } => {}
+            | ClaudeJson::ControlCancelRequest { .. }
+            | ClaudeJson::RateLimitEvent { .. } => {}
         }
         patches
     }
@@ -2100,6 +2102,12 @@ pub enum ClaudeJson {
     },
     ControlCancelRequest {
         request_id: String,
+    },
+    RateLimitEvent {
+        #[serde(default)]
+        session_id: Option<String>,
+        #[serde(default)]
+        rate_limit_info: Option<serde_json::Value>,
     },
     // Catch-all for unknown message types
     #[serde(untagged)]
