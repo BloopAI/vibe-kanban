@@ -25,15 +25,7 @@ use crate::services::{
     container::{ContainerError, ContainerService},
 };
 
-const DEFAULT_TICK_MD_CONTENT: &str = r#"# Tick Task
-
-This file is executed periodically by the TickService.
-Edit this file to define what the coding agent should do on each tick.
-
-## Instructions
-
-Describe the task you want the agent to perform every 10 minutes.
-"#;
+const DEFAULT_TICK_MD_CONTENT: &str = include_str!("default_tick.md");
 
 const TICK_PROJECT_NAME: &str = "Tick";
 const TICK_REPO_DIR_NAME: &str = "tick-repo";
