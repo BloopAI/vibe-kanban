@@ -190,6 +190,8 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
+  const pendingRemeasureRef = useRef(false);
 
   // Get repos from workspace context to check if scripts are configured
   let repos: RepoWithTargetBranch[] = [];
@@ -276,6 +278,8 @@ export const ConversationList = forwardRef<
         scrollModifier = InitialDataScrollModifier;
       } else if (pending.addType === 'plan') {
         scrollModifier = ScrollToTopOfLastItem;
+      } else if (pending.addType === 'historic') {
+        scrollModifier = { ...ScrollToBottomModifier, purgeItemSizes: true };
       } else if (pending.addType === 'running') {
         scrollModifier = AutoScrollToBottom;
       } else {
@@ -316,6 +320,19 @@ export const ConversationList = forwardRef<
     isFirstTurn;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
+  const requestRemeasure = useCallback(() => {
+    if (pendingRemeasureRef.current) return;
+    pendingRemeasureRef.current = true;
+
+    requestAnimationFrame(() => {
+      pendingRemeasureRef.current = false;
+      const list = messageListRef.current;
+      if (!list) return;
+      const data = list.data.get();
+      if (!data.length) return;
+      list.data.replace(data, { purgeItemSizes: true });
+    });
+  }, []);
   const messageListContext = useMemo(
     () => ({
       attempt,
@@ -389,6 +406,29 @@ export const ConversationList = forwardRef<
     }),
     [channelData]
   );
+
+  useEffect(() => {
+    if (!channelData || resizeObserverRef.current) return;
+    const scroller = messageListRef.current?.scrollerElement();
+    if (!scroller) return;
+
+    let lastWidth = scroller.clientWidth;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const nextWidth = entry.contentRect.width;
+      if (nextWidth === lastWidth) return;
+      lastWidth = nextWidth;
+      requestRemeasure();
+    });
+    observer.observe(scroller);
+    resizeObserverRef.current = observer;
+
+    return () => {
+      observer.disconnect();
+      resizeObserverRef.current = null;
+    };
+  }, [channelData, requestRemeasure]);
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
