@@ -170,7 +170,12 @@ function TypeaheadMenuRoot({
   const contentStyle = useMemo(
     () =>
       ({
-        maxHeight: `${placement.maxHeight}px`,
+        // Pass maxHeight as a CSS variable so the inner ScrollArea can consume
+        // it without setting an explicit maxHeight on the PopoverContent itself.
+        // Setting maxHeight directly on the PopoverContent causes @floating-ui's
+        // ResizeObserver to fire on every recalculation, triggering a reposition
+        // cycle that manifests as the popover visually jumping during typing.
+        '--typeahead-menu-max-height': `${placement.maxHeight}px`,
       }) as CSSProperties,
     [placement.maxHeight]
   );
@@ -218,7 +223,14 @@ function TypeaheadMenuHeader({
 }
 
 function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
-  return <div className="py-half overflow-auto flex-1 min-h-0">{children}</div>;
+  return (
+    <div
+      className="py-half overflow-auto flex-1 min-h-0"
+      style={{ maxHeight: 'var(--typeahead-menu-max-height, 360px)' }}
+    >
+      {children}
+    </div>
+  );
 }
 
 function TypeaheadMenuSectionHeader({ children }: { children: ReactNode }) {
