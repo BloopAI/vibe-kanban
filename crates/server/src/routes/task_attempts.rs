@@ -1825,7 +1825,7 @@ pub struct LinkedIssueInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CreateAndStartWorkspaceRequestBody {
+pub struct CreateAndStartWorkspaceRequest {
     pub name: Option<String>,
     pub repos: Vec<WorkspaceRepoInput>,
     pub linked_issue: Option<LinkedIssueInfo>,
@@ -1918,9 +1918,9 @@ async fn import_issue_attachments(
 
 pub async fn create_and_start_workspace(
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<CreateAndStartWorkspaceRequestBody>,
+    Json(payload): Json<CreateAndStartWorkspaceRequest>,
 ) -> Result<ResponseJson<ApiResponse<CreateAndStartWorkspaceResponse>>, ApiError> {
-    let CreateAndStartWorkspaceRequestBody {
+    let CreateAndStartWorkspaceRequest {
         name,
         repos,
         linked_issue,
