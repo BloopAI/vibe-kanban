@@ -255,7 +255,6 @@ function WorkspaceSessionPanel({
                             mode: 'placeholder' as const,
                           })}
                   sessions={sessions}
-                  projectId={projectId}
                   filesChanged={workspaceSummary?.filesChanged ?? 0}
                   linesAdded={workspaceSummary?.linesAdded ?? 0}
                   linesRemoved={workspaceSummary?.linesRemoved ?? 0}
@@ -274,7 +273,6 @@ function WorkspaceSessionPanel({
 }
 
 export function ProjectRightSidebarContainer() {
-  const navigate = useNavigate();
   const { getIssue } = useProjectContext();
   const {
     issueId,
@@ -282,7 +280,6 @@ export function ProjectRightSidebarContainer() {
     draftId,
     isWorkspaceCreateMode,
     openIssue,
-    openIssueWorkspace,
     closePanel,
   } = useKanbanNavigation();
 
@@ -291,18 +288,6 @@ export function ProjectRightSidebarContainer() {
       openIssue(targetIssueId);
     },
     [openIssue]
-  );
-
-  const handleWorkspaceCreated = useCallback(
-    (createdWorkspaceId: string) => {
-      if (issueId) {
-        openIssueWorkspace(issueId, createdWorkspaceId);
-        return;
-      }
-
-      navigate(`/workspaces/${createdWorkspaceId}`);
-    },
-    [issueId, openIssueWorkspace, navigate]
   );
 
   if (isWorkspaceCreateMode && draftId) {
@@ -319,7 +304,7 @@ export function ProjectRightSidebarContainer() {
         onClose={closePanel}
       >
         <CreateModeProvider key={draftId} draftId={draftId}>
-          <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
+          <CreateChatBoxContainer />
         </CreateModeProvider>
       </WorkspaceCreatePanel>
     );

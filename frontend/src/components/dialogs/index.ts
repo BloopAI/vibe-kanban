@@ -16,33 +16,11 @@ export {
   type CreateRemoteProjectDialogProps,
   type CreateRemoteProjectResult,
 } from './org/CreateRemoteProjectDialog';
-
-// Project-related dialogs
-export {
-  ProjectFormDialog,
-  type ProjectFormDialogProps,
-  type ProjectFormDialogResult,
-} from './projects/ProjectFormDialog';
-export {
-  ProjectEditorSelectionDialog,
-  type ProjectEditorSelectionDialogProps,
-} from './projects/ProjectEditorSelectionDialog';
-
-// Task-related dialogs
-export {
-  TaskFormDialog,
-  type TaskFormDialogProps,
-} from './tasks/TaskFormDialog';
-
 export { CreatePRDialog } from './tasks/CreatePRDialog';
 export {
   EditorSelectionDialog,
   type EditorSelectionDialogProps,
 } from './tasks/EditorSelectionDialog';
-export {
-  DeleteTaskConfirmationDialog,
-  type DeleteTaskConfirmationDialogProps,
-} from './tasks/DeleteTaskConfirmationDialog';
 export {
   TagEditDialog,
   type TagEditDialogProps,
@@ -68,10 +46,6 @@ export {
   type ViewProcessesDialogProps,
 } from './tasks/ViewProcessesDialog';
 export {
-  ViewRelatedTasksDialog,
-  type ViewRelatedTasksDialogProps,
-} from './tasks/ViewRelatedTasksDialog';
-export {
   GitActionsDialog,
   type GitActionsDialogProps,
 } from './tasks/GitActionsDialog';
@@ -79,7 +53,6 @@ export {
   EditBranchNameDialog,
   type EditBranchNameDialogResult,
 } from './tasks/EditBranchNameDialog';
-export { CreateAttemptDialog } from './tasks/CreateAttemptDialog';
 export {
   StartReviewDialog,
   type StartReviewDialogProps,

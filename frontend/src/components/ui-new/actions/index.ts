@@ -62,10 +62,9 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 
-import { attemptsApi, tasksApi, repoApi } from '@/lib/api';
+import { attemptsApi, repoApi } from '@/lib/api';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
 import { attemptKeys } from '@/hooks/useAttempt';
-import { taskKeys } from '@/hooks/useTask';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
@@ -335,12 +334,10 @@ export const Actions = {
     requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       try {
-        const [workspace, firstMessage, repos] = await Promise.all([
-          getWorkspace(ctx.queryClient, workspaceId),
+        const [firstMessage, repos] = await Promise.all([
           attemptsApi.getFirstUserMessage(workspaceId),
           attemptsApi.getRepos(workspaceId),
         ]);
-        const task = await tasksApi.getById(workspace.task_id);
 
         // Find linked issue from remote workspace (synced via Electric)
         const remoteWs = ctx.remoteWorkspaces.find(
@@ -360,7 +357,6 @@ export const Actions = {
               repo_id: r.id,
               target_branch: r.target_branch,
             })),
-            project_id: task.project_id,
             linkedIssue,
           },
         });
@@ -451,7 +447,6 @@ export const Actions = {
           : null;
 
         await attemptsApi.delete(workspaceId, result.deleteBranches);
-        ctx.queryClient.invalidateQueries({ queryKey: taskKeys.all });
         ctx.queryClient.invalidateQueries({
           queryKey: workspaceSummaryKeys.all,
         });
@@ -494,14 +489,12 @@ export const Actions = {
           getWorkspace(ctx.queryClient, workspaceId),
           attemptsApi.getRepos(workspaceId),
         ]);
-        const task = await tasksApi.getById(workspace.task_id);
         ctx.navigate('/workspaces/create', {
           state: {
             preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: workspace.branch,
             })),
-            project_id: task.project_id,
           },
         });
       } catch {
@@ -969,7 +962,6 @@ export const Actions = {
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
     execute: async (ctx, workspaceId, repoId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
-      const task = await tasksApi.getById(workspace.task_id);
 
       const repos = await attemptsApi.getRepos(workspaceId);
       const repo = repos.find((r) => r.id === repoId);
@@ -986,12 +978,6 @@ export const Actions = {
 
       const result = await CreatePRDialog.show({
         attempt: workspace,
-        task: {
-          ...task,
-          has_in_progress_attempt: false,
-          last_attempt_failed: false,
-          executor: '',
-        },
         repoId,
         targetBranch: repo?.target_branch,
         issueIdentifier,

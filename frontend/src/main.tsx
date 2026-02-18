@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
-// CSS is now imported by design scope components (LegacyDesignScope, NewDesignScope)
+// CSS is imported by scope components.
 import { ClickToComponent } from 'click-to-react-component';
 import {
   QueryClient,

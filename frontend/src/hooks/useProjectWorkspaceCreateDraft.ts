@@ -18,7 +18,6 @@ export function useProjectWorkspaceCreateDraft() {
 
       const draftData: DraftWorkspaceData = {
         message: initialState.initialPrompt ?? '',
-        project_id: initialState.project_id ?? null,
         repos:
           initialState.preferredRepos?.map((repo) => ({
             repo_id: repo.repo_id,

@@ -12,6 +12,7 @@ fn generate_types_content() -> String {
 
     let decls: Vec<String> = vec![
         db::models::repo::Repo::decl(),
+        db::models::project::Project::decl(),
         db::models::repo::UpdateRepo::decl(),
         db::models::repo::SearchResult::decl(),
         db::models::repo::SearchMatchType::decl(),
@@ -131,6 +132,8 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::pr::PrCommentsResponse::decl(),
         server::routes::task_attempts::pr::GetPrCommentsError::decl(),
         server::routes::task_attempts::pr::GetPrCommentsQuery::decl(),
+        server::routes::task_attempts::CreateAndStartWorkspaceRequest::decl(),
+        server::routes::task_attempts::CreateAndStartWorkspaceResponse::decl(),
         services::services::git_host::UnifiedPrComment::decl(),
         services::services::git_host::ProviderKind::decl(),
         services::services::git_host::OpenPrInfo::decl(),

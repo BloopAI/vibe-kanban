@@ -22,7 +22,6 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
-import { useProject } from '@/contexts/ProjectContext';
 import { useApprovalForm } from '@/contexts/ApprovalFormContext';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
@@ -130,14 +129,12 @@ function DenyReasonForm({
   onChange,
   onCancel,
   onSubmit,
-  projectId,
 }: {
   isResponding: boolean;
   value: string;
   onChange: (v: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
-  projectId?: string;
 }) {
   return (
     <div className="flex flex-col gap-2 p-4">
@@ -147,7 +144,6 @@ function DenyReasonForm({
         placeholder="Let the agent know why this request was denied... Type @ to insert tags or search files."
         disabled={isResponding}
         className="min-h-[80px]"
-        projectId={projectId}
         onCmdEnter={onSubmit}
       />
       <div className="flex flex-wrap items-center justify-end gap-2">
@@ -184,8 +180,6 @@ const PendingApprovalEntry = ({
     setDenyReason,
     clear,
   } = useApprovalForm(pendingStatus.approval_id);
-
-  const { projectId } = useProject();
 
   const { enableScope, disableScope, activeScopes } = useHotkeysContext();
   const tabNav = useContext(TabNavContext);
@@ -355,7 +349,6 @@ const PendingApprovalEntry = ({
                 onChange={setDenyReason}
                 onCancel={handleCancelDeny}
                 onSubmit={handleSubmitDeny}
-                projectId={projectId}
               />
             )}
           </TooltipProvider>

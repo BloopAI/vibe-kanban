@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { useProject } from '@/contexts/ProjectContext';
 import { cn } from '@/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@/components/ui/button';
@@ -32,7 +31,6 @@ export function RetryEditorInline({
   const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
   const { data: branchStatus } = useBranchStatus(attemptId);
   const { profiles } = useUserSystem();
-  const { projectId } = useProject();
 
   const [message, setMessage] = useState(initialContent);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -143,7 +141,6 @@ export function RetryEditorInline({
           onCmdEnter={handleCmdEnter}
           onPasteFiles={handlePasteFiles}
           className={cn('min-h-[40px]', 'bg-background')}
-          projectId={projectId}
           taskAttemptId={attemptId}
         />
         {isSending && (

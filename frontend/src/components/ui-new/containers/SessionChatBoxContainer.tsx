@@ -72,8 +72,6 @@ function computeExecutionStatus(params: {
 interface SharedProps {
   /** Available sessions for this workspace */
   sessions: Session[];
-  /** Project ID for file search in typeahead */
-  projectId: string | undefined;
   /** Number of files changed in current session */
   filesChanged: number;
   /** Number of lines added */
@@ -124,7 +122,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const {
     mode,
     sessions,
-    projectId,
     filesChanged,
     linesAdded,
     linesRemoved,
@@ -765,7 +762,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       <SessionChatBox
         status="idle"
         repoIds={repoIds}
-        projectId={projectId}
         workspaceId={workspaceId}
         tokenUsageInfo={tokenUsageInfo}
         editor={{
@@ -805,7 +801,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }
       onScrollToPreviousMessage={onScrollToPreviousMessage}
       repoIds={repoIds}
-      projectId={projectId}
       workspaceId={workspaceId}
       tokenUsageInfo={tokenUsageInfo}
       editor={{

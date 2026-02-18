@@ -1,39 +1,16 @@
 import { useEffect } from 'react';
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-} from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '@/i18n';
-import { Projects } from '@/pages/Projects';
-import { ProjectTasks } from '@/pages/ProjectTasks';
-import { FullAttemptLogsPage } from '@/pages/FullAttemptLogs';
-import { Migration } from '@/pages/Migration';
-import { NormalLayout } from '@/components/layout/NormalLayout';
 import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 import { usePostHog } from 'posthog-js/react';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
-
-import {
-  AgentSettings,
-  GeneralSettings,
-  McpSettings,
-  OrganizationSettings,
-  ProjectSettings,
-  ReposSettings,
-  SettingsLayout,
-} from '@/pages/settings/';
 import { UserSystemProvider, useUserSystem } from '@/components/ConfigProvider';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import { SearchProvider } from '@/contexts/SearchContext';
 
 import { HotkeysProvider } from 'react-hotkeys-hook';
 
-import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeMode } from 'shared/types';
 import * as Sentry from '@sentry/react';
 
@@ -41,7 +18,6 @@ import { ReleaseNotesDialog } from '@/components/dialogs/global/ReleaseNotesDial
 import { ClickedElementsProvider } from './contexts/ClickedElementsProvider';
 
 // Design scope components
-import { LegacyDesignScope } from '@/components/legacy-design/LegacyDesignScope';
 import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
 import { VSCodeScope } from '@/components/ui-new/scope/VSCodeScope';
 import { TerminalProvider } from '@/contexts/TerminalContext';
@@ -123,144 +99,91 @@ function AppContent() {
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-        <SearchProvider>
-          <SentryRoutes>
+        <SentryRoutes>
+          <Route
+            path="/"
+            element={
+              <NewDesignScope>
+                <RootRedirectPage />
+              </NewDesignScope>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <NewDesignScope>
+                <LandingPage />
+              </NewDesignScope>
+            }
+          />
+          <Route
+            path="/onboarding/sign-in"
+            element={
+              <NewDesignScope>
+                <OnboardingSignInPage />
+              </NewDesignScope>
+            }
+          />
+
+          {/* ========== NEW DESIGN ROUTES ========== */}
+          {/* VS Code workspace route (standalone, no layout, no keyboard shortcuts) */}
+          <Route
+            path="/workspaces/:workspaceId/vscode"
+            element={
+              <VSCodeScope>
+                <TerminalProvider>
+                  <VSCodeWorkspacePage />
+                </TerminalProvider>
+              </VSCodeScope>
+            }
+          />
+
+          {/* Unified layout for workspaces and projects - AppBar/Navbar rendered once */}
+          <Route
+            element={
+              <NewDesignScope>
+                <TerminalProvider>
+                  <SharedAppLayout />
+                </TerminalProvider>
+              </NewDesignScope>
+            }
+          >
+            {/* Workspaces routes */}
+            <Route path="/workspaces" element={<WorkspacesLanding />} />
+            <Route path="/workspaces/create" element={<Workspaces />} />
             <Route
-              path="/"
-              element={
-                <NewDesignScope>
-                  <RootRedirectPage />
-                </NewDesignScope>
-              }
+              path="/workspaces/electric-test"
+              element={<ElectricTestPage />}
+            />
+            <Route path="/workspaces/:workspaceId" element={<Workspaces />} />
+
+            {/* Projects routes */}
+            <Route path="/projects/:projectId" element={<ProjectKanban />} />
+            <Route
+              path="/projects/:projectId/issues/new"
+              element={<ProjectKanban />}
             />
             <Route
-              path="/onboarding"
-              element={
-                <NewDesignScope>
-                  <LandingPage />
-                </NewDesignScope>
-              }
+              path="/projects/:projectId/issues/:issueId"
+              element={<ProjectKanban />}
             />
             <Route
-              path="/onboarding/sign-in"
-              element={
-                <NewDesignScope>
-                  <OnboardingSignInPage />
-                </NewDesignScope>
-              }
+              path="/projects/:projectId/issues/:issueId/workspaces/:workspaceId"
+              element={<ProjectKanban />}
+            />
+            <Route
+              path="/projects/:projectId/issues/:issueId/workspaces/create/:draftId"
+              element={<ProjectKanban />}
+            />
+            <Route
+              path="/projects/:projectId/workspaces/create/:draftId"
+              element={<ProjectKanban />}
             />
 
-            {/* ========== LEGACY DESIGN ROUTES ========== */}
-            {/* VS Code full-page logs route (outside NormalLayout for minimal UI) */}
-            <Route
-              path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId/full"
-              element={
-                <LegacyDesignScope>
-                  <FullAttemptLogsPage />
-                </LegacyDesignScope>
-              }
-            />
-
-            <Route
-              element={
-                <LegacyDesignScope>
-                  <NormalLayout />
-                </LegacyDesignScope>
-              }
-            >
-              <Route path="/local-projects" element={<Projects />} />
-              <Route path="/local-projects/:projectId" element={<Projects />} />
-              <Route path="/migration" element={<Migration />} />
-              <Route
-                path="/local-projects/:projectId/tasks"
-                element={<ProjectTasks />}
-              />
-              <Route path="/settings/*" element={<SettingsLayout />}>
-                <Route index element={<Navigate to="general" replace />} />
-                <Route path="general" element={<GeneralSettings />} />
-                <Route path="projects" element={<ProjectSettings />} />
-                <Route path="repos" element={<ReposSettings />} />
-                <Route
-                  path="organizations"
-                  element={<OrganizationSettings />}
-                />
-                <Route path="agents" element={<AgentSettings />} />
-                <Route path="mcp" element={<McpSettings />} />
-              </Route>
-              <Route
-                path="/mcp-servers"
-                element={<Navigate to="/settings/mcp" replace />}
-              />
-              <Route
-                path="/local-projects/:projectId/tasks/:taskId"
-                element={<ProjectTasks />}
-              />
-              <Route
-                path="/local-projects/:projectId/tasks/:taskId/attempts/:attemptId"
-                element={<ProjectTasks />}
-              />
-            </Route>
-
-            {/* ========== NEW DESIGN ROUTES ========== */}
-            {/* VS Code workspace route (standalone, no layout, no keyboard shortcuts) */}
-            <Route
-              path="/workspaces/:workspaceId/vscode"
-              element={
-                <VSCodeScope>
-                  <TerminalProvider>
-                    <VSCodeWorkspacePage />
-                  </TerminalProvider>
-                </VSCodeScope>
-              }
-            />
-
-            {/* Unified layout for workspaces and projects - AppBar/Navbar rendered once */}
-            <Route
-              element={
-                <NewDesignScope>
-                  <TerminalProvider>
-                    <SharedAppLayout />
-                  </TerminalProvider>
-                </NewDesignScope>
-              }
-            >
-              {/* Workspaces routes */}
-              <Route path="/workspaces" element={<WorkspacesLanding />} />
-              <Route path="/workspaces/create" element={<Workspaces />} />
-              <Route
-                path="/workspaces/electric-test"
-                element={<ElectricTestPage />}
-              />
-              <Route path="/workspaces/:workspaceId" element={<Workspaces />} />
-
-              {/* Projects routes */}
-              <Route path="/projects/:projectId" element={<ProjectKanban />} />
-              <Route
-                path="/projects/:projectId/issues/new"
-                element={<ProjectKanban />}
-              />
-              <Route
-                path="/projects/:projectId/issues/:issueId"
-                element={<ProjectKanban />}
-              />
-              <Route
-                path="/projects/:projectId/issues/:issueId/workspaces/:workspaceId"
-                element={<ProjectKanban />}
-              />
-              <Route
-                path="/projects/:projectId/issues/:issueId/workspaces/create/:draftId"
-                element={<ProjectKanban />}
-              />
-              <Route
-                path="/projects/:projectId/workspaces/create/:draftId"
-                element={<ProjectKanban />}
-              />
-
-              {/* Migration route */}
-              <Route path="/migrate" element={<MigratePage />} />
-            </Route>
-          </SentryRoutes>
-        </SearchProvider>
+            {/* Migration route */}
+            <Route path="/migrate" element={<MigratePage />} />
+          </Route>
+        </SentryRoutes>
       </ThemeProvider>
     </I18nextProvider>
   );
@@ -271,18 +194,16 @@ function App() {
     <BrowserRouter>
       <UserSystemProvider>
         <ClickedElementsProvider>
-          <ProjectProvider>
-            <HotkeysProvider
-              initiallyActiveScopes={[
-                'global',
-                'workspace',
-                'kanban',
-                'projects',
-              ]}
-            >
-              <AppContent />
-            </HotkeysProvider>
-          </ProjectProvider>
+          <HotkeysProvider
+            initiallyActiveScopes={[
+              'global',
+              'workspace',
+              'kanban',
+              'projects',
+            ]}
+          >
+            <AppContent />
+          </HotkeysProvider>
         </ClickedElementsProvider>
       </UserSystemProvider>
     </BrowserRouter>

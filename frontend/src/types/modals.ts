@@ -1,8 +1,6 @@
-import type { TaskWithAttemptStatus, Workspace } from 'shared/types';
+import type { Workspace } from 'shared/types';
 import type {
   ConfirmDialogProps,
-  DeleteTaskConfirmationDialogProps,
-  TaskFormDialogProps,
   EditorSelectionDialogProps,
 } from '@/components/dialogs';
 
@@ -12,7 +10,6 @@ declare module '@ebay/nice-modal-react' {
     // Existing modals
     'create-pr': {
       attempt: Workspace;
-      task: TaskWithAttemptStatus;
       projectId: string;
     };
 
@@ -22,9 +19,6 @@ declare module '@ebay/nice-modal-react' {
     // App flow modals
     'release-notes': void;
 
-    // Task-related modals
-    'task-form': TaskFormDialogProps;
-    'delete-task-confirmation': DeleteTaskConfirmationDialogProps;
     'editor-selection': EditorSelectionDialogProps;
   }
 }

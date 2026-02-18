@@ -1,4 +1,4 @@
-import { projectsApi, searchApi, tagsApi } from '@/lib/api';
+import { searchApi, tagsApi } from '@/lib/api';
 import type { SearchResult, Tag } from 'shared/types';
 
 interface FileSearchResult extends SearchResult {
@@ -34,8 +34,6 @@ export async function searchTagsAndFiles(
     let fileResults: SearchResult[] = [];
     if (options?.repoIds && options.repoIds.length > 0) {
       fileResults = await searchApi.searchFiles(options.repoIds, query);
-    } else if (options?.projectId) {
-      fileResults = await projectsApi.searchFiles(options.projectId, query);
     }
 
     if (fileResults.length > 0) {

@@ -6,7 +6,6 @@ import {
   NormalizedEntry,
   ToolStatus,
   type NormalizedEntryType,
-  type TaskWithAttemptStatus,
   type JsonValue,
 } from 'shared/types.ts';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -33,7 +32,6 @@ import {
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
-import { NextActionCard } from './NextActionCard';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { Button } from '@/components/ui/button';
@@ -49,7 +47,6 @@ type Props = {
   diffDeletable?: boolean;
   executionProcessId?: string;
   taskAttempt?: WorkspaceWithSession;
-  task?: TaskWithAttemptStatus;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -701,7 +698,6 @@ function DisplayConversationEntry({
   expansionKey,
   executionProcessId,
   taskAttempt,
-  task,
 }: Props) {
   const { t } = useTranslation('common');
   const isNormalizedEntry = (
@@ -905,22 +901,6 @@ function DisplayConversationEntry({
     return (
       <div className="px-4 py-2 text-sm">
         <LoadingCard />
-      </div>
-    );
-  }
-
-  if (entry.entry_type.type === 'next_action') {
-    return (
-      <div className="px-4 py-2 text-sm">
-        <NextActionCard
-          attemptId={taskAttempt?.id}
-          sessionId={taskAttempt?.session?.id}
-          containerRef={taskAttempt?.container_ref}
-          failed={entry.entry_type.failed}
-          execution_processes={entry.entry_type.execution_processes}
-          task={task}
-          needsSetup={entry.entry_type.needs_setup}
-        />
       </div>
     );
   }

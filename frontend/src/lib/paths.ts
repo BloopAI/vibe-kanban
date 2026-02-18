@@ -1,10 +1,18 @@
 export const paths = {
-  projects: () => '/local-projects',
-  projectTasks: (projectId: string) => `/local-projects/${projectId}/tasks`,
-  task: (projectId: string, taskId: string) =>
-    `/local-projects/${projectId}/tasks/${taskId}`,
-  attempt: (projectId: string, taskId: string, attemptId: string) =>
-    `/local-projects/${projectId}/tasks/${taskId}/attempts/${attemptId}`,
-  attemptFull: (projectId: string, taskId: string, attemptId: string) =>
-    `/local-projects/${projectId}/tasks/${taskId}/attempts/${attemptId}/full`,
+  projects: () => '/workspaces',
+  projectTasks: (projectId: string) => `/projects/${projectId}`,
+  task: (projectId: string, taskId: string) => {
+    void taskId;
+    return `/projects/${projectId}`;
+  },
+  attempt: (projectId: string, taskId: string, attemptId: string) => {
+    void taskId;
+    void attemptId;
+    return `/projects/${projectId}`;
+  },
+  attemptFull: (projectId: string, taskId: string, attemptId: string) => {
+    void taskId;
+    void attemptId;
+    return `/projects/${projectId}`;
+  },
 };

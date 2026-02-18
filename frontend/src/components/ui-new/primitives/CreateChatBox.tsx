@@ -44,7 +44,6 @@ interface CreateChatBoxProps {
   saveAsDefault?: SaveAsDefaultProps;
   error?: string | null;
   repoIds?: string[];
-  projectId?: string;
   repoId?: string;
   agent?: BaseCodingAgent | null;
   modelSelector?: ModelSelectorProps;
@@ -70,7 +69,6 @@ export function CreateChatBox({
   saveAsDefault,
   error,
   repoIds,
-  projectId,
   repoId,
   agent,
   modelSelector,
@@ -118,7 +116,6 @@ export function CreateChatBox({
       onCmdEnter={handleCmdEnter}
       disabled={isDisabled}
       repoIds={repoIds}
-      projectId={projectId}
       repoId={repoId}
       executor={executor.selected}
       autoFocus

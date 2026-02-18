@@ -28,7 +28,6 @@ interface WorkspacesMainProps {
   isLoading: boolean;
   containerRef: RefObject<HTMLElement | null>;
   conversationListRef: RefObject<ConversationListHandle>;
-  projectId?: string;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
   /** Callback to start new session mode */
@@ -48,7 +47,6 @@ export function WorkspacesMain({
   isLoading,
   containerRef,
   conversationListRef,
-  projectId,
   isNewSessionMode,
   onStartNewSession,
   diffStats,
@@ -116,7 +114,6 @@ export function WorkspacesMain({
                         mode: 'placeholder',
                       })}
                 sessions={sessions}
-                projectId={projectId}
                 filesChanged={diffStats?.filesChanged ?? 0}
                 linesAdded={diffStats?.linesAdded ?? 0}
                 linesRemoved={diffStats?.linesRemoved ?? 0}
