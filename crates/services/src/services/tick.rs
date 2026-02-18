@@ -333,10 +333,7 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         // periodic ticks use tick.md
         let tick_content = if let Some(slack_ctx) = &trigger.slack_context {
             // Extract the user's message from trigger_id (format: "slack:<message>")
-            let user_message = trigger_id
-                .strip_prefix("slack:")
-                .unwrap_or("")
-                .to_string();
+            let user_message = trigger_id.strip_prefix("slack:").unwrap_or("").to_string();
 
             // Read the slack skill for reference
             let slack_skill_path = repo.path.join("skills/slack.md");
@@ -374,7 +371,11 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
                 ## Available skills\n\
                 \n\
                 {}\n",
-                if user_message.is_empty() { "(no message)" } else { &user_message },
+                if user_message.is_empty() {
+                    "(no message)"
+                } else {
+                    &user_message
+                },
                 slack_ctx.channel,
                 slack_ctx.thread_ts,
                 slack_skill,
