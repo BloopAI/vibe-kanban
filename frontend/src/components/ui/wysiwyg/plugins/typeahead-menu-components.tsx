@@ -116,9 +116,16 @@ function TypeaheadMenuRoot({
   const syncPlacement = useCallback(() => {
     setPlacement((previous) => {
       const next = getPlacement(anchorEl, previous.side);
+      // Use a tolerance for maxHeight to prevent re-renders from sub-pixel
+      // anchor rect changes. Without this, tiny fluctuations in the anchor
+      // position cause maxHeight to change by 1-2px, triggering a state
+      // update → re-render → @floating-ui reposition cycle that manifests
+      // as the popover visually jumping.
+      const maxHeightStable =
+        Math.abs(next.maxHeight - previous.maxHeight) < 10;
       if (
         next.side === previous.side &&
-        next.maxHeight === previous.maxHeight &&
+        maxHeightStable &&
         next.alignOffset === previous.alignOffset
       ) {
         return previous;
