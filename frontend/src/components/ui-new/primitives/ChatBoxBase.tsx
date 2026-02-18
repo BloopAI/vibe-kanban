@@ -205,10 +205,6 @@ export function ChatBoxBase({
         {/* Footer - Controls */}
         <div className="flex items-end justify-between gap-base">
           <Toolbar className="flex-1 min-w-0 flex-wrap gap-double">
-            {footerLeft}
-            {hasFooterLeft && hasModelSelector && (
-              <span className="h-3 w-px bg-border/70" aria-hidden="true" />
-            )}
             {activeModelSelector && (
               <ModelSelectorContainer
                 agent={activeModelSelector.agent}
@@ -222,6 +218,10 @@ export function ChatBoxBase({
                 presetOptions={activeModelSelector.presetOptions}
               />
             )}
+            {hasFooterLeft && hasModelSelector && (
+              <span className="h-3 w-px bg-border/70" aria-hidden="true" />
+            )}
+            {footerLeft}
           </Toolbar>
           <div className="flex shrink-0 gap-base">{footerRight}</div>
         </div>
