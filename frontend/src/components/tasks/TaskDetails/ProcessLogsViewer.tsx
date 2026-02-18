@@ -67,7 +67,7 @@ export function ProcessLogsViewerContent({
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
+    <div className="flex-1 min-h-0">
       {logs.length === 0 && !error ? (
         <div className="p-4 text-center text-muted-foreground text-sm">
           No logs available
@@ -80,7 +80,7 @@ export function ProcessLogsViewerContent({
       ) : (
         <Virtuoso<LogEntry>
           ref={virtuosoRef}
-          className="flex-1 rounded-lg"
+          className="h-full rounded-lg"
           data={logs}
           itemContent={(index, entry) =>
             formatLogLine(entry as LogEntry, index)
