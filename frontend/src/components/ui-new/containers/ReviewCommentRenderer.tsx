@@ -7,12 +7,10 @@ import { useReview, type ReviewComment } from '@/contexts/ReviewProvider';
 
 interface ReviewCommentRendererProps {
   comment: ReviewComment;
-  projectId: string;
 }
 
 export const ReviewCommentRenderer = memo(function ReviewCommentRenderer({
   comment,
-  projectId,
 }: ReviewCommentRendererProps) {
   const { t } = useTranslation('common');
   const { deleteComment, updateComment } = useReview();
@@ -64,7 +62,6 @@ export const ReviewCommentRenderer = memo(function ReviewCommentRenderer({
           onChange={setEditText}
           placeholder={t('comments.editPlaceholder')}
           className="w-full text-sm text-normal min-h-[60px]"
-          projectId={projectId}
           onCmdEnter={handleSave}
           autoFocus
         />

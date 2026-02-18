@@ -188,7 +188,6 @@ interface PierreDiffCardProps {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
-  projectId: string;
   attemptId: string;
   className: string;
 }
@@ -209,7 +208,6 @@ export function PierreDiffCard({
   diff,
   expanded,
   onToggle,
-  projectId,
   attemptId,
   className = '',
 }: PierreDiffCardProps) {
@@ -343,7 +341,6 @@ export function PierreDiffCard({
             widgetKey={metadata.widgetKey}
             onSave={() => {}}
             onCancel={() => {}}
-            projectId={projectId}
           />
         );
       }
@@ -375,11 +372,10 @@ export function PierreDiffCard({
       return (
         <ReviewCommentRenderer
           comment={metadata.comment}
-          projectId={projectId}
         />
       );
     },
-    [projectId, filePath, addComment, diff]
+    [filePath, addComment, diff]
   );
 
   // Handle line click to add comment

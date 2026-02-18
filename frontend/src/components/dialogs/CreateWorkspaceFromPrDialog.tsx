@@ -167,10 +167,6 @@ const CreateWorkspaceFromPrDialogImpl =
               throw new Error(
                 t('createWorkspaceFromPr.errors.unsupportedProvider')
               );
-            case 'repo_not_in_project':
-              throw new Error(
-                t('createWorkspaceFromPr.errors.repoNotInProject')
-              );
             default:
               throw new Error(
                 result.message ||

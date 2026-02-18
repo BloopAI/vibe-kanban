@@ -11,7 +11,6 @@ import {
   WorkspacesMain,
   type ConversationListHandle,
 } from '@/components/ui-new/views/WorkspacesMain';
-import { useTask } from '@/hooks/useTask';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 export interface WorkspacesMainContainerHandle {
@@ -49,11 +48,6 @@ export const WorkspacesMainContainer = forwardRef<
   const containerRef = useRef<HTMLElement>(null);
   const conversationListRef = useRef<ConversationListHandle>(null);
 
-  // Fetch task to get project_id for file search
-  const { data: task } = useTask(selectedWorkspace?.task_id, {
-    enabled: !!selectedWorkspace?.task_id,
-  });
-
   // Create WorkspaceWithSession for ConversationList
   const workspaceWithSession = useMemo(() => {
     if (!selectedWorkspace) return undefined;
@@ -86,7 +80,6 @@ export const WorkspacesMainContainer = forwardRef<
       onSelectSession={onSelectSession}
       isLoading={isLoading}
       containerRef={containerRef}
-      projectId={task?.project_id}
       isNewSessionMode={isNewSessionMode}
       onStartNewSession={onStartNewSession}
       diffStats={{

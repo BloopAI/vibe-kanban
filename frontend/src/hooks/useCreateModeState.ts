@@ -8,11 +8,9 @@ import {
 } from 'shared/remote-types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
-import { useProjects } from '@/hooks/useProjects';
 import { useWorkspaceCreateDefaults } from '@/hooks/useWorkspaceCreateDefaults';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useShape } from '@/lib/electric/hooks';
-import { projectsApi } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -46,7 +44,6 @@ type Phase = 'loading' | 'ready' | 'error';
 interface DraftState {
   phase: Phase;
   error: string | null;
-  projectId: string | null;
   repos: SelectedRepo[];
   message: string;
   linkedIssue: LinkedIssue | null;
@@ -55,9 +52,9 @@ interface DraftState {
 
 type DraftAction =
   | {
-      type: 'INIT_COMPLETE';
-      data: Partial<Omit<DraftState, 'phase' | 'error'>>;
-    }
+    type: 'INIT_COMPLETE';
+    data: Partial<Omit<DraftState, 'phase' | 'error'>>;
+  }
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
@@ -70,9 +67,9 @@ type DraftAction =
   | { type: 'CLEAR_LINKED_ISSUE' }
   | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string }
   | {
-      type: 'SET_EXECUTOR_CONFIG';
-      config: ExecutorConfig | null;
-    };
+    type: 'SET_EXECUTOR_CONFIG';
+    config: ExecutorConfig | null;
+  };
 
 // ============================================================================
 // Reducer
@@ -81,7 +78,6 @@ type DraftAction =
 const draftInitialState: DraftState = {
   phase: 'loading',
   error: null,
-  projectId: null,
   repos: [],
   message: '',
   linkedIssue: null,
@@ -104,9 +100,6 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
         phase: 'error',
         error: action.error,
       };
-
-    case 'SET_PROJECT':
-      return { ...state, projectId: action.projectId };
 
     case 'ADD_REPO': {
       // Don't add duplicate repos
@@ -225,8 +218,6 @@ interface UseCreateModeStateParams {
 }
 
 interface UseCreateModeStateResult {
-  // State
-  selectedProjectId: string | null;
   repos: Repo[];
   targetBranches: Record<string, string | null>;
   hasResolvedInitialRepoDefaults: boolean;
@@ -236,9 +227,6 @@ interface UseCreateModeStateResult {
   hasInitialValue: boolean;
   linkedIssue: LinkedIssue | null;
   executorConfig: ExecutorConfig | null;
-
-  // Actions
-  setSelectedProjectId: (id: string | null) => void;
   setMessage: (message: string) => void;
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
@@ -261,7 +249,6 @@ export function useCreateModeState({
 }: UseCreateModeStateParams): UseCreateModeStateResult {
   const location = useLocation();
   const navigate = useNavigate();
-  const { projectsById, isLoading: projectsLoading } = useProjects();
   const { profiles } = useUserSystem();
   const scratchId = draftId ?? DRAFT_WORKSPACE_ID;
 
@@ -302,7 +289,6 @@ export function useCreateModeState({
   useEffect(() => {
     if (hasInitialized.current) return;
     if (scratchLoading) return;
-    if (!projectsById) return;
     if (!profiles) return;
 
     hasInitialized.current = true;
@@ -327,14 +313,11 @@ export function useCreateModeState({
     initializeState({
       navState,
       scratch,
-      initialProjectId,
-      projectsById,
       isValidProfile,
       dispatch,
     });
   }, [
     scratchLoading,
-    projectsById,
     profiles,
     initialState,
     draftId,
@@ -352,7 +335,6 @@ export function useCreateModeState({
   const hasAttemptedAutoSelect = useRef(false);
   const repoDefaultsSourceRef = useRef<string | null>(null);
   const hasAppliedRepoDefaultsRef = useRef(false);
-  const initialProjectIdRef = useRef(initialProjectId);
   const sourceWorkspaceId = useMemo(() => {
     if (state.linkedIssue) {
       return getLatestWorkspaceIdForRemoteProject({
@@ -388,47 +370,9 @@ export function useCreateModeState({
   useEffect(() => {
     if (state.phase !== 'ready') return;
     if (hasAttemptedAutoSelect.current) return;
-    if (state.projectId) return;
-    if (!projectsById || projectsLoading) return;
 
     hasAttemptedAutoSelect.current = true;
-
-    // Priority 1: Use initialProjectId from last workspace
-    if (
-      initialProjectIdRef.current &&
-      initialProjectIdRef.current in projectsById
-    ) {
-      dispatch({ type: 'SET_PROJECT', projectId: initialProjectIdRef.current });
-      return;
-    }
-
-    // Priority 2: Fetch projects via API for deterministic ordering
-    projectsApi
-      .getAll()
-      .then((projects) => {
-        if (projects.length > 0) {
-          // Pick the oldest project (last in DESC-ordered list) as a stable default
-          const oldest = projects[projects.length - 1];
-          dispatch({ type: 'SET_PROJECT', projectId: oldest.id });
-        } else {
-          // Priority 3: Create default project
-          projectsApi
-            .create({ name: 'My first project', repositories: [] })
-            .then((newProject) => {
-              dispatch({ type: 'SET_PROJECT', projectId: newProject.id });
-            })
-            .catch((e) => {
-              console.error(
-                '[useCreateModeState] Failed to create default project:',
-                e
-              );
-            });
-        }
-      })
-      .catch((e) => {
-        console.error('[useCreateModeState] Failed to fetch projects:', e);
-      });
-  }, [state.phase, state.projectId, projectsById, projectsLoading]);
+  }, [state.phase]);
 
   // ============================================================================
   // Auto-apply repos/branches defaults for fresh drafts
@@ -469,7 +413,6 @@ export function useCreateModeState({
     async (data: DraftWorkspaceData) => {
       const isEmpty =
         !data.message.trim() &&
-        !data.project_id &&
         data.repos.length === 0 &&
         !data.executor_config;
 
@@ -491,7 +434,6 @@ export function useCreateModeState({
 
     debouncedSave({
       message: state.message,
-      project_id: state.projectId,
       repos: state.repos.map((r) => ({
         repo_id: r.repo.id,
         target_branch: r.targetBranch ?? '',
@@ -499,17 +441,16 @@ export function useCreateModeState({
       executor_config: state.executorConfig ?? null,
       linked_issue: state.linkedIssue
         ? {
-            issue_id: state.linkedIssue.issueId,
-            simple_id: state.linkedIssue.simpleId ?? '',
-            title: state.linkedIssue.title ?? '',
-            remote_project_id: state.linkedIssue.remoteProjectId,
-          }
+          issue_id: state.linkedIssue.issueId,
+          simple_id: state.linkedIssue.simpleId ?? '',
+          title: state.linkedIssue.title ?? '',
+          remote_project_id: state.linkedIssue.remoteProjectId,
+        }
         : null,
     });
   }, [
     state.phase,
     state.message,
-    state.projectId,
     state.repos,
     state.linkedIssue,
     state.executorConfig,
@@ -563,10 +504,6 @@ export function useCreateModeState({
   // ============================================================================
   // Actions
   // ============================================================================
-  const setSelectedProjectId = useCallback((id: string | null) => {
-    dispatch({ type: 'SET_PROJECT', projectId: id });
-  }, []);
-
   const setMessage = useCallback((message: string) => {
     dispatch({ type: 'SET_MESSAGE', message });
   }, []);
@@ -606,7 +543,6 @@ export function useCreateModeState({
   }, []);
 
   return {
-    selectedProjectId: state.projectId,
     repos,
     targetBranches,
     hasResolvedInitialRepoDefaults,
@@ -616,7 +552,6 @@ export function useCreateModeState({
     hasInitialValue: state.phase === 'ready',
     linkedIssue: state.linkedIssue,
     executorConfig: state.executorConfig,
-    setSelectedProjectId,
     setMessage,
     addRepo,
     removeRepo,
@@ -635,8 +570,6 @@ export function useCreateModeState({
 interface InitializeParams {
   navState: CreateModeInitialState | null;
   scratch: ReturnType<typeof useScratch>['scratch'];
-  initialProjectId: string | undefined;
-  projectsById: Record<string, { id: string; created_at: unknown }>;
   isValidProfile: (config: ExecutorConfig | null) => boolean;
   dispatch: React.Dispatch<DraftAction>;
 }
@@ -644,8 +577,6 @@ interface InitializeParams {
 async function initializeState({
   navState,
   scratch,
-  initialProjectId,
-  projectsById,
   isValidProfile,
   dispatch,
 }: InitializeParams): Promise<void> {
@@ -657,11 +588,6 @@ async function initializeState({
     if (hasInitialPrompt || hasLinkedIssue) {
       const data: Partial<DraftState> = {};
       let appliedNavState = false;
-
-      // Handle project_id from navigation state (e.g., from duplicate/spin-off)
-      if (navState?.project_id && navState.project_id in projectsById) {
-        data.projectId = navState.project_id;
-      }
 
       // Handle initial prompt
       if (hasInitialPrompt) {
@@ -695,11 +621,6 @@ async function initializeState({
         restoredData.message = scratchData.message;
       }
 
-      // Restore project if it still exists
-      if (scratchData.project_id && scratchData.project_id in projectsById) {
-        restoredData.projectId = scratchData.project_id;
-      }
-
       // Restore executor config if profile is still valid
       if (
         scratchData.executor_config &&
@@ -725,7 +646,7 @@ async function initializeState({
     // Priority 3: Fresh start
     dispatch({
       type: 'INIT_COMPLETE',
-      data: { projectId: initialProjectId ?? null },
+      data: {},
     });
   } catch (e) {
     console.error('[useCreateModeState] Initialization failed:', e);

@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';
 import { useTranslation } from 'react-i18next';
 
-import { TaskWithAttemptStatus, Workspace } from 'shared/types';
+import { Workspace } from 'shared/types';
 import { Loader2 } from 'lucide-react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useAuth, useRepoBranches } from '@/hooks';
@@ -36,7 +36,6 @@ import { defineModal } from '@/lib/modals';
 
 interface CreatePRDialogProps {
   attempt: Workspace;
-  task: TaskWithAttemptStatus;
   repoId: string;
   targetBranch?: string;
   issueIdentifier?: string;
@@ -48,7 +47,7 @@ export type CreatePRDialogResult = {
 };
 
 const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
-  ({ attempt, task, repoId, targetBranch, issueIdentifier }) => {
+  ({ attempt, repoId, targetBranch, issueIdentifier }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
     const { isLoaded } = useAuth();
@@ -82,12 +81,11 @@ const CreatePRDialogImpl = NiceModal.create<CreatePRDialogProps>(
         return;
       }
 
-      const suffix = issueIdentifier ? ` ${issueIdentifier}` : '';
-      setPrTitle(`${task.title} (vibe-kanban${suffix})`);
-      setPrBody(task.description || '');
+      setPrTitle('');
+      setPrBody('');
       setError(null);
       setGhCliHelp(null);
-    }, [modal.visible, isLoaded, task, issueIdentifier]);
+    }, [modal.visible, isLoaded, issueIdentifier]);
 
     // Set default base branch when branches are loaded
     useEffect(() => {

@@ -3,7 +3,6 @@ import { ChangesPanel, ChangesPanelHandle } from '../views/ChangesPanel';
 import { sortDiffs } from '@/utils/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useTask } from '@/hooks/useTask';
 import { useScrollSyncStateMachine } from '@/hooks/useScrollSyncStateMachine';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
@@ -52,10 +51,7 @@ export function ChangesPanelContainer({
   className,
   attemptId,
 }: ChangesPanelContainerProps) {
-  const { diffs, workspace } = useWorkspaceContext();
-  const { data: task } = useTask(workspace?.task_id, {
-    enabled: !!workspace?.task_id,
-  });
+  const { diffs } = useWorkspaceContext();
   const {
     selectedFilePath,
     selectedLineNumber,
@@ -266,19 +262,6 @@ export function ChangesPanelContainer({
     scrollContainerRef.current = el instanceof HTMLElement ? el : null;
   }, []);
 
-  const projectId = task?.project_id;
-  if (!projectId) {
-    return (
-      <ChangesPanel
-        ref={changesPanelRef}
-        className={className}
-        diffItems={[]}
-        projectId=""
-        attemptId={attemptId}
-      />
-    );
-  }
-
   return (
     <ChangesPanel
       ref={changesPanelRef}
@@ -287,7 +270,6 @@ export function ChangesPanelContainer({
       onDiffRef={handleDiffRef}
       onScrollerRef={handleScrollerRef}
       onRangeChanged={handleRangeChanged}
-      projectId={projectId}
       attemptId={attemptId}
     />
   );

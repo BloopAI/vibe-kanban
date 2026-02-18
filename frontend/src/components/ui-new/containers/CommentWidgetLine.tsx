@@ -10,7 +10,6 @@ interface CommentWidgetLineProps {
   widgetKey: string;
   onSave: () => void;
   onCancel: () => void;
-  projectId: string;
 }
 
 export const CommentWidgetLine = memo(function CommentWidgetLine({
@@ -18,7 +17,6 @@ export const CommentWidgetLine = memo(function CommentWidgetLine({
   widgetKey,
   onSave,
   onCancel,
-  projectId,
 }: CommentWidgetLineProps) {
   const { t } = useTranslation('common');
   const { setDraft, addComment } = useReview();
@@ -66,7 +64,6 @@ export const CommentWidgetLine = memo(function CommentWidgetLine({
         onChange={setValue}
         placeholder={t('comments.addPlaceholder')}
         className="w-full text-normal min-h-[60px]"
-        projectId={projectId}
         onCmdEnter={handleSave}
         autoFocus
       />

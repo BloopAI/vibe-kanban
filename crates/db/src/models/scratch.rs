@@ -99,8 +99,6 @@ pub struct DraftWorkspaceLinkedIssue {
 pub struct DraftWorkspaceData {
     pub message: String,
     #[serde(default)]
-    pub project_id: Option<Uuid>,
-    #[serde(default)]
     pub repos: Vec<DraftWorkspaceRepo>,
     #[serde(default, alias = "selected_profile", alias = "config")]
     pub executor_config: Option<ExecutorConfig>,

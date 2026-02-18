@@ -11,7 +11,6 @@ import type {
 // UI-specific workspace type for sidebar display
 export interface SidebarWorkspace {
   id: string;
-  taskId: string;
   name: string;
   branch: string;
   description: string;
@@ -54,7 +53,6 @@ function toSidebarWorkspace(
 ): SidebarWorkspace {
   return {
     id: ws.id,
-    taskId: ws.task_id,
     name: ws.name ?? ws.branch, // Use name if available, fallback to branch
     branch: ws.branch,
     description: '',

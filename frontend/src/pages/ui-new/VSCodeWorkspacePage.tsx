@@ -101,7 +101,6 @@ export function VSCodeWorkspacePage() {
                             mode: 'placeholder',
                           })}
                     sessions={sessions}
-                    projectId={undefined}
                     filesChanged={diffStats.files_changed}
                     linesAdded={diffStats.lines_added}
                     linesRemoved={diffStats.lines_removed}

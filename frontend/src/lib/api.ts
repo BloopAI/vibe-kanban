@@ -8,30 +8,19 @@ import {
   ResetProcessRequest,
   EditorType,
   CreatePrApiRequest,
-  CreateTask,
-  CreateAndStartTaskRequest,
-  CreateTaskAttemptBody,
   CreateTag,
   DirectoryListResponse,
   DirectoryEntry,
   ExecutionProcess,
   ExecutionProcessRepoState,
   GitBranch,
-  Project,
   Repo,
   RepoWithTargetBranch,
-  CreateProject,
-  CreateProjectRepo,
   UpdateRepo,
   SearchMode,
   SearchResult,
-  Task,
-  TaskRelationships,
   Tag,
   TagSearchParams,
-  TaskWithAttemptStatus,
-  UpdateProject,
-  UpdateTask,
   UpdateTag,
   UserSystemInfo,
   McpServerQuery,
@@ -99,6 +88,8 @@ import {
   CreateFromPrError,
   MigrationRequest,
   MigrationResponse,
+  CreateAndStartWorkspaceRequest,
+  CreateAndStartWorkspaceResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/types/attempt';
@@ -249,137 +240,6 @@ export const handleApiResponse = async <T, E = T>(
   return result.data as T;
 };
 
-// Project Management APIs
-export const projectsApi = {
-  getAll: async (): Promise<Project[]> => {
-    const response = await makeRequest('/api/projects');
-    return handleApiResponse<Project[]>(response);
-  },
-
-  create: async (data: CreateProject): Promise<Project> => {
-    const response = await makeRequest('/api/projects', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Project>(response);
-  },
-
-  update: async (id: string, data: UpdateProject): Promise<Project> => {
-    const response = await makeRequest(`/api/projects/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Project>(response);
-  },
-
-  delete: async (id: string): Promise<void> => {
-    const response = await makeRequest(`/api/projects/${id}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
-  },
-
-  openEditor: async (
-    id: string,
-    data: OpenEditorRequest
-  ): Promise<OpenEditorResponse> => {
-    const response = await makeRequest(`/api/projects/${id}/open-editor`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<OpenEditorResponse>(response);
-  },
-
-  searchFiles: async (
-    id: string,
-    query: string,
-    mode?: SearchMode,
-    options?: RequestInit
-  ): Promise<SearchResult[]> => {
-    const modeParam = mode ? `&mode=${encodeURIComponent(mode)}` : '';
-    const response = await makeRequest(
-      `/api/projects/${id}/search?q=${encodeURIComponent(query)}${modeParam}`,
-      options
-    );
-    return handleApiResponse<SearchResult[]>(response);
-  },
-
-  getRepositories: async (projectId: string): Promise<Repo[]> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/repositories`
-    );
-    return handleApiResponse<Repo[]>(response);
-  },
-
-  addRepository: async (
-    projectId: string,
-    data: CreateProjectRepo
-  ): Promise<Repo> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/repositories`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }
-    );
-    return handleApiResponse<Repo>(response);
-  },
-
-  deleteRepository: async (
-    projectId: string,
-    repoId: string
-  ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/projects/${projectId}/repositories/${repoId}`,
-      {
-        method: 'DELETE',
-      }
-    );
-    return handleApiResponse<void>(response);
-  },
-};
-
-// Task Management APIs
-export const tasksApi = {
-  getById: async (taskId: string): Promise<Task> => {
-    const response = await makeRequest(`/api/tasks/${taskId}`);
-    return handleApiResponse<Task>(response);
-  },
-
-  create: async (data: CreateTask): Promise<Task> => {
-    const response = await makeRequest(`/api/tasks`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Task>(response);
-  },
-
-  createAndStart: async (
-    data: CreateAndStartTaskRequest
-  ): Promise<TaskWithAttemptStatus> => {
-    const response = await makeRequest(`/api/tasks/create-and-start`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<TaskWithAttemptStatus>(response);
-  },
-
-  update: async (taskId: string, data: UpdateTask): Promise<Task> => {
-    const response = await makeRequest(`/api/tasks/${taskId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Task>(response);
-  },
-
-  delete: async (taskId: string): Promise<void> => {
-    const response = await makeRequest(`/api/tasks/${taskId}`, {
-      method: 'DELETE',
-    });
-    return handleApiResponse<void>(response);
-  },
-};
-
 // Sessions API
 export const sessionsApi = {
   getByWorkspace: async (workspaceId: string): Promise<Session[]> => {
@@ -441,11 +301,12 @@ export const sessionsApi = {
 
 // Task Attempts APIs
 export const attemptsApi = {
-  getChildren: async (attemptId: string): Promise<TaskRelationships> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/children`
-    );
-    return handleApiResponse<TaskRelationships>(response);
+  createAndStart: async (data: CreateAndStartWorkspaceRequest): Promise<CreateAndStartWorkspaceResponse> => {
+    const response = await makeRequest(`/api/create-and-start`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    return handleApiResponse<CreateAndStartWorkspaceResponse>(response);
   },
 
   getAll: async (taskId: string): Promise<Workspace[]> => {
@@ -482,14 +343,6 @@ export const attemptsApi = {
       sessionsApi.getByWorkspace(attemptId),
     ]);
     return createWorkspaceWithSession(workspace, sessions[0]);
-  },
-
-  create: async (data: CreateTaskAttemptBody): Promise<Workspace> => {
-    const response = await makeRequest(`/api/task-attempts`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-    return handleApiResponse<Workspace>(response);
   },
 
   stop: async (attemptId: string): Promise<void> => {

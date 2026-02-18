@@ -7,23 +7,17 @@ import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { getSortedExecutorVariantKeys } from '@/utils/executor';
-import { splitMessageToTitleDescription } from '@/utils/string';
 import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
+import { splitMessageToTitleDescription } from '@/utils/string';
 
 function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;
 }
 
-interface CreateChatBoxContainerProps {
-  onWorkspaceCreated: ((workspaceId: string) => void) | null;
-}
-
-export function CreateChatBoxContainer({
-  onWorkspaceCreated,
-}: CreateChatBoxContainerProps) {
+export function CreateChatBoxContainer() {
   const { t } = useTranslation('common');
   const { profiles, config } = useUserSystem();
   const {
@@ -31,7 +25,6 @@ export function CreateChatBoxContainer({
     targetBranches,
     message,
     setMessage,
-    selectedProjectId,
     clearDraft,
     hasInitialValue,
     hasResolvedInitialRepoDefaults,
@@ -42,9 +35,7 @@ export function CreateChatBoxContainer({
     setExecutorConfig: setDraftConfig,
   } = useCreateMode();
 
-  const { createWorkspace } = useCreateWorkspace({
-    onWorkspaceCreated: onWorkspaceCreated ?? undefined,
-  });
+  const { createWorkspace } = useCreateWorkspace();
   const hasSelectedRepos = repos.length > 0;
   const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [hasInitializedStep, setHasInitializedStep] = useState(false);
@@ -129,9 +120,6 @@ export function CreateChatBoxContainer({
     [effectiveExecutor, selectedVariant]
   );
 
-  // Get project ID from context
-  const projectId = selectedProjectId;
-
   const repoId = repos.length === 1 ? repos[0]?.id : undefined;
   const repoSummaryLabel = useMemo(() => {
     if (repos.length === 1) {
@@ -164,8 +152,7 @@ export function CreateChatBoxContainer({
     hasSelectedRepos &&
     hasSelectedBranchesForAllRepos &&
     message.trim().length > 0 &&
-    effectiveExecutor !== null &&
-    projectId !== null;
+    effectiveExecutor !== null;
 
   const handlePresetSelect = (presetId: string | null) => {
     if (!effectiveExecutor) return;
@@ -218,22 +205,16 @@ export function CreateChatBoxContainer({
   // Handle submit
   const handleSubmit = useCallback(async () => {
     setHasAttemptedSubmit(true);
-    if (!canSubmit || !effectiveProfileId || !executorConfig || !projectId)
+    if (!canSubmit || !effectiveProfileId || !executorConfig)
       return;
 
-    const { title, description } = splitMessageToTitleDescription(message);
+    const { title } = splitMessageToTitleDescription(message);
 
     await createWorkspace.mutateAsync({
       data: {
-        task: {
-          project_id: projectId,
-          title,
-          description,
-          status: null,
-          parent_workspace_id: null,
-          image_ids: getImageIds(),
-        },
-        executor_config: executorConfig,
+        executor_profile_id: effectiveProfileId,
+        name: title,
+        prompt: message,
         repos: repos.map((r) => ({
           repo_id: r.id,
           target_branch: targetBranches[r.id]!,
@@ -260,7 +241,6 @@ export function CreateChatBoxContainer({
     canSubmit,
     effectiveProfileId,
     executorConfig,
-    projectId,
     message,
     repos,
     targetBranches,
@@ -287,20 +267,6 @@ export function CreateChatBoxContainer({
   // This ensures the editor mounts with content ready, so autoFocus works correctly
   if (!hasInitialValue) {
     return null;
-  }
-
-  // Handle case where no project exists
-  if (!projectId) {
-    return (
-      <div className="flex h-full w-full items-center justify-center">
-        <div className="text-center max-w-md">
-          <h2 className="text-lg font-medium text-high mb-2">
-            {t('projects.noProjectFound')}
-          </h2>
-          <p className="text-sm text-low">{t('projects.createFirstPrompt')}</p>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -340,7 +306,6 @@ export function CreateChatBoxContainer({
                   }}
                   error={displayError}
                   repoIds={repos.map((r) => r.id)}
-                  projectId={projectId ?? undefined}
                   agent={effectiveExecutor}
                   repoId={repoId}
                   modelSelector={{

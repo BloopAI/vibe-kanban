@@ -18,7 +18,6 @@ export function useProjectWorkspaceCreateDraft() {
 
       const draftData: DraftWorkspaceData = {
         message: initialState.initialPrompt ?? '',
-        project_id: initialState.project_id ?? null,
         repos:
           initialState.preferredRepos?.map((repo) => ({
             repo_id: repo.repo_id,
@@ -27,11 +26,11 @@ export function useProjectWorkspaceCreateDraft() {
         executor_config: null,
         linked_issue: initialState.linkedIssue
           ? {
-              issue_id: initialState.linkedIssue.issueId,
-              simple_id: initialState.linkedIssue.simpleId ?? '',
-              title: initialState.linkedIssue.title ?? '',
-              remote_project_id: initialState.linkedIssue.remoteProjectId,
-            }
+            issue_id: initialState.linkedIssue.issueId,
+            simple_id: initialState.linkedIssue.simpleId ?? '',
+            title: initialState.linkedIssue.title ?? '',
+            remote_project_id: initialState.linkedIssue.remoteProjectId,
+          }
           : null,
       };
 

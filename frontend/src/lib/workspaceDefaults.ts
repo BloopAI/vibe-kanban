@@ -1,9 +1,8 @@
-import { attemptsApi, tasksApi } from '@/lib/api';
+import { attemptsApi } from '@/lib/api';
 import type { Workspace } from 'shared/remote-types';
 
 export interface WorkspaceDefaults {
   preferredRepos: Array<{ repo_id: string; target_branch: string | null }>;
-  project_id: string;
 }
 
 /**
@@ -31,19 +30,16 @@ export async function getWorkspaceDefaults(
   }
 
   try {
-    const [repos, localWorkspace] = await Promise.all([
+    const [repos] = await Promise.all([
       attemptsApi.getRepos(mostRecent.local_workspace_id),
       attemptsApi.get(mostRecent.local_workspace_id),
     ]);
-
-    const task = await tasksApi.getById(localWorkspace.task_id);
 
     return {
       preferredRepos: repos.map((r) => ({
         repo_id: r.id,
         target_branch: r.target_branch,
       })),
-      project_id: task.project_id,
     };
   } catch (err) {
     console.warn('Failed to fetch workspace defaults:', err);

@@ -136,7 +136,7 @@ export function WorkspacesLayout() {
                 className="min-w-0 h-full overflow-hidden"
               >
                 {isCreateMode ? (
-                  <CreateChatBoxContainer onWorkspaceCreated={null} />
+                  <CreateChatBoxContainer />
                 ) : (
                   <WorkspacesMainContainer
                     ref={mainContainerRef}

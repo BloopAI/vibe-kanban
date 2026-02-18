@@ -7,7 +7,6 @@ import {
 } from '@/hooks/useCreateModeState';
 import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
 import { useUserContext } from '@/contexts/remote/UserContext';
-import { useTask } from '@/hooks/useTask';
 
 interface LinkedIssue {
   issueId: string;
@@ -17,8 +16,6 @@ interface LinkedIssue {
 }
 
 interface CreateModeContextValue {
-  selectedProjectId: string | null;
-  setSelectedProjectId: (id: string | null) => void;
   repos: Repo[];
   addRepo: (repo: Repo) => void;
   removeRepo: (repoId: string) => void;
@@ -76,12 +73,7 @@ export function CreateModeProvider({
     [activeWorkspaces, archivedWorkspaces]
   );
 
-  const { data: lastWorkspaceTask } = useTask(mostRecentWorkspace?.taskId, {
-    enabled: !!mostRecentWorkspace?.taskId,
-  });
-
   const state = useCreateModeState({
-    initialProjectId: lastWorkspaceTask?.project_id,
     initialState,
     draftId,
     lastWorkspaceId: mostRecentWorkspace?.id ?? null,
@@ -93,8 +85,6 @@ export function CreateModeProvider({
 
   const value = useMemo<CreateModeContextValue>(
     () => ({
-      selectedProjectId: state.selectedProjectId,
-      setSelectedProjectId: state.setSelectedProjectId,
       repos: state.repos,
       addRepo: state.addRepo,
       removeRepo: state.removeRepo,
@@ -113,8 +103,6 @@ export function CreateModeProvider({
       setExecutorConfig: state.setExecutorConfig,
     }),
     [
-      state.selectedProjectId,
-      state.setSelectedProjectId,
       state.repos,
       state.addRepo,
       state.removeRepo,

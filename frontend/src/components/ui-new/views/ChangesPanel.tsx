@@ -27,8 +27,6 @@ interface ChangesPanelProps {
   onScrollerRef?: (ref: HTMLElement | Window | null) => void;
   /** Callback when visible range changes (for scroll sync) */
   onRangeChanged?: (range: { startIndex: number; endIndex: number }) => void;
-  /** Project ID for @ mentions in comments */
-  projectId: string;
   /** Attempt ID for opening files in IDE */
   attemptId: string;
 }
@@ -37,13 +35,11 @@ const DiffItem = memo(function DiffItem({
   diff,
   initialExpanded = true,
   onRef,
-  projectId,
   attemptId,
 }: {
   diff: Diff;
   initialExpanded?: boolean;
   onRef?: (path: string, el: HTMLDivElement | null) => void;
-  projectId: string;
   attemptId: string;
 }) {
   const path = diff.newPath || diff.oldPath || '';
@@ -58,7 +54,6 @@ const DiffItem = memo(function DiffItem({
         diff={diff}
         expanded={expanded}
         onToggle={toggle}
-        projectId={projectId}
         attemptId={attemptId}
         className=""
       />
@@ -74,7 +69,6 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
       onDiffRef,
       onScrollerRef,
       onRangeChanged,
-      projectId,
       attemptId,
     },
     ref
@@ -143,7 +137,6 @@ export const ChangesPanel = forwardRef<ChangesPanelHandle, ChangesPanelProps>(
                 diff={diff}
                 initialExpanded={initialExpanded}
                 onRef={onDiffRef}
-                projectId={projectId}
                 attemptId={attemptId}
               />
             </div>

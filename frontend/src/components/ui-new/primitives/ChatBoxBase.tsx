@@ -49,7 +49,6 @@ interface ChatBoxBaseProps {
   onCmdEnter: () => void;
   disabled?: boolean;
   repoIds?: string[];
-  projectId?: string;
   repoId?: string;
   executor?: BaseCodingAgent | null;
   autoFocus?: boolean;
@@ -104,7 +103,6 @@ export function ChatBoxBase({
   onCmdEnter,
   disabled,
   repoIds,
-  projectId,
   repoId,
   executor,
   autoFocus,
@@ -193,7 +191,6 @@ export function ChatBoxBase({
           // with the footer when the editor is empty
           className="min-h-double max-h-[50vh] overflow-y-auto"
           repoIds={repoIds}
-          projectId={projectId}
           repoId={repoId}
           executor={executor ?? null}
           autoFocus={autoFocus}

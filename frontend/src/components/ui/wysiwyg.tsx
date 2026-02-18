@@ -72,10 +72,8 @@ type WysiwygProps = {
   disabled?: boolean;
   onPasteFiles?: (files: File[]) => void;
   className?: string;
-  /** Repo IDs for file search in typeahead (preferred over projectId) */
+  /** Repo IDs for file search in typeahead */
   repoIds?: string[];
-  /** Project ID for file search in typeahead (fallback if repoIds not provided) */
-  projectId?: string;
   /** Enables `/` command autocomplete (agent-specific). */
   executor?: BaseCodingAgent | null;
   onCmdEnter?: () => void;

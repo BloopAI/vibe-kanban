@@ -16,24 +16,21 @@ import {
   GitOperationsProvider,
   useGitOperationsError,
 } from '@/contexts/GitOperationsContext';
-import type { Merge, TaskWithAttemptStatus } from 'shared/types';
+import type { Merge } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 
 export interface GitActionsDialogProps {
   attemptId: string;
-  task?: TaskWithAttemptStatus;
 }
 
 interface GitActionsDialogContentProps {
   attempt: WorkspaceWithSession;
-  task: TaskWithAttemptStatus;
 }
 
 function GitActionsDialogContent({
   attempt,
-  task,
 }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
   const { data: branchStatus, error: branchStatusError } = useBranchStatus(
@@ -84,7 +81,6 @@ function GitActionsDialogContent({
       )}
       <GitOperations
         selectedAttempt={attempt}
-        task={task}
         branchStatus={branchStatus ?? null}
         branchStatusError={branchStatusError}
         isAttemptRunning={isAttemptRunning}
@@ -96,7 +92,7 @@ function GitActionsDialogContent({
 }
 
 const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
-  ({ attemptId, task }) => {
+  ({ attemptId }) => {
     const modal = useModal();
     const { t } = useTranslation('tasks');
 
@@ -108,7 +104,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
       }
     };
 
-    const isLoading = !attempt || !task;
+    const isLoading = !attempt;
 
     return (
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
@@ -128,7 +124,7 @@ const GitActionsDialogImpl = NiceModal.create<GitActionsDialogProps>(
                 attemptId={attempt.id}
                 sessionId={attempt.session?.id}
               >
-                <GitActionsDialogContent attempt={attempt} task={task} />
+                <GitActionsDialogContent attempt={attempt} />
               </ExecutionProcessesProvider>
             </GitOperationsProvider>
           )}
