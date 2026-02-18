@@ -84,8 +84,8 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
     }
 
     async fn start(&self) {
-        if std::env::var("TICK_SERVICE_ENABLED").as_deref() != Ok("true") {
-            info!("Tick service disabled (set TICK_SERVICE_ENABLED=true to enable)");
+        if std::env::var("TICK_SERVICE_ENABLED").as_deref() == Ok("false") {
+            info!("Tick service disabled (set TICK_SERVICE_ENABLED=false to disable)");
             return;
         }
 
