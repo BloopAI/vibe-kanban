@@ -299,13 +299,16 @@ export function useExecutorConfig({
         if ('model_id' in partial && !('reasoning_id' in partial)) {
           delete next.reasoning_id;
         }
+        const persistedConfig = executor.effective
+          ? {
+              ...next,
+              executor: executor.effective,
+              variant: variant.resolved,
+            }
+          : null;
         // Persist with current effective executor/variant
-        if (executor.effective) {
-          persist({
-            ...next,
-            executor: executor.effective,
-            variant: variant.resolved,
-          });
+        if (persistedConfig) {
+          persist(persistedConfig);
         }
         return next;
       });

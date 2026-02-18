@@ -31,19 +31,22 @@ export function useWorkspaceCreateDefaults({
   const { data, status } = useQuery<WorkspaceCreateDefaultsData>({
     queryKey: ['workspaceCreateDefaults', sourceWorkspaceId],
     enabled: queryEnabled,
+    staleTime: 0,
+    refetchOnMount: 'always',
     queryFn: async () => {
       const [repos, workspaceWithSession] = await Promise.all([
         attemptsApi.getRepos(sourceWorkspaceId!),
         attemptsApi.getWithSession(sourceWorkspaceId!),
       ]);
 
-      return {
+      const result = {
         repos,
         sourceSessionId: workspaceWithSession.session?.id ?? undefined,
         sourceSessionExecutor:
           (workspaceWithSession.session
             ?.executor as ExecutorConfig['executor']) ?? null,
       };
+      return result;
     },
   });
 

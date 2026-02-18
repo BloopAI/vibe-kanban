@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use executors::{executors::BaseCodingAgent, profile::ExecutorProfileId};
+use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -184,9 +184,13 @@ impl TaskServer {
             name: Some(title.clone()),
             repos: workspace_repos,
             linked_issue,
-            executor_profile_id: ExecutorProfileId {
+            executor_config: ExecutorConfig {
                 executor: base_executor,
                 variant,
+                model_id: None,
+                agent_id: None,
+                reasoning_id: None,
+                permission_policy: None,
             },
             prompt: workspace_prompt,
         };

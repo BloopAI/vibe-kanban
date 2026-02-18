@@ -40,7 +40,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError},
-    profile::{ExecutorConfigs, ExecutorProfileId},
+    profile::{ExecutorConfig, ExecutorConfigs, ExecutorProfileId},
 };
 use git::{ConflictOp, GitCliError, GitService, GitServiceError};
 use git2::BranchType;
@@ -1841,7 +1841,7 @@ pub struct CreateAndStartWorkspaceRequest {
     pub name: Option<String>,
     pub repos: Vec<WorkspaceRepoInput>,
     pub linked_issue: Option<LinkedIssueInfo>,
-    pub executor_profile_id: ExecutorProfileId,
+    pub executor_config: ExecutorConfig,
     pub prompt: String,
 }
 
@@ -1936,7 +1936,7 @@ pub async fn create_and_start_workspace(
         name,
         repos,
         linked_issue,
-        executor_profile_id,
+        executor_config,
         prompt,
     } = payload;
 
@@ -2038,15 +2038,15 @@ pub async fn create_and_start_workspace(
 
     let execution_process = deployment
         .container()
-        .start_workspace(&workspace, executor_profile_id.clone(), workspace_prompt)
+        .start_workspace(&workspace, executor_config.clone(), workspace_prompt)
         .await?;
 
     deployment
         .track_if_analytics_allowed(
             "workspace_created_and_started",
             serde_json::json!({
-                "executor": &executor_profile_id.executor,
-                "variant": &executor_profile_id.variant,
+                "executor": &executor_config.executor,
+                "variant": &executor_config.variant,
                 "workspace_id": workspace.id.to_string(),
             }),
         )

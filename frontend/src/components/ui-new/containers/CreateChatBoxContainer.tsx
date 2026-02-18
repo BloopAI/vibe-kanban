@@ -7,7 +7,7 @@ import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { getSortedExecutorVariantKeys } from '@/utils/executor';
-import type { ExecutorProfileId, BaseCodingAgent, Repo } from 'shared/types';
+import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '../primitives/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
@@ -118,14 +118,6 @@ export function CreateChatBoxContainer({
     onPersist: (cfg) => setDraftConfig(cfg),
   });
 
-  const effectiveProfileId = useMemo<ExecutorProfileId | null>(
-    () =>
-      effectiveExecutor
-        ? { executor: effectiveExecutor, variant: selectedVariant }
-        : null,
-    [effectiveExecutor, selectedVariant]
-  );
-
   const repoId = repos.length === 1 ? repos[0]?.id : undefined;
   const repoSummaryLabel = useMemo(() => {
     if (repos.length === 1) {
@@ -211,32 +203,34 @@ export function CreateChatBoxContainer({
   // Handle submit
   const handleSubmit = useCallback(async () => {
     setHasAttemptedSubmit(true);
-    if (!canSubmit || !effectiveProfileId || !executorConfig) return;
+    if (!canSubmit || !executorConfig) return;
 
     const { title } = splitMessageToTitleDescription(message);
+    const data = {
+      executor_config: executorConfig,
+      name: title,
+      prompt: message,
+      repos: repos.map((r) => ({
+        repo_id: r.id,
+        target_branch: targetBranches[r.id]!,
+      })),
+      linked_issue: linkedIssue
+        ? {
+            remote_project_id: linkedIssue.remoteProjectId,
+            issue_id: linkedIssue.issueId,
+          }
+        : null,
+    };
+    const linkToIssue = linkedIssue
+      ? {
+          remoteProjectId: linkedIssue.remoteProjectId,
+          issueId: linkedIssue.issueId,
+        }
+      : undefined;
 
     const result = await createWorkspace.mutateAsync({
-      data: {
-        executor_profile_id: effectiveProfileId,
-        name: title,
-        prompt: message,
-        repos: repos.map((r) => ({
-          repo_id: r.id,
-          target_branch: targetBranches[r.id]!,
-        })),
-        linked_issue: linkedIssue
-          ? {
-              remote_project_id: linkedIssue.remoteProjectId,
-              issue_id: linkedIssue.issueId,
-            }
-          : null,
-      },
-      linkToIssue: linkedIssue
-        ? {
-            remoteProjectId: linkedIssue.remoteProjectId,
-            issueId: linkedIssue.issueId,
-          }
-        : undefined,
+      data,
+      linkToIssue,
     });
 
     if (result.workspace) {
@@ -248,7 +242,6 @@ export function CreateChatBoxContainer({
     await clearDraft();
   }, [
     canSubmit,
-    effectiveProfileId,
     executorConfig,
     message,
     repos,

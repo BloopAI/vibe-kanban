@@ -341,11 +341,12 @@ export function useCreateModeState({
   const hasAppliedRepoDefaultsRef = useRef(false);
   const sourceWorkspaceId = useMemo(() => {
     if (state.linkedIssue) {
-      return getLatestWorkspaceIdForRemoteProject({
+      const linkedIssueWorkspaceId = getLatestWorkspaceIdForRemoteProject({
         remoteWorkspaces,
         localWorkspaceIds,
         remoteProjectId: state.linkedIssue.remoteProjectId,
       });
+      return linkedIssueWorkspaceId ?? lastWorkspaceId;
     }
     return lastWorkspaceId;
   }, [state.linkedIssue, remoteWorkspaces, localWorkspaceIds, lastWorkspaceId]);

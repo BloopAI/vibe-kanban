@@ -1086,7 +1086,7 @@ pub trait ContainerService {
     async fn start_workspace(
         &self,
         workspace: &Workspace,
-        executor_profile_id: ExecutorProfileId,
+        executor_config: ExecutorConfig,
         prompt: String,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
@@ -1102,14 +1102,12 @@ pub trait ContainerService {
         let session = Session::create(
             &self.db().pool,
             &CreateSession {
-                executor: Some(executor_profile_id.executor.to_string()),
+                executor: Some(executor_config.executor.to_string()),
             },
             Uuid::new_v4(),
             workspace.id,
         )
         .await?;
-
-        let executor_config = ExecutorConfig::from(executor_profile_id);
 
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
