@@ -305,7 +305,7 @@ export const attemptsApi = {
   createAndStart: async (
     data: CreateAndStartWorkspaceRequest
   ): Promise<CreateAndStartWorkspaceResponse> => {
-    const response = await makeRequest(`/api/create-and-start`, {
+    const response = await makeRequest(`/api/task-attempts/create-and-start`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
