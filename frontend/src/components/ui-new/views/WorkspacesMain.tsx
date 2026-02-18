@@ -104,20 +104,14 @@ export function WorkspacesMain({
               </div>
             )}
             {/* Chat box - always rendered to prevent flash during workspace switch */}
-            <div className="flex justify-center @container pl-px">
-              <SessionChatBoxContainer
-                {...(isNewSessionMode && workspaceWithSession
-                  ? {
-                      mode: 'new-session',
-                      workspaceId: workspaceWithSession.id,
-                      onSelectSession,
-                    }
-                  : session
+            {!isError && !isLoading && workspaceWithSession && (
+              <div className="flex justify-center @container pl-px">
+                <SessionChatBoxContainer
+                  {...(isNewSessionMode && workspaceWithSession
                     ? {
-                        mode: 'existing-session',
-                        session,
+                        mode: 'new-session',
+                        workspaceId: workspaceWithSession.id,
                         onSelectSession,
-                        onStartNewSession,
                       }
                     : {
                         mode: 'placeholder',
@@ -132,6 +126,7 @@ export function WorkspacesMain({
                 onScrollToBottom={onScrollToBottom}
               />
             </div>
+            )}
           </MessageEditProvider>
         </EntriesProvider>
       </ApprovalFeedbackProvider>

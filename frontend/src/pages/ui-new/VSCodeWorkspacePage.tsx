@@ -82,20 +82,14 @@ export function VSCodeWorkspacePage() {
                     </div>
                   </div>
                 )}
-                <div className="flex justify-center @container pl-px">
-                  <SessionChatBoxContainer
-                    {...(isNewSessionMode && workspaceWithSession
-                      ? {
-                          mode: 'new-session',
-                          workspaceId: workspaceWithSession.id,
-                          onSelectSession: selectSession,
-                        }
-                      : selectedSession
+                {!isLoading && !isError && workspaceWithSession && (
+                  <div className="flex justify-center @container pl-px">
+                    <SessionChatBoxContainer
+                      {...(isNewSessionMode && workspaceWithSession
                         ? {
-                            mode: 'existing-session',
-                            session: selectedSession,
+                            mode: 'new-session',
+                            workspaceId: workspaceWithSession.id,
                             onSelectSession: selectSession,
-                            onStartNewSession: startNewSession,
                           }
                         : {
                             mode: 'placeholder',
@@ -110,6 +104,7 @@ export function VSCodeWorkspacePage() {
                     onScrollToBottom={handleScrollToBottom}
                   />
                 </div>
+                )}
               </MessageEditProvider>
             </EntriesProvider>
           </ApprovalFeedbackProvider>
