@@ -15,6 +15,8 @@
   "license": "",
   "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
   "dependencies": {
+    "@tanstack/db": "^0.5.6",
+    "@tanstack/electric-db-collection": "^0.2.6",
     "adm-zip": "^0.5.16"
   },
   "files": [

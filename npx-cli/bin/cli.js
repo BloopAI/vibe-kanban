@@ -166,11 +166,12 @@ async function main() {
 
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
+  const isRemoteMcpMode = args.includes("--remote-mcp");
   const isReviewMode = args[0] === "review";
 
   // Non-blocking update check (skip in MCP mode, local dev mode, and when R2 URL not configured)
   const hasValidR2Url = !R2_BASE_URL.startsWith("__");
-  if (!isMcpMode && !LOCAL_DEV_MODE && hasValidR2Url) {
+  if (!isMcpMode && !isRemoteMcpMode && !LOCAL_DEV_MODE && hasValidR2Url) {
     getLatestVersion()
       .then((latest) => {
         if (latest && latest !== CLI_VERSION) {
@@ -183,7 +184,19 @@ async function main() {
       .catch(() => {});
   }
 
-  if (isMcpMode) {
+  if (isRemoteMcpMode) {
+    const scriptPath = path.join(__dirname, "remote-mcp.js");
+    const proc = spawn(process.execPath, [scriptPath], { stdio: "inherit" });
+    proc.on("exit", (c) => process.exit(c || 0));
+    proc.on("error", (e) => {
+      console.error("Remote MCP server error:", e.message);
+      process.exit(1);
+    });
+    process.on("SIGINT", () => {
+      proc.kill("SIGINT");
+    });
+    process.on("SIGTERM", () => proc.kill("SIGTERM"));
+  } else if (isMcpMode) {
     await extractAndRun("vibe-kanban-mcp", (bin) => {
       const proc = spawn(bin, [], { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
