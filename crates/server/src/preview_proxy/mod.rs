@@ -25,6 +25,20 @@ use tower_http::validate_request::ValidateRequestHeaderLayer;
 /// Set once during server startup, read by the config API.
 static PROXY_PORT: OnceLock<u16> = OnceLock::new();
 
+/// Shared HTTP client for proxying requests.
+/// Reused across all requests to leverage connection pooling per upstream host:port.
+static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
+
+/// Get or initialize the shared HTTP client.
+fn http_client() -> &'static Client {
+    HTTP_CLIENT.get_or_init(|| {
+        Client::builder()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .expect("failed to build proxy HTTP client")
+    })
+}
+
 /// Get the preview proxy port if set.
 pub fn get_proxy_port() -> Option<u16> {
     PROXY_PORT.get().copied()
@@ -164,20 +178,7 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         )
     };
 
-    let client = match Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::error!("Failed to create HTTP client: {}", e);
-            return (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Failed to create HTTP client",
-            )
-                .into_response();
-        }
-    };
+    let client = http_client();
 
     let mut req_builder = client.request(
         reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
