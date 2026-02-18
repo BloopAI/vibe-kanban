@@ -8,6 +8,7 @@ export interface UsePreviewNavigationReturn {
   navigation: NavigationState | null;
   isReady: boolean;
   handleMessage: (message: PreviewDevToolsMessage) => void;
+  reset: () => void;
 }
 
 export function usePreviewNavigation(): UsePreviewNavigationReturn {
@@ -28,10 +29,14 @@ export function usePreviewNavigation(): UsePreviewNavigationReturn {
         setIsReady(true);
         break;
       default:
-        // Ignore other message types (console, network, error) — handled by Eruda
         break;
     }
   }, []);
 
-  return { navigation, isReady, handleMessage };
+  const reset = useCallback(() => {
+    setNavigation(null);
+    setIsReady(false);
+  }, []);
+
+  return { navigation, isReady, handleMessage, reset };
 }

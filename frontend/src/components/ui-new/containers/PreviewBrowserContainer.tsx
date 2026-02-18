@@ -156,7 +156,11 @@ export function PreviewBrowserContainer({
   // Eruda DevTools state
   const [isErudaVisible, setIsErudaVisible] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const { navigation, handleMessage } = usePreviewNavigation();
+  const {
+    navigation,
+    handleMessage,
+    reset: resetNavigation,
+  } = usePreviewNavigation();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
 
   // Sync URL bar from effectiveUrl changes OR iframe navigation
@@ -437,11 +441,42 @@ export function PreviewBrowserContainer({
     const trimmed = urlInputValue.trim();
     if (!trimmed || trimmed === urlInfo?.url) {
       clearOverride();
-    } else {
-      setOverrideUrl(trimmed);
-      setImmediateLoad(true);
+      return;
     }
-  }, [urlInputValue, urlInfo?.url, clearOverride, setOverrideUrl]);
+
+    if (showIframe && iframeRef.current?.contentWindow && previewProxyPort) {
+      try {
+        const parsed = new URL(trimmed);
+        const devPort =
+          parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+
+        const currentUrl = effectiveUrl ? new URL(effectiveUrl) : null;
+        const currentPort =
+          currentUrl?.port ||
+          (currentUrl?.protocol === 'https:' ? '443' : '80');
+
+        if (currentPort != null && devPort === currentPort) {
+          const proxyPath = parsed.pathname + parsed.search + parsed.hash;
+          const proxyUrl = `http://${devPort}.localhost:${previewProxyPort}${proxyPath}`;
+          bridgeRef.current?.navigateTo(proxyUrl);
+          return;
+        }
+      } catch {
+        // fall through to iframe src change
+      }
+    }
+
+    setOverrideUrl(trimmed);
+    setImmediateLoad(true);
+  }, [
+    urlInputValue,
+    urlInfo?.url,
+    effectiveUrl,
+    showIframe,
+    previewProxyPort,
+    clearOverride,
+    setOverrideUrl,
+  ]);
 
   const handleStart = useCallback(() => {
     start();
@@ -552,6 +587,14 @@ export function PreviewBrowserContainer({
       return undefined;
     }
   }, [effectiveUrl, previewProxyPort, previewRefreshKey]);
+
+  const prevIframeUrlRef = useRef(iframeUrl);
+  useEffect(() => {
+    if (prevIframeUrlRef.current !== iframeUrl) {
+      prevIframeUrlRef.current = iframeUrl;
+      resetNavigation();
+    }
+  }, [iframeUrl, resetNavigation]);
 
   const handleEditDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;

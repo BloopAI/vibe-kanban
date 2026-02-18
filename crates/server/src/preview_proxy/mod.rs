@@ -19,6 +19,7 @@ use axum::{
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 /// Global storage for the preview proxy port once assigned.
 /// Set once during server startup, read by the config API.
@@ -441,5 +442,9 @@ pub fn router<S>() -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    Router::new().fallback(subdomain_proxy)
+    Router::new()
+        .fallback(subdomain_proxy)
+        .layer(ValidateRequestHeaderLayer::custom(
+            crate::middleware::validate_origin,
+        ))
 }
