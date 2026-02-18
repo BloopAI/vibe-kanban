@@ -5227,6 +5227,7 @@ dependencies = [
  "command-group",
  "db",
  "deployment",
+ "dotenv",
  "executors",
  "futures",
  "git",
