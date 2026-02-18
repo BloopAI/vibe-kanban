@@ -17,12 +17,6 @@ export {
   type CreateRemoteProjectResult,
 } from './org/CreateRemoteProjectDialog';
 
-// Project-related dialogs
-export {
-  ProjectFormDialog,
-  type ProjectFormDialogProps,
-  type ProjectFormDialogResult,
-} from './projects/ProjectFormDialog';
 export {
   ProjectEditorSelectionDialog,
   type ProjectEditorSelectionDialogProps,

@@ -55,7 +55,7 @@ export function MigrateFinish({
                 to={
                   project.remoteId
                     ? `/projects/${project.remoteId}?orgId=${orgId}`
-                    : `/local-projects/${project.localId}/tasks`
+                    : '/workspaces'
                 }
                 className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
               >
