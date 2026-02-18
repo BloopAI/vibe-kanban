@@ -302,6 +302,12 @@ impl StandardCodingAgentExecutor for Codex {
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
                     ModelInfo {
+                        id: "gpt-5.3-codex-spark".to_string(),
+                        name: "GPT-5.3 Codex Spark".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
                         id: "gpt-5.2-codex".to_string(),
                         name: "GPT-5.2 Codex".to_string(),
                         provider_id: None,
