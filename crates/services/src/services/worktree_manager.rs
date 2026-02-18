@@ -76,6 +76,11 @@ impl WorktreeManager {
                 let repo = Repository::open(&repo_path_owned)?;
                 let base_branch_ref =
                     GitService::find_branch(&repo, &base_branch_owned)?.into_reference();
+                // If the base branch is remote, fetch latest before branching
+                if base_branch_ref.is_remote() {
+                    let git = GitService::new();
+                    git.fetch_branch_from_remote(&repo, &base_branch_ref)?;
+                }
                 repo.branch(
                     &branch_name_owned,
                     &base_branch_ref.peel_to_commit()?,
