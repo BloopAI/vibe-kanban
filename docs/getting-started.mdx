@@ -1,6 +1,6 @@
 ---
 title: "Get Started"
-description: "Install Vibe Kanban, connect a coding agent, and ship your first task in under five minutes"
+description: "Install Vibe Kanban, connect a coding agent, and go from zero to pull request"
 sidebarTitle: "Get Started"
 ---
 
@@ -16,9 +16,25 @@ Starts a local server and opens in your browser. No accounts, no config files.
 **Requires Node.js** (LTS recommended). To use a specific port: `PORT=8080 npx vibe-kanban`
 </Info>
 
-## Connect a coding agent
+---
 
-Vibe Kanban doesn't have its own AI — it orchestrates agents you already have installed. You need at least one:
+## Onboarding
+
+On first launch you'll see a sign-in screen with two options: **Continue with GitHub** or **Continue with Google**.
+
+<Frame>
+  <img src="/images/onboarding-sign-in.png" alt="Vibe Kanban onboarding screen showing Sign in to continue with GitHub and Google buttons" />
+</Frame>
+
+Click **More options** to see what requires an account and what doesn't:
+
+<Frame>
+  <img src="/images/onboarding-more-options.png" alt="Feature comparison table showing kanban board, team collaboration, and project organisation require sign-in, while creating workspaces works without signing in" />
+</Frame>
+
+If you just want to try workspaces without an account, click **I understand, continue without signing in**. You can always sign in later from the sidebar.
+
+Vibe Kanban doesn't have its own AI — it orchestrates agents you already have installed. You need at least one authenticated before you start:
 
 <Tabs>
 <Tab title="Claude Code">
@@ -54,38 +70,95 @@ Vibe Kanban also supports **GitHub Copilot**, **Amp**, **Cursor Agent CLI**, **O
 
 ---
 
-## Your first task
+## Sign in
 
-### Create a workspace
+If you signed in during onboarding, you're already set — a personal organisation and an **Initial Project** are created automatically. You can [create a team organisation](/cloud/organizations) and [invite members](/cloud/team-members) later.
 
-Click the **+** button in the sidebar. Pick a project with at least one git repository.
+If you skipped sign-in, you can sign in any time by clicking **Sign in** in the bottom-left of the sidebar.
 
 <Frame>
-  <img src="/images/workspaces-create-new.png" alt="Create workspace dialog showing name field and project selection" />
+  <img src="/images/sidebar-sign-in-button.png" alt="Workspace sidebar showing the Sign in button in the bottom-left corner" />
 </Frame>
 
-Behind the scenes, Vibe Kanban creates a [git worktree](/workspaces/git-operations) — a separate directory with its own branch. The agent works here, completely isolated from your main branch. If you don't like what it produces, you [delete the worktree](/workspaces/managing-workspaces) and your repo is exactly as it was.
+[Sign in](/cloud/authentication) with GitHub or Google.
 
-### Pick an agent and describe your task
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+</Frame>
 
-Choose an agent from the dropdown, then describe what you want in plain language. [See all supported agents →](/supported-coding-agents)
+---
+
+## Create an issue
+
+Click **+** on any column of the [kanban board](/cloud/kanban-board) to [create an issue](/cloud/issues). Set a title, description, priority, and assignee.
+
+<Frame>
+  <img src="/images/cloud/issue-overview.png" alt="Issue creation panel with title, description, priority, and a toggle to create a workspace immediately" />
+</Frame>
+
+There's a toggle — **Create draft workspace immediately** — that creates the issue and opens a workspace for it at the same time. If you leave it off, you can attach a workspace later from the issue detail view.
+
+---
+
+## Create a workspace
+
+Click the **+** button in the sidebar. Pick a project and add your git repositories.
+
+<Frame>
+  <img src="/images/workspaces-create-new.png" alt="Create workspace dialog showing project selection, repository list, and task input" />
+</Frame>
+
+Vibe Kanban creates a [git worktree](/workspaces/git-operations) — a separate directory with its own branch, completely isolated from your main branch and from every other workspace. Choose an agent from the dropdown, describe what you want, and click **Create**.
 
 <Frame>
   <img src="/images/workspaces-agent-selection.png" alt="Agent selection dropdown showing available coding agents" />
 </Frame>
 
-```
-Add a dark mode toggle to the navbar. Use the existing
-Tailwind dark: classes. Store the preference in localStorage.
-```
-
-The agent reads your prompt and starts coding. You can watch it work in real time.
+The agent starts working immediately. You can watch the conversation in real time.
 
 <Frame>
   <img src="/images/workspaces-conversation.png" alt="Workspace conversation showing a task description and the agent working on it" />
 </Frame>
 
-### Review the changes
+[Full workspace guide →](/workspaces/creating-workspaces)
+
+---
+
+## Set setup and cleanup scripts
+
+Before the agent starts coding, you probably want dependencies installed. And when a workspace closes, you might want to stop background processes or run a formatter.
+
+Open **Settings** → **Repositories** tab, select your repository, and configure:
+
+- **Setup script** — runs before the agent starts (e.g., `npm install`)
+- **Cleanup script** — runs when the workspace closes (e.g., `npx prettier --write .`)
+- **Dev server script** — starts your dev server for the [preview panel](/workspaces/preview) (e.g., `npm run dev`)
+
+<Frame>
+  <img src="/images/settings-repositories.png" alt="Repository settings showing dev server, setup, and cleanup script configuration" />
+</Frame>
+
+[Full scripts guide →](/settings/projects-repositories)
+
+---
+
+## Start a dev server
+
+If you've configured a dev server script, click the **Play** icon in the context bar or use the [command bar](/workspaces/command-bar) (`Cmd/Ctrl + K` → "Toggle Dev Server"). The [preview panel](/workspaces/preview) opens automatically and your application loads in a built-in browser.
+
+<Frame>
+  <img style={{maxHeight: "400px"}} src="/images/workspaces-preview-panel.png" alt="Workspace showing preview panel with built-in browser displaying the application" />
+</Frame>
+
+If no dev server script is configured yet, the preview panel shows a setup prompt — click **Edit Dev Server Script**, enter your command, and hit **Save and Test**.
+
+<Frame>
+  <img style={{maxHeight: "300px"}} src="/images/workspaces-fix-dev-script.png" alt="Fix Dev Server Script dialog with script input field and Save and Test button" />
+</Frame>
+
+---
+
+## Review code
 
 As the agent writes code, the [**Changes** panel](/workspaces/changes) updates with syntax-highlighted diffs — every file modified, every line added or removed.
 
@@ -93,67 +166,23 @@ As the agent writes code, the [**Changes** panel](/workspaces/changes) updates w
   <img src="/images/workspaces-changes-panel.png" alt="Changes panel showing syntax-highlighted diffs with a file tree" />
 </Frame>
 
-Hover over any line to reveal a comment icon. Click it, type what's wrong, and the agent reads your comment and adjusts its code. You can go back and forth as many times as you need — same workflow as [reviewing a colleague's pull request](/core-features/reviewing-code-changes), except the author responds in seconds.
+Hover over any line to reveal a comment icon. Click it, type what's wrong, and the agent reads your comment and adjusts its code. You can go back and forth as many times as you need.
 
 <Frame caption="Inline comments on diffs — the agent reads these and updates its code">
   <img src="/images/workspaces-inline-comments.png" alt="Code diff with an inline review comment dialog" />
 </Frame>
 
-### Open a pull request
-
-When the code looks right, click **Open pull request** in the Git panel.
+When the code looks right, click **Open pull request** in the [Git panel](/workspaces/git-operations). Your main branch was never touched — if you spot something later, go back to the conversation and keep iterating.
 
 <Frame>
   <img src="/images/workspaces-create-pr.png" alt="Open pull request dialog showing branch and title" />
 </Frame>
 
-Your main branch was never touched. If you spot something after opening the PR, go back to the conversation and keep iterating — the PR updates automatically.
-
 <Info>
 Pull requests use the [GitHub CLI](https://cli.github.com/). If `gh` isn't installed, Vibe Kanban prompts you to set it up.
 </Info>
 
----
-
-## Cloud — for teams
-
-If you're working solo, workspaces are all you need. But teams need to know who's working on what, what's blocked, and what's ready for review. Cloud adds that layer.
-
-### Sign in
-
-Click **Login** in the sidebar. [Sign in](/cloud/authentication) with GitHub or Google. A personal organisation is created automatically.
-
-<Frame>
-  <img style={{maxHeight: "300px"}} src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
-</Frame>
-
-### Create a project
-
-Click **+ New Project** in the sidebar. You get a [kanban board](/cloud/kanban-board) with **To do**, **In progress**, **In review**, and **Done** columns.
-
-<Frame>
-  <img src="/images/cloud/project-kanban-board.png" alt="A kanban board with four status columns and issue cards" />
-</Frame>
-
-### Create issues
-
-Click **+** on any column to [create an issue](/cloud/issues). Set a title, description, priority, and assignee. There's a toggle — **Create draft workspace immediately** — that creates the issue and launches a workspace for it at the same time. Your teammate sees the issue on the board, opens the workspace, picks an agent, and starts working.
-
-<Frame>
-  <img src="/images/cloud/issue-overview.png" alt="Issue creation panel with title, description, priority, and a toggle to create a workspace immediately" />
-</Frame>
-
-### Invite your team
-
-[Create a new organisation](/cloud/organizations) from the user menu and [invite members](/cloud/team-members) by email.
-
-<Frame>
-  <img style={{maxHeight: "300px"}} src="/images/cloud/invite-member-dialog.png" alt="Invite team member dialog with email and role selection" />
-</Frame>
-
-<Card title="Cloud documentation" icon="cloud" href="/cloud/index">
-  Full guide to organisations, issues, the kanban board, filtering, and team management
-</Card>
+[Full code review guide →](/core-features/reviewing-code-changes)
 
 ---
 
@@ -164,12 +193,12 @@ Click **+** on any column to [create an issue](/cloud/issues). Set a title, desc
     Run two agents on the same task to compare output
   </Card>
 
-  <Card title="Live preview" icon="browser" href="/workspaces/preview">
-    See your app running inside the workspace as the agent makes changes
-  </Card>
-
   <Card title="Multi-repo workspaces" icon="folder-tree" href="/workspaces/multi-repo-sessions">
     Add frontend and backend repos to a single workspace
+  </Card>
+
+  <Card title="Cloud & Teams" icon="cloud" href="/cloud/index">
+    Shared projects, issues, kanban board, and team management
   </Card>
 
   <Card title="MCP servers" icon="server" href="/settings/mcp-servers">

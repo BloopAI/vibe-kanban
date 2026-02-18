@@ -20,67 +20,6 @@ One command, opens in your browser, no account needed.
 
 ---
 
-## Workspaces
-
-A [workspace](/workspaces/index) is the core unit. You get a four-panel layout: conversation with the agent on the left, code diffs on the right, plus a [git panel](/workspaces/git-operations), terminal, and [live preview](/workspaces/preview).
-
-<Frame>
-  <img src="/images/workspaces-overview.png" alt="Workspace showing the four-panel layout — sidebar, conversation, code changes, and git panel" />
-</Frame>
-
-The part that matters most is the [changes panel](/workspaces/changes). You see every file the agent modified, every line added or removed. Hover over a line and a comment icon appears — click it and write what's wrong. The agent reads your comment and adjusts the code. This back-and-forth is what turns "AI-generated code" into code you actually trust.
-
-<Frame caption="Inline comments on diffs — the agent reads these and updates its code">
-  <img src="/images/workspaces-inline-comments.png" alt="Code diff with inline review comments and an add review comment dialog" />
-</Frame>
-
-When you're satisfied, click **Open pull request** and the workspace branch becomes a PR. You can also run [multiple agents in parallel sessions](/workspaces/sessions) on the same task — useful when you want to compare how Claude Code and Codex approach the same problem.
-
----
-
-## Cloud
-
-Workspaces work great for solo developers. But if you're on a team and need to coordinate who's working on what, you need more structure.
-
-Cloud adds a shared [kanban board](/cloud/kanban-board). You create [issues](/cloud/issues) with titles, descriptions, priorities, and assignees, then drag them across **To do**, **In progress**, **In review**, and **Done** columns. Standard stuff — but the difference is every issue can have a workspace attached to it.
-
-<Frame>
-  <img src="/images/cloud/project-kanban-board.png" alt="Kanban board showing To do, In progress, In review, and Done columns with issue cards" />
-</Frame>
-
-When you create an issue, there's a toggle: **Create draft workspace immediately**. Turn it on, and Vibe Kanban creates the issue and opens a workspace for it at the same time. Your teammate sees the issue on the board, opens the workspace, picks an agent, and starts working. The kanban card updates as the workspace progresses. [Learn more about Cloud →](/cloud/index)
-
-<Frame caption="Issue creation with the option to launch a workspace immediately">
-  <img src="/images/cloud/issue-overview.png" alt="Issue creation panel with title, description, priority, assignee, and a toggle to create a workspace" />
-</Frame>
-
----
-
-## Supported agents
-
-Vibe Kanban works with ten coding agents:
-
-<CardGroup cols={2}>
-  <Card title="Claude Code" icon="https://www.vibekanban.com/images/logos/claude.svg" href="/agents/claude-code">
-    Anthropic's CLI agent
-  </Card>
-  <Card title="OpenAI Codex" icon="https://www.vibekanban.com/images/logos/openai-logo.svg" href="/agents/openai-codex">
-    OpenAI's CLI agent
-  </Card>
-  <Card title="Gemini CLI" icon="https://www.vibekanban.com/images/logos/gemini-logo.svg" href="/agents/gemini-cli">
-    Google's CLI agent
-  </Card>
-  <Card title="GitHub Copilot" icon="https://www.vibekanban.com/images/logos/github-copilot-logo.svg" href="/agents/github-copilot">
-    GitHub's CLI agent
-  </Card>
-</CardGroup>
-
-Plus **Amp**, **Cursor Agent CLI**, **OpenCode**, **Droid**, **Claude Code Router**, and **Qwen Code**. [See all agents →](/supported-coding-agents)
-
----
-
-## Where to go from here
-
 <CardGroup cols={2}>
   <Card title="Get started" icon="rocket" href="/getting-started">
     Install, connect an agent, and go from zero to pull request
@@ -94,7 +33,15 @@ Plus **Amp**, **Cursor Agent CLI**, **OpenCode**, **Droid**, **Claude Code Route
     Shared projects, issues, kanban board, and team management
   </Card>
 
+  <Card title="Supported agents" icon="robot" href="/supported-coding-agents">
+    Claude Code, Codex, Gemini CLI, GitHub Copilot, and six more
+  </Card>
+
   <Card title="Settings" icon="gear" href="/settings/general">
     Themes, default agents, git config, and MCP server connections
+  </Card>
+
+  <Card title="Self-hosting" icon="server" href="/self-hosting/deploy-docker">
+    Deploy with Docker Compose on your own infrastructure
   </Card>
 </CardGroup>
