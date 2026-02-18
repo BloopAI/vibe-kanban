@@ -28,7 +28,7 @@ impl NotificationService {
     /// Internal method to send notifications with a given config
     async fn send_notification(config: &NotificationConfig, title: &str, message: &str) {
         if config.sound_enabled {
-            Self::play_sound_notification(&config.sound_file).await;
+            Self::play_sound_notification(config).await;
         }
 
         if config.push_enabled {
@@ -37,12 +37,51 @@ impl NotificationService {
     }
 
     /// Play a system sound notification across platforms
-    async fn play_sound_notification(sound_file: &SoundFile) {
-        let file_path = match sound_file.get_path().await {
-            Ok(path) => path,
-            Err(e) => {
-                tracing::error!("Failed to create cached sound file: {}", e);
-                return;
+    async fn play_sound_notification(config: &NotificationConfig) {
+        let sound_file = &config.sound_file;
+        let file_path = if let SoundFile::Custom = sound_file {
+            match &config.custom_sound_path {
+                Some(path) if !path.is_empty() => {
+                    let path_buf = std::path::PathBuf::from(path);
+                    if path_buf.exists() {
+                        path_buf
+                    } else {
+                        tracing::error!(
+                            "Custom sound file not found at path: {}. Falling back to default.",
+                            path
+                        );
+                        match SoundFile::AbstractSound1.get_path().await {
+                            Ok(path) => path,
+                            Err(e) => {
+                                tracing::error!(
+                                    "Failed to create cached default sound file: {}",
+                                    e
+                                );
+                                return;
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    tracing::warn!(
+                        "Custom sound selected but no path provided. Falling back to default."
+                    );
+                    match SoundFile::AbstractSound1.get_path().await {
+                        Ok(path) => path,
+                        Err(e) => {
+                            tracing::error!("Failed to create cached default sound file: {}", e);
+                            return;
+                        }
+                    }
+                }
+            }
+        } else {
+            match sound_file.get_path().await {
+                Ok(path) => path,
+                Err(e) => {
+                    tracing::error!("Failed to create cached sound file: {}", e);
+                    return;
+                }
             }
         };
 
@@ -229,6 +268,19 @@ impl NotificationService {
         if !path_str.starts_with('/') {
             tracing::debug!("Using relative path as-is: {}", path_str);
             return Some(path_str.to_string());
+        }
+
+        // Handle /mnt/c/ etc style paths
+        if path_str.starts_with("/mnt/") {
+            let mut parts = path_str.splitn(4, '/');
+            parts.next(); // ""
+            parts.next(); // "mnt"
+            if let (Some(drive), Some(rest)) = (parts.next(), parts.next()) {
+                let windows_path =
+                    format!("{}:\\{}", drive.to_uppercase(), rest.replace('/', "\\"));
+                tracing::debug!("WSL /mnt path converted: {} -> {}", path_str, windows_path);
+                return Some(windows_path);
+            }
         }
 
         // Get cached WSL root path from PowerShell

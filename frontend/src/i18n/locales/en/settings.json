@@ -189,7 +189,11 @@
           "helper": "Play a sound when task attempts finish running.",
           "fileLabel": "Sound",
           "filePlaceholder": "Select sound",
-          "fileHelper": "Choose the sound to play when tasks complete. Click the volume button to preview."
+          "fileHelper": "Choose the sound to play when tasks complete. Click the volume button to preview.",
+          "customPathLabel": "Custom Sound Path",
+          "customPathPlaceholder": "e.g., /path/to/sound.wav",
+          "customPathHelper": "Full path to a local audio file (.wav, .mp3, .ogg, .m4a).",
+          "customPathError": "A file path is required"
         },
         "push": {
           "label": "Push Notifications",

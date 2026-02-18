@@ -189,7 +189,11 @@
           "helper": "任務嘗試完成執行時播放音效。",
           "fileLabel": "音效",
           "filePlaceholder": "選擇音效",
-          "fileHelper": "選擇任務完成時播放的音效。點擊音量按鈕可預覽。"
+          "fileHelper": "選擇任務完成時播放的音效。點擊音量按鈕可預覽。",
+          "customPathLabel": "自訂音效路徑",
+          "customPathPlaceholder": "例如：/path/to/sound.wav",
+          "customPathHelper": "本地音訊檔案的完整路徑（.wav, .mp3, .ogg, .m4a）。",
+          "customPathError": "必須提供檔案路徑"
         },
         "push": {
           "label": "推播通知",

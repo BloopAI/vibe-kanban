@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 use ts_rs::TS;
 use utils::{assets::SoundAssets, cache_dir};
 
@@ -199,7 +199,7 @@ impl GitHubConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, Display, PartialEq, Eq)]
 #[ts(use_ts_enum)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -211,6 +211,7 @@ pub enum SoundFile {
     CowMooing,
     PhoneVibration,
     Rooster,
+    Custom,
 }
 
 impl SoundFile {
@@ -223,25 +224,33 @@ impl SoundFile {
             SoundFile::CowMooing => "cow-mooing.wav",
             SoundFile::PhoneVibration => "phone-vibration.wav",
             SoundFile::Rooster => "rooster.wav",
+            SoundFile::Custom => "custom",
         }
     }
 
     // load the sound file from the embedded assets or cache
     pub async fn serve(&self) -> Result<rust_embed::EmbeddedFile, Error> {
-        match SoundAssets::get(self.to_filename()) {
-            Some(content) => Ok(content),
-            None => {
-                tracing::error!("Sound file not found: {}", self.to_filename());
-                Err(anyhow::anyhow!(
-                    "Sound file not found: {}",
-                    self.to_filename()
-                ))
+        match self {
+            SoundFile::Custom => Err(anyhow::anyhow!("Custom sound files cannot be served from assets")),
+            _ => match SoundAssets::get(self.to_filename()) {
+                Some(content) => Ok(content),
+                None => {
+                    tracing::error!("Sound file not found: {}", self.to_filename());
+                    Err(anyhow::anyhow!(
+                        "Sound file not found: {}",
+                        self.to_filename()
+                    ))
+                }
             }
         }
     }
     /// Get or create a cached sound file with the embedded sound data
     pub async fn get_path(&self) -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
         use std::io::Write;
+
+        if let SoundFile::Custom = self {
+            return Err("Custom sound files do not have a cached asset path".into());
+        }
 
         let filename = self.to_filename();
         let cache_dir = cache_dir();

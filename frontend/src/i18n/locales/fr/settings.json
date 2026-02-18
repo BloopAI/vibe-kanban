@@ -189,7 +189,11 @@
           "helper": "Jouer un son lorsque les tentatives de tâches sont terminées.",
           "fileLabel": "Son",
           "filePlaceholder": "Sélectionner un son",
-          "fileHelper": "Choisissez le son à jouer lorsque les tâches sont terminées. Cliquez sur le bouton volume pour prévisualiser."
+          "fileHelper": "Choisissez le son à jouer lorsque les tâches sont terminées. Cliquez sur le bouton volume pour prévisualiser.",
+          "customPathLabel": "Chemin du son personnalisé",
+          "customPathPlaceholder": "ex: /chemin/vers/le/son.wav",
+          "customPathHelper": "Chemin complet vers un fichier audio local (.wav, .mp3, .ogg, .m4a).",
+          "customPathError": "Un chemin de fichier est requis"
         },
         "push": {
           "label": "Notifications push",

@@ -189,7 +189,11 @@
           "helper": "任务尝试完成运行时播放声音。",
           "fileLabel": "声音",
           "filePlaceholder": "选择声音",
-          "fileHelper": "选择任务完成时播放的声音。点击音量按钮预览。"
+          "fileHelper": "选择任务完成时播放的声音。点击音量按钮预览。",
+          "customPathLabel": "自定义声音路径",
+          "customPathPlaceholder": "例如：/path/to/sound.wav",
+          "customPathHelper": "本地音频文件的完整路径（.wav, .mp3, .ogg, .m4a）。",
+          "customPathError": "必须提供文件路径"
         },
         "push": {
           "label": "推送通知",
