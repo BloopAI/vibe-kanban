@@ -69,7 +69,7 @@ interface ChatBoxBaseProps {
   // Footer right content (action buttons)
   footerRight: ReactNode;
 
-  // Model selector (rendered above editor)
+  // Model selector (rendered with footer controls)
   modelSelector?: ChatBoxModelSelector;
 
   // Banner content (queued message indicator, feedback mode indicator)
@@ -126,6 +126,9 @@ export function ChatBoxBase({
   const { config } = useUserSystem();
 
   const isDragActive = dropzone?.isDragActive ?? false;
+  const activeModelSelector = modelSelector ?? null;
+  const hasModelSelector = Boolean(activeModelSelector);
+  const hasFooterLeft = Boolean(footerLeft);
 
   return (
     <div
@@ -178,21 +181,6 @@ export function ChatBoxBase({
 
       {/* Editor area */}
       <div className="flex flex-col gap-plusfifty px-base py-base rounded-md">
-        {modelSelector && (
-          <div>
-            <ModelSelectorContainer
-              agent={modelSelector.agent}
-              workspaceId={modelSelector.workspaceId}
-              onAdvancedSettings={modelSelector.onAdvancedSettings}
-              presets={modelSelector.presets}
-              selectedPreset={modelSelector.selectedPreset}
-              onPresetSelect={modelSelector.onPresetSelect}
-              onOverrideChange={modelSelector.onOverrideChange}
-              executorConfig={modelSelector.executorConfig}
-              presetOptions={modelSelector.presetOptions}
-            />
-          </div>
-        )}
         <WYSIWYGEditor
           key={focusKey}
           placeholder={placeholder}
@@ -215,9 +203,27 @@ export function ChatBoxBase({
         />
 
         {/* Footer - Controls */}
-        <div className="flex items-end justify-between">
-          <Toolbar className="flex-1 gap-double">{footerLeft}</Toolbar>
-          <div className="flex gap-base">{footerRight}</div>
+        <div className="flex items-end justify-between gap-base">
+          <Toolbar className="flex-1 min-w-0 flex-wrap gap-double">
+            {footerLeft}
+            {hasFooterLeft && hasModelSelector && (
+              <span className="h-3 w-px bg-border/70" aria-hidden="true" />
+            )}
+            {activeModelSelector && (
+              <ModelSelectorContainer
+                agent={activeModelSelector.agent}
+                workspaceId={activeModelSelector.workspaceId}
+                onAdvancedSettings={activeModelSelector.onAdvancedSettings}
+                presets={activeModelSelector.presets}
+                selectedPreset={activeModelSelector.selectedPreset}
+                onPresetSelect={activeModelSelector.onPresetSelect}
+                onOverrideChange={activeModelSelector.onOverrideChange}
+                executorConfig={activeModelSelector.executorConfig}
+                presetOptions={activeModelSelector.presetOptions}
+              />
+            )}
+          </Toolbar>
+          <div className="flex shrink-0 gap-base">{footerRight}</div>
         </div>
       </div>
     </div>
