@@ -7460,6 +7460,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
+ "tokio-tungstenite 0.24.0",
  "tokio-util",
  "tracing",
  "ts-rs 11.0.1",

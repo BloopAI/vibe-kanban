@@ -26,6 +26,7 @@ use crate::services::{
 };
 
 const DEFAULT_TICK_MD_CONTENT: &str = include_str!("default_tick.md");
+const DEFAULT_SLACK_SKILL_CONTENT: &str = include_str!("default_slack_skill.md");
 
 const TICK_PROJECT_NAME: &str = "Tick";
 const TICK_REPO_DIR_NAME: &str = "tick-repo";
@@ -150,10 +151,22 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
             let tick_md_path = tick_repo_path.join("tick.md");
             std::fs::write(&tick_md_path, DEFAULT_TICK_MD_CONTENT)?;
 
-            // Commit the tick.md file
-            self.git.commit(&tick_repo_path, "Add default tick.md")?;
+            // Write skills directory with slack.md
+            let skills_dir = tick_repo_path.join("skills");
+            std::fs::create_dir_all(&skills_dir)?;
+            std::fs::write(skills_dir.join("slack.md"), DEFAULT_SLACK_SKILL_CONTENT)?;
 
-            info!("Tick repo initialized with default tick.md");
+            // Also copy slack.json into the tick repo if it exists so the agent can read it
+            let slack_config_path = utils::assets::asset_dir().join("slack.json");
+            if slack_config_path.exists() {
+                std::fs::copy(&slack_config_path, tick_repo_path.join("slack.json"))?;
+            }
+
+            // Commit the tick.md file
+            self.git
+                .commit(&tick_repo_path, "Add default tick.md and skills")?;
+
+            info!("Tick repo initialized with default tick.md and skills");
         }
 
         // Register/find repo in DB

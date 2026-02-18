@@ -22,6 +22,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
+    slack::{SlackConfig, SlackService},
     tick::{TickService, TickTriggerSender},
     worktree_manager::WorktreeManager,
 };
@@ -209,6 +210,14 @@ impl Deployment for LocalDeployment {
             let container = container.clone();
             TickService::spawn(db, git, config, container).await
         };
+
+        // Start Slack Socket Mode listener if configured
+        if let Some(slack_config) = SlackConfig::load() {
+            tracing::info!("Slack integration configured, starting Socket Mode listener");
+            SlackService::spawn(slack_config, tick_trigger.clone());
+        } else {
+            tracing::info!("No Slack config found, Slack integration disabled");
+        }
 
         let deployment = Self {
             config,
