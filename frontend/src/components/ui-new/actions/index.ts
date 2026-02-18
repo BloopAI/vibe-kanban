@@ -489,8 +489,6 @@ export const Actions = {
           getWorkspace(ctx.queryClient, workspaceId),
           attemptsApi.getRepos(workspaceId),
         ]);
-        const task = await tasksApi.getById(workspace.task_id);
-
         const remoteWs = ctx.remoteWorkspaces.find(
           (w) => w.local_workspace_id === workspaceId
         );
@@ -506,7 +504,6 @@ export const Actions = {
               repo_id: r.id,
               target_branch: workspace.branch,
             })),
-            project_id: task.project_id,
             linkedIssue,
           },
         });
