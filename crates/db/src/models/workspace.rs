@@ -289,7 +289,6 @@ impl Workspace {
         pool: &SqlitePool,
         data: &CreateWorkspace,
         id: Uuid,
-        task_id: Option<Uuid>,
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
@@ -297,7 +296,7 @@ impl Workspace {
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
             id,
-            task_id,
+            Option::<Uuid>::None,
             Option::<String>::None,
             data.branch,
             data.agent_working_dir,

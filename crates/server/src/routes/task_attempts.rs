@@ -363,7 +363,7 @@ pub struct PushTaskAttemptRequest {
 }
 
 /// Resolves the best available vibe-kanban identifier for commit messages.
-/// Priority: remote issue simple_id > remote issue UUID > workspace UUID section.
+/// Priority: remote issue simple_id > remote issue UUID > local workspace UUID.
 async fn resolve_vibe_kanban_identifier(
     deployment: &DeploymentImpl,
     local_workspace_id: Uuid,
@@ -378,12 +378,7 @@ async fn resolve_vibe_kanban_identifier(
         }
         return issue_id.to_string();
     }
-    let ws_uuid_str = local_workspace_id.to_string();
-    ws_uuid_str
-        .split('-')
-        .next()
-        .unwrap_or(&ws_uuid_str)
-        .to_string()
+    local_workspace_id.to_string()
 }
 
 #[axum::debug_handler]
@@ -1830,15 +1825,31 @@ pub struct LinkedIssueInfo {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-pub struct StartWorkspaceRequest {
+pub struct CreateAndStartWorkspaceRequestBody {
     pub name: Option<String>,
-    pub executor_profile_id: ExecutorProfileId,
     pub repos: Vec<WorkspaceRepoInput>,
     pub linked_issue: Option<LinkedIssueInfo>,
+    pub executor_profile_id: ExecutorProfileId,
+    pub prompt: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CreateAndStartWorkspaceResponse {
+    pub workspace: Workspace,
+    pub execution_process: ExecutionProcess,
 }
 
 struct ImportedImage {
     image_id: Uuid,
+}
+
+fn normalize_prompt(prompt: &str) -> Option<String> {
+    let trimmed = prompt.trim();
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed.to_string())
+    }
 }
 
 /// Downloads attachments from a remote issue and stores them in the local cache.
@@ -1905,11 +1916,25 @@ async fn import_issue_attachments(
     Ok(imported)
 }
 
-pub async fn start_workspace(
+pub async fn create_and_start_workspace(
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<StartWorkspaceRequest>,
-) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
-    if payload.repos.is_empty() {
+    Json(payload): Json<CreateAndStartWorkspaceRequestBody>,
+) -> Result<ResponseJson<ApiResponse<CreateAndStartWorkspaceResponse>>, ApiError> {
+    let CreateAndStartWorkspaceRequestBody {
+        name,
+        repos,
+        linked_issue,
+        executor_profile_id,
+        prompt,
+    } = payload;
+
+    let workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
+        ApiError::BadRequest(
+            "A workspace prompt is required. Provide a non-empty `prompt`.".to_string(),
+        )
+    })?;
+
+    if repos.is_empty() {
         return Err(ApiError::BadRequest(
             "At least one repository is required".to_string(),
         ));
@@ -1918,7 +1943,7 @@ pub async fn start_workspace(
     let pool = &deployment.db().pool;
 
     let workspace_id = Uuid::new_v4();
-    let branch_label = payload.name.as_deref().unwrap_or("workspace");
+    let branch_label = name.as_deref().unwrap_or("workspace");
     let git_branch_name = deployment
         .container()
         .git_branch_from_workspace(&workspace_id, branch_label)
@@ -1927,8 +1952,8 @@ pub async fn start_workspace(
     // Compute agent_working_dir based on repo count:
     // - Single repo: join repo name with default_working_dir (if set), or just repo name
     // - Multiple repos: use None (agent runs in workspace root)
-    let agent_working_dir = if payload.repos.len() == 1 {
-        let repo = Repo::find_by_id(pool, payload.repos[0].repo_id)
+    let agent_working_dir = if repos.len() == 1 {
+        let repo = Repo::find_by_id(pool, repos[0].repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
         match repo.default_working_dir {
@@ -1949,18 +1974,16 @@ pub async fn start_workspace(
             agent_working_dir,
         },
         workspace_id,
-        None,
     )
     .await?;
 
     // Set workspace name if provided
-    if let Some(name) = &payload.name {
+    if let Some(name) = &name {
         Workspace::update(pool, workspace.id, None, None, Some(name)).await?;
         workspace.name = Some(name.clone());
     }
 
-    let workspace_repos: Vec<CreateWorkspaceRepo> = payload
-        .repos
+    let workspace_repos: Vec<CreateWorkspaceRepo> = repos
         .iter()
         .map(|r| CreateWorkspaceRepo {
             repo_id: r.repo_id,
@@ -1970,7 +1993,7 @@ pub async fn start_workspace(
     WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
 
     // Import images from linked remote issue so they're available in the workspace
-    if let Some(linked_issue) = &payload.linked_issue
+    if let Some(linked_issue) = &linked_issue
         && let Ok(client) = deployment.remote_client()
     {
         match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await {
@@ -1999,27 +2022,30 @@ pub async fn start_workspace(
         }
     }
 
-    if let Err(err) = deployment
+    tracing::info!("Created workspace {}", workspace.id);
+
+    let execution_process = deployment
         .container()
-        .start_workspace(&workspace, payload.executor_profile_id.clone(), None)
-        .await
-    {
-        tracing::error!("Failed to start workspace: {}", err);
-    }
+        .start_workspace(&workspace, executor_profile_id.clone(), workspace_prompt)
+        .await?;
 
     deployment
         .track_if_analytics_allowed(
-            "workspace_started",
+            "workspace_created_and_started",
             serde_json::json!({
-                "executor": &payload.executor_profile_id.executor,
-                "variant": &payload.executor_profile_id.variant,
+                "executor": &executor_profile_id.executor,
+                "variant": &executor_profile_id.variant,
                 "workspace_id": workspace.id.to_string(),
             }),
         )
         .await;
 
-    tracing::info!("Started workspace {}", workspace.id);
-    Ok(ResponseJson(ApiResponse::success(workspace)))
+    Ok(ResponseJson(ApiResponse::success(
+        CreateAndStartWorkspaceResponse {
+            workspace,
+            execution_process,
+        },
+    )))
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
@@ -2066,7 +2092,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
 
     let task_attempts_router = Router::new()
         .route("/", get(get_task_attempts))
-        .route("/start", post(start_workspace))
+        .route("/create-and-start", post(create_and_start_workspace))
         .route("/from-pr", post(pr::create_workspace_from_pr))
         .route("/stream/ws", get(stream_workspaces_ws))
         .route("/summary", post(workspace_summary::get_workspace_summaries))

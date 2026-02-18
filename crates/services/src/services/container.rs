@@ -1087,7 +1087,7 @@ pub trait ContainerService {
         &self,
         workspace: &Workspace,
         executor_profile_id: ExecutorProfileId,
-        prompt: Option<String>,
+        prompt: String,
     ) -> Result<ExecutionProcess, ContainerError> {
         // Create container
         self.create(workspace).await?;
@@ -1110,7 +1110,6 @@ pub trait ContainerService {
         .await?;
 
         let executor_config = ExecutorConfig::from(executor_profile_id);
-        let prompt = prompt.unwrap_or_else(|| workspace.name.clone().unwrap_or_default());
 
         let repos_with_setup: Vec<_> = repos.iter().filter(|r| r.setup_script.is_some()).collect();
 
