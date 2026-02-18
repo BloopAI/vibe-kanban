@@ -83,12 +83,13 @@ fn has_file_redirect(command: &str) -> bool {
                 return true;
             }
         } else if (t == ">" || t == ">>" || t.ends_with('>') || t.ends_with(">>"))
-            && let Some(next) = tokens.get(i + 1) {
-                if is_file_target(next) {
-                    return true;
-                }
-                i += 1;
+            && let Some(next) = tokens.get(i + 1)
+        {
+            if is_file_target(next) {
+                return true;
             }
+            i += 1;
+        }
         i += 1;
     }
     false
