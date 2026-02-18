@@ -22,7 +22,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
-    tick::TickService,
+    tick::{TickService, TickTriggerSender},
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
@@ -57,6 +57,7 @@ pub struct LocalDeployment {
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
     shared_api_base: Option<String>,
     auth_context: AuthContext,
+    tick_trigger: TickTriggerSender,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     pty: PtyService,
 }
@@ -201,13 +202,13 @@ impl Deployment for LocalDeployment {
             let rc = remote_client.clone().ok();
             PrMonitorService::spawn(db, analytics, container, rc).await;
         }
-        {
+        let tick_trigger = {
             let db = db.clone();
             let git = git.clone();
             let config = config.clone();
             let container = container.clone();
-            TickService::spawn(db, git, config, container).await;
-        }
+            TickService::spawn(db, git, config, container).await
+        };
 
         let deployment = Self {
             config,
@@ -227,6 +228,7 @@ impl Deployment for LocalDeployment {
             remote_client,
             shared_api_base: api_base,
             auth_context,
+            tick_trigger,
             oauth_handoffs,
             pty,
         };
@@ -292,6 +294,10 @@ impl Deployment for LocalDeployment {
 
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
+    }
+
+    fn tick_trigger(&self) -> &TickTriggerSender {
+        &self.tick_trigger
     }
 
     fn shared_api_base(&self) -> Option<String> {

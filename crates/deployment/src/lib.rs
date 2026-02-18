@@ -31,6 +31,7 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
     repo::RepoService,
+    tick::TickTriggerSender,
     worktree_manager::WorktreeError,
 };
 use sqlx::Error as SqlxError;
@@ -109,6 +110,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn queued_message_service(&self) -> &QueuedMessageService;
 
     fn auth_context(&self) -> &AuthContext;
+
+    fn tick_trigger(&self) -> &TickTriggerSender;
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)

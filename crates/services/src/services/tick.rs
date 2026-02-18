@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use db::{
     DBService,
@@ -16,7 +16,7 @@ use db::{
 use executors::profile::ExecutorConfig;
 use git::GitService;
 use thiserror::Error;
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, mpsc};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -30,6 +30,7 @@ const DEFAULT_TICK_MD_CONTENT: &str = include_str!("default_tick.md");
 const TICK_PROJECT_NAME: &str = "Tick";
 const TICK_REPO_DIR_NAME: &str = "tick-repo";
 const TICK_REPO_DISPLAY_NAME: &str = "tick-repo";
+const PERIODIC_TRIGGER: &str = "periodic";
 
 #[derive(Debug, Error)]
 enum TickServiceError {
@@ -51,14 +52,22 @@ enum TickServiceError {
     WorkspaceRepoNotFound,
 }
 
+#[derive(Debug, Clone)]
+pub struct TickTrigger {
+    pub trigger_id: String,
+}
+
+pub type TickTriggerSender = mpsc::UnboundedSender<TickTrigger>;
+
 pub struct TickService<C: ContainerService> {
     db: DBService,
     git: GitService,
     config: Arc<RwLock<Config>>,
     container: C,
     poll_interval: Duration,
-    is_running: Arc<RwLock<bool>>,
-    current_workspace_id: Arc<RwLock<Option<Uuid>>>,
+    /// Maps trigger_id -> active workspace_id for that trigger
+    active_workspaces: Arc<RwLock<HashMap<String, Uuid>>>,
+    trigger_rx: mpsc::UnboundedReceiver<TickTrigger>,
 }
 
 impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
@@ -67,23 +76,27 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         git: GitService,
         config: Arc<RwLock<Config>>,
         container: C,
-    ) -> tokio::task::JoinHandle<()> {
+    ) -> TickTriggerSender {
+        let (trigger_tx, trigger_rx) = mpsc::unbounded_channel();
+
         let service = Self {
             db,
             git,
             config,
             container,
             poll_interval: Duration::from_secs(600), // 10 minutes
-            is_running: Arc::new(RwLock::new(false)),
-            current_workspace_id: Arc::new(RwLock::new(None)),
+            active_workspaces: Arc::new(RwLock::new(HashMap::new())),
+            trigger_rx,
         };
 
         tokio::spawn(async move {
             service.start().await;
-        })
+        });
+
+        trigger_tx
     }
 
-    async fn start(&self) {
+    async fn start(mut self) {
         if std::env::var("TICK_SERVICE_ENABLED").as_deref() == Ok("false") {
             info!("Tick service disabled (set TICK_SERVICE_ENABLED=false to disable)");
             return;
@@ -108,10 +121,19 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         let mut tick_interval = tokio::time::interval(self.poll_interval);
 
         loop {
-            tick_interval.tick().await;
-
-            if let Err(e) = self.execute_tick(&repo, &project).await {
-                error!("Tick execution failed: {}", e);
+            tokio::select! {
+                _ = tick_interval.tick() => {
+                    let trigger_id = PERIODIC_TRIGGER.to_string();
+                    if let Err(e) = self.execute_tick(&trigger_id, &repo, &project).await {
+                        error!("Periodic tick execution failed: {}", e);
+                    }
+                }
+                Some(trigger) = self.trigger_rx.recv() => {
+                    info!("Received external tick trigger: {}", trigger.trigger_id);
+                    if let Err(e) = self.execute_tick(&trigger.trigger_id, &repo, &project).await {
+                        error!("Triggered tick execution failed ({}): {}", trigger.trigger_id, e);
+                    }
+                }
             }
         }
     }
@@ -224,28 +246,43 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         }
     }
 
-    async fn execute_tick(&self, repo: &Repo, project: &Project) -> Result<(), TickServiceError> {
-        // Check if another tick is still running
+    async fn execute_tick(
+        &self,
+        trigger_id: &str,
+        repo: &Repo,
+        project: &Project,
+    ) -> Result<(), TickServiceError> {
+        // Check if this trigger already has a running workspace
         {
-            let running = self.is_running.read().await;
-            if *running {
-                info!("Previous tick still running, skipping this cycle");
-                return Ok(());
+            let active = self.active_workspaces.read().await;
+            if let Some(workspace_id) = active.get(trigger_id) {
+                // Check if it's actually still running
+                let has_running =
+                    ExecutionProcess::has_running_non_dev_server_processes_for_workspace(
+                        &self.db.pool,
+                        *workspace_id,
+                    )
+                    .await
+                    .unwrap_or(false);
+
+                if has_running {
+                    info!(
+                        "Trigger '{}' already has a running workspace {}, skipping",
+                        trigger_id, workspace_id
+                    );
+                    return Ok(());
+                }
             }
         }
 
-        // Mark as running
-        *self.is_running.write().await = true;
-
-        // Archive the previous tick workspace so only the latest is visible
-        if let Some(prev_id) = *self.current_workspace_id.read().await {
-            // Only archive if it hasn't already been archived by the completion watcher
+        // Archive the previous workspace for this trigger so only the latest is visible
+        if let Some(prev_id) = self.active_workspaces.read().await.get(trigger_id).copied() {
             match Workspace::find_by_id(&self.db.pool, prev_id).await {
                 Ok(Some(ws)) if !ws.archived => {
                     if let Err(e) = self.container.archive_workspace(prev_id).await {
                         warn!(
-                            "Failed to archive previous tick workspace {}: {}",
-                            prev_id, e
+                            "Failed to archive previous tick workspace {} for trigger '{}': {}",
+                            prev_id, trigger_id, e
                         );
                     }
                 }
@@ -265,7 +302,11 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
 
         // Create a Task
         let task_id = Uuid::new_v4();
-        let task_title = format!("Tick {}", chrono::Utc::now().format("%Y-%m-%d %H:%M"));
+        let task_title = format!(
+            "Tick [{}] {}",
+            trigger_id,
+            chrono::Utc::now().format("%Y-%m-%d %H:%M")
+        );
         let task = Task::create(
             &self.db.pool,
             &CreateTask {
@@ -316,8 +357,8 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         };
 
         info!(
-            "Starting tick workspace {} for task '{}'",
-            workspace.id, task.title
+            "Starting tick workspace {} for trigger '{}', task '{}'",
+            workspace.id, trigger_id, task.title
         );
 
         // Start workspace (runs the agent)
@@ -328,23 +369,25 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
         {
             Ok(_execution_process) => {
                 info!("Tick workspace {} started successfully", workspace.id);
-                *self.current_workspace_id.write().await = Some(workspace.id);
-                self.spawn_completion_watcher(workspace.id, repo.clone());
+                self.active_workspaces
+                    .write()
+                    .await
+                    .insert(trigger_id.to_string(), workspace.id);
+                self.spawn_completion_watcher(trigger_id.to_string(), workspace.id, repo.clone());
             }
             Err(e) => {
                 error!("Failed to start tick workspace: {}", e);
-                *self.is_running.write().await = false;
             }
         }
 
         Ok(())
     }
 
-    fn spawn_completion_watcher(&self, workspace_id: Uuid, repo: Repo) {
+    fn spawn_completion_watcher(&self, trigger_id: String, workspace_id: Uuid, repo: Repo) {
         let db = self.db.clone();
         let git = self.git.clone();
         let container = self.container.clone();
-        let is_running = self.is_running.clone();
+        let active_workspaces = self.active_workspaces.clone();
 
         tokio::spawn(async move {
             let poll_interval = Duration::from_secs(15);
@@ -366,8 +409,8 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
             }
 
             info!(
-                "Tick workspace {} completed, attempting auto-merge",
-                workspace_id
+                "Tick workspace {} (trigger '{}') completed, attempting auto-merge",
+                workspace_id, trigger_id
             );
 
             if let Err(e) = auto_merge(&db, &git, &container, workspace_id, &repo).await {
@@ -382,8 +425,11 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
                 error!("Failed to archive tick workspace {}: {}", workspace_id, e);
             }
 
-            // Mark tick as no longer running
-            *is_running.write().await = false;
+            // Remove from active workspaces
+            let mut active = active_workspaces.write().await;
+            if active.get(&trigger_id) == Some(&workspace_id) {
+                active.remove(&trigger_id);
+            }
         });
     }
 }
