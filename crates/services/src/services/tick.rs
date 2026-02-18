@@ -239,11 +239,17 @@ impl<C: ContainerService + Clone + Send + Sync + 'static> TickService<C> {
 
         // Archive the previous tick workspace so only the latest is visible
         if let Some(prev_id) = *self.current_workspace_id.read().await {
-            if let Err(e) = self.container.archive_workspace(prev_id).await {
-                warn!(
-                    "Failed to archive previous tick workspace {}: {}",
-                    prev_id, e
-                );
+            // Only archive if it hasn't already been archived by the completion watcher
+            match Workspace::find_by_id(&self.db.pool, prev_id).await {
+                Ok(Some(ws)) if !ws.archived => {
+                    if let Err(e) = self.container.archive_workspace(prev_id).await {
+                        warn!(
+                            "Failed to archive previous tick workspace {}: {}",
+                            prev_id, e
+                        );
+                    }
+                }
+                _ => {}
             }
         }
 
