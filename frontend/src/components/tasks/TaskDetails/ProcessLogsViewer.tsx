@@ -67,7 +67,7 @@ export function ProcessLogsViewerContent({
   };
 
   return (
-    <div className="h-full">
+    <div className="flex-1 min-h-0 flex flex-col">
       {logs.length === 0 && !error ? (
         <div className="p-4 text-center text-muted-foreground text-sm">
           No logs available

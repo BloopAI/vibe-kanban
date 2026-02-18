@@ -70,7 +70,7 @@ export function DevServerLogsView({
       </summary>
 
       {showLogs && (
-        <div className={height}>
+        <div className={`${height} flex flex-col`}>
           {devServerProcesses.length > 1 && (
             <div className="flex border-b bg-muted/30">
               {devServerProcesses.map((process) => (

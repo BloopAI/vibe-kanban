@@ -303,7 +303,7 @@ function ProcessesTab({ sessionId }: ProcessesTabProps) {
               </button>
             </div>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-h-0 flex flex-col">
             {selectedProcess ? (
               <ProcessLogsViewerContent logs={logs} error={logsError} />
             ) : loadingProcessId === selectedProcessId ? (
