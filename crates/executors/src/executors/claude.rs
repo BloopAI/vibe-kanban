@@ -1164,7 +1164,7 @@ impl ClaudeLogProcessor {
                             patches.push(add_system_message(status.clone(), entry_index_provider));
                         }
                     }
-                    Some("compact_boundary") => {}
+                    Some("compact_boundary") | Some("task_started") => {}
                     Some(subtype) => {
                         let entry = NormalizedEntry {
                             timestamp: None,
