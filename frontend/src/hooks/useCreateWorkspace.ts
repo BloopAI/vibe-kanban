@@ -1,5 +1,4 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { attemptsApi } from '@/lib/api';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import type { CreateAndStartWorkspaceRequest } from 'shared/types';
@@ -14,7 +13,6 @@ interface CreateWorkspaceParams {
 
 export function useCreateWorkspace() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   const createWorkspace = useMutation({
     mutationFn: async ({ data, linkToIssue }: CreateWorkspaceParams) => {
@@ -31,14 +29,9 @@ export function useCreateWorkspace() {
 
       return { workspace };
     },
-    onSuccess: ({ workspace }) => {
+    onSuccess: () => {
       // Invalidate workspace summaries so they refresh with the new workspace included
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
-
-      // Navigate to the new workspace (or let caller handle in project sidebar)
-      if (workspace) {
-        navigate(`/workspaces/${workspace.id}`);
-      }
     },
     onError: (err) => {
       console.error('Failed to create workspace:', err);

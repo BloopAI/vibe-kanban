@@ -17,7 +17,13 @@ function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;
 }
 
-export function CreateChatBoxContainer() {
+interface CreateChatBoxContainerProps {
+  onWorkspaceCreated: (workspaceId: string) => void;
+}
+
+export function CreateChatBoxContainer({
+  onWorkspaceCreated,
+}: CreateChatBoxContainerProps) {
   const { t } = useTranslation('common');
   const { profiles, config } = useUserSystem();
   const {
@@ -209,7 +215,7 @@ export function CreateChatBoxContainer() {
 
     const { title } = splitMessageToTitleDescription(message);
 
-    await createWorkspace.mutateAsync({
+    const result = await createWorkspace.mutateAsync({
       data: {
         executor_profile_id: effectiveProfileId,
         name: title,
@@ -233,6 +239,10 @@ export function CreateChatBoxContainer() {
         : undefined,
     });
 
+    if (result.workspace) {
+      onWorkspaceCreated(result.workspace.id);
+    }
+
     // Clear attachments and draft after successful creation
     clearAttachments();
     await clearDraft();
@@ -244,6 +254,7 @@ export function CreateChatBoxContainer() {
     repos,
     targetBranches,
     createWorkspace,
+    onWorkspaceCreated,
     clearAttachments,
     clearDraft,
     linkedIssue,
