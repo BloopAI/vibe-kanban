@@ -104,7 +104,14 @@ export function WorkspacesSidebar({
   hasMoreWorkspaces = false,
   filterBar,
   onSearchFocusChange,
-}: WorkspacesSidebarProps) {
+  backLink,
+  backLabel,
+  onBack,
+}: WorkspacesSidebarProps & {
+  backLink?: string;
+  backLabel?: string;
+  onBack?: () => void;
+}) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -166,6 +173,19 @@ export function WorkspacesSidebar({
 
   return (
     <div className="w-full h-full bg-secondary flex flex-col">
+      {/* Back Button (if provided) */}
+      {backLink && onBack && (
+        <div className="px-base pt-base -mb-2">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 text-xs font-medium text-low hover:text-foreground transition-colors group"
+          >
+            <ArrowLeftIcon className="size-3 transition-transform group-hover:-translate-x-0.5" />
+            <span className="truncate max-w-[200px]">{backLabel}</span>
+          </button>
+        </div>
+      )}
+
       {/* Header + Search */}
       <div className="flex flex-col gap-base">
         <CollapsibleSectionHeader
