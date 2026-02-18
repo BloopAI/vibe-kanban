@@ -23,4 +23,4 @@ declare module '@ebay/nice-modal-react' {
   }
 }
 
-export { };
+export {};

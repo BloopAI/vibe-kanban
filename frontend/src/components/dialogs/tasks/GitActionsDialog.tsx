@@ -29,9 +29,7 @@ interface GitActionsDialogContentProps {
   attempt: WorkspaceWithSession;
 }
 
-function GitActionsDialogContent({
-  attempt,
-}: GitActionsDialogContentProps) {
+function GitActionsDialogContent({ attempt }: GitActionsDialogContentProps) {
   const { t } = useTranslation('tasks');
   const { data: branchStatus, error: branchStatusError } = useBranchStatus(
     attempt.id

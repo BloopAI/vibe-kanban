@@ -52,9 +52,9 @@ interface DraftState {
 
 type DraftAction =
   | {
-    type: 'INIT_COMPLETE';
-    data: Partial<Omit<DraftState, 'phase' | 'error'>>;
-  }
+      type: 'INIT_COMPLETE';
+      data: Partial<Omit<DraftState, 'phase' | 'error'>>;
+    }
   | { type: 'INIT_ERROR'; error: string }
   | { type: 'SET_PROJECT'; projectId: string | null }
   | { type: 'ADD_REPO'; repo: Repo; targetBranch: string | null }
@@ -67,9 +67,9 @@ type DraftAction =
   | { type: 'CLEAR_LINKED_ISSUE' }
   | { type: 'RESOLVE_LINKED_ISSUE'; simpleId: string; title: string }
   | {
-    type: 'SET_EXECUTOR_CONFIG';
-    config: ExecutorConfig | null;
-  };
+      type: 'SET_EXECUTOR_CONFIG';
+      config: ExecutorConfig | null;
+    };
 
 // ============================================================================
 // Reducer
@@ -441,11 +441,11 @@ export function useCreateModeState({
       executor_config: state.executorConfig ?? null,
       linked_issue: state.linkedIssue
         ? {
-          issue_id: state.linkedIssue.issueId,
-          simple_id: state.linkedIssue.simpleId ?? '',
-          title: state.linkedIssue.title ?? '',
-          remote_project_id: state.linkedIssue.remoteProjectId,
-        }
+            issue_id: state.linkedIssue.issueId,
+            simple_id: state.linkedIssue.simpleId ?? '',
+            title: state.linkedIssue.title ?? '',
+            remote_project_id: state.linkedIssue.remoteProjectId,
+          }
         : null,
     });
   }, [

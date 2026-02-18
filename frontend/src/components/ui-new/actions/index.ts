@@ -168,8 +168,8 @@ export interface ActionVisibilityContext {
   // Layout state
   layoutMode: LayoutMode;
   rightMainPanelMode:
-  | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
-  | null;
+    | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
+    | null;
   isLeftSidebarVisible: boolean;
   isLeftMainPanelVisible: boolean;
   isRightSidebarVisible: boolean;
@@ -334,8 +334,7 @@ export const Actions = {
     requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       try {
-        const [_, firstMessage, repos] = await Promise.all([
-          getWorkspace(ctx.queryClient, workspaceId),
+        const [firstMessage, repos] = await Promise.all([
           attemptsApi.getFirstUserMessage(workspaceId),
           attemptsApi.getRepos(workspaceId),
         ]);
@@ -346,9 +345,9 @@ export const Actions = {
         );
         const linkedIssue = remoteWs?.issue_id
           ? {
-            issueId: remoteWs.issue_id,
-            remoteProjectId: remoteWs.project_id,
-          }
+              issueId: remoteWs.issue_id,
+              remoteProjectId: remoteWs.project_id,
+            }
           : undefined;
 
         ctx.navigate('/workspaces/create', {

@@ -16,11 +16,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
 import { useCallback, useMemo, useState } from 'react';
-import type {
-  RepoBranchStatus,
-  Merge,
-  Workspace,
-} from 'shared/types';
+import type { RepoBranchStatus, Merge, Workspace } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
 import RepoSelector from '@/components/tasks/RepoSelector';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';

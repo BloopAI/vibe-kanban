@@ -68,7 +68,7 @@ export function CreateChatBoxContainer() {
     [message, setMessage]
   );
 
-  const { uploadFiles, getImageIds, clearAttachments, localImages } =
+  const { uploadFiles, clearAttachments, localImages } =
     useCreateAttachments(handleInsertMarkdown);
 
   const onDrop = useCallback(
@@ -205,8 +205,7 @@ export function CreateChatBoxContainer() {
   // Handle submit
   const handleSubmit = useCallback(async () => {
     setHasAttemptedSubmit(true);
-    if (!canSubmit || !effectiveProfileId || !executorConfig)
-      return;
+    if (!canSubmit || !effectiveProfileId || !executorConfig) return;
 
     const { title } = splitMessageToTitleDescription(message);
 
@@ -245,7 +244,6 @@ export function CreateChatBoxContainer() {
     repos,
     targetBranches,
     createWorkspace,
-    getImageIds,
     clearAttachments,
     clearDraft,
     linkedIssue,

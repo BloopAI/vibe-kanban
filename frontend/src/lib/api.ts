@@ -302,10 +302,12 @@ export const sessionsApi = {
 
 // Task Attempts APIs
 export const attemptsApi = {
-  createAndStart: async (data: CreateAndStartWorkspaceRequest): Promise<CreateAndStartWorkspaceResponse> => {
+  createAndStart: async (
+    data: CreateAndStartWorkspaceRequest
+  ): Promise<CreateAndStartWorkspaceResponse> => {
     const response = await makeRequest(`/api/create-and-start`, {
       method: 'POST',
-      body: JSON.stringify(data)
+      body: JSON.stringify(data),
     });
     return handleApiResponse<CreateAndStartWorkspaceResponse>(response);
   },

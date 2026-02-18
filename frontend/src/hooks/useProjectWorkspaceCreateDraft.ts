@@ -26,11 +26,11 @@ export function useProjectWorkspaceCreateDraft() {
         executor_config: null,
         linked_issue: initialState.linkedIssue
           ? {
-            issue_id: initialState.linkedIssue.issueId,
-            simple_id: initialState.linkedIssue.simpleId ?? '',
-            title: initialState.linkedIssue.title ?? '',
-            remote_project_id: initialState.linkedIssue.remoteProjectId,
-          }
+              issue_id: initialState.linkedIssue.issueId,
+              simple_id: initialState.linkedIssue.simpleId ?? '',
+              title: initialState.linkedIssue.title ?? '',
+              remote_project_id: initialState.linkedIssue.remoteProjectId,
+            }
           : null,
       };
 

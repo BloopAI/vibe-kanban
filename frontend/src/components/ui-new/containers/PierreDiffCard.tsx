@@ -369,11 +369,7 @@ export function PierreDiffCard({
         );
       }
 
-      return (
-        <ReviewCommentRenderer
-          comment={metadata.comment}
-        />
-      );
+      return <ReviewCommentRenderer comment={metadata.comment} />;
     },
     [filePath, addComment, diff]
   );
