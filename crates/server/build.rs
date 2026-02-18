@@ -1,7 +1,7 @@
 use std::{fs, path::Path};
 
 fn main() {
-    // Load .env from the workspace root (build.rs CWD is the crate directory)
+    // Load .env from the workspace root
     let workspace_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let env_file = workspace_root.join(".env");
     dotenv::from_path(&env_file).ok();
