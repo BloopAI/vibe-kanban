@@ -489,12 +489,25 @@ export const Actions = {
           getWorkspace(ctx.queryClient, workspaceId),
           attemptsApi.getRepos(workspaceId),
         ]);
+        const task = await tasksApi.getById(workspace.task_id);
+
+        const remoteWs = ctx.remoteWorkspaces.find(
+          (w) => w.local_workspace_id === workspaceId
+        );
+        const linkedIssue = remoteWs?.issue_id
+          ? {
+              issueId: remoteWs.issue_id,
+              remoteProjectId: remoteWs.project_id,
+            }
+          : undefined;
         ctx.navigate('/workspaces/create', {
           state: {
             preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: workspace.branch,
             })),
+            project_id: task.project_id,
+            linkedIssue,
           },
         });
       } catch {
