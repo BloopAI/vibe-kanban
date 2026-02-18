@@ -1,0 +1,5 @@
+{
+  "bot_token": "xoxb-your-bot-token",
+  "app_token": "xapp-your-app-token",
+  "default_channel": "C0123456789"
+}
