@@ -64,7 +64,7 @@ type Props = {
   aggregatedGroup: AggregatedPatchGroup | null;
   aggregatedDiffGroup: AggregatedDiffGroup | null;
   aggregatedThinkingGroup: AggregatedThinkingGroup | null;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -424,7 +424,7 @@ function FileEditEntry({
   change: FileEditAction['changes'][number];
   expansionKey: string;
   status: ToolStatus;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   // Auto-expand when pending approval
   const pendingApproval = status.status === 'pending_approval';
@@ -507,7 +507,7 @@ function PlanEntry({
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const { t } = useTranslation('common');
   // Expand plans by default when pending approval
@@ -557,7 +557,7 @@ function GenericToolApprovalEntry({
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -598,7 +598,7 @@ function UserMessageEntry({
   executionProcessId: string | undefined;
   executorCanFork: boolean;
   resetAction: UseResetProcessResult;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `user:${expansionKey}`,
@@ -679,7 +679,7 @@ function ToolSummaryEntry({
   toolName: string;
   command: string | undefined;
   actionType: string;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -732,7 +732,7 @@ function TodoManagementEntry({
 }: {
   todos: TodoItem[];
   expansionKey: string;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `todo:${expansionKey}`,
@@ -764,7 +764,7 @@ function SubagentEntry({
   expansionKey: string;
   status: ToolStatus;
   workspaceId: string | undefined;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   // Only auto-expand if there's a result to show
   const hasResult = Boolean(result?.value);
@@ -800,7 +800,7 @@ function SystemMessageEntry({
 }: {
   content: string;
   expansionKey: string;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `system:${expansionKey}`,
@@ -898,7 +898,7 @@ function ErrorMessageEntry({
 }: {
   content: string;
   expansionKey: string;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `error:${expansionKey}`,
@@ -922,7 +922,7 @@ function AggregatedGroupEntry({
   requestRemeasure,
 }: {
   group: AggregatedPatchGroup;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const { viewToolContentInPanel } = useLogsPanel();
   const [expanded, setExpanded] = useState(false);
@@ -1048,7 +1048,7 @@ function AggregatedThinkingGroupEntry({
 }: {
   group: AggregatedThinkingGroup;
   taskAttemptId: string | undefined;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1092,7 +1092,7 @@ function AggregatedDiffGroupEntry({
   requestRemeasure,
 }: {
   group: AggregatedDiffGroup;
-  requestRemeasure?: () => void;
+  requestRemeasure: () => void;
 }) {
   const { viewFileInChanges, diffPaths } = useChangesView();
   const [expanded, setExpanded] = useState(false);

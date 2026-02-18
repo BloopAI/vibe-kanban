@@ -59,6 +59,8 @@ interface MessageListContext {
   requestRemeasure: () => void;
 }
 
+const noop = () => {};
+
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
 
 const InitialDataScrollModifier: ScrollModifier = {
@@ -93,6 +95,7 @@ const ItemContent: VirtuosoMessageListProps<
 >['ItemContent'] = ({ data, context }) => {
   const attempt = context?.attempt;
   const resetAction = context?.resetAction;
+  const requestRemeasure = context?.requestRemeasure ?? noop;
 
   // Handle aggregated tool groups (file_read, search, web_fetch)
   if (isAggregatedGroup(data)) {
@@ -106,7 +109,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
-        requestRemeasure={context?.requestRemeasure}
+        requestRemeasure={requestRemeasure}
       />
     );
   }
@@ -123,7 +126,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
-        requestRemeasure={context?.requestRemeasure}
+        requestRemeasure={requestRemeasure}
       />
     );
   }
@@ -140,7 +143,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
-        requestRemeasure={context?.requestRemeasure}
+        requestRemeasure={requestRemeasure}
       />
     );
   }
@@ -162,7 +165,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
-        requestRemeasure={context?.requestRemeasure}
+        requestRemeasure={requestRemeasure}
       />
     );
   }
