@@ -20,8 +20,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
-import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import { getLatestProfileFromProcesses } from '@/utils/executor';
 import type {
   BaseCodingAgent,
   ExecutorProfileId,
@@ -73,36 +71,18 @@ const ResolveConflictsDialogImpl =
         }
       }, [activeWorkspaceId, workspaceId, modal]);
 
-      // Resolve the session to use for default profile: selected session,
-      // or fall back to the most recent session in this workspace.
       const resolvedSession = useMemo(() => {
-        if (selectedSessionId) {
-          return (
-            sessions.find((session) => session.id === selectedSessionId) ??
-            selectedSession ??
-            null
-          );
-        }
-        // No selected session — use the most recent session (sessions are
-        // ordered most-recently-used first)
-        return selectedSession ?? sessions[0] ?? null;
+        if (!selectedSessionId) return selectedSession ?? null;
+        return (
+          sessions.find((session) => session.id === selectedSessionId) ??
+          selectedSession ??
+          null
+        );
       }, [sessions, selectedSessionId, selectedSession]);
       const sessionExecutor =
         resolvedSession?.executor as BaseCodingAgent | null;
 
-      // Get the variant from the session's latest process
-      const resolvedSessionId = resolvedSession?.id;
-      const { executionProcesses: sessionProcesses } =
-        useExecutionProcesses(resolvedSessionId);
-      const sessionProfileFromProcesses = useMemo(
-        () => getLatestProfileFromProcesses(sessionProcesses),
-        [sessionProcesses]
-      );
-
       const resolvedDefaultProfile = useMemo(() => {
-        // Prefer the full profile (executor+variant) from the session's processes
-        if (sessionProfileFromProcesses) return sessionProfileFromProcesses;
-        // Fall back to session executor with config variant hint while processes load
         if (sessionExecutor) {
           const variant =
             config?.executor_profile?.executor === sessionExecutor
@@ -111,11 +91,7 @@ const ResolveConflictsDialogImpl =
           return { executor: sessionExecutor, variant };
         }
         return config?.executor_profile ?? null;
-      }, [
-        sessionProfileFromProcesses,
-        sessionExecutor,
-        config?.executor_profile,
-      ]);
+      }, [sessionExecutor, config?.executor_profile]);
 
       // Default to creating a new session if no existing session
       const [createNewSession, setCreateNewSession] =
@@ -281,17 +257,15 @@ const ResolveConflictsDialogImpl =
 
               {error && <div className="text-sm text-destructive">{error}</div>}
 
-              {/* Agent/profile selector */}
-              {profiles && (
+              {/* Agent/profile selector - only show when creating new session */}
+              {profiles && createNewSession && (
                 <div className="flex gap-3 flex-col sm:flex-row">
-                  {createNewSession && (
-                    <AgentSelector
-                      profiles={profiles}
-                      selectedExecutorProfile={effectiveProfile}
-                      onChange={setUserSelectedProfile}
-                      showLabel={false}
-                    />
-                  )}
+                  <AgentSelector
+                    profiles={profiles}
+                    selectedExecutorProfile={effectiveProfile}
+                    onChange={setUserSelectedProfile}
+                    showLabel={false}
+                  />
                   <ConfigSelector
                     profiles={profiles}
                     selectedExecutorProfile={effectiveProfile}
