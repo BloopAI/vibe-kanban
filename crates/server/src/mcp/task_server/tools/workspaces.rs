@@ -30,8 +30,8 @@ struct McpListWorkspacesRequest {
 struct WorkspaceSummary {
     #[schemars(description = "Workspace ID")]
     id: String,
-    #[schemars(description = "Parent task ID")]
-    task_id: String,
+    #[schemars(description = "Optional parent task ID (legacy)")]
+    task_id: Option<String>,
     #[schemars(description = "Workspace branch")]
     branch: String,
     #[schemars(description = "Whether the workspace is archived")]
@@ -92,16 +92,15 @@ impl TaskServer {
             offset,
         }): Parameters<McpListWorkspacesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let mut url = self.url("/api/task-attempts");
-        if let Some(task_id) = task_id {
-            url = format!("{url}?task_id={task_id}");
-        }
-
+        let url = self.url("/api/task-attempts");
         let mut workspaces: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
             Ok(ws) => ws,
             Err(e) => return Ok(e),
         };
 
+        if let Some(task_filter) = task_id {
+            workspaces.retain(|w| w.task_id == Some(task_filter));
+        }
         if let Some(archived_filter) = archived {
             workspaces.retain(|w| w.archived == archived_filter);
         }
@@ -134,7 +133,7 @@ impl TaskServer {
             .take(limit)
             .map(|workspace| WorkspaceSummary {
                 id: workspace.id.to_string(),
-                task_id: workspace.task_id.to_string(),
+                task_id: workspace.task_id.map(|id| id.to_string()),
                 branch: workspace.branch,
                 archived: workspace.archived,
                 pinned: workspace.pinned,
