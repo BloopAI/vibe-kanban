@@ -88,6 +88,7 @@ import {
   CreateFromPrError,
   MigrationRequest,
   MigrationResponse,
+  Project,
   CreateAndStartWorkspaceRequest,
   CreateAndStartWorkspaceResponse,
 } from 'shared/types';
@@ -1331,6 +1332,11 @@ export const queueApi = {
 
 // Migration API
 export const migrationApi = {
+  listProjects: async (): Promise<Project[]> => {
+    const response = await makeRequest('/api/migration/projects');
+    return handleApiResponse<Project[]>(response);
+  },
+
   start: async (data: MigrationRequest): Promise<MigrationResponse> => {
     const response = await makeRequest('/api/migration/start', {
       method: 'POST',

@@ -2,8 +2,9 @@ use axum::{
     Router,
     extract::{Json, State},
     response::Json as ResponseJson,
-    routing::post,
+    routing::{get, post},
 };
+use db::models::project::Project;
 use deployment::Deployment;
 use services::services::migration::{MigrationRequest, MigrationResponse, MigrationService};
 use utils::response::ApiResponse;
@@ -11,7 +12,9 @@ use utils::response::ApiResponse;
 use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/migration/start", post(start_migration))
+    Router::new()
+        .route("/migration/start", post(start_migration))
+        .route("/migration/projects", get(list_projects))
 }
 
 async fn start_migration(
@@ -30,4 +33,13 @@ async fn start_migration(
     Ok(ResponseJson(ApiResponse::success(MigrationResponse {
         report,
     })))
+}
+
+async fn list_projects(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<Vec<Project>>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let projects = Project::find_all(pool).await?;
+
+    Ok(ResponseJson(ApiResponse::success(projects)))
 }
