@@ -64,6 +64,7 @@ type Props = {
   aggregatedGroup: AggregatedPatchGroup | null;
   aggregatedDiffGroup: AggregatedDiffGroup | null;
   aggregatedThinkingGroup: AggregatedThinkingGroup | null;
+  requestRemeasure?: () => void;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -169,6 +170,7 @@ function renderToolUseEntry(
             change={change}
             expansionKey={`edit:${expansionKey}:${idx}`}
             status={status}
+            requestRemeasure={props.requestRemeasure}
           />
         ))}
       </>
@@ -183,6 +185,7 @@ function renderToolUseEntry(
         expansionKey={expansionKey}
         workspaceId={taskAttempt?.id}
         status={status}
+        requestRemeasure={props.requestRemeasure}
       />
     );
   }
@@ -193,6 +196,7 @@ function renderToolUseEntry(
       <TodoManagementEntry
         todos={action_type.todos}
         expansionKey={expansionKey}
+        requestRemeasure={props.requestRemeasure}
       />
     );
   }
@@ -207,6 +211,7 @@ function renderToolUseEntry(
         expansionKey={expansionKey}
         status={status}
         workspaceId={taskAttempt?.id}
+        requestRemeasure={props.requestRemeasure}
       />
     );
   }
@@ -248,6 +253,7 @@ function renderToolUseEntry(
         expansionKey={expansionKey}
         workspaceId={taskAttempt?.id}
         status={status}
+        requestRemeasure={props.requestRemeasure}
       />
     );
   }
@@ -262,6 +268,7 @@ function renderToolUseEntry(
       toolName={entryType.tool_name}
       command={getToolCommand(entryType)}
       actionType={action_type.action}
+      requestRemeasure={props.requestRemeasure}
     />
   );
 }
@@ -288,12 +295,22 @@ function NewDisplayConversationEntry(props: Props) {
 
   // Handle aggregated groups (consecutive file_read or search entries)
   if (aggregatedGroup) {
-    return <AggregatedGroupEntry group={aggregatedGroup} />;
+    return (
+      <AggregatedGroupEntry
+        group={aggregatedGroup}
+        requestRemeasure={props.requestRemeasure}
+      />
+    );
   }
 
   // Handle aggregated diff groups (consecutive file_edit entries for same file)
   if (aggregatedDiffGroup) {
-    return <AggregatedDiffGroupEntry group={aggregatedDiffGroup} />;
+    return (
+      <AggregatedDiffGroupEntry
+        group={aggregatedDiffGroup}
+        requestRemeasure={props.requestRemeasure}
+      />
+    );
   }
 
   // Handle aggregated thinking groups (thinking entries in previous turns)
@@ -302,6 +319,7 @@ function NewDisplayConversationEntry(props: Props) {
       <AggregatedThinkingGroupEntry
         group={aggregatedThinkingGroup}
         taskAttemptId={taskAttempt?.id}
+        requestRemeasure={props.requestRemeasure}
       />
     );
   }
@@ -326,6 +344,7 @@ function NewDisplayConversationEntry(props: Props) {
           executionProcessId={executionProcessId}
           executorCanFork={executorCanFork}
           resetAction={resetAction}
+          requestRemeasure={props.requestRemeasure}
         />
       );
 
@@ -342,6 +361,7 @@ function NewDisplayConversationEntry(props: Props) {
         <SystemMessageEntry
           content={entry.content}
           expansionKey={expansionKey}
+          requestRemeasure={props.requestRemeasure}
         />
       );
 
@@ -358,6 +378,7 @@ function NewDisplayConversationEntry(props: Props) {
         <ErrorMessageEntry
           content={entry.content}
           expansionKey={expansionKey}
+          requestRemeasure={props.requestRemeasure}
         />
       );
 
@@ -397,18 +418,24 @@ function FileEditEntry({
   change,
   expansionKey,
   status,
+  requestRemeasure,
 }: {
   path: string;
   change: FileEditAction['changes'][number];
   expansionKey: string;
   status: ToolStatus;
+  requestRemeasure?: () => void;
 }) {
   // Auto-expand when pending approval
   const pendingApproval = status.status === 'pending_approval';
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     expansionKey as PersistKey,
     pendingApproval
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
   const { viewFileInChanges, diffPaths } = useChangesView();
 
   // Calculate diff stats for edit changes
@@ -474,19 +501,25 @@ function PlanEntry({
   expansionKey,
   workspaceId,
   status,
+  requestRemeasure,
 }: {
   plan: string;
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
+  requestRemeasure?: () => void;
 }) {
   const { t } = useTranslation('common');
   // Expand plans by default when pending approval
   const pendingApproval = status.status === 'pending_approval';
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `plan:${expansionKey}`,
     pendingApproval
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
 
   // Extract title from plan content (first line or default)
   const title = useMemo(() => {
@@ -517,17 +550,23 @@ function GenericToolApprovalEntry({
   expansionKey,
   workspaceId,
   status,
+  requestRemeasure,
 }: {
   toolName: string;
   content: string;
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
+  requestRemeasure?: () => void;
 }) {
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
     true // auto-expand for pending approval
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
 
   return (
     <ChatApprovalCard
@@ -551,6 +590,7 @@ function UserMessageEntry({
   executionProcessId,
   executorCanFork,
   resetAction,
+  requestRemeasure,
 }: {
   content: string;
   expansionKey: string;
@@ -558,8 +598,16 @@ function UserMessageEntry({
   executionProcessId: string | undefined;
   executorCanFork: boolean;
   resetAction: UseResetProcessResult;
+  requestRemeasure?: () => void;
 }) {
-  const [expanded, toggle] = usePersistedExpanded(`user:${expansionKey}`, true);
+  const [expanded, toggleExpanded] = usePersistedExpanded(
+    `user:${expansionKey}`,
+    true
+  );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
   const { startEdit, isEntryGreyed, isInEditMode } = useMessageEditContext();
   const { resetProcess, canResetProcess, isResetPending } = resetAction;
 
@@ -622,6 +670,7 @@ function ToolSummaryEntry({
   toolName,
   command,
   actionType,
+  requestRemeasure,
 }: {
   summary: string;
   expansionKey: string;
@@ -630,11 +679,16 @@ function ToolSummaryEntry({
   toolName: string;
   command: string | undefined;
   actionType: string;
+  requestRemeasure?: () => void;
 }) {
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
     false
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
   const { viewToolContentInPanel } = useLogsPanel();
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
@@ -674,14 +728,20 @@ function ToolSummaryEntry({
 function TodoManagementEntry({
   todos,
   expansionKey,
+  requestRemeasure,
 }: {
   todos: TodoItem[];
   expansionKey: string;
+  requestRemeasure?: () => void;
 }) {
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `todo:${expansionKey}`,
     false
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
 
   return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
 }
@@ -696,6 +756,7 @@ function SubagentEntry({
   expansionKey,
   status,
   workspaceId,
+  requestRemeasure,
 }: {
   description: string;
   subagentType: string | null | undefined;
@@ -703,13 +764,18 @@ function SubagentEntry({
   expansionKey: string;
   status: ToolStatus;
   workspaceId: string | undefined;
+  requestRemeasure?: () => void;
 }) {
   // Only auto-expand if there's a result to show
   const hasResult = Boolean(result?.value);
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `subagent:${expansionKey}`,
     false
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
 
   return (
     <ChatSubagentEntry
@@ -730,14 +796,20 @@ function SubagentEntry({
 function SystemMessageEntry({
   content,
   expansionKey,
+  requestRemeasure,
 }: {
   content: string;
   expansionKey: string;
+  requestRemeasure?: () => void;
 }) {
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `system:${expansionKey}`,
     false
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
 
   return (
     <ChatSystemMessage
@@ -822,14 +894,20 @@ function ScriptEntryWithFix({
 function ErrorMessageEntry({
   content,
   expansionKey,
+  requestRemeasure,
 }: {
   content: string;
   expansionKey: string;
+  requestRemeasure?: () => void;
 }) {
-  const [expanded, toggle] = usePersistedExpanded(
+  const [expanded, toggleExpanded] = usePersistedExpanded(
     `error:${expansionKey}`,
     false
   );
+  const toggle = useCallback(() => {
+    toggleExpanded();
+    requestRemeasure?.();
+  }, [requestRemeasure, toggleExpanded]);
 
   return (
     <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
@@ -839,7 +917,13 @@ function ErrorMessageEntry({
 /**
  * Aggregated group entry for consecutive file_read, search, or web_fetch entries
  */
-function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
+function AggregatedGroupEntry({
+  group,
+  requestRemeasure,
+}: {
+  group: AggregatedPatchGroup;
+  requestRemeasure?: () => void;
+}) {
   const { viewToolContentInPanel } = useLogsPanel();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -907,7 +991,8 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
-  }, []);
+    requestRemeasure?.();
+  }, [requestRemeasure]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -959,9 +1044,11 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
 function AggregatedThinkingGroupEntry({
   group,
   taskAttemptId,
+  requestRemeasure,
 }: {
   group: AggregatedThinkingGroup;
   taskAttemptId: string | undefined;
+  requestRemeasure?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -978,7 +1065,8 @@ function AggregatedThinkingGroupEntry({
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
-  }, []);
+    requestRemeasure?.();
+  }, [requestRemeasure]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -999,7 +1087,13 @@ function AggregatedThinkingGroupEntry({
 /**
  * Aggregated diff group entry for consecutive file_edit entries on the same file
  */
-function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
+function AggregatedDiffGroupEntry({
+  group,
+  requestRemeasure,
+}: {
+  group: AggregatedDiffGroup;
+  requestRemeasure?: () => void;
+}) {
   const { viewFileInChanges, diffPaths } = useChangesView();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1032,7 +1126,8 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
-  }, []);
+    requestRemeasure?.();
+  }, [requestRemeasure]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);

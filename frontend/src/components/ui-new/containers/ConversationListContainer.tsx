@@ -56,6 +56,7 @@ interface MessageListContext {
   showSetupPlaceholder: boolean;
   showCleanupPlaceholder: boolean;
   resetAction: UseResetProcessResult;
+  requestRemeasure: () => void;
 }
 
 const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
@@ -105,6 +106,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
+        requestRemeasure={context?.requestRemeasure}
       />
     );
   }
@@ -121,6 +123,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
+        requestRemeasure={context?.requestRemeasure}
       />
     );
   }
@@ -137,6 +140,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
+        requestRemeasure={context?.requestRemeasure}
       />
     );
   }
@@ -158,6 +162,7 @@ const ItemContent: VirtuosoMessageListProps<
         executionProcessId={data.executionProcessId}
         taskAttempt={attempt}
         resetAction={resetAction}
+        requestRemeasure={context?.requestRemeasure}
       />
     );
   }
@@ -341,6 +346,7 @@ export const ConversationList = forwardRef<
       showSetupPlaceholder,
       showCleanupPlaceholder,
       resetAction,
+      requestRemeasure,
     }),
     [
       attempt,
@@ -350,6 +356,7 @@ export const ConversationList = forwardRef<
       showSetupPlaceholder,
       showCleanupPlaceholder,
       resetAction,
+      requestRemeasure,
     ]
   );
 
