@@ -12,7 +12,7 @@ import { useProjects } from '@/hooks/useProjects';
 import { useWorkspaceCreateDefaults } from '@/hooks/useWorkspaceCreateDefaults';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useShape } from '@/lib/electric/hooks';
-import { projectsApi } from '@/lib/api';
+import { projectsApi, repoApi } from '@/lib/api';
 
 // ============================================================================
 // Types
@@ -312,7 +312,10 @@ export function useCreateModeState({
     if (
       initialState === undefined &&
       !draftId &&
-      (navState?.initialPrompt || navState?.linkedIssue)
+      (navState?.initialPrompt ||
+        navState?.linkedIssue ||
+        (navState?.preferredRepos?.length ?? 0) > 0 ||
+        navState?.project_id)
     ) {
       navigate(
         {
@@ -641,6 +644,61 @@ interface InitializeParams {
   dispatch: React.Dispatch<DraftAction>;
 }
 
+async function resolveNavPreferredRepos(
+  preferredRepos: NonNullable<CreateModeInitialState['preferredRepos']>,
+  projectId: string | null | undefined
+): Promise<SelectedRepo[]> {
+  const reposById = new Map<string, Repo>();
+
+  if (projectId) {
+    try {
+      const projectRepos = await projectsApi.getRepositories(projectId);
+      for (const repo of projectRepos) {
+        reposById.set(repo.id, repo);
+      }
+    } catch (e) {
+      console.error(
+        '[useCreateModeState] Failed to fetch project repos for nav state:',
+        e
+      );
+    }
+  }
+
+  const missingRepoIds = preferredRepos
+    .map((r) => r.repo_id)
+    .filter((repoId) => !reposById.has(repoId));
+
+  if (missingRepoIds.length > 0) {
+    const fetchedRepos = await Promise.all(
+      missingRepoIds.map(async (repoId) => {
+        try {
+          return await repoApi.getById(repoId);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    for (const repo of fetchedRepos) {
+      if (repo) {
+        reposById.set(repo.id, repo);
+      }
+    }
+  }
+
+  return preferredRepos.flatMap((preferredRepo) => {
+    const repo = reposById.get(preferredRepo.repo_id);
+    if (!repo) return [];
+
+    return [
+      {
+        repo,
+        targetBranch: preferredRepo.target_branch || null,
+      },
+    ];
+  });
+}
+
 async function initializeState({
   navState,
   scratch,
@@ -650,17 +708,25 @@ async function initializeState({
   dispatch,
 }: InitializeParams): Promise<void> {
   try {
-    // Priority 1: Navigation state (initialPrompt and/or linkedIssue)
+    // Priority 1: Navigation state
     const hasInitialPrompt = !!navState?.initialPrompt;
     const hasLinkedIssue = !!navState?.linkedIssue;
+    const hasPreferredRepos = (navState?.preferredRepos?.length ?? 0) > 0;
+    const hasProjectId = !!navState?.project_id;
 
-    if (hasInitialPrompt || hasLinkedIssue) {
+    if (
+      hasInitialPrompt ||
+      hasLinkedIssue ||
+      hasPreferredRepos ||
+      hasProjectId
+    ) {
       const data: Partial<DraftState> = {};
       let appliedNavState = false;
 
       // Handle project_id from navigation state (e.g., from duplicate/spin-off)
       if (navState?.project_id && navState.project_id in projectsById) {
         data.projectId = navState.project_id;
+        appliedNavState = true;
       }
 
       // Handle initial prompt
@@ -673,6 +739,18 @@ async function initializeState({
       if (hasLinkedIssue) {
         data.linkedIssue = navState!.linkedIssue!;
         appliedNavState = true;
+      }
+
+      // Handle preferred repos + target branches (e.g., from duplicate/spin-off)
+      if (navState?.preferredRepos && navState.preferredRepos.length > 0) {
+        const resolvedRepos = await resolveNavPreferredRepos(
+          navState.preferredRepos,
+          navState.project_id
+        );
+        if (resolvedRepos.length > 0) {
+          data.repos = resolvedRepos;
+          appliedNavState = true;
+        }
       }
 
       if (appliedNavState) {
