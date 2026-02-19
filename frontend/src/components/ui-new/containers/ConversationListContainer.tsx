@@ -76,9 +76,16 @@ const ScrollToBottomModifier: ScrollModifier = {
   location: INITIAL_TOP_ITEM,
 };
 
+const AUTO_SCROLL_GAP_PX = 8;
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
+  autoScroll: ({ atBottom, scrollLocation }) => {
+    const gap =
+      scrollLocation.scrollHeight -
+      scrollLocation.scrollTop -
+      scrollLocation.viewportHeight;
+    return atBottom || gap < AUTO_SCROLL_GAP_PX ? 'smooth' : false;
+  },
 };
 
 const ScrollToTopOfLastItem: ScrollModifier = {
@@ -287,7 +294,17 @@ export const ConversationList = forwardRef<
       } else if (pending.addType === 'plan') {
         scrollModifier = ScrollToTopOfLastItem;
       } else if (pending.addType === 'historic') {
-        scrollModifier = { ...ScrollToBottomModifier, purgeItemSizes: true };
+        const scrollLocation = messageListRef.current?.getScrollLocation();
+        const gap = scrollLocation
+          ? scrollLocation.scrollHeight -
+            scrollLocation.scrollTop -
+            scrollLocation.viewportHeight
+          : null;
+        const nearBottom =
+          scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
+        scrollModifier = nearBottom
+          ? AutoScrollToBottom
+          : { ...ScrollToBottomModifier, purgeItemSizes: true };
       } else if (pending.addType === 'running') {
         scrollModifier = AutoScrollToBottom;
       } else {
@@ -332,6 +349,16 @@ export const ConversationList = forwardRef<
     if (pendingRemeasureRef.current) return;
     pendingRemeasureRef.current = true;
 
+    const list = messageListRef.current;
+    const scrollLocation = list?.getScrollLocation();
+    const gap = scrollLocation
+      ? scrollLocation.scrollHeight -
+        scrollLocation.scrollTop -
+        scrollLocation.viewportHeight
+      : null;
+    const wasAtBottom =
+      scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
+
     requestAnimationFrame(() => {
       pendingRemeasureRef.current = false;
       const list = messageListRef.current;
@@ -339,6 +366,9 @@ export const ConversationList = forwardRef<
       const data = list.data.get();
       if (!data.length) return;
       list.data.replace(data, { purgeItemSizes: true });
+      if (wasAtBottom) {
+        list.scrollToItem({ index: 'LAST', align: 'end', behavior: 'auto' });
+      }
     });
   }, []);
   const messageListContext = useMemo(
