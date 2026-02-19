@@ -496,11 +496,23 @@ pub async fn attach_existing_pr(
         }
 
         // If PR is merged, archive workspace
-        if matches!(pr_info.status, MergeStatus::Merged)
-            && !workspace.pinned
-            && let Err(e) = deployment.container().archive_workspace(workspace.id).await
-        {
-            tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
+        if matches!(pr_info.status, MergeStatus::Merged) {
+            let open_pr_count = Merge::count_open_prs_for_workspace(pool, workspace.id).await?;
+
+            if open_pr_count == 0 {
+                if !workspace.pinned
+                    && let Err(e) = deployment.container().archive_workspace(workspace.id).await
+                {
+                    tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
+                }
+            } else {
+                tracing::info!(
+                    "PR #{} was merged, leaving workspace {} active with {} open PR(s)",
+                    pr_info.number,
+                    workspace.id,
+                    open_pr_count
+                );
+            }
         }
 
         Ok(ResponseJson(ApiResponse::success(AttachPrResponse {

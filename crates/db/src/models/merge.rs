@@ -221,6 +221,24 @@ impl Merge {
         Ok(rows.into_iter().map(Into::into).collect())
     }
 
+    pub async fn count_open_prs_for_workspace(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<i64, sqlx::Error> {
+        let count = sqlx::query_scalar!(
+            r#"SELECT COUNT(1) as "count!: i64"
+               FROM merges
+               WHERE workspace_id = $1
+                 AND merge_type = 'pr'
+                 AND pr_status = 'open'"#,
+            workspace_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(count)
+    }
+
     /// Update PR status for a workspace
     pub async fn update_status(
         pool: &SqlitePool,

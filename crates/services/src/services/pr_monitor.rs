@@ -146,14 +146,24 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 && let Some(workspace) =
                     Workspace::find_by_id(&self.db.pool, pr_merge.workspace_id).await?
             {
-                info!(
-                    "PR #{} was merged, archiving workspace {}",
-                    pr_merge.pr_info.number, workspace.id
-                );
-                if !workspace.pinned
-                    && let Err(e) = self.container.archive_workspace(workspace.id).await
-                {
-                    error!("Failed to archive workspace {}: {}", workspace.id, e);
+                let open_pr_count =
+                    Merge::count_open_prs_for_workspace(&self.db.pool, workspace.id).await?;
+
+                if open_pr_count == 0 {
+                    info!(
+                        "PR #{} was merged, archiving workspace {}",
+                        pr_merge.pr_info.number, workspace.id
+                    );
+                    if !workspace.pinned
+                        && let Err(e) = self.container.archive_workspace(workspace.id).await
+                    {
+                        error!("Failed to archive workspace {}: {}", workspace.id, e);
+                    }
+                } else {
+                    info!(
+                        "PR #{} was merged, leaving workspace {} active with {} open PR(s)",
+                        pr_merge.pr_info.number, workspace.id, open_pr_count
+                    );
                 }
 
                 // Track analytics event
