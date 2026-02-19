@@ -30,6 +30,7 @@ pub fn mutation() -> MutationBuilder<IssueComment, CreateIssueCommentRequest, Up
         .create(create_issue_comment)
         .update(update_issue_comment)
         .delete(delete_issue_comment)
+        .fallback_list_url("/issue_comments?issue_id={issue_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

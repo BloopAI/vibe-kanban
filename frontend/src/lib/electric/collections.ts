@@ -338,14 +338,7 @@ type FallbackWrappedOptions = {
   [key: string]: unknown;
 };
 
-type CoreFallbackDefinition = {
-  table: string;
-  path: string;
-  queryParam: string;
-  responseField: string;
-};
-
-type CoreFallbackSyncBridge = {
+type FallbackSyncBridge = {
   begin: (options?: { immediate?: boolean }) => void;
   write: (message: { type: 'insert'; value: ElectricRow }) => void;
   commit: () => void;
@@ -353,28 +346,7 @@ type CoreFallbackSyncBridge = {
   markReady: () => void;
 };
 
-const CORE_FALLBACK_RETRY_MS = 5000;
-
-const CORE_FALLBACKS: Record<string, CoreFallbackDefinition> = {
-  projects: {
-    table: 'projects',
-    path: '/v1/projects',
-    queryParam: 'organization_id',
-    responseField: 'projects',
-  },
-  project_statuses: {
-    table: 'project_statuses',
-    path: '/v1/project_statuses',
-    queryParam: 'project_id',
-    responseField: 'project_statuses',
-  },
-  issues: {
-    table: 'issues',
-    path: '/v1/issues',
-    queryParam: 'project_id',
-    responseField: 'issues',
-  },
-};
+const FALLBACK_RETRY_MS = 5000;
 
 /** A resolved fallback: table name for logging + a function to fetch all rows. */
 type FallbackConfig = {
@@ -382,34 +354,20 @@ type FallbackConfig = {
   fetchRows: () => Promise<ElectricRow[]>;
 };
 
-function getCoreFallbackConfig(
-  table: string,
-  params: Record<string, string>
-): FallbackConfig | null {
-  const fallback = CORE_FALLBACKS[table];
-  if (!fallback) return null;
-  const queryValue = params[fallback.queryParam];
-  if (!queryValue) return null;
-  return {
-    table: fallback.table,
-    fetchRows: () => fetchCoreFallbackRows(fallback, params),
-  };
-}
-
-function getMutationFallbackConfig(
+/**
+ * Build a FallbackConfig from a mutation's fallbackListUrl.
+ * The URL template uses {param} placeholders that are substituted with shape params.
+ */
+function getFallbackConfig(
   mutation: MutationDefinition<unknown, unknown, unknown> | undefined,
   params: Record<string, string>
 ): FallbackConfig | null {
-  if (!mutation?.listByProjectUrl) return null;
-  const projectId = params.project_id;
-  if (!projectId) return null;
-  const listByProjectUrl = mutation.listByProjectUrl;
+  if (!mutation?.fallbackListUrl) return null;
+  const url = buildUrl(mutation.fallbackListUrl, params);
   return {
     table: mutation.name,
     fetchRows: async () => {
-      const response = await makeRequest(`${listByProjectUrl}/${projectId}`, {
-        method: 'GET',
-      });
+      const response = await makeRequest(url, { method: 'GET' });
       if (!response.ok) {
         throw new Error(
           `Fallback list failed for ${mutation.name} (${response.status})`
@@ -427,47 +385,18 @@ function getMutationFallbackConfig(
   };
 }
 
-function shouldUseCoreFallback(error: ShapeSyncError): boolean {
+function shouldUseFallback(error: ShapeSyncError): boolean {
   if (error.name === 'AbortError') return false;
   if (error.status === 401 || error.status === 403) return false;
   return true;
 }
 
-async function fetchCoreFallbackRows(
-  fallback: CoreFallbackDefinition,
-  params: Record<string, string>
-): Promise<ElectricRow[]> {
-  const queryValue = params[fallback.queryParam];
-  if (!queryValue) return [];
-
-  const query = new URLSearchParams({ [fallback.queryParam]: queryValue });
-  const response = await makeRequest(`${fallback.path}?${query.toString()}`, {
-    method: 'GET',
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Fallback list failed for ${fallback.table} (${response.status})`
-    );
-  }
-
-  const payload = (await response.json()) as Record<string, unknown>;
-  const rows = payload[fallback.responseField];
-  if (!Array.isArray(rows)) {
-    throw new Error(
-      `Fallback list for ${fallback.table} returned unexpected payload`
-    );
-  }
-
-  return rows as ElectricRow[];
-}
-
-function createCoreFallbackController(
+function createFallbackController(
   fallbackConfig: FallbackConfig,
   collectionId: string,
   config?: CollectionConfig
 ) {
-  let syncBridge: CoreFallbackSyncBridge | null = null;
+  let syncBridge: FallbackSyncBridge | null = null;
   let hasHydrated = false;
   let fallbackInFlight: Promise<void> | null = null;
   let lastAttemptAt = 0;
@@ -490,7 +419,7 @@ function createCoreFallbackController(
     const now = Date.now();
     if (hasHydrated) return;
     if (fallbackInFlight) return;
-    if (now - lastAttemptAt < CORE_FALLBACK_RETRY_MS) return;
+    if (now - lastAttemptAt < FALLBACK_RETRY_MS) return;
 
     lastAttemptAt = now;
     fallbackInFlight = hydrateFromFallback()
@@ -521,7 +450,7 @@ function createCoreFallbackController(
               const response = await baseFetchClient(input, init);
               if (
                 !response.ok &&
-                shouldUseCoreFallback({ status: response.status })
+                shouldUseFallback({ status: response.status })
               ) {
                 triggerFallback();
               }
@@ -535,7 +464,7 @@ function createCoreFallbackController(
                       ? error.name
                       : undefined,
               };
-              if (shouldUseCoreFallback(shapeError)) {
+              if (shouldUseFallback(shapeError)) {
                 triggerFallback();
               }
               throw error;
@@ -543,7 +472,7 @@ function createCoreFallbackController(
           }
         : undefined,
       onError: (error: ShapeSyncError) => {
-        if (shouldUseCoreFallback(error)) {
+        if (shouldUseFallback(error)) {
           triggerFallback();
         }
         baseOnError?.(error);
@@ -593,11 +522,9 @@ export function createShapeCollection<TRow extends ElectricRow>(
     return cached as typeof cached & { __rowType?: TRow };
   }
 
-  const fallbackConfig =
-    getCoreFallbackConfig(shape.table, params) ??
-    getMutationFallbackConfig(mutation, params);
+  const fallbackConfig = getFallbackConfig(mutation, params);
   const fallbackController = fallbackConfig
-    ? createCoreFallbackController(fallbackConfig, collectionId, config)
+    ? createFallbackController(fallbackConfig, collectionId, config)
     : null;
 
   const baseShapeOptions = getAuthenticatedShapeOptions(

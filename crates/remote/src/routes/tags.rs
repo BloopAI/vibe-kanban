@@ -27,6 +27,7 @@ pub fn mutation() -> MutationBuilder<Tag, CreateTagRequest, UpdateTagRequest> {
         .create(create_tag)
         .update(update_tag)
         .delete(delete_tag)
+        .fallback_list_url("/tags?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

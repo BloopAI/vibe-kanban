@@ -31,6 +31,7 @@ pub fn mutation() -> MutationBuilder<Issue, CreateIssueRequest, UpdateIssueReque
         .create(create_issue)
         .update(update_issue)
         .delete(delete_issue)
+        .fallback_list_url("/issues?project_id={project_id}")
 }
 
 /// Router for issue endpoints including bulk update

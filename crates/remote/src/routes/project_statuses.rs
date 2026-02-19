@@ -33,6 +33,7 @@ pub fn mutation() -> MutationBuilder<ProjectStatus, CreateProjectStatusRequest, 
         .create(create_project_status)
         .update(update_project_status)
         .delete(delete_project_status)
+        .fallback_list_url("/project_statuses?project_id={project_id}")
 }
 
 /// Router for project status endpoints including bulk update

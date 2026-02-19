@@ -65,7 +65,9 @@ pub struct MutationDefinition {
     pub row_type: String,
     pub create_type: Option<String>,
     pub update_type: Option<String>,
-    pub has_list_by_project: bool,
+    /// URL template for the fallback list endpoint (substituted with shape params).
+    /// e.g. "/issues?project_id={project_id}" or "/issue_assignees/by-project/{project_id}"
+    pub fallback_list_url: Option<String>,
 }
 
 // =============================================================================
@@ -83,6 +85,7 @@ pub struct MutationBuilder<E, C = (), U = ()> {
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
     by_project_route: Option<MethodRouter<AppState>>,
+    fallback_list_url: Option<String>,
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 
@@ -94,6 +97,7 @@ impl<E: TS + Send + Sync + 'static> MutationBuilder<E, NoCreate, NoUpdate> {
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
             by_project_route: None,
+            fallback_list_url: None,
             _phantom: PhantomData,
         }
     }
@@ -135,6 +139,8 @@ impl<E: TS, C, U> MutationBuilder<E, C, U> {
     /// Used for entities scoped by issue_id in their primary list endpoint
     /// but streamed at project level by Electric. Provides a fallback list
     /// endpoint when Electric is unavailable.
+    ///
+    /// Also sets `fallback_list_url` to `"/{table}/by-project/{project_id}"`.
     pub fn list_by_project<H, T>(mut self, handler: H) -> Self
     where
         H: Handler<T, AppState> + Clone + Send + 'static,
@@ -145,6 +151,19 @@ impl<E: TS, C, U> MutationBuilder<E, C, U> {
                 .unwrap_or_else(MethodRouter::new)
                 .get(handler),
         );
+        self.fallback_list_url =
+            Some(format!("/{}/by-project/{{project_id}}", self.table));
+        self
+    }
+
+    /// Set a fallback list URL template for Electric failover.
+    ///
+    /// Use `{param}` placeholders matching the Electric shape params.
+    /// e.g. `"/issues?project_id={project_id}"` or `"/projects?organization_id={organization_id}"`
+    ///
+    /// The frontend substitutes shape params into this template when Electric is down.
+    pub fn fallback_list_url(mut self, url: &str) -> Self {
+        self.fallback_list_url = Some(url.to_string());
         self
     }
 
@@ -182,6 +201,7 @@ impl<E: TS, U> MutationBuilder<E, NoCreate, U> {
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
             by_project_route: self.by_project_route,
+            fallback_list_url: self.fallback_list_url,
             _phantom: PhantomData,
         }
     }
@@ -203,6 +223,7 @@ impl<E: TS, C> MutationBuilder<E, C, NoUpdate> {
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
             by_project_route: self.by_project_route,
+            fallback_list_url: self.fallback_list_url,
             _phantom: PhantomData,
         }
     }
@@ -223,7 +244,7 @@ impl<E: TS, C: TS, U: TS> MutationBuilder<E, C, U> {
             row_type: E::name(),
             create_type: Some(C::name()),
             update_type: Some(U::name()),
-            has_list_by_project: self.by_project_route.is_some(),
+            fallback_list_url: self.fallback_list_url.clone(),
         }
     }
 }
@@ -235,7 +256,7 @@ impl<E: TS, U: TS> MutationBuilder<E, NoCreate, U> {
             row_type: E::name(),
             create_type: None,
             update_type: Some(U::name()),
-            has_list_by_project: self.by_project_route.is_some(),
+            fallback_list_url: self.fallback_list_url.clone(),
         }
     }
 }
@@ -247,7 +268,7 @@ impl<E: TS, C: TS> MutationBuilder<E, C, NoUpdate> {
             row_type: E::name(),
             create_type: Some(C::name()),
             update_type: None,
-            has_list_by_project: self.by_project_route.is_some(),
+            fallback_list_url: self.fallback_list_url.clone(),
         }
     }
 }
@@ -259,7 +280,7 @@ impl<E: TS> MutationBuilder<E, NoCreate, NoUpdate> {
             row_type: E::name(),
             create_type: None,
             update_type: None,
-            has_list_by_project: self.by_project_route.is_some(),
+            fallback_list_url: self.fallback_list_url.clone(),
         }
     }
 }

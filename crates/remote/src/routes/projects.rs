@@ -31,6 +31,7 @@ pub fn mutation() -> MutationBuilder<Project, CreateProjectRequest, UpdateProjec
         .create(create_project)
         .update(update_project)
         .delete(delete_project)
+        .fallback_list_url("/projects?organization_id={organization_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {
