@@ -431,7 +431,7 @@ function createFallbackSync(args: {
         try {
           const response = await makeRequest(
             buildFallbackRequestPath(args.shape.fallbackUrl, args.params),
-            { method: 'GET' }
+            { method: 'GET', cache: 'no-store' }
           );
 
           if (!response.ok) {
