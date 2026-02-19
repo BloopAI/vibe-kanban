@@ -24,11 +24,10 @@ use api_types::{
 /// Mutation definition for IssueFollower - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, NoUpdate> {
     MutationBuilder::new("issue_followers")
-        .list(list_issue_followers)
+        .fallback(list_issue_followers, "project_id")
         .get(get_issue_follower)
         .create(create_issue_follower)
         .delete(delete_issue_follower)
-        .fallback_list_url("/issue_followers?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

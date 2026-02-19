@@ -26,12 +26,11 @@ use api_types::{
 /// Mutation definition for Projects - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<Project, CreateProjectRequest, UpdateProjectRequest> {
     MutationBuilder::new("projects")
-        .list(list_projects)
+        .fallback(list_projects, "organization_id")
         .get(get_project)
         .create(create_project)
         .update(update_project)
         .delete(delete_project)
-        .fallback_list_url("/projects?organization_id={organization_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

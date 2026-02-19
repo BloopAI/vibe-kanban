@@ -24,11 +24,10 @@ use api_types::{
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, NoUpdate> {
     MutationBuilder::new("issue_assignees")
-        .list(list_issue_assignees)
+        .fallback(list_issue_assignees, "project_id")
         .get(get_issue_assignee)
         .create(create_issue_assignee)
         .delete(delete_issue_assignee)
-        .fallback_list_url("/issue_assignees?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

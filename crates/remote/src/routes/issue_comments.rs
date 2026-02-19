@@ -25,12 +25,11 @@ use crate::{
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest> {
     MutationBuilder::new("issue_comments")
-        .list(list_issue_comments)
+        .fallback(list_issue_comments, "issue_id")
         .get(get_issue_comment)
         .create(create_issue_comment)
         .update(update_issue_comment)
         .delete(delete_issue_comment)
-        .fallback_list_url("/issue_comments?issue_id={issue_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

@@ -28,12 +28,11 @@ use api_types::{
 /// Mutation definition for ProjectStatus - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<ProjectStatus, CreateProjectStatusRequest, UpdateProjectStatusRequest> {
     MutationBuilder::new("project_statuses")
-        .list(list_project_statuses)
+        .fallback(list_project_statuses, "project_id")
         .get(get_project_status)
         .create(create_project_status)
         .update(update_project_status)
         .delete(delete_project_status)
-        .fallback_list_url("/project_statuses?project_id={project_id}")
 }
 
 /// Router for project status endpoints including bulk update

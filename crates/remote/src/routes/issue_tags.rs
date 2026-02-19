@@ -24,11 +24,10 @@ use api_types::{
 /// Mutation definition for IssueTag - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<IssueTag, CreateIssueTagRequest, NoUpdate> {
     MutationBuilder::new("issue_tags")
-        .list(list_issue_tags)
+        .fallback(list_issue_tags, "project_id")
         .get(get_issue_tag)
         .create(create_issue_tag)
         .delete(delete_issue_tag)
-        .fallback_list_url("/issue_tags?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

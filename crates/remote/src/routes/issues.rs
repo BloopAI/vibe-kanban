@@ -26,12 +26,11 @@ use crate::{
 /// Mutation definition for Issue - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<Issue, CreateIssueRequest, UpdateIssueRequest> {
     MutationBuilder::new("issues")
-        .list(list_issues)
+        .fallback(list_issues, "project_id")
         .get(get_issue)
         .create(create_issue)
         .update(update_issue)
         .delete(delete_issue)
-        .fallback_list_url("/issues?project_id={project_id}")
 }
 
 /// Router for issue endpoints including bulk update

@@ -65,8 +65,8 @@ pub struct MutationDefinition {
     pub row_type: String,
     pub create_type: Option<String>,
     pub update_type: Option<String>,
-    /// URL template for the fallback list endpoint (substituted with shape params).
-    /// e.g. "/issues?project_id={project_id}" or "/projects?organization_id={organization_id}"
+    /// URL template for the fallback list endpoint, derived from `.fallback()`.
+    /// e.g. "/issues?project_id={project_id}" — constructed from table + query_param.
     pub fallback_list_url: Option<String>,
 }
 
@@ -132,14 +132,24 @@ impl<E: TS, C, U> MutationBuilder<E, C, U> {
         self
     }
 
-    /// Set a fallback list URL template for Electric failover.
+    /// Register a list handler with Electric fallback support (GET /{table}).
     ///
-    /// Use `{param}` placeholders matching the Electric shape params.
-    /// e.g. `"/issues?project_id={project_id}"` or `"/projects?organization_id={organization_id}"`
+    /// Like `.list()`, but also marks this mutation as having a fallback endpoint
+    /// for when Electric is unavailable. The fallback URL is derived from
+    /// `self.table` and the given `query_param` (e.g. `"project_id"`).
     ///
-    /// The frontend substitutes shape params into this template when Electric is down.
-    pub fn fallback_list_url(mut self, url: &str) -> Self {
-        self.fallback_list_url = Some(url.to_string());
+    /// The frontend substitutes the shape param value into the generated URL
+    /// `/{table}?{query_param}={query_param}` when Electric is down.
+    pub fn fallback<H, T>(mut self, handler: H, query_param: &str) -> Self
+    where
+        H: Handler<T, AppState> + Clone + Send + 'static,
+        T: 'static,
+    {
+        self.base_route = self.base_route.get(handler);
+        self.fallback_list_url = Some(format!(
+            "/{}?{}={{{}}}",
+            self.table, query_param, query_param
+        ));
         self
     }
 

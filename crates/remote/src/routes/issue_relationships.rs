@@ -26,11 +26,10 @@ use api_types::{
 pub fn mutation(
 ) -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, NoUpdate> {
     MutationBuilder::new("issue_relationships")
-        .list(list_issue_relationships)
+        .fallback(list_issue_relationships, "project_id")
         .get(get_issue_relationship)
         .create(create_issue_relationship)
         .delete(delete_issue_relationship)
-        .fallback_list_url("/issue_relationships?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {

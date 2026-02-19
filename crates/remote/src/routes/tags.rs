@@ -22,12 +22,11 @@ use api_types::{CreateTagRequest, ListTagsQuery, ListTagsResponse, Tag, UpdateTa
 /// Mutation definition for Tags - provides both router and TypeScript metadata.
 pub fn mutation() -> MutationBuilder<Tag, CreateTagRequest, UpdateTagRequest> {
     MutationBuilder::new("tags")
-        .list(list_tags)
+        .fallback(list_tags, "project_id")
         .get(get_tag)
         .create(create_tag)
         .update(update_tag)
         .delete(delete_tag)
-        .fallback_list_url("/tags?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {
