@@ -209,6 +209,7 @@ export const ConversationList = forwardRef<
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pendingRemeasureRef = useRef(false);
   const shouldStickToBottomRef = useRef(false);
+  const userStickToBottomRef = useRef(true);
 
   // Get repos from workspace context to check if scripts are configured
   let repos: RepoWithTargetBranch[] = [];
@@ -300,6 +301,8 @@ export const ConversationList = forwardRef<
         : null;
       const nearBottom =
         scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
+      const shouldStick =
+        userStickToBottomRef.current || (nearBottom && pending.addType === 'running');
 
       if (loading) {
         // First data load: purge estimated sizes and jump to bottom
@@ -307,18 +310,19 @@ export const ConversationList = forwardRef<
       } else if (pending.addType === 'plan') {
         scrollModifier = ScrollToTopOfLastItem;
       } else if (pending.addType === 'historic') {
-        scrollModifier = nearBottom
+        scrollModifier = shouldStick
           ? AutoScrollToBottom
           : { ...ScrollToBottomModifier, purgeItemSizes: true };
       } else if (pending.addType === 'running') {
-        scrollModifier = AutoScrollToBottom;
+        scrollModifier = shouldStick ? AutoScrollToBottom : ScrollToBottomModifier;
       } else {
         // Historic/subsequent updates: scroll to bottom but keep measured sizes
         scrollModifier = ScrollToBottomModifier;
       }
 
       shouldStickToBottomRef.current =
-        nearBottom && (pending.addType === 'running' || pending.addType === 'historic');
+        shouldStick &&
+        (pending.addType === 'running' || pending.addType === 'historic');
 
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
@@ -523,6 +527,13 @@ export const ConversationList = forwardRef<
             className="h-full scrollbar-none"
             data={channelData}
             initialLocation={INITIAL_TOP_ITEM}
+            onScroll={(location) => {
+              const gap =
+                location.scrollHeight -
+                location.scrollTop -
+                location.viewportHeight;
+              userStickToBottomRef.current = gap < AUTO_SCROLL_GAP_PX;
+            }}
             context={messageListContext}
             computeItemKey={computeItemKey}
             itemIdentity={itemIdentity}
