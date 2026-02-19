@@ -153,9 +153,7 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
 
   const project = projects.find((p) => p.id === projectId);
 
-  // Only block on loading when we still haven't resolved this specific project.
-  // OrgContext loading also includes non-core streams (notifications, members).
-  if (isLoading && !project) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <p className="text-low">{t('states.loading')}</p>
@@ -203,13 +201,8 @@ function useFindProjectById(projectId: string | undefined) {
   return {
     project,
     organizationId: project?.organization_id ?? selectedOrgId,
-    // Block only while project resolution is truly pending.
-    // If we already know the selected org or found the project, avoid waiting on
-    // unrelated org query state.
-    isLoading:
-      !authLoaded ||
-      (orgsLoading && !orgIdToUse) ||
-      (projectsLoading && !project),
+    // Include auth loading state - we can't determine project access until auth loads
+    isLoading: !authLoaded || orgsLoading || projectsLoading,
   };
 }
 

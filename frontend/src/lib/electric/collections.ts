@@ -53,30 +53,6 @@ class ErrorHandler {
   }
 }
 
-const SHAPE_NON_LIVE_TIMEOUT_MS = 5000;
-const SHAPE_LIVE_TIMEOUT_MS = 25000;
-
-function getRequestUrl(input: RequestInfo | URL): string {
-  if (typeof input === 'string') return input;
-  if (input instanceof URL) return input.toString();
-  if (typeof Request !== 'undefined' && input instanceof Request) {
-    return input.url;
-  }
-  return String(input);
-}
-
-function getShapeRequestTimeoutMs(input: RequestInfo | URL): number {
-  try {
-    const requestUrl = getRequestUrl(input);
-    const live = new URL(requestUrl, 'http://localhost').searchParams.get(
-      'live'
-    );
-    return live === 'true' ? SHAPE_LIVE_TIMEOUT_MS : SHAPE_NON_LIVE_TIMEOUT_MS;
-  } catch {
-    return SHAPE_NON_LIVE_TIMEOUT_MS;
-  }
-}
-
 /**
  * Create a fetch wrapper that catches network errors and reports them.
  * When isPaused returns true (during token refresh or after logout),
@@ -102,54 +78,16 @@ function createErrorHandlingFetch(
       );
     }
 
-    const timeoutMs = getShapeRequestTimeoutMs(input);
-    const timeoutAbortController = new AbortController();
-    const sourceSignal = init?.signal;
-    const handleSourceAbort = () => {
-      timeoutAbortController.abort(sourceSignal?.reason);
-    };
-    if (sourceSignal) {
-      if (sourceSignal.aborted) {
-        timeoutAbortController.abort(sourceSignal.reason);
-      } else {
-        sourceSignal.addEventListener('abort', handleSourceAbort, {
-          once: true,
-        });
-      }
-    }
-    let didTimeout = false;
-    const timeoutId = setTimeout(() => {
-      didTimeout = true;
-      timeoutAbortController.abort();
-    }, timeoutMs);
-
     try {
-      const response = await fetch(input, {
-        ...init,
-        signal: timeoutAbortController.signal,
-      });
+      const response = await fetch(input, init);
       // Reset error state on successful response
       errorHandler.reset();
       return response;
     } catch (error) {
-      if (didTimeout) {
-        const timeoutError = new Error(
-          `Shape request timed out after ${timeoutMs}ms`
-        );
-        timeoutError.name = 'TimeoutError';
-        onError?.({ message: timeoutError.message });
-        throw timeoutError;
-      }
-
       // Always pass network errors to onError (debouncing happens there)
       const message = error instanceof Error ? error.message : 'Network error';
       onError?.({ message });
       throw error;
-    } finally {
-      clearTimeout(timeoutId);
-      if (sourceSignal) {
-        sourceSignal.removeEventListener('abort', handleSourceAbort);
-      }
     }
   };
 }
@@ -313,177 +251,6 @@ function buildCollectionId(
 // ({ txid: number[] }) need to be compatible with electricCollectionOptions.
 type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
 
-type ShapeSyncError = { status?: number; message?: string; name?: string };
-type ElectricShapeOptions = {
-  onError?: (error: ShapeSyncError) => void;
-  fetchClient?: (
-    input: RequestInfo | URL,
-    init?: RequestInit
-  ) => Promise<Response>;
-  [key: string]: unknown;
-};
-
-type FallbackWrappedOptions = {
-  sync: {
-    sync: (params: {
-      begin: (options?: { immediate?: boolean }) => void;
-      write: (message: unknown) => void;
-      commit: () => void;
-      truncate: () => void;
-      markReady: () => void;
-      [key: string]: unknown;
-    }) => unknown;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-};
-
-type FallbackSyncBridge = {
-  begin: (options?: { immediate?: boolean }) => void;
-  write: (message: { type: 'insert'; value: ElectricRow }) => void;
-  commit: () => void;
-  truncate: () => void;
-  markReady: () => void;
-};
-
-const FALLBACK_RETRY_MS = 5000;
-
-function shouldUseFallback(error: ShapeSyncError): boolean {
-  if (error.name === 'AbortError') return false;
-  if (error.status === 401 || error.status === 403) return false;
-  return true;
-}
-
-async function fetchFallbackRows(
-  shape: ShapeDefinition<unknown>,
-  params: Record<string, string>
-): Promise<ElectricRow[]> {
-  const query = new URLSearchParams(params);
-  const response = await makeRequest(
-    `${shape.fallbackUrl}?${query.toString()}`,
-    { method: 'GET' }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Fallback list failed (${response.status})`);
-  }
-
-  const payload = (await response.json()) as Record<string, unknown>;
-  const rows = payload[shape.table];
-  if (!Array.isArray(rows)) {
-    throw new Error('Fallback list returned unexpected payload');
-  }
-
-  return rows as ElectricRow[];
-}
-
-function createFallbackController(
-  shape: ShapeDefinition<unknown>,
-  params: Record<string, string>,
-  collectionId: string,
-  config?: CollectionConfig
-) {
-  let syncBridge: FallbackSyncBridge | null = null;
-  let hasHydrated = false;
-  let fallbackInFlight: Promise<void> | null = null;
-  let lastAttemptAt = 0;
-
-  const hydrateFromFallback = async () => {
-    if (!syncBridge || hasHydrated) return;
-
-    const rows = await fetchFallbackRows(shape, params);
-    syncBridge.begin({ immediate: true });
-    syncBridge.truncate();
-    for (const row of rows) {
-      syncBridge.write({ type: 'insert', value: row });
-    }
-    syncBridge.commit();
-    syncBridge.markReady();
-    hasHydrated = true;
-  };
-
-  const triggerFallback = () => {
-    const now = Date.now();
-    if (hasHydrated) return;
-    if (fallbackInFlight) return;
-    if (now - lastAttemptAt < FALLBACK_RETRY_MS) return;
-
-    lastAttemptAt = now;
-    fallbackInFlight = hydrateFromFallback()
-      .catch((error) => {
-        const message =
-          error instanceof Error ? error.message : 'Fallback request failed';
-        console.error(
-          `[${collectionId}] Electric fallback failed (${shape.table}):`,
-          error
-        );
-        config?.onError?.({ message });
-      })
-      .finally(() => {
-        fallbackInFlight = null;
-      });
-  };
-
-  const wrapShapeOptions = (shapeOptions: ElectricShapeOptions) => {
-    const options = shapeOptions as ElectricShapeOptions;
-    const baseOnError = options.onError;
-    const baseFetchClient = options.fetchClient;
-
-    return {
-      ...options,
-      fetchClient: baseFetchClient
-        ? async (input: RequestInfo | URL, init?: RequestInit) => {
-            try {
-              const response = await baseFetchClient(input, init);
-              if (
-                !response.ok &&
-                shouldUseFallback({ status: response.status })
-              ) {
-                triggerFallback();
-              }
-              return response;
-            } catch (error) {
-              const shapeError = {
-                name:
-                  error instanceof Error
-                    ? error.name
-                    : error instanceof DOMException
-                      ? error.name
-                      : undefined,
-              };
-              if (shouldUseFallback(shapeError)) {
-                triggerFallback();
-              }
-              throw error;
-            }
-          }
-        : undefined,
-      onError: (error: ShapeSyncError) => {
-        if (shouldUseFallback(error)) {
-          triggerFallback();
-        }
-        baseOnError?.(error);
-      },
-    };
-  };
-
-  const attachSyncWrapper = (collectionOptions: FallbackWrappedOptions) => {
-    const baseSyncFn = collectionOptions.sync.sync;
-    collectionOptions.sync.sync = (syncParams) => {
-      syncBridge = {
-        begin: syncParams.begin,
-        write: (message) => syncParams.write(message),
-        commit: syncParams.commit,
-        truncate: syncParams.truncate,
-        markReady: syncParams.markReady,
-      };
-      return baseSyncFn(syncParams);
-    };
-  };
-
-  return { wrapShapeOptions, attachSyncWrapper };
-}
-
 /**
  * Create an Electric collection for a shape, optionally with mutation support.
  *
@@ -509,37 +276,18 @@ export function createShapeCollection<TRow extends ElectricRow>(
     return cached as typeof cached & { __rowType?: TRow };
   }
 
-  const fallbackController = createFallbackController(
-    shape,
-    params,
-    collectionId,
-    config
-  );
-
-  const baseShapeOptions = getAuthenticatedShapeOptions(
-    shape,
-    params,
-    config
-  ) as ElectricShapeOptions;
-  const shapeOptions = fallbackController
-    ? fallbackController.wrapShapeOptions(baseShapeOptions)
-    : baseShapeOptions;
+  const shapeOptions = getAuthenticatedShapeOptions(shape, params, config);
   const mutationHandlers = mutation ? buildMutationHandlers(mutation) : {};
 
-  const electricOptions = electricCollectionOptions({
+  const options = electricCollectionOptions({
     id: collectionId,
     shapeOptions: shapeOptions as unknown as ElectricConfig['shapeOptions'],
     getKey: (item: ElectricRow) => getRowKey(item),
     gcTime: DEFAULT_GC_TIME_MS,
     ...mutationHandlers,
   } as unknown as ElectricConfig);
-  if (fallbackController) {
-    fallbackController.attachSyncWrapper(
-      electricOptions as unknown as FallbackWrappedOptions
-    );
-  }
 
-  const collection = createCollection(electricOptions) as unknown as ReturnType<
+  const collection = createCollection(options) as unknown as ReturnType<
     typeof createCollection
   > & { __rowType?: TRow };
 
