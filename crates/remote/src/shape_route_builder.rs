@@ -1,21 +1,21 @@
-//! ShapeRouteBuilder: unified registration for Electric proxy + REST fallback routes.
+//! Unified registration for Electric proxy + REST fallback routes.
 //!
 //! Each shape has exactly one proxy handler (GET on its URL) and a required
-//! REST fallback route.  The builder pairs the shape with its authorization
-//! scope and fallback, then registers both routes in one call.
+//! REST fallback route. `ShapeRoute::new` pairs the shape with its
+//! authorization scope and fallback, then registers both routes in one call.
 //!
 //! # Example
 //!
 //! ```ignore
-//! use crate::shape_route_builder::{ShapeRouteBuilder, ShapeScope, OrgFallbackQuery};
+//! use crate::shape_route_builder::{ShapeRoute, ShapeScope};
 //! use crate::shapes;
 //!
-//! let route = ShapeRouteBuilder::new(
+//! let route = ShapeRoute::new(
 //!     &shapes::PROJECTS_SHAPE,
 //!     ShapeScope::Org,
 //!     "/fallback/projects",
 //!     fallback_list_projects,
-//! ).build();
+//! );
 //! ```
 
 use axum::{
@@ -117,11 +117,11 @@ pub enum ShapeScope {
 }
 
 // =============================================================================
-// BuiltShapeRoute — type-erased output from ShapeRouteBuilder::build()
+// ShapeRoute
 // =============================================================================
 
-/// A fully built shape route: router, shape metadata, and fallback URL.
-pub struct BuiltShapeRoute {
+/// A shape route: router, shape metadata, and fallback URL.
+pub struct ShapeRoute {
     pub router: axum::Router<AppState>,
     /// Type-erased shape metadata (table, params, url, ts_type_name).
     pub shape: &'static dyn ShapeExport,
@@ -129,59 +129,33 @@ pub struct BuiltShapeRoute {
     pub fallback_url: &'static str,
 }
 
-// =============================================================================
-// ShapeRouteBuilder
-// =============================================================================
-
-/// Builder that registers an Electric proxy route and a required REST fallback
-/// for a shape definition.
-///
-/// Generic over `T` (the shape's row type) to enable type-safe fallback
-/// handler constraints via `HasQueryParams`.
-pub struct ShapeRouteBuilder<T: TS + Sync + 'static> {
-    shape: &'static ShapeDefinition<T>,
-    scope: ShapeScope,
-    fallback_url: &'static str,
-    fallback_handler: MethodRouter<AppState>,
-}
-
-impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T> {
-    /// Create a new builder for the given shape, authorization scope, and
-    /// REST fallback handler.
+impl ShapeRoute {
+    /// Create a shape route: Electric proxy handler + REST fallback, type-erased.
     ///
-    /// The handler's extractor tuple must include `Query<Q>` (enforced by
+    /// The fallback handler's extractor tuple must include `Query<Q>` (enforced by
     /// `HasQueryParams`), ensuring the handler accepts the correct scope
     /// parameters. Use `Query<NoQueryParams>` for handlers that don't need
     /// query parameters (e.g. User-scoped shapes).
-    pub fn new<H, HT, Q>(
+    pub fn new<T, H, HT, Q>(
         shape: &'static ShapeDefinition<T>,
         scope: ShapeScope,
         fallback_url: &'static str,
         fallback_handler: H,
     ) -> Self
     where
+        T: TS + Sync + Send + 'static,
         H: Handler<HT, AppState> + Clone + Send + 'static,
         HT: HasQueryParams<Q> + 'static,
     {
-        Self {
-            shape,
-            scope,
-            fallback_url,
-            fallback_handler: get(fallback_handler),
-        }
-    }
-
-    /// Build the finalized shape route, erasing the generic `T`.
-    pub fn build(self) -> BuiltShapeRoute {
-        let proxy_handler = build_proxy_handler(self.shape, self.scope);
+        let proxy_handler = build_proxy_handler(shape, scope);
         let router = axum::Router::new()
-            .route(self.shape.url(), proxy_handler)
-            .route(self.fallback_url, self.fallback_handler);
+            .route(shape.url(), proxy_handler)
+            .route(fallback_url, get(fallback_handler));
 
-        BuiltShapeRoute {
+        Self {
             router,
-            shape: self.shape,
-            fallback_url: self.fallback_url,
+            shape,
+            fallback_url,
         }
     }
 }

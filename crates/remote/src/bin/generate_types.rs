@@ -90,6 +90,13 @@ fn shape_const_names() -> std::collections::HashMap<&'static str, &'static str> 
 fn export_shapes() -> String {
     let routes = all_shape_routes();
     let names = shape_const_names();
+    assert_eq!(
+        names.len(),
+        routes.len(),
+        "shape_const_names() has {} entries but all_shape_routes() has {} — they must match",
+        names.len(),
+        routes.len(),
+    );
 
     let mut output = String::new();
 
