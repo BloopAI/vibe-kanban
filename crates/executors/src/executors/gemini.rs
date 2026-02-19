@@ -41,7 +41,7 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.27.0");
+        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.29.3");
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
@@ -197,6 +197,12 @@ impl StandardCodingAgentExecutor for Gemini {
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
                 models: vec![
+                    ModelInfo {
+                        id: "gemini-3.1-pro-preview".to_string(),
+                        name: "Gemini 3.1 Pro Preview".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
                     ModelInfo {
                         id: "gemini-3-pro-preview".to_string(),
                         name: "Gemini 3 Pro".to_string(),
