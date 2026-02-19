@@ -10,9 +10,12 @@
 //! use crate::shape_route_builder::{ShapeRouteBuilder, ShapeScope, OrgFallbackQuery};
 //! use crate::shapes;
 //!
-//! let route = ShapeRouteBuilder::new(&shapes::PROJECTS_SHAPE, ShapeScope::Org)
-//!     .fallback("/fallback/projects", fallback_list_projects)
-//!     .build();
+//! let route = ShapeRouteBuilder::new(
+//!     &shapes::PROJECTS_SHAPE,
+//!     ShapeScope::Org,
+//!     "/fallback/projects",
+//!     fallback_list_projects,
+//! ).build();
 //! ```
 
 use axum::{
@@ -130,19 +133,6 @@ pub struct BuiltShapeRoute {
 }
 
 // =============================================================================
-// Type-state markers for ShapeRouteBuilder
-// =============================================================================
-
-/// Marker: no fallback registered yet. `.build()` is not available.
-pub struct NoFallback;
-
-/// Fallback has been registered. `.build()` is available.
-pub struct FallbackDef {
-    url: &'static str,
-    handler: MethodRouter<AppState>,
-}
-
-// =============================================================================
 // ShapeRouteBuilder
 // =============================================================================
 
@@ -150,68 +140,56 @@ pub struct FallbackDef {
 /// for a shape definition.
 ///
 /// Generic over `T` (the shape's row type) to enable type-safe fallback
-/// handler constraints, and `F` (type-state) to enforce that `.fallback()`
-/// is called before `.build()`.
-pub struct ShapeRouteBuilder<T: TS + Sync + 'static, F = NoFallback> {
+/// handler constraints via `HasQueryParams`.
+pub struct ShapeRouteBuilder<T: TS + Sync + 'static> {
     shape: &'static ShapeDefinition<T>,
     scope: ShapeScope,
-    fallback: F,
+    fallback_url: &'static str,
+    fallback_handler: MethodRouter<AppState>,
 }
 
-impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T, NoFallback> {
-    /// Create a new builder for the given shape and authorization scope.
-    pub fn new(shape: &'static ShapeDefinition<T>, scope: ShapeScope) -> Self {
-        Self {
-            shape,
-            scope,
-            fallback: NoFallback,
-        }
-    }
-
-    /// Register the required REST fallback handler for this shape.
+impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T> {
+    /// Create a new builder for the given shape, authorization scope, and
+    /// REST fallback handler.
     ///
     /// The handler's extractor tuple must include `Query<Q>` (enforced by
     /// `HasQueryParams`), ensuring the handler accepts the correct scope
     /// parameters. Use `Query<NoQueryParams>` for handlers that don't need
     /// query parameters (e.g. User-scoped shapes).
-    pub fn fallback<H, HT, Q>(
-        self,
-        url: &'static str,
-        handler: H,
-    ) -> ShapeRouteBuilder<T, FallbackDef>
+    pub fn new<H, HT, Q>(
+        shape: &'static ShapeDefinition<T>,
+        scope: ShapeScope,
+        fallback_url: &'static str,
+        fallback_handler: H,
+    ) -> Self
     where
         H: Handler<HT, AppState> + Clone + Send + 'static,
         HT: HasQueryParams<Q> + 'static,
     {
-        ShapeRouteBuilder {
-            shape: self.shape,
-            scope: self.scope,
-            fallback: FallbackDef {
-                url,
-                handler: get(handler),
-            },
+        Self {
+            shape,
+            scope,
+            fallback_url,
+            fallback_handler: get(fallback_handler),
         }
     }
-}
 
-impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T, FallbackDef> {
     /// Build the finalized shape route, erasing the generic `T`.
     ///
     /// Produces a `BuiltShapeRoute` containing the axum router (with both
     /// proxy and fallback routes) and the shape/fallback URLs for codegen.
     pub fn build(self) -> BuiltShapeRoute {
         let url = self.shape.url();
-        let fallback_url = self.fallback.url;
 
         let proxy_handler = build_proxy_handler(self.shape, self.scope);
         let router = axum::Router::new()
             .route(url, proxy_handler)
-            .route(fallback_url, self.fallback.handler);
+            .route(self.fallback_url, self.fallback_handler);
 
         BuiltShapeRoute {
             router,
             url,
-            fallback_url,
+            fallback_url: self.fallback_url,
         }
     }
 }

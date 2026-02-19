@@ -74,78 +74,127 @@ pub fn all_shape_routes() -> Vec<BuiltShapeRoute> {
         // =================================================================
         // Organization-scoped shapes
         // =================================================================
-        ShapeRouteBuilder::new(&shapes::PROJECTS_SHAPE, ShapeScope::Org)
-            .fallback("/fallback/projects", fallback_list_projects)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::NOTIFICATIONS_SHAPE, ShapeScope::OrgWithUser)
-            .fallback("/fallback/notifications", fallback_list_notifications)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::ORGANIZATION_MEMBERS_SHAPE, ShapeScope::Org)
-            .fallback(
-                "/fallback/organization_members",
-                fallback_list_organization_members,
-            )
-            .build(),
-        ShapeRouteBuilder::new(&shapes::USERS_SHAPE, ShapeScope::Org)
-            .fallback("/fallback/users", fallback_list_users)
-            .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECTS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/projects",
+            fallback_list_projects,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::NOTIFICATIONS_SHAPE,
+            ShapeScope::OrgWithUser,
+            "/fallback/notifications",
+            fallback_list_notifications,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::ORGANIZATION_MEMBERS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/organization_members",
+            fallback_list_organization_members,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::USERS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/users",
+            fallback_list_users,
+        )
+        .build(),
         // =================================================================
         // Project-scoped shapes
         // =================================================================
-        ShapeRouteBuilder::new(&shapes::PROJECT_TAGS_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/tags", fallback_list_tags)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::PROJECT_PROJECT_STATUSES_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/project_statuses", fallback_list_project_statuses)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::PROJECT_ISSUES_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/issues", fallback_list_issues)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::USER_WORKSPACES_SHAPE, ShapeScope::User)
-            .fallback("/fallback/user_workspaces", fallback_list_user_workspaces)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::PROJECT_WORKSPACES_SHAPE, ShapeScope::Project)
-            .fallback(
-                "/fallback/project_workspaces",
-                fallback_list_project_workspaces,
-            )
-            .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_TAGS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/tags",
+            fallback_list_tags,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_PROJECT_STATUSES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/project_statuses",
+            fallback_list_project_statuses,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_ISSUES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issues",
+            fallback_list_issues,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::USER_WORKSPACES_SHAPE,
+            ShapeScope::User,
+            "/fallback/user_workspaces",
+            fallback_list_user_workspaces,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_WORKSPACES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/project_workspaces",
+            fallback_list_project_workspaces,
+        )
+        .build(),
         // =================================================================
         // Project-scoped issue-related shapes
         // =================================================================
-        ShapeRouteBuilder::new(&shapes::PROJECT_ISSUE_ASSIGNEES_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/issue_assignees", fallback_list_issue_assignees)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::PROJECT_ISSUE_FOLLOWERS_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/issue_followers", fallback_list_issue_followers)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::PROJECT_ISSUE_TAGS_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/issue_tags", fallback_list_issue_tags)
-            .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_ISSUE_ASSIGNEES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_assignees",
+            fallback_list_issue_assignees,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_ISSUE_FOLLOWERS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_followers",
+            fallback_list_issue_followers,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_ISSUE_TAGS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_tags",
+            fallback_list_issue_tags,
+        )
+        .build(),
         ShapeRouteBuilder::new(
             &shapes::PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
             ShapeScope::Project,
-        )
-        .fallback(
             "/fallback/issue_relationships",
             fallback_list_issue_relationships,
         )
         .build(),
-        ShapeRouteBuilder::new(&shapes::PROJECT_PULL_REQUESTS_SHAPE, ShapeScope::Project)
-            .fallback("/fallback/pull_requests", fallback_list_pull_requests)
-            .build(),
+        ShapeRouteBuilder::new(
+            &shapes::PROJECT_PULL_REQUESTS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/pull_requests",
+            fallback_list_pull_requests,
+        )
+        .build(),
         // =================================================================
         // Issue-scoped shapes
         // =================================================================
-        ShapeRouteBuilder::new(&shapes::ISSUE_COMMENTS_SHAPE, ShapeScope::Issue)
-            .fallback("/fallback/issue_comments", fallback_list_issue_comments)
-            .build(),
-        ShapeRouteBuilder::new(&shapes::ISSUE_REACTIONS_SHAPE, ShapeScope::Issue)
-            .fallback(
-                "/fallback/issue_comment_reactions",
-                fallback_list_issue_comment_reactions,
-            )
-            .build(),
+        ShapeRouteBuilder::new(
+            &shapes::ISSUE_COMMENTS_SHAPE,
+            ShapeScope::Issue,
+            "/fallback/issue_comments",
+            fallback_list_issue_comments,
+        )
+        .build(),
+        ShapeRouteBuilder::new(
+            &shapes::ISSUE_REACTIONS_SHAPE,
+            ShapeScope::Issue,
+            "/fallback/issue_comment_reactions",
+            fallback_list_issue_comment_reactions,
+        )
+        .build(),
     ]
 }
 
