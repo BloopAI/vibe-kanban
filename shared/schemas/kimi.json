@@ -12,14 +12,14 @@
       "default": null
     },
     "model": {
-      "description": "Model to use (e.g., kimi-k2, kimi-k2.5)",
+      "description": "Model to use (e.g., \"kimi-k2\", \"kimi-k2.5\")",
       "type": [
         "string",
         "null"
       ]
     },
     "agent": {
-      "description": "Agent type (default, okabe, or custom)",
+      "description": "Agent type (e.g., \"default\", \"okabe\", or custom agent file)",
       "type": [
         "string",
         "null"
@@ -43,7 +43,7 @@
       ]
     },
     "yolo": {
-      "description": "Auto-approve all actions without confirmation",
+      "description": "YOLO mode - auto-approve all actions",
       "type": [
         "boolean",
         "null"
@@ -80,5 +80,6 @@
       }
     }
   },
+  "description": "Kimi CLI executor configuration",
   "type": "object"
 }

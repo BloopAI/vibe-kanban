@@ -10,7 +10,7 @@ use workspace_utils::msg_store::MsgStore;
 pub use super::acp::AcpAgentHarness;
 use crate::{
     approvals::ExecutorApprovalService,
-    command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
+    command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
     executor_discovery::ExecutorDiscoveredOptions,
     executors::{
@@ -65,32 +65,12 @@ impl Kimi {
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
         // Use ACP mode for programmatic interaction
-        let mut builder = CommandBuilder::new(self.base_command());
-        
+        // Note: kimi acp doesn't support --model, --agent, --skill flags
+        // These should be configured via ~/.kimi/config.toml instead
+        let builder = CommandBuilder::new(self.base_command());
+
         // Use ACP mode (like Gemini)
-        builder = builder.extend_params(["acp"]);
-
-        // Add model if specified
-        if let Some(model) = &self.model {
-            builder = builder.extend_params(["--model", model]);
-        }
-
-        // Add agent if specified
-        if let Some(agent) = &self.agent {
-            builder = builder.extend_params(["--agent", agent]);
-        }
-
-        // Add agent file if specified
-        if let Some(agent_file) = &self.agent_file {
-            builder = builder.extend_params(["--agent-file", agent_file]);
-        }
-
-        // Add skills if specified
-        if let Some(skills) = &self.skills {
-            for skill in skills {
-                builder = builder.extend_params(["--skill", skill]);
-            }
-        }
+        let builder = builder.extend_params(["acp"]);
 
         apply_overrides(builder, &self.cmd)
     }
@@ -188,22 +168,22 @@ impl StandardCodingAgentExecutor for Kimi {
         // Check if kimi is installed
         match which::which("kimi") {
             Ok(_) => {
-                // Check for login status by looking for auth file
-                let auth_file = dirs::home_dir()
-                    .map(|home| home.join(".kimi").join("credentials.json"));
-                
-                if let Some(path) = auth_file {
-                    if let Ok(metadata) = std::fs::metadata(&path) {
-                        if let Ok(modified) = metadata.modified() {
-                            if let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH) {
-                                return AvailabilityInfo::LoginDetected {
-                                    last_auth_timestamp: duration.as_secs() as i64,
-                                };
-                            }
-                        }
-                    }
+                // Check for login status by looking for credentials directory
+                // Kimi CLI stores credentials in ~/.kimi/credentials/ directory
+                let credentials_dir =
+                    dirs::home_dir().map(|home| home.join(".kimi").join("credentials"));
+
+                if let Some(path) = credentials_dir
+                    && let Ok(metadata) = std::fs::metadata(&path)
+                    && metadata.is_dir()
+                    && let Ok(modified) = metadata.modified()
+                    && let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH)
+                {
+                    return AvailabilityInfo::LoginDetected {
+                        last_auth_timestamp: duration.as_secs() as i64,
+                    };
                 }
-                
+
                 AvailabilityInfo::InstallationFound
             }
             Err(_) => AvailabilityInfo::NotFound,
