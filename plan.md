@@ -494,6 +494,64 @@ Week 2:
 | 日期 | 版本 | 更新内容 | 作者 |
 |------|------|----------|------|
 | 2026-02-19 | 1.0 | 初始版本 | Assistant |
+| 2026-02-19 | 1.1 | 完成阶段 1：基础 Executor 实现 | Assistant |
+
+---
+
+## 开发进度
+
+### 阶段 1：基础 Executor 实现 ✅ 已完成
+
+**已完成工作：**
+
+1. **创建 Kimi Executor 模块** (`crates/executors/src/executors/kimi.rs`)
+   - 实现 `Kimi` struct，支持配置：model, agent, skills, agent_file
+   - 实现 `StandardCodingAgentExecutor` trait
+   - 实现 `spawn` 方法，使用 `kimi --print --output-format stream-json` 模式
+   - 实现 `spawn_follow_up` 方法，支持 `--session` 参数恢复会话
+   - 实现 `get_availability_info`，检查 kimi 安装和登录状态
+
+2. **创建日志解析器** (`crates/executors/src/executors/kimi/normalize_logs.rs`)
+   - 定义 `KimiEvent` enum，覆盖所有 stream-json 事件类型
+   - 实现 `KimiLogProcessor`，将 Kimi 事件转换为 `NormalizedEntry`
+   - 支持事件：TurnBegin/End, StepBegin, AgentMessageChunk, AgentThoughtChunk
+   - 支持工具调用：ToolCallStart, ToolCallProgress, ToolCallComplete
+   - 支持审批：ApprovalRequest, ApprovalResponse
+   - 支持状态：StatusUpdate, TokenUsageInfo
+   - 支持 Subagent 事件
+
+3. **注册到 Executor 系统** (`crates/executors/src/executors/mod.rs`)
+   - 添加 `kimi` 模块声明
+   - 将 `Kimi` 添加到 `CodingAgent` enum
+   - 添加 `KIMI` 到 `BaseCodingAgent`
+   - 配置 capabilities：SessionFork, ContextUsage
+
+4. **创建 JSON Schema** (`shared/schemas/kimi.json`)
+   - 定义配置选项：model, agent, skills, agent_file
+   - 支持标准覆盖：base_command_override, additional_params, env
+
+5. **添加依赖** (`crates/executors/Cargo.toml`)
+   - 添加 `which = "6.0"` 用于检测 kimi 安装
+
+**文件清单：**
+```
+crates/executors/src/executors/
+├── kimi.rs                      # 主 executor 实现
+├── kimi/
+│   └── normalize_logs.rs        # 日志解析器
+├── mod.rs                       # 注册 Kimi executor (已修改)
+└── ...
+
+shared/schemas/
+└── kimi.json                    # JSON Schema
+
+crates/executors/Cargo.toml      # 添加 which 依赖
+```
+
+**下一步：**
+- [ ] 编译测试，修复可能的编译错误
+- [ ] 实现阶段 2：完善日志解析，测试与 Kimi CLI 的集成
+- [ ] 前端添加 Kimi 选项和图标
 
 ---
 
