@@ -22,7 +22,7 @@ module.exports = {
     'plugin:eslint-comments/recommended',
     'prettier',
   ],
-  ignorePatterns: ['dist', '.eslintrc.cjs'],
+  ignorePatterns: ['dist', '.eslintrc.cjs', 'src/routeTree.gen.ts'],
   parser: '@typescript-eslint/parser',
   plugins: ['react-refresh', '@typescript-eslint', 'unused-imports', 'i18next', 'eslint-comments', 'check-file', 'deprecation'],
   parserOptions: {
@@ -137,6 +137,12 @@ module.exports = {
     ],
   },
   overrides: [
+    {
+      files: ['src/routes/**/*.{ts,tsx}', 'src/routeTree.gen.ts'],
+      rules: {
+        'check-file/filename-naming-convention': 'off',
+      },
+    },
     {
       // Entry point exception - main.tsx can stay lowercase
       files: ['src/main.tsx', 'src/vite-env.d.ts'],

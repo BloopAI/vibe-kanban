@@ -37,9 +37,9 @@ import {
 } from "../api";
 
 export default function OrganizationPage() {
-  const { orgId } = useParams({ from: "/account/organizations/$orgId" });
+  const { orgId } = useParams({ from: "/account_/organizations/$orgId" });
   const navigate = useNavigate();
-  const search = useSearch({ from: "/account/organizations/$orgId" });
+  const search = useSearch({ from: "/account_/organizations/$orgId" });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

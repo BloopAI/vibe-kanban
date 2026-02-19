@@ -6,7 +6,7 @@ import { retrieveVerifier, clearVerifier } from "../pkce";
 
 export default function UpgradeCompletePage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: "/upgrade/complete" });
+  const search = useSearch({ from: "/upgrade_/complete" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 

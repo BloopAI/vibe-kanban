@@ -6,7 +6,7 @@ import { retrieveVerifier, clearVerifier } from "../pkce";
 
 export default function AccountCompletePage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: "/account/complete" });
+  const search = useSearch({ from: "/account_/complete" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 

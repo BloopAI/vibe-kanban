@@ -98,6 +98,7 @@
     "@rjsf/utils": "6.1.1",
     "@rjsf/validator-ajv8": "6.1.1",
     "@tailwindcss/container-queries": "^0.1.1",
+    "@tanstack/router-plugin": "^1.161.1",
     "@types/lodash": "^4.17.20",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",

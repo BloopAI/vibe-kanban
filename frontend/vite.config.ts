@@ -2,6 +2,7 @@
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { createLogger, defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import path from "path";
 import fs from "fs";
 import pkg from "./package.json";
@@ -83,6 +84,10 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
   },
   plugins: [
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: false,
+    }),
     react({
       babel: {
         plugins: [
