@@ -22,6 +22,8 @@ use crate::{
     profile::ExecutorConfig,
 };
 
+const SUPPRESSED_STDERR_PATTERNS: &[&str] = &["was started but never ended. Skipping metrics."];
+
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
 pub struct Gemini {
@@ -132,7 +134,11 @@ impl StandardCodingAgentExecutor for Gemini {
     }
 
     fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        super::acp::normalize_logs(msg_store, worktree_path);
+        super::acp::normalize_logs_with_suppressed_stderr_patterns(
+            msg_store,
+            worktree_path,
+            SUPPRESSED_STDERR_PATTERNS,
+        );
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {

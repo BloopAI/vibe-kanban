@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
+    time::Duration,
 };
 
 use agent_client_protocol::{self as acp, SessionNotification};
@@ -17,15 +18,35 @@ use crate::{
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
+        plain_text_processor::PlainTextLogProcessor,
         stderr_processor::normalize_stderr_logs,
         utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 
 pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+    normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[]);
+}
+
+pub fn normalize_logs_with_suppressed_stderr_patterns(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+    suppressed_stderr_patterns: &[&str],
+) {
     // stderr normalization
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    if suppressed_stderr_patterns.is_empty() {
+        normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    } else {
+        normalize_acp_stderr_logs(
+            msg_store.clone(),
+            entry_index.clone(),
+            suppressed_stderr_patterns
+                .iter()
+                .map(|pattern| pattern.to_string())
+                .collect(),
+        );
+    }
 
     // stdout normalization (main loop)
     let worktree_path = worktree_path.to_path_buf();
@@ -605,6 +626,42 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                     tracing::debug!("Unknown tool call status: {:?}", status);
                     LogToolStatus::Created
                 }
+            }
+        }
+    });
+}
+
+fn normalize_acp_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+    suppressed_patterns: Vec<String>,
+) {
+    tokio::spawn(async move {
+        let mut stderr = msg_store.stderr_chunked_stream();
+
+        let mut processor = PlainTextLogProcessor::builder()
+            .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: NormalizedEntryError::Other,
+                },
+                content: strip_ansi_escapes::strip_str(&content),
+                metadata: None,
+            }))
+            .time_gap(Duration::from_secs(2))
+            .index_provider(entry_index_provider)
+            .transform_lines(Box::new(move |lines: &mut Vec<String>| {
+                lines.retain(|line| {
+                    !suppressed_patterns
+                        .iter()
+                        .any(|pattern| line.contains(pattern))
+                });
+            }))
+            .build();
+
+        while let Some(Ok(chunk)) = stderr.next().await {
+            for patch in processor.process(chunk) {
+                msg_store.push_patch(patch);
             }
         }
     });
