@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::{execution_process::ExecutionProcess, workspace::Workspace};
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ContainerQuery {
     #[serde(rename = "ref")]
@@ -28,4 +30,10 @@ pub struct CreateAndStartWorkspaceRequest {
     pub linked_issue: Option<LinkedIssueInfo>,
     pub executor_config: ExecutorConfig,
     pub prompt: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CreateAndStartWorkspaceResponse {
+    pub workspace: Workspace,
+    pub execution_process: ExecutionProcess,
 }

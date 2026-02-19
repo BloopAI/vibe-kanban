@@ -1,6 +1,9 @@
 use std::str::FromStr;
 
-use db::models::requests::{CreateAndStartWorkspaceRequest, LinkedIssueInfo, WorkspaceRepoInput};
+use db::models::requests::{
+    CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
+    WorkspaceRepoInput,
+};
 use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -45,16 +48,6 @@ struct StartWorkspaceSessionRequest {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct StartWorkspaceSessionResponse {
     workspace_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-struct CreateAndStartWorkspaceResponse {
-    workspace: CreateAndStartWorkspaceResponseWorkspace,
-}
-
-#[derive(Debug, Deserialize)]
-struct CreateAndStartWorkspaceResponseWorkspace {
-    id: Uuid,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]

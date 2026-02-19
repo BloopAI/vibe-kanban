@@ -29,7 +29,9 @@ use db::models::{
     image::WorkspaceImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
-    requests::{CreateAndStartWorkspaceRequest, WorkspaceRepoInput},
+    requests::{
+        CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, WorkspaceRepoInput,
+    },
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
@@ -1831,12 +1833,6 @@ pub async fn unlink_workspace(
 }
 
 // ── Create-and-start (moved from tasks.rs) ──────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CreateAndStartWorkspaceResponse {
-    pub workspace: Workspace,
-    pub execution_process: ExecutionProcess,
-}
 
 struct ImportedImage {
     image_id: Uuid,
