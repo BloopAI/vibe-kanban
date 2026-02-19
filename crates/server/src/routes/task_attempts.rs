@@ -29,7 +29,7 @@ use db::models::{
     image::WorkspaceImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
-    requests::{LinkedIssueInfo, WorkspaceRepoInput},
+    requests::{CreateAndStartWorkspaceRequest, WorkspaceRepoInput},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
@@ -1831,15 +1831,6 @@ pub async fn unlink_workspace(
 }
 
 // ── Create-and-start (moved from tasks.rs) ──────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CreateAndStartWorkspaceRequest {
-    pub name: Option<String>,
-    pub repos: Vec<WorkspaceRepoInput>,
-    pub linked_issue: Option<LinkedIssueInfo>,
-    pub executor_config: ExecutorConfig,
-    pub prompt: String,
-}
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct CreateAndStartWorkspaceResponse {

@@ -133,7 +133,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::pr::PrCommentsResponse::decl(),
         server::routes::task_attempts::pr::GetPrCommentsError::decl(),
         server::routes::task_attempts::pr::GetPrCommentsQuery::decl(),
-        server::routes::task_attempts::CreateAndStartWorkspaceRequest::decl(),
+        db::models::requests::CreateAndStartWorkspaceRequest::decl(),
         server::routes::task_attempts::CreateAndStartWorkspaceResponse::decl(),
         git_host::UnifiedPrComment::decl(),
         git_host::ProviderKind::decl(),
