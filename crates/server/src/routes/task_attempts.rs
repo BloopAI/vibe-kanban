@@ -29,9 +29,7 @@ use db::models::{
     image::WorkspaceImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
-    requests::{
-        CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, WorkspaceRepoInput,
-    },
+    requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
@@ -43,7 +41,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError},
-    profile::{ExecutorConfig, ExecutorConfigs, ExecutorProfileId},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use git::{ConflictOp, GitCliError, GitService, GitServiceError};
 use git2::BranchType;
@@ -189,13 +187,6 @@ pub async fn update_workspace(
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
-}
-
-#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
-pub struct CreateTaskAttemptBody {
-    pub task_id: Uuid,
-    pub executor_config: ExecutorConfig,
-    pub repos: Vec<WorkspaceRepoInput>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]

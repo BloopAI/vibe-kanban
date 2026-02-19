@@ -116,7 +116,6 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::pr::CreatePrApiRequest::decl(),
         server::routes::images::ImageResponse::decl(),
         server::routes::images::ImageMetadata::decl(),
-        server::routes::task_attempts::CreateTaskAttemptBody::decl(),
         db::models::requests::WorkspaceRepoInput::decl(),
         server::routes::task_attempts::RunAgentSetupRequest::decl(),
         server::routes::task_attempts::RunAgentSetupResponse::decl(),
