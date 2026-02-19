@@ -166,6 +166,7 @@
     "archived": "Archived",
     "loading": "Loading...",
     "notFound": "Workspace not found",
+    "notFoundDescription": "This workspace may have been deleted or the link may be incorrect.",
     "selectToStart": "Select a workspace to get started",
     "draft": "Draft",
     "viewArchive": "View Archive",

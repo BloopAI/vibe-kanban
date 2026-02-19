@@ -12,6 +12,7 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+import { WorkspaceNotFound } from '@/components/ui-new/views/WorkspaceNotFound';
 
 export type { ConversationListHandle };
 
@@ -26,12 +27,14 @@ interface WorkspacesMainProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
+  /** Whether the workspace fetch failed (e.g. 404) */
+  isError: boolean;
+  /** Callback to navigate to the workspaces list */
+  onCreateWorkspace?: () => void;
   containerRef: RefObject<HTMLElement | null>;
   conversationListRef: RefObject<ConversationListHandle>;
   /** Whether user is creating a new session */
   isNewSessionMode?: boolean;
-  /** Callback to start new session mode */
-  onStartNewSession?: () => void;
   /** Diff statistics from the workspace */
   diffStats?: DiffStats;
   /** Callback to scroll to previous user message */
@@ -45,10 +48,11 @@ export function WorkspacesMain({
   sessions,
   onSelectSession,
   isLoading,
+  isError,
+  onCreateWorkspace,
   containerRef,
   conversationListRef,
   isNewSessionMode,
-  onStartNewSession,
   diffStats,
   onScrollToPreviousMessage,
   onScrollToBottom,
@@ -76,6 +80,8 @@ export function WorkspacesMain({
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-low">{t('common:workspaces.loading')}</p>
               </div>
+            ) : isError ? (
+              <WorkspaceNotFound onCreateWorkspace={onCreateWorkspace} />
             ) : !workspaceWithSession ? (
               <div className="flex-1 flex items-center justify-center">
                 <p className="text-low">
@@ -95,34 +101,29 @@ export function WorkspacesMain({
               </div>
             )}
             {/* Chat box - always rendered to prevent flash during workspace switch */}
-            <div className="flex justify-center @container pl-px">
-              <SessionChatBoxContainer
-                {...(isNewSessionMode && workspaceWithSession
-                  ? {
-                      mode: 'new-session',
-                      workspaceId: workspaceWithSession.id,
-                      onSelectSession,
-                    }
-                  : session
+            {!isError && !isLoading && workspaceWithSession && (
+              <div className="flex justify-center @container pl-px">
+                <SessionChatBoxContainer
+                  {...(isNewSessionMode && workspaceWithSession
                     ? {
-                        mode: 'existing-session',
-                        session,
+                        mode: 'new-session',
+                        workspaceId: workspaceWithSession.id,
                         onSelectSession,
-                        onStartNewSession,
                       }
                     : {
                         mode: 'placeholder',
                       })}
-                sessions={sessions}
-                filesChanged={diffStats?.filesChanged ?? 0}
-                linesAdded={diffStats?.linesAdded ?? 0}
-                linesRemoved={diffStats?.linesRemoved ?? 0}
-                disableViewCode={false}
-                showOpenWorkspaceButton={false}
-                onScrollToPreviousMessage={onScrollToPreviousMessage}
-                onScrollToBottom={onScrollToBottom}
-              />
-            </div>
+                  sessions={sessions}
+                  filesChanged={diffStats?.filesChanged ?? 0}
+                  linesAdded={diffStats?.linesAdded ?? 0}
+                  linesRemoved={diffStats?.linesRemoved ?? 0}
+                  disableViewCode={false}
+                  showOpenWorkspaceButton={false}
+                  onScrollToPreviousMessage={onScrollToPreviousMessage}
+                  onScrollToBottom={onScrollToBottom}
+                />
+              </div>
+            )}
           </MessageEditProvider>
         </EntriesProvider>
       </ApprovalFeedbackProvider>

@@ -152,6 +152,7 @@
     "archived": "アーカイブ済み",
     "loading": "読み込み中...",
     "notFound": "ワークスペースが見つかりません",
+    "notFoundDescription": "このワークスペースは削除されたか、リンクが正しくない可能性があります。",
     "selectToStart": "ワークスペースを選択して開始",
     "draft": "下書き",
     "viewArchive": "アーカイブを表示",

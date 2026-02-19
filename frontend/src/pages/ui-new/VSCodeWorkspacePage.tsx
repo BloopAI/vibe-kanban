@@ -17,6 +17,7 @@ import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/types/attempt';
+import { WorkspaceNotFound } from '@/components/ui-new/views/WorkspaceNotFound';
 
 export function VSCodeWorkspacePage() {
   const { t } = useTranslation('common');
@@ -28,9 +29,9 @@ export function VSCodeWorkspacePage() {
     selectedSession,
     selectSession,
     isLoading,
+    isError,
     diffStats,
     isNewSessionMode,
-    startNewSession,
   } = useWorkspaceContext();
 
   usePageTitle(workspace?.name);
@@ -66,10 +67,8 @@ export function VSCodeWorkspacePage() {
                   <div className="flex-1 flex items-center justify-center">
                     <p className="text-low">{t('workspaces.loading')}</p>
                   </div>
-                ) : !workspaceWithSession ? (
-                  <div className="flex-1 flex items-center justify-center">
-                    <p className="text-low">{t('workspaces.notFound')}</p>
-                  </div>
+                ) : isError || !workspaceWithSession ? (
+                  <WorkspaceNotFound />
                 ) : (
                   <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
                     <div className="w-chat max-w-full h-full">
@@ -82,34 +81,29 @@ export function VSCodeWorkspacePage() {
                     </div>
                   </div>
                 )}
-                <div className="flex justify-center @container pl-px">
-                  <SessionChatBoxContainer
-                    {...(isNewSessionMode && workspaceWithSession
-                      ? {
-                          mode: 'new-session',
-                          workspaceId: workspaceWithSession.id,
-                          onSelectSession: selectSession,
-                        }
-                      : selectedSession
+                {!isLoading && !isError && workspaceWithSession && (
+                  <div className="flex justify-center @container pl-px">
+                    <SessionChatBoxContainer
+                      {...(isNewSessionMode && workspaceWithSession
                         ? {
-                            mode: 'existing-session',
-                            session: selectedSession,
+                            mode: 'new-session',
+                            workspaceId: workspaceWithSession.id,
                             onSelectSession: selectSession,
-                            onStartNewSession: startNewSession,
                           }
                         : {
                             mode: 'placeholder',
                           })}
-                    sessions={sessions}
-                    filesChanged={diffStats.files_changed}
-                    linesAdded={diffStats.lines_added}
-                    linesRemoved={diffStats.lines_removed}
-                    disableViewCode
-                    showOpenWorkspaceButton={false}
-                    onScrollToPreviousMessage={handleScrollToPreviousMessage}
-                    onScrollToBottom={handleScrollToBottom}
-                  />
-                </div>
+                      sessions={sessions}
+                      filesChanged={diffStats.files_changed}
+                      linesAdded={diffStats.lines_added}
+                      linesRemoved={diffStats.lines_removed}
+                      disableViewCode
+                      showOpenWorkspaceButton={false}
+                      onScrollToPreviousMessage={handleScrollToPreviousMessage}
+                      onScrollToBottom={handleScrollToBottom}
+                    />
+                  </div>
+                )}
               </MessageEditProvider>
             </EntriesProvider>
           </ApprovalFeedbackProvider>

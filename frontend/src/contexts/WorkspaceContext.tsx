@@ -37,6 +37,8 @@ interface WorkspaceContextValue {
   /** Archived workspaces for sidebar display */
   archivedWorkspaces: SidebarWorkspace[];
   isLoading: boolean;
+  /** Whether the workspace fetch failed (e.g. 404) */
+  isError: boolean;
   isCreateMode: boolean;
   selectWorkspace: (id: string) => void;
   navigateToCreate: () => void;
@@ -98,10 +100,11 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   } = useWorkspaces();
 
   // Fetch real workspace data for the selected workspace
-  const { data: workspace, isLoading: isLoadingWorkspace } = useAttempt(
-    workspaceId,
-    { enabled: !!workspaceId && !isCreateMode }
-  );
+  const {
+    data: workspace,
+    isLoading: isLoadingWorkspace,
+    error: workspaceError,
+  } = useAttempt(workspaceId, { enabled: !!workspaceId && !isCreateMode });
 
   // Fetch sessions for the current workspace
   const {
@@ -171,6 +174,14 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 
   const isLoading = isLoadingList || isLoadingWorkspace;
+  // Show not-found when a workspaceId is in the URL but the fetch failed
+  // (covers 404, 400 for invalid UUIDs, and any other fetch error)
+  const isError =
+    !!workspaceId &&
+    !isCreateMode &&
+    !isLoading &&
+    !workspace &&
+    !!workspaceError;
 
   const selectWorkspace = useCallback(
     (id: string) => {
@@ -204,6 +215,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       activeWorkspaces,
       archivedWorkspaces,
       isLoading,
+      isError,
       isCreateMode,
       selectWorkspace,
       navigateToCreate,
@@ -235,6 +247,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
       activeWorkspaces,
       archivedWorkspaces,
       isLoading,
+      isError,
       isCreateMode,
       selectWorkspace,
       navigateToCreate,
