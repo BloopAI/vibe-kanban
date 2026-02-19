@@ -17,7 +17,7 @@ function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;
 }
 
-const BRANCH_LABEL_MAX_CHARS = 10;
+const BRANCH_LABEL_MAX_CHARS = 15;
 
 function truncateBranchLabel(branch: string) {
   return branch.length > BRANCH_LABEL_MAX_CHARS
