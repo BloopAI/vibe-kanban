@@ -80,10 +80,7 @@ const AUTO_SCROLL_GAP_PX = 8;
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
   autoScroll: ({ atBottom, scrollLocation }) => {
-    const gap =
-      scrollLocation.scrollHeight -
-      scrollLocation.scrollTop -
-      scrollLocation.viewportHeight;
+    const gap = scrollLocation.bottomOffset;
     return atBottom || gap < AUTO_SCROLL_GAP_PX ? 'smooth' : false;
   },
 };
@@ -294,11 +291,7 @@ export const ConversationList = forwardRef<
 
       let scrollModifier: ScrollModifier;
       const scrollLocation = messageListRef.current?.getScrollLocation();
-      const gap = scrollLocation
-        ? scrollLocation.scrollHeight -
-          scrollLocation.scrollTop -
-          scrollLocation.viewportHeight
-        : null;
+      const gap = scrollLocation?.bottomOffset ?? null;
       const nearBottom =
         scrollLocation?.isAtBottom ||
         (gap !== null && gap < AUTO_SCROLL_GAP_PX);
@@ -387,11 +380,7 @@ export const ConversationList = forwardRef<
 
     const list = messageListRef.current;
     const scrollLocation = list?.getScrollLocation();
-    const gap = scrollLocation
-      ? scrollLocation.scrollHeight -
-        scrollLocation.scrollTop -
-        scrollLocation.viewportHeight
-      : null;
+    const gap = scrollLocation?.bottomOffset ?? null;
     const wasAtBottom =
       scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
 
@@ -532,11 +521,8 @@ export const ConversationList = forwardRef<
             data={channelData}
             initialLocation={INITIAL_TOP_ITEM}
             onScroll={(location) => {
-              const gap =
-                location.scrollHeight -
-                location.scrollTop -
-                location.viewportHeight;
-              userStickToBottomRef.current = gap < AUTO_SCROLL_GAP_PX;
+              userStickToBottomRef.current =
+                location.bottomOffset < AUTO_SCROLL_GAP_PX;
             }}
             context={messageListContext}
             computeItemKey={computeItemKey}
