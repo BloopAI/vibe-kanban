@@ -17,6 +17,14 @@ function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;
 }
 
+const BRANCH_LABEL_MAX_CHARS = 10;
+
+function truncateBranchLabel(branch: string) {
+  return branch.length > BRANCH_LABEL_MAX_CHARS
+    ? `${branch.slice(0, BRANCH_LABEL_MAX_CHARS)}...`
+    : branch;
+}
+
 interface CreateChatBoxContainerProps {
   onWorkspaceCreated: (workspaceId: string) => void;
 }
@@ -123,7 +131,10 @@ export function CreateChatBoxContainer({
     if (repos.length === 1) {
       const repo = repos[0];
       if (!repo) return '0 repositories selected';
-      const branch = targetBranches[repo.id] ?? 'Select branch';
+      const selectedBranch = targetBranches[repo.id];
+      const branch = selectedBranch
+        ? truncateBranchLabel(selectedBranch)
+        : 'Select branch';
       return `${getRepoDisplayName(repo)} · ${branch}`;
     }
 
