@@ -116,16 +116,16 @@ export function WorkspacesMain({
                     : {
                         mode: 'placeholder',
                       })}
-                sessions={sessions}
-                filesChanged={diffStats?.filesChanged ?? 0}
-                linesAdded={diffStats?.linesAdded ?? 0}
-                linesRemoved={diffStats?.linesRemoved ?? 0}
-                disableViewCode={false}
-                showOpenWorkspaceButton={false}
-                onScrollToPreviousMessage={onScrollToPreviousMessage}
-                onScrollToBottom={onScrollToBottom}
-              />
-            </div>
+                  sessions={sessions}
+                  filesChanged={diffStats?.filesChanged ?? 0}
+                  linesAdded={diffStats?.linesAdded ?? 0}
+                  linesRemoved={diffStats?.linesRemoved ?? 0}
+                  disableViewCode={false}
+                  showOpenWorkspaceButton={false}
+                  onScrollToPreviousMessage={onScrollToPreviousMessage}
+                  onScrollToBottom={onScrollToBottom}
+                />
+              </div>
             )}
           </MessageEditProvider>
         </EntriesProvider>

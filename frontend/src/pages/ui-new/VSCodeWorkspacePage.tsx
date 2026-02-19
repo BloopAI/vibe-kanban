@@ -94,16 +94,16 @@ export function VSCodeWorkspacePage() {
                         : {
                             mode: 'placeholder',
                           })}
-                    sessions={sessions}
-                    filesChanged={diffStats.files_changed}
-                    linesAdded={diffStats.lines_added}
-                    linesRemoved={diffStats.lines_removed}
-                    disableViewCode
-                    showOpenWorkspaceButton={false}
-                    onScrollToPreviousMessage={handleScrollToPreviousMessage}
-                    onScrollToBottom={handleScrollToBottom}
-                  />
-                </div>
+                      sessions={sessions}
+                      filesChanged={diffStats.files_changed}
+                      linesAdded={diffStats.lines_added}
+                      linesRemoved={diffStats.lines_removed}
+                      disableViewCode
+                      showOpenWorkspaceButton={false}
+                      onScrollToPreviousMessage={handleScrollToPreviousMessage}
+                      onScrollToBottom={handleScrollToBottom}
+                    />
+                  </div>
                 )}
               </MessageEditProvider>
             </EntriesProvider>
