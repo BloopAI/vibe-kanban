@@ -379,6 +379,27 @@ export function GeneralSettingsSection() {
             )}
           </>
         )}
+
+        {(draft?.editor.editor_type === EditorType.VS_CODE ||
+          draft?.editor.editor_type === EditorType.VS_CODE_INSIDERS ||
+          draft?.editor.editor_type === EditorType.CURSOR) && (
+          <SettingsCheckbox
+            id="auto-install-extension"
+            label={t('settings.general.editor.autoInstallExtension.label')}
+            description={t(
+              'settings.general.editor.autoInstallExtension.helper'
+            )}
+            checked={draft?.editor.auto_install_extension ?? true}
+            onChange={(checked) =>
+              updateDraft({
+                editor: {
+                  ...draft!.editor,
+                  auto_install_extension: checked,
+                },
+              })
+            }
+          />
+        )}
       </SettingsCard>
 
       {/* Default Coding Agent */}
