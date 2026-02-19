@@ -70,7 +70,7 @@ type SyncConfigLike = {
 
 const DEFAULT_GC_TIME_MS = 5 * 60 * 1000;
 const ELECTRIC_READY_TIMEOUT_MS = 3000;
-const FALLBACK_REFRESH_INTERVAL_MS = 10 * 1000;
+const FALLBACK_REFRESH_INTERVAL_MS = 30 * 1000;
 
 const collectionCache = new Map<string, ReturnType<typeof createCollection>>();
 const sourceRuntimes = new Map<string, SourceRuntime>();
