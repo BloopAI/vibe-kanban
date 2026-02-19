@@ -153,7 +153,9 @@ function ProjectKanbanInner({ projectId }: { projectId: string }) {
 
   const project = projects.find((p) => p.id === projectId);
 
-  if (isLoading) {
+  // Only block on loading when we still haven't resolved this specific project.
+  // OrgContext loading also includes non-core streams (notifications, members).
+  if (isLoading && !project) {
     return (
       <div className="flex items-center justify-center h-full w-full">
         <p className="text-low">{t('states.loading')}</p>

@@ -268,6 +268,7 @@ type FallbackWrappedOptions = {
       write: (message: unknown) => void;
       commit: () => void;
       truncate: () => void;
+      markReady: () => void;
       [key: string]: unknown;
     }) => unknown;
     [key: string]: unknown;
@@ -287,6 +288,7 @@ type CoreFallbackSyncBridge = {
   write: (message: { type: 'insert'; value: ElectricRow }) => void;
   commit: () => void;
   truncate: () => void;
+  markReady: () => void;
 };
 
 const CORE_FALLBACK_RETRY_MS = 5000;
@@ -379,6 +381,7 @@ function createCoreFallbackController(
       syncBridge.write({ type: 'insert', value: row });
     }
     syncBridge.commit();
+    syncBridge.markReady();
     hasHydrated = true;
   };
 
@@ -455,6 +458,7 @@ function createCoreFallbackController(
         write: (message) => syncParams.write(message),
         commit: syncParams.commit,
         truncate: syncParams.truncate,
+        markReady: syncParams.markReady,
       };
       return baseSyncFn(syncParams);
     };
