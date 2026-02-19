@@ -254,6 +254,10 @@ type ElectricConfig = Parameters<typeof electricCollectionOptions>[0];
 type ShapeSyncError = { status?: number; message?: string; name?: string };
 type ElectricShapeOptions = {
   onError?: (error: ShapeSyncError) => void;
+  fetchClient?: (
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ) => Promise<Response>;
   [key: string]: unknown;
 };
 
@@ -403,9 +407,37 @@ function createCoreFallbackController(
   const wrapShapeOptions = (shapeOptions: ElectricShapeOptions) => {
     const options = shapeOptions as ElectricShapeOptions;
     const baseOnError = options.onError;
+    const baseFetchClient = options.fetchClient;
 
     return {
       ...options,
+      fetchClient: baseFetchClient
+        ? async (input: RequestInfo | URL, init?: RequestInit) => {
+            try {
+              const response = await baseFetchClient(input, init);
+              if (
+                !response.ok &&
+                shouldUseCoreFallback({ status: response.status })
+              ) {
+                triggerFallback();
+              }
+              return response;
+            } catch (error) {
+              const shapeError = {
+                name:
+                  error instanceof Error
+                    ? error.name
+                    : error instanceof DOMException
+                      ? error.name
+                      : undefined,
+              };
+              if (shouldUseCoreFallback(shapeError)) {
+                triggerFallback();
+              }
+              throw error;
+            }
+          }
+        : undefined,
       onError: (error: ShapeSyncError) => {
         if (shouldUseCoreFallback(error)) {
           triggerFallback();
