@@ -8,6 +8,7 @@ interface ChatTodoListProps {
   todos: TodoItem[];
   expanded?: boolean;
   onToggle?: () => void;
+  className?: string;
 }
 
 function getStatusIcon(status?: string) {
@@ -21,11 +22,16 @@ function getStatusIcon(status?: string) {
   return <Circle aria-hidden className="h-4 w-4 text-muted-foreground" />;
 }
 
-export function ChatTodoList({ todos, expanded, onToggle }: ChatTodoListProps) {
+export function ChatTodoList({
+  todos,
+  expanded,
+  onToggle,
+  className,
+}: ChatTodoListProps) {
   const { t } = useTranslation('tasks');
 
   return (
-    <div className="text-sm">
+    <div className={cn('text-sm', className)}>
       <div
         className="flex items-center gap-base text-low cursor-pointer"
         onClick={onToggle}
