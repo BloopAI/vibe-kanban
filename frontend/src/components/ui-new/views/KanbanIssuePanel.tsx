@@ -383,7 +383,7 @@ export function KanbanIssuePanel({
           </div>
         )}
 
-        {/* Create Task Button (Create mode only) */}
+        {/* Create Issue Button (Create mode only) */}
         {isCreateMode && (
           <div className="px-base pb-base flex items-center gap-half">
             <PrimaryButton
