@@ -22,7 +22,10 @@ use crate::{
     profile::ExecutorConfig,
 };
 
-const SUPPRESSED_STDERR_PATTERNS: &[&str] = &["was started but never ended. Skipping metrics."];
+const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
+    "was started but never ended. Skipping metrics.",
+    "YOLO mode is enabled. All tool calls will be automatically approved.",
+];
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
