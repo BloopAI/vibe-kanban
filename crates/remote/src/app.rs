@@ -45,6 +45,15 @@ impl Server {
                 .context("failed to set electric role password")?;
         }
 
+        if !config.electric_publication_names.is_empty() {
+            db::electric_publications::ensure_electric_publications(
+                &pool,
+                &config.electric_publication_names,
+            )
+            .await
+            .context("failed to sync Electric publications")?;
+        }
+
         let auth_config = config.auth.clone();
         let jwt = Arc::new(JwtService::new(auth_config.jwt_secret().clone()));
 

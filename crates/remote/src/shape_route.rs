@@ -187,6 +187,7 @@ fn build_proxy_handler(
                     shape,
                     &query.params,
                     &[query.organization_id.to_string()],
+                    ctx.session_id,
                 )
                 .await
             },
@@ -209,6 +210,7 @@ fn build_proxy_handler(
                     shape,
                     &query.params,
                     &[query.organization_id.to_string(), ctx.user.id.to_string()],
+                    ctx.session_id,
                 )
                 .await
             },
@@ -223,7 +225,14 @@ fn build_proxy_handler(
                     .await
                     .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-                proxy_table(&state, shape, &query.params, &[project_id.to_string()]).await
+                proxy_table(
+                    &state,
+                    shape,
+                    &query.params,
+                    &[project_id.to_string()],
+                    ctx.session_id,
+                )
+                .await
             },
         ),
 
@@ -236,7 +245,14 @@ fn build_proxy_handler(
                     .await
                     .map_err(|e| ProxyError::Authorization(e.to_string()))?;
 
-                proxy_table(&state, shape, &query.params, &[issue_id.to_string()]).await
+                proxy_table(
+                    &state,
+                    shape,
+                    &query.params,
+                    &[issue_id.to_string()],
+                    ctx.session_id,
+                )
+                .await
             },
         ),
 
@@ -244,7 +260,14 @@ fn build_proxy_handler(
             move |State(state): State<AppState>,
                   Extension(ctx): Extension<RequestContext>,
                   Query(query): Query<ShapeQuery>| async move {
-                proxy_table(&state, shape, &query.params, &[ctx.user.id.to_string()]).await
+                proxy_table(
+                    &state,
+                    shape,
+                    &query.params,
+                    &[ctx.user.id.to_string()],
+                    ctx.session_id,
+                )
+                .await
             },
         ),
     }
