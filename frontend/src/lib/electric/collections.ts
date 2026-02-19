@@ -53,6 +53,30 @@ class ErrorHandler {
   }
 }
 
+const SHAPE_NON_LIVE_TIMEOUT_MS = 5000;
+const SHAPE_LIVE_TIMEOUT_MS = 25000;
+
+function getRequestUrl(input: RequestInfo | URL): string {
+  if (typeof input === 'string') return input;
+  if (input instanceof URL) return input.toString();
+  if (typeof Request !== 'undefined' && input instanceof Request) {
+    return input.url;
+  }
+  return String(input);
+}
+
+function getShapeRequestTimeoutMs(input: RequestInfo | URL): number {
+  try {
+    const requestUrl = getRequestUrl(input);
+    const live = new URL(requestUrl, 'http://localhost').searchParams.get(
+      'live'
+    );
+    return live === 'true' ? SHAPE_LIVE_TIMEOUT_MS : SHAPE_NON_LIVE_TIMEOUT_MS;
+  } catch {
+    return SHAPE_NON_LIVE_TIMEOUT_MS;
+  }
+}
+
 /**
  * Create a fetch wrapper that catches network errors and reports them.
  * When isPaused returns true (during token refresh or after logout),
@@ -78,16 +102,54 @@ function createErrorHandlingFetch(
       );
     }
 
+    const timeoutMs = getShapeRequestTimeoutMs(input);
+    const timeoutAbortController = new AbortController();
+    const sourceSignal = init?.signal;
+    const handleSourceAbort = () => {
+      timeoutAbortController.abort(sourceSignal?.reason);
+    };
+    if (sourceSignal) {
+      if (sourceSignal.aborted) {
+        timeoutAbortController.abort(sourceSignal.reason);
+      } else {
+        sourceSignal.addEventListener('abort', handleSourceAbort, {
+          once: true,
+        });
+      }
+    }
+    let didTimeout = false;
+    const timeoutId = setTimeout(() => {
+      didTimeout = true;
+      timeoutAbortController.abort();
+    }, timeoutMs);
+
     try {
-      const response = await fetch(input, init);
+      const response = await fetch(input, {
+        ...init,
+        signal: timeoutAbortController.signal,
+      });
       // Reset error state on successful response
       errorHandler.reset();
       return response;
     } catch (error) {
+      if (didTimeout) {
+        const timeoutError = new Error(
+          `Shape request timed out after ${timeoutMs}ms`
+        );
+        timeoutError.name = 'TimeoutError';
+        onError?.({ message: timeoutError.message });
+        throw timeoutError;
+      }
+
       // Always pass network errors to onError (debouncing happens there)
       const message = error instanceof Error ? error.message : 'Network error';
       onError?.({ message });
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
+      if (sourceSignal) {
+        sourceSignal.removeEventListener('abort', handleSourceAbort);
+      }
     }
   };
 }
