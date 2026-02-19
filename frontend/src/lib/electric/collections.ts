@@ -358,8 +358,6 @@ async function fetchFallbackRows(
   shape: ShapeDefinition<unknown>,
   params: Record<string, string>
 ): Promise<ElectricRow[]> {
-  if (!shape.fallbackUrl) return [];
-
   const query = new URLSearchParams(params);
   const response = await makeRequest(
     `${shape.fallbackUrl}?${query.toString()}`,
@@ -511,9 +509,12 @@ export function createShapeCollection<TRow extends ElectricRow>(
     return cached as typeof cached & { __rowType?: TRow };
   }
 
-  const fallbackController = shape.fallbackUrl
-    ? createFallbackController(shape, params, collectionId, config)
-    : null;
+  const fallbackController = createFallbackController(
+    shape,
+    params,
+    collectionId,
+    config
+  );
 
   const baseShapeOptions = getAuthenticatedShapeOptions(
     shape,

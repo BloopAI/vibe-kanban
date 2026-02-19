@@ -142,7 +142,7 @@ fn export_shapes() -> String {
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly params: readonly string[];\n");
     output.push_str("  readonly url: string;\n");
-    output.push_str("  readonly fallbackUrl?: string;\n");
+    output.push_str("  readonly fallbackUrl: string;\n");
     output.push_str(
         "  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n",
     );
@@ -154,7 +154,7 @@ fn export_shapes() -> String {
     output.push_str("  table: string,\n");
     output.push_str("  params: readonly string[],\n");
     output.push_str("  url: string,\n");
-    output.push_str("  fallbackUrl?: string\n");
+    output.push_str("  fallbackUrl: string\n");
     output.push_str("): ShapeDefinition<T> {\n");
     output.push_str("  return { table, params, url, fallbackUrl } as ShapeDefinition<T>;\n");
     output.push_str("}\n\n");
@@ -169,26 +169,19 @@ fn export_shapes() -> String {
             .collect::<Vec<_>>()
             .join(", ");
 
-        if let Some(fallback_url) = fallbacks.get(shape.url()) {
-            output.push_str(&format!(
-                "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}',\n  '/v1{}'\n);\n\n",
-                name,
-                shape.ts_type_name(),
-                shape.table(),
-                params_str,
-                shape.url(),
-                fallback_url,
-            ));
-        } else {
-            output.push_str(&format!(
-                "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
-                name,
-                shape.ts_type_name(),
-                shape.table(),
-                params_str,
-                shape.url(),
-            ));
-        }
+        let fallback_url = fallbacks
+            .get(shape.url())
+            .unwrap_or_else(|| panic!("Shape {} is missing a fallback URL", name));
+
+        output.push_str(&format!(
+            "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}',\n  '/v1{}'\n);\n\n",
+            name,
+            shape.ts_type_name(),
+            shape.table(),
+            params_str,
+            shape.url(),
+            fallback_url,
+        ));
     }
 
     output.push_str(

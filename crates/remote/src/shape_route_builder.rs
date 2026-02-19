@@ -1,8 +1,8 @@
 //! ShapeRouteBuilder: unified registration for Electric proxy + REST fallback routes.
 //!
-//! Each shape has exactly one proxy handler (GET on its URL) and an optional
+//! Each shape has exactly one proxy handler (GET on its URL) and a required
 //! REST fallback route.  The builder pairs the shape with its authorization
-//! scope and optional fallback, then registers both routes in one call.
+//! scope and fallback, then registers both routes in one call.
 //!
 //! # Example
 //!
@@ -71,6 +71,12 @@ pub struct IssueFallbackQuery {
     pub issue_id: Uuid,
 }
 
+/// Marker for fallback handlers that require no query parameters.
+/// Used for User-scoped shapes where the user ID comes from auth context.
+/// Analogous to `NoCreate` in `MutationBuilder`.
+#[derive(Debug, Deserialize)]
+pub struct NoQueryParams {}
+
 // =============================================================================
 // ShapeScope — authorization patterns for Electric proxy routes
 // =============================================================================
@@ -114,74 +120,93 @@ pub enum ShapeScope {
 /// A fully built shape route: router (for registration) + fallback metadata.
 ///
 /// Codegen uses `shapes::all_shapes()` for names and shape metadata;
-/// this struct only carries the fallback URL (if any) keyed by shape URL.
+/// this struct carries the fallback URL keyed by shape URL.
 pub struct BuiltShapeRoute {
     pub router: axum::Router<AppState>,
     /// The shape's proxy URL, e.g. `"/shape/projects"`.
     pub url: &'static str,
     /// REST fallback URL, e.g. `"/fallback/projects"`.
-    pub fallback_url: Option<&'static str>,
+    pub fallback_url: &'static str,
+}
+
+// =============================================================================
+// Type-state markers for ShapeRouteBuilder
+// =============================================================================
+
+/// Marker: no fallback registered yet. `.build()` is not available.
+pub struct NoFallback;
+
+/// Fallback has been registered. `.build()` is available.
+struct FallbackDef {
+    url: &'static str,
+    handler: MethodRouter<AppState>,
 }
 
 // =============================================================================
 // ShapeRouteBuilder
 // =============================================================================
 
-/// Builder that registers an Electric proxy route and optional REST fallback
+/// Builder that registers an Electric proxy route and a required REST fallback
 /// for a shape definition.
 ///
 /// Generic over `T` (the shape's row type) to enable type-safe fallback
-/// handler constraints.  Call `.build()` to erase `T` and produce a
-/// `BuiltShapeRoute` that can be collected into a `Vec`.
-pub struct ShapeRouteBuilder<T: TS + Sync + 'static> {
+/// handler constraints, and `F` (type-state) to enforce that `.fallback()`
+/// is called before `.build()`.
+pub struct ShapeRouteBuilder<T: TS + Sync + 'static, F = NoFallback> {
     shape: &'static ShapeDefinition<T>,
     scope: ShapeScope,
-    fallback_url: Option<&'static str>,
-    fallback_handler: Option<MethodRouter<AppState>>,
+    fallback: F,
 }
 
-impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T> {
+impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T, NoFallback> {
     /// Create a new builder for the given shape and authorization scope.
     pub fn new(shape: &'static ShapeDefinition<T>, scope: ShapeScope) -> Self {
         Self {
             shape,
             scope,
-            fallback_url: None,
-            fallback_handler: None,
+            fallback: NoFallback,
         }
     }
 
-    /// Register a REST fallback handler for this shape.
+    /// Register the required REST fallback handler for this shape.
     ///
     /// The handler's extractor tuple must include `Query<Q>` (enforced by
     /// `HasQueryParams`), ensuring the handler accepts the correct scope
-    /// parameters.
-    pub fn fallback<H, HT, Q>(mut self, url: &'static str, handler: H) -> Self
+    /// parameters. Use `Query<NoQueryParams>` for handlers that don't need
+    /// query parameters (e.g. User-scoped shapes).
+    pub fn fallback<H, HT, Q>(
+        self,
+        url: &'static str,
+        handler: H,
+    ) -> ShapeRouteBuilder<T, FallbackDef>
     where
         H: Handler<HT, AppState> + Clone + Send + 'static,
         HT: HasQueryParams<Q> + 'static,
     {
-        self.fallback_url = Some(url);
-        self.fallback_handler = Some(get(handler));
-        self
+        ShapeRouteBuilder {
+            shape: self.shape,
+            scope: self.scope,
+            fallback: FallbackDef {
+                url,
+                handler: get(handler),
+            },
+        }
     }
+}
 
+impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T, FallbackDef> {
     /// Build the finalized shape route, erasing the generic `T`.
     ///
     /// Produces a `BuiltShapeRoute` containing the axum router (with both
     /// proxy and fallback routes) and the shape/fallback URLs for codegen.
     pub fn build(self) -> BuiltShapeRoute {
         let url = self.shape.url();
-        let fallback_url = self.fallback_url;
+        let fallback_url = self.fallback.url;
 
         let proxy_handler = build_proxy_handler(self.shape, self.scope);
-        let mut router = axum::Router::new().route(url, proxy_handler);
-
-        if let Some(handler) = self.fallback_handler {
-            if let Some(fb_url) = fallback_url {
-                router = router.route(fb_url, handler);
-            }
-        }
+        let router = axum::Router::new()
+            .route(url, proxy_handler)
+            .route(fallback_url, self.fallback.handler);
 
         BuiltShapeRoute {
             router,
