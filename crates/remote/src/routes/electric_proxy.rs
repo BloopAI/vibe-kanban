@@ -31,8 +31,8 @@ const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "column
 
 pub fn router() -> Router<AppState> {
     let mut router = Router::new();
-    for builder in crate::shape_routes::all_shape_route_builders() {
-        router = router.merge(builder.router());
+    for route in crate::shape_routes::all_shape_routes() {
+        router = router.merge(route.router);
     }
     router
 }
