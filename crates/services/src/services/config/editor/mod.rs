@@ -6,6 +6,10 @@ use strum_macros::{EnumIter, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
 
+fn default_auto_install_extension() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Error)]
 #[serde(tag = "type", rename_all = "snake_case")]
 #[ts(tag = "type", rename_all = "snake_case")]
@@ -36,6 +40,8 @@ pub struct EditorConfig {
     remote_ssh_host: Option<String>,
     #[serde(default)]
     remote_ssh_user: Option<String>,
+    #[serde(default = "default_auto_install_extension")]
+    auto_install_extension: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, EnumString, EnumIter)]
@@ -61,6 +67,7 @@ impl Default for EditorConfig {
             custom_command: None,
             remote_ssh_host: None,
             remote_ssh_user: None,
+            auto_install_extension: true,
         }
     }
 }
@@ -72,12 +79,14 @@ impl EditorConfig {
         custom_command: Option<String>,
         remote_ssh_host: Option<String>,
         remote_ssh_user: Option<String>,
+        auto_install_extension: bool,
     ) -> Self {
         Self {
             editor_type,
             custom_command,
             remote_ssh_host,
             remote_ssh_user,
+            auto_install_extension,
         }
     }
 
@@ -131,73 +140,32 @@ impl EditorConfig {
         self.resolve_command().await.is_ok()
     }
 
-    fn supports_vscode_extensions(&self) -> bool {
-        matches!(
-            self.editor_type,
-            EditorType::VsCode
-                | EditorType::VsCodeInsiders
-                | EditorType::Cursor
-                | EditorType::Windsurf
-                | EditorType::GoogleAntigravity
-        )
+    fn should_auto_install_extension(&self) -> bool {
+        self.auto_install_extension
+            && matches!(
+                self.editor_type,
+                EditorType::VsCode | EditorType::VsCodeInsiders | EditorType::Cursor
+            )
     }
 
-    fn ensure_extension_recommended(path: &Path) {
-        if !path.is_dir() {
+    async fn try_install_extension(&self) {
+        let Ok((executable, args)) = self.resolve_command().await else {
             return;
-        }
-
-        let vscode_dir = path.join(".vscode");
-        let extensions_file = vscode_dir.join("extensions.json");
-        const EXTENSION_ID: &str = "bloop.vibe-kanban";
-
-        let mut json: serde_json::Value = if extensions_file.exists() {
-            match std::fs::read_to_string(&extensions_file) {
-                Ok(content) => serde_json::from_str(&content)
-                    .unwrap_or_else(|_| serde_json::json!({"recommendations": []})),
-                Err(_) => serde_json::json!({"recommendations": []}),
-            }
-        } else {
-            serde_json::json!({"recommendations": []})
         };
 
-        if !json.get("recommendations").is_some_and(|v| v.is_array()) {
-            json["recommendations"] = serde_json::json!([]);
-        }
-
-        let recommendations = json["recommendations"].as_array().unwrap();
-        if recommendations
-            .iter()
-            .any(|v| v.as_str() == Some(EXTENSION_ID))
-        {
-            return;
-        }
-
-        json["recommendations"]
-            .as_array_mut()
-            .unwrap()
-            .push(serde_json::json!(EXTENSION_ID));
-
-        if let Err(e) = std::fs::create_dir_all(&vscode_dir) {
-            tracing::warn!("Failed to create .vscode directory: {}", e);
-            return;
-        }
-        match serde_json::to_string_pretty(&json) {
-            Ok(content) => {
-                if let Err(e) = std::fs::write(&extensions_file, content) {
-                    tracing::warn!("Failed to write extensions.json: {}", e);
-                }
-            }
-            Err(e) => tracing::warn!("Failed to serialize extensions.json: {}", e),
-        }
+        let mut cmd = std::process::Command::new(&executable);
+        cmd.args(&args)
+            .arg("--install-extension")
+            .arg("bloop.vibe-kanban");
+        let _ = cmd.spawn();
     }
 
     pub async fn open_file(&self, path: &Path) -> Result<Option<String>, EditorOpenError> {
         if let Some(url) = self.remote_url(path) {
             return Ok(Some(url));
         }
-        if self.supports_vscode_extensions() {
-            Self::ensure_extension_recommended(path);
+        if self.should_auto_install_extension() {
+            self.try_install_extension().await;
         }
         self.spawn_local(path).await?;
         Ok(None)
@@ -253,6 +221,7 @@ impl EditorConfig {
                 custom_command: self.custom_command.clone(),
                 remote_ssh_host: self.remote_ssh_host.clone(),
                 remote_ssh_user: self.remote_ssh_user.clone(),
+                auto_install_extension: self.auto_install_extension,
             }
         } else {
             self.clone()

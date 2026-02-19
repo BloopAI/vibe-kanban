@@ -89,6 +89,10 @@
             "helper": "Nombre de usuario SSH para la conexión remota. Si no se establece, VS Code usará tu configuración SSH o te lo pedirá."
           }
         },
+        "autoInstallExtension": {
+          "label": "Auto-install VS Code Extension",
+          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
+        },
         "availability": {
           "checking": "Verificando disponibilidad...",
           "available": "Disponible",
