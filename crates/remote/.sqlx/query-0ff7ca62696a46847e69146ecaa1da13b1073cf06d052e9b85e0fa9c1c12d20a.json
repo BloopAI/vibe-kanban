@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id                AS \"id!: Uuid\",\n                organization_id   AS \"organization_id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                notification_type AS \"notification_type!: NotificationType\",\n                payload           AS \"payload!: Value\",\n                issue_id          AS \"issue_id: Uuid\",\n                comment_id        AS \"comment_id: Uuid\",\n                seen              AS \"seen!\",\n                dismissed_at      AS \"dismissed_at: DateTime<Utc>\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            FROM notifications\n            WHERE organization_id = $1 AND user_id = $2\n            ORDER BY created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "notification_type!: NotificationType",
+        "type_info": {
+          "Custom": {
+            "name": "notification_type",
+            "kind": {
+              "Enum": [
+                "issue_comment_added",
+                "issue_status_changed",
+                "issue_assignee_changed",
+                "issue_deleted"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "payload!: Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "issue_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 6,
+        "name": "comment_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "seen!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "dismissed_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "0ff7ca62696a46847e69146ecaa1da13b1073cf06d052e9b85e0fa9c1c12d20a"
+}

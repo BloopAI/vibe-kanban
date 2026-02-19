@@ -137,7 +137,7 @@ pub struct BuiltShapeRoute {
 pub struct NoFallback;
 
 /// Fallback has been registered. `.build()` is available.
-struct FallbackDef {
+pub struct FallbackDef {
     url: &'static str,
     handler: MethodRouter<AppState>,
 }

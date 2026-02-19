@@ -136,7 +136,9 @@ pub(crate) async fn list_by_organization(
         SELECT
             organization_id AS "organization_id!: Uuid",
             user_id         AS "user_id!: Uuid",
-            role            AS "role!: MemberRole"
+            role            AS "role!: MemberRole",
+            joined_at       AS "joined_at!",
+            last_seen_at
         FROM organization_member_metadata
         WHERE organization_id = $1
         "#,
