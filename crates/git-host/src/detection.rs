@@ -1,6 +1,6 @@
 //! Git hosting provider detection from repository URLs.
 
-use super::types::ProviderKind;
+use crate::types::ProviderKind;
 
 /// Detect the git hosting provider from a remote URL.
 ///

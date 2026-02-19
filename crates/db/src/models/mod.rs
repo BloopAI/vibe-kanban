@@ -7,6 +7,7 @@ pub mod merge;
 pub mod migration_state;
 pub mod project;
 pub mod repo;
+pub mod requests;
 pub mod scratch;
 pub mod session;
 pub mod tag;

@@ -462,7 +462,7 @@
     "issueDescriptionPlaceholder": "Entrez la description de la tâche...",
     "createDraftWorkspaceImmediately": "Créer immédiatement un espace de travail brouillon",
     "createDraftWorkspaceDescription": "Cochez pour créer automatiquement un espace de travail",
-    "createTask": "Créer la tâche",
+    "createIssue": "Créer la tâche",
     "newIssue": "Nouveau ticket",
     "previewCodeBlock": "[Bloc de code]",
     "previewImage": "[Image]",

@@ -18,7 +18,7 @@ use thiserror::Error;
 use url::Url;
 use utils::shell::resolve_executable_path_blocking;
 
-use crate::services::git_host::types::{
+use crate::types::{
     CreatePrRequest, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
 };
 

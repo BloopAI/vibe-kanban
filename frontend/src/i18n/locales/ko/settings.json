@@ -89,6 +89,10 @@
             "helper": "원격 연결을 위한 SSH 사용자 이름입니다. 설정하지 않으면 VS Code가 SSH 설정을 사용하거나 입력을 요청합니다."
           }
         },
+        "autoInstallExtension": {
+          "label": "Auto-install VS Code Extension",
+          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
+        },
         "availability": {
           "checking": "사용 가능 여부 확인 중...",
           "available": "사용 가능",

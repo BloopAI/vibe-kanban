@@ -12,7 +12,7 @@ use db::models::merge::PullRequestInfo;
 use tokio::task;
 use tracing::info;
 
-use super::{
+use crate::{
     GitHostProvider,
     types::{CreatePrRequest, GitHostError, OpenPrInfo, ProviderKind, UnifiedPrComment},
 };

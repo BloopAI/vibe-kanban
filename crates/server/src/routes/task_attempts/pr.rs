@@ -21,15 +21,13 @@ use executors::actions::{
     coding_agent_initial::CodingAgentInitialRequest,
 };
 use git::{GitCliError, GitRemote, GitServiceError};
+use git_host::{
+    CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind, UnifiedPrComment,
+    github::GhCli,
+};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    config::DEFAULT_PR_DESCRIPTION_PROMPT,
-    container::ContainerService,
-    git_host::{
-        self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
-        github::GhCli,
-    },
-    remote_sync,
+    config::DEFAULT_PR_DESCRIPTION_PROMPT, container::ContainerService, remote_sync,
     workspace_manager::WorkspaceManager,
 };
 use ts_rs::TS;
@@ -267,7 +265,7 @@ pub async fn create_pr(
         }
     }
 
-    let git_host = match git_host::GitHostService::from_url(&target_remote.url) {
+    let git_host = match GitHostService::from_url(&target_remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -414,7 +412,7 @@ pub async fn attach_existing_pr(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote.url) {
+    let git_host = match GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -552,7 +550,7 @@ pub async fn get_pr_comments(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote.url) {
+    let git_host = match GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(

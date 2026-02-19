@@ -9,6 +9,7 @@ use db::{
         workspace::{Workspace, WorkspaceError},
     },
 };
+use git_host::{GitHostError, GitHostProvider, GitHostService};
 use serde_json::json;
 use sqlx::error::Error as SqlxError;
 use thiserror::Error;
@@ -16,10 +17,7 @@ use tokio::time::interval;
 use tracing::{debug, error, info, warn};
 
 use crate::services::{
-    analytics::AnalyticsContext,
-    container::ContainerService,
-    git_host::{self, GitHostError, GitHostProvider},
-    remote_client::RemoteClient,
+    analytics::AnalyticsContext, container::ContainerService, remote_client::RemoteClient,
     remote_sync,
 };
 
@@ -119,7 +117,7 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
 
     /// Check the status of a specific PR
     async fn check_pr_status(&self, pr_merge: &PrMerge) -> Result<(), PrMonitorError> {
-        let git_host = git_host::GitHostService::from_url(&pr_merge.pr_info.url)?;
+        let git_host = GitHostService::from_url(&pr_merge.pr_info.url)?;
         let pr_status = git_host.get_pr_status(&pr_merge.pr_info.url).await?;
 
         debug!(

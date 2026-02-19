@@ -125,8 +125,6 @@ export function ChatBoxBase({
 
   const isDragActive = dropzone?.isDragActive ?? false;
   const activeModelSelector = modelSelector ?? null;
-  const hasModelSelector = Boolean(activeModelSelector);
-  const hasFooterLeft = Boolean(footerLeft);
 
   return (
     <div
@@ -201,7 +199,7 @@ export function ChatBoxBase({
 
         {/* Footer - Controls */}
         <div className="flex items-end justify-between gap-base">
-          <Toolbar className="flex-1 min-w-0 flex-wrap gap-double">
+          <Toolbar className="flex-1 min-w-0 flex-wrap !gap-half">
             {activeModelSelector && (
               <ModelSelectorContainer
                 agent={activeModelSelector.agent}
@@ -214,9 +212,6 @@ export function ChatBoxBase({
                 executorConfig={activeModelSelector.executorConfig}
                 presetOptions={activeModelSelector.presetOptions}
               />
-            )}
-            {hasFooterLeft && hasModelSelector && (
-              <span className="h-3 w-px bg-border/70" aria-hidden="true" />
             )}
             {footerLeft}
           </Toolbar>

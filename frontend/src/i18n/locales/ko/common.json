@@ -462,7 +462,7 @@
     "issueDescriptionPlaceholder": "작업 설명을 입력하세요...",
     "createDraftWorkspaceImmediately": "초안 워크스페이스를 즉시 생성",
     "createDraftWorkspaceDescription": "체크하면 워크스페이스를 자동으로 생성합니다",
-    "createTask": "작업 생성",
+    "createIssue": "작업 생성",
     "newIssue": "새 이슈",
     "previewCodeBlock": "[코드 블록]",
     "previewImage": "[이미지]",

@@ -3,11 +3,13 @@ resolver = "3"
 members = [
     "crates/api-types",
     "crates/server",
+    "crates/mcp",
     "crates/db",
     "crates/executors",
     "crates/services",
     "crates/utils",
     "crates/git",
+    "crates/git-host",
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",

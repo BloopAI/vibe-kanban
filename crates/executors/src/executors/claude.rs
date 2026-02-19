@@ -1990,6 +1990,9 @@ impl StreamingContentState {
             ) => {
                 self.buffer.push_str(thinking);
             }
+            // Signature deltas are sent at the end of thinking blocks for verification;
+            // they don't contain display content so we ignore them.
+            (StreamingContentKind::Thinking, ClaudeContentBlockDelta::SignatureDelta { .. }) => {}
             _ => {
                 tracing::warn!(
                     "Mismatched content types: delta {:?}, kind {:?}",
@@ -2215,6 +2218,11 @@ pub enum ClaudeContentBlockDelta {
     TextDelta { text: String },
     #[serde(rename = "thinking_delta")]
     ThinkingDelta { thinking: String },
+    #[serde(rename = "signature_delta")]
+    SignatureDelta {
+        #[serde(default)]
+        signature: String,
+    },
     #[serde(other)]
     Unknown,
 }

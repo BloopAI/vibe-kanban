@@ -462,7 +462,7 @@
     "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
     "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
     "createDraftWorkspaceDescription": "Marca para crear automáticamente un workspace",
-    "createTask": "Crear tarea",
+    "createIssue": "Crear tarea",
     "newIssue": "Nuevo issue",
     "previewCodeBlock": "[Bloque de código]",
     "previewImage": "[Imagen]",

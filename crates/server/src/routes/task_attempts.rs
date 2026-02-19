@@ -29,6 +29,7 @@ use db::models::{
     image::WorkspaceImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
+    requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
@@ -40,7 +41,7 @@ use executors::{
         script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
     },
     executors::{CodingAgent, ExecutorError},
-    profile::{ExecutorConfig, ExecutorConfigs, ExecutorProfileId},
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
 use git::{ConflictOp, GitCliError, GitService, GitServiceError};
 use git2::BranchType;
@@ -186,12 +187,6 @@ pub async fn update_workspace(
     }
 
     Ok(ResponseJson(ApiResponse::success(updated)))
-}
-
-#[derive(Debug, Serialize, Deserialize, ts_rs::TS)]
-pub struct WorkspaceRepoInput {
-    pub repo_id: Uuid,
-    pub target_branch: String,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -1829,27 +1824,6 @@ pub async fn unlink_workspace(
 }
 
 // ── Create-and-start (moved from tasks.rs) ──────────────────────────────────
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct LinkedIssueInfo {
-    pub remote_project_id: Uuid,
-    pub issue_id: Uuid,
-}
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CreateAndStartWorkspaceRequest {
-    pub name: Option<String>,
-    pub repos: Vec<WorkspaceRepoInput>,
-    pub linked_issue: Option<LinkedIssueInfo>,
-    pub executor_config: ExecutorConfig,
-    pub prompt: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, TS)]
-pub struct CreateAndStartWorkspaceResponse {
-    pub workspace: Workspace,
-    pub execution_process: ExecutionProcess,
-}
 
 struct ImportedImage {
     image_id: Uuid,

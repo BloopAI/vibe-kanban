@@ -1,5 +1,9 @@
 use std::str::FromStr;
 
+use db::models::requests::{
+    CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
+    WorkspaceRepoInput,
+};
 use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -9,10 +13,6 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::TaskServer;
-use crate::routes::task_attempts::{
-    CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
-    WorkspaceRepoInput,
-};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpWorkspaceRepoInput {

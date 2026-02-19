@@ -462,7 +462,7 @@
     "issueDescriptionPlaceholder": "タスクの説明を入力してください...",
     "createDraftWorkspaceImmediately": "下書きワークスペースをすぐに作成",
     "createDraftWorkspaceDescription": "チェックするとワークスペースを自動作成します",
-    "createTask": "タスクを作成",
+    "createIssue": "タスクを作成",
     "newIssue": "新しい課題",
     "previewCodeBlock": "[コードブロック]",
     "previewImage": "[画像]",

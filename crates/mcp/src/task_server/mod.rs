@@ -1,12 +1,10 @@
 mod handler;
 mod tools;
 
-use db::models::workspace::WorkspaceContext;
+use db::models::{requests::ContainerQuery, workspace::WorkspaceContext};
 use rmcp::{handler::server::tool::ToolRouter, schemars};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::routes::containers::ContainerQuery;
 
 #[derive(Debug, Deserialize)]
 struct ApiResponseEnvelope<T> {

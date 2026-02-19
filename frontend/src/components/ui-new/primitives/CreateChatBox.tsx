@@ -174,7 +174,6 @@ export function CreateChatBox({
             className="hidden"
             onChange={handleFileInputChange}
           />
-          <span className="h-3 w-px bg-border/70" aria-hidden="true" />
           <button
             type="button"
             onClick={onEditRepos}
@@ -186,7 +185,6 @@ export function CreateChatBox({
           </button>
           {linkedIssue && (
             <>
-              <span className="h-3 w-px bg-border/70" aria-hidden="true" />
               <div
                 className="inline-flex items-center gap-half whitespace-nowrap text-sm text-low"
                 title={linkedIssue.title}
