@@ -619,7 +619,12 @@ impl LogState {
         worktree_path: &Path,
         msg_store: &Arc<MsgStore>,
     ) {
-        let call_id = event.id.trim();
+        let call_id = event
+            .tool
+            .as_ref()
+            .map(|tool| tool.call_id.trim())
+            .filter(|id| !id.is_empty())
+            .unwrap_or_else(|| event.id.trim());
         if call_id.is_empty() {
             return;
         }

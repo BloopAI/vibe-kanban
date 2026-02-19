@@ -1270,6 +1270,14 @@ async fn process_event_stream(
                     continue;
                 }
 
+                let tool_call_id = data
+                    .pointer("/properties/tool/callID")
+                    .and_then(Value::as_str)
+                    .map(str::trim)
+                    .filter(|id| !id.is_empty())
+                    .unwrap_or(request_id.as_str())
+                    .to_string();
+
                 let questions = data
                     .pointer("/properties/questions")
                     .and_then(Value::as_array)
@@ -1285,30 +1293,34 @@ async fn process_event_stream(
                 let log_writer = ctx.log_writer.clone();
                 let cancel = ctx.cancel.clone();
                 tokio::spawn(async move {
-                    let status =
-                        match request_question_approval(approvals, tool_input, &request_id, cancel)
-                            .await
-                        {
-                            Ok(status) => status,
-                            Err(ExecutorApprovalError::Cancelled) => {
-                                tracing::debug!(
-                                    "OpenCode question approval cancelled for request_id={}",
-                                    request_id
-                                );
-                                return;
-                            }
-                            Err(err) => {
-                                tracing::error!(
-                                    "OpenCode question approval failed for request_id={}: {err}",
-                                    request_id
-                                );
-                                return;
-                            }
-                        };
+                    let status = match request_question_approval(
+                        approvals,
+                        tool_input,
+                        &tool_call_id,
+                        cancel,
+                    )
+                    .await
+                    {
+                        Ok(status) => status,
+                        Err(ExecutorApprovalError::Cancelled) => {
+                            tracing::debug!(
+                                "OpenCode question approval cancelled for request_id={}",
+                                request_id
+                            );
+                            return;
+                        }
+                        Err(err) => {
+                            tracing::error!(
+                                "OpenCode question approval failed for request_id={}: {err}",
+                                request_id
+                            );
+                            return;
+                        }
+                    };
 
                     let _ = log_writer
                         .log_event(&OpencodeExecutorEvent::QuestionResponse {
-                            tool_call_id: request_id.clone(),
+                            tool_call_id: tool_call_id.clone(),
                             status: status.clone(),
                         })
                         .await;

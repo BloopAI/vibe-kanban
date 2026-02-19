@@ -222,6 +222,17 @@ pub(super) struct PermissionToolInfo {
 pub(super) struct QuestionAskedEvent {
     pub(super) id: String,
     pub(super) questions: Vec<QuestionInfo>,
+    #[serde(default)]
+    pub(super) tool: Option<QuestionAskedTool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct QuestionAskedTool {
+    #[allow(dead_code)]
+    #[serde(rename = "messageID")]
+    pub(super) message_id: String,
+    #[serde(rename = "callID")]
+    pub(super) call_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
