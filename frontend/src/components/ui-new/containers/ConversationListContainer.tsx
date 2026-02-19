@@ -300,9 +300,11 @@ export const ConversationList = forwardRef<
           scrollLocation.viewportHeight
         : null;
       const nearBottom =
-        scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
+        scrollLocation?.isAtBottom ||
+        (gap !== null && gap < AUTO_SCROLL_GAP_PX);
       const shouldStick =
-        userStickToBottomRef.current || (nearBottom && pending.addType === 'running');
+        userStickToBottomRef.current ||
+        (nearBottom && pending.addType === 'running');
 
       if (loading) {
         // First data load: purge estimated sizes and jump to bottom
@@ -314,7 +316,9 @@ export const ConversationList = forwardRef<
           ? AutoScrollToBottom
           : { ...ScrollToBottomModifier, purgeItemSizes: true };
       } else if (pending.addType === 'running') {
-        scrollModifier = shouldStick ? AutoScrollToBottom : ScrollToBottomModifier;
+        scrollModifier = shouldStick
+          ? AutoScrollToBottom
+          : ScrollToBottomModifier;
       } else {
         // Historic/subsequent updates: scroll to bottom but keep measured sizes
         scrollModifier = ScrollToBottomModifier;
