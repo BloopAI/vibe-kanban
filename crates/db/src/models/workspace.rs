@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use executors::actions::{ExecutorAction, ExecutorActionType};
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use thiserror::Error;
@@ -8,7 +9,10 @@ use uuid::Uuid;
 /// Maximum length for auto-generated workspace names (derived from first user prompt)
 const WORKSPACE_NAME_MAX_LEN: usize = 60;
 
-use super::workspace_repo::{RepoWithTargetBranch, WorkspaceRepo};
+use super::{
+    execution_process::ExecutorActionField,
+    workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
+};
 
 #[derive(Debug, Error)]
 pub enum WorkspaceError {
@@ -413,21 +417,47 @@ impl Workspace {
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<Option<String>, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"SELECT cat.prompt
+        let actions = sqlx::query_scalar::<_, sqlx::types::Json<ExecutorActionField>>(
+            r#"SELECT ep.executor_action
                FROM sessions s
                JOIN execution_processes ep ON ep.session_id = s.id
-               JOIN coding_agent_turns cat ON cat.execution_process_id = ep.id
-               WHERE s.workspace_id = $1
-                 AND s.executor IS NOT NULL
-                 AND cat.prompt IS NOT NULL
-               ORDER BY s.created_at ASC, ep.created_at ASC
-               LIMIT 1"#,
-            workspace_id
+               WHERE s.workspace_id = ?
+               ORDER BY s.created_at ASC, ep.created_at ASC"#,
         )
-        .fetch_optional(pool)
+        .bind(workspace_id)
+        .fetch_all(pool)
         .await?;
-        Ok(result.and_then(|r| r.prompt))
+
+        for action in actions {
+            if let ExecutorActionField::ExecutorAction(action) = action.0
+                && let Some(prompt) = Self::extract_first_prompt_from_executor_action(&action)
+            {
+                return Ok(Some(prompt));
+            }
+        }
+
+        Ok(None)
+    }
+
+    fn extract_first_prompt_from_executor_action(action: &ExecutorAction) -> Option<String> {
+        let mut current = Some(action);
+        while let Some(action) = current {
+            match action.typ() {
+                ExecutorActionType::CodingAgentInitialRequest(request) => {
+                    return Some(request.prompt.clone());
+                }
+                ExecutorActionType::CodingAgentFollowUpRequest(request) => {
+                    return Some(request.prompt.clone());
+                }
+                ExecutorActionType::ReviewRequest(request) => {
+                    return Some(request.prompt.clone());
+                }
+                ExecutorActionType::ScriptRequest(_) => {
+                    current = action.next_action();
+                }
+            }
+        }
+        None
     }
 
     pub fn truncate_to_name(prompt: &str, max_len: usize) -> String {
