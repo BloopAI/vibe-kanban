@@ -13,7 +13,7 @@ mod middleware;
 pub mod r2;
 pub mod routes;
 pub mod shape_definition;
-pub mod shape_route_builder;
+pub mod shape_route;
 pub mod shape_routes;
 pub mod shapes;
 mod state;

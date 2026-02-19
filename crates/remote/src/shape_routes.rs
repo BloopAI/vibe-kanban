@@ -29,7 +29,7 @@ use crate::{
         error::ErrorResponse,
         organization_members::{ensure_issue_access, ensure_member_access, ensure_project_access},
     },
-    shape_route_builder::{
+    shape_route::{
         IssueFallbackQuery, NoQueryParams, OrgFallbackQuery, ProjectFallbackQuery, ShapeRoute,
         ShapeScope,
     },
