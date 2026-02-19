@@ -199,7 +199,7 @@ export function ChatBoxBase({
 
         {/* Footer - Controls */}
         <div className="flex items-end justify-between gap-base">
-          <Toolbar className="flex-1 min-w-0 flex-wrap gap-double">
+          <Toolbar className="flex-1 min-w-0 flex-wrap !gap-half">
             {activeModelSelector && (
               <ModelSelectorContainer
                 agent={activeModelSelector.agent}
