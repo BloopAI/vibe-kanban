@@ -1,47 +1,15 @@
 ---
 title: "Vibe Kanban"
-description: "Orchestrate AI coding agents from a single interface. Describe what you want, review the code, ship it."
+description: "Plan and review the work of AI agents faster, ship more"
 sidebarTitle: "Home"
 ---
 
-If you've used Claude Code, Codex, or Gemini to write code, you know the problem: the agent rewrites half your files, you're not sure what changed, and your working branch is a mess. Rolling back means cherry-picking through diffs. Running multiple agents on different tasks means juggling terminal sessions and hoping they don't step on each other.
+In a world where software engineers spend most of their time planning and reviewing coding agents, the most impactful way to ship more is to get faster at planning and review.
 
-Vibe Kanban gives every task its own git worktree — a dedicated branch and directory that's completely isolated from your main branch and from every other task. You describe what you want, the agent builds it, and you review the result as a clean diff. If you like it, open a PR. If you don't, delete the worktree. Your repo was never touched.
+Vibe Kanban is built for this. Use kanban issues to plan work, either privately or with your team. When you’re ready to begin, create workspaces where coding agents can execute.
 
-```bash
-npx vibe-kanban
-```
-
-One command, opens in your browser, no account needed.
+We're not a coding agent, but work seamlessly with a handful of the most popular options like Claude Code, Codex, Gemini CLI and OpenCode.
 
 <Frame>
-  <img src="/images/vibe-kanban-screenshot-overview.png" alt="Vibe Kanban showing a kanban board with tasks alongside an agent conversation with code changes" />
+  <img src="/images/onboarding-workspaces-logs.png" alt="Vibe Kanban workspace showing the logs panel with command output from running processes" />
 </Frame>
-
----
-
-<CardGroup cols={2}>
-  <Card title="Get started" icon="rocket" href="/getting-started">
-    Install, connect an agent, and go from zero to pull request
-  </Card>
-
-  <Card title="Workspaces" icon="window" href="/workspaces/index">
-    Sessions, changes, preview, terminal, and multi-repo support
-  </Card>
-
-  <Card title="Cloud & Teams" icon="cloud" href="/cloud/index">
-    Shared projects, issues, kanban board, and team management
-  </Card>
-
-  <Card title="Supported agents" icon="robot" href="/supported-coding-agents">
-    Claude Code, Codex, Gemini CLI, GitHub Copilot, and six more
-  </Card>
-
-  <Card title="Settings" icon="gear" href="/settings/general">
-    Themes, default agents, git config, and MCP server connections
-  </Card>
-
-  <Card title="Self-hosting" icon="server" href="/self-hosting/deploy-docker">
-    Deploy with Docker Compose on your own infrastructure
-  </Card>
-</CardGroup>
