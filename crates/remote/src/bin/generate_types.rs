@@ -57,46 +57,8 @@ fn main() {
     }
 }
 
-/// Generate TypeScript shapes file with embedded types and shape definitions
-/// Map shape URL → const name for codegen. Uses `stringify!` to derive names
-/// from the shape consts in `shapes.rs`.
-fn shape_const_names() -> std::collections::HashMap<&'static str, &'static str> {
-    use remote::shapes::*;
-    macro_rules! names {
-        ($($name:ident),* $(,)?) => {
-            std::collections::HashMap::from([$(( $name.url, stringify!($name) )),*])
-        };
-    }
-    names![
-        PROJECTS_SHAPE,
-        NOTIFICATIONS_SHAPE,
-        ORGANIZATION_MEMBERS_SHAPE,
-        USERS_SHAPE,
-        PROJECT_TAGS_SHAPE,
-        PROJECT_PROJECT_STATUSES_SHAPE,
-        PROJECT_ISSUES_SHAPE,
-        USER_WORKSPACES_SHAPE,
-        PROJECT_WORKSPACES_SHAPE,
-        PROJECT_ISSUE_ASSIGNEES_SHAPE,
-        PROJECT_ISSUE_FOLLOWERS_SHAPE,
-        PROJECT_ISSUE_TAGS_SHAPE,
-        PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
-        PROJECT_PULL_REQUESTS_SHAPE,
-        ISSUE_COMMENTS_SHAPE,
-        ISSUE_REACTIONS_SHAPE,
-    ]
-}
-
 fn export_shapes() -> String {
     let routes = all_shape_routes();
-    let names = shape_const_names();
-    assert_eq!(
-        names.len(),
-        routes.len(),
-        "shape_const_names() has {} entries but all_shape_routes() has {} — they must match",
-        names.len(),
-        routes.len(),
-    );
 
     let mut output = String::new();
 
@@ -198,9 +160,7 @@ fn export_shapes() -> String {
     output.push_str("// Individual shape definitions with embedded types\n");
     for route in &routes {
         let shape = route.shape;
-        let name = names
-            .get(shape.url())
-            .unwrap_or_else(|| panic!("No const name for shape at URL {}", shape.url()));
+        let name = shape.name();
 
         let params_str = shape
             .params()
