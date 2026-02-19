@@ -207,6 +207,7 @@ export const ConversationList = forwardRef<
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pendingRemeasureRef = useRef(false);
+  const shouldStickToBottomRef = useRef(false);
 
   // Get repos from workspace context to check if scripts are configured
   let repos: RepoWithTargetBranch[] = [];
@@ -287,6 +288,14 @@ export const ConversationList = forwardRef<
       if (!pending) return;
 
       let scrollModifier: ScrollModifier;
+      const scrollLocation = messageListRef.current?.getScrollLocation();
+      const gap = scrollLocation
+        ? scrollLocation.scrollHeight -
+          scrollLocation.scrollTop -
+          scrollLocation.viewportHeight
+        : null;
+      const nearBottom =
+        scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
 
       if (loading) {
         // First data load: purge estimated sizes and jump to bottom
@@ -294,14 +303,6 @@ export const ConversationList = forwardRef<
       } else if (pending.addType === 'plan') {
         scrollModifier = ScrollToTopOfLastItem;
       } else if (pending.addType === 'historic') {
-        const scrollLocation = messageListRef.current?.getScrollLocation();
-        const gap = scrollLocation
-          ? scrollLocation.scrollHeight -
-            scrollLocation.scrollTop -
-            scrollLocation.viewportHeight
-          : null;
-        const nearBottom =
-          scrollLocation?.isAtBottom || (gap !== null && gap < AUTO_SCROLL_GAP_PX);
         scrollModifier = nearBottom
           ? AutoScrollToBottom
           : { ...ScrollToBottomModifier, purgeItemSizes: true };
@@ -312,10 +313,23 @@ export const ConversationList = forwardRef<
         scrollModifier = ScrollToBottomModifier;
       }
 
+      shouldStickToBottomRef.current =
+        nearBottom && (pending.addType === 'running' || pending.addType === 'historic');
+
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
       setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);
+
+      if (shouldStickToBottomRef.current) {
+        requestAnimationFrame(() => {
+          messageListRef.current?.scrollToItem({
+            index: 'LAST',
+            align: 'end',
+            behavior: 'auto',
+          });
+        });
+      }
 
       if (loading) {
         setLoading(pending.loading);
