@@ -387,7 +387,7 @@ export function KanbanIssuePanel({
         {isCreateMode && (
           <div className="px-base pb-base flex items-center gap-half">
             <PrimaryButton
-              value={t('kanban.createTask')}
+              value={t('kanban.createIssue')}
               onClick={onSubmit}
               disabled={isSubmitting || !formData.title.trim()}
               actionIcon={isSubmitting ? 'spinner' : undefined}
