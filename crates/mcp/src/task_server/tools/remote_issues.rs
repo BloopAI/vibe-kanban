@@ -1,7 +1,8 @@
 use api_types::{
-    CreateIssueRequest, Issue, IssuePriority, ListIssueAssigneesResponse, ListIssueTagsResponse,
-    ListIssuesResponse, ListPullRequestsResponse, ListTagsResponse, MutationResponse,
-    PullRequestStatus, UpdateIssueRequest,
+    CreateIssueRequest, Issue, IssuePriority, IssueRelationshipType, ListIssueAssigneesResponse,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse,
+    ListPullRequestsResponse, ListTagsResponse, MutationResponse, PullRequestStatus,
+    UpdateIssueRequest,
 };
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -108,6 +109,40 @@ struct PullRequestSummary {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpTagSummary {
+    #[schemars(description = "The tag ID")]
+    id: String,
+    #[schemars(description = "The tag name")]
+    name: String,
+    #[schemars(description = "The tag color")]
+    color: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpRelationshipSummary {
+    #[schemars(description = "The relationship ID (use this to delete)")]
+    id: String,
+    #[schemars(description = "The related issue ID")]
+    related_issue_id: String,
+    #[schemars(description = "The related issue's simple ID (e.g. 'PROJ-42')")]
+    related_simple_id: String,
+    #[schemars(description = "Relationship type: blocking, related, or has_duplicate")]
+    relationship_type: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct McpSubIssueSummary {
+    #[schemars(description = "The sub-issue ID")]
+    id: String,
+    #[schemars(description = "Short human-readable identifier (e.g. 'PROJ-43')")]
+    simple_id: String,
+    #[schemars(description = "The sub-issue title")]
+    title: String,
+    #[schemars(description = "Current status of the sub-issue")]
+    status: String,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
 struct IssueDetails {
     #[schemars(description = "The unique identifier of the issue")]
     id: String,
@@ -137,6 +172,12 @@ struct IssueDetails {
     updated_at: String,
     #[schemars(description = "Pull requests linked to this issue")]
     pull_requests: Vec<PullRequestSummary>,
+    #[schemars(description = "Tags attached to this issue")]
+    tags: Vec<McpTagSummary>,
+    #[schemars(description = "Relationships to other issues")]
+    relationships: Vec<McpRelationshipSummary>,
+    #[schemars(description = "Sub-issues under this issue")]
+    sub_issues: Vec<McpSubIssueSummary>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -163,6 +204,10 @@ struct McpUpdateIssueRequest {
         description = "New priority for the issue. Allowed values: 'urgent', 'high', 'medium', 'low'."
     )]
     priority: Option<String>,
+    #[schemars(
+        description = "Parent issue ID to set this as a subissue. Pass null to un-nest from parent."
+    )]
+    parent_issue_id: Option<Option<Uuid>>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -456,6 +501,7 @@ impl TaskServer {
             description,
             status,
             priority,
+            parent_issue_id,
         }): Parameters<McpUpdateIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         // First get the issue to know its project_id for status resolution
@@ -502,7 +548,7 @@ impl TaskServer {
             target_date: None,
             completed_at: None,
             sort_order: None,
-            parent_issue_id: None,
+            parent_issue_id,
             parent_issue_sort_order: None,
             extension_metadata: None,
         };
@@ -582,6 +628,19 @@ impl TaskServer {
         let status = self
             .resolve_status_name(issue.project_id, issue.status_id)
             .await;
+
+        let tags = self
+            .fetch_issue_tags_resolved(issue.project_id, issue.id)
+            .await;
+
+        let relationships = self
+            .fetch_issue_relationships_resolved(issue.project_id, issue.id)
+            .await;
+
+        let sub_issues = self
+            .fetch_sub_issues(issue.project_id, issue.id)
+            .await;
+
         IssueDetails {
             id: issue.id.to_string(),
             title: issue.title.clone(),
@@ -610,6 +669,9 @@ impl TaskServer {
                     target_branch_name: pr.target_branch_name,
                 })
                 .collect(),
+            tags,
+            relationships,
+            sub_issues,
         }
     }
 
@@ -624,6 +686,136 @@ impl TaskServer {
                 pull_requests: vec![],
             },
         }
+    }
+
+    /// Fetches tags for an issue, resolving tag_ids to names via project tags.
+    async fn fetch_issue_tags_resolved(
+        &self,
+        project_id: Uuid,
+        issue_id: Uuid,
+    ) -> Vec<McpTagSummary> {
+        let tags_url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
+        let project_tags: ListTagsResponse = match self.send_json(self.client.get(&tags_url)).await
+        {
+            Ok(r) => r,
+            Err(_) => return Vec::new(),
+        };
+        let tag_map: std::collections::HashMap<Uuid, &api_types::Tag> =
+            project_tags.tags.iter().map(|t| (t.id, t)).collect();
+
+        let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
+        let response: ListIssueTagsResponse = match self.send_json(self.client.get(&url)).await {
+            Ok(r) => r,
+            Err(_) => return Vec::new(),
+        };
+
+        response
+            .issue_tags
+            .iter()
+            .filter_map(|it| {
+                tag_map.get(&it.tag_id).map(|tag| McpTagSummary {
+                    id: tag.id.to_string(),
+                    name: tag.name.clone(),
+                    color: tag.color.clone(),
+                })
+            })
+            .collect()
+    }
+
+    /// Fetches relationships for an issue, resolving related issue simple_ids.
+    async fn fetch_issue_relationships_resolved(
+        &self,
+        project_id: Uuid,
+        issue_id: Uuid,
+    ) -> Vec<McpRelationshipSummary> {
+        let rel_url = self.url(&format!(
+            "/api/remote/issue-relationships?issue_id={}",
+            issue_id
+        ));
+        let response: ListIssueRelationshipsResponse =
+            match self.send_json(self.client.get(&rel_url)).await {
+                Ok(r) => r,
+                Err(_) => return Vec::new(),
+            };
+
+        if response.issue_relationships.is_empty() {
+            return Vec::new();
+        }
+
+        let issues_url = self.url(&format!("/api/remote/issues?project_id={}", project_id));
+        let issues_response: api_types::ListIssuesResponse = self
+            .send_json(self.client.get(&issues_url))
+            .await
+            .unwrap_or(api_types::ListIssuesResponse { issues: Vec::new() });
+        let simple_id_map: std::collections::HashMap<Uuid, &str> = issues_response
+            .issues
+            .iter()
+            .map(|i| (i.id, i.simple_id.as_str()))
+            .collect();
+
+        response
+            .issue_relationships
+            .into_iter()
+            .map(|r| {
+                let related_simple_id = simple_id_map
+                    .get(&r.related_issue_id)
+                    .unwrap_or(&"")
+                    .to_string();
+                McpRelationshipSummary {
+                    id: r.id.to_string(),
+                    related_issue_id: r.related_issue_id.to_string(),
+                    related_simple_id,
+                    relationship_type: match r.relationship_type {
+                        IssueRelationshipType::Blocking => "blocking".to_string(),
+                        IssueRelationshipType::Related => "related".to_string(),
+                        IssueRelationshipType::HasDuplicate => "has_duplicate".to_string(),
+                    },
+                }
+            })
+            .collect()
+    }
+
+    /// Fetches sub-issues for a given parent issue.
+    async fn fetch_sub_issues(
+        &self,
+        project_id: Uuid,
+        parent_issue_id: Uuid,
+    ) -> Vec<McpSubIssueSummary> {
+        let url = self.url(&format!("/api/remote/issues?project_id={}", project_id));
+        let response: api_types::ListIssuesResponse =
+            match self.send_json(self.client.get(&url)).await {
+                Ok(r) => r,
+                Err(_) => return Vec::new(),
+            };
+
+        let status_names = self
+            .fetch_project_statuses(project_id)
+            .await
+            .ok()
+            .map(|statuses| {
+                statuses
+                    .into_iter()
+                    .map(|s| (s.id, s.name))
+                    .collect::<std::collections::HashMap<_, _>>()
+            });
+
+        response
+            .issues
+            .iter()
+            .filter(|i| i.parent_issue_id == Some(parent_issue_id))
+            .map(|i| {
+                let status = status_names
+                    .as_ref()
+                    .and_then(|m| m.get(&i.status_id).cloned())
+                    .unwrap_or_else(|| i.status_id.to_string());
+                McpSubIssueSummary {
+                    id: i.id.to_string(),
+                    simple_id: i.simple_id.clone(),
+                    title: i.title.clone(),
+                    status,
+                }
+            })
+            .collect()
     }
 
     fn parse_issue_priority(priority: &str) -> Result<IssuePriority, CallToolResult> {

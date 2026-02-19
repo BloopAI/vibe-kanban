@@ -4,17 +4,18 @@ use std::time::Duration;
 
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateIssueAssigneeRequest, CreateIssueRequest, CreateIssueTagRequest,
-    CreateOrganizationRequest, CreateOrganizationResponse, CreateWorkspaceRequest, DeleteResponse,
-    DeleteWorkspaceRequest, GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest,
-    HandoffInitResponse, HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee,
-    IssueTag, ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
-    ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse, ListOrganizationsResponse,
-    ListProjectStatusesResponse, ListProjectsResponse, ListPullRequestsResponse, ListTagsResponse,
-    MutationResponse, Organization, ProfileResponse, RevokeInvitationRequest, Tag,
-    TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
-    UpsertPullRequestRequest, Workspace,
+    CreateIssueAssigneeRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
+    CreateIssueTagRequest, CreateOrganizationRequest, CreateOrganizationResponse,
+    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
+    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
+    HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
+    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse,
+    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
+    ListProjectsResponse, ListPullRequestsResponse, ListTagsResponse, MutationResponse,
+    Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -863,6 +864,35 @@ impl RemoteClient {
         res.json::<DeleteResponse>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Issue Relationships ────────────────────────────────────────────
+
+    /// Lists relationships for an issue.
+    pub async fn list_issue_relationships(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueRelationshipsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_relationships?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Creates a new issue relationship.
+    pub async fn create_issue_relationship(
+        &self,
+        request: &CreateIssueRelationshipRequest,
+    ) -> Result<MutationResponse<IssueRelationship>, RemoteClientError> {
+        self.post_authed("/v1/issue_relationships", Some(request))
+            .await
+    }
+
+    /// Deletes an issue relationship.
+    pub async fn delete_issue_relationship(
+        &self,
+        relationship_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/issue_relationships/{relationship_id}"))
+            .await
     }
 
     // ── Remote Projects ─────────────────────────────────────────────────
