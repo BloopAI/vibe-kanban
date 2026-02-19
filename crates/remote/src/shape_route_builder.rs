@@ -121,12 +121,8 @@ pub enum ShapeScope {
 // =============================================================================
 
 /// A fully built shape route: router, shape metadata, and fallback URL.
-///
-/// This is the single source of truth for both route registration and codegen.
 pub struct BuiltShapeRoute {
     pub router: axum::Router<AppState>,
-    /// Const name, e.g. `"PROJECTS_SHAPE"`.
-    pub name: &'static str,
     /// Type-erased shape metadata (table, params, url, ts_type_name).
     pub shape: &'static dyn ShapeExport,
     /// REST fallback URL, e.g. `"/fallback/projects"`.
@@ -176,11 +172,7 @@ impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T> {
     }
 
     /// Build the finalized shape route, erasing the generic `T`.
-    ///
-    /// `name` is the const name for codegen (e.g. `"PROJECTS_SHAPE"`).
-    /// Use the `shape_route!` macro in `shape_routes.rs` to auto-derive it
-    /// via `stringify!`.
-    pub fn build(self, name: &'static str) -> BuiltShapeRoute {
+    pub fn build(self) -> BuiltShapeRoute {
         let proxy_handler = build_proxy_handler(self.shape, self.scope);
         let router = axum::Router::new()
             .route(self.shape.url(), proxy_handler)
@@ -188,7 +180,6 @@ impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T> {
 
         BuiltShapeRoute {
             router,
-            name,
             shape: self.shape,
             fallback_url: self.fallback_url,
         }
