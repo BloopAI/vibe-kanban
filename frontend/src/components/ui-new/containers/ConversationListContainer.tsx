@@ -205,6 +205,7 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const pendingRemeasureRef = useRef(false);
   const shouldStickToBottomRef = useRef(false);
@@ -264,6 +265,9 @@ export const ConversationList = forwardRef<
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
+      }
+      if (snapTimeoutRef.current) {
+        clearTimeout(snapTimeoutRef.current);
       }
     };
   }, []);
@@ -329,6 +333,16 @@ export const ConversationList = forwardRef<
             behavior: 'auto',
           });
         });
+        if (snapTimeoutRef.current) {
+          clearTimeout(snapTimeoutRef.current);
+        }
+        snapTimeoutRef.current = setTimeout(() => {
+          messageListRef.current?.scrollToItem({
+            index: 'LAST',
+            align: 'end',
+            behavior: 'auto',
+          });
+        }, 100);
       }
 
       if (loading) {
@@ -382,6 +396,12 @@ export const ConversationList = forwardRef<
       list.data.replace(data, { purgeItemSizes: true });
       if (wasAtBottom) {
         list.scrollToItem({ index: 'LAST', align: 'end', behavior: 'auto' });
+        if (snapTimeoutRef.current) {
+          clearTimeout(snapTimeoutRef.current);
+        }
+        snapTimeoutRef.current = setTimeout(() => {
+          list.scrollToItem({ index: 'LAST', align: 'end', behavior: 'auto' });
+        }, 100);
       }
     });
   }, []);
