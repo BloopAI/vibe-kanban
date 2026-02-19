@@ -44,7 +44,6 @@ export function WorkspacesLayout() {
     selectSession,
     repos,
     isNewSessionMode,
-    startNewSession,
   } = useWorkspaceContext();
 
   const { t } = useTranslation('common');
@@ -159,7 +158,6 @@ export function WorkspacesLayout() {
                     isLoading={isLoading}
                     isError={isError}
                     isNewSessionMode={isNewSessionMode}
-                    onStartNewSession={startNewSession}
                   />
                 )}
               </Panel>

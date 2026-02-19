@@ -28,8 +28,6 @@ interface WorkspacesMainContainerProps {
   isError: boolean;
   /** Whether user is creating a new session */
   isNewSessionMode: boolean;
-  /** Callback to start new session mode */
-  onStartNewSession: () => void;
 }
 
 export const WorkspacesMainContainer = forwardRef<
@@ -44,7 +42,6 @@ export const WorkspacesMainContainer = forwardRef<
     isLoading,
     isError,
     isNewSessionMode,
-    onStartNewSession,
   },
   ref
 ) {
@@ -92,7 +89,6 @@ export const WorkspacesMainContainer = forwardRef<
       onCreateWorkspace={handleCreateWorkspace}
       containerRef={containerRef}
       isNewSessionMode={isNewSessionMode}
-      onStartNewSession={onStartNewSession}
       diffStats={{
         filesChanged: diffStats.files_changed,
         linesAdded: diffStats.lines_added,
