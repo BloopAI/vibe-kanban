@@ -20,8 +20,7 @@ use remote::{
             InitUploadRequest, InitUploadResponse,
         },
     },
-    shape_routes::fallback_urls,
-    shapes::all_shapes,
+    shape_routes::all_shape_routes,
 };
 use ts_rs::TS;
 
@@ -60,8 +59,7 @@ fn main() {
 
 /// Generate TypeScript shapes file with embedded types and shape definitions
 fn export_shapes() -> String {
-    let shapes = all_shapes();
-    let fallbacks = fallback_urls();
+    let routes = all_shape_routes();
 
     let mut output = String::new();
 
@@ -161,17 +159,21 @@ fn export_shapes() -> String {
 
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
-    for (name, shape) in &shapes {
+    for route in &routes {
+        // strip "shapes :: " prefix from stringify!(shapes::FOO)
+        let name = route
+            .name
+            .rsplit_once("::")
+            .map(|(_, n)| n.trim())
+            .unwrap_or(route.name);
+
+        let shape = route.shape;
         let params_str = shape
             .params()
             .iter()
             .map(|p| format!("'{}'", p))
             .collect::<Vec<_>>()
             .join(", ");
-
-        let fallback_url = fallbacks
-            .get(shape.url())
-            .unwrap_or_else(|| panic!("Shape {} is missing a fallback URL", name));
 
         output.push_str(&format!(
             "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}',\n  '/v1{}'\n);\n\n",
@@ -180,7 +182,7 @@ fn export_shapes() -> String {
             shape.table(),
             params_str,
             shape.url(),
-            fallback_url,
+            route.fallback_url,
         ));
     }
 

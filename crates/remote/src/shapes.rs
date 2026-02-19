@@ -1,6 +1,6 @@
 //! All shape constant instances for realtime streaming.
 
-use crate::shape_definition::{ShapeDefinition, ShapeExport};
+use crate::shape_definition::ShapeDefinition;
 use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
@@ -135,33 +135,3 @@ pub const ISSUE_REACTIONS_SHAPE: ShapeDefinition<IssueCommentReaction> = crate::
     params: ["issue_id"],
 );
 
-// =============================================================================
-// Export
-// =============================================================================
-
-/// All shape definitions for realtime streaming, with their const names.
-pub fn all_shapes() -> Vec<(&'static str, &'static dyn ShapeExport)> {
-    macro_rules! named_shapes {
-        ($($name:ident),* $(,)?) => {
-            vec![$(( stringify!($name), &$name as &'static dyn ShapeExport )),*]
-        };
-    }
-    named_shapes![
-        PROJECTS_SHAPE,
-        NOTIFICATIONS_SHAPE,
-        ORGANIZATION_MEMBERS_SHAPE,
-        USERS_SHAPE,
-        PROJECT_TAGS_SHAPE,
-        PROJECT_PROJECT_STATUSES_SHAPE,
-        PROJECT_ISSUES_SHAPE,
-        USER_WORKSPACES_SHAPE,
-        PROJECT_WORKSPACES_SHAPE,
-        PROJECT_ISSUE_ASSIGNEES_SHAPE,
-        PROJECT_ISSUE_FOLLOWERS_SHAPE,
-        PROJECT_ISSUE_TAGS_SHAPE,
-        PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
-        PROJECT_PULL_REQUESTS_SHAPE,
-        ISSUE_COMMENTS_SHAPE,
-        ISSUE_REACTIONS_SHAPE,
-    ]
-}

@@ -120,14 +120,15 @@ pub enum ShapeScope {
 // BuiltShapeRoute — type-erased output from ShapeRouteBuilder::build()
 // =============================================================================
 
-/// A fully built shape route: router (for registration) + fallback metadata.
+/// A fully built shape route: router, shape metadata, and fallback URL.
 ///
-/// Codegen uses `shapes::all_shapes()` for names and shape metadata;
-/// this struct carries the fallback URL keyed by shape URL.
+/// This is the single source of truth for both route registration and codegen.
 pub struct BuiltShapeRoute {
     pub router: axum::Router<AppState>,
-    /// The shape's proxy URL, e.g. `"/shape/projects"`.
-    pub url: &'static str,
+    /// Const name, e.g. `"PROJECTS_SHAPE"`.
+    pub name: &'static str,
+    /// Type-erased shape metadata (table, params, url, ts_type_name).
+    pub shape: &'static dyn ShapeExport,
     /// REST fallback URL, e.g. `"/fallback/projects"`.
     pub fallback_url: &'static str,
 }
@@ -176,19 +177,19 @@ impl<T: TS + Sync + Send + 'static> ShapeRouteBuilder<T> {
 
     /// Build the finalized shape route, erasing the generic `T`.
     ///
-    /// Produces a `BuiltShapeRoute` containing the axum router (with both
-    /// proxy and fallback routes) and the shape/fallback URLs for codegen.
-    pub fn build(self) -> BuiltShapeRoute {
-        let url = self.shape.url();
-
+    /// `name` is the const name for codegen (e.g. `"PROJECTS_SHAPE"`).
+    /// Use the `shape_route!` macro in `shape_routes.rs` to auto-derive it
+    /// via `stringify!`.
+    pub fn build(self, name: &'static str) -> BuiltShapeRoute {
         let proxy_handler = build_proxy_handler(self.shape, self.scope);
         let router = axum::Router::new()
-            .route(url, proxy_handler)
+            .route(self.shape.url(), proxy_handler)
             .route(self.fallback_url, self.fallback_handler);
 
         BuiltShapeRoute {
             router,
-            url,
+            name,
+            shape: self.shape,
             fallback_url: self.fallback_url,
         }
     }
