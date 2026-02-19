@@ -160,6 +160,7 @@ export interface ShapeDefinition<T> {
   readonly table: string;
   readonly params: readonly string[];
   readonly url: string;
+  readonly fallbackUrl?: string;
   readonly _type: T;  // Phantom field for type inference (not present at runtime)
 }
 
@@ -167,16 +168,18 @@ export interface ShapeDefinition<T> {
 function defineShape<T>(
   table: string,
   params: readonly string[],
-  url: string
+  url: string,
+  fallbackUrl?: string
 ): ShapeDefinition<T> {
-  return { table, params, url } as ShapeDefinition<T>;
+  return { table, params, url, fallbackUrl } as ShapeDefinition<T>;
 }
 
 // Individual shape definitions with embedded types
 export const PROJECTS_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
-  '/v1/shape/projects'
+  '/v1/shape/projects',
+  '/v1/projects'
 );
 
 export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
@@ -206,13 +209,15 @@ export const PROJECT_TAGS_SHAPE = defineShape<Tag>(
 export const PROJECT_PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/project_statuses'
+  '/v1/shape/project/{project_id}/project_statuses',
+  '/v1/project_statuses'
 );
 
 export const PROJECT_ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issues'
+  '/v1/shape/project/{project_id}/issues',
+  '/v1/issues'
 );
 
 export const USER_WORKSPACES_SHAPE = defineShape<Workspace>(

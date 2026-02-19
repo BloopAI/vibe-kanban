@@ -338,14 +338,7 @@ type FallbackWrappedOptions = {
   [key: string]: unknown;
 };
 
-type CoreFallbackDefinition = {
-  table: 'projects' | 'project_statuses' | 'issues';
-  path: '/v1/projects' | '/v1/project_statuses' | '/v1/issues';
-  queryParam: 'organization_id' | 'project_id';
-  responseField: 'projects' | 'project_statuses' | 'issues';
-};
-
-type CoreFallbackSyncBridge = {
+type FallbackSyncBridge = {
   begin: (options?: { immediate?: boolean }) => void;
   write: (message: { type: 'insert'; value: ElectricRow }) => void;
   commit: () => void;
@@ -353,82 +346,46 @@ type CoreFallbackSyncBridge = {
   markReady: () => void;
 };
 
-const CORE_FALLBACK_RETRY_MS = 5000;
+const FALLBACK_RETRY_MS = 5000;
 
-const CORE_FALLBACKS: Record<string, CoreFallbackDefinition> = {
-  projects: {
-    table: 'projects',
-    path: '/v1/projects',
-    queryParam: 'organization_id',
-    responseField: 'projects',
-  },
-  project_statuses: {
-    table: 'project_statuses',
-    path: '/v1/project_statuses',
-    queryParam: 'project_id',
-    responseField: 'project_statuses',
-  },
-  issues: {
-    table: 'issues',
-    path: '/v1/issues',
-    queryParam: 'project_id',
-    responseField: 'issues',
-  },
-};
-
-function getCoreFallbackDefinition(
-  table: string,
-  params: Record<string, string>
-): CoreFallbackDefinition | null {
-  const fallback = CORE_FALLBACKS[table];
-  if (!fallback) return null;
-  const queryValue = params[fallback.queryParam];
-  if (!queryValue) return null;
-  return fallback;
-}
-
-function shouldUseCoreFallback(error: ShapeSyncError): boolean {
+function shouldUseFallback(error: ShapeSyncError): boolean {
   if (error.name === 'AbortError') return false;
   if (error.status === 401 || error.status === 403) return false;
   return true;
 }
 
-async function fetchCoreFallbackRows(
-  fallback: CoreFallbackDefinition,
+async function fetchFallbackRows(
+  shape: ShapeDefinition<unknown>,
   params: Record<string, string>
 ): Promise<ElectricRow[]> {
-  const queryValue = params[fallback.queryParam];
-  if (!queryValue) return [];
+  if (!shape.fallbackUrl) return [];
 
-  const query = new URLSearchParams({ [fallback.queryParam]: queryValue });
-  const response = await makeRequest(`${fallback.path}?${query.toString()}`, {
-    method: 'GET',
-  });
+  const query = new URLSearchParams(params);
+  const response = await makeRequest(
+    `${shape.fallbackUrl}?${query.toString()}`,
+    { method: 'GET' }
+  );
 
   if (!response.ok) {
-    throw new Error(
-      `Fallback list failed for ${fallback.table} (${response.status})`
-    );
+    throw new Error(`Fallback list failed (${response.status})`);
   }
 
   const payload = (await response.json()) as Record<string, unknown>;
-  const rows = payload[fallback.responseField];
+  const rows = payload[shape.table];
   if (!Array.isArray(rows)) {
-    throw new Error(
-      `Fallback list for ${fallback.table} returned unexpected payload`
-    );
+    throw new Error('Fallback list returned unexpected payload');
   }
 
   return rows as ElectricRow[];
 }
 
-function createCoreFallbackController(
-  fallback: CoreFallbackDefinition,
+function createFallbackController(
+  shape: ShapeDefinition<unknown>,
   params: Record<string, string>,
   collectionId: string,
   config?: CollectionConfig
 ) {
-  let syncBridge: CoreFallbackSyncBridge | null = null;
+  let syncBridge: FallbackSyncBridge | null = null;
   let hasHydrated = false;
   let fallbackInFlight: Promise<void> | null = null;
   let lastAttemptAt = 0;
@@ -436,7 +393,7 @@ function createCoreFallbackController(
   const hydrateFromFallback = async () => {
     if (!syncBridge || hasHydrated) return;
 
-    const rows = await fetchCoreFallbackRows(fallback, params);
+    const rows = await fetchFallbackRows(shape, params);
     syncBridge.begin({ immediate: true });
     syncBridge.truncate();
     for (const row of rows) {
@@ -451,7 +408,7 @@ function createCoreFallbackController(
     const now = Date.now();
     if (hasHydrated) return;
     if (fallbackInFlight) return;
-    if (now - lastAttemptAt < CORE_FALLBACK_RETRY_MS) return;
+    if (now - lastAttemptAt < FALLBACK_RETRY_MS) return;
 
     lastAttemptAt = now;
     fallbackInFlight = hydrateFromFallback()
@@ -459,7 +416,7 @@ function createCoreFallbackController(
         const message =
           error instanceof Error ? error.message : 'Fallback request failed';
         console.error(
-          `[${collectionId}] Electric fallback failed (${fallback.table}):`,
+          `[${collectionId}] Electric fallback failed (${shape.table}):`,
           error
         );
         config?.onError?.({ message });
@@ -482,7 +439,7 @@ function createCoreFallbackController(
               const response = await baseFetchClient(input, init);
               if (
                 !response.ok &&
-                shouldUseCoreFallback({ status: response.status })
+                shouldUseFallback({ status: response.status })
               ) {
                 triggerFallback();
               }
@@ -496,7 +453,7 @@ function createCoreFallbackController(
                       ? error.name
                       : undefined,
               };
-              if (shouldUseCoreFallback(shapeError)) {
+              if (shouldUseFallback(shapeError)) {
                 triggerFallback();
               }
               throw error;
@@ -504,7 +461,7 @@ function createCoreFallbackController(
           }
         : undefined,
       onError: (error: ShapeSyncError) => {
-        if (shouldUseCoreFallback(error)) {
+        if (shouldUseFallback(error)) {
           triggerFallback();
         }
         baseOnError?.(error);
@@ -554,14 +511,8 @@ export function createShapeCollection<TRow extends ElectricRow>(
     return cached as typeof cached & { __rowType?: TRow };
   }
 
-  const fallbackDefinition = getCoreFallbackDefinition(shape.table, params);
-  const fallbackController = fallbackDefinition
-    ? createCoreFallbackController(
-        fallbackDefinition,
-        params,
-        collectionId,
-        config
-      )
+  const fallbackController = shape.fallbackUrl
+    ? createFallbackController(shape, params, collectionId, config)
     : null;
 
   const baseShapeOptions = getAuthenticatedShapeOptions(

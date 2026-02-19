@@ -6,7 +6,7 @@ use remote::{
         CommitAttachmentsRequest, CommitAttachmentsResponse, ConfirmUploadRequest,
         InitUploadRequest, InitUploadResponse,
     },
-    shapes::all_shapes,
+    shape_routes::all_shape_route_definitions,
 };
 use ts_rs::TS;
 use api_types::{
@@ -57,7 +57,7 @@ fn main() {
 
 /// Generate TypeScript shapes file with embedded types and shape definitions
 fn export_shapes() -> String {
-    let shapes = all_shapes();
+    let shape_defs = all_shape_route_definitions();
 
     let mut output = String::new();
 
@@ -138,6 +138,7 @@ fn export_shapes() -> String {
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly params: readonly string[];\n");
     output.push_str("  readonly url: string;\n");
+    output.push_str("  readonly fallbackUrl?: string;\n");
     output.push_str(
         "  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n",
     );
@@ -148,29 +149,42 @@ fn export_shapes() -> String {
     output.push_str("function defineShape<T>(\n");
     output.push_str("  table: string,\n");
     output.push_str("  params: readonly string[],\n");
-    output.push_str("  url: string\n");
+    output.push_str("  url: string,\n");
+    output.push_str("  fallbackUrl?: string\n");
     output.push_str("): ShapeDefinition<T> {\n");
-    output.push_str("  return { table, params, url } as ShapeDefinition<T>;\n");
+    output.push_str("  return { table, params, url, fallbackUrl } as ShapeDefinition<T>;\n");
     output.push_str("}\n\n");
 
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
-    for (name, shape) in &shapes {
-        let params_str = shape
-            .params()
+    for def in &shape_defs {
+        let params_str = def
+            .params
             .iter()
             .map(|p| format!("'{}'", p))
             .collect::<Vec<_>>()
             .join(", ");
 
-        output.push_str(&format!(
-            "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
-            name,
-            shape.ts_type_name(),
-            shape.table(),
-            params_str,
-            shape.url()
-        ));
+        if let Some(fallback_url) = &def.fallback_url {
+            output.push_str(&format!(
+                "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}',\n  '{}'\n);\n\n",
+                def.const_name,
+                def.ts_type_name,
+                def.table,
+                params_str,
+                def.url,
+                fallback_url,
+            ));
+        } else {
+            output.push_str(&format!(
+                "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
+                def.const_name,
+                def.ts_type_name,
+                def.table,
+                params_str,
+                def.url,
+            ));
+        }
     }
 
     output.push_str(
