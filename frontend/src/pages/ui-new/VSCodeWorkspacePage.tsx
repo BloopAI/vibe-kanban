@@ -32,7 +32,6 @@ export function VSCodeWorkspacePage() {
     isError,
     diffStats,
     isNewSessionMode,
-    startNewSession,
   } = useWorkspaceContext();
 
   usePageTitle(workspace?.name);
