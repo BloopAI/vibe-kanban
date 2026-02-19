@@ -416,7 +416,7 @@ function createCoreFallbackController(
   };
 
   const attachSyncWrapper = (collectionOptions: FallbackWrappedOptions) => {
-    const baseSync = collectionOptions.sync;
+    const baseSyncFn = collectionOptions.sync.sync;
     collectionOptions.sync.sync = (syncParams) => {
       syncBridge = {
         begin: syncParams.begin,
@@ -424,7 +424,7 @@ function createCoreFallbackController(
         commit: syncParams.commit,
         truncate: syncParams.truncate,
       };
-      return baseSync.sync(syncParams);
+      return baseSyncFn(syncParams);
     };
   };
 
