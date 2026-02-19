@@ -1,200 +1,132 @@
 ---
 title: "Get Started"
-description: "Install Vibe Kanban, connect a coding agent, and go from zero to pull request"
+description: "Launch Vibe Kanban, connect a coding agent, and go from zero to pull request"
 sidebarTitle: "Get Started"
 ---
 
-Follow this guide to create your first issue and orchestrate a coding agent to work on it.
+Vibe Kanban keeps you organised while running multiple coding agents in parallel by streamlining how you plan and review their work.
 
-## Launch Vibe Kanban
+## 1. Launch Vibe Kanban
+
+Start the Vibe Kanban client and open the UI in your browser:
+
 
 ```bash
 npx vibe-kanban
 ```
 
-Starts a local server and opens in your browser. No accounts, no config files.
+## 2. Confirm your preferences
+
+The first time you run Vibe Kanban, you'll be asked to set your preferred:
+
+- Coding agent
+- IDE
+- Notification preferences
 
 <Info>
-**Requires Node.js** (LTS recommended). To use a specific port: `PORT=8080 npx vibe-kanban`
+These preferences can be changed at any time from the settings dialog
 </Info>
 
----
-
-## Confirm your preferences
-
-On first launch you should confirm a few basics:
-
-- What coding agent you prefer using
-- Which IDE you prefer
-- Sound notification preferences
-
 <Frame>
-  <img src="https://via.placeholder.com/1400x840.png?text=Vibe+Kanban+preferences+(coding+agent,+IDE,+notifications)" alt="Placeholder image for preferences setup: coding agent, IDE, and sound notifications." />
+  <img src="/images/onboarding-basic-setup.png" alt="Placeholder image for preferences setup: coding agent, IDE, and sound notifications." />
 </Frame>
 
----
+## 3. Sign-in to Vibe Kanban
 
-## Sign in to Vibe Kanban
-
-On first launch you'll see a sign-in screen with two options: **Continue with GitHub** or **Continue with Google**.
+You can use a GitHub or Google account.
 
 <Frame>
   <img src="/images/onboarding-sign-in.png" alt="Vibe Kanban onboarding screen showing Sign in to continue with GitHub and Google buttons" />
 </Frame>
 
 <Info>
-If you want to skip sign-in for now, click **More options** → **I understand, continue without signing in**. You'll still be able to create workspaces, but the kanban board, issues, and team features require an account. You can sign in later from the sidebar.
+If you want to skip sign-in for now, click **More options** → **I understand, continue without signing in**. You'll still be able to create workspaces, but the kanban board, issues, and team features will be unavailable.
 </Info>
 
-If you signed in during this step, you're already set — a personal organisation and an **Initial Project** are created automatically. You can [create a team organisation](/cloud/organizations) and [invite members](/cloud/team-members) later.
+## 4. Navigate the kanban board
 
-If you skipped sign-in, you can sign in any time by clicking **Sign in** in the bottom-left of the sidebar.
-
-<Frame>
-  <img src="/images/sidebar-sign-in-button.png" alt="Workspace sidebar showing the Sign in button in the bottom-left corner" />
-</Frame>
-
-[Sign in](/cloud/authentication) with GitHub or Google.
+After you sign in, we automatically create a personal organisation and an initial project for you, and take you straight there.
 
 <Frame>
-  <img style={{maxHeight: "300px"}} src="/images/cloud/sign-in-dialog.png" alt="Sign in dialog with GitHub and Google options" />
+  <img src="/images/onboarding-projects.png" alt="The projects page" />
 </Frame>
 
-## Log in to a coding agent
+**Navigating the kanban board:**
 
-Vibe Kanban doesn't have its own AI — it orchestrates agents you already have installed. You need at least one authenticated before you start:
+1. The app bar, used for navigating between projects, the workspaces page (we'll come onto this later) and user settings
+2. Issues appear as cards on the kanban board
+3. The 'new issue' button, for creating issues
+4. The right hand panel where details for the currently selected or draft issue is shown
 
-<Tabs>
-<Tab title="Claude Code">
-```bash
-npx -y @anthropic-ai/claude-code
-```
+## 5. Create an issue
 
-Follow the login prompts. Requires an Anthropic API key or a Claude Max/Team subscription. [Full guide →](/agents/claude-code)
-</Tab>
-
-<Tab title="Codex">
-```bash
-npx -y @openai/codex
-```
-
-Follow the login prompts, or set `OPENAI_API_KEY` to use the API directly. [Full guide →](/agents/openai-codex)
-</Tab>
-
-<Tab title="Gemini CLI">
-```bash
-npx -y @google/gemini-cli
-```
-
-Authenticates via Google OAuth on first run. [Full guide →](/agents/gemini-cli)
-</Tab>
-
-<Tab title="Other agents">
-Vibe Kanban also supports **GitHub Copilot**, **Amp**, **Cursor Agent CLI**, **OpenCode**, **Droid**, **Claude Code Router**, and **Qwen Code**.
-
-[See all supported agents →](/supported-coding-agents)
-</Tab>
-</Tabs>
-
----
-
-## Create an issue
-
-Click **+** on any column of the [kanban board](/cloud/kanban-board) to [create an issue](/cloud/issues). Set a title, description, priority, and assignee.
+**Issues** are a core concept of Vibe Kanban, they represent a bug, feature or piece of work to be done. At a minimum, issues consist of a title and description, but you can also add priorities, tags and even connect issues together with parent/child relationships.
 
 <Frame>
-  <img src="/images/cloud/issue-overview.png" alt="Issue creation panel with title, description, priority, and a toggle to create a workspace immediately" />
+  <img src="/images/onboarding-create-issue.png" alt="Create issue" />
 </Frame>
 
-There's a toggle — **Create draft workspace immediately** — that creates the issue and opens a workspace for it at the same time. If you leave it off, you can attach a workspace later from the issue detail view.
+When you've filled out the details press 'create issue'.
 
----
+## 6. Create a workspace
 
-## Create a workspace
-
-Click the **+** button in the sidebar. Pick a project and add your git repositories.
+**Workspaces** are another core concept of Vibe Kanban, they represent a space to work on an issue with a coding agent. When you create a workspace, Vibe Kanban automatically creates git worktrees for your selected repositories, and launches your coding agent.
 
 <Frame>
-  <img src="/images/workspaces-create-new.png" alt="Create workspace dialog showing project selection, repository list, and task input" />
+  <img src="/images/onboarding-create-workspace.png" alt="The create workspace button" />
 </Frame>
 
-Vibe Kanban creates a [git worktree](/workspaces/git-operations) — a separate directory with its own branch, completely isolated from your main branch and from every other workspace. Choose an agent from the dropdown, describe what you want, and click **Create**.
+To create a workspace, make sure the issue you created is selected and click the 'create' button in the workspaces window.
 
 <Frame>
-  <img src="/images/workspaces-agent-selection.png" alt="Agent selection dropdown showing available coding agents" />
+  <img src="/images/onboarding-workspaces-repo.png" alt="Workspaces repos" />
 </Frame>
 
-The agent starts working immediately. You can watch the conversation in real time.
+When you create a workspace, you'll need to specify repositories you'd like to work on, as well as the branches of those repositories to base the git worktrees on.
 
 <Frame>
-  <img src="/images/workspaces-conversation.png" alt="Workspace conversation showing a task description and the agent working on it" />
+  <img src="/images/onboarding-workspaces-prompt.png" alt="Workspaces prompt" />
 </Frame>
 
-[Full workspace guide →](/workspaces/creating-workspaces)
-
----
-
-## Set setup and cleanup scripts
-
-Before the agent starts coding, you probably want dependencies installed. And when a workspace closes, you might want to stop background processes or run a formatter.
-
-Open **Settings** → **Repositories** tab, select your repository, and configure:
-
-- **Setup script** — runs before the agent starts (e.g., `npm install`)
-- **Cleanup script** — runs when the workspace closes (e.g., `npx prettier --write .`)
-- **Dev server script** — starts your dev server for the [preview panel](/workspaces/preview) (e.g., `npm run dev`)
+You'll also need to specify your desired coding agent configuration (e.g. model, effort level, plan mode).
 
 <Frame>
-  <img src="/images/settings-repositories.png" alt="Repository settings showing dev server, setup, and cleanup script configuration" />
+  <img src="/images/onboarding-workspaces-logs.png" alt="Workspaces logs" />
 </Frame>
 
-[Full scripts guide →](/settings/projects-repositories)
-
----
-
-## Start a dev server
-
-If you've configured a dev server script, click the **Play** icon in the context bar or use the [command bar](/workspaces/command-bar) (`Cmd/Ctrl + K` → "Toggle Dev Server"). The [preview panel](/workspaces/preview) opens automatically and your application loads in a built-in browser.
-
-<Frame>
-  <img style={{maxHeight: "400px"}} src="/images/workspaces-preview-panel.png" alt="Workspace showing preview panel with built-in browser displaying the application" />
-</Frame>
-
-If no dev server script is configured yet, the preview panel shows a setup prompt — click **Edit Dev Server Script**, enter your command, and hit **Save and Test**.
-
-<Frame>
-  <img style={{maxHeight: "300px"}} src="/images/workspaces-fix-dev-script.png" alt="Fix Dev Server Script dialog with script input field and Save and Test button" />
-</Frame>
-
----
-
-## Review code
-
-As the agent writes code, the [**Changes** panel](/workspaces/changes) updates with syntax-highlighted diffs — every file modified, every line added or removed.
-
-<Frame>
-  <img src="/images/workspaces-changes-panel.png" alt="Changes panel showing syntax-highlighted diffs with a file tree" />
-</Frame>
-
-Hover over any line to reveal a comment icon. Click it, type what's wrong, and the agent reads your comment and adjusts its code. You can go back and forth as many times as you need.
-
-<Frame caption="Inline comments on diffs — the agent reads these and updates its code">
-  <img src="/images/workspaces-inline-comments.png" alt="Code diff with an inline review comment dialog" />
-</Frame>
-
-When the code looks right, click **Open pull request** in the [Git panel](/workspaces/git-operations). Your main branch was never touched — if you spot something later, go back to the conversation and keep iterating.
-
-<Frame>
-  <img src="/images/workspaces-create-pr.png" alt="Open pull request dialog showing branch and title" />
-</Frame>
+Upon creation, the coding agent will immediately begin executing with the given prompt.
 
 <Info>
-Pull requests use the [GitHub CLI](https://cli.github.com/). If `gh` isn't installed, Vibe Kanban prompts you to set it up.
+  You can connect multiple workspaces to an issue, this is useful for working on larger features and allows you to run multiple coding agents in parallel.
+
+  Workspaces don't *have* to be connected to an issue, which is useful for quick actions like asking questions about a codebase.
 </Info>
 
-[Full code review guide →](/core-features/reviewing-code-changes)
+## 7. Reviewing a workspace
 
----
+So far we've been viewing the workspace side-by-side with our kanban board. However, if we want more room to review the code changes or test them in a browser, we can open the workspace in the **workspaces view**.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-open.png" alt="Workspaces open" />
+</Frame>
+
+To access the workspaces view, click the **Open Workspace** button.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-page.png" alt="Workspaces page" />
+</Frame>
+
+Depending on what you'd like to do, you can view code changes or preview changes to websites in a browser using the floating navigation buttons (3).
+
+You can also navigate back to either your project (1) or the parent issue (2).
+
+## 8. Merging a workspace
+
+When you're ready to merge the changes in a workspace, you can either open a GitHub pull request or merge the workspace branch locally.
+
+<Frame>
+  <img src="/images/onboarding-workspaces-merge.png" alt="Workspaces merge" />
+</Frame>
 
 ## Next steps
 
@@ -215,17 +147,3 @@ Pull requests use the [GitHub CLI](https://cli.github.com/). If `gh` isn't insta
     Give agents access to additional tools like Playwright or documentation search
   </Card>
 </CardGroup>
-
----
-
-## Safety
-
-Agents run with full autonomous permissions (each agent's equivalent of `--dangerously-skip-permissions` or `--yolo`).
-
-- **Worktree isolation** — each workspace is a separate git directory with its own branch. Agents cannot modify your main branch or other workspaces.
-- **You review everything** — nothing gets merged until you click **Open pull request**.
-- **Agents can run system commands** — they install packages, start dev servers, and run tests. They run with your user permissions.
-
-<Warning>
-Agents operate with the same system permissions as your user account. They can run arbitrary shell commands. Always review agent work before merging.
-</Warning>
