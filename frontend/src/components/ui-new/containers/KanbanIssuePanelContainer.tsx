@@ -97,7 +97,7 @@ export function KanbanIssuePanelContainer() {
     isLoading: projectLoading,
   } = useProjectContext();
 
-  const { isLoading: orgLoading, membersWithProfilesById } = useOrgContext();
+  const { membersWithProfilesById } = useOrgContext();
 
   // Get action methods from actions context
   const { openStatusSelection, openPrioritySelection, openAssigneeSelection } =
@@ -108,8 +108,8 @@ export function KanbanIssuePanelContainer() {
 
   // Close panel if selected issue doesn't exist in current project
   useEffect(() => {
-    // Wait for data to load
-    if (projectLoading || orgLoading) return;
+    // Wait for core issue data to load
+    if (projectLoading) return;
 
     // Only check in edit mode (when an issue should be selected)
     if (kanbanCreateMode || !selectedKanbanIssueId) return;
@@ -121,7 +121,6 @@ export function KanbanIssuePanelContainer() {
     }
   }, [
     projectLoading,
-    orgLoading,
     kanbanCreateMode,
     selectedKanbanIssueId,
     issues,
@@ -958,10 +957,10 @@ export function KanbanIssuePanelContainer() {
     });
   }, [selectedKanbanIssueId, projectId]);
 
-  // Loading state
-  const isLoading = projectLoading || orgLoading;
+  // Loading state should depend on core issue data only.
+  const isCoreLoading = projectLoading;
 
-  if (isLoading) {
+  if (isCoreLoading) {
     return (
       <div className="flex items-center justify-center h-full bg-secondary">
         <p className="text-low">{t('states.loading')}</p>
@@ -989,7 +988,7 @@ export function KanbanIssuePanelContainer() {
       onCmdEnterSubmit={handleCmdEnterSubmit}
       onCreateTag={handleCreateTag}
       isSubmitting={isSubmitting}
-      isLoading={isLoading}
+      isLoading={isCoreLoading}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
