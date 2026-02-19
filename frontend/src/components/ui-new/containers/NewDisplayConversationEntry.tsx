@@ -153,8 +153,7 @@ function renderToolUseEntry(
   entryType: Extract<NormalizedEntry['entry_type'], { type: 'tool_use' }>,
   entry: NormalizedEntry,
   props: Props,
-  t: TFunction<'common'>,
-  entryClassName: string
+  t: TFunction<'common'>
 ): React.ReactNode {
   const { expansionKey, executionProcessId, taskAttempt } = props;
   const { action_type, status } = entryType;
@@ -172,7 +171,6 @@ function renderToolUseEntry(
             expansionKey={`edit:${expansionKey}:${idx}`}
             status={status}
             requestRemeasure={props.requestRemeasure}
-            className={entryClassName}
           />
         ))}
       </>
@@ -188,7 +186,6 @@ function renderToolUseEntry(
         workspaceId={taskAttempt?.id}
         status={status}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -200,7 +197,6 @@ function renderToolUseEntry(
         todos={action_type.todos}
         expansionKey={expansionKey}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -216,7 +212,6 @@ function renderToolUseEntry(
         status={status}
         workspaceId={taskAttempt?.id}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -245,7 +240,6 @@ function renderToolUseEntry(
         status={status}
         workspaceId={taskAttempt?.id}
         sessionId={taskAttempt?.session?.id}
-        className={entryClassName}
       />
     );
   }
@@ -260,7 +254,6 @@ function renderToolUseEntry(
         workspaceId={taskAttempt?.id}
         status={status}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -276,7 +269,6 @@ function renderToolUseEntry(
       command={getToolCommand(entryType)}
       actionType={action_type.action}
       requestRemeasure={props.requestRemeasure}
-      className={entryClassName}
     />
   );
 }
@@ -284,7 +276,6 @@ function renderToolUseEntry(
 function NewDisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
   const { capabilities } = useUserSystem();
-  const { isEntryGreyed } = useMessageEditContext();
   const {
     entry,
     aggregatedGroup,
@@ -295,11 +286,6 @@ function NewDisplayConversationEntry(props: Props) {
     taskAttempt,
     resetAction,
   } = props;
-  const isGreyed = isEntryGreyed(expansionKey);
-  const entryClassName = cn(
-    'py-base px-double',
-    isGreyed && 'opacity-50 pointer-events-none'
-  );
   const executorCanFork = !!(
     taskAttempt?.session?.executor &&
     capabilities?.[taskAttempt.session.executor]?.includes(
@@ -313,7 +299,6 @@ function NewDisplayConversationEntry(props: Props) {
       <AggregatedGroupEntry
         group={aggregatedGroup}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -324,7 +309,6 @@ function NewDisplayConversationEntry(props: Props) {
       <AggregatedDiffGroupEntry
         group={aggregatedDiffGroup}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -336,7 +320,6 @@ function NewDisplayConversationEntry(props: Props) {
         group={aggregatedThinkingGroup}
         taskAttemptId={taskAttempt?.id}
         requestRemeasure={props.requestRemeasure}
-        className={entryClassName}
       />
     );
   }
@@ -350,7 +333,7 @@ function NewDisplayConversationEntry(props: Props) {
 
   switch (entryType.type) {
     case 'tool_use':
-      return renderToolUseEntry(entryType, entry, props, t, entryClassName);
+      return renderToolUseEntry(entryType, entry, props, t);
 
     case 'user_message':
       return (
@@ -362,7 +345,6 @@ function NewDisplayConversationEntry(props: Props) {
           executorCanFork={executorCanFork}
           resetAction={resetAction}
           requestRemeasure={props.requestRemeasure}
-          className={entryClassName}
         />
       );
 
@@ -371,7 +353,6 @@ function NewDisplayConversationEntry(props: Props) {
         <AssistantMessageEntry
           content={entry.content}
           workspaceId={taskAttempt?.id}
-          className={entryClassName}
         />
       );
 
@@ -381,7 +362,6 @@ function NewDisplayConversationEntry(props: Props) {
           content={entry.content}
           expansionKey={expansionKey}
           requestRemeasure={props.requestRemeasure}
-          className={entryClassName}
         />
       );
 
@@ -390,7 +370,6 @@ function NewDisplayConversationEntry(props: Props) {
         <ChatThinkingMessage
           content={entry.content}
           taskAttemptId={taskAttempt?.id}
-          className={entryClassName}
         />
       );
 
@@ -400,7 +379,6 @@ function NewDisplayConversationEntry(props: Props) {
           content={entry.content}
           expansionKey={expansionKey}
           requestRemeasure={props.requestRemeasure}
-          className={entryClassName}
         />
       );
 
@@ -441,14 +419,12 @@ function FileEditEntry({
   expansionKey,
   status,
   requestRemeasure,
-  className,
 }: {
   path: string;
   change: FileEditAction['changes'][number];
   expansionKey: string;
   status: ToolStatus;
   requestRemeasure: () => void;
-  className: string;
 }) {
   // Auto-expand when pending approval
   const pendingApproval = status.status === 'pending_approval';
@@ -513,7 +489,6 @@ function FileEditEntry({
       status={status}
       diffContent={diffContent}
       onOpenInChanges={canOpenInChanges ? handleOpenInChanges : undefined}
-      className={className}
     />
   );
 }
@@ -527,14 +502,12 @@ function PlanEntry({
   workspaceId,
   status,
   requestRemeasure,
-  className,
 }: {
   plan: string;
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const { t } = useTranslation('common');
   // Expand plans by default when pending approval
@@ -564,7 +537,6 @@ function PlanEntry({
       onToggle={toggle}
       workspaceId={workspaceId}
       status={status}
-      className={className}
     />
   );
 }
@@ -579,7 +551,6 @@ function GenericToolApprovalEntry({
   workspaceId,
   status,
   requestRemeasure,
-  className,
 }: {
   toolName: string;
   content: string;
@@ -587,7 +558,6 @@ function GenericToolApprovalEntry({
   workspaceId: string | undefined;
   status: ToolStatus;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -606,7 +576,6 @@ function GenericToolApprovalEntry({
       onToggle={toggle}
       workspaceId={workspaceId}
       status={status}
-      className={className}
     />
   );
 }
@@ -622,7 +591,6 @@ function UserMessageEntry({
   executorCanFork,
   resetAction,
   requestRemeasure,
-  className,
 }: {
   content: string;
   expansionKey: string;
@@ -631,7 +599,6 @@ function UserMessageEntry({
   executorCanFork: boolean;
   resetAction: UseResetProcessResult;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `user:${expansionKey}`,
@@ -675,7 +642,6 @@ function UserMessageEntry({
       onEdit={canEdit ? handleEdit : undefined}
       onReset={canReset ? handleReset : undefined}
       isGreyed={isGreyed}
-      className={className}
     />
   );
 }
@@ -686,19 +652,11 @@ function UserMessageEntry({
 function AssistantMessageEntry({
   content,
   workspaceId,
-  className,
 }: {
   content: string;
   workspaceId: string | undefined;
-  className: string;
 }) {
-  return (
-    <ChatAssistantMessage
-      content={content}
-      workspaceId={workspaceId}
-      className={className}
-    />
-  );
+  return <ChatAssistantMessage content={content} workspaceId={workspaceId} />;
 }
 
 /**
@@ -713,7 +671,6 @@ function ToolSummaryEntry({
   command,
   actionType,
   requestRemeasure,
-  className,
 }: {
   summary: string;
   expansionKey: string;
@@ -723,7 +680,6 @@ function ToolSummaryEntry({
   command: string | undefined;
   actionType: string;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -762,7 +718,6 @@ function ToolSummaryEntry({
       toolName={toolName}
       isTruncated={isTruncated}
       actionType={actionType}
-      className={className}
     />
   );
 }
@@ -774,12 +729,10 @@ function TodoManagementEntry({
   todos,
   expansionKey,
   requestRemeasure,
-  className,
 }: {
   todos: TodoItem[];
   expansionKey: string;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `todo:${expansionKey}`,
@@ -790,14 +743,7 @@ function TodoManagementEntry({
     requestRemeasure?.();
   }, [requestRemeasure, toggleExpanded]);
 
-  return (
-    <ChatTodoList
-      todos={todos}
-      expanded={expanded}
-      onToggle={toggle}
-      className={className}
-    />
-  );
+  return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
 }
 
 /**
@@ -811,7 +757,6 @@ function SubagentEntry({
   status,
   workspaceId,
   requestRemeasure,
-  className,
 }: {
   description: string;
   subagentType: string | null | undefined;
@@ -820,7 +765,6 @@ function SubagentEntry({
   status: ToolStatus;
   workspaceId: string | undefined;
   requestRemeasure: () => void;
-  className: string;
 }) {
   // Only auto-expand if there's a result to show
   const hasResult = Boolean(result?.value);
@@ -842,7 +786,6 @@ function SubagentEntry({
       onToggle={hasResult ? toggle : undefined}
       status={status}
       workspaceId={workspaceId}
-      className={className}
     />
   );
 }
@@ -854,12 +797,10 @@ function SystemMessageEntry({
   content,
   expansionKey,
   requestRemeasure,
-  className,
 }: {
   content: string;
   expansionKey: string;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `system:${expansionKey}`,
@@ -875,7 +816,6 @@ function SystemMessageEntry({
       content={content}
       expanded={expanded}
       onToggle={toggle}
-      className={className}
     />
   );
 }
@@ -890,7 +830,6 @@ function ScriptEntryWithFix({
   status,
   workspaceId,
   sessionId,
-  className,
 }: {
   title: string;
   processId: string;
@@ -898,7 +837,6 @@ function ScriptEntryWithFix({
   status: ToolStatus;
   workspaceId: string | undefined;
   sessionId: string | undefined;
-  className: string;
 }) {
   // Try to get repos from workspace context - may not be available in all contexts
   let repos: RepoWithTargetBranch[] = [];
@@ -946,7 +884,6 @@ function ScriptEntryWithFix({
       exitCode={exitCode}
       status={status}
       onFix={canFix ? handleFix : undefined}
-      className={className}
     />
   );
 }
@@ -958,12 +895,10 @@ function ErrorMessageEntry({
   content,
   expansionKey,
   requestRemeasure,
-  className,
 }: {
   content: string;
   expansionKey: string;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `error:${expansionKey}`,
@@ -975,12 +910,7 @@ function ErrorMessageEntry({
   }, [requestRemeasure, toggleExpanded]);
 
   return (
-    <ChatErrorMessage
-      content={content}
-      expanded={expanded}
-      onToggle={toggle}
-      className={className}
-    />
+    <ChatErrorMessage content={content} expanded={expanded} onToggle={toggle} />
   );
 }
 
@@ -990,11 +920,9 @@ function ErrorMessageEntry({
 function AggregatedGroupEntry({
   group,
   requestRemeasure,
-  className,
 }: {
   group: AggregatedPatchGroup;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const { viewToolContentInPanel } = useLogsPanel();
   const [expanded, setExpanded] = useState(false);
@@ -1106,7 +1034,6 @@ function AggregatedGroupEntry({
       label={label}
       icon={icon}
       unit={unit}
-      className={className}
     />
   );
 }
@@ -1118,12 +1045,10 @@ function AggregatedThinkingGroupEntry({
   group,
   taskAttemptId,
   requestRemeasure,
-  className,
 }: {
   group: AggregatedThinkingGroup;
   taskAttemptId: string | undefined;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1155,7 +1080,6 @@ function AggregatedThinkingGroupEntry({
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
       taskAttemptId={taskAttemptId}
-      className={className}
     />
   );
 }
@@ -1166,11 +1090,9 @@ function AggregatedThinkingGroupEntry({
 function AggregatedDiffGroupEntry({
   group,
   requestRemeasure,
-  className,
 }: {
   group: AggregatedDiffGroup;
   requestRemeasure: () => void;
-  className: string;
 }) {
   const { viewFileInChanges, diffPaths } = useChangesView();
   const [expanded, setExpanded] = useState(false);
@@ -1226,9 +1148,24 @@ function AggregatedDiffGroupEntry({
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
       onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
-      className={className}
     />
   );
 }
 
-export default NewDisplayConversationEntry;
+const NewDisplayConversationEntrySpaced = (props: Props) => {
+  const { isEntryGreyed } = useMessageEditContext();
+  const isGreyed = isEntryGreyed(props.expansionKey);
+
+  return (
+    <div
+      className={cn(
+        'py-base px-double',
+        isGreyed && 'opacity-50 pointer-events-none'
+      )}
+    >
+      <NewDisplayConversationEntry {...props} />
+    </div>
+  );
+};
+
+export default NewDisplayConversationEntrySpaced;
