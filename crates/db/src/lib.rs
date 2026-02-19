@@ -1,4 +1,4 @@
-use std::{str::FromStr, sync::Arc};
+use std::{str::FromStr, sync::Arc, time::Duration};
 
 use sqlx::{
     Error, Pool, Sqlite, SqlitePool,
@@ -73,13 +73,22 @@ pub struct DBService {
 }
 
 impl DBService {
+    fn busy_timeout_seconds() -> u64 {
+        std::env::var("SQLITE_BUSY_TIMEOUT_SECONDS")
+            .ok()
+            .and_then(|s| s.trim().parse::<u64>().ok())
+            .unwrap_or(60)
+    }
+
     pub async fn new() -> Result<DBService, Error> {
         let database_url = format!(
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
+        let busy_timeout = Duration::from_secs(Self::busy_timeout_seconds());
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
+            .busy_timeout(busy_timeout)
             .journal_mode(SqliteJournalMode::Delete);
         let pool = SqlitePool::connect_with(options).await?;
         run_migrations(&pool).await?;
@@ -114,8 +123,10 @@ impl DBService {
             "sqlite://{}",
             asset_dir().join("db.sqlite").to_string_lossy()
         );
+        let busy_timeout = Duration::from_secs(Self::busy_timeout_seconds());
         let options = SqliteConnectOptions::from_str(&database_url)?
             .create_if_missing(true)
+            .busy_timeout(busy_timeout)
             .journal_mode(SqliteJournalMode::Delete);
 
         let pool = if let Some(hook) = after_connect {
