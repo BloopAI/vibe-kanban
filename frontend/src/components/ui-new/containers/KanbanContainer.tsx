@@ -751,9 +751,11 @@ export function KanbanContainer() {
     [insertTag, projectId]
   );
 
-  const isLoading = projectLoading || orgLoading;
+  // Only block board render on core kanban data (issues + statuses).
+  // Org loading includes non-core streams (notifications/members).
+  const isCoreLoading = projectLoading;
 
-  if (isLoading) {
+  if (isCoreLoading) {
     return <LoadingState />;
   }
 

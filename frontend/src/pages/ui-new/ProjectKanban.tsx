@@ -203,8 +203,13 @@ function useFindProjectById(projectId: string | undefined) {
   return {
     project,
     organizationId: project?.organization_id ?? selectedOrgId,
-    // Include auth loading state - we can't determine project access until auth loads
-    isLoading: !authLoaded || orgsLoading || projectsLoading,
+    // Block only while project resolution is truly pending.
+    // If we already know the selected org or found the project, avoid waiting on
+    // unrelated org query state.
+    isLoading:
+      !authLoaded ||
+      (orgsLoading && !orgIdToUse) ||
+      (projectsLoading && !project),
   };
 }
 
