@@ -185,7 +185,7 @@ impl TaskServer {
                 }
             }
             (None, None) => {
-                return Self::err("Either tag_id or tag_name is required", None::<String>);
+                return Self::err("Either tag_id or tag_name is required", None::<&str>);
             }
         };
 
@@ -250,7 +250,7 @@ impl TaskServer {
             _ => {
                 return Self::err(
                     "Provide issue_tag_id, or both issue_id and tag_name",
-                    None::<String>,
+                    None::<&str>,
                 );
             }
         };
