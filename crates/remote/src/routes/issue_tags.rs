@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::{
     error::{ErrorResponse, db_error},
-    organization_members::ensure_issue_access,
+    organization_members::{ensure_issue_access, ensure_project_access},
 };
 use api_types::{DeleteResponse, MutationResponse};
 use crate::{
@@ -28,6 +28,7 @@ pub fn mutation() -> MutationBuilder<IssueTag, CreateIssueTagRequest, NoUpdate> 
         .get(get_issue_tag)
         .create(create_issue_tag)
         .delete(delete_issue_tag)
+        .list_by_project(list_issue_tags_by_project)
 }
 
 pub fn router() -> axum::Router<AppState> {
@@ -50,6 +51,31 @@ async fn list_issue_tags(
         .await
         .map_err(|error| {
             tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue tags");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list issue tags",
+            )
+        })?;
+
+    Ok(Json(ListIssueTagsResponse { issue_tags }))
+}
+
+#[instrument(
+    name = "issue_tags.list_by_project",
+    skip(state, ctx),
+    fields(project_id = %project_id, user_id = %ctx.user.id)
+)]
+async fn list_issue_tags_by_project(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ListIssueTagsResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+
+    let issue_tags = IssueTagRepository::list_by_project(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to list issue tags by project");
             ErrorResponse::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to list issue tags",

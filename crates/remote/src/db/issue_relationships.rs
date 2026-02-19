@@ -64,6 +64,30 @@ impl IssueRelationshipRepository {
         Ok(records)
     }
 
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<IssueRelationship>, IssueRelationshipError> {
+        let records = sqlx::query_as!(
+            IssueRelationship,
+            r#"
+            SELECT
+                id                AS "id!: Uuid",
+                issue_id          AS "issue_id!: Uuid",
+                related_issue_id  AS "related_issue_id!: Uuid",
+                relationship_type AS "relationship_type!: IssueRelationshipType",
+                created_at        AS "created_at!: DateTime<Utc>"
+            FROM issue_relationships
+            WHERE issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
     pub async fn create(
         pool: &PgPool,
         id: Option<Uuid>,

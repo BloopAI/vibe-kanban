@@ -188,6 +188,7 @@ fn export_shapes() -> String {
     );
     output.push_str("  readonly name: string;\n");
     output.push_str("  readonly url: string;\n");
+    output.push_str("  readonly listByProjectUrl?: string;\n");
     output.push_str(
         "  readonly _rowType: TRow;  // Phantom field for type inference (not present at runtime)\n",
     );
@@ -199,10 +200,11 @@ fn export_shapes() -> String {
     output.push_str("// Helper to create type-safe mutation definitions\n");
     output.push_str("function defineMutation<TRow, TCreate, TUpdate>(\n");
     output.push_str("  name: string,\n");
-    output.push_str("  url: string\n");
+    output.push_str("  url: string,\n");
+    output.push_str("  listByProjectUrl?: string\n");
     output.push_str("): MutationDefinition<TRow, TCreate, TUpdate> {\n");
     output.push_str(
-        "  return { name, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
+        "  return { name, url, listByProjectUrl } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
     );
     output.push_str("}\n\n");
 
@@ -214,15 +216,28 @@ fn export_shapes() -> String {
         let create_type = mutation.create_type.as_deref().unwrap_or("unknown");
         let update_type = mutation.update_type.as_deref().unwrap_or("unknown");
 
-        output.push_str(&format!(
-            "export const {}_MUTATION = defineMutation<{}, {}, {}>(\n  '{}',\n  '/v1/{}'\n);\n\n",
-            const_name,
-            ts_type,
-            create_type,
-            update_type,
-            ts_type,
-            mutation.table,
-        ));
+        if mutation.has_list_by_project {
+            output.push_str(&format!(
+                "export const {}_MUTATION = defineMutation<{}, {}, {}>(\n  '{}',\n  '/v1/{}',\n  '/v1/{}/by-project'\n);\n\n",
+                const_name,
+                ts_type,
+                create_type,
+                update_type,
+                ts_type,
+                mutation.table,
+                mutation.table,
+            ));
+        } else {
+            output.push_str(&format!(
+                "export const {}_MUTATION = defineMutation<{}, {}, {}>(\n  '{}',\n  '/v1/{}'\n);\n\n",
+                const_name,
+                ts_type,
+                create_type,
+                update_type,
+                ts_type,
+                mutation.table,
+            ));
+        }
     }
 
     // Type helpers

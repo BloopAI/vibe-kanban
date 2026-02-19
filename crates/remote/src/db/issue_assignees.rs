@@ -62,6 +62,29 @@ impl IssueAssigneeRepository {
         Ok(records)
     }
 
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<IssueAssignee>, IssueAssigneeError> {
+        let records = sqlx::query_as!(
+            IssueAssignee,
+            r#"
+            SELECT
+                id          AS "id!: Uuid",
+                issue_id    AS "issue_id!: Uuid",
+                user_id     AS "user_id!: Uuid",
+                assigned_at AS "assigned_at!: DateTime<Utc>"
+            FROM issue_assignees
+            WHERE issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(records)
+    }
+
     pub async fn create(
         pool: &PgPool,
         id: Option<Uuid>,

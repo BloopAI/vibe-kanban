@@ -339,10 +339,10 @@ type FallbackWrappedOptions = {
 };
 
 type CoreFallbackDefinition = {
-  table: 'projects' | 'project_statuses' | 'issues';
-  path: '/v1/projects' | '/v1/project_statuses' | '/v1/issues';
-  queryParam: 'organization_id' | 'project_id';
-  responseField: 'projects' | 'project_statuses' | 'issues';
+  table: string;
+  path: string;
+  queryParam: string;
+  responseField: string;
 };
 
 type CoreFallbackSyncBridge = {
@@ -376,15 +376,55 @@ const CORE_FALLBACKS: Record<string, CoreFallbackDefinition> = {
   },
 };
 
-function getCoreFallbackDefinition(
+/** A resolved fallback: table name for logging + a function to fetch all rows. */
+type FallbackConfig = {
+  table: string;
+  fetchRows: () => Promise<ElectricRow[]>;
+};
+
+function getCoreFallbackConfig(
   table: string,
   params: Record<string, string>
-): CoreFallbackDefinition | null {
+): FallbackConfig | null {
   const fallback = CORE_FALLBACKS[table];
   if (!fallback) return null;
   const queryValue = params[fallback.queryParam];
   if (!queryValue) return null;
-  return fallback;
+  return {
+    table: fallback.table,
+    fetchRows: () => fetchCoreFallbackRows(fallback, params),
+  };
+}
+
+function getMutationFallbackConfig(
+  mutation: MutationDefinition<unknown, unknown, unknown> | undefined,
+  params: Record<string, string>
+): FallbackConfig | null {
+  if (!mutation?.listByProjectUrl) return null;
+  const projectId = params.project_id;
+  if (!projectId) return null;
+  const listByProjectUrl = mutation.listByProjectUrl;
+  return {
+    table: mutation.name,
+    fetchRows: async () => {
+      const response = await makeRequest(`${listByProjectUrl}/${projectId}`, {
+        method: 'GET',
+      });
+      if (!response.ok) {
+        throw new Error(
+          `Fallback list failed for ${mutation.name} (${response.status})`
+        );
+      }
+      const payload = (await response.json()) as Record<string, unknown>;
+      const rows = Object.values(payload).find(Array.isArray);
+      if (!rows) {
+        throw new Error(
+          `Fallback list for ${mutation.name} returned unexpected payload`
+        );
+      }
+      return rows as ElectricRow[];
+    },
+  };
 }
 
 function shouldUseCoreFallback(error: ShapeSyncError): boolean {
@@ -423,8 +463,7 @@ async function fetchCoreFallbackRows(
 }
 
 function createCoreFallbackController(
-  fallback: CoreFallbackDefinition,
-  params: Record<string, string>,
+  fallbackConfig: FallbackConfig,
   collectionId: string,
   config?: CollectionConfig
 ) {
@@ -436,7 +475,7 @@ function createCoreFallbackController(
   const hydrateFromFallback = async () => {
     if (!syncBridge || hasHydrated) return;
 
-    const rows = await fetchCoreFallbackRows(fallback, params);
+    const rows = await fallbackConfig.fetchRows();
     syncBridge.begin({ immediate: true });
     syncBridge.truncate();
     for (const row of rows) {
@@ -459,7 +498,7 @@ function createCoreFallbackController(
         const message =
           error instanceof Error ? error.message : 'Fallback request failed';
         console.error(
-          `[${collectionId}] Electric fallback failed (${fallback.table}):`,
+          `[${collectionId}] Electric fallback failed (${fallbackConfig.table}):`,
           error
         );
         config?.onError?.({ message });
@@ -554,14 +593,11 @@ export function createShapeCollection<TRow extends ElectricRow>(
     return cached as typeof cached & { __rowType?: TRow };
   }
 
-  const fallbackDefinition = getCoreFallbackDefinition(shape.table, params);
-  const fallbackController = fallbackDefinition
-    ? createCoreFallbackController(
-        fallbackDefinition,
-        params,
-        collectionId,
-        config
-      )
+  const fallbackConfig =
+    getCoreFallbackConfig(shape.table, params) ??
+    getMutationFallbackConfig(mutation, params);
+  const fallbackController = fallbackConfig
+    ? createCoreFallbackController(fallbackConfig, collectionId, config)
     : null;
 
   const baseShapeOptions = getAuthenticatedShapeOptions(

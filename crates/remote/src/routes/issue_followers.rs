@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::{
     error::{ErrorResponse, db_error},
-    organization_members::ensure_issue_access,
+    organization_members::{ensure_issue_access, ensure_project_access},
 };
 use api_types::{DeleteResponse, MutationResponse};
 use crate::{
@@ -28,6 +28,7 @@ pub fn mutation() -> MutationBuilder<IssueFollower, CreateIssueFollowerRequest, 
         .get(get_issue_follower)
         .create(create_issue_follower)
         .delete(delete_issue_follower)
+        .list_by_project(list_issue_followers_by_project)
 }
 
 pub fn router() -> axum::Router<AppState> {
@@ -50,6 +51,31 @@ async fn list_issue_followers(
         .await
         .map_err(|error| {
             tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue followers");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list issue followers",
+            )
+        })?;
+
+    Ok(Json(ListIssueFollowersResponse { issue_followers }))
+}
+
+#[instrument(
+    name = "issue_followers.list_by_project",
+    skip(state, ctx),
+    fields(project_id = %project_id, user_id = %ctx.user.id)
+)]
+async fn list_issue_followers_by_project(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ListIssueFollowersResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+
+    let issue_followers = IssueFollowerRepository::list_by_project(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to list issue followers by project");
             ErrorResponse::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to list issue followers",

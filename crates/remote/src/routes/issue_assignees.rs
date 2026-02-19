@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::{
     error::{ErrorResponse, db_error},
-    organization_members::ensure_issue_access,
+    organization_members::{ensure_issue_access, ensure_project_access},
 };
 use api_types::{DeleteResponse, MutationResponse};
 use crate::{
@@ -28,6 +28,7 @@ pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, 
         .get(get_issue_assignee)
         .create(create_issue_assignee)
         .delete(delete_issue_assignee)
+        .list_by_project(list_issue_assignees_by_project)
 }
 
 pub fn router() -> axum::Router<AppState> {
@@ -50,6 +51,31 @@ async fn list_issue_assignees(
         .await
         .map_err(|error| {
             tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue assignees");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list issue assignees",
+            )
+        })?;
+
+    Ok(Json(ListIssueAssigneesResponse { issue_assignees }))
+}
+
+#[instrument(
+    name = "issue_assignees.list_by_project",
+    skip(state, ctx),
+    fields(project_id = %project_id, user_id = %ctx.user.id)
+)]
+async fn list_issue_assignees_by_project(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Path(project_id): Path<Uuid>,
+) -> Result<Json<ListIssueAssigneesResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+
+    let issue_assignees = IssueAssigneeRepository::list_by_project(state.pool(), project_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, %project_id, "failed to list issue assignees by project");
             ErrorResponse::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "failed to list issue assignees",
