@@ -87,6 +87,7 @@ export function VirtualizedProcessLogs({
   > | null>(null);
   const hasInitializedRef = useRef(false);
   const prevCurrentMatchRef = useRef<number | undefined>(undefined);
+  const isAtBottomRef = useRef(true);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -100,15 +101,19 @@ export function VirtualizedProcessLogs({
       // very first data load. For all subsequent updates, use ScrollToLastItem
       // which always jumps to the end — unlike auto-scroll-to-bottom which
       // only follows if the viewport is already at the bottom.
-      let scrollModifier: ScrollModifier;
+      let scrollModifier: ScrollModifier | null = null;
       if (!hasInitializedRef.current && logs.length > 0) {
         hasInitializedRef.current = true;
         scrollModifier = InitialDataScrollModifier;
-      } else {
+      } else if (isAtBottomRef.current) {
         scrollModifier = ScrollToLastItem;
       }
 
-      setChannelData({ data: logsWithKeys, scrollModifier });
+      if (scrollModifier) {
+        setChannelData({ data: logsWithKeys, scrollModifier });
+      } else {
+        setChannelData({ data: logsWithKeys });
+      }
     }, 100);
 
     return () => clearTimeout(timeoutId);
@@ -169,6 +174,9 @@ export function VirtualizedProcessLogs({
           data={channelData}
           context={context}
           initialLocation={INITIAL_TOP_ITEM}
+          atBottomStateChange={(isAtBottom) => {
+            isAtBottomRef.current = isAtBottom;
+          }}
           computeItemKey={computeItemKey}
           ItemContent={ItemContent}
         />
