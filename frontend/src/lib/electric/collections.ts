@@ -62,6 +62,12 @@ type NormalizedSyncResult = {
   unloadSubset?: UnloadSubsetFn;
 };
 
+type SyncConfigLike = {
+  sync: (syncParams: SyncParams) => SyncResult;
+  getSyncMetadata?: () => Record<string, unknown>;
+  rowUpdateMode?: 'partial' | 'full';
+};
+
 const DEFAULT_GC_TIME_MS = 5 * 60 * 1000;
 const ELECTRIC_READY_TIMEOUT_MS = 3000;
 const FALLBACK_REFRESH_INTERVAL_MS = 10 * 1000;
@@ -493,7 +499,7 @@ function createHybridSync(args: {
   shape: ShapeDefinition<unknown>;
   params: Record<string, string>;
   reportError: (error: SyncError) => void;
-  electricSync: (syncParams: SyncParams) => SyncResult;
+  electricSync: SyncConfigLike['sync'];
 }) {
   const fallbackSync = createFallbackSync({
     sourceKey: args.sourceKey,
@@ -750,17 +756,20 @@ export function createShapeCollection<TRow extends ElectricRow>(
     ...mutationHandlers,
   } as never);
 
+  const electricSyncConfig = electricOptions.sync as unknown as SyncConfigLike;
+
   const collectionOptions = {
     ...electricOptions,
-    sync: createHybridSync({
-      sourceKey,
-      shape,
-      params,
-      reportError,
-      electricSync: electricOptions.sync as unknown as (
-        syncParams: SyncParams
-      ) => SyncResult,
-    }),
+    sync: {
+      ...electricSyncConfig,
+      sync: createHybridSync({
+        sourceKey,
+        shape,
+        params,
+        reportError,
+        electricSync: electricSyncConfig.sync,
+      }),
+    },
   };
 
   const collection = createCollection(
