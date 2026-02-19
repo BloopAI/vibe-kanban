@@ -440,12 +440,12 @@ export const Actions = {
       const remoteWs = ctx.remoteWorkspaces.find(
         (w) => w.local_workspace_id === workspaceId
       );
-      const isLinkedToIssue = !!remoteWs?.issue_id;
 
       const result = await DeleteWorkspaceDialog.show({
         workspaceId,
         branchName: workspace.branch,
-        isLinkedToIssue,
+        linkedIssueId: remoteWs?.issue_id ?? undefined,
+        linkedProjectId: remoteWs?.project_id,
       });
       if (result.action === 'confirmed') {
         // Calculate next workspace before deleting (only if deleting current)

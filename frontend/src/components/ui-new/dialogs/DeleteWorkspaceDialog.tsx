@@ -18,12 +18,15 @@ import {
 } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useShape } from '@/lib/electric/hooks';
+import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 
 export interface DeleteWorkspaceDialogProps {
   workspaceId: string;
   branchName: string;
-  isLinkedToIssue?: boolean;
+  linkedIssueId?: string;
+  linkedProjectId?: string;
 }
 
 export type DeleteWorkspaceDialogResult = {
@@ -33,11 +36,21 @@ export type DeleteWorkspaceDialogResult = {
 };
 
 const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
-  ({ workspaceId, branchName, isLinkedToIssue }) => {
+  ({ workspaceId, branchName, linkedIssueId, linkedProjectId }) => {
     const modal = useModal();
     const { t } = useTranslation();
     const [deleteBranches, setDeleteBranches] = useState(false);
     const [unlinkFromIssue, setUnlinkFromIssue] = useState(true);
+
+    // Fetch issue data via Electric sync to show issue simple_id
+    const isLinkedToIssue = !!linkedIssueId;
+    const { data: issues } = useShape(PROJECT_ISSUES_SHAPE, {
+      project_id: linkedProjectId ?? '',
+    }, { enabled: !!linkedProjectId });
+    const linkedIssue = useMemo(
+      () => (linkedIssueId ? issues.find((i) => i.id === linkedIssueId) : null),
+      [issues, linkedIssueId]
+    );
 
     // Check if branch deletion is safe by looking for open PRs
     const { data: branchStatus } = useBranchStatus(workspaceId);
@@ -142,10 +155,20 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
                 >
                   <span className="flex items-center gap-2">
                     <LinkBreakIcon className="h-4 w-4" />
-                    {t(
-                      'workspaces.deleteDialog.unlinkFromIssueLabel',
-                      'Also unlink from issue'
-                    )}
+                    <>
+                      {t(
+                        'workspaces.deleteDialog.unlinkFromIssueLabel',
+                        'Also unlink from issue'
+                      )}
+                      {linkedIssue?.simple_id && (
+                        <>
+                          {' '}
+                          <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+                            {linkedIssue.simple_id}
+                          </code>
+                        </>
+                      )}
+                    </>
                   </span>
                 </label>
               </div>

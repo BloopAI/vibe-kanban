@@ -238,7 +238,8 @@ export function IssueWorkspacesSectionContainer({
       const result = await DeleteWorkspaceDialog.show({
         workspaceId: localWorkspaceId,
         branchName: localWorkspace.branch,
-        isLinkedToIssue: true,
+        linkedIssueId: issueId,
+        linkedProjectId: projectId,
       });
 
       if (result.action !== 'confirmed') {
@@ -264,7 +265,7 @@ export function IssueWorkspacesSectionContainer({
         });
       }
     },
-    [localWorkspacesById, t]
+    [localWorkspacesById, t, issueId, projectId]
   );
 
   // Actions for the section header
