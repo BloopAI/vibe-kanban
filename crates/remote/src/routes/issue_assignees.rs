@@ -28,7 +28,7 @@ pub fn mutation() -> MutationBuilder<IssueAssignee, CreateIssueAssigneeRequest, 
         .get(get_issue_assignee)
         .create(create_issue_assignee)
         .delete(delete_issue_assignee)
-        .list_by_project(list_issue_assignees_by_project)
+        .fallback_list_url("/issue_assignees?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {
@@ -38,49 +38,36 @@ pub fn router() -> axum::Router<AppState> {
 #[instrument(
     name = "issue_assignees.list_issue_assignees",
     skip(state, ctx),
-    fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
+    fields(user_id = %ctx.user.id)
 )]
 async fn list_issue_assignees(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueAssigneesQuery>,
 ) -> Result<Json<ListIssueAssigneesResponse>, ErrorResponse> {
-    ensure_issue_access(state.pool(), ctx.user.id, query.issue_id).await?;
-
-    let issue_assignees = IssueAssigneeRepository::list_by_issue(state.pool(), query.issue_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue assignees");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to list issue assignees",
-            )
-        })?;
-
-    Ok(Json(ListIssueAssigneesResponse { issue_assignees }))
-}
-
-#[instrument(
-    name = "issue_assignees.list_by_project",
-    skip(state, ctx),
-    fields(project_id = %project_id, user_id = %ctx.user.id)
-)]
-async fn list_issue_assignees_by_project(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-    Path(project_id): Path<Uuid>,
-) -> Result<Json<ListIssueAssigneesResponse>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
-
-    let issue_assignees = IssueAssigneeRepository::list_by_project(state.pool(), project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, %project_id, "failed to list issue assignees by project");
-            ErrorResponse::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "failed to list issue assignees",
-            )
-        })?;
+    let issue_assignees = match (query.issue_id, query.project_id) {
+        (Some(issue_id), None) => {
+            ensure_issue_access(state.pool(), ctx.user.id, issue_id).await?;
+            IssueAssigneeRepository::list_by_issue(state.pool(), issue_id).await
+        }
+        (None, Some(project_id)) => {
+            ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+            IssueAssigneeRepository::list_by_project(state.pool(), project_id).await
+        }
+        _ => {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "exactly one of issue_id or project_id is required",
+            ));
+        }
+    }
+    .map_err(|error| {
+        tracing::error!(?error, "failed to list issue assignees");
+        ErrorResponse::new(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "failed to list issue assignees",
+        )
+    })?;
 
     Ok(Json(ListIssueAssigneesResponse { issue_assignees }))
 }

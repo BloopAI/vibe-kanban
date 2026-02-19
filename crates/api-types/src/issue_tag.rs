@@ -29,7 +29,8 @@ pub struct UpdateIssueTagRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueTagsQuery {
-    pub issue_id: Uuid,
+    pub issue_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

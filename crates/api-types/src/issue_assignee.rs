@@ -31,7 +31,8 @@ pub struct UpdateIssueAssigneeRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueAssigneesQuery {
-    pub issue_id: Uuid,
+    pub issue_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

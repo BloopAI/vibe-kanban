@@ -29,7 +29,8 @@ pub struct UpdateIssueFollowerRequest {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ListIssueFollowersQuery {
-    pub issue_id: Uuid,
+    pub issue_id: Option<Uuid>,
+    pub project_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]

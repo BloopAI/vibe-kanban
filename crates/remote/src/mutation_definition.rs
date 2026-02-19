@@ -66,7 +66,7 @@ pub struct MutationDefinition {
     pub create_type: Option<String>,
     pub update_type: Option<String>,
     /// URL template for the fallback list endpoint (substituted with shape params).
-    /// e.g. "/issues?project_id={project_id}" or "/issue_assignees/by-project/{project_id}"
+    /// e.g. "/issues?project_id={project_id}" or "/projects?organization_id={organization_id}"
     pub fallback_list_url: Option<String>,
 }
 
@@ -84,7 +84,6 @@ pub struct MutationBuilder<E, C = (), U = ()> {
     table: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
-    by_project_route: Option<MethodRouter<AppState>>,
     fallback_list_url: Option<String>,
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
@@ -96,7 +95,6 @@ impl<E: TS + Send + Sync + 'static> MutationBuilder<E, NoCreate, NoUpdate> {
             table,
             base_route: MethodRouter::new(),
             id_route: MethodRouter::new(),
-            by_project_route: None,
             fallback_list_url: None,
             _phantom: PhantomData,
         }
@@ -134,28 +132,6 @@ impl<E: TS, C, U> MutationBuilder<E, C, U> {
         self
     }
 
-    /// Add a list-by-project handler (GET /{table}/by-project/{project_id}).
-    ///
-    /// Used for entities scoped by issue_id in their primary list endpoint
-    /// but streamed at project level by Electric. Provides a fallback list
-    /// endpoint when Electric is unavailable.
-    ///
-    /// Also sets `fallback_list_url` to `"/{table}/by-project/{project_id}"`.
-    pub fn list_by_project<H, T>(mut self, handler: H) -> Self
-    where
-        H: Handler<T, AppState> + Clone + Send + 'static,
-        T: 'static,
-    {
-        self.by_project_route = Some(
-            self.by_project_route
-                .unwrap_or_else(MethodRouter::new)
-                .get(handler),
-        );
-        self.fallback_list_url =
-            Some(format!("/{}/by-project/{{project_id}}", self.table));
-        self
-    }
-
     /// Set a fallback list URL template for Electric failover.
     ///
     /// Use `{param}` placeholders matching the Electric shape params.
@@ -172,16 +148,9 @@ impl<E: TS, C, U> MutationBuilder<E, C, U> {
         let base_path = format!("/{}", self.table);
         let id_path = format!("/{}/{{id}}", self.table);
 
-        let mut router = axum::Router::new()
+        axum::Router::new()
             .route(&base_path, self.base_route)
-            .route(&id_path, self.id_route);
-
-        if let Some(by_project_route) = self.by_project_route {
-            let by_project_path = format!("/{}/by-project/{{project_id}}", self.table);
-            router = router.route(&by_project_path, by_project_route);
-        }
-
-        router
+            .route(&id_path, self.id_route)
     }
 }
 
@@ -200,7 +169,6 @@ impl<E: TS, U> MutationBuilder<E, NoCreate, U> {
             table: self.table,
             base_route: self.base_route.post(handler),
             id_route: self.id_route,
-            by_project_route: self.by_project_route,
             fallback_list_url: self.fallback_list_url,
             _phantom: PhantomData,
         }
@@ -222,7 +190,6 @@ impl<E: TS, C> MutationBuilder<E, C, NoUpdate> {
             table: self.table,
             base_route: self.base_route,
             id_route: self.id_route.patch(handler),
-            by_project_route: self.by_project_route,
             fallback_list_url: self.fallback_list_url,
             _phantom: PhantomData,
         }

@@ -30,7 +30,7 @@ pub fn mutation(
         .get(get_issue_relationship)
         .create(create_issue_relationship)
         .delete(delete_issue_relationship)
-        .list_by_project(list_issue_relationships_by_project)
+        .fallback_list_url("/issue_relationships?project_id={project_id}")
 }
 
 pub fn router() -> axum::Router<AppState> {
@@ -40,55 +40,36 @@ pub fn router() -> axum::Router<AppState> {
 #[instrument(
     name = "issue_relationships.list_issue_relationships",
     skip(state, ctx),
-    fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
+    fields(user_id = %ctx.user.id)
 )]
 async fn list_issue_relationships(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssueRelationshipsQuery>,
 ) -> Result<Json<ListIssueRelationshipsResponse>, ErrorResponse> {
-    ensure_issue_access(state.pool(), ctx.user.id, query.issue_id).await?;
-
-    let issue_relationships = IssueRelationshipRepository::list_by_issue(
-        state.pool(),
-        query.issue_id,
-    )
-    .await
+    let issue_relationships = match (query.issue_id, query.project_id) {
+        (Some(issue_id), None) => {
+            ensure_issue_access(state.pool(), ctx.user.id, issue_id).await?;
+            IssueRelationshipRepository::list_by_issue(state.pool(), issue_id).await
+        }
+        (None, Some(project_id)) => {
+            ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+            IssueRelationshipRepository::list_by_project(state.pool(), project_id).await
+        }
+        _ => {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "exactly one of issue_id or project_id is required",
+            ));
+        }
+    }
     .map_err(|error| {
-        tracing::error!(?error, issue_id = %query.issue_id, "failed to list issue relationships");
+        tracing::error!(?error, "failed to list issue relationships");
         ErrorResponse::new(
             StatusCode::INTERNAL_SERVER_ERROR,
             "failed to list issue relationships",
         )
     })?;
-
-    Ok(Json(ListIssueRelationshipsResponse {
-        issue_relationships,
-    }))
-}
-
-#[instrument(
-    name = "issue_relationships.list_by_project",
-    skip(state, ctx),
-    fields(project_id = %project_id, user_id = %ctx.user.id)
-)]
-async fn list_issue_relationships_by_project(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-    Path(project_id): Path<Uuid>,
-) -> Result<Json<ListIssueRelationshipsResponse>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
-
-    let issue_relationships =
-        IssueRelationshipRepository::list_by_project(state.pool(), project_id)
-            .await
-            .map_err(|error| {
-                tracing::error!(?error, %project_id, "failed to list issue relationships by project");
-                ErrorResponse::new(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "failed to list issue relationships",
-                )
-            })?;
 
     Ok(Json(ListIssueRelationshipsResponse {
         issue_relationships,

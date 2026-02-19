@@ -325,25 +325,25 @@ export const ISSUE_MUTATION = defineMutation<Issue, CreateIssueRequest, UpdateIs
 export const ISSUE_ASSIGNEE_MUTATION = defineMutation<IssueAssignee, CreateIssueAssigneeRequest, unknown>(
   'IssueAssignee',
   '/v1/issue_assignees',
-  '/v1/issue_assignees/by-project/{project_id}'
+  '/v1/issue_assignees?project_id={project_id}'
 );
 
 export const ISSUE_FOLLOWER_MUTATION = defineMutation<IssueFollower, CreateIssueFollowerRequest, unknown>(
   'IssueFollower',
   '/v1/issue_followers',
-  '/v1/issue_followers/by-project/{project_id}'
+  '/v1/issue_followers?project_id={project_id}'
 );
 
 export const ISSUE_TAG_MUTATION = defineMutation<IssueTag, CreateIssueTagRequest, unknown>(
   'IssueTag',
   '/v1/issue_tags',
-  '/v1/issue_tags/by-project/{project_id}'
+  '/v1/issue_tags?project_id={project_id}'
 );
 
 export const ISSUE_RELATIONSHIP_MUTATION = defineMutation<IssueRelationship, CreateIssueRelationshipRequest, unknown>(
   'IssueRelationship',
   '/v1/issue_relationships',
-  '/v1/issue_relationships/by-project/{project_id}'
+  '/v1/issue_relationships?project_id={project_id}'
 );
 
 export const ISSUE_COMMENT_MUTATION = defineMutation<IssueComment, CreateIssueCommentRequest, UpdateIssueCommentRequest>(
