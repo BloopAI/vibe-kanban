@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createHmrContext } from '@/lib/hmrContext.ts';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
@@ -100,7 +100,7 @@ interface ActionsProviderProps {
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId?: string }>();
+  const { projectId } = useParams({ strict: false });
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);

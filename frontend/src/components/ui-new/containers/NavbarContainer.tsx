@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';

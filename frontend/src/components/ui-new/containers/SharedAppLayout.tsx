@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 
 import { NavbarContainer } from './NavbarContainer';
@@ -23,11 +23,13 @@ import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { useShape } from '@/lib/electric/hooks';
 import { sortProjectsByOrder } from '@/lib/projectOrder';
+import { resolveAppPath } from '@/lib/routes/pathResolution';
 import {
   PROJECT_MUTATION,
   PROJECTS_SHAPE,
   type Project as RemoteProject,
 } from 'shared/remote-types';
+import { toMigrate, toProject, toWorkspaces } from '@/lib/routes/navigation';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
@@ -106,9 +108,9 @@ export function SharedAppLayout() {
       !isLoading
     ) {
       if (sortedProjects.length > 0) {
-        navigate(`/projects/${sortedProjects[0].id}`);
+        navigate(toProject(sortedProjects[0].id));
       } else {
-        navigate('/workspaces');
+        navigate(toWorkspaces());
       }
       prevOrgIdRef.current = selectedOrgId;
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
@@ -135,14 +137,21 @@ export function SharedAppLayout() {
   }, [location.pathname, location.search]);
 
   const handleWorkspacesClick = useCallback(() => {
-    navigate('/workspaces');
+    navigate(toWorkspaces());
   }, [navigate]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
-      navigate(
-        projectLastPathRef.current[projectId] ?? buildProjectRootPath(projectId)
-      );
+      const rememberedPath = projectLastPathRef.current[projectId];
+      if (rememberedPath) {
+        const resolvedPath = resolveAppPath(rememberedPath);
+        if (resolvedPath) {
+          navigate(resolvedPath);
+          return;
+        }
+      }
+
+      navigate(buildProjectRootPath(projectId));
     },
     [navigate]
   );
@@ -206,7 +215,7 @@ export function SharedAppLayout() {
         await CreateRemoteProjectDialog.show({ organizationId: selectedOrgId });
 
       if (result.action === 'created' && result.project) {
-        navigate(`/projects/${result.project.id}`);
+        navigate(toProject(result.project.id));
       }
     } catch {
       // Dialog cancelled
@@ -226,13 +235,13 @@ export function SharedAppLayout() {
       try {
         const profile = await OAuthDialog.show({});
         if (profile) {
-          navigate('/migrate');
+          navigate(toMigrate());
         }
       } catch {
         // Dialog cancelled
       }
     } else {
-      navigate('/migrate');
+      navigate(toMigrate());
     }
   }, [isSignedIn, navigate]);
 

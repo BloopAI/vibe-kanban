@@ -3,8 +3,8 @@ import {
   Link,
   useParams,
   useNavigate,
-  useSearchParams,
-} from "react-router-dom";
+  useSearch,
+} from "@tanstack/react-router";
 import { isLoggedIn } from "../auth";
 import {
   getOrganization,
@@ -37,9 +37,9 @@ import {
 } from "../api";
 
 export default function OrganizationPage() {
-  const { orgId } = useParams<{ orgId: string }>();
+  const { orgId } = useParams({ from: "/account/organizations/$orgId" });
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const search = useSearch({ from: "/account/organizations/$orgId" });
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -91,41 +91,61 @@ export default function OrganizationPage() {
 
   const isAdmin = userRole === "ADMIN";
 
+  const clearSearchKeys = (
+    keys: Array<"github_app" | "github_app_error" | "billing">,
+  ) => {
+    navigate({
+      to: "/account/organizations/$orgId",
+      params: { orgId },
+      replace: true,
+      search: (prev) => {
+        const next = { ...prev };
+        for (const key of keys) {
+          delete next[key];
+        }
+        return next;
+      },
+    });
+  };
+
   useEffect(() => {
     if (!isLoggedIn()) {
-      navigate("/account", { replace: true });
+      navigate({ to: "/account", replace: true });
       return;
     }
 
     if (!orgId) return;
     loadData();
 
-    const githubAppResult = searchParams.get("github_app");
-    const githubAppErrorParam = searchParams.get("github_app_error");
+    const githubAppResult = search.github_app;
+    const githubAppErrorParam = search.github_app_error;
 
     if (githubAppResult === "installed") {
       setGithubAppSuccess("GitHub App installed successfully!");
-      searchParams.delete("github_app");
-      setSearchParams(searchParams, { replace: true });
+      clearSearchKeys(["github_app"]);
     }
 
     if (githubAppErrorParam) {
       setGithubAppError(githubAppErrorParam);
-      searchParams.delete("github_app_error");
-      setSearchParams(searchParams, { replace: true });
+      clearSearchKeys(["github_app_error"]);
     }
 
-    const billingResult = searchParams.get("billing");
+    const billingResult = search.billing;
     if (billingResult) {
-      searchParams.delete("billing");
-      setSearchParams(searchParams, { replace: true });
+      clearSearchKeys(["billing"]);
       if (billingResult === "success") {
         getBillingStatus(orgId)
           .then(setBillingStatus)
           .catch(() => {});
       }
     }
-  }, [orgId, navigate, searchParams, setSearchParams]);
+  }, [
+    orgId,
+    navigate,
+    search.github_app,
+    search.github_app_error,
+    search.billing,
+  ]);
 
   async function loadData() {
     if (!orgId) return;
@@ -200,7 +220,7 @@ export default function OrganizationPage() {
 
     try {
       await deleteOrganization(orgId);
-      navigate("/account", { replace: true });
+      navigate({ to: "/account", replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to delete");
       setShowDeleteConfirm(false);

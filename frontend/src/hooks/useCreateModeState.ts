@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import type { DraftWorkspaceData, ExecutorConfig, Repo } from 'shared/types';
 import { ScratchType } from 'shared/types';
 import {
@@ -304,13 +304,11 @@ export function useCreateModeState({
         (navState?.preferredRepos?.length ?? 0) > 0 ||
         navState?.project_id)
     ) {
-      navigate(
-        {
-          pathname: location.pathname,
-          search: location.search,
-        },
-        { replace: true, state: {} }
-      );
+      navigate({
+        to: '.',
+        replace: true,
+        state: {},
+      });
     }
 
     // Determine initialization source and execute
@@ -329,8 +327,6 @@ export function useCreateModeState({
     scratch,
     isValidProfile,
     navigate,
-    location.pathname,
-    location.search,
   ]);
 
   // ============================================================================

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '@/hooks/useProjects';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { MigrateChooseProjects } from '@/components/ui-new/views/MigrateChooseProjects';
@@ -91,7 +91,9 @@ export function MigrateChooseProjectsContainer({
 
   const handleSkip = () => {
     if (migratedProjects.length > 0 && migratedProjects[0].remote_project_id) {
-      navigate(`/projects/${migratedProjects[0].remote_project_id}`, {
+      navigate({
+        to: '/projects/$projectId',
+        params: { projectId: migratedProjects[0].remote_project_id },
         replace: true,
       });
     } else {

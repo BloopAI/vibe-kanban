@@ -22,7 +22,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import type { IconProps } from '@phosphor-icons/react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from '@tanstack/react-router';
 import { usePostHog } from 'posthog-js/react';
 import { siDiscord } from 'simple-icons';
 import {
@@ -287,7 +287,7 @@ export function LandingPage() {
         stage: 'landing',
         destination: '/onboarding/sign-in',
       });
-      navigate('/onboarding/sign-in', { replace: true });
+      navigate({ to: '/onboarding/sign-in', replace: true });
       return;
     }
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -38,6 +38,7 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
+import { toWorkspace } from '@/lib/routes/navigation';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
 import { Actions, type ActionDefinition } from '../actions';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
@@ -164,7 +165,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const handleOpenWorkspace = useCallback(() => {
     if (!workspaceId) return;
-    navigate(`/workspaces/${workspaceId}`);
+    navigate(toWorkspace(workspaceId));
   }, [navigate, workspaceId]);
 
   // Get entries early to extract pending approval for scratch key

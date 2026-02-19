@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '../primitives/AppBarUserPopover';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
@@ -8,6 +8,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useActions } from '@/contexts/ActionsContext';
 import { Actions } from '@/components/ui-new/actions';
+import { toMigrate } from '@/lib/routes/navigation';
 
 interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -51,7 +52,7 @@ export function AppBarUserPopoverContainer({
 
   const handleMigrate = () => {
     setOpen(false);
-    navigate('/migrate');
+    navigate(toMigrate());
   };
 
   return (

@@ -1,19 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { redeemOAuth } from "../api";
 import { storeTokens } from "../auth";
 import { retrieveVerifier, clearVerifier } from "../pkce";
 
 export default function UpgradeCompletePage() {
   const navigate = useNavigate();
-  const { search } = useLocation();
-  const qp = useMemo(() => new URLSearchParams(search), [search]);
+  const search = useSearch({ from: "/upgrade/complete" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handoffId = qp.get("handoff_id");
-  const appCode = qp.get("app_code");
-  const oauthError = qp.get("error");
+  const handoffId = search.handoff_id;
+  const appCode = search.app_code;
+  const oauthError = search.error;
 
   useEffect(() => {
     const completeLogin = async () => {
@@ -46,7 +45,7 @@ export default function UpgradeCompletePage() {
 
         // Redirect back to upgrade page after brief delay
         setTimeout(() => {
-          navigate("/upgrade", { replace: true });
+          navigate({ to: "/upgrade", replace: true });
         }, 1000);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to complete login");
@@ -64,7 +63,7 @@ export default function UpgradeCompletePage() {
         body={error}
         isError
         showRetry
-        onRetry={() => navigate("/upgrade", { replace: true })}
+        onRetry={() => navigate({ to: "/upgrade", replace: true })}
       />
     );
   }

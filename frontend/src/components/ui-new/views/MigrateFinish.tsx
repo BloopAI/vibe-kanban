@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 import {
   FolderIcon,
   ArrowSquareOutIcon,
@@ -51,17 +51,25 @@ export function MigrateFinish({
               <span className="flex-1 text-sm text-high truncate">
                 {project.localName}
               </span>
-              <Link
-                to={
-                  project.remoteId
-                    ? `/projects/${project.remoteId}?orgId=${orgId}`
-                    : '/workspaces'
-                }
-                className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
-              >
-                View
-                <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
-              </Link>
+              {project.remoteId ? (
+                <Link
+                  to="/projects/$projectId"
+                  params={{ projectId: project.remoteId }}
+                  search={{ orgId }}
+                  className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
+                >
+                  View
+                  <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+                </Link>
+              ) : (
+                <Link
+                  to="/workspaces"
+                  className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
+                >
+                  View
+                  <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+                </Link>
+              )}
             </div>
           ))}
         </div>

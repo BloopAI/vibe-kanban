@@ -53,6 +53,8 @@
     "@tanstack/react-db": "^0.1.50",
     "@tanstack/react-form": "^1.23.8",
     "@tanstack/react-query": "^5.85.5",
+    "@tanstack/react-router": "^1.161.1",
+    "@tanstack/zod-adapter": "^1.161.1",
     "@uiw/react-codemirror": "^4.25.1",
     "@virtuoso.dev/message-list": "^1.13.3",
     "@xterm/addon-fit": "^0.10.0",
@@ -80,7 +82,6 @@
     "react-hotkeys-hook": "^5.1.0",
     "react-i18next": "^15.7.3",
     "react-resizable-panels": "^4.0.13",
-    "react-router-dom": "^6.8.1",
     "react-use-websocket": "^4.13.0",
     "react-virtuoso": "^4.14.0",
     "rfc6902": "^5.1.2",
@@ -89,6 +90,7 @@
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss-animate": "^1.0.7",
     "wa-sqlite": "^1.0.0",
+    "zod": "^3.25.76",
     "zustand": "^4.5.4"
   },
   "devDependencies": {

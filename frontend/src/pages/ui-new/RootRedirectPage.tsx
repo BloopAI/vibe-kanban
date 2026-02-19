@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from '@tanstack/react-router';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { resolveAppPath } from '@/lib/routes/pathResolution';
+import { toOnboarding, toWorkspacesCreate } from '@/lib/routes/navigation';
 
 const DEFAULT_DESTINATION = '/workspaces/create';
 
@@ -53,5 +55,9 @@ export function RootRedirectPage() {
     );
   }
 
-  return <Navigate to={destination} replace />;
+  const resolvedDestination =
+    resolveAppPath(destination) ??
+    (destination === '/onboarding' ? toOnboarding() : toWorkspacesCreate());
+
+  return <Navigate {...resolvedDestination} replace />;
 }

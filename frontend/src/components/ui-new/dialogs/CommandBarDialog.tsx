@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from '@tanstack/react-router';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
@@ -50,10 +50,9 @@ function CommandBarContent({
   const { workspaceId: contextWorkspaceId, repos } = useWorkspaceContext();
 
   // Get issue context from props or route params (URL is single source of truth)
-  const { projectId: routeProjectId, issueId: routeIssueId } = useParams<{
-    projectId: string;
-    issueId?: string;
-  }>();
+  const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
+    strict: false,
+  });
 
   // Effective issue context
   const effectiveProjectId = propProjectId ?? routeProjectId;

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useSearch } from "@tanstack/react-router";
 import { redeemOAuth, acceptInvitation } from "../api";
 import {
   retrieveVerifier,
@@ -9,16 +9,17 @@ import {
 } from "../pkce";
 
 export default function InvitationCompletePage() {
-  const { token: urlToken } = useParams();
-  const { search } = useLocation();
-  const qp = useMemo(() => new URLSearchParams(search), [search]);
+  const { token: urlToken } = useParams({
+    from: "/invitations/$token/complete",
+  });
+  const search = useSearch({ from: "/invitations/$token/complete" });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [orgSlug, setOrgSlug] = useState<string | null>(null);
 
-  const handoffId = qp.get("handoff_id");
-  const appCode = qp.get("app_code");
-  const oauthError = qp.get("error");
+  const handoffId = search.handoff_id;
+  const appCode = search.app_code;
+  const oauthError = search.error;
 
   useEffect(() => {
     const completeInvitation = async () => {

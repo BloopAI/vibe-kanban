@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "@tanstack/react-router";
 import { DiffView, DiffModeEnum } from "@git-diff-view/react";
 import "@git-diff-view/react/styles/diff-view.css";
 import "../styles/diff-overrides.css";
@@ -40,7 +40,7 @@ function diffHasChanges(diffString: string): boolean {
 type FileCache = Map<string, string>;
 
 export default function ReviewPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams({ from: "/review/$id" });
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [metadata, setMetadata] = useState<ReviewMetadata | null>(null);
   const [loading, setLoading] = useState(true);

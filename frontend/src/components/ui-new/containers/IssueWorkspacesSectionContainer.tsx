@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
@@ -36,7 +36,7 @@ export function IssueWorkspacesSectionContainer({
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
+  const { projectId } = useParams({ strict: false });
   const { openIssueWorkspace } = useKanbanNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { userId } = useAuth();
@@ -155,8 +155,12 @@ export function IssueWorkspacesSectionContainer({
       issueId,
     });
     if (!draftId) {
-      navigate('/workspaces/create', {
-        state: createState,
+      navigate({
+        to: '/workspaces/create',
+        state: (prev) => ({
+          ...prev,
+          ...createState,
+        }),
       });
     }
   }, [

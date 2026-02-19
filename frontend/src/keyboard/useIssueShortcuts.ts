@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation } from '@tanstack/react-router';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/contexts/ActionsContext';
 import {
@@ -18,10 +18,7 @@ const OPTIONS = {
 
 export function useIssueShortcuts() {
   const { executeAction } = useActions();
-  const { projectId, issueId } = useParams<{
-    projectId?: string;
-    issueId?: string;
-  }>();
+  const { projectId, issueId } = useParams({ strict: false });
   const location = useLocation();
 
   const isKanban = location.pathname.startsWith('/projects');

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import type { IssuePriority } from 'shared/remote-types';
 import {
   buildIssueCreatePath,
@@ -31,7 +31,7 @@ function isValidUuid(value: string): boolean {
 export function useKanbanNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const search = useSearch({ strict: false });
 
   const routeState = useMemo(
     () => parseProjectSidebarRoute(location.pathname),
@@ -61,13 +61,11 @@ export function useKanbanNavigation() {
     routeState?.type === 'workspace-create' && draftId !== null;
   const isPanelOpen = !!routeState && routeState.type !== 'closed';
 
-  const createDefaultStatusId = searchParams.get('statusId');
-  const createDefaultPriority = searchParams.get(
-    'priority'
-  ) as IssuePriority | null;
+  const createDefaultStatusId = search.statusId ?? null;
+  const createDefaultPriority = (search.priority as IssuePriority) ?? null;
   const createDefaultAssigneeIds =
-    searchParams.get('assignees')?.split(',').filter(Boolean) ?? null;
-  const createDefaultParentIssueId = searchParams.get('parentIssueId');
+    search.assignees?.split(',').filter(Boolean) ?? null;
+  const createDefaultParentIssueId = search.parentIssueId ?? null;
 
   const openIssue = useCallback(
     (id: string) => {
@@ -122,27 +120,26 @@ export function useKanbanNavigation() {
     }) => {
       if (!projectId || !isCreateMode) return;
 
-      const params = new URLSearchParams(searchParams);
-      params.delete('orgId');
-      if (options.statusId !== undefined) {
-        params.set('statusId', options.statusId);
-      }
-      if (options.priority !== undefined) {
-        if (options.priority === null) {
-          params.delete('priority');
-        } else {
-          params.set('priority', options.priority);
-        }
-      }
-      if (options.assigneeIds !== undefined) {
-        params.set('assignees', options.assigneeIds.join(','));
-      }
-
-      const path = buildIssueCreatePath(projectId);
-      const query = params.toString();
-      navigate(query ? `${path}?${query}` : path, { replace: true });
+      navigate({
+        ...buildIssueCreatePath(projectId),
+        search: {
+          ...search,
+          orgId: undefined,
+          statusId:
+            options.statusId !== undefined ? options.statusId : search.statusId,
+          priority:
+            options.priority !== undefined
+              ? (options.priority ?? undefined)
+              : search.priority,
+          assignees:
+            options.assigneeIds !== undefined
+              ? options.assigneeIds.join(',')
+              : search.assignees,
+        },
+        replace: true,
+      });
     },
-    [navigate, projectId, isCreateMode, searchParams]
+    [navigate, projectId, isCreateMode, search]
   );
 
   return {

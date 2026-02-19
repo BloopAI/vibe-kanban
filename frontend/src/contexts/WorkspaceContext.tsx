@@ -1,6 +1,6 @@
 import { useContext, ReactNode, useMemo, useCallback, useEffect } from 'react';
 import { createHmrContext } from '@/lib/hmrContext.ts';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useWorkspaces,
@@ -17,6 +17,7 @@ import {
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
 import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { toWorkspace, toWorkspacesCreate } from '@/lib/routes/navigation';
 import type {
   Workspace as ApiWorkspace,
   Session,
@@ -82,7 +83,7 @@ interface WorkspaceProviderProps {
 }
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
-  const { workspaceId } = useParams<{ workspaceId: string }>();
+  const { workspaceId } = useParams({ strict: false });
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -185,14 +186,14 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           // Silently fail - this is not critical
           console.warn('Failed to mark workspace as seen:', error);
         });
-      navigate(`/workspaces/${id}`);
+      navigate(toWorkspace(id));
     },
     [navigate, queryClient]
   );
 
   const navigateToCreate = useMemo(
     () => () => {
-      navigate('/workspaces/create');
+      navigate(toWorkspacesCreate());
     },
     [navigate]
   );

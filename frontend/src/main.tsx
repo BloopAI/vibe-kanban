@@ -1,41 +1,25 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App.tsx';
-// CSS is imported by scope components.
+import * as Sentry from '@sentry/react';
 import { ClickToComponent } from 'click-to-react-component';
 import {
+  QueryCache,
   QueryClient,
   QueryClientProvider,
-  QueryCache,
 } from '@tanstack/react-query';
-import * as Sentry from '@sentry/react';
-import i18n from './i18n';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
-// Import modal type definitions
+import App from './App.tsx';
+import i18n from './i18n';
+import { router } from './Router';
 import './types/modals';
-
-import {
-  useLocation,
-  useNavigationType,
-  createRoutesFromChildren,
-  matchRoutes,
-} from 'react-router-dom';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
     dsn: import.meta.env.VITE_SENTRY_DSN,
     tracesSampleRate: 1.0,
     environment: import.meta.env.MODE === 'development' ? 'dev' : 'production',
-    integrations: [
-      Sentry.reactRouterV6BrowserTracingIntegration({
-        useEffect: React.useEffect,
-        useLocation,
-        useNavigationType,
-        createRoutesFromChildren,
-        matchRoutes,
-      }),
-    ],
+    integrations: [Sentry.tanstackRouterBrowserTracingIntegration(router)],
   });
   Sentry.setTag('source', 'frontend');
 }
@@ -71,7 +55,7 @@ export const queryClient = new QueryClient({
   }),
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
       refetchOnWindowFocus: false,
     },
   },
@@ -87,8 +71,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         >
           <ClickToComponent />
           <App />
-          {/*<TanStackDevtools plugins={[FormDevtoolsPlugin()]} />*/}
-          {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </Sentry.ErrorBoundary>
       </PostHogProvider>
     </QueryClientProvider>

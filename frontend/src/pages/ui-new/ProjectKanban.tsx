@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
@@ -229,8 +229,7 @@ function useFindProjectById(projectId: string | undefined) {
  */
 export function ProjectKanban() {
   const { projectId, hasInvalidWorkspaceCreateDraftId } = useKanbanNavigation();
-  const [searchParams] = useSearchParams();
-  const location = useLocation();
+  const search = useSearch({ strict: false });
   const navigate = useNavigate();
   const { t } = useTranslation('common');
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
@@ -243,44 +242,49 @@ export function ProjectKanban() {
     if (!projectId) return;
 
     if (hasInvalidWorkspaceCreateDraftId) {
-      navigate(buildProjectRootPath(projectId), { replace: true });
+      navigate({
+        ...buildProjectRootPath(projectId),
+        replace: true,
+      });
       return;
     }
 
-    const orgIdFromUrl = searchParams.get('orgId');
+    const orgIdFromUrl = search.orgId;
     if (orgIdFromUrl) {
       setSelectedOrgId(orgIdFromUrl);
     }
 
-    const isLegacyCreateMode = searchParams.get('mode') === 'create';
+    const isLegacyCreateMode = search.mode === 'create';
     if (isLegacyCreateMode) {
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete('mode');
-      nextParams.delete('orgId');
-      const nextQuery = nextParams.toString();
-      const createPath = buildIssueCreatePath(projectId);
-      navigate(nextQuery ? `${createPath}?${nextQuery}` : createPath, {
+      const nextSearch = {
+        ...search,
+        mode: undefined,
+        orgId: undefined,
+      };
+      navigate({
+        ...buildIssueCreatePath(projectId),
+        search: nextSearch,
         replace: true,
       });
       return;
     }
 
     if (orgIdFromUrl) {
-      const nextParams = new URLSearchParams(searchParams);
-      nextParams.delete('orgId');
-      const nextQuery = nextParams.toString();
-      navigate(
-        nextQuery ? `${location.pathname}?${nextQuery}` : location.pathname,
-        { replace: true }
-      );
+      navigate({
+        to: '.',
+        search: (prev) => ({
+          ...prev,
+          orgId: undefined,
+        }),
+        replace: true,
+      });
     }
   }, [
-    searchParams,
+    search,
     projectId,
     hasInvalidWorkspaceCreateDraftId,
     setSelectedOrgId,
     navigate,
-    location.pathname,
   ]);
 
   // Find the project and get its organization

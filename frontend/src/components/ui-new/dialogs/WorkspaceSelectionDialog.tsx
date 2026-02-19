@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
@@ -199,8 +199,12 @@ function WorkspaceSelectionContent({
         issueId,
       });
       if (!draftId) {
-        navigate('/workspaces/create', {
-          state: createState,
+        navigate({
+          to: '/workspaces/create',
+          state: (prev) => ({
+            ...prev,
+            ...createState,
+          }),
         });
       }
     } finally {

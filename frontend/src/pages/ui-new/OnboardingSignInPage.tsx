@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
 import {
   OAuthDialog,
@@ -14,6 +14,8 @@ import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { resolveAppPath } from '@/lib/routes/pathResolution';
+import { toWorkspacesCreate } from '@/lib/routes/navigation';
 
 const COMPARISON_ROWS = [
   {
@@ -156,7 +158,10 @@ export function OnboardingSignInPage() {
       method: options.method,
       destination,
     });
-    navigate(destination, { replace: true });
+    navigate({
+      ...(resolveAppPath(destination) ?? toWorkspacesCreate()),
+      replace: true,
+    });
   };
 
   const handleProviderSignIn = async (provider: OAuthProvider) => {

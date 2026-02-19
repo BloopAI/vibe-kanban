@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
@@ -29,6 +29,7 @@ import {
 } from '@/components/ui-new/containers/ConversationListContainer';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/types/attempt';
+import { toWorkspace } from '@/lib/routes/navigation';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
@@ -190,7 +191,7 @@ function WorkspaceSessionPanel({
   }, [breadcrumbIssueId, openIssue, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
-    navigate(`/workspaces/${workspaceId}`);
+    navigate(toWorkspace(workspaceId));
   }, [navigate, workspaceId]);
 
   const breadcrumbButtonClass =
@@ -427,7 +428,7 @@ export function ProjectRightSidebarContainer() {
         return;
       }
 
-      navigate(`/workspaces/${createdWorkspaceId}`);
+      navigate(toWorkspace(createdWorkspaceId));
     },
     [issueId, openIssueWorkspace, navigate]
   );

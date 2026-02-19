@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 import {
   ArrowSquareOutIcon,
   ArrowRightIcon,
@@ -188,16 +188,20 @@ export function MigrateChooseProjects({
                   <span className="flex-1 text-sm text-low truncate">
                     {project.name}
                   </span>
-                  <Link
-                    to={`/projects/${project.remote_project_id}?orgId=${selectedOrgId}`}
-                    className="flex items-center gap-half text-sm text-brand hover:underline whitespace-nowrap"
-                  >
-                    View
-                    <ArrowSquareOutIcon
-                      className="size-icon-xs"
-                      weight="bold"
-                    />
-                  </Link>
+                  {project.remote_project_id ? (
+                    <Link
+                      to="/projects/$projectId"
+                      params={{ projectId: project.remote_project_id }}
+                      search={{ orgId: selectedOrgId ?? undefined }}
+                      className="flex items-center gap-half text-sm text-brand hover:underline whitespace-nowrap"
+                    >
+                      View
+                      <ArrowSquareOutIcon
+                        className="size-icon-xs"
+                        weight="bold"
+                      />
+                    </Link>
+                  ) : null}
                 </div>
               ))}
             </div>

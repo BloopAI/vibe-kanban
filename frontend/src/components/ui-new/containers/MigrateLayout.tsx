@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import {
   MigrateSidebar,
   type MigrationStep,
@@ -22,7 +22,7 @@ export function MigrateLayout() {
   );
 
   const handleSkip = () => {
-    navigate('/workspaces/create', { replace: true });
+    navigate({ to: '/workspaces/create', replace: true });
   };
 
   const handleChooseProjectsContinue = (

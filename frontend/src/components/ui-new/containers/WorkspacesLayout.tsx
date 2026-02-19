@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
@@ -27,6 +27,7 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
+import { toWorkspace } from '@/lib/routes/navigation';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -59,7 +60,7 @@ export function WorkspacesLayout() {
 
   const handleWorkspaceCreated = useCallback(
     (workspaceId: string) => {
-      navigate(`/workspaces/${workspaceId}`);
+      navigate(toWorkspace(workspaceId));
     },
     [navigate]
   );

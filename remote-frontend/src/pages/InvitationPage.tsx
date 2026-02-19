@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "@tanstack/react-router";
 import {
   getInvitation,
   initOAuth,
@@ -14,7 +14,7 @@ import {
 } from "../pkce";
 
 export default function InvitationPage() {
-  const { token = "" } = useParams();
+  const { token } = useParams({ from: "/invitations/$token/accept" });
   const [data, setData] = useState<Invitation | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

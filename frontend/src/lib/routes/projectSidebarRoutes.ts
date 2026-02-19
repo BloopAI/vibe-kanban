@@ -1,4 +1,3 @@
-import { matchPath } from 'react-router-dom';
 import type { IssuePriority } from 'shared/remote-types';
 
 export type ProjectSidebarRouteState =
@@ -35,134 +34,147 @@ export interface IssueCreateRouteOptions {
   parentIssueId?: string;
 }
 
-function withSearch(pathname: string, params: URLSearchParams): string {
-  const query = params.toString();
-  return query ? `${pathname}?${query}` : pathname;
+export function buildProjectRootPath(projectId: string) {
+  return {
+    to: '/projects/$projectId',
+    params: { projectId },
+  } as const;
 }
 
-export function buildProjectRootPath(projectId: string): string {
-  return `/projects/${projectId}`;
-}
-
-export function buildIssuePath(projectId: string, issueId: string): string {
-  return `/projects/${projectId}/issues/${issueId}`;
+export function buildIssuePath(projectId: string, issueId: string) {
+  return {
+    to: '/projects/$projectId/issues/$issueId',
+    params: { projectId, issueId },
+  } as const;
 }
 
 export function buildIssueWorkspacePath(
   projectId: string,
   issueId: string,
   workspaceId: string
-): string {
-  return `/projects/${projectId}/issues/${issueId}/workspaces/${workspaceId}`;
+) {
+  return {
+    to: '/projects/$projectId/issues/$issueId/workspaces/$workspaceId',
+    params: { projectId, issueId, workspaceId },
+  } as const;
 }
 
 export function buildWorkspaceCreatePath(
   projectId: string,
   draftId: string,
   issueId?: string | null
-): string {
+) {
   if (issueId) {
-    return `/projects/${projectId}/issues/${issueId}/workspaces/create/${draftId}`;
+    return {
+      to: '/projects/$projectId/issues/$issueId/workspaces/create/$draftId',
+      params: { projectId, issueId, draftId },
+    } as const;
   }
-  return `/projects/${projectId}/workspaces/create/${draftId}`;
+
+  return {
+    to: '/projects/$projectId/workspaces/create/$draftId',
+    params: { projectId, draftId },
+  } as const;
 }
 
 export function buildIssueCreatePath(
   projectId: string,
   options?: IssueCreateRouteOptions
-): string {
-  const params = new URLSearchParams();
-  if (options?.statusId) params.set('statusId', options.statusId);
-  if (options?.priority) params.set('priority', options.priority);
-  if (options?.assigneeIds?.length) {
-    params.set('assignees', options.assigneeIds.join(','));
+) {
+  return {
+    to: '/projects/$projectId/issues/new',
+    params: { projectId },
+    search: {
+      statusId: options?.statusId,
+      priority: options?.priority,
+      assignees: options?.assigneeIds?.length
+        ? options.assigneeIds.join(',')
+        : undefined,
+      parentIssueId: options?.parentIssueId,
+    },
+  } as const;
+}
+
+function decodeSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
   }
-  if (options?.parentIssueId)
-    params.set('parentIssueId', options.parentIssueId);
-  return withSearch(`/projects/${projectId}/issues/new`, params);
 }
 
 export function parseProjectSidebarRoute(
   pathname: string
 ): ProjectSidebarRouteState | null {
-  const issueWorkspaceCreateMatch = matchPath(
-    '/projects/:projectId/issues/:issueId/workspaces/create/:draftId',
-    pathname
-  );
-  if (
-    issueWorkspaceCreateMatch?.params.projectId &&
-    issueWorkspaceCreateMatch.params.issueId &&
-    issueWorkspaceCreateMatch.params.draftId
-  ) {
+  const segments = pathname
+    .split('/')
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map(decodeSegment);
+
+  if (segments[0] !== 'projects' || !segments[1]) {
+    return null;
+  }
+
+  const projectId = segments[1];
+
+  if (segments.length === 2) {
     return {
-      type: 'workspace-create',
-      projectId: issueWorkspaceCreateMatch.params.projectId,
-      issueId: issueWorkspaceCreateMatch.params.issueId,
-      draftId: issueWorkspaceCreateMatch.params.draftId,
+      type: 'closed',
+      projectId,
     };
   }
 
-  const workspaceCreateMatch = matchPath(
-    '/projects/:projectId/workspaces/create/:draftId',
-    pathname
-  );
-  if (
-    workspaceCreateMatch?.params.projectId &&
-    workspaceCreateMatch.params.draftId
-  ) {
+  if (segments[2] === 'issues' && segments[3] === 'new') {
     return {
-      type: 'workspace-create',
-      projectId: workspaceCreateMatch.params.projectId,
-      issueId: null,
-      draftId: workspaceCreateMatch.params.draftId,
+      type: 'issue-create',
+      projectId,
     };
   }
 
-  const issueWorkspaceMatch = matchPath(
-    '/projects/:projectId/issues/:issueId/workspaces/:workspaceId',
-    pathname
-  );
   if (
-    issueWorkspaceMatch?.params.projectId &&
-    issueWorkspaceMatch.params.issueId &&
-    issueWorkspaceMatch.params.workspaceId
+    segments[2] === 'issues' &&
+    segments[3] &&
+    segments[4] === 'workspaces' &&
+    segments[5] === 'create' &&
+    segments[6]
+  ) {
+    return {
+      type: 'workspace-create',
+      projectId,
+      issueId: segments[3],
+      draftId: segments[6],
+    };
+  }
+
+  if (
+    segments[2] === 'issues' &&
+    segments[3] &&
+    segments[4] === 'workspaces' &&
+    segments[5]
   ) {
     return {
       type: 'issue-workspace',
-      projectId: issueWorkspaceMatch.params.projectId,
-      issueId: issueWorkspaceMatch.params.issueId,
-      workspaceId: issueWorkspaceMatch.params.workspaceId,
+      projectId,
+      issueId: segments[3],
+      workspaceId: segments[5],
     };
   }
 
-  const issueCreateMatch = matchPath(
-    '/projects/:projectId/issues/new',
-    pathname
-  );
-  if (issueCreateMatch?.params.projectId) {
-    return {
-      type: 'issue-create',
-      projectId: issueCreateMatch.params.projectId,
-    };
-  }
-
-  const issueMatch = matchPath(
-    '/projects/:projectId/issues/:issueId',
-    pathname
-  );
-  if (issueMatch?.params.projectId && issueMatch.params.issueId) {
+  if (segments[2] === 'issues' && segments[3]) {
     return {
       type: 'issue',
-      projectId: issueMatch.params.projectId,
-      issueId: issueMatch.params.issueId,
+      projectId,
+      issueId: segments[3],
     };
   }
 
-  const projectMatch = matchPath('/projects/:projectId', pathname);
-  if (projectMatch?.params.projectId) {
+  if (segments[2] === 'workspaces' && segments[3] === 'create' && segments[4]) {
     return {
-      type: 'closed',
-      projectId: projectMatch.params.projectId,
+      type: 'workspace-create',
+      projectId,
+      issueId: null,
+      draftId: segments[4],
     };
   }
 

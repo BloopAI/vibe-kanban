@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate } from '@tanstack/react-router';
 
 export function WorkspacesLanding() {
   return <Navigate to="/workspaces/create" replace />;

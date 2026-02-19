@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useLocation, useParams, useSearchParams } from 'react-router-dom';
+import { useLocation, useParams, useSearch } from '@tanstack/react-router';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
@@ -48,12 +48,11 @@ export function useActionVisibilityContext(
   const expanded = useUiPreferencesStore((s) => s.expanded);
 
   // Derive kanban state from URL (URL is single source of truth)
-  const { projectId: routeProjectId, issueId: routeIssueId } = useParams<{
-    projectId?: string;
-    issueId?: string;
-  }>();
-  const [searchParams] = useSearchParams();
-  const kanbanCreateMode = searchParams.get('mode') === 'create';
+  const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
+    strict: false,
+  });
+  const search = useSearch({ strict: false });
+  const kanbanCreateMode = search.mode === 'create';
   const effectiveProjectId = options?.projectId ?? routeProjectId;
   const optionIssueIds = options?.issueIds;
   const effectiveIssueIds = useMemo(

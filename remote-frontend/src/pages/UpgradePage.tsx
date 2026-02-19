@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { isLoggedIn } from "../auth";
 import {
   initOAuth,
@@ -16,7 +16,7 @@ const UPGRADE_RETURN_KEY = "upgrade_return";
 type Step = "plan-selection" | "sign-in" | "org-selection";
 
 export default function UpgradePage() {
-  const [searchParams] = useSearchParams();
+  const search = useSearch({ from: "/upgrade" });
   const navigate = useNavigate();
 
   const [step, setStep] = useState<Step>("plan-selection");
@@ -31,7 +31,7 @@ export default function UpgradePage() {
 
   useEffect(() => {
     // Save org_id from URL to localStorage
-    const orgId = searchParams.get("org_id");
+    const orgId = search.org_id;
     if (orgId) {
       localStorage.setItem(UPGRADE_ORG_KEY, orgId);
     }
@@ -43,7 +43,7 @@ export default function UpgradePage() {
       loadOrganizations();
       setStep("org-selection");
     }
-  }, [searchParams]);
+  }, [search.org_id]);
 
   async function loadOrganizations() {
     setLoading(true);
@@ -270,7 +270,7 @@ export default function UpgradePage() {
                     subscribe.
                   </p>
                   <button
-                    onClick={() => navigate("/account")}
+                    onClick={() => navigate({ to: "/account" })}
                     className="w-full py-2 px-4 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors font-medium"
                   >
                     Create Organization

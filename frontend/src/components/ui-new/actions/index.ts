@@ -1,6 +1,6 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { NavigateFunction } from 'react-router-dom';
+import type { NavigateFn } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type {
   EditorType,
@@ -117,7 +117,7 @@ export interface ProjectMutations {
 
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
-  navigate: NavigateFunction;
+  navigate: NavigateFn;
   queryClient: QueryClient;
   selectWorkspace: (workspaceId: string) => void;
   activeWorkspaces: SidebarWorkspace[];
@@ -367,19 +367,21 @@ export const Actions = {
             }
           : undefined;
 
-        ctx.navigate('/workspaces/create', {
-          state: {
+        ctx.navigate({
+          to: '/workspaces/create',
+          state: (prev) => ({
+            ...prev,
             initialPrompt: firstMessage,
             preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: r.target_branch,
             })),
             linkedIssue,
-          },
+          }),
         });
       } catch {
         // Fallback to creating without the prompt/repos
-        ctx.navigate('/workspaces/create');
+        ctx.navigate({ to: '/workspaces/create' });
       }
     },
   },
@@ -486,7 +488,7 @@ export const Actions = {
           if (nextWorkspaceId) {
             ctx.selectWorkspace(nextWorkspaceId);
           } else {
-            ctx.navigate('/workspaces/create');
+            ctx.navigate({ to: '/workspaces/create' });
           }
         }
       }
@@ -528,17 +530,19 @@ export const Actions = {
               remoteProjectId: remoteWs.project_id,
             }
           : undefined;
-        ctx.navigate('/workspaces/create', {
-          state: {
+        ctx.navigate({
+          to: '/workspaces/create',
+          state: (prev) => ({
+            ...prev,
             preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: workspace.branch,
             })),
             linkedIssue,
-          },
+          }),
         });
       } catch {
-        ctx.navigate('/workspaces/create');
+        ctx.navigate({ to: '/workspaces/create' });
       }
     },
   },
@@ -551,7 +555,7 @@ export const Actions = {
     shortcut: 'G N',
     requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
-      ctx.navigate('/workspaces/create');
+      ctx.navigate({ to: '/workspaces/create' });
     },
   },
 
@@ -626,7 +630,7 @@ export const Actions = {
       ctx.queryClient.removeQueries({ queryKey: organizationKeys.all });
       // Invalidate user-system query to update loginStatus/useAuth state
       await ctx.queryClient.invalidateQueries({ queryKey: ['user-system'] });
-      ctx.navigate('/workspaces');
+      ctx.navigate({ to: '/workspaces' });
     },
   } satisfies GlobalActionDefinition,
 

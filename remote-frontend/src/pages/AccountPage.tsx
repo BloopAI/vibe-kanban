@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { isLoggedIn } from "../auth";
 import {
   initOAuth,
@@ -97,7 +97,10 @@ export default function AccountPage() {
         name: newOrgName.trim(),
         slug: newOrgSlug.trim().toLowerCase(),
       });
-      navigate(`/account/organizations/${org.id}`);
+      navigate({
+        to: "/account/organizations/$orgId",
+        params: { orgId: org.id },
+      });
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : "Failed to create");
     } finally {
@@ -281,7 +284,8 @@ export default function AccountPage() {
               {organizations.map((org) => (
                 <Link
                   key={org.id}
-                  to={`/account/organizations/${org.id}`}
+                  to="/account/organizations/$orgId"
+                  params={{ orgId: org.id }}
                   className="flex items-center justify-between py-3 hover:bg-gray-50 -mx-2 px-2 rounded transition-colors"
                 >
                   <div>

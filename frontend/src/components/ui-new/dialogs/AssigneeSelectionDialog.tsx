@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearch } from '@tanstack/react-router';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
@@ -57,6 +57,8 @@ function AssigneeSelectionContent({
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const hasCreateCallback = onCreateModeAssigneesChange != null;
+  const navigate = useNavigate();
+  const routeSearch = useSearch({ strict: false });
 
   // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
   const { membersWithProfilesById } = useOrgContext();
@@ -82,23 +84,23 @@ function AssigneeSelectionContent({
   }, [hasCreateCallback, createModeAssigneeIds, modal.visible]);
 
   // Fallback: Get/set create mode defaults from URL (for callers without callback)
-  const [searchParams, setSearchParams] = useSearchParams();
   const kanbanCreateDefaultAssigneeIds = useMemo(() => {
-    const assigneesParam = searchParams.get('assignees');
+    const assigneesParam = routeSearch.assignees;
     return assigneesParam ? assigneesParam.split(',').filter(Boolean) : [];
-  }, [searchParams]);
+  }, [routeSearch.assignees]);
 
   const setKanbanCreateDefaultAssigneeIds = useCallback(
     (assigneeIds: string[]) => {
-      const newParams = new URLSearchParams(searchParams);
-      if (assigneeIds.length > 0) {
-        newParams.set('assignees', assigneeIds.join(','));
-      } else {
-        newParams.delete('assignees');
-      }
-      setSearchParams(newParams, { replace: true });
+      navigate({
+        to: '.',
+        search: (prev) => ({
+          ...prev,
+          assignees: assigneeIds.length > 0 ? assigneeIds.join(',') : undefined,
+        }),
+        replace: true,
+      });
     },
-    [searchParams, setSearchParams]
+    [navigate]
   );
 
   // Derive selected assignee IDs based on mode and callback availability
@@ -156,7 +158,7 @@ function AssigneeSelectionContent({
 
       if (isCreateMode) {
         const newIds = isSelected
-          ? selectedIds.filter((id) => id !== userId)
+          ? selectedIds.filter((id: string) => id !== userId)
           : [...selectedIds, userId];
         if (onCreateModeAssigneesChange) {
           setLocalCreateAssignees(newIds);
