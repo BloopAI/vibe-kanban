@@ -174,8 +174,8 @@ export function VirtualizedProcessLogs({
           data={channelData}
           context={context}
           initialLocation={INITIAL_TOP_ITEM}
-          atBottomStateChange={(isAtBottom) => {
-            isAtBottomRef.current = isAtBottom;
+          onScroll={(location) => {
+            isAtBottomRef.current = location.isAtBottom;
           }}
           computeItemKey={computeItemKey}
           ItemContent={ItemContent}
