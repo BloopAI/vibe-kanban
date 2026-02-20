@@ -6,7 +6,6 @@ import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-at
 export function useImageMetadata(
   taskAttemptId: string | undefined,
   src: string,
-  taskId?: string | undefined,
   localImages?: LocalImageMetadata[]
 ) {
   const isVibeImage = src.startsWith('.vibe-images/');
@@ -33,24 +32,15 @@ export function useImageMetadata(
     [localImage]
   );
 
-  const hasContext = !!taskAttemptId || !!taskId;
   // Only fetch from API if: vibe image, has context, and NO local image
-  const shouldFetch = isVibeImage && hasContext && !localImage;
+  const shouldFetch = isVibeImage && !!taskAttemptId && !localImage;
 
   const query = useQuery({
-    queryKey: ['imageMetadata', taskAttemptId, taskId, src],
+    queryKey: ['imageMetadata', taskAttemptId, src],
     queryFn: async (): Promise<ImageMetadata | null> => {
-      // Pure API logic - no local image handling
       if (taskAttemptId) {
         const res = await fetch(
           `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}`
-        );
-        const data = await res.json();
-        return data.data as ImageMetadata | null;
-      }
-      if (taskId) {
-        const res = await fetch(
-          `/api/images/task/${taskId}/metadata?path=${encodeURIComponent(src)}`
         );
         const data = await res.json();
         return data.data as ImageMetadata | null;

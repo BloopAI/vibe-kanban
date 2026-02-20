@@ -30,7 +30,6 @@ import {
 import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
   TaskAttemptContext,
-  TaskContext,
   LocalImagesContext,
   type LocalImageMetadata,
 } from './wysiwyg/context/task-attempt-context';
@@ -86,10 +85,8 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
-  /** Task attempt ID for resolving .vibe-images paths (preferred over taskId) */
+  /** Task attempt ID for resolving .vibe-images paths */
   taskAttemptId?: string;
-  /** Task ID for resolving .vibe-images paths when taskAttemptId is not available */
-  taskId?: string;
   /** Repo ID for slash commands when no workspace yet */
   repoId?: string;
   /** Local images for immediate rendering (before saved to server) */
@@ -224,7 +221,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       onShiftCmdEnter,
       sendShortcut,
       taskAttemptId,
-      taskId,
       repoId,
       localImages,
       onEdit,
@@ -385,86 +381,82 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     const editorContent = (
       <div className="wysiwyg text-base">
         <TaskAttemptContext.Provider value={taskAttemptId}>
-          <TaskContext.Provider value={taskId}>
-            <LocalImagesContext.Provider value={localImages ?? []}>
-              <LexicalComposer initialConfig={initialConfig}>
-                <EditorRefPlugin editorRef={editorInstanceRef} />
-                <MarkdownSyncPlugin
-                  value={value}
-                  onChange={onChange}
-                  onEditorStateChange={onEditorStateChange}
-                  editable={!disabled}
-                  transformers={extendedTransformers}
-                />
-                {!disabled && <ToolbarPlugin />}
-                <div className="relative">
-                  <RichTextPlugin
-                    contentEditable={
-                      <ContentEditable
-                        className={cn('outline-none', className)}
-                        aria-label={
-                          disabled ? 'Markdown content' : 'Markdown editor'
-                        }
-                        onPasteCapture={handlePaste}
-                      />
-                    }
-                    placeholder={placeholderElement}
-                    ErrorBoundary={LexicalErrorBoundary}
-                  />
-                </div>
-
-                {!disabled && showStaticToolbar && (
-                  <StaticToolbarPlugin
-                    saveStatus={saveStatus}
-                    extraActions={staticToolbarActions}
-                  />
-                )}
-
-                <ListPlugin />
-                <TablePlugin />
-                <CodeHighlightPlugin />
-                {/* Only include editing plugins when not in read-only mode */}
-                {!disabled && (
-                  <>
-                    {autoFocus && <AutoFocusPlugin />}
-                    <HistoryPlugin />
-                    <MarkdownShortcutPlugin
-                      transformers={extendedTransformers}
+          <LocalImagesContext.Provider value={localImages ?? []}>
+            <LexicalComposer initialConfig={initialConfig}>
+              <EditorRefPlugin editorRef={editorInstanceRef} />
+              <MarkdownSyncPlugin
+                value={value}
+                onChange={onChange}
+                onEditorStateChange={onEditorStateChange}
+                editable={!disabled}
+                transformers={extendedTransformers}
+              />
+              {!disabled && <ToolbarPlugin />}
+              <div className="relative">
+                <RichTextPlugin
+                  contentEditable={
+                    <ContentEditable
+                      className={cn('outline-none', className)}
+                      aria-label={
+                        disabled ? 'Markdown content' : 'Markdown editor'
+                      }
+                      onPasteCapture={handlePaste}
                     />
-                    <PasteMarkdownPlugin transformers={extendedTransformers} />
-                    <TypeaheadOpenProvider>
-                      <FileTagTypeaheadPlugin repoIds={repoIds} />
-                      {executor && (
-                        <SlashCommandTypeaheadPlugin
-                          agent={executor}
-                          repoId={repoId}
-                        />
-                      )}
-                      <KeyboardCommandsPlugin
-                        onCmdEnter={onCmdEnter}
-                        onShiftCmdEnter={onShiftCmdEnter}
-                        onChange={onChange}
-                        transformers={extendedTransformers}
-                        sendShortcut={sendShortcut}
+                  }
+                  placeholder={placeholderElement}
+                  ErrorBoundary={LexicalErrorBoundary}
+                />
+              </div>
+
+              {!disabled && showStaticToolbar && (
+                <StaticToolbarPlugin
+                  saveStatus={saveStatus}
+                  extraActions={staticToolbarActions}
+                />
+              )}
+
+              <ListPlugin />
+              <TablePlugin />
+              <CodeHighlightPlugin />
+              {/* Only include editing plugins when not in read-only mode */}
+              {!disabled && (
+                <>
+                  {autoFocus && <AutoFocusPlugin />}
+                  <HistoryPlugin />
+                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
+                  <PasteMarkdownPlugin transformers={extendedTransformers} />
+                  <TypeaheadOpenProvider>
+                    <FileTagTypeaheadPlugin repoIds={repoIds} />
+                    {executor && (
+                      <SlashCommandTypeaheadPlugin
+                        agent={executor}
+                        repoId={repoId}
                       />
-                    </TypeaheadOpenProvider>
-                    <ImageKeyboardPlugin />
-                    <ComponentInfoKeyboardPlugin />
-                    <CodeBlockShortcutPlugin />
-                  </>
-                )}
-                {/* Link sanitization for read-only mode */}
-                {disabled && <ReadOnlyLinkPlugin />}
-                {/* Clickable code for file paths in read-only mode */}
-                {disabled && findMatchingDiffPath && onCodeClick && (
-                  <ClickableCodePlugin
-                    findMatchingDiffPath={findMatchingDiffPath}
-                    onCodeClick={onCodeClick}
-                  />
-                )}
-              </LexicalComposer>
-            </LocalImagesContext.Provider>
-          </TaskContext.Provider>
+                    )}
+                    <KeyboardCommandsPlugin
+                      onCmdEnter={onCmdEnter}
+                      onShiftCmdEnter={onShiftCmdEnter}
+                      onChange={onChange}
+                      transformers={extendedTransformers}
+                      sendShortcut={sendShortcut}
+                    />
+                  </TypeaheadOpenProvider>
+                  <ImageKeyboardPlugin />
+                  <ComponentInfoKeyboardPlugin />
+                  <CodeBlockShortcutPlugin />
+                </>
+              )}
+              {/* Link sanitization for read-only mode */}
+              {disabled && <ReadOnlyLinkPlugin />}
+              {/* Clickable code for file paths in read-only mode */}
+              {disabled && findMatchingDiffPath && onCodeClick && (
+                <ClickableCodePlugin
+                  findMatchingDiffPath={findMatchingDiffPath}
+                  onCodeClick={onCodeClick}
+                />
+              )}
+            </LexicalComposer>
+          </LocalImagesContext.Provider>
         </TaskAttemptContext.Provider>
       </div>
     );

@@ -193,6 +193,7 @@ impl TaskServer {
                 permission_policy: None,
             },
             prompt: workspace_prompt,
+            image_ids: None,
         };
 
         let create_and_start_url = self.url("/api/task-attempts/create-and-start");

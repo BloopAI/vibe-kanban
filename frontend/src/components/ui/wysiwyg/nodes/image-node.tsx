@@ -5,7 +5,6 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useTaskAttemptId,
-  useTaskId,
   useLocalImages,
 } from '../context/task-attempt-context';
 import { useImageMetadata } from '@/hooks/useImageMetadata';
@@ -50,7 +49,6 @@ function ImageComponent({
   const { t } = useTranslation('common');
   const { src, altText } = data;
   const taskAttemptId = useTaskAttemptId();
-  const taskId = useTaskId();
   const localImages = useLocalImages();
   const [editor] = useLexicalComposerContext();
 
@@ -66,12 +64,10 @@ function ImageComponent({
   const { url: fullSizeUrl } = useAttachmentUrl(attachmentId, 'file');
 
   // Use TanStack Query for caching metadata across component recreations
-  // Pass both taskAttemptId and taskId - the hook prefers taskAttemptId when available
   // Also pass localImages for immediate rendering of newly uploaded images
   const { data: metadata, isLoading: loading } = useImageMetadata(
     taskAttemptId,
     src,
-    taskId,
     localImages
   );
 
@@ -139,8 +135,8 @@ function ImageComponent({
   let displayName: string;
   let metadataLine: string | null = null;
 
-  // Check if we have context for fetching metadata (either taskAttemptId or taskId)
-  const hasContext = !!taskAttemptId || !!taskId;
+  // Check if we have context for fetching metadata
+  const hasContext = !!taskAttemptId;
   // Check if image exists in local images (for create mode where no task context exists yet)
   const hasLocalImage = localImages.some((img) => img.path === src);
 

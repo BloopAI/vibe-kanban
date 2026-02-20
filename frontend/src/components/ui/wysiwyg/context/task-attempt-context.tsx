@@ -6,12 +6,6 @@ export function useTaskAttemptId() {
   return useContext(TaskAttemptContext);
 }
 
-export const TaskContext = createContext<string | undefined>(undefined);
-
-export function useTaskId() {
-  return useContext(TaskContext);
-}
-
 // Local images metadata for rendering uploaded images before they're saved
 export type LocalImageMetadata = {
   path: string; // ".vibe-images/uuid.png"

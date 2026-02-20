@@ -1905,6 +1905,7 @@ pub async fn create_and_start_workspace(
         linked_issue,
         executor_config,
         prompt,
+        image_ids,
     } = payload;
 
     let workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
@@ -1970,6 +1971,11 @@ pub async fn create_and_start_workspace(
         })
         .collect();
     WorkspaceRepo::create_many(pool, workspace.id, &workspace_repos).await?;
+
+    // Associate user-uploaded images with the workspace
+    if let Some(ids) = &image_ids {
+        WorkspaceImage::associate_many_dedup(pool, workspace.id, ids).await?;
+    }
 
     // Import images from linked remote issue so they're available in the workspace
     if let Some(linked_issue) = &linked_issue
