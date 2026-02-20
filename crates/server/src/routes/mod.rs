@@ -59,5 +59,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
+        .layer(axum::middleware::from_fn(middleware::add_security_headers))
         .into_make_service()
 }
