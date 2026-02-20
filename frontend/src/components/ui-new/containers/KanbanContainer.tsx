@@ -9,6 +9,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
+  KANBAN_ASSIGNEE_FILTER_VALUES,
   type KanbanFilterState,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
@@ -369,27 +370,41 @@ export function KanbanContainer() {
     [sortedStatuses]
   );
 
+  const defaultCreateStatusId = useMemo(() => {
+    if (kanbanViewMode === 'kanban') {
+      return visibleStatuses[0]?.id;
+    }
+    if (listViewStatusFilter) {
+      return listViewStatusFilter;
+    }
+    return sortedStatuses[0]?.id;
+  }, [kanbanViewMode, visibleStatuses, listViewStatusFilter, sortedStatuses]);
+
   // Update default create status for command bar based on current tab
   useEffect(() => {
-    let defaultStatusId: string | undefined;
-    if (kanbanViewMode === 'kanban') {
-      // "Active" tab: first non-hidden status by sort order
-      defaultStatusId = visibleStatuses[0]?.id;
-    } else if (listViewStatusFilter) {
-      // Hidden status tab: use that specific status
-      defaultStatusId = listViewStatusFilter;
-    } else {
-      // "All" tab: first status by sort order
-      defaultStatusId = sortedStatuses[0]?.id;
+    setDefaultCreateStatusId(defaultCreateStatusId);
+  }, [defaultCreateStatusId, setDefaultCreateStatusId]);
+
+  const createAssigneeIds = useMemo(() => {
+    const assigneeIds = new Set<string>();
+
+    for (const assigneeId of kanbanFilters.assigneeIds) {
+      if (assigneeId === KANBAN_ASSIGNEE_FILTER_VALUES.UNASSIGNED) {
+        continue;
+      }
+
+      if (assigneeId === KANBAN_ASSIGNEE_FILTER_VALUES.SELF) {
+        if (userId) {
+          assigneeIds.add(userId);
+        }
+        continue;
+      }
+
+      assigneeIds.add(assigneeId);
     }
-    setDefaultCreateStatusId(defaultStatusId);
-  }, [
-    kanbanViewMode,
-    listViewStatusFilter,
-    visibleStatuses,
-    sortedStatuses,
-    setDefaultCreateStatusId,
-  ]);
+
+    return [...assigneeIds];
+  }, [kanbanFilters.assigneeIds, userId]);
 
   // Get statuses to display in list view (all or filtered to one)
   const listViewStatuses = useMemo(() => {
@@ -681,13 +696,13 @@ export function KanbanContainer() {
 
   const handleAddTask = useCallback(
     (statusId?: string) => {
-      if (statusId) {
-        startCreate({ statusId });
-        return;
-      }
-      void executeAction(Actions.CreateIssue);
+      const createPayload = {
+        statusId: statusId ?? defaultCreateStatusId,
+        ...(createAssigneeIds.length > 0 ? { assigneeIds: createAssigneeIds } : {}),
+      };
+      startCreate(createPayload);
     },
-    [startCreate, executeAction]
+    [createAssigneeIds, defaultCreateStatusId, startCreate]
   );
 
   // Inline editing callbacks for kanban cards
