@@ -547,7 +547,7 @@ export function WorkspacesSidebarContainer({
   const searchControls = (
     <>
       <div className="shrink-0">
-        <div className="flex items-stretch gap-half">
+        <div className="flex items-stretch">
           <IconButton
             icon={
               workspaceSort.sortOrder === 'asc'
