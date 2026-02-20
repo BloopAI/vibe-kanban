@@ -138,11 +138,20 @@ export function IssueSubIssuesSectionContainer({
 
   // Handle clicking '+' to create new sub-issue immediately
   const handleCreateNewSubIssue = useCallback(() => {
+    const parentAssigneeIds = getAssigneesForIssue(issueId).map(
+      (a) => a.user_id
+    );
     startCreate({
       statusId: executorContext.defaultCreateStatusId,
       parentIssueId: issueId,
+      assigneeIds: parentAssigneeIds.length > 0 ? parentAssigneeIds : undefined,
     });
-  }, [startCreate, issueId, executorContext.defaultCreateStatusId]);
+  }, [
+    startCreate,
+    issueId,
+    executorContext.defaultCreateStatusId,
+    getAssigneesForIssue,
+  ]);
 
   // Handle clicking link icon to select an existing issue as sub-issue
   const handleLinkSubIssue = useCallback(() => {
