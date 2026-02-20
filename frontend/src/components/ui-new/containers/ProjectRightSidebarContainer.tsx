@@ -483,9 +483,7 @@ export function ProjectRightSidebarContainer() {
   return (
     <KanbanIssuePanelContainer
       issueResolution={
-        rightPanelState.kind === 'issue'
-          ? rightPanelState.resolution
-          : null
+        rightPanelState.kind === 'issue' ? rightPanelState.resolution : null
       }
       onExpectIssueOpen={markExpectedIssue}
     />
