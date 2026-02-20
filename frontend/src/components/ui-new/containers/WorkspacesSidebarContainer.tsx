@@ -174,7 +174,7 @@ function WorkspacesFilterDialog({
         </div>
 
         <div className="px-double py-double">
-          <div className="flex flex-col gap-base">
+          <div className="flex flex-col items-start gap-base">
             <MultiSelectDropdown
               values={projectIds}
               options={projectOptions}
@@ -190,7 +190,7 @@ function WorkspacesFilterDialog({
               label="PR"
             />
             {hasActiveFilters && (
-              <div className="flex justify-end">
+              <div className="self-end">
                 <PrimaryButton
                   variant="tertiary"
                   value="Clear filters"
@@ -558,10 +558,10 @@ export function WorkspacesSidebarContainer({
             aria-label="Open workspace sort settings"
             title="Sort workspaces"
             className={cn(
-              'p-base',
+              '!h-cta !px-base !py-0',
               hasNonDefaultSort && 'text-brand hover:text-brand'
             )}
-            iconClassName="size-icon-base"
+            iconClassName="size-icon-lg"
           />
           <IconButton
             icon={FunnelIcon}
@@ -569,10 +569,10 @@ export function WorkspacesSidebarContainer({
             aria-label="Open workspace filter settings"
             title="Filter workspaces"
             className={cn(
-              'p-base',
+              '!h-cta !px-base !py-0',
               hasActiveFilters && 'text-brand hover:text-brand'
             )}
-            iconClassName="size-icon-base"
+            iconClassName="size-icon-lg"
           />
         </div>
       </div>
