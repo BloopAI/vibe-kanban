@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useScratch } from '@/hooks/useScratch';
@@ -22,10 +23,7 @@ import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
 } from '@/components/ui-new/primitives/MultiSelectDropdown';
-import {
-  PropertyDropdown,
-  type PropertyDropdownOption,
-} from '@/components/ui-new/primitives/PropertyDropdown';
+import { PropertyDropdown } from '@/components/ui-new/primitives/PropertyDropdown';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { IconButton } from '@/components/ui-new/primitives/IconButton';
 import {
@@ -60,16 +58,9 @@ const DEFAULT_WORKSPACE_SORT = {
   sortOrder: 'desc' as WorkspaceSortOrder,
 };
 
-const PR_FILTER_OPTIONS: PropertyDropdownOption<WorkspacePrFilter>[] = [
-  { value: 'all', label: 'All' },
-  { value: 'has_pr', label: 'Has PR' },
-  { value: 'no_pr', label: 'No PR' },
-];
+const PR_FILTER_OPTIONS: WorkspacePrFilter[] = ['all', 'has_pr', 'no_pr'];
 
-const SORT_BY_OPTIONS: PropertyDropdownOption<WorkspaceSortBy>[] = [
-  { value: 'updated_at', label: 'Updated at' },
-  { value: 'created_at', label: 'Created at' },
-];
+const SORT_BY_OPTIONS: WorkspaceSortBy[] = ['updated_at', 'created_at'];
 
 interface WorkspacesSidebarContainerProps {
   onScrollToBottom: () => void;
@@ -92,14 +83,18 @@ function WorkspacesSortDialog({
   onSortByChange,
   onSortOrderChange,
 }: WorkspacesSortDialogProps) {
+  const { t } = useTranslation('common');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0">
         <div className="border-b border-border px-double pb-base pt-double">
           <DialogHeader className="space-y-half">
-            <DialogTitle>Sort workspaces</DialogTitle>
+            <DialogTitle>
+              {t('workspaces.workspaceSidebar.sortDialogTitle')}
+            </DialogTitle>
             <DialogDescription>
-              Choose how workspaces are ordered in the sidebar.
+              {t('workspaces.workspaceSidebar.sortDialogDescription')}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -107,27 +102,37 @@ function WorkspacesSortDialog({
         <div className="px-double py-double">
           <div className="flex flex-col gap-base">
             <div className="flex items-center justify-between gap-base">
-              <span className="text-sm text-low">Sort by</span>
+              <span className="text-sm text-low">
+                {t('workspaces.workspaceSidebar.sortByLabel')}
+              </span>
               <PropertyDropdown
                 value={sortBy}
-                options={SORT_BY_OPTIONS}
+                options={SORT_BY_OPTIONS.map((option) => ({
+                  value: option,
+                  label:
+                    option === 'updated_at'
+                      ? t('workspaces.workspaceSidebar.sortUpdatedAt')
+                      : t('workspaces.workspaceSidebar.sortCreatedAt'),
+                }))}
                 onChange={onSortByChange}
               />
             </div>
             <div className="flex items-center justify-between gap-base">
-              <span className="text-sm text-low">Sort order</span>
+              <span className="text-sm text-low">
+                {t('workspaces.workspaceSidebar.sortOrderLabel')}
+              </span>
               <ButtonGroup>
                 <ButtonGroupItem
                   active={sortOrder === 'desc'}
                   onClick={() => onSortOrderChange('desc')}
                 >
-                  Desc
+                  {t('workspaces.sortDescending')}
                 </ButtonGroupItem>
                 <ButtonGroupItem
                   active={sortOrder === 'asc'}
                   onClick={() => onSortOrderChange('asc')}
                 >
-                  Asc
+                  {t('workspaces.sortAscending')}
                 </ButtonGroupItem>
               </ButtonGroup>
             </div>
@@ -161,14 +166,18 @@ function WorkspacesFilterDialog({
   onPrFilterChange,
   onClearFilters,
 }: WorkspacesFilterDialogProps) {
+  const { t } = useTranslation('common');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md p-0">
         <div className="border-b border-border px-double pb-base pt-double">
           <DialogHeader className="space-y-half">
-            <DialogTitle>Filter workspaces</DialogTitle>
+            <DialogTitle>
+              {t('workspaces.workspaceSidebar.filterDialogTitle')}
+            </DialogTitle>
             <DialogDescription>
-              Narrow down workspaces by project and PR state.
+              {t('workspaces.workspaceSidebar.filterDialogDescription')}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -180,20 +189,28 @@ function WorkspacesFilterDialog({
               options={projectOptions}
               onChange={onProjectFilterChange}
               icon={FolderIcon}
-              label="Project"
+              label={t('workspaces.workspaceSidebar.projectFilterLabel')}
             />
             <PropertyDropdown
               value={prFilter}
-              options={PR_FILTER_OPTIONS}
+              options={PR_FILTER_OPTIONS.map((option) => ({
+                value: option,
+                label:
+                  option === 'all'
+                    ? t('workspaces.workspaceSidebar.prFilterAll')
+                    : option === 'has_pr'
+                      ? t('workspaces.workspaceSidebar.prFilterHasPr')
+                      : t('workspaces.workspaceSidebar.prFilterNoPr'),
+              }))}
               onChange={onPrFilterChange}
               icon={GitPullRequestIcon}
-              label="PR"
+              label={t('workspaces.workspaceSidebar.prFilterLabel')}
             />
             {hasActiveFilters && (
               <div className="self-end">
                 <PrimaryButton
                   variant="tertiary"
-                  value="Clear filters"
+                  value={t('workspaces.clearFilters')}
                   actionIcon={XIcon}
                   onClick={onClearFilters}
                 />
@@ -249,6 +266,9 @@ export function WorkspacesSidebarContainer({
   );
   const [isSortDialogOpen, setIsSortDialogOpen] = useState(false);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
+  const { t } = useTranslation('common');
+  const sortDialogTitle = t('workspaces.workspaceSidebar.sortButtonTitle');
+  const filterDialogTitle = t('workspaces.workspaceSidebar.filterButtonTitle');
 
   const layoutMode: WorkspaceLayoutMode = isAccordionLayout
     ? 'accordion'
@@ -327,7 +347,10 @@ export function WorkspacesSidebarContainer({
   // Build flat project options for MultiSelectDropdown
   const projectOptions = useMemo<MultiSelectDropdownOption<string>[]>(
     () => [
-      { value: NO_PROJECT_ID, label: 'No project' },
+      {
+        value: NO_PROJECT_ID,
+        label: t('workspaces.workspaceSidebar.noProject'),
+      },
       ...projectGroups.flatMap((g) =>
         g.projects.map((p) => ({
           value: p.id,
@@ -344,7 +367,7 @@ export function WorkspacesSidebarContainer({
         }))
       ),
     ],
-    [projectGroups]
+    [projectGroups, t]
   );
 
   const hasActiveFilters =
@@ -555,8 +578,8 @@ export function WorkspacesSidebarContainer({
                 : SortDescendingIcon
             }
             onClick={() => setIsSortDialogOpen(true)}
-            aria-label="Open workspace sort settings"
-            title="Sort workspaces"
+            aria-label={sortDialogTitle}
+            title={sortDialogTitle}
             className={cn(
               '!h-cta !px-half !py-0',
               hasNonDefaultSort && 'text-brand hover:text-brand'
@@ -566,8 +589,8 @@ export function WorkspacesSidebarContainer({
           <IconButton
             icon={FunnelIcon}
             onClick={() => setIsFilterDialogOpen(true)}
-            aria-label="Open workspace filter settings"
-            title="Filter workspaces"
+            aria-label={filterDialogTitle}
+            title={filterDialogTitle}
             className="!h-cta !px-half !py-0"
             iconClassName={cn('size-icon-lg', hasActiveFilters && 'text-brand')}
           />
