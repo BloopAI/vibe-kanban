@@ -485,7 +485,7 @@ export function ProjectRightSidebarContainer() {
       issueResolution={
         rightPanelState.kind === 'issue'
           ? rightPanelState.resolution
-          : undefined
+          : null
       }
       onExpectIssueOpen={markExpectedIssue}
     />

@@ -45,8 +45,8 @@ import { extractAttachmentIds } from '@/lib/attachmentUtils';
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
 interface KanbanIssuePanelContainerProps {
-  issueResolution?: 'resolving' | 'ready' | 'missing';
-  onExpectIssueOpen?: (issueId: string) => void;
+  issueResolution: 'resolving' | 'ready' | 'missing' | null;
+  onExpectIssueOpen: (issueId: string) => void;
 }
 
 /**
