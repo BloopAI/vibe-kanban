@@ -570,7 +570,8 @@ export function WorkspacesSidebarContainer({
             title="Filter workspaces"
             className={cn(
               '!h-cta !px-half !py-0',
-              hasActiveFilters && 'text-brand hover:text-brand'
+              hasActiveFilters &&
+                '!bg-brand !text-on-brand hover:!bg-brand-hover hover:!text-on-brand'
             )}
             iconClassName="size-icon-lg"
           />
