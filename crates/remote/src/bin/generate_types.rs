@@ -1,26 +1,28 @@
 use std::{env, fs, path::Path};
 
+use api_types::{
+    Attachment, AttachmentUrlResponse, AttachmentWithBlob, Blob, CreateIssueAssigneeRequest,
+    CreateIssueCommentReactionRequest, CreateIssueCommentRequest, CreateIssueFollowerRequest,
+    CreateIssueRelationshipRequest, CreateIssueRequest, CreateIssueTagRequest,
+    CreateNotificationRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
+    Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
+    IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationType,
+    OrganizationMember, Project, ProjectStatus, PullRequest, PullRequestStatus, Tag,
+    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
+    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
+    User, UserData, Workspace,
+};
 use remote::{
-    routes::all_mutation_definitions,
-    routes::attachments::{
-        CommitAttachmentsRequest, CommitAttachmentsResponse, ConfirmUploadRequest,
-        InitUploadRequest, InitUploadResponse,
+    routes::{
+        all_mutation_definitions,
+        attachments::{
+            CommitAttachmentsRequest, CommitAttachmentsResponse, ConfirmUploadRequest,
+            InitUploadRequest, InitUploadResponse,
+        },
     },
-    shapes::all_shapes,
+    shape_routes::all_shape_routes,
 };
 use ts_rs::TS;
-use api_types::{
-    Attachment, AttachmentUrlResponse, AttachmentWithBlob, Blob,
-    CreateIssueAssigneeRequest, CreateIssueCommentReactionRequest, CreateIssueCommentRequest,
-    CreateIssueFollowerRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
-    CreateIssueTagRequest, CreateNotificationRequest, CreateProjectRequest,
-    CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee, IssueComment,
-    IssueCommentReaction, IssueFollower, IssueRelationship, IssueRelationshipType, IssueTag,
-    IssuePriority, MemberRole, Notification, NotificationType, OrganizationMember, Project,
-    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueCommentReactionRequest,
-    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
-    UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
-};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -55,9 +57,8 @@ fn main() {
     }
 }
 
-/// Generate TypeScript shapes file with embedded types and shape definitions
 fn export_shapes() -> String {
-    let shapes = all_shapes();
+    let routes = all_shape_routes();
 
     let mut output = String::new();
 
@@ -138,6 +139,7 @@ fn export_shapes() -> String {
     output.push_str("  readonly table: string;\n");
     output.push_str("  readonly params: readonly string[];\n");
     output.push_str("  readonly url: string;\n");
+    output.push_str("  readonly fallbackUrl: string;\n");
     output.push_str(
         "  readonly _type: T;  // Phantom field for type inference (not present at runtime)\n",
     );
@@ -148,14 +150,18 @@ fn export_shapes() -> String {
     output.push_str("function defineShape<T>(\n");
     output.push_str("  table: string,\n");
     output.push_str("  params: readonly string[],\n");
-    output.push_str("  url: string\n");
+    output.push_str("  url: string,\n");
+    output.push_str("  fallbackUrl: string\n");
     output.push_str("): ShapeDefinition<T> {\n");
-    output.push_str("  return { table, params, url } as ShapeDefinition<T>;\n");
+    output.push_str("  return { table, params, url, fallbackUrl } as ShapeDefinition<T>;\n");
     output.push_str("}\n\n");
 
     // Generate individual shape definitions
     output.push_str("// Individual shape definitions with embedded types\n");
-    for (name, shape) in &shapes {
+    for route in &routes {
+        let shape = route.shape;
+        let name = shape.name();
+
         let params_str = shape
             .params()
             .iter()
@@ -164,12 +170,13 @@ fn export_shapes() -> String {
             .join(", ");
 
         output.push_str(&format!(
-            "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}'\n);\n\n",
+            "export const {} = defineShape<{}>(\n  '{}',\n  [{}] as const,\n  '/v1{}',\n  '/v1{}'\n);\n\n",
             name,
             shape.ts_type_name(),
             shape.table(),
             params_str,
-            shape.url()
+            shape.url(),
+            route.fallback_url,
         ));
     }
 
@@ -201,9 +208,7 @@ fn export_shapes() -> String {
     output.push_str("  name: string,\n");
     output.push_str("  url: string\n");
     output.push_str("): MutationDefinition<TRow, TCreate, TUpdate> {\n");
-    output.push_str(
-        "  return { name, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n",
-    );
+    output.push_str("  return { name, url } as MutationDefinition<TRow, TCreate, TUpdate>;\n");
     output.push_str("}\n\n");
 
     // Generate individual mutation definitions
@@ -216,12 +221,7 @@ fn export_shapes() -> String {
 
         output.push_str(&format!(
             "export const {}_MUTATION = defineMutation<{}, {}, {}>(\n  '{}',\n  '/v1/{}'\n);\n\n",
-            const_name,
-            ts_type,
-            create_type,
-            update_type,
-            ts_type,
-            mutation.table,
+            const_name, ts_type, create_type, update_type, ts_type, mutation.table,
         ));
     }
 

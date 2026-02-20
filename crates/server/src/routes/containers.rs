@@ -4,19 +4,16 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use db::models::workspace::{Workspace, WorkspaceContext};
+use db::models::{
+    requests::ContainerQuery,
+    workspace::{Workspace, WorkspaceContext},
+};
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct ContainerQuery {
-    #[serde(rename = "ref")]
-    pub container_ref: String,
-}
 
 #[derive(Debug, Serialize)]
 pub struct ContainerInfo {

@@ -10,11 +10,9 @@ use axum::{
 use db::models::repo::{Repo, SearchResult, UpdateRepo};
 use deployment::Deployment;
 use git::{GitBranch, GitRemote};
+use git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind};
 use serde::{Deserialize, Serialize};
-use services::services::{
-    file_search::SearchQuery,
-    git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind},
-};
+use services::services::file_search::SearchQuery;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;

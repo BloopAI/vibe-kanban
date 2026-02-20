@@ -462,7 +462,7 @@
     "issueDescriptionPlaceholder": "輸入任務描述...",
     "createDraftWorkspaceImmediately": "立即建立草稿工作區",
     "createDraftWorkspaceDescription": "勾選後自動建立工作區",
-    "createTask": "建立任務",
+    "createIssue": "建立任務",
     "newIssue": "新問題",
     "previewCodeBlock": "[程式碼區塊]",
     "previewImage": "[圖片]",

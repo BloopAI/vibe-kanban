@@ -11,12 +11,12 @@ use db::models::{
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
 use git::GitServiceError;
+use git_host::GitHostError;
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
-    git_host::GitHostError,
     image::ImageError,
     migration::MigrationError,
     remote_client::RemoteClientError,

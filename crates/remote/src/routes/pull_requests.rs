@@ -1,8 +1,12 @@
+use api_types::{
+    ListPullRequestsQuery, ListPullRequestsResponse, PullRequest, PullRequestStatus,
+    UpsertPullRequestRequest,
+};
 use axum::{
     Json, Router,
     extract::{Extension, Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::get,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -16,11 +20,10 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{issues::IssueRepository, pull_requests::PullRequestRepository, workspaces::WorkspaceRepository},
-};
-use api_types::{
-    ListPullRequestsQuery, ListPullRequestsResponse, PullRequest, PullRequestStatus,
-    UpsertPullRequestRequest,
+    db::{
+        issues::IssueRepository, pull_requests::PullRequestRepository,
+        workspaces::WorkspaceRepository,
+    },
 };
 
 #[derive(Debug, Deserialize)]

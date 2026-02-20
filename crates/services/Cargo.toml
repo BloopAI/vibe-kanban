@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.1.15"
+version = "0.1.16"
 edition = "2024"
 
 [features]
@@ -12,6 +12,7 @@ qa-mode = ["executors/qa-mode"]
 api-types = { path = "../api-types" }
 utils = { path = "../utils" }
 git = { path = "../git" }
+git-host = { path = "../git-host" }
 executors = { path = "../executors" }
 db = { path = "../db" }
 tokio = { workspace = true }
@@ -29,7 +30,6 @@ dirs = "5.0"
 git2 = { workspace = true }
 tempfile = "3.21"
 async-trait = { workspace = true }
-enum_dispatch = "0.3.13"
 rust-embed = "8.2"
 ignore = "0.4"
 notify-rust = "4.11"

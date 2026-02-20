@@ -476,7 +476,7 @@
     "issueDescriptionPlaceholder": "Enter task description here...",
     "createDraftWorkspaceImmediately": "Create draft workspace immediately",
     "createDraftWorkspaceDescription": "Tick to automatically create a workspace",
-    "createTask": "Create Task",
+    "createIssue": "Create Issue",
     "newIssue": "New Issue",
     "previewCodeBlock": "[Code block]",
     "previewImage": "[Image]",

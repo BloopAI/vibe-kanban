@@ -160,6 +160,7 @@ export interface ShapeDefinition<T> {
   readonly table: string;
   readonly params: readonly string[];
   readonly url: string;
+  readonly fallbackUrl: string;
   readonly _type: T;  // Phantom field for type inference (not present at runtime)
 }
 
@@ -167,106 +168,123 @@ export interface ShapeDefinition<T> {
 function defineShape<T>(
   table: string,
   params: readonly string[],
-  url: string
+  url: string,
+  fallbackUrl: string
 ): ShapeDefinition<T> {
-  return { table, params, url } as ShapeDefinition<T>;
+  return { table, params, url, fallbackUrl } as ShapeDefinition<T>;
 }
 
 // Individual shape definitions with embedded types
 export const PROJECTS_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
-  '/v1/shape/projects'
+  '/v1/shape/projects',
+  '/v1/fallback/projects'
 );
 
 export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
-  '/v1/shape/notifications'
+  '/v1/shape/notifications',
+  '/v1/fallback/notifications'
 );
 
 export const ORGANIZATION_MEMBERS_SHAPE = defineShape<OrganizationMember>(
   'organization_member_metadata',
   ['organization_id'] as const,
-  '/v1/shape/organization_members'
+  '/v1/shape/organization_members',
+  '/v1/fallback/organization_members'
 );
 
 export const USERS_SHAPE = defineShape<User>(
   'users',
   ['organization_id'] as const,
-  '/v1/shape/users'
+  '/v1/shape/users',
+  '/v1/fallback/users'
 );
 
 export const PROJECT_TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/tags'
+  '/v1/shape/project/{project_id}/tags',
+  '/v1/fallback/tags'
 );
 
 export const PROJECT_PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/project_statuses'
+  '/v1/shape/project/{project_id}/project_statuses',
+  '/v1/fallback/project_statuses'
 );
 
 export const PROJECT_ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issues'
+  '/v1/shape/project/{project_id}/issues',
+  '/v1/fallback/issues'
 );
 
 export const USER_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['owner_user_id'] as const,
-  '/v1/shape/user/workspaces'
+  '/v1/shape/user/workspaces',
+  '/v1/fallback/user_workspaces'
 );
 
 export const PROJECT_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/workspaces'
+  '/v1/shape/project/{project_id}/workspaces',
+  '/v1/fallback/project_workspaces'
 );
 
 export const PROJECT_ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_assignees'
+  '/v1/shape/project/{project_id}/issue_assignees',
+  '/v1/fallback/issue_assignees'
 );
 
 export const PROJECT_ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_followers'
+  '/v1/shape/project/{project_id}/issue_followers',
+  '/v1/fallback/issue_followers'
 );
 
 export const PROJECT_ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_tags'
+  '/v1/shape/project/{project_id}/issue_tags',
+  '/v1/fallback/issue_tags'
 );
 
 export const PROJECT_ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_relationships'
+  '/v1/shape/project/{project_id}/issue_relationships',
+  '/v1/fallback/issue_relationships'
 );
 
 export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   'pull_requests',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/pull_requests'
+  '/v1/shape/project/{project_id}/pull_requests',
+  '/v1/fallback/pull_requests'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
-  '/v1/shape/issue/{issue_id}/comments'
+  '/v1/shape/issue/{issue_id}/comments',
+  '/v1/fallback/issue_comments'
 );
 
 export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
-  '/v1/shape/issue/{issue_id}/reactions'
+  '/v1/shape/issue/{issue_id}/reactions',
+  '/v1/fallback/issue_comment_reactions'
 );
 
 // =============================================================================

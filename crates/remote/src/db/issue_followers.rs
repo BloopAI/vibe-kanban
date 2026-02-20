@@ -1,10 +1,9 @@
+use api_types::{DeleteResponse, IssueFollower, MutationResponse};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::IssueFollower;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueFollowerError {
@@ -56,6 +55,27 @@ impl IssueFollowerRepository {
         .fetch_all(pool)
         .await?;
 
+        Ok(records)
+    }
+
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<IssueFollower>, IssueFollowerError> {
+        let records = sqlx::query_as!(
+            IssueFollower,
+            r#"
+            SELECT
+                id       AS "id!: Uuid",
+                issue_id AS "issue_id!: Uuid",
+                user_id  AS "user_id!: Uuid"
+            FROM issue_followers
+            WHERE issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
         Ok(records)
     }
 

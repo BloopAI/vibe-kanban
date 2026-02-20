@@ -1,6 +1,6 @@
 //! All shape constant instances for realtime streaming.
 
-use crate::shape_definition::{ShapeDefinition, ShapeExport};
+use crate::shape_definition::ShapeDefinition;
 use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
@@ -12,6 +12,7 @@ use api_types::{
 // =============================================================================
 
 pub const PROJECTS_SHAPE: ShapeDefinition<Project> = crate::define_shape!(
+    name: "PROJECTS_SHAPE",
     table: "projects",
     where_clause: r#""organization_id" = $1"#,
     url: "/shape/projects",
@@ -19,6 +20,7 @@ pub const PROJECTS_SHAPE: ShapeDefinition<Project> = crate::define_shape!(
 );
 
 pub const NOTIFICATIONS_SHAPE: ShapeDefinition<Notification> = crate::define_shape!(
+    name: "NOTIFICATIONS_SHAPE",
     table: "notifications",
     where_clause: r#""organization_id" = $1 AND "user_id" = $2"#,
     url: "/shape/notifications",
@@ -26,6 +28,7 @@ pub const NOTIFICATIONS_SHAPE: ShapeDefinition<Notification> = crate::define_sha
 );
 
 pub const ORGANIZATION_MEMBERS_SHAPE: ShapeDefinition<OrganizationMember> = crate::define_shape!(
+    name: "ORGANIZATION_MEMBERS_SHAPE",
     table: "organization_member_metadata",
     where_clause: r#""organization_id" = $1"#,
     url: "/shape/organization_members",
@@ -33,6 +36,7 @@ pub const ORGANIZATION_MEMBERS_SHAPE: ShapeDefinition<OrganizationMember> = crat
 );
 
 pub const USERS_SHAPE: ShapeDefinition<User> = crate::define_shape!(
+    name: "USERS_SHAPE",
     table: "users",
     where_clause: r#""id" IN (SELECT user_id FROM organization_member_metadata WHERE "organization_id" = $1)"#,
     url: "/shape/users",
@@ -44,6 +48,7 @@ pub const USERS_SHAPE: ShapeDefinition<User> = crate::define_shape!(
 // =============================================================================
 
 pub const PROJECT_TAGS_SHAPE: ShapeDefinition<Tag> = crate::define_shape!(
+    name: "PROJECT_TAGS_SHAPE",
     table: "tags",
     where_clause: r#""project_id" = $1"#,
     url: "/shape/project/{project_id}/tags",
@@ -51,6 +56,7 @@ pub const PROJECT_TAGS_SHAPE: ShapeDefinition<Tag> = crate::define_shape!(
 );
 
 pub const PROJECT_PROJECT_STATUSES_SHAPE: ShapeDefinition<ProjectStatus> = crate::define_shape!(
+    name: "PROJECT_PROJECT_STATUSES_SHAPE",
     table: "project_statuses",
     where_clause: r#""project_id" = $1"#,
     url: "/shape/project/{project_id}/project_statuses",
@@ -58,6 +64,7 @@ pub const PROJECT_PROJECT_STATUSES_SHAPE: ShapeDefinition<ProjectStatus> = crate
 );
 
 pub const PROJECT_ISSUES_SHAPE: ShapeDefinition<Issue> = crate::define_shape!(
+    name: "PROJECT_ISSUES_SHAPE",
     table: "issues",
     where_clause: r#""project_id" = $1"#,
     url: "/shape/project/{project_id}/issues",
@@ -65,6 +72,7 @@ pub const PROJECT_ISSUES_SHAPE: ShapeDefinition<Issue> = crate::define_shape!(
 );
 
 pub const USER_WORKSPACES_SHAPE: ShapeDefinition<Workspace> = crate::define_shape!(
+    name: "USER_WORKSPACES_SHAPE",
     table: "workspaces",
     where_clause: r#""owner_user_id" = $1"#,
     url: "/shape/user/workspaces",
@@ -72,6 +80,7 @@ pub const USER_WORKSPACES_SHAPE: ShapeDefinition<Workspace> = crate::define_shap
 );
 
 pub const PROJECT_WORKSPACES_SHAPE: ShapeDefinition<Workspace> = crate::define_shape!(
+    name: "PROJECT_WORKSPACES_SHAPE",
     table: "workspaces",
     where_clause: r#""project_id" = $1"#,
     url: "/shape/project/{project_id}/workspaces",
@@ -83,6 +92,7 @@ pub const PROJECT_WORKSPACES_SHAPE: ShapeDefinition<Workspace> = crate::define_s
 // =============================================================================
 
 pub const PROJECT_ISSUE_ASSIGNEES_SHAPE: ShapeDefinition<IssueAssignee> = crate::define_shape!(
+    name: "PROJECT_ISSUE_ASSIGNEES_SHAPE",
     table: "issue_assignees",
     where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
     url: "/shape/project/{project_id}/issue_assignees",
@@ -90,6 +100,7 @@ pub const PROJECT_ISSUE_ASSIGNEES_SHAPE: ShapeDefinition<IssueAssignee> = crate:
 );
 
 pub const PROJECT_ISSUE_FOLLOWERS_SHAPE: ShapeDefinition<IssueFollower> = crate::define_shape!(
+    name: "PROJECT_ISSUE_FOLLOWERS_SHAPE",
     table: "issue_followers",
     where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
     url: "/shape/project/{project_id}/issue_followers",
@@ -97,6 +108,7 @@ pub const PROJECT_ISSUE_FOLLOWERS_SHAPE: ShapeDefinition<IssueFollower> = crate:
 );
 
 pub const PROJECT_ISSUE_TAGS_SHAPE: ShapeDefinition<IssueTag> = crate::define_shape!(
+    name: "PROJECT_ISSUE_TAGS_SHAPE",
     table: "issue_tags",
     where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
     url: "/shape/project/{project_id}/issue_tags",
@@ -104,6 +116,7 @@ pub const PROJECT_ISSUE_TAGS_SHAPE: ShapeDefinition<IssueTag> = crate::define_sh
 );
 
 pub const PROJECT_ISSUE_RELATIONSHIPS_SHAPE: ShapeDefinition<IssueRelationship> = crate::define_shape!(
+    name: "PROJECT_ISSUE_RELATIONSHIPS_SHAPE",
     table: "issue_relationships",
     where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
     url: "/shape/project/{project_id}/issue_relationships",
@@ -111,6 +124,7 @@ pub const PROJECT_ISSUE_RELATIONSHIPS_SHAPE: ShapeDefinition<IssueRelationship> 
 );
 
 pub const PROJECT_PULL_REQUESTS_SHAPE: ShapeDefinition<PullRequest> = crate::define_shape!(
+    name: "PROJECT_PULL_REQUESTS_SHAPE",
     table: "pull_requests",
     where_clause: r#""issue_id" IN (SELECT id FROM issues WHERE "project_id" = $1)"#,
     url: "/shape/project/{project_id}/pull_requests",
@@ -122,6 +136,7 @@ pub const PROJECT_PULL_REQUESTS_SHAPE: ShapeDefinition<PullRequest> = crate::def
 // =============================================================================
 
 pub const ISSUE_COMMENTS_SHAPE: ShapeDefinition<IssueComment> = crate::define_shape!(
+    name: "ISSUE_COMMENTS_SHAPE",
     table: "issue_comments",
     where_clause: r#""issue_id" = $1"#,
     url: "/shape/issue/{issue_id}/comments",
@@ -129,39 +144,10 @@ pub const ISSUE_COMMENTS_SHAPE: ShapeDefinition<IssueComment> = crate::define_sh
 );
 
 pub const ISSUE_REACTIONS_SHAPE: ShapeDefinition<IssueCommentReaction> = crate::define_shape!(
+    name: "ISSUE_REACTIONS_SHAPE",
     table: "issue_comment_reactions",
     where_clause: r#""comment_id" IN (SELECT id FROM issue_comments WHERE "issue_id" = $1)"#,
     url: "/shape/issue/{issue_id}/reactions",
     params: ["issue_id"],
 );
 
-// =============================================================================
-// Export
-// =============================================================================
-
-/// All shape definitions for realtime streaming, with their const names.
-pub fn all_shapes() -> Vec<(&'static str, &'static dyn ShapeExport)> {
-    macro_rules! named_shapes {
-        ($($name:ident),* $(,)?) => {
-            vec![$(( stringify!($name), &$name as &'static dyn ShapeExport )),*]
-        };
-    }
-    named_shapes![
-        PROJECTS_SHAPE,
-        NOTIFICATIONS_SHAPE,
-        ORGANIZATION_MEMBERS_SHAPE,
-        USERS_SHAPE,
-        PROJECT_TAGS_SHAPE,
-        PROJECT_PROJECT_STATUSES_SHAPE,
-        PROJECT_ISSUES_SHAPE,
-        USER_WORKSPACES_SHAPE,
-        PROJECT_WORKSPACES_SHAPE,
-        PROJECT_ISSUE_ASSIGNEES_SHAPE,
-        PROJECT_ISSUE_FOLLOWERS_SHAPE,
-        PROJECT_ISSUE_TAGS_SHAPE,
-        PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
-        PROJECT_PULL_REQUESTS_SHAPE,
-        ISSUE_COMMENTS_SHAPE,
-        ISSUE_REACTIONS_SHAPE,
-    ]
-}

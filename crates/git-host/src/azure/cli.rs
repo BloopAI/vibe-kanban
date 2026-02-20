@@ -15,7 +15,7 @@ use serde::Deserialize;
 use thiserror::Error;
 use utils::shell::resolve_executable_path_blocking;
 
-use crate::services::git_host::types::{CreatePrRequest, UnifiedPrComment};
+use crate::types::{CreatePrRequest, UnifiedPrComment};
 
 #[derive(Debug, Clone)]
 pub struct AzureRepoInfo {

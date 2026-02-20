@@ -1,0 +1,26 @@
+[package]
+name = "mcp"
+version = "0.1.16"
+edition = "2024"
+
+[lints.clippy]
+uninlined-format-args = "allow"
+
+[dependencies]
+api-types = { path = "../api-types" }
+db = { path = "../db" }
+executors = { path = "../executors" }
+utils = { path = "../utils" }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
+schemars = { workspace = true }
+sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
+reqwest = { workspace = true }
+rustls = { workspace = true }
+regex = "1"
