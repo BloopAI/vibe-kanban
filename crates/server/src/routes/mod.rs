@@ -27,6 +27,7 @@ pub mod sessions;
 pub mod tags;
 pub mod task_attempts;
 pub mod terminal;
+pub mod tick;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create routers with different middleware layers
@@ -48,6 +49,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(migration::router())
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
+        .merge(tick::router())
         .nest("/remote", remote::router())
         .nest("/images", images::routes())
         .layer(ValidateRequestHeaderLayer::custom(

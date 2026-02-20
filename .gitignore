@@ -79,6 +79,7 @@ vibe-kanban-*.tgz
 .dev-ports.json
 
 dev_assets
+slack.json
 /frontend/.env.sentry-build-plugin
 .ssh
 
