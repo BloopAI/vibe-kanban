@@ -474,15 +474,15 @@ export function WorkspacesSidebarContainer({
         const aTimestamp = getWorkspaceSortTimestamp(a, workspaceSort.sortBy);
         const bTimestamp = getWorkspaceSortTimestamp(b, workspaceSort.sortBy);
 
-        // Workspaces without the selected timestamp are always sorted last.
+        // Workspaces without the selected timestamp are always sorted first.
         if (aTimestamp === null && bTimestamp === null) {
           return a.name.localeCompare(b.name);
         }
         if (aTimestamp === null) {
-          return 1;
+          return -1;
         }
         if (bTimestamp === null) {
-          return -1;
+          return 1;
         }
 
         if (aTimestamp === bTimestamp) {
