@@ -91,10 +91,10 @@ function WorkspacesSortDialog({
         <div className="border-b border-border px-double pb-base pt-double">
           <DialogHeader className="space-y-half">
             <DialogTitle>
-              {t('workspaces.workspaceSidebar.sortDialogTitle')}
+              {t('kanban.workspaceSidebar.sortDialogTitle')}
             </DialogTitle>
             <DialogDescription>
-              {t('workspaces.workspaceSidebar.sortDialogDescription')}
+              {t('kanban.workspaceSidebar.sortDialogDescription')}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -103,7 +103,7 @@ function WorkspacesSortDialog({
           <div className="flex flex-col gap-base">
             <div className="flex items-center justify-between gap-base">
               <span className="text-sm text-low">
-                {t('workspaces.workspaceSidebar.sortByLabel')}
+                {t('kanban.workspaceSidebar.sortByLabel')}
               </span>
               <PropertyDropdown
                 value={sortBy}
@@ -111,28 +111,28 @@ function WorkspacesSortDialog({
                   value: option,
                   label:
                     option === 'updated_at'
-                      ? t('workspaces.workspaceSidebar.sortUpdatedAt')
-                      : t('workspaces.workspaceSidebar.sortCreatedAt'),
+                      ? t('kanban.workspaceSidebar.sortUpdatedAt')
+                      : t('kanban.workspaceSidebar.sortCreatedAt'),
                 }))}
                 onChange={onSortByChange}
               />
             </div>
             <div className="flex items-center justify-between gap-base">
               <span className="text-sm text-low">
-                {t('workspaces.workspaceSidebar.sortOrderLabel')}
+                {t('kanban.workspaceSidebar.sortOrderLabel')}
               </span>
               <ButtonGroup>
                 <ButtonGroupItem
                   active={sortOrder === 'desc'}
                   onClick={() => onSortOrderChange('desc')}
                 >
-                  {t('workspaces.sortDescending')}
+                  {t('kanban.sortDescending')}
                 </ButtonGroupItem>
                 <ButtonGroupItem
                   active={sortOrder === 'asc'}
                   onClick={() => onSortOrderChange('asc')}
                 >
-                  {t('workspaces.sortAscending')}
+                  {t('kanban.sortAscending')}
                 </ButtonGroupItem>
               </ButtonGroup>
             </div>
@@ -174,10 +174,10 @@ function WorkspacesFilterDialog({
         <div className="border-b border-border px-double pb-base pt-double">
           <DialogHeader className="space-y-half">
             <DialogTitle>
-              {t('workspaces.workspaceSidebar.filterDialogTitle')}
+              {t('kanban.workspaceSidebar.filterDialogTitle')}
             </DialogTitle>
             <DialogDescription>
-              {t('workspaces.workspaceSidebar.filterDialogDescription')}
+              {t('kanban.workspaceSidebar.filterDialogDescription')}
             </DialogDescription>
           </DialogHeader>
         </div>
@@ -189,7 +189,7 @@ function WorkspacesFilterDialog({
               options={projectOptions}
               onChange={onProjectFilterChange}
               icon={FolderIcon}
-              label={t('workspaces.workspaceSidebar.projectFilterLabel')}
+              label={t('kanban.workspaceSidebar.projectFilterLabel')}
             />
             <PropertyDropdown
               value={prFilter}
@@ -197,20 +197,20 @@ function WorkspacesFilterDialog({
                 value: option,
                 label:
                   option === 'all'
-                    ? t('workspaces.workspaceSidebar.prFilterAll')
+                    ? t('kanban.workspaceSidebar.prFilterAll')
                     : option === 'has_pr'
-                      ? t('workspaces.workspaceSidebar.prFilterHasPr')
-                      : t('workspaces.workspaceSidebar.prFilterNoPr'),
+                      ? t('kanban.workspaceSidebar.prFilterHasPr')
+                      : t('kanban.workspaceSidebar.prFilterNoPr'),
               }))}
               onChange={onPrFilterChange}
               icon={GitPullRequestIcon}
-              label={t('workspaces.workspaceSidebar.prFilterLabel')}
+              label={t('kanban.workspaceSidebar.prFilterLabel')}
             />
             {hasActiveFilters && (
               <div className="self-end">
                 <PrimaryButton
                   variant="tertiary"
-                  value={t('workspaces.clearFilters')}
+                  value={t('kanban.clearFilters')}
                   actionIcon={XIcon}
                   onClick={onClearFilters}
                 />
@@ -267,8 +267,8 @@ export function WorkspacesSidebarContainer({
   const [isSortDialogOpen, setIsSortDialogOpen] = useState(false);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
   const { t } = useTranslation('common');
-  const sortDialogTitle = t('workspaces.workspaceSidebar.sortButtonTitle');
-  const filterDialogTitle = t('workspaces.workspaceSidebar.filterButtonTitle');
+  const sortDialogTitle = t('kanban.workspaceSidebar.sortButtonTitle');
+  const filterDialogTitle = t('kanban.workspaceSidebar.filterButtonTitle');
 
   const layoutMode: WorkspaceLayoutMode = isAccordionLayout
     ? 'accordion'
@@ -349,7 +349,7 @@ export function WorkspacesSidebarContainer({
     () => [
       {
         value: NO_PROJECT_ID,
-        label: t('workspaces.workspaceSidebar.noProject'),
+        label: t('kanban.workspaceSidebar.noProject'),
       },
       ...projectGroups.flatMap((g) =>
         g.projects.map((p) => ({
