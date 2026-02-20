@@ -43,10 +43,8 @@ interface WorkspacesSidebarProps {
   onLoadMore?: () => void;
   /** Whether there are more workspaces to load */
   hasMoreWorkspaces?: boolean;
-  /** Filter bar rendered below the search input */
-  filterBar?: React.ReactNode;
-  /** Called when the search input gains or loses focus */
-  onSearchFocusChange?: (focused: boolean) => void;
+  /** Controls rendered beside the search input */
+  searchControls?: React.ReactNode;
 }
 
 function WorkspaceList({
@@ -102,8 +100,7 @@ export function WorkspacesSidebar({
   onToggleLayoutMode,
   onLoadMore,
   hasMoreWorkspaces = false,
-  filterBar,
-  onSearchFocusChange,
+  searchControls,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -122,33 +119,21 @@ export function WorkspacesSidebar({
     }
   };
 
-  // Categorize workspaces for accordion layout, sorted by latestProcessCompletedAt (oldest first)
+  // Categorize workspaces for accordion layout
   const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
     useMemo(() => {
-      const sortByCompletedAt = (a: Workspace, b: Workspace) => {
-        if (a.isPinned !== b.isPinned) return a.isPinned ? -1 : 1;
-        const aTime = a.latestProcessCompletedAt
-          ? new Date(a.latestProcessCompletedAt).getTime()
-          : Infinity;
-        const bTime = b.latestProcessCompletedAt
-          ? new Date(b.latestProcessCompletedAt).getTime()
-          : Infinity;
-        return aTime - bTime;
-      };
       // Running workspaces should stay in the "Running" section even if unseen.
       const needsAttention = (ws: Workspace) =>
         ws.hasPendingApproval || (ws.hasUnseenActivity && !ws.isRunning);
 
       return {
-        raisedHandWorkspaces: workspaces
-          .filter((ws) => needsAttention(ws))
-          .sort(sortByCompletedAt),
-        idleWorkspaces: workspaces
-          .filter((ws) => !ws.isRunning && !needsAttention(ws))
-          .sort(sortByCompletedAt),
-        runningWorkspaces: workspaces
-          .filter((ws) => ws.isRunning && !needsAttention(ws))
-          .sort(sortByCompletedAt),
+        raisedHandWorkspaces: workspaces.filter((ws) => needsAttention(ws)),
+        idleWorkspaces: workspaces.filter(
+          (ws) => !ws.isRunning && !needsAttention(ws)
+        ),
+        runningWorkspaces: workspaces.filter(
+          (ws) => ws.isRunning && !needsAttention(ws)
+        ),
       };
     }, [workspaces]);
 
@@ -181,10 +166,9 @@ export function WorkspacesSidebar({
               value={searchQuery}
               onChange={onSearchChange}
               placeholder={t('common:workspaces.searchPlaceholder')}
-              onFocusChange={onSearchFocusChange}
             />
           </div>
-          {filterBar}
+          {searchControls}
         </div>
       </div>
 

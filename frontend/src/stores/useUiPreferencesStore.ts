@@ -174,10 +174,17 @@ export const resolveKanbanProjectState = (
 
 // Workspace sidebar filter state
 export type WorkspacePrFilter = 'all' | 'has_pr' | 'no_pr';
+export type WorkspaceSortBy = 'updated_at' | 'created_at';
+export type WorkspaceSortOrder = 'asc' | 'desc';
 
 export type WorkspaceFilterState = {
   projectIds: string[]; // remote project IDs
   prFilter: WorkspacePrFilter;
+};
+
+export type WorkspaceSortState = {
+  sortBy: WorkspaceSortBy;
+  sortOrder: WorkspaceSortOrder;
 };
 
 const DEFAULT_WORKSPACE_FILTER_STATE: WorkspaceFilterState = {
@@ -185,11 +192,17 @@ const DEFAULT_WORKSPACE_FILTER_STATE: WorkspaceFilterState = {
   prFilter: 'all',
 };
 
+const DEFAULT_WORKSPACE_SORT_STATE: WorkspaceSortState = {
+  sortBy: 'updated_at',
+  sortOrder: 'desc',
+};
+
 // Centralized persist keys for type safety
 export const PERSIST_KEYS = {
   // Sidebar sections
   workspacesSidebarArchived: 'workspaces-sidebar-archived',
-  workspacesSidebarAccordionLayout: 'workspaces-sidebar-accordion-layout',
+  // v2 key forces accordion default to true for all users
+  workspacesSidebarAccordionLayout: 'workspaces-sidebar-accordion-layout-v2',
   workspacesSidebarRaisedHand: 'workspaces-sidebar-raised-hand',
   workspacesSidebarNotRunning: 'workspaces-sidebar-not-running',
   workspacesSidebarRunning: 'workspaces-sidebar-running',
@@ -294,6 +307,7 @@ type State = {
 
   // Workspace sidebar filter state
   workspaceFilters: WorkspaceFilterState;
+  workspaceSort: WorkspaceSortState;
 
   // Kanban view mode state
   kanbanViewMode: KanbanViewMode;
@@ -364,6 +378,8 @@ type State = {
   setWorkspaceProjectFilter: (projectIds: string[]) => void;
   setWorkspacePrFilter: (prFilter: WorkspacePrFilter) => void;
   clearWorkspaceFilters: () => void;
+  setWorkspaceSortBy: (sortBy: WorkspaceSortBy) => void;
+  setWorkspaceSortOrder: (sortOrder: WorkspaceSortOrder) => void;
 
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
@@ -395,6 +411,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Workspace sidebar filter state
   workspaceFilters: DEFAULT_WORKSPACE_FILTER_STATE,
+  workspaceSort: DEFAULT_WORKSPACE_SORT_STATE,
 
   // Kanban view mode state
   kanbanViewMode: 'kanban' as KanbanViewMode,
@@ -684,6 +701,16 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   clearWorkspaceFilters: () =>
     set({ workspaceFilters: DEFAULT_WORKSPACE_FILTER_STATE }),
+
+  setWorkspaceSortBy: (sortBy) =>
+    set((s) => ({
+      workspaceSort: { ...s.workspaceSort, sortBy },
+    })),
+
+  setWorkspaceSortOrder: (sortOrder) =>
+    set((s) => ({
+      workspaceSort: { ...s.workspaceSort, sortOrder },
+    })),
 
   // Kanban view mode actions
   setKanbanViewMode: (mode) => set({ kanbanViewMode: mode }),

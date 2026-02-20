@@ -7,16 +7,46 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import type { Project } from 'shared/remote-types';
 import { splitMessageToTitleDescription } from '@/utils/string';
+import { cn } from '@/lib/utils';
 import {
   PERSIST_KEYS,
   usePersistedExpanded,
   useUiPreferencesStore,
   type WorkspacePrFilter,
+  type WorkspaceSortBy,
+  type WorkspaceSortOrder,
 } from '@/stores/useUiPreferencesStore';
+import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
-import { MultiSelectDropdown } from '@/components/ui-new/primitives/MultiSelectDropdown';
-import { PropertyDropdown } from '@/components/ui-new/primitives/PropertyDropdown';
-import { FolderIcon, GitPullRequestIcon } from '@phosphor-icons/react';
+import {
+  MultiSelectDropdown,
+  type MultiSelectDropdownOption,
+} from '@/components/ui-new/primitives/MultiSelectDropdown';
+import {
+  PropertyDropdown,
+  type PropertyDropdownOption,
+} from '@/components/ui-new/primitives/PropertyDropdown';
+import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { IconButton } from '@/components/ui-new/primitives/IconButton';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+} from '@/components/ui-new/primitives/IconButtonGroup';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui-new/primitives/Dialog';
+import {
+  FunnelIcon,
+  FolderIcon,
+  GitPullRequestIcon,
+  SortAscendingIcon,
+  SortDescendingIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 
 export type WorkspaceLayoutMode = 'flat' | 'accordion';
 
@@ -25,9 +55,167 @@ const DRAFT_WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
 const PAGE_SIZE = 50;
 const NO_PROJECT_ID = '__no_project__';
+const DEFAULT_WORKSPACE_SORT = {
+  sortBy: 'updated_at' as WorkspaceSortBy,
+  sortOrder: 'desc' as WorkspaceSortOrder,
+};
+
+const PR_FILTER_OPTIONS: PropertyDropdownOption<WorkspacePrFilter>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'has_pr', label: 'Has PR' },
+  { value: 'no_pr', label: 'No PR' },
+];
+
+const SORT_BY_OPTIONS: PropertyDropdownOption<WorkspaceSortBy>[] = [
+  { value: 'updated_at', label: 'Updated at' },
+  { value: 'created_at', label: 'Created at' },
+];
 
 interface WorkspacesSidebarContainerProps {
   onScrollToBottom: () => void;
+}
+
+interface WorkspacesSortDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  sortBy: WorkspaceSortBy;
+  sortOrder: WorkspaceSortOrder;
+  onSortByChange: (sortBy: WorkspaceSortBy) => void;
+  onSortOrderChange: (sortOrder: WorkspaceSortOrder) => void;
+}
+
+function WorkspacesSortDialog({
+  open,
+  onOpenChange,
+  sortBy,
+  sortOrder,
+  onSortByChange,
+  onSortOrderChange,
+}: WorkspacesSortDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Sort workspaces</DialogTitle>
+          <DialogDescription>
+            Choose how workspaces are ordered in the sidebar.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-base pt-half">
+          <div className="flex items-center justify-between gap-base">
+            <span className="text-sm text-low">Sort by</span>
+            <PropertyDropdown
+              value={sortBy}
+              options={SORT_BY_OPTIONS}
+              onChange={onSortByChange}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-base">
+            <span className="text-sm text-low">Sort order</span>
+            <ButtonGroup>
+              <ButtonGroupItem
+                active={sortOrder === 'desc'}
+                onClick={() => onSortOrderChange('desc')}
+              >
+                Desc
+              </ButtonGroupItem>
+              <ButtonGroupItem
+                active={sortOrder === 'asc'}
+                onClick={() => onSortOrderChange('asc')}
+              >
+                Asc
+              </ButtonGroupItem>
+            </ButtonGroup>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface WorkspacesFilterDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectOptions: MultiSelectDropdownOption<string>[];
+  projectIds: string[];
+  prFilter: WorkspacePrFilter;
+  hasActiveFilters: boolean;
+  onProjectFilterChange: (projectIds: string[]) => void;
+  onPrFilterChange: (prFilter: WorkspacePrFilter) => void;
+  onClearFilters: () => void;
+}
+
+function WorkspacesFilterDialog({
+  open,
+  onOpenChange,
+  projectOptions,
+  projectIds,
+  prFilter,
+  hasActiveFilters,
+  onProjectFilterChange,
+  onPrFilterChange,
+  onClearFilters,
+}: WorkspacesFilterDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Filter workspaces</DialogTitle>
+          <DialogDescription>
+            Narrow down workspaces by project and PR state.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-base pt-half">
+          <MultiSelectDropdown
+            values={projectIds}
+            options={projectOptions}
+            onChange={onProjectFilterChange}
+            icon={FolderIcon}
+            label="Project"
+          />
+          <PropertyDropdown
+            value={prFilter}
+            options={PR_FILTER_OPTIONS}
+            onChange={onPrFilterChange}
+            icon={GitPullRequestIcon}
+            label="PR"
+          />
+          {hasActiveFilters && (
+            <div className="flex justify-end">
+              <PrimaryButton
+                variant="tertiary"
+                value="Clear filters"
+                actionIcon={XIcon}
+                onClick={onClearFilters}
+              />
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function toTimestamp(value: string | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? null : timestamp;
+}
+
+function getWorkspaceSortTimestamp(
+  workspace: Workspace,
+  sortBy: WorkspaceSortBy
+): number | null {
+  if (sortBy === 'updated_at') {
+    return toTimestamp(workspace.latestProcessCompletedAt);
+  }
+
+  return toTimestamp(workspace.createdAt);
 }
 
 export function WorkspacesSidebarContainer({
@@ -49,15 +237,17 @@ export function WorkspacesSidebarContainer({
   );
   const [isAccordionLayout, setAccordionLayout] = usePersistedExpanded(
     PERSIST_KEYS.workspacesSidebarAccordionLayout,
-    false
+    true
   );
+  const [isSortDialogOpen, setIsSortDialogOpen] = useState(false);
+  const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
 
   const layoutMode: WorkspaceLayoutMode = isAccordionLayout
     ? 'accordion'
     : 'flat';
   const toggleLayoutMode = () => setAccordionLayout(!isAccordionLayout);
 
-  // Workspace sidebar filters
+  // Workspace sidebar filters + sort
   const workspaceFilters = useUiPreferencesStore((s) => s.workspaceFilters);
   const setWorkspaceProjectFilter = useUiPreferencesStore(
     (s) => s.setWorkspaceProjectFilter
@@ -65,6 +255,15 @@ export function WorkspacesSidebarContainer({
   const setWorkspacePrFilter = useUiPreferencesStore(
     (s) => s.setWorkspacePrFilter
   );
+  const clearWorkspaceFilters = useUiPreferencesStore(
+    (s) => s.clearWorkspaceFilters
+  );
+  const workspaceSort = useUiPreferencesStore((s) => s.workspaceSort);
+  const setWorkspaceSortBy = useUiPreferencesStore((s) => s.setWorkspaceSortBy);
+  const setWorkspaceSortOrder = useUiPreferencesStore(
+    (s) => s.setWorkspaceSortOrder
+  );
+
   // Remote data for project filter (all orgs)
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { data: allRemoteProjects } = useAllOrganizationProjects();
@@ -118,7 +317,7 @@ export function WorkspacesSidebarContainer({
   }, [allRemoteProjects, remoteProjectByLocalId, orgNameById]);
 
   // Build flat project options for MultiSelectDropdown
-  const projectOptions = useMemo(
+  const projectOptions = useMemo<MultiSelectDropdownOption<string>[]>(
     () => [
       { value: NO_PROJECT_ID, label: 'No project' },
       ...projectGroups.flatMap((g) =>
@@ -128,7 +327,7 @@ export function WorkspacesSidebarContainer({
           renderOption: () => (
             <div className="flex items-center gap-base">
               <span
-                className="w-2 h-2 rounded-full shrink-0"
+                className="h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: `hsl(${p.color})` }}
               />
               {p.name}
@@ -140,27 +339,23 @@ export function WorkspacesSidebarContainer({
     [projectGroups]
   );
 
-  const PR_FILTER_OPTIONS: {
-    value: WorkspacePrFilter;
-    label: string;
-  }[] = [
-    { value: 'all', label: 'All' },
-    { value: 'has_pr', label: 'Has PR' },
-    { value: 'no_pr', label: 'No PR' },
-  ];
+  const hasActiveFilters =
+    workspaceFilters.projectIds.length > 0 ||
+    workspaceFilters.prFilter !== 'all';
+  const hasNonDefaultSort =
+    workspaceSort.sortBy !== DEFAULT_WORKSPACE_SORT.sortBy ||
+    workspaceSort.sortOrder !== DEFAULT_WORKSPACE_SORT.sortOrder;
 
   // Pagination state for infinite scroll
   const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
 
-  // Reset display limit when search or filters change
+  // Reset display limit when search, filter, or sort state changes
   useEffect(() => {
     setDisplayLimit(PAGE_SIZE);
-  }, [searchQuery, showArchive, workspaceFilters]);
+  }, [searchQuery, showArchive, workspaceFilters, workspaceSort]);
 
-  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const searchLower = searchQuery.toLowerCase();
   const isSearching = searchQuery.length > 0;
-  const compactFilters = isSearching || isSearchFocused;
 
   // Apply sidebar filters (project + PR), then search
   const filteredActiveWorkspaces = useMemo(() => {
@@ -237,27 +432,70 @@ export function WorkspacesSidebarContainer({
     searchLower,
   ]);
 
+  const sortWorkspaces = useCallback(
+    (workspaces: Workspace[]) =>
+      [...workspaces].sort((a, b) => {
+        // Always keep pinned workspaces at the top.
+        if (a.isPinned !== b.isPinned) {
+          return a.isPinned ? -1 : 1;
+        }
+
+        const aTimestamp = getWorkspaceSortTimestamp(a, workspaceSort.sortBy);
+        const bTimestamp = getWorkspaceSortTimestamp(b, workspaceSort.sortBy);
+
+        // Workspaces without the selected timestamp are always sorted last.
+        if (aTimestamp === null && bTimestamp === null) {
+          return a.name.localeCompare(b.name);
+        }
+        if (aTimestamp === null) {
+          return 1;
+        }
+        if (bTimestamp === null) {
+          return -1;
+        }
+
+        if (aTimestamp === bTimestamp) {
+          return a.name.localeCompare(b.name);
+        }
+
+        return workspaceSort.sortOrder === 'asc'
+          ? aTimestamp - bTimestamp
+          : bTimestamp - aTimestamp;
+      }),
+    [workspaceSort.sortBy, workspaceSort.sortOrder]
+  );
+
+  const sortedActiveWorkspaces = useMemo(
+    () => sortWorkspaces(filteredActiveWorkspaces),
+    [filteredActiveWorkspaces, sortWorkspaces]
+  );
+
+  const sortedArchivedWorkspaces = useMemo(
+    () => sortWorkspaces(filteredArchivedWorkspaces),
+    [filteredArchivedWorkspaces, sortWorkspaces]
+  );
+
   // Apply pagination (only when not searching)
   const paginatedActiveWorkspaces = useMemo(
     () =>
       isSearching
-        ? filteredActiveWorkspaces
-        : filteredActiveWorkspaces.slice(0, displayLimit),
-    [filteredActiveWorkspaces, displayLimit, isSearching]
+        ? sortedActiveWorkspaces
+        : sortedActiveWorkspaces.slice(0, displayLimit),
+    [sortedActiveWorkspaces, displayLimit, isSearching]
   );
 
   const paginatedArchivedWorkspaces = useMemo(
     () =>
       isSearching
-        ? filteredArchivedWorkspaces
-        : filteredArchivedWorkspaces.slice(0, displayLimit),
-    [filteredArchivedWorkspaces, displayLimit, isSearching]
+        ? sortedArchivedWorkspaces
+        : sortedArchivedWorkspaces.slice(0, displayLimit),
+    [sortedArchivedWorkspaces, displayLimit, isSearching]
   );
 
   // Check if there are more workspaces to load
   const hasMoreWorkspaces = showArchive
-    ? filteredArchivedWorkspaces.length > displayLimit
-    : filteredActiveWorkspaces.length > displayLimit;
+    ? sortedArchivedWorkspaces.length > displayLimit
+    : sortedActiveWorkspaces.length > displayLimit;
 
   // Handle scroll to load more
   const handleLoadMore = useCallback(() => {
@@ -298,25 +536,52 @@ export function WorkspacesSidebarContainer({
     [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
   );
 
-  const filterBar = (
-    <div className="flex items-stretch gap-half shrink-0">
-      <MultiSelectDropdown
-        values={workspaceFilters.projectIds}
-        options={projectOptions}
-        onChange={setWorkspaceProjectFilter}
-        icon={FolderIcon}
-        label="Project"
-        iconOnly={compactFilters}
+  const searchControls = (
+    <>
+      <div className="shrink-0">
+        <div className="flex items-stretch gap-half">
+          <IconButton
+            icon={
+              workspaceSort.sortOrder === 'asc'
+                ? SortAscendingIcon
+                : SortDescendingIcon
+            }
+            onClick={() => setIsSortDialogOpen(true)}
+            aria-label="Open workspace sort settings"
+            title="Sort workspaces"
+            className={cn(hasNonDefaultSort && 'text-brand hover:text-brand')}
+          />
+          <IconButton
+            icon={FunnelIcon}
+            onClick={() => setIsFilterDialogOpen(true)}
+            aria-label="Open workspace filter settings"
+            title="Filter workspaces"
+            className={cn(hasActiveFilters && 'text-brand hover:text-brand')}
+          />
+        </div>
+      </div>
+
+      <WorkspacesSortDialog
+        open={isSortDialogOpen}
+        onOpenChange={setIsSortDialogOpen}
+        sortBy={workspaceSort.sortBy}
+        sortOrder={workspaceSort.sortOrder}
+        onSortByChange={setWorkspaceSortBy}
+        onSortOrderChange={setWorkspaceSortOrder}
       />
-      <PropertyDropdown
-        value={workspaceFilters.prFilter}
-        options={PR_FILTER_OPTIONS}
-        onChange={setWorkspacePrFilter}
-        icon={GitPullRequestIcon}
-        label="PR"
-        iconOnly={compactFilters}
+
+      <WorkspacesFilterDialog
+        open={isFilterDialogOpen}
+        onOpenChange={setIsFilterDialogOpen}
+        projectOptions={projectOptions}
+        projectIds={workspaceFilters.projectIds}
+        prFilter={workspaceFilters.prFilter}
+        hasActiveFilters={hasActiveFilters}
+        onProjectFilterChange={setWorkspaceProjectFilter}
+        onPrFilterChange={setWorkspacePrFilter}
+        onClearFilters={clearWorkspaceFilters}
       />
-    </div>
+    </>
   );
 
   return (
@@ -338,8 +603,7 @@ export function WorkspacesSidebarContainer({
       onToggleLayoutMode={toggleLayoutMode}
       onLoadMore={handleLoadMore}
       hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
-      filterBar={filterBar}
-      onSearchFocusChange={setIsSearchFocused}
+      searchControls={searchControls}
     />
   );
 }
