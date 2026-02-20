@@ -177,9 +177,7 @@ impl TaskServer {
     #[tool(description = "Remove a tag from an issue using issue_tag_id.")]
     async fn remove_issue_tag(
         &self,
-        Parameters(McpRemoveIssueTagRequest { issue_tag_id }): Parameters<
-            McpRemoveIssueTagRequest,
-        >,
+        Parameters(McpRemoveIssueTagRequest { issue_tag_id }): Parameters<McpRemoveIssueTagRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/remote/issue-tags/{}", issue_tag_id));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
