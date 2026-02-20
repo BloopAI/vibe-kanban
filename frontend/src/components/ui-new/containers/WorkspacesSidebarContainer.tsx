@@ -568,12 +568,8 @@ export function WorkspacesSidebarContainer({
             onClick={() => setIsFilterDialogOpen(true)}
             aria-label="Open workspace filter settings"
             title="Filter workspaces"
-            className={cn(
-              '!h-cta !px-half !py-0',
-              hasActiveFilters &&
-                '!bg-brand !text-on-brand hover:!bg-brand-hover hover:!text-on-brand'
-            )}
-            iconClassName="size-icon-lg"
+            className="!h-cta !px-half !py-0"
+            iconClassName={cn('size-icon-lg', hasActiveFilters && 'text-brand')}
           />
         </div>
       </div>
