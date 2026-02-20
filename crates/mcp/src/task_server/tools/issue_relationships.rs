@@ -17,7 +17,7 @@ struct McpCreateIssueRelationshipRequest {
     #[schemars(description = "The related issue ID")]
     related_issue_id: Uuid,
     #[schemars(description = "Relationship type: 'blocking', 'related', or 'has_duplicate'")]
-    relationship_type: String,
+    relationship_type: IssueRelationshipType,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -52,26 +52,11 @@ impl TaskServer {
             relationship_type,
         }): Parameters<McpCreateIssueRelationshipRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let rel_type = match relationship_type.to_lowercase().as_str() {
-            "blocking" => IssueRelationshipType::Blocking,
-            "related" => IssueRelationshipType::Related,
-            "has_duplicate" => IssueRelationshipType::HasDuplicate,
-            _ => {
-                return Self::err(
-                    format!(
-                        "Invalid relationship type '{}'. Use: blocking, related, has_duplicate",
-                        relationship_type
-                    ),
-                    None::<String>,
-                );
-            }
-        };
-
         let payload = CreateIssueRelationshipRequest {
             id: None,
             issue_id,
             related_issue_id,
-            relationship_type: rel_type,
+            relationship_type,
         };
 
         let url = self.url("/api/remote/issue-relationships");
