@@ -175,8 +175,8 @@ export function PreviewBrowser({
               onClick={onToggleInspectMode}
               active={isInspectMode}
               disabled={!isServerRunning}
-              aria-label="Inspect component"
-              title="Inspect component"
+              aria-label="Select element as context"
+              title="Select element as context"
             />
             <IconButtonGroupItem
               icon={TerminalIcon}
