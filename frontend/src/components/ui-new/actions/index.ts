@@ -13,6 +13,7 @@ import type { DiffViewMode } from '@/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
 import type { LayoutMode } from '@/stores/useUiPreferencesStore';
+import type { IssueCreateRouteOptions } from '@/lib/routes/projectSidebarRoutes';
 import {
   CopyIcon,
   XIcon,
@@ -111,6 +112,7 @@ export interface ProjectMutations {
   removeIssue: (id: string) => void;
   duplicateIssue: (issueId: string) => void;
   getIssue: (issueId: string) => { simple_id: string } | undefined;
+  getAssigneesForIssue: (issueId: string) => { user_id: string }[];
 }
 
 // Context provided to action executors (from React hooks)
@@ -142,7 +144,7 @@ export interface ActionExecutorContext {
     projectId: string,
     issueId: string,
     mode?: 'addChild' | 'setParent'
-  ) => Promise<void>;
+  ) => Promise<{ type: string } | undefined>;
   openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
   openRelationshipSelection: (
     projectId: string,
@@ -151,7 +153,7 @@ export interface ActionExecutorContext {
     direction: 'forward' | 'reverse'
   ) => Promise<void>;
   // Kanban navigation (URL-based)
-  navigateToCreateIssue: (options?: { statusId?: string }) => void;
+  navigateToCreateIssue: (options?: IssueCreateRouteOptions) => void;
   // Default status for issue creation based on current kanban tab
   defaultCreateStatusId?: string;
   // Current kanban context (for project settings action)
@@ -321,6 +323,21 @@ function getNextWorkspaceId(
     return nextWorkspace?.id ?? null;
   }
   return null;
+}
+
+// Helper to navigate to create-issue form for a sub-issue, carrying over parent assignees
+function navigateToCreateSubIssue(
+  ctx: ActionExecutorContext,
+  parentIssueId: string
+) {
+  const assigneeIds = ctx.projectMutations
+    ?.getAssigneesForIssue(parentIssueId)
+    .map((a) => a.user_id);
+  ctx.navigateToCreateIssue({
+    statusId: ctx.defaultCreateStatusId,
+    parentIssueId,
+    assigneeIds: assigneeIds?.length ? assigneeIds : undefined,
+  });
 }
 
 // All application actions
@@ -1452,9 +1469,29 @@ export const Actions = {
     isVisible: (ctx) =>
       ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
     execute: async (ctx, projectId, issueIds) => {
-      if (issueIds.length === 1) {
-        await ctx.openSubIssueSelection(projectId, issueIds[0], 'addChild');
+      if (issueIds.length !== 1) return;
+      const parentIssueId = issueIds[0];
+      const result = await ctx.openSubIssueSelection(
+        projectId,
+        parentIssueId,
+        'addChild'
+      );
+      if (result?.type === 'createNew') {
+        navigateToCreateSubIssue(ctx, parentIssueId);
       }
+    },
+  } satisfies IssueActionDefinition,
+
+  CreateSubIssue: {
+    id: 'create-sub-issue',
+    label: 'Create Sub-issue',
+    icon: PlusIcon,
+    requiresTarget: ActionTargetType.ISSUE,
+    isVisible: (ctx) =>
+      ctx.layoutMode === 'kanban' && ctx.hasSelectedKanbanIssue,
+    execute: async (ctx, _projectId, issueIds) => {
+      if (issueIds.length !== 1) return;
+      navigateToCreateSubIssue(ctx, issueIds[0]);
     },
   } satisfies IssueActionDefinition,
 

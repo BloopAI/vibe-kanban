@@ -66,7 +66,7 @@ interface ActionsContextValue {
     projectId: string,
     parentIssueId: string,
     mode?: 'addChild' | 'setParent'
-  ) => Promise<void>;
+  ) => Promise<{ type: string } | undefined>;
 
   // Open workspace selection dialog to link a workspace to an issue
   openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
@@ -131,7 +131,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
 
   // Navigate to create issue mode (URL-based navigation)
   const navigateToCreateIssue = useCallback(
-    (options?: { statusId?: string }) => {
+    (options?: Parameters<typeof buildIssueCreatePath>[1]) => {
       if (!projectId) return;
       navigate(buildIssueCreatePath(projectId, options));
     },
@@ -206,10 +206,10 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       const { ProjectSelectionDialog } = await import(
         '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
       );
-      await ProjectSelectionDialog.show({
+      return (await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'subIssue', parentIssueId, mode },
-      });
+      })) as { type: string } | undefined;
     },
     []
   );

@@ -5,6 +5,7 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useActions } from '@/contexts/ActionsContext';
+import { Actions } from '@/components/ui-new/actions';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import {
@@ -25,12 +26,12 @@ interface IssueSubIssuesSectionContainerProps {
 export function IssueSubIssuesSectionContainer({
   issueId,
 }: IssueSubIssuesSectionContainerProps) {
-  const { projectId, openIssue, startCreate } = useKanbanNavigation();
+  const { projectId, openIssue } = useKanbanNavigation();
   const {
+    executeAction,
     openSubIssueSelection,
     openPrioritySelection,
     openAssigneeSelection,
-    executorContext,
   } = useActions();
 
   const {
@@ -138,20 +139,12 @@ export function IssueSubIssuesSectionContainer({
 
   // Handle clicking '+' to create new sub-issue immediately
   const handleCreateNewSubIssue = useCallback(() => {
-    const parentAssigneeIds = getAssigneesForIssue(issueId).map(
-      (a) => a.user_id
-    );
-    startCreate({
-      statusId: executorContext.defaultCreateStatusId,
-      parentIssueId: issueId,
-      assigneeIds: parentAssigneeIds.length > 0 ? parentAssigneeIds : undefined,
-    });
-  }, [
-    startCreate,
-    issueId,
-    executorContext.defaultCreateStatusId,
-    getAssigneesForIssue,
-  ]);
+    if (projectId) {
+      void executeAction(Actions.CreateSubIssue, undefined, projectId, [
+        issueId,
+      ]);
+    }
+  }, [executeAction, projectId, issueId]);
 
   // Handle clicking link icon to select an existing issue as sub-issue
   const handleLinkSubIssue = useCallback(() => {

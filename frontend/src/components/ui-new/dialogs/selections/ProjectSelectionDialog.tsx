@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import {
@@ -13,7 +12,6 @@ import type {
   ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
 import type { Issue } from 'shared/remote-types';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { buildStatusSelectionPages } from './statusSelection';
 import { buildPrioritySelectionPages } from './prioritySelection';
 import { buildSubIssueSelectionPages } from './subIssueSelection';
@@ -63,20 +61,13 @@ function getInitialPageId(selectionType: SelectionMode['type']): string {
 function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const navigate = useNavigate();
-  const { projectId } = useParams<{ projectId: string }>();
   const {
     statuses,
     issues,
-    issueAssignees,
     issueRelationships,
     updateIssue,
     insertIssueRelationship,
   } = useProjectContext();
-  const kanbanViewMode = useUiPreferencesStore((s) => s.kanbanViewMode);
-  const listViewStatusFilter = useUiPreferencesStore(
-    (s) => s.listViewStatusFilter
-  );
   const initialPageId = useMemo(
     () => getInitialPageId(selection.type),
     [selection.type]
@@ -102,14 +93,6 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
       [...statuses]
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((s) => ({ id: s.id, name: s.name, color: s.color })),
-    [statuses]
-  );
-
-  const visibleStatuses = useMemo(
-    () =>
-      [...statuses]
-        .filter((s) => !s.hidden)
-        .sort((a, b) => a.sort_order - b.sort_order),
     [statuses]
   );
 
@@ -243,30 +226,8 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
               parent_issue_id: result.issueId,
             });
           }
-        } else if (result.type === 'createNew') {
-          if (!projectId) return;
-          let defaultStatusId: string | null = null;
-          if (kanbanViewMode === 'kanban') {
-            defaultStatusId = visibleStatuses[0]?.id ?? null;
-          } else if (listViewStatusFilter) {
-            defaultStatusId = listViewStatusFilter;
-          } else {
-            defaultStatusId =
-              [...statuses].sort((a, b) => a.sort_order - b.sort_order)[0]
-                ?.id ?? null;
-          }
-          const params = new URLSearchParams({ mode: 'create' });
-          if (defaultStatusId) params.set('statusId', defaultStatusId);
-          params.set('parentIssueId', selection.parentIssueId);
-          // Carry over assignees from parent issue
-          const parentAssigneeIds = issueAssignees
-            .filter((a) => a.issue_id === selection.parentIssueId)
-            .map((a) => a.user_id);
-          if (parentAssigneeIds.length > 0) {
-            params.set('assignees', parentAssigneeIds.join(','));
-          }
-          navigate(`/projects/${projectId}?${params.toString()}`);
         }
+        // 'createNew' is handled by the caller (AddSubIssue action)
       } else if (selection.type === 'relationship') {
         const result = data as RelationshipSelectionResult;
         if (selection.direction === 'forward') {
@@ -284,18 +245,7 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
         }
       }
     },
-    [
-      selection,
-      updateIssue,
-      insertIssueRelationship,
-      navigate,
-      projectId,
-      kanbanViewMode,
-      listViewStatusFilter,
-      visibleStatuses,
-      statuses,
-      issueAssignees,
-    ]
+    [selection, updateIssue, insertIssueRelationship]
   );
 
   const fallbackPage = pages[initialPageId] ?? Object.values(pages)[0];
