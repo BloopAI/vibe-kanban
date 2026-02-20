@@ -24,10 +24,7 @@ export function Toggle({
         checked={checked}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
-        className={cn(
-          'mt-px shrink-0',
-          !checked && '!bg-foreground/35 !border-foreground/15'
-        )}
+        className="mt-px shrink-0"
       />
       <div className="flex flex-col gap-half min-w-0">
         <span className="text-base text-normal">{label}</span>

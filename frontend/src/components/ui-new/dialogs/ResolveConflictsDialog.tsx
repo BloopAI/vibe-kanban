@@ -311,7 +311,6 @@ const ResolveConflictsDialogImpl =
                       id="new-session-switch"
                       checked={createNewSession}
                       onCheckedChange={handleNewSessionChange}
-                      className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
                       aria-label={t(
                         'resolveConflicts.dialog.newSession',
                         'New Session'

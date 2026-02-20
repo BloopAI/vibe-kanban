@@ -264,7 +264,6 @@ const StartReviewDialogImpl = NiceModal.create<StartReviewDialogProps>(
                   checked={createNewSession}
                   onCheckedChange={handleNewSessionChange}
                   disabled={!resolvedSessionId}
-                  className="!bg-border data-[state=checked]:!bg-foreground disabled:opacity-50"
                   aria-label={t('startReviewDialog.newSession')}
                 />
                 <Label
