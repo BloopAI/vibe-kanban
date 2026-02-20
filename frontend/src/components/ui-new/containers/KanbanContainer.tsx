@@ -698,7 +698,9 @@ export function KanbanContainer() {
     (statusId?: string) => {
       const createPayload = {
         statusId: statusId ?? defaultCreateStatusId,
-        ...(createAssigneeIds.length > 0 ? { assigneeIds: createAssigneeIds } : {}),
+        ...(createAssigneeIds.length > 0
+          ? { assigneeIds: createAssigneeIds }
+          : {}),
       };
       startCreate(createPayload);
     },
