@@ -417,14 +417,14 @@ impl Workspace {
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<Option<String>, sqlx::Error> {
-        let actions = sqlx::query_scalar::<_, sqlx::types::Json<ExecutorActionField>>(
-            r#"SELECT ep.executor_action
+        let actions = sqlx::query_scalar!(
+            r#"SELECT ep.executor_action as "executor_action!: sqlx::types::Json<ExecutorActionField>"
                FROM sessions s
                JOIN execution_processes ep ON ep.session_id = s.id
-               WHERE s.workspace_id = ?
+               WHERE s.workspace_id = $1
                ORDER BY s.created_at ASC, ep.created_at ASC"#,
+            workspace_id
         )
-        .bind(workspace_id)
         .fetch_all(pool)
         .await?;
 
