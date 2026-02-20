@@ -37,3 +37,10 @@ pub struct CreateAndStartWorkspaceResponse {
     pub workspace: Workspace,
     pub execution_process: ExecutionProcess,
 }
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct UpdateWorkspace {
+    pub archived: Option<bool>,
+    pub pinned: Option<bool>,
+    pub name: Option<String>,
+}

@@ -143,7 +143,7 @@ fn generate_types_content() -> String {
         server::routes::task_attempts::pr::CreateWorkspaceFromPrResponse::decl(),
         server::routes::task_attempts::pr::CreateFromPrError::decl(),
         server::routes::task_attempts::RepoBranchStatus::decl(),
-        server::routes::task_attempts::UpdateWorkspace::decl(),
+        db::models::requests::UpdateWorkspace::decl(),
         server::routes::task_attempts::workspace_summary::WorkspaceSummaryRequest::decl(),
         server::routes::task_attempts::workspace_summary::WorkspaceSummary::decl(),
         server::routes::task_attempts::workspace_summary::WorkspaceSummaryResponse::decl(),

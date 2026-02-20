@@ -1,4 +1,4 @@
-use db::models::workspace::Workspace;
+use db::models::{requests::UpdateWorkspace, workspace::Workspace};
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -192,11 +192,11 @@ impl TaskServer {
         };
 
         let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
-        let payload = serde_json::json!({
-            "archived": archived,
-            "pinned": pinned,
-            "name": name,
-        });
+        let payload = UpdateWorkspace {
+            archived,
+            pinned,
+            name,
+        };
 
         let updated: Workspace = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(ws) => ws,

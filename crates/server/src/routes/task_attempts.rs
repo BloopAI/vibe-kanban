@@ -29,7 +29,7 @@ use db::models::{
     image::WorkspaceImage,
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
-    requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse},
+    requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, UpdateWorkspace},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
@@ -104,13 +104,6 @@ pub struct DiffStreamQuery {
 pub struct WorkspaceStreamQuery {
     pub archived: Option<bool>,
     pub limit: Option<i64>,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct UpdateWorkspace {
-    pub archived: Option<bool>,
-    pub pinned: Option<bool>,
-    pub name: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
