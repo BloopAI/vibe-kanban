@@ -14,7 +14,6 @@ use db::{
             CreateExecutionProcess, ExecutionContext, ExecutionProcess, ExecutionProcessError,
             ExecutionProcessRunReason, ExecutionProcessStatus,
         },
-        execution_process_logs::ExecutionProcessLogs,
         execution_process_repo_state::{
             CreateExecutionProcessRepoState, ExecutionProcessRepoState,
         },
@@ -52,8 +51,8 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    notification::NotificationService, workspace_manager::WorkspaceError as WorkspaceManagerError,
-    worktree_manager::WorktreeError,
+    execution_process, notification::NotificationService,
+    workspace_manager::WorkspaceError as WorkspaceManagerError, worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
 
@@ -788,26 +787,8 @@ pub trait ContainerService {
                     .boxed(),
             );
         } else {
-            // Fallback: load from DB and create direct stream
-            let log_records =
-                match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
-                    Err(e) => {
-                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
-                        return None;
-                    }
-                };
+            let messages = execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
 
-            let messages = match ExecutionProcessLogs::parse_logs(&log_records) {
-                Ok(msgs) => msgs,
-                Err(e) => {
-                    tracing::error!("Failed to parse logs for execution {}: {}", id, e);
-                    return None;
-                }
-            };
-
-            // Direct stream from parsed messages
             let stream = futures::stream::iter(
                 messages
                     .into_iter()
@@ -837,24 +818,8 @@ pub trait ContainerService {
                     .boxed(),
             )
         } else {
-            // Fallback: load from DB and normalize
-            let log_records =
-                match ExecutionProcessLogs::find_by_execution_id(&self.db().pool, *id).await {
-                    Ok(records) if !records.is_empty() => records,
-                    Ok(_) => return None, // No logs exist
-                    Err(e) => {
-                        tracing::error!("Failed to fetch logs for execution {}: {}", id, e);
-                        return None;
-                    }
-                };
-
-            let raw_messages = match ExecutionProcessLogs::parse_logs(&log_records) {
-                Ok(msgs) => msgs,
-                Err(e) => {
-                    tracing::error!("Failed to parse logs for execution {}: {}", id, e);
-                    return None;
-                }
-            };
+            let raw_messages =
+                execution_process::load_raw_log_messages(&self.db().pool, *id).await?;
 
             // Create temporary store and populate
             // Include JsonPatch messages (already normalized) and Stdout/Stderr (need normalization)
@@ -991,96 +956,6 @@ pub trait ContainerService {
                     .boxed(),
             )
         }
-    }
-
-    fn spawn_stream_raw_logs_to_db(&self, execution_id: &Uuid) -> JoinHandle<()> {
-        let execution_id = *execution_id;
-        let msg_stores = self.msg_stores().clone();
-        let db = self.db().clone();
-
-        tokio::spawn(async move {
-            // Get the message store for this execution
-            let store = {
-                let map = msg_stores.read().await;
-                map.get(&execution_id).cloned()
-            };
-
-            if let Some(store) = store {
-                let mut stream = store.history_plus_stream();
-
-                while let Some(Ok(msg)) = stream.next().await {
-                    match &msg {
-                        LogMsg::Stdout(_) | LogMsg::Stderr(_) => {
-                            // Serialize this individual message as a JSONL line
-                            match serde_json::to_string(&msg) {
-                                Ok(jsonl_line) => {
-                                    let jsonl_line_with_newline = format!("{jsonl_line}\n");
-
-                                    // Append this line to the database
-                                    if let Err(e) = ExecutionProcessLogs::append_log_line(
-                                        &db.pool,
-                                        execution_id,
-                                        &jsonl_line_with_newline,
-                                    )
-                                    .await
-                                    {
-                                        tracing::error!(
-                                            "Failed to append log line for execution {}: {}",
-                                            execution_id,
-                                            e
-                                        );
-                                    }
-                                }
-                                Err(e) => {
-                                    tracing::error!(
-                                        "Failed to serialize log message for execution {}: {}",
-                                        execution_id,
-                                        e
-                                    );
-                                }
-                            }
-                        }
-                        LogMsg::SessionId(agent_session_id) => {
-                            // Append this line to the database
-                            if let Err(e) = CodingAgentTurn::update_agent_session_id(
-                                &db.pool,
-                                execution_id,
-                                agent_session_id,
-                            )
-                            .await
-                            {
-                                tracing::error!(
-                                    "Failed to update agent_session_id {} for execution process {}: {}",
-                                    agent_session_id,
-                                    execution_id,
-                                    e
-                                );
-                            }
-                        }
-                        LogMsg::MessageId(agent_message_id) => {
-                            if let Err(e) = CodingAgentTurn::update_agent_message_id(
-                                &db.pool,
-                                execution_id,
-                                agent_message_id,
-                            )
-                            .await
-                            {
-                                tracing::error!(
-                                    "Failed to update agent_message_id {} for execution process {}: {}",
-                                    agent_message_id,
-                                    execution_id,
-                                    e
-                                );
-                            }
-                        }
-                        LogMsg::Finished => {
-                            break;
-                        }
-                        LogMsg::JsonPatch(_) | LogMsg::Ready => continue,
-                    }
-                }
-            }
-        })
     }
 
     async fn start_workspace(
@@ -1267,13 +1142,18 @@ pub trait ContainerService {
             }
             // Emit stderr error message
             let log_message = LogMsg::Stderr(format!("Failed to start execution: {start_error}"));
-            if let Ok(json_line) = serde_json::to_string(&log_message) {
-                let _ = ExecutionProcessLogs::append_log_line(
-                    &self.db().pool,
+            if let Err(e) = execution_process::append_log_message(
+                session.id,
+                execution_process.id,
+                &log_message,
+            )
+            .await
+            {
+                tracing::error!(
+                    "Failed to write error log for execution {}: {}",
                     execution_process.id,
-                    &format!("{json_line}\n"),
-                )
-                .await;
+                    e
+                );
             }
 
             // Emit NextAction with failure context for coding agent requests
@@ -1290,13 +1170,18 @@ pub trait ContainerService {
                     metadata: None,
                 };
                 let patch = ConversationPatch::add_normalized_entry(2, error_message);
-                if let Ok(json_line) = serde_json::to_string::<LogMsg>(&LogMsg::JsonPatch(patch)) {
-                    let _ = ExecutionProcessLogs::append_log_line(
-                        &self.db().pool,
+                if let Err(e) = execution_process::append_log_message(
+                    session.id,
+                    execution_process.id,
+                    &LogMsg::JsonPatch(patch),
+                )
+                .await
+                {
+                    tracing::error!(
+                        "Failed to write setup-required log for execution {}: {}",
                         execution_process.id,
-                        &format!("{json_line}\n"),
-                    )
-                    .await;
+                        e
+                    );
                 }
             };
             return Err(start_error);
@@ -1342,9 +1227,12 @@ pub trait ContainerService {
             }
         }
 
-        let db_stream_handle = self.spawn_stream_raw_logs_to_db(&execution_process.id);
-        self.store_db_stream_handle(execution_process.id, db_stream_handle)
-            .await;
+        execution_process::spawn_stream_raw_logs_to_storage(
+            self.msg_stores().clone(),
+            self.db().clone(),
+            execution_process.id,
+            session.id,
+        );
         Ok(execution_process)
     }
 

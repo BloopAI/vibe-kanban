@@ -1619,6 +1619,11 @@ pub async fn delete_workspace(
     // Gather data needed for background cleanup
     let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
     let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let session_ids: Vec<Uuid> = Session::find_by_workspace_id(pool, workspace.id)
+        .await?
+        .into_iter()
+        .map(|s| s.id)
+        .collect();
 
     // Delete workspace from database (FK CASCADE will handle sessions, execution_processes, etc.)
     let rows_affected = Workspace::delete(pool, workspace.id).await?;
@@ -1660,13 +1665,25 @@ pub async fn delete_workspace(
     }
 
     // Spawn background cleanup task for filesystem resources
-    if let Some(workspace_dir) = workspace_dir {
-        let workspace_id = workspace.id;
-        let delete_branches = query.delete_branches;
-        let branch_name = workspace.branch.clone();
-        let repo_paths: Vec<PathBuf> = repositories.iter().map(|r| r.path.clone()).collect();
+    let workspace_id = workspace.id;
+    let delete_branches = query.delete_branches;
+    let branch_name = workspace.branch.clone();
+    let repo_paths: Vec<PathBuf> = repositories.iter().map(|r| r.path.clone()).collect();
 
-        tokio::spawn(async move {
+    tokio::spawn(async move {
+        for session_id in session_ids {
+            if let Err(e) =
+                services::services::execution_process::remove_session_process_logs(session_id).await
+            {
+                tracing::warn!(
+                    "Failed to remove filesystem process logs for session {}: {}",
+                    session_id,
+                    e
+                );
+            }
+        }
+
+        if let Some(workspace_dir) = workspace_dir {
             tracing::info!(
                 "Starting background cleanup for workspace {} at {}",
                 workspace_id,
@@ -1687,31 +1704,31 @@ pub async fn delete_workspace(
                     workspace_id
                 );
             }
+        }
 
-            if delete_branches {
-                let git_service = GitService::new();
-                for repo_path in repo_paths {
-                    match git_service.delete_branch(&repo_path, &branch_name) {
-                        Ok(()) => {
-                            tracing::info!(
-                                "Deleted branch '{}' from repo {:?}",
-                                branch_name,
-                                repo_path
-                            );
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to delete branch '{}' from repo {:?}: {}",
-                                branch_name,
-                                repo_path,
-                                e
-                            );
-                        }
+        if delete_branches {
+            let git_service = GitService::new();
+            for repo_path in repo_paths {
+                match git_service.delete_branch(&repo_path, &branch_name) {
+                    Ok(()) => {
+                        tracing::info!(
+                            "Deleted branch '{}' from repo {:?}",
+                            branch_name,
+                            repo_path
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to delete branch '{}' from repo {:?}: {}",
+                            branch_name,
+                            repo_path,
+                            e
+                        );
                     }
                 }
             }
-        });
-    }
+        }
+    });
 
     // Return 202 Accepted to indicate deletion was scheduled
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))
