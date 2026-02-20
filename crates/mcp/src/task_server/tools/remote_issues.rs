@@ -637,9 +637,7 @@ impl TaskServer {
             .fetch_issue_relationships_resolved(issue.project_id, issue.id)
             .await;
 
-        let sub_issues = self
-            .fetch_sub_issues(issue.project_id, issue.id)
-            .await;
+        let sub_issues = self.fetch_sub_issues(issue.project_id, issue.id).await;
 
         IssueDetails {
             id: issue.id.to_string(),

@@ -230,8 +230,7 @@ impl TaskServer {
                     Ok(id) => id,
                     Err(e) => return Ok(e),
                 };
-                let list_url =
-                    self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
+                let list_url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
                 let response: ListIssueTagsResponse =
                     match self.send_json(self.client.get(&list_url)).await {
                         Ok(r) => r,

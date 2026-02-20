@@ -1,6 +1,6 @@
 use api_types::{
-    CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsResponse,
-    MutationResponse,
+    CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsQuery,
+    ListIssueRelationshipsResponse, MutationResponse,
 };
 use axum::{
     Router,
@@ -8,16 +8,10 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
-
-#[derive(Debug, Deserialize)]
-pub struct ListIssueRelationshipsQuery {
-    pub issue_id: Uuid,
-}
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
