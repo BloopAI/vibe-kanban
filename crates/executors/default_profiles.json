@@ -63,6 +63,14 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "KIMI": {
+      "DEFAULT": {
+        "KIMI": {
+          "model": "kimi-k2",
+          "yolo": true
+        }
+      }
     }
   }
 }

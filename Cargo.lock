@@ -196,7 +196,11 @@ checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 
 [[package]]
 name = "api-types"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "chrono",
  "schemars 1.2.1",
@@ -393,7 +397,7 @@ dependencies = [
  "futures-lite",
  "parking",
  "polling",
- "rustix",
+ "rustix 1.1.3",
  "slab",
  "windows-sys 0.61.2",
 ]
@@ -424,7 +428,7 @@ dependencies = [
  "cfg-if",
  "event-listener",
  "futures-lite",
- "rustix",
+ "rustix 1.1.3",
 ]
 
 [[package]]
@@ -450,7 +454,7 @@ dependencies = [
  "cfg-if",
  "futures-core",
  "futures-io",
- "rustix",
+ "rustix 1.1.3",
  "signal-hook-registry",
  "slab",
  "windows-sys 0.61.2",
@@ -1267,7 +1271,7 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "which",
+ "which 8.0.0",
  "wildmatch",
  "windows-sys 0.52.0",
  "zip",
@@ -1458,7 +1462,7 @@ dependencies = [
  "tracing",
  "urlencoding",
  "webbrowser",
- "which",
+ "which 8.0.0",
 ]
 
 [[package]]
@@ -1477,7 +1481,7 @@ dependencies = [
  "tree-sitter",
  "tree-sitter-bash",
  "url",
- "which",
+ "which 8.0.0",
 ]
 
 [[package]]
@@ -2051,7 +2055,11 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "anyhow",
  "chrono",
@@ -2127,7 +2135,11 @@ checksum = "26bf8fc351c5ed29b5c2f0cbbac1b209b74f60ecd62e675a998df72c49af5204"
 
 [[package]]
 name = "deployment"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2702,7 +2714,11 @@ dependencies = [
 
 [[package]]
 name = "executors"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -2748,6 +2764,7 @@ dependencies = [
  "utils",
  "uuid",
  "walkdir",
+ "which 6.0.3",
  "winsplit",
  "xdg",
 ]
@@ -2768,7 +2785,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ce92ff622d6dadf7349484f42c93271a0d49b7cc4d466a936405bacbe10aa78"
 dependencies = [
  "cfg-if",
- "rustix",
+ "rustix 1.1.3",
  "windows-sys 0.59.0",
 ]
 
@@ -3175,7 +3192,11 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "git"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -4340,6 +4361,12 @@ dependencies = [
 
 [[package]]
 name = "linux-raw-sys"
+version = "0.4.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d26c52dbd32dccf2d10cac7725f8eae5296885fb5703b261f7d0a0739ec807ab"
+
+[[package]]
+name = "linux-raw-sys"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df1d3c3b53da64cf5760482273a98e575c651a67eec7f77df96b5b642de8f039"
@@ -4352,7 +4379,11 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "anyhow",
  "api-types",
@@ -5682,7 +5713,7 @@ dependencies = [
  "concurrent-queue",
  "hermit-abi",
  "pin-project-lite",
- "rustix",
+ "rustix 1.1.3",
  "windows-sys 0.61.2",
 ]
 
@@ -6554,7 +6585,11 @@ checksum = "1e061d1b48cb8d38042de4ae0a7a6401009d6143dc80d2e2d6f31f0bdd6470c7"
 
 [[package]]
 name = "review"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "anyhow",
  "clap",
@@ -6785,6 +6820,19 @@ dependencies = [
 
 [[package]]
 name = "rustix"
+version = "0.38.44"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fdb5bc1ae2baa591800df16c9ca78619bf65c0488b41b96ccec5d11220d8c154"
+dependencies = [
+ "bitflags 2.10.0",
+ "errno",
+ "libc",
+ "linux-raw-sys 0.4.15",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "rustix"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "146c9e247ccc180c1f61615433868c99f3de3ae256a30a43b49f67c2d9171f34"
@@ -6792,7 +6840,7 @@ dependencies = [
  "bitflags 2.10.0",
  "errno",
  "libc",
- "linux-raw-sys",
+ "linux-raw-sys 0.11.0",
  "windows-sys 0.61.2",
 ]
 
@@ -7419,7 +7467,11 @@ dependencies = [
 
 [[package]]
 name = "server"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "anyhow",
  "api-types",
@@ -7466,7 +7518,11 @@ dependencies = [
 
 [[package]]
 name = "services"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "anyhow",
  "api-types",
@@ -8203,7 +8259,7 @@ dependencies = [
  "fastrand",
  "getrandom 0.4.1",
  "once_cell",
- "rustix",
+ "rustix 1.1.3",
  "windows-sys 0.61.2",
 ]
 
@@ -9132,7 +9188,11 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
+<<<<<<< HEAD
+version = "0.1.15"
+=======
 version = "0.1.16"
+>>>>>>> origin/main
 dependencies = [
  "api-types",
  "axum",
@@ -9165,7 +9225,7 @@ dependencies = [
  "tracing-subscriber",
  "ts-rs 11.0.1",
  "uuid",
- "which",
+ "which 8.0.0",
  "windows-sys 0.61.2",
  "winreg 0.55.0",
 ]
@@ -9427,12 +9487,24 @@ checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
 name = "which"
+version = "6.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b4ee928febd44d98f2f459a4a79bd4d928591333a494a10a868418ac1b39cf1f"
+dependencies = [
+ "either",
+ "home",
+ "rustix 0.38.44",
+ "winsafe",
+]
+
+[[package]]
+name = "which"
 version = "8.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3fabb953106c3c8eea8306e4393700d7657561cb43122571b172bbfb7c7ba1d"
 dependencies = [
  "env_home",
- "rustix",
+ "rustix 1.1.3",
  "winsafe",
 ]
 
@@ -10257,7 +10329,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32e45ad4206f6d2479085147f02bc2ef834ac85886624a23575ae137c8aa8156"
 dependencies = [
  "libc",
- "rustix",
+ "rustix 1.1.3",
 ]
 
 [[package]]
@@ -10377,7 +10449,7 @@ dependencies = [
  "hex",
  "libc",
  "ordered-stream",
- "rustix",
+ "rustix 1.1.3",
  "serde",
  "serde_repr",
  "tracing",
