@@ -1,0 +1,762 @@
+{
+  "dropzone": {
+    "dropImagesHere": "Görselleri buraya bırakın",
+    "supportedFormats": "PNG, JPG, GIF, WebP, SVG desteklenir"
+  },
+  "gitPanel": {
+    "create": {
+      "warnings": {
+        "noReposSelected": "Başlamak için lütfen en az bir depo seçin"
+      }
+    },
+    "advanced": {
+      "workingBranch": "Çalışma Branch",
+      "placeholder": "ör. acme Corp"
+    }
+  },
+  "loading": "Görevler yükleniyor...",
+  "empty": {
+    "noTasks": "Bu proje için görev bulunamadı.",
+    "createFirst": "İlk Görevi Oluştur",
+    "noSearchResults": "Aramanızla eşleşen görev yok."
+  },
+  "actions": {
+    "addTask": "Görev ekle"
+  },
+  "filters": {
+    "sharedToggleAria": "Paylaşılan görevleri aç/kapat",
+    "sharedToggleTooltip": "Paylaşılan içeriği göster/gizle"
+  },
+  "rebase": {
+    "common": {
+      "action": "Rebase",
+      "inProgress": "Rebase yapılıyor...",
+      "withTarget": "{{branch}} üzerine Rebase yap"
+    },
+    "dialog": {
+      "title": "Deneme Rebase İşlemi",
+      "description": "Bu denemeyi üzerine Rebase yapmak için yeni bir temel Branch seçin.",
+      "upstreamLabel": "Upstream Branch",
+      "upstreamPlaceholder": "Upstream Branch seçin",
+      "targetLabel": "Hedef Branch",
+      "targetPlaceholder": "Hedef Branch seçin",
+      "advanced": "Gelişmiş"
+    },
+    "status": {
+      "inProgress": "Rebase devam ediyor{{counts}}",
+      "needed": "Rebase gerekli{{dirty}}{{counts}}",
+      "dirtyMarker": " (kirli)"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "title": "Hedef Branch değiştir",
+        "description": "Deneme için yeni bir hedef Branch seçin.",
+        "placeholder": "Hedef Branch seçin",
+        "action": "Branch Değiştir",
+        "inProgress": "Değiştiriliyor..."
+      }
+    }
+  },
+  "repos": {
+    "changeRepo": {
+      "dialog": {
+        "title": "Depo Değiştir",
+        "description": "Git işlemleri için bir depo seçin.",
+        "label": "Depo",
+        "placeholder": "Depo seçin",
+        "action": "Depo Değiştir"
+      }
+    },
+    "selector": {
+      "placeholder": "Depo seçin",
+      "empty": "Kullanılabilir depo yok"
+    }
+  },
+  "preview": {
+    "title": "Önizleme",
+    "selectAttempt": "Önizleme görmek için bir deneme seçin",
+    "troubleAlert": {
+      "title": "Uygulamanızı önizlerken sorun yaşıyoruz:",
+      "item1": "Dev Server başarıyla başladı mı? Çözmeniz gereken bir hata olabilir veya bağımlılıkların yüklenmesi gerekebilir.",
+      "item2": "Dev Server URL ve portu terminale şu formatta yazdırdı mı",
+      "item2Suffix": "? (çalıştığını bu şekilde anlıyoruz)",
+      "item3": "Web Companion'ı yüklediniz mi (tıkla-düzenle için gerekli)? Yüklemediyseniz lütfen",
+      "item3Link": "kurulum talimatlarını buradan takip edin",
+      "fixScript": "Dev Script Düzelt"
+    },
+    "noServer": {
+      "title": "Dev Server çalışmıyor",
+      "startPrompt": "Önizlemeyi görmek için lütfen bir Dev Server başlatın",
+      "setupTitle": "Önizleme özelliğini kullanmak için bir Dev Server scripti ayarlamalısınız",
+      "setupPrompt": "Canlı önizleme ve tıkla-düzenle özelliğini kullanmak için lütfen bu projeye bir Dev Server scripti ekleyin.",
+      "companionPrompt": "Tıkla-düzenle işlevi için projenize tarayıcı companion ekleyin.",
+      "companionLink": "Kurulum kılavuzunu görüntüle",
+      "startButton": "Dev Server Başlat",
+      "configureButton": "Yapılandır",
+      "stopAndEditButton": "Dev Server Durdur ve Sorunları Çöz",
+      "fixScript": "Dev Script Düzelt",
+      "editDevScript": "Dev Server Scriptini Düzenle",
+      "learnMore": "Uygulama testi hakkında daha fazla bilgi"
+    },
+    "devScript": {
+      "saveAndStart": "Kaydet ve Başlat",
+      "saveOnly": "Sadece Kaydet",
+      "saveChanges": "Değişiklikleri Kaydet",
+      "cancel": "İptal",
+      "errors": {
+        "notLoaded": "Proje yüklenmedi",
+        "empty": "Dev scripti boş olamaz"
+      }
+    },
+    "logs": {
+      "title": "Dev Server Günlükleri",
+      "hide": "Gizle",
+      "show": "Göster",
+      "label": "Günlükler",
+      "viewFull": "Tüm günlükleri görüntüle"
+    },
+    "noDevScript": "Dev scripti yapılandırılmamış",
+    "noDevScriptHint": "Önizlemeyi kullanmak için proje ayarlarında bir dev scripti yapılandırın",
+    "iframe": {
+      "title": "Dev Server önizlemesi"
+    },
+    "toolbar": {
+      "refresh": "Önizlemeyi yenile",
+      "copyUrl": "URL Kopyala",
+      "openInTab": "Yeni sekmede aç",
+      "stopDevServer": "Dev Server durdur",
+      "clickToEdit": "URL düzenlemek için tıklayın",
+      "resetUrl": "Algılanan URL'ye sıfırla",
+      "clearUrlOverride": "URL geçersiz kılmayı temizle",
+      "desktopView": "Masaüstü görünümü",
+      "mobileView": "Mobil görünüm (390x844)",
+      "responsiveView": "Duyarlı görünüm (yeniden boyutlandırılabilir)",
+      "startDevServer": "Dev Server başlat",
+      "submitUrl": "URL Gönder"
+    },
+    "loading": {
+      "startingServer": "Dev Server başlatılıyor...",
+      "waitingForServer": "Sunucu bekleniyor...",
+      "loadingPreview": "Önizleme yükleniyor...",
+      "manualUrlHint": "Henüz URL algılanmadı. Yukarıdaki araç çubuğuna manuel olarak bir URL girebilirsiniz."
+    },
+    "browser": {
+      "title": "Dev Server Önizlemesi",
+      "devServerFallback": "Dev Server"
+    },
+    "urlInput": {
+      "placeholder": "URL girin..."
+    }
+  },
+  "diff": {
+    "viewModes": {
+      "inline": "Satır içi görünüm",
+      "split": "Bölünmüş görünüm"
+    },
+    "ignoreWhitespace": "Boşluk değişikliklerini yoksay",
+    "errorLoadingDiff": "Diff yüklenemedi: {{error}}",
+    "expandAll": "Tüm diffleri genişlet",
+    "collapseAll": "Tüm diffleri daralt",
+    "filesChanged_one": "{{count}} dosya değişti",
+    "filesChanged_other": "{{count}} dosya değişti",
+    "noChanges": "Henüz değişiklik yapılmadı",
+    "largeDiff": {
+      "title": "Büyük dosya",
+      "linesChanged": "{{count}} satır değişti",
+      "loadAnyway": "Yine de diffi yükle",
+      "warning": "Büyük diffler tarayıcınızı yavaşlatabilir."
+    }
+  },
+  "taskPanel": {
+    "noTaskSelected": "Görev seçilmedi",
+    "loadingAttempts": "Denemeler yükleniyor...",
+    "errorLoadingAttempts": "Denemeler yüklenemedi",
+    "attemptsCount": "Denemeler ({{count}})",
+    "noAttempts": "Henüz deneme yok"
+  },
+  "processes": {
+    "noLogsAvailable": "Günlük mevcut değil",
+    "selectAttempt": "Yürütme işlemlerini görüntülemek için bir deneme seçin.",
+    "errorLoadingUpdates": "İşlemler için canlı güncellemeler yüklenemedi.",
+    "reconnecting": "Yeniden bağlanılıyor...",
+    "loading": "Yürütme işlemleri yükleniyor...",
+    "noProcesses": "Bu deneme için yürütme işlemi bulunamadı.",
+    "processId": "İşlem ID: {{id}}",
+    "deleted": "Silindi",
+    "deletedTooltip": "Geri yükleme ile silindi: zaman çizelgesi bir kontrol noktasına geri yüklendi ve sonraki yürütmeler kaldırıldı",
+    "agent": "Agent:",
+    "exit": "Çıkış: {{code}}",
+    "started": "Başladı: {{date}}",
+    "completed": "Tamamlandı: {{date}}",
+    "detailsTitle": "İşlem Detayları",
+    "backToList": "Listeye dön",
+    "loadingDetails": "İşlem detayları yükleniyor...",
+    "errorLoadingDetails": "İşlem detayları yüklenemedi. Lütfen tekrar deneyin.",
+    "copyLogs": "Günlükleri kopyala",
+    "logsCopied": "Kopyalandı!"
+  },
+  "taskHeader": {
+    "editTask": "Görevi düzenle",
+    "deleteTask": "Görevi sil",
+    "closePanel": "Paneli kapat"
+  },
+  "navigateToParent": "Üst görev denemesine git",
+  "toolbar": {
+    "actions": "İşlemler",
+    "noAttempts": "Henüz deneme yok",
+    "startFirstAttempt": "Bu görev üzerinde çalışmaya başlamak için ilk denemenizi başlatın",
+    "startAttempt": "Deneme Başlat"
+  },
+  "followUp": {
+    "stop": "Durdur",
+    "clearReviewComments": "İnceleme Yorumlarını Temizle",
+    "resolveConflicts": "Çakışmaları çöz",
+    "send": "Gönder",
+    "unqueuing": "Sıradan Çıkarılıyor…",
+    "edit": "Düzenle",
+    "queuing": "Sıraya Alınıyor…",
+    "queueForNextTurn": "Sonraki sıra için kuyruğa al",
+    "queue": "Sıraya Al",
+    "cancelQueue": "Sırayı İptal Et",
+    "queuedMessage": "Mesaj sıraya alındı - mevcut çalışma bitince yürütülecek",
+    "runSetupScript": "Setup Script çalıştır",
+    "runCleanupScript": "Cleanup Script çalıştır",
+    "runArchiveScript": "Archive Script çalıştır",
+    "noSetupScript": "Bu proje için Setup Script yapılandırılmamış",
+    "noCleanupScript": "Bu proje için Cleanup Script yapılandırılmamış",
+    "noArchiveScript": "Bu proje için Archive Script yapılandırılmamış",
+    "scriptsDisabledWhileRunning": "Bir işlem çalışırken scriptler çalıştırılamaz"
+  },
+  "todos": {
+    "title_one": "Yapılacaklar ({{count}})",
+    "title_other": "Yapılacaklar ({{count}})"
+  },
+  "todoPopup": {
+    "title": "Görevler",
+    "progress": "{{completed}}/{{total}} tamamlandı",
+    "noTasks": "Görev yok"
+  },
+  "projects": {
+    "create": {
+      "dialog": {
+        "title": "Proje Oluştur",
+        "description": "Yeni projeniz için bir ad girin."
+      },
+      "form": {
+        "nameLabel": "Ad",
+        "namePlaceholder": "Projem"
+      },
+      "errors": {
+        "createFailed": "Proje oluşturulamadı"
+      }
+    }
+  },
+  "conversation": {
+    "executors": "Yürütücüler",
+    "saveAsDefault": "Varsayılan olarak kaydet",
+    "you": "Siz",
+    "thinking": "Düşünüyor",
+    "todo": "Yapılacak",
+    "todos": "Yapılacaklar",
+    "completed": "tamamlandı",
+    "incomplete": "tamamlanmadı",
+    "pending": "bekliyor",
+    "inProgress": "devam ediyor",
+    "skipped": "atlandı",
+    "error": "Hata",
+    "retry": "Tekrar Dene",
+    "showMore": "Daha fazla göster",
+    "showLess": "Daha az göster",
+    "actions": {
+      "cancel": "İptal",
+      "submitFeedback": "Geri Bildirim Gönder",
+      "stop": "Durdur",
+      "stopping": "Durduruluyor",
+      "loading": "Yükleniyor",
+      "send": "Gönder",
+      "sending": "Gönderiliyor",
+      "queue": "Sıraya Al",
+      "cancelQueue": "Sırayı İptal Et",
+      "requestChanges": "Değişiklik İste",
+      "approve": "Onayla",
+      "clearReviewComments": "İnceleme yorumlarını temizle",
+      "edit": "Mesajı düzenle",
+      "scrollToPreviousMessage": "Önceki mesaja git",
+      "reset": "Sıfırla",
+      "resetTooltip": "Bu noktaya sıfırla"
+    },
+    "approval": {
+      "conflictWarning": "Çakışmalı dosyalar manuel çözüm gerektiriyor",
+      "conflicts_one": "{{count}} çakışma",
+      "conflicts_other": "{{count}} çakışma"
+    },
+    "sessions": {
+      "newSession": "Yeni Oturum",
+      "latest": "En son",
+      "previous": "Önceki",
+      "label": "Oturumlar",
+      "noPreviousSessions": "Önceki oturum yok"
+    },
+    "reviewComments": {
+      "count_one": "{{count}} inceleme yorumu dahil edilecek",
+      "count_other": "{{count}} inceleme yorumu dahil edilecek"
+    },
+    "workspace": {
+      "create": "Oluştur",
+      "creating": "Oluşturuluyor..."
+    },
+    "fileEntry": {
+      "created": "Oluşturuldu",
+      "modified": "Değiştirildi",
+      "deleted": "Silindi",
+      "renamed": "Yeniden adlandırıldı"
+    },
+    "script": {
+      "running": "Çalışıyor...",
+      "exitCode": "Çıkış kodu: {{code}}",
+      "completedSuccessfully": "Başarıyla tamamlandı",
+      "clickToViewLogs": "Günlükleri görüntülemek için tıklayın"
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "Setup Script",
+      "setupDescription": "Setup Script yapılandırılmamış. Setup scriptleri kodlama ajanı başlamadan önce çalışır.",
+      "cleanupTitle": "Cleanup Script",
+      "cleanupDescription": "Cleanup Script yapılandırılmamış. Cleanup scriptleri kodlama ajanı bittikten sonra çalışır.",
+      "configure": "Yapılandır"
+    },
+    "updatedTodos": "Güncellenen Yapılacaklar",
+    "viewInChangesPanel": "Değişiklikler panelinde görüntüle",
+    "unableToRenderDiff": "Diff oluşturulamıyor."
+  },
+  "attempt": {
+    "actions": {
+      "openInIde": "IDE'de aç",
+      "openMenu": "Menüyü aç",
+      "startDevServer": "Dev Server başlat",
+      "stopDevServer": "Dev Server durdur"
+    },
+    "labels": {
+      "attempt": "Deneme",
+      "agent": "Agent",
+      "branch": "Branch",
+      "diffs": "Diffler",
+      "summaryAndActions": "Özet ve İşlemler"
+    },
+    "agent": "Agent",
+    "path": "Yol",
+    "openInEditor": "Değişiklikleri {{editor}}'de gör",
+    "copied": "Kopyalandı!",
+    "clickToCopy": "Worktree yolunu kopyala",
+    "stopDev": "Dev Durdur",
+    "pauseDev": "Dev Duraklat",
+    "startDev": "Dev Başlat",
+    "viewDevLogs": "Dev Server günlüklerini görüntüle",
+    "stopping": "Durduruluyor...",
+    "stopAttempt": "Denemeyi Durdur",
+    "newAttempt": "Yeni Deneme",
+    "viewHistory": "Deneme geçmişini görüntüle",
+    "createSubtask": "Alt Görev Oluştur",
+    "preview": "Önizleme",
+    "diffs": "Diffler",
+    "gitActions": "Git İşlemleri",
+    "tryAgain": "Tekrar Dene",
+    "runSetup": "Kurulumu Çalıştır",
+    "setupHelpText": "{{agent}} doğru şekilde kurulmamış. Kurmak ve giriş yapmak için 'Kurulumu Çalıştır'a tıklayın.",
+    "devScriptMissingTooltip": "Dev Server başlatmak için bu projeye bir dev scripti ekleyin"
+  },
+  "git": {
+    "labels": {
+      "taskBranch": "Görev Branch"
+    },
+    "branch": {
+      "current": "mevcut"
+    },
+    "forcePushDialog": {
+      "title": "Zorla Push Gerekli",
+      "description": "Uzak Branch{{branchLabel}} yerel Branch'inizden ayrıldı. Normal Push reddedildi.",
+      "warning": "Zorla Push, uzak değişikliklerin üzerine yerel değişikliklerinizi yazacaktır. Bu işlem geri alınamaz.",
+      "note": "Yalnızca uzak Branch geçmişini değiştirmek istediğinizden eminseniz devam edin.",
+      "error": "Zorla Push başarısız oldu"
+    },
+    "status": {
+      "commits_one": "commit",
+      "commits_other": "commit",
+      "conflicts": "Çakışmalar",
+      "upToDate": "Güncel",
+      "ahead": "ileri",
+      "behind": "geri"
+    },
+    "states": {
+      "merged": "Merge Edildi!",
+      "merging": "Merge Ediliyor...",
+      "merge": "Merge",
+      "rebasing": "Rebase Yapılıyor...",
+      "rebase": "Rebase",
+      "pushed": "Push Edildi!",
+      "pushing": "Push Ediliyor...",
+      "push": "Push",
+      "pushFailed": "Başarısız",
+      "forcePush": "Zorla Push",
+      "forcePushing": "Zorla Push Yapılıyor...",
+      "creating": "Oluşturuluyor...",
+      "createPr": "PR Oluştur"
+    },
+    "errors": {
+      "changeTargetBranch": "Hedef Branch değiştirilemedi",
+      "pushChanges": "Değişiklikler Push edilemedi",
+      "mergeChanges": "Değişiklikler Merge edilemedi",
+      "rebaseBranch": "Branch Rebase edilemedi",
+      "branchStatusUnavailable": "Branch durumu alınamıyor. Yine de hedef Branch'i değiştirebilirsiniz."
+    },
+    "pr": {
+      "open": "PR #{{number}} Aç",
+      "number": "PR #{{number}}",
+      "merged": "Merge Edilen PR #{{prNumber}}"
+    },
+    "actions": {
+      "title": "Git İşlemleri",
+      "changeTarget": "Hedefi değiştir",
+      "prMerged": "PR #{{number}} zaten Merge edilmiş",
+      "loginRequired": {
+        "title": "Git işlemlerini yönetmek için giriş yapın",
+        "description": "Branch'leri Push etmek, değişiklikleri Merge etmek veya bu görev için Pull Request açmak için Vibe Kanban'a giriş yapın.",
+        "action": "Giriş yap"
+      }
+    },
+    "mergeDialog": {
+      "title": "Değişiklikleri Merge Et",
+      "description": "Bu işlem değişikliklerinizi hedef Branch'e Merge edecektir. Devam etmek istediğinizden emin misiniz?"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "Yeni Depo Oluştur",
+        "description": "Yeni bir Git deposu başlat"
+      },
+      "form": {
+        "nameLabel": "Ad",
+        "namePlaceholder": "projem",
+        "locationLabel": "Konum",
+        "locationPlaceholder": "Geçerli dizin"
+      },
+      "browseDialog": {
+        "title": "Üst Dizin Seç",
+        "description": "Yeni deponun oluşturulacağı konumu seçin"
+      },
+      "errors": {
+        "nameRequired": "Depo adı gerekli",
+        "createFailed": "Depo oluşturulamadı"
+      },
+      "buttons": {
+        "createRepository": "Depo Oluştur"
+      },
+      "states": {
+        "creating": "Oluşturuluyor..."
+      }
+    }
+  },
+  "createAttemptDialog": {
+    "title": "Deneme Oluştur",
+    "description": "Bir kodlama ajanıyla yeni bir deneme başlatın. Git Worktree ve görev Branch'i oluşturulacaktır.",
+    "baseBranch": "Temel Branch",
+    "loadingBranches": "Branch'ler yükleniyor...",
+    "selectBranch": "Branch seçin",
+    "error": "Deneme oluşturulamadı. Lütfen tekrar deneyin.",
+    "creating": "Oluşturuluyor...",
+    "start": "Başlat"
+  },
+  "repoBranchSelector": {
+    "label": "Temel Branch"
+  },
+  "attemptRepoSelector": {
+    "label": "Depolar",
+    "addButton": "Ekle",
+    "empty": "Depo seçilmedi. En az bir depo ekleyin.",
+    "selectBranch": "Branch seçin",
+    "addRepo": {
+      "title": "Git Deposu Seç",
+      "description": "Bu denemeye eklemek için bir Git deposu seçin"
+    }
+  },
+  "viewProcessesDialog": {
+    "title": "Yürütme işlemleri"
+  },
+  "viewRelatedTasksDialog": {
+    "title": "İlgili görevler",
+    "empty": "Bu deneme için ilgili görev yok",
+    "error": "İlgili görevler yüklenemedi",
+    "tasksCount": "Görevler ({{count}})",
+    "columns": {
+      "title": "Başlık",
+      "description": "Açıklama",
+      "status": "Durum"
+    }
+  },
+  "attemptHeaderActions": {
+    "preview": "Önizleme",
+    "diffs": "Diffler",
+    "relatedTasks": "İlgili görevler",
+    "tryNewUI": "yeni arayüzü deneyin"
+  },
+  "actionsMenu": {
+    "attempt": "Deneme",
+    "openInIde": "Denemeyi IDE'de aç",
+    "viewProcesses": "İşlemleri görüntüle",
+    "viewRelatedTasks": "İlgili görevleri görüntüle",
+    "createNewAttempt": "Yeni deneme oluştur",
+    "createSubtask": "Alt görev oluştur",
+    "gitActions": "Git işlemleri",
+    "editBranchName": "Branch adını düzenle",
+    "startReview": "İnceleme Başlat",
+    "startingReview": "İnceleme Başlatılıyor...",
+    "task": "Görev",
+    "duplicate": "Çoğalt"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "Branch Adını Düzenle",
+      "description": "Branch için yeni bir ad girin. Açık bir PR varsa yeniden adlandırılamaz.",
+      "branchNameLabel": "Branch Adı",
+      "placeholder": "ör. feature/branch-adim",
+      "renaming": "Yeniden adlandırılıyor...",
+      "action": "Branch'i Yeniden Adlandır"
+    }
+  },
+  "startReviewDialog": {
+    "title": "İnceleme Başlat",
+    "description": "Kodlama ajanından değişikliklerinizi incelemesini ve geri bildirim vermesini isteyin.",
+    "additionalInstructions": "Ek Talimatlar (isteğe bağlı)",
+    "reviewComments": "İnceleme Yorumları ({{count}})",
+    "includeGitContext": "Git bağlamını dahil et",
+    "includeGitContextDescription": "Ajana bu Branch'te yapılan tüm değişiklikleri nasıl görüntüleyeceğini bildirir",
+    "newSession": "Yeni Oturum"
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "Çakışmaları Çöz",
+      "description": "Çakışmalar tespit edildi. Ajanın bunları nasıl çözmesini istediğinizi seçin.",
+      "sessionLabel": "Oturum",
+      "existingSession": "Mevcut oturumda devam et",
+      "newSession": "Yeni bir oturum başlat",
+      "resolve": "Çakışmaları Çöz",
+      "resolving": "Başlatılıyor...",
+      "filesWithConflicts_one": "{{count}} dosyada çakışma var",
+      "filesWithConflicts_other": "{{count}} dosyada çakışma var",
+      "andMore": "...ve {{count}} tane daha"
+    }
+  },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "Rebase Devam Ediyor",
+      "description": "{{targetBranch}} üzerine Rebase işlemi çakışma olmadan devam ediyor. Nasıl ilerlemek istediğinizi seçin.",
+      "hint": "Rebase işlemini tamamlamak için devam edebilir veya önceki durumunuza dönmek için iptal edebilirsiniz.",
+      "continue": "Rebase Devam Et",
+      "continuing": "Devam ediliyor...",
+      "abort": "Rebase İptal Et",
+      "aborting": "İptal ediliyor...",
+      "continueError": "Rebase devam ettirilemedi. Çözülmemiş çakışmalar olabilir.",
+      "abortError": "Rebase iptal edilemedi. Lütfen tekrar deneyin."
+    }
+  },
+  "createPrDialog": {
+    "title": "Pull Request Oluştur",
+    "description": "Bu görev denemesi için bir Pull Request oluşturun.",
+    "titleLabel": "Başlık",
+    "titlePlaceholder": "PR başlığı girin",
+    "descriptionLabel": "Açıklama (isteğe bağlı)",
+    "descriptionPlaceholder": "PR açıklaması girin",
+    "baseBranchLabel": "Temel Branch",
+    "loadingBranches": "Branch'ler yükleniyor...",
+    "selectBaseBranch": "Temel Branch seçin",
+    "draftLabel": "Draft olarak oluştur",
+    "autoGenerateLabel": "Yapay zeka ile PR açıklaması otomatik oluştur",
+    "creating": "Oluşturuluyor...",
+    "createButton": "PR Oluştur",
+    "errors": {
+      "insufficientPermissions": "Yetersiz izinler. Lütfen CLI'ın gerekli izinlere sahip olduğundan emin olun.",
+      "repoNotFoundOrNoAccess": "Depo bulunamadı veya erişim yok. Lütfen depo erişiminizi kontrol edin ve kimlik doğrulamasının yapıldığından emin olun.",
+      "failedToCreate": "PR oluşturulamadı",
+      "gitCliNotLoggedIn": "Git kimlik doğrulaması yapılmamış. \"gh auth login\" komutunu çalıştırın (veya Git kimlik bilgilerini yapılandırın) ve tekrar deneyin.",
+      "gitCliNotInstalled": "Git CLI yüklü değil. PR oluşturmak için Git'i yükleyin.",
+      "targetBranchNotFound": "Hedef Branch '{{branch}}' uzak depoda mevcut değil. Lütfen Pull Request oluşturmadan önce Branch'in var olduğundan emin olun."
+    },
+    "loginRequired": {
+      "title": "Pull Request oluşturmak için giriş yapın",
+      "description": "Bu görev için Pull Request açabilmeniz için giriş yapmanız gerekiyor. Sizi giriş sayfasına yönlendireceğiz.",
+      "action": "Giriş yap"
+    }
+  },
+  "showcases": {
+    "taskPanel": {
+      "companion": {
+        "title": "Vibe Kanban Companion Tıkla ve Seç",
+        "description": "Önizleme penceresinde herhangi bir UI bileşenine tıklayarak onu hassas bir şekilde seçin. Kodlama ajanı tam DOM seçicileri ve bileşen hiyerarşisi alır, belirsiz geri bildirimi ortadan kaldırır."
+      },
+      "installation": {
+        "title": "Dev Server ve Companion Kurulumu",
+        "description": "Önizlemeler için bir Dev Server komutu ayarlayın, ayarlarda yapılandırılabilir bir Setup Script ile. Vibe Kanban web companion'ını otomatik olarak yüklemek için bir kodlama ajanı kullanın."
+      },
+      "codeReview": {
+        "title": "Yerleşik Kod İnceleme",
+        "description": "Diffler görünümünde artı simgesiyle doğrudan satıra özel yorumlar ekleyin. Tüm geri bildirimler toplanır ve kodlama ajanına eksiksiz bir inceleme olarak gönderilir."
+      },
+      "pullRequest": {
+        "title": "Görevden PR Oluştur",
+        "description": "Görev denemelerinden doğrudan değişikliklerinizi Merge edin veya Pull Request oluşturun. PR iletişim kutusu, akıcı iş akışları için görev detaylarınızdan başlık ve açıklamayı önceden doldurur."
+      },
+      "tags": {
+        "title": "Özel Prompt Tag'leri",
+        "description": "Özel promptları Tag olarak kaydedin ve yeni görevlere veya takip mesajlarına gömün. İş akışınızda tutarlılığı korumak için yaygın talimatları yeniden kullanın."
+      }
+    },
+    "buttons": {
+      "previous": "Önceki",
+      "next": "Sonraki",
+      "finish": "Bitir"
+    }
+  },
+  "prComments": {
+    "dialog": {
+      "title": "PR Yorumlarını Seç",
+      "noComments": "Bu PR'da yorum bulunamadı",
+      "selectAll": "Tümünü Seç",
+      "deselectAll": "Tümünün Seçimini Kaldır",
+      "add": "Ekle",
+      "selectedCount": "{{selected}} / {{total}} seçildi"
+    },
+    "card": {
+      "review": "İnceleme",
+      "tooltip": "Görüntülemek için tıklayın, düzenlemek için çift tıklayın"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "Yeni Görev Oluştur",
+    "editTitle": "Görevi Düzenle",
+    "titlePlaceholder": "Görev başlığı...",
+    "descriptionPlaceholder": "Daha fazla detay ekleyin (isteğe bağlı). Dosya aramak için @ yazın.",
+    "statusLabel": "Durum",
+    "statusOptions": {
+      "todo": "Yapılacak",
+      "inprogress": "Devam Ediyor",
+      "inreview": "İncelemede",
+      "done": "Tamamlandı",
+      "cancelled": "İptal Edildi"
+    },
+    "startLabel": "Başlat",
+    "attachImage": "Görsel ekle",
+    "dropImagesHere": "Görselleri buraya bırakın",
+    "updating": "Güncelleniyor...",
+    "updateTask": "Görevi Güncelle",
+    "starting": "Başlatılıyor...",
+    "creating": "Oluşturuluyor...",
+    "create": "Oluştur",
+    "discardDialog": {
+      "title": "Kaydedilmemiş değişiklikler atılsın mı?",
+      "description": "Kaydedilmemiş değişiklikleriniz var. Bunları atmak istediğinizden emin misiniz?",
+      "continueEditing": "Düzenlemeye Devam Et",
+      "discardChanges": "Değişiklikleri At"
+    }
+  },
+  "terminal": {
+    "selectWorkspace": "Terminal açmak için bir Workspace seçin"
+  },
+  "restoreLogsDialog": {
+    "title": "Tekrar Denemeyi Onayla",
+    "titleReset": "Sıfırlamayı Onayla",
+    "historyChange": {
+      "title": "Geçmiş değişikliği",
+      "willDelete": "Bu işlem silinecek",
+      "willDeleteProcesses_one": "{{count}} işlem silinecek",
+      "willDeleteProcesses_other": "{{count}} işlem silinecek",
+      "andLaterProcesses_one": "ve {{count}} sonraki işlem",
+      "andLaterProcesses_other": "ve {{count}} sonraki işlem",
+      "fromHistory": "geçmişten.",
+      "codingAgentRuns_one": "{{count}} kodlama ajanı çalıştırması",
+      "codingAgentRuns_other": "{{count}} kodlama ajanı çalıştırması",
+      "scriptProcesses_one": "{{count}} script işlemi",
+      "scriptProcesses_other": "{{count}} script işlemi",
+      "setupCleanupBreakdown": "({{setup}} setup, {{cleanup}} cleanup)",
+      "permanentWarning": "Bu işlem geçmişi kalıcı olarak değiştirir ve geri alınamaz."
+    },
+    "uncommittedChanges": {
+      "title": "Commit edilmemiş değişiklikler tespit edildi",
+      "description_one": "{{count}} Commit edilmemiş değişikliğiniz var",
+      "description_other": "{{count}} Commit edilmemiş değişikliğiniz var",
+      "andUntracked_one": " ve {{count}} izlenmeyen dosya",
+      "andUntracked_other": " ve {{count}} izlenmeyen dosya",
+      "acknowledgeLabel": "Bu değişikliklerin etkilenebileceğini anlıyorum"
+    },
+    "resetWorktree": {
+      "title": "Worktree sıfırla",
+      "enabled": "Etkin",
+      "disabled": "Devre dışı",
+      "disabledUncommitted": "Devre dışı (Commit edilmemiş değişiklikler tespit edildi)",
+      "restoreDescription": "Worktree'niz bu Commit'e geri yüklenecek.",
+      "rollbackCommits_one": "Mevcut HEAD'den {{count}} Commit geri al.",
+      "rollbackCommits_other": "Mevcut HEAD'den {{count}} Commit geri al.",
+      "discardChanges_one": "{{count}} Commit edilmemiş değişikliği at.",
+      "discardChanges_other": "{{count}} Commit edilmemiş değişikliği at.",
+      "untrackedPresent_one": "{{count}} izlenmeyen dosya mevcut (sıfırlamadan etkilenmez).",
+      "untrackedPresent_other": "{{count}} izlenmeyen dosya mevcut (sıfırlamadan etkilenmez).",
+      "forceReset": "Zorla sıfırla (Commit edilmemiş değişiklikleri at)",
+      "uncommittedWillDiscard": "Commit edilmemiş değişiklikler atılacak.",
+      "uncommittedPresentHint": "Commit edilmemiş değişiklikler mevcut. Devam etmek için Zorla sıfırla'yı açın veya Commit/stash yapın."
+    },
+    "buttons": {
+      "retry": "Tekrar Dene",
+      "reset": "Sıfırla"
+    }
+  },
+  "scriptFixer": {
+    "title": "Script Düzelt",
+    "setupScriptTitle": "Setup Script Düzelt",
+    "cleanupScriptTitle": "Cleanup Script Düzelt",
+    "archiveScriptTitle": "Archive Script Düzelt",
+    "devServerTitle": "Dev Server Script Düzelt",
+    "scriptLabel": "Script (düzenle)",
+    "logsLabel": "Son Yürütme Günlükleri",
+    "saveButton": "Kaydet",
+    "saveAndTestButton": "Kaydet ve Test Et",
+    "saving": "Kaydediliyor...",
+    "testing": "Test ediliyor...",
+    "noLogs": "Yürütme günlüğü mevcut değil",
+    "selectRepo": "Depo",
+    "fixScript": "Script Düzelt",
+    "statusRunning": "Çalışıyor...",
+    "statusSuccess": "Başarıyla tamamlandı",
+    "statusFailed": "{{exitCode}} çıkış koduyla başarısız oldu",
+    "statusKilled": "İşlem sonlandırıldı"
+  },
+  "createWorkspaceFromPr": {
+    "title": "PR'dan Workspace Oluştur",
+    "description": "Workspace oluşturmak için açık bir Pull Request seçin. PR başlığı kullanılarak otomatik olarak bir görev oluşturulacaktır.",
+    "repositoryLabel": "Depo",
+    "remoteLabel": "Uzak",
+    "pullRequestLabel": "Pull Request",
+    "loadingRepositories": "Depolar yükleniyor...",
+    "loadingRemotes": "Uzak depolar yükleniyor...",
+    "noRepositoriesFound": "Depo bulunamadı",
+    "loadingPullRequests": "Pull Request'ler yükleniyor...",
+    "selectRepositoryFirst": "Önce bir depo seçin",
+    "noPullRequestsFound": "Açık Pull Request bulunamadı",
+    "runSetupScript": "Setup Script çalıştır",
+    "creating": "Oluşturuluyor...",
+    "createWorkspace": "Workspace Oluştur",
+    "selectRepository": "Depo seçin",
+    "selectRemote": "Uzak depo seçin",
+    "selectPullRequest": "Pull Request seçin",
+    "searchPrsPlaceholder": "PR'ları numara veya başlığa göre ara...",
+    "noMatchingPrs": "Eşleşen Pull Request yok",
+    "default": "varsayılan",
+    "openPrInBrowser": "PR'ı tarayıcıda aç",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLI yüklü değil",
+      "unsupportedProvider": "Git sağlayıcısı desteklenmiyor",
+      "failedToLoadPrs": "Pull Request'ler yüklenemedi",
+      "prNotFound": "Pull Request bulunamadı",
+      "repoNotInProject": "Depo herhangi bir projede değil",
+      "failedToCreateWorkspace": "Workspace oluşturulamadı"
+    }
+  }
+}

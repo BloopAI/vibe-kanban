@@ -1,0 +1,527 @@
+{
+  "settings": {
+    "common": {
+      "unsavedChanges": "• Kaydedilmemiş değişiklikleriniz var"
+    },
+    "unsavedChanges": {
+      "title": "Kaydedilmemiş Değişiklikler",
+      "message": "Kaydedilmemiş değişiklikleriniz var. Kaydetmeden kapatmak istediğinizden emin misiniz?",
+      "discard": "Değişiklikleri At",
+      "cancel": "Düzenlemeye Devam Et"
+    },
+    "layout": {
+      "nav": {
+        "title": "Ayarlar",
+        "general": "Genel",
+        "generalDesc": "Tema, bildirimler ve tercihler",
+        "projects": "Projeler",
+        "projectsDesc": "Proje depoları ve yapılandırma",
+        "repos": "Depolar",
+        "reposDesc": "Depo betikleri ve yapılandırma",
+        "agents": "Ajanlar",
+        "agentsDesc": "Kodlama Agent yapılandırmaları",
+        "mcp": "MCP Sunucuları",
+        "mcpDesc": "Model Context Protocol sunucuları",
+        "organizations": "Organizasyon Ayarları",
+        "organizationsDesc": "Organizasyon üyelerini ve izinleri yönet",
+        "remote-projects": "Projeler",
+        "remote-projectsDesc": "Projeleri yönet"
+      }
+    },
+    "general": {
+      "loading": "Ayarlar yükleniyor...",
+      "loadError": "Yapılandırma yüklenemedi.",
+      "save": {
+        "button": "Ayarları Kaydet",
+        "success": "✓ Ayarlar başarıyla kaydedildi!",
+        "error": "Yapılandırma kaydedilemedi",
+        "unsavedChanges": "• Kaydedilmemiş değişiklikleriniz var",
+        "discard": "At"
+      },
+      "appearance": {
+        "title": "Görünüm",
+        "description": "Uygulamanın görünümünü ve hissini özelleştirin.",
+        "theme": {
+          "label": "Tema",
+          "placeholder": "Tema seçin",
+          "helper": "Tercih ettiğiniz renk şemasını seçin."
+        },
+        "language": {
+          "label": "Dil",
+          "placeholder": "Dil seçin",
+          "helper": "Tercih ettiğiniz dili seçin. Tarayıcı Varsayılanı sistem dilinizi takip eder."
+        }
+      },
+      "taskExecution": {
+        "title": "Varsayılan Kodlama Agent",
+        "description": "Görevler için varsayılan kodlama Agent seçin.",
+        "executor": {
+          "label": "Varsayılan Agent Yapılandırması",
+          "placeholder": "Profil seçin",
+          "helper": "Görev denemesi oluştururken kullanılacak varsayılan Agent yapılandırmasını seçin."
+        },
+        "variant": "DEFAULT",
+        "defaultLabel": "Varsayılan"
+      },
+      "editor": {
+        "title": "Editör",
+        "description": "Kod düzenleme deneyiminizi yapılandırın.",
+        "type": {
+          "label": "Editör Türü",
+          "placeholder": "Editör seçin",
+          "helper": "Tercih ettiğiniz kod editörü arayüzünü seçin."
+        },
+        "customCommand": {
+          "label": "Özel Editör Komutu",
+          "placeholder": "ör. code, subl, vim",
+          "helper": "Özel editörünüzü başlatmak için komutu girin. Bu komut dosyaları açmak için kullanılacaktır."
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "Uzak SSH Sunucusu (İsteğe Bağlı)",
+            "placeholder": "ör. sunucu adı veya IP adresi",
+            "helper": "Vibe Kanban uzak bir sunucuda çalışıyorsa bunu ayarlayın. Ayarlandığında, \"Editörde Aç\" düğmesi yerel komut çalıştırmak yerine SSH üzerinden editörünüzü açmak için bir URL oluşturur."
+          },
+          "user": {
+            "label": "Uzak SSH Kullanıcısı (İsteğe Bağlı)",
+            "placeholder": "ör. kullanıcı adı",
+            "helper": "Uzak bağlantı için SSH kullanıcı adı. Ayarlanmazsa VS Code, SSH yapılandırmanızı kullanır veya sizden ister."
+          }
+        },
+        "availability": {
+          "checking": "Kullanılabilirlik kontrol ediliyor...",
+          "available": "Kullanılabilir",
+          "notFound": "PATH içinde bulunamadı"
+        }
+      },
+      "github": {
+        "title": "GitHub Entegrasyonu",
+        "cliSetup": {
+          "title": "GitHub CLI Kurulumu",
+          "description": "Pull Request oluşturmak ve GitHub depoları ile etkileşim kurmak için GitHub CLI kimlik doğrulaması gereklidir.",
+          "setupWillTitle": "Bu kurulum şunları yapacaktır:",
+          "steps": {
+            "checkInstalled": "GitHub CLI (gh) kurulu mu kontrol et",
+            "installHomebrew": "Gerekirse Homebrew ile kur (macOS)",
+            "authenticate": "OAuth kullanarak GitHub ile kimlik doğrula"
+          },
+          "setupNote": "Kurulum sohbet penceresinde çalışacaktır. Kimlik doğrulamayı tarayıcınızda tamamlamanız gerekecektir.",
+          "runSetup": "Kurulumu Başlat",
+          "running": "Çalışıyor...",
+          "errors": {
+            "brewMissing": "Homebrew kurulu değil. Otomatik kurulumu etkinleştirmek için kurun.",
+            "notSupported": "Bu platformda otomatik kurulum desteklenmiyor. GitHub CLI'ı manuel olarak kurun.",
+            "setupFailed": "GitHub CLI kurulumu çalıştırılamadı."
+          },
+          "help": {
+            "homebrew": {
+              "description": "Otomatik kurulum için Homebrew gereklidir. Homebrew'u şu adresten kurun:",
+              "brewSh": "brew.sh",
+              "manualInstall": "ve ardından kurulumu yeniden çalıştırın. Alternatif olarak GitHub CLI'ı şu komutla manuel kurun:",
+              "afterInstall": "Kurulumdan sonra şu komutla kimlik doğrulayın:"
+            },
+            "manual": {
+              "description": "GitHub CLI'ı şu kaynaktan kurun:",
+              "officialDocs": "resmi belgeler",
+              "andAuthenticate": "ve ardından GitHub hesabınızla kimlik doğrulayın."
+            }
+          }
+        }
+      },
+      "git": {
+        "title": "Git",
+        "description": "Git Branch adlandırma tercihlerini yapılandırın",
+        "branchPrefix": {
+          "label": "Branch Öneki",
+          "placeholder": "vk",
+          "helper": "Otomatik oluşturulan Branch adları için önek. Önek istemiyorsanız boş bırakın.",
+          "preview": "Önizleme:",
+          "previewWithPrefix": "{{prefix}}/1a2b-task-name",
+          "previewNoPrefix": "1a2b-task-name",
+          "errors": {
+            "slash": "Önek '/' içeremez.",
+            "startsWithDot": "Önek '.' ile başlayamaz.",
+            "endsWithDot": "Önek '.' veya '.lock' ile bitemez.",
+            "invalidSequence": "Geçersiz dizi içeriyor (.., @{).",
+            "invalidChars": "Geçersiz karakterler içeriyor.",
+            "controlChars": "Kontrol karakterleri içeriyor."
+          }
+        },
+        "workspaceDir": {
+          "label": "Workspace Dizini",
+          "placeholder": "~/",
+          "helper": "Workspace'ler bu yol içinde .vibe-kanban-workspaces alt dizininde oluşturulacaktır. Sistem varsayılanını kullanmak için boş bırakın. Değişiklikler uygulama yeniden başlatılmasını gerektirir.",
+          "browse": "Göz At",
+          "dialogTitle": "Workspace Dizini Seçin",
+          "dialogDescription": "Bir dizin seçin. Workspace'ler bunun içinde .vibe-kanban-workspaces alt dizininde oluşturulacaktır."
+        }
+      },
+      "pullRequests": {
+        "title": "Pull Request'ler",
+        "description": "PR oluşturma davranışını yapılandırın",
+        "autoDescription": {
+          "label": "Varsayılan olarak PR açıklamasını otomatik oluştur",
+          "helper": "Etkinleştirildiğinde, AI Agent oluşturulduktan sonra PR başlığını ve açıklamasını otomatik olarak günceller."
+        },
+        "customPrompt": {
+          "useCustom": "Özel komut istemi kullan",
+          "helper": "PR açıklamaları oluştururken AI Agent için özel komut istemi. Yer tutucu olarak {pr_number} ve {pr_url} kullanın."
+        }
+      },
+      "commits": {
+        "title": "Commit'ler",
+        "description": "Görev denemeleri için Commit davranışını yapılandırın",
+        "reminder": {
+          "label": "Commit hatırlatıcısı",
+          "helper": "Desteklenen Agent'ları durmadan önce değişiklikleri Commit etmeye yönlendirin."
+        },
+        "customPrompt": {
+          "useCustom": "Özel komut istemi kullan",
+          "helper": "Commit hatırlatıcısı için özel komut istemi. Git durumu otomatik olarak eklenecektir."
+        }
+      },
+      "notifications": {
+        "title": "Bildirimler",
+        "description": "Bildirimleri ne zaman ve nasıl alacağınızı kontrol edin.",
+        "sound": {
+          "label": "Ses Bildirimleri",
+          "helper": "Görev denemeleri tamamlandığında bir ses çalın.",
+          "fileLabel": "Ses",
+          "filePlaceholder": "Ses seçin",
+          "fileHelper": "Görevler tamamlandığında çalınacak sesi seçin. Önizleme için ses düğmesine tıklayın."
+        },
+        "push": {
+          "label": "Anlık Bildirimler",
+          "helper": "Görev denemeleri tamamlandığında sistem bildirimleri gösterin."
+        }
+      },
+      "messageInput": {
+        "title": "Mesaj Girişi",
+        "description": "Sohbet girişinde mesajların nasıl gönderileceğini yapılandırın.",
+        "shortcut": {
+          "label": "Mesaj gönderme kısayolu",
+          "helper": "Mesaj göndermek için klavye kısayolunu seçin.",
+          "enterLabel": "Enter (yeni satır için Shift+Enter)"
+        }
+      },
+      "privacy": {
+        "title": "Gizlilik",
+        "description": "Anonim kullanım verilerini paylaşarak Vibe-Kanban'ı iyileştirmemize yardımcı olun.",
+        "telemetry": {
+          "label": "Telemetriyi Etkinleştir",
+          "helper": "Uygulamayı iyileştirmeye yardımcı olmak için anonim kullanım olayları takibini etkinleştirir. Komut istemleri veya proje bilgileri toplanmaz."
+        }
+      },
+      "taskTemplates": {
+        "title": "Tag'ler",
+        "description": "@tag_adı kullanarak görev açıklamalarına eklenebilen yeniden kullanılabilir metin parçacıkları oluşturun."
+      },
+      "tags": {
+        "manager": {
+          "title": "Görev Tag'leri",
+          "addTag": "Tag Ekle",
+          "noTags": "Henüz Tag yok. Yaygın görev açıklamaları için yeniden kullanılabilir metin parçacıkları oluşturun. Herhangi bir görevde @tag_adı kullanın.",
+          "table": {
+            "tagName": "Tag Adı",
+            "content": "İçerik",
+            "actions": "İşlemler"
+          },
+          "actions": {
+            "editTag": "Tag düzenle",
+            "deleteTag": "Tag sil"
+          },
+          "deleteConfirm": "\"{{tagName}}\" Tag'ini silmek istediğinizden emin misiniz?"
+        },
+        "dialog": {
+          "createTitle": "Tag Oluştur",
+          "editTitle": "Tag Düzenle",
+          "tagName": {
+            "label": "Tag Adı",
+            "required": "*",
+            "hint": "Bu adı görev açıklamalarında @ ile kullanın: @{{tagName}}",
+            "placeholder": "ör. bug_fix, test_plan, api_docs",
+            "error": "Tag adı boşluk içeremez. Bunun yerine alt çizgi kullanın (ör. my_tag)"
+          },
+          "content": {
+            "label": "İçerik",
+            "required": "*",
+            "hint": "Görev açıklamalarında @{{tagName}} kullandığınızda eklenecek metin",
+            "placeholder": "Bu Tag'i kullandığınızda eklenecek metni girin"
+          },
+          "errors": {
+            "nameRequired": "Tag adı gereklidir",
+            "saveFailed": "Tag kaydedilemedi"
+          },
+          "buttons": {
+            "cancel": "İptal",
+            "create": "Oluştur",
+            "update": "Güncelle"
+          }
+        }
+      },
+      "safety": {
+        "title": "Güvenlik ve Uyarılar",
+        "description": "Güvenlik uyarıları ve başlangıç rehberi için onayları sıfırlayın.",
+        "disclaimer": {
+          "title": "Sorumluluk Reddi Onayı",
+          "description": "Güvenlik sorumluluk reddini sıfırlayın.",
+          "button": "Sıfırla"
+        },
+        "onboarding": {
+          "title": "Başlangıç Rehberi",
+          "description": "Başlangıç rehberi akışını sıfırlayın.",
+          "button": "Sıfırla"
+        }
+      },
+      "beta": {
+        "title": "Beta Özellikleri",
+        "description": "Yayınlanmadan önce deneysel özellikleri deneyin.",
+        "workspaces": {
+          "label": "Workspace Beta'sını Etkinleştir",
+          "helper": "Görev denemelerini görüntülerken yeni Workspace arayüzünü kullanın. Görevler önce görev görünümünde açılır, denemeler ise yeni Workspace görünümünde açılır."
+        }
+      }
+    },
+    "agents": {
+      "title": "Kodlama Agent Yapılandırmaları",
+      "description": "Farklı yapılandırmalarla kodlama Agent'larının davranışını özelleştirin.",
+      "loading": "Agent yapılandırmaları yükleniyor...",
+      "selectAgent": "Agent seçin",
+      "save": {
+        "button": "Agent Yapılandırmalarını Kaydet",
+        "success": "✓ Agent yapılandırmaları başarıyla kaydedildi!",
+        "unsavedChanges": "• Kaydedilmemiş değişiklikleriniz var"
+      },
+      "availability": {
+        "checking": "Kontrol ediliyor...",
+        "checkingAvailability": "Kullanılabilirlik kontrol ediliyor...",
+        "available": "Agent kullanılabilir",
+        "notFoundSimple": "Agent bulunamadı",
+        "loginDetected": "Yakın Zamanda Kullanım Tespit Edildi",
+        "loginDetectedTooltip": "Bu Agent için yakın zamanda kullanılan kimlik doğrulama bilgileri bulundu",
+        "installationFound": "Önceki Kullanım Tespit Edildi",
+        "installationFoundTooltip": "Agent yapılandırması bulundu. Kullanmak için giriş yapmanız gerekebilir."
+      },
+      "editor": {
+        "formLabel": "JSON Düzenle",
+        "agentLabel": "Agent",
+        "agentPlaceholder": "Çalıştırıcı türü seçin",
+        "configLabel": "Yapılandırma",
+        "configPlaceholder": "Yapılandırma seçin",
+        "createNew": "Yeni oluştur...",
+        "deleteTitle": "Son yapılandırma silinemez",
+        "deleteButton": "{{name}} Sil",
+        "deleteText": "Sil",
+        "makeDefault": "Varsayılan Yap",
+        "isDefault": "Varsayılan",
+        "jsonLabel": "Agent Yapılandırması (JSON)",
+        "jsonPlaceholder": "Profiller yükleniyor...",
+        "jsonLoading": "Yükleniyor...",
+        "pathLabel": "Yapılandırma dosyası konumu:"
+      },
+      "errors": {
+        "deleteFailed": "Yapılandırma silinemedi. Lütfen tekrar deneyin.",
+        "saveFailed": "Agent yapılandırmaları kaydedilemedi. Lütfen tekrar deneyin.",
+        "saveConfigFailed": "Yapılandırma kaydedilemedi. Lütfen tekrar deneyin.",
+        "schemaNotFound": "Çalıştırıcı türü için şema bulunamadı: {{executor}}"
+      },
+      "tree": {
+        "search": "Yapılandırma ara...",
+        "expandAll": "Tümünü Genişlet",
+        "collapseAll": "Tümünü Daralt",
+        "noResults": "Eşleşen yapılandırma bulunamadı",
+        "noConfigs": "Kullanılabilir yapılandırma yok",
+        "selectConfig": "Ayarlarını görüntülemek ve düzenlemek için kenar çubuğundan bir yapılandırma seçin."
+      },
+      "deleteConfigDialog": {
+        "title": "Yapılandırma Silinsin mi?",
+        "description": "Bu işlem \"{{configName}}\" yapılandırmasını {{executorType}} çalıştırıcısından kalıcı olarak kaldıracaktır. Bu işlem geri alınamaz."
+      }
+    },
+    "mcp": {
+      "title": "MCP Sunucu Yapılandırması",
+      "description": "Kodlama Agent yeteneklerini özel araçlar ve kaynaklarla genişletmek için Model Context Protocol sunucularını yapılandırın.",
+      "loading": "MCP yapılandırması yükleniyor...",
+      "applying": "Yapılandırma uygulanıyor...",
+      "labels": {
+        "agent": "Agent",
+        "agentPlaceholder": "Çalıştırıcı seçin",
+        "agentHelper": "MCP sunucularını yapılandırmak istediğiniz Agent'ı seçin.",
+        "serverConfig": "Sunucu Yapılandırması (JSON)",
+        "popularServers": "Popüler sunucular",
+        "serverHelper": "Yukarıdaki JSON'a MCP Sunucusu eklemek için bir karta tıklayın.",
+        "saveLocation": "Değişiklikler şuraya kaydedilecek:"
+      },
+      "loadingStates": {
+        "jsonEditor": "Yükleniyor...",
+        "configuration": "Mevcut MCP sunucu yapılandırması yükleniyor..."
+      },
+      "errors": {
+        "loadFailed": "Yapılandırma yüklenemedi.",
+        "invalidJson": "Geçersiz JSON biçimi",
+        "validationError": "Doğrulama hatası",
+        "saveFailed": "MCP sunucuları kaydedilemedi",
+        "applyFailed": "MCP sunucu yapılandırması uygulanamadı",
+        "addServerFailed": "Önceden yapılandırılmış sunucu eklenemedi",
+        "mcpError": "MCP Yapılandırma Hatası: {{error}}",
+        "notSupported": "MCP Desteklenmiyor",
+        "supportMessage": "MCP sunucularını kullanmak için lütfen yukarıdan MCP destekleyen farklı bir çalıştırıcı seçin (Claude, Amp, Gemini, Codex veya Opencode)."
+      },
+      "save": {
+        "button": "MCP Yapılandırmasını Kaydet",
+        "success": "Ayarlar Kaydedildi!",
+        "successMessage": "✓ MCP yapılandırması başarıyla kaydedildi!",
+        "loading": "Mevcut MCP sunucu yapılandırması yükleniyor...",
+        "unsavedChanges": "• Kaydedilmemiş değişiklikleriniz var"
+      }
+    },
+    "projects": {
+      "title": "Proje Yapılandırması",
+      "description": "Projeye özel betikleri ve ayarları yapılandırın.",
+      "loading": "Projeler yükleniyor...",
+      "loadError": "Projeler yüklenemedi.",
+      "selector": {
+        "label": "Proje Seçin",
+        "placeholder": "Yapılandırılacak projeyi seçin",
+        "helper": "Yapılandırmasını görüntülemek ve düzenlemek için bir proje seçin.",
+        "noProjects": "Kullanılabilir proje yok"
+      },
+      "general": {
+        "title": "Genel Ayarlar",
+        "description": "Temel proje bilgilerini yapılandırın.",
+        "name": {
+          "label": "Proje Adı",
+          "placeholder": "Proje adını girin",
+          "helper": "Bu proje için bir görünen ad."
+        },
+        "repoPath": {
+          "label": "Git Depo Yolu",
+          "placeholder": "/mevcut/deponuzun/yolu",
+          "helper": "Diskteki Git deponuzun mutlak yolu."
+        }
+      },
+      "save": {
+        "button": "Proje Ayarlarını Kaydet",
+        "success": "✓ Proje ayarları başarıyla kaydedildi!",
+        "error": "Proje ayarları kaydedilemedi",
+        "unsavedChanges": "• Kaydedilmemiş değişiklikleriniz var",
+        "discard": "At",
+        "confirmSwitch": "Kaydedilmemiş değişiklikleriniz var. Projeleri değiştirmek istediğinizden emin misiniz? Değişiklikleriniz kaybolacaktır."
+      },
+      "repositories": {
+        "title": "Depolar",
+        "description": "Bu projedeki Git depolarını yönetin",
+        "noRepositories": "Yapılandırılmış depo yok",
+        "addRepository": "Depo Ekle"
+      }
+    },
+    "repos": {
+      "title": "Depo Yapılandırması",
+      "description": "Bu depo Workspace'lerde kullanıldığında çalışacak betikleri yapılandırın.",
+      "loading": "Depolar yükleniyor...",
+      "loadError": "Depolar yüklenemedi.",
+      "selector": {
+        "label": "Depo Seçin",
+        "placeholder": "Yapılandırılacak depoyu seçin",
+        "helper": "Yapılandırmasını görüntülemek ve düzenlemek için bir depo seçin.",
+        "noRepos": "Kullanılabilir depo yok"
+      },
+      "general": {
+        "title": "Genel Ayarlar",
+        "description": "Temel depo bilgilerini yapılandırın.",
+        "displayName": {
+          "label": "Görünen Ad",
+          "placeholder": "Görünen adı girin",
+          "helper": "Bu depo için kolay anlaşılır bir ad."
+        },
+        "path": {
+          "label": "Depo Yolu"
+        },
+        "defaultWorkingDir": {
+          "label": "Varsayılan Çalışma Dizini",
+          "placeholder": "ör. packages/frontend",
+          "helper": "Tek depolu Workspace'lerde kodlama Agent'ının çalıştığı, depo köküne göre alt dizin. Workspace oluşturulurken ayarlanır. Depo kökünü kullanmak için boş bırakın."
+        },
+        "defaultTargetBranch": {
+          "label": "Varsayılan Hedef Branch",
+          "placeholder": "Branch seçin",
+          "helper": "Yeni Workspace'ler için varsayılan temel Branch. Worktree'ler bu Branch'ten dallanır ve PR'lar bunu hedefler.",
+          "search": "Branch ara",
+          "noBranches": "Branch bulunamadı",
+          "loading": "Branch'ler yükleniyor...",
+          "useCurrent": "Mevcut Branch'i kullan"
+        }
+      },
+      "scripts": {
+        "title": "Betikler ve Yapılandırma",
+        "description": "Bu depo için Dev Server, kurulum, temizlik ve dosya kopyalama ayarlarını yapılandırın. Bu betikler, depo herhangi bir Workspace'te kullanıldığında çalışır.",
+        "setup": {
+          "label": "Setup Script",
+          "helper": "Bu betik, Worktree oluşturulduktan sonra ve kodlama Agent'ı başlamadan önce Worktree içinden çalışır. Bağımlılıkları yükleme veya ortamı hazırlama gibi kurulum görevleri için kullanın.",
+          "parallelLabel": "Setup Script'i kodlama Agent'ı ile paralel çalıştır",
+          "parallelHelper": "Etkinleştirildiğinde Setup Script, kurulumun tamamlanmasını beklemek yerine kodlama Agent'ı ile eş zamanlı çalışır."
+        },
+        "cleanup": {
+          "label": "Cleanup Script",
+          "helper": "Bu betik, kodlama Agent'ı çalıştırıldıktan sonra yalnızca değişiklik yapılmışsa Worktree içinden çalışır. Linter, biçimlendirici, test veya diğer doğrulama adımlarını çalıştırma gibi kalite güvence görevleri için kullanın."
+        },
+        "archive": {
+          "label": "Archive Script",
+          "helper": "Bu betik, Workspace arşivlendiğinde Worktree içinden çalışır. Hizmetleri durdurma, kaynakları serbest bırakma veya durumu kaydetme gibi temizlik görevleri için kullanın."
+        },
+        "copyFiles": {
+          "label": "Dosya Kopyala",
+          "helper": "Orijinal depo dizininden Worktree'ye kopyalanacak dosyaların virgülle ayrılmış listesi. .env gibi ortam dosyaları için kullanışlıdır. Bu dosyaların gitignore'da olduğundan emin olun!",
+          "placeholder": "Dosya yolları veya glob desenleri (ör. .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "Dev Server Script",
+          "helper": "Bu depo için geliştirme sunucusu başlatır. Betikler, deponun Worktree dizini içinden çalışır."
+        }
+      },
+      "save": {
+        "button": "Depo Ayarlarını Kaydet",
+        "success": "Depo ayarları başarıyla kaydedildi!",
+        "error": "Depo ayarları kaydedilemedi",
+        "unsavedChanges": "Kaydedilmemiş değişiklikleriniz var",
+        "discard": "At",
+        "confirmSwitch": "Kaydedilmemiş değişiklikleriniz var. Depoları değiştirmek istediğinizden emin misiniz? Değişiklikleriniz kaybolacaktır."
+      }
+    }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "GitHub CLI Kurulumu",
+        "description": "Pull Request oluşturmak ve GitHub depoları ile etkileşim kurmak için GitHub CLI kimlik doğrulaması gereklidir.",
+        "setupWillTitle": "Bu kurulum şunları yapacaktır:",
+        "steps": {
+          "checkInstalled": "GitHub CLI (gh) kurulu mu kontrol et",
+          "installHomebrew": "Gerekirse Homebrew ile kur (macOS)",
+          "authenticate": "OAuth kullanarak GitHub ile kimlik doğrula"
+        },
+        "setupNote": "Kurulum sohbet penceresinde çalışacaktır. Kimlik doğrulamayı tarayıcınızda tamamlamanız gerekecektir.",
+        "runSetup": "Kurulumu Başlat",
+        "running": "Çalışıyor...",
+        "errors": {
+          "brewMissing": "Homebrew kurulu değil. Otomatik kurulumu etkinleştirmek için kurun.",
+          "notSupported": "Bu platformda otomatik kurulum desteklenmiyor. GitHub CLI'ı manuel olarak kurun.",
+          "setupFailed": "GitHub CLI kurulumu çalıştırılamadı."
+        },
+        "help": {
+          "homebrew": {
+            "description": "Otomatik kurulum için Homebrew gereklidir. Homebrew'u şu adresten kurun:",
+            "brewSh": "brew.sh",
+            "manualInstall": "ve ardından kurulumu yeniden çalıştırın. Alternatif olarak GitHub CLI'ı şu komutla manuel kurun:",
+            "afterInstall": "Kurulumdan sonra şu komutla kimlik doğrulayın:"
+          },
+          "manual": {
+            "description": "GitHub CLI'ı şu kaynaktan kurun:",
+            "officialDocs": "resmi belgeler",
+            "andAuthenticate": "ve ardından GitHub hesabınızla kimlik doğrulayın."
+          }
+        }
+      }
+    }
+  }
+}

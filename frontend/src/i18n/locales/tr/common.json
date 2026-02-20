@@ -1,0 +1,537 @@
+{
+  "editorNames": {
+    "custom": "Özel"
+  },
+  "buttons": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "send": "Gönder",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "create": "Oluştur",
+    "continue": "Devam Et",
+    "reset": "Sıfırla",
+    "manage": "Yönet",
+    "connect": "Bağlan",
+    "disconnect": "Bağlantıyı Kes",
+    "close": "Kapat",
+    "replay": "Tekrar Oynat",
+    "discard": "Vazgeç",
+    "addItem": "Öğe Ekle",
+    "reply": "Yanıtla"
+  },
+  "form": {
+    "notSpecified": "Belirtilmemiş",
+    "selectOption": "Bir seçenek seçin..."
+  },
+  "states": {
+    "loading": "Yükleniyor...",
+    "loadingHistory": "Geçmiş Yükleniyor",
+    "saving": "Kaydediliyor...",
+    "error": "Hata",
+    "success": "Başarılı",
+    "reconnecting": "Yeniden Bağlanıyor"
+  },
+  "ok": "Tamam",
+  "error": "Hata",
+  "language": {
+    "browserDefault": "Tarayıcı Varsayılanı"
+  },
+  "conversation": {
+    "plan": "Plan",
+    "planToggle": {
+      "show": "Planı göster",
+      "hide": "Planı gizle"
+    },
+    "toolDetailsToggle": {
+      "show": "Ayrıntıları göster",
+      "hide": "Ayrıntıları gizle"
+    },
+    "args": "Argümanlar",
+    "output": "Çıktı",
+    "result": "Sonuç",
+    "deniedByUser": "{{toolName}} kullanıcı tarafından reddedildi",
+    "taskCompleted": "Görev tamamlandı",
+    "ran": "Çalıştırıldı",
+    "tool": "Araç",
+    "thinking": "Düşünüyor",
+    "toolSummary": {
+      "read": "{{path}} okundu",
+      "searched": "\"{{query}}\" arandı",
+      "fetched": "{{url}} getirildi",
+      "ranCommand": "Komut çalıştırıldı",
+      "createdTask": "Görev oluşturuldu: {{description}}",
+      "todoOperation": "{{operation}} yapılacaklar"
+    },
+    "fixScript": "Düzeltme Betiği",
+    "subagent": {
+      "defaultType": "Alt Agent"
+    }
+  },
+  "folderPicker": {
+    "legend": "Gezinmek için klasör adlarına tıklayın • Seçmek için eylem düğmelerini kullanın",
+    "manualPathLabel": "Yolu manuel girin:",
+    "go": "Git",
+    "searchLabel": "Geçerli dizinde ara:",
+    "selectCurrent": "Geçerli Olanı Seç",
+    "gitRepo": "Git deposu",
+    "selectPath": "Yol Seç"
+  },
+  "branchSelector": {
+    "placeholder": "Bir Branch seçin",
+    "searchPlaceholder": "Branch ara...",
+    "empty": "Branch bulunamadı",
+    "badges": {
+      "current": "mevcut",
+      "remote": "uzak"
+    },
+    "currentDisabled": "Mevcut Branch seçilemez"
+  },
+  "breadcrumb": {
+    "more": "Daha Fazla"
+  },
+  "orgMembers": {
+    "moreCount": "+{{count}} daha"
+  },
+  "orgSwitcher": {
+    "title": "Organizasyon Değiştir",
+    "description": "Geçiş yapılacak bir organizasyon seçin.",
+    "loadError": "Organizasyonlar yüklenemedi. Lütfen tekrar deneyin.",
+    "noOrganizations": "Herhangi bir organizasyona üye değilsiniz.",
+    "menuItem": "Organizasyon",
+    "loadingPlaceholder": "Organizasyonlar yükleniyor...",
+    "selectPlaceholder": "Bir organizasyon seçin",
+    "currentBadge": " (mevcut)",
+    "organizations": "Organizasyonlar",
+    "createOrganization": "Organizasyon oluştur",
+    "orgSettings": "Organizasyon ayarları",
+    "migrate": "Taşı"
+  },
+  "navbar": {
+    "tryNewUI": "yeni arayüzü dene"
+  },
+  "signIn": "Oturum Aç",
+  "signOut": "Oturumu Kapat",
+  "devMode": {
+    "banner": "Geliştirme Modu - Bu bir geliştirme derlemesidir"
+  },
+  "oauth": {
+    "title": "Vibe Kanban'a Oturum Açın",
+    "description": "Organizasyonlara katılmak ve ekibinizle görev paylaşmak için oturum açın",
+    "continueWithGitHub": "GitHub ile Devam Et",
+    "continueWithGoogle": "Google ile Devam Et",
+    "waitingTitle": "Kimlik Doğrulamayı Tamamlayın",
+    "waitingDescription": "Kimlik doğrulama için bir açılır pencere açıldı",
+    "waitingForAuth": "Kimlik doğrulama bekleniyor...",
+    "popupInstructions": "Açılır pencere açılmadıysa lütfen açılır pencere engelleyici ayarlarınızı kontrol edin.",
+    "back": "Geri",
+    "successTitle": "Kimlik Doğrulama Başarılı!",
+    "welcomeBack": "Tekrar hoş geldiniz, {{name}}",
+    "errorTitle": "Kimlik Doğrulama Başarısız",
+    "errorDescription": "Hesabınızın kimlik doğrulamasında bir sorun oluştu",
+    "tryAgain": "Tekrar Dene"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Devam etmek için oturum açın",
+    "signedInAs": "{{name}} olarak oturum açıldı.",
+    "moreOptions": "Daha fazla seçenek",
+    "featureHeader": "Özellik",
+    "signedInHeader": "Oturum açık",
+    "skipSignInHeader": "Oturum açma",
+    "yes": "Evet",
+    "no": "Hayır"
+  },
+  "toolbar": {
+    "sortBy": "Sırala",
+    "groupBy": "Grupla"
+  },
+  "sorting": {
+    "ascending": "Artan",
+    "descending": "Azalan"
+  },
+  "grouping": {
+    "date": "Tarih",
+    "assignee": "Atanan",
+    "label": "Etiket"
+  },
+  "workspaces": {
+    "title": "Workspace'ler",
+    "searchPlaceholder": "Ara...",
+    "active": "Aktif",
+    "archived": "Arşivlenmiş",
+    "loading": "Yükleniyor...",
+    "notFound": "Workspace bulunamadı",
+    "selectToStart": "Başlamak için bir Workspace seçin",
+    "draft": "Draft",
+    "viewArchive": "Arşivi Görüntüle",
+    "backToActive": "Aktife Dön",
+    "noArchived": "Arşivlenmiş Workspace yok",
+    "noWorkspaces": "Workspace yok",
+    "newWorkspace": "Yeni Workspace",
+    "needsAttention": "İlgilenilmesi Gerekiyor",
+    "idle": "Boşta",
+    "running": "Çalışıyor",
+    "pin": "Sabitle",
+    "unpin": "Sabitlemekten Çıkar",
+    "archive": "Arşivle",
+    "more": "Diğer eylemler",
+    "rename": {
+      "title": "Workspace'i Yeniden Adlandır",
+      "description": "Bu Workspace için yeni bir ad girin.",
+      "nameLabel": "Ad",
+      "placeholder": "Workspace adı girin",
+      "action": "Yeniden Adlandır",
+      "renaming": "Yeniden adlandırılıyor..."
+    },
+    "unlinkFromIssue": "Sorundan bağlantısını kaldır",
+    "deleteWorkspace": "Workspace'i sil",
+    "unlink": "Bağlantıyı Kaldır",
+    "delete": "Sil",
+    "unlinkConfirmMessage": "Bu Workspace'in sorunla bağlantısını kaldırmak istediğinizden emin misiniz? Workspace hâlâ mevcut olacak ancak artık bu sorunla ilişkilendirilmeyecek.",
+    "deleteConfirmMessage": "Bu Workspace'i silmek istediğinizden emin misiniz? Bu işlem sorunla bağlantısını kaldıracak ve yerel Workspace'i silecektir. Bu işlem geri alınamaz.",
+    "unlinkError": "Bağlantı kaldırılamadı",
+    "deleteError": "Workspace silinemedi",
+    "filesChanged": "{{count}} dosya",
+    "deleteDialog": {
+      "title": "Workspace'i Sil",
+      "description": "Bu Workspace'i silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+      "deleteBranchLabel": "Branch'i sil",
+      "cannotDeleteOpenPr": "PR açıkken Branch silinemez"
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "Dosya ara...",
+    "noResults": "Eşleşen dosya yok",
+    "title": "Dosyalar",
+    "showGitHubComments": "GitHub yorumlarını göster",
+    "hideGitHubComments": "GitHub yorumlarını gizle",
+    "prevGitHubComment": "Yorumlu önceki dosya",
+    "nextGitHubComment": "Yorumlu sonraki dosya"
+  },
+  "sections": {
+    "changes": "Değişiklikler",
+    "repositories": "Depolar",
+    "addRepositories": "Depo Ekle",
+    "project": "Proje",
+    "processes": "İşlemler",
+    "devServer": "Dev Server",
+    "advanced": "Gelişmiş",
+    "workingBranch": "Çalışma Branch'i",
+    "recent": "Son Kullanılan",
+    "other": "Diğer",
+    "devServerPreview": "Dev Server Önizleme",
+    "terminal": "Terminal",
+    "notes": "Notlar"
+  },
+  "notes": {
+    "placeholder": "Bu Workspace hakkında not ekleyin...",
+    "selectWorkspace": "Notları görüntülemek için bir Workspace seçin"
+  },
+  "repos": {
+    "loading": "Depolar yükleniyor...",
+    "noRecentRepos": "Son kullanılan depo bulunamadı",
+    "noReposAdded": "Eklenmiş depo yok",
+    "noReposAddedHint": "Aşağıdaki seçeneklerden bu Workspace'e bir veya daha fazla depo ekleyin"
+  },
+  "actions": {
+    "browseRepos": "Diskteki depolara göz at",
+    "createNewRepo": "Diskte yeni depo oluştur",
+    "viewInChangesPanel": "Değişiklikler panelinde görüntüle",
+    "copyPath": "Yolu kopyala",
+    "copyWorktreePath": "Worktree yolunu kopyala",
+    "openInIde": "IDE'de aç",
+    "repoSettings": "Depo ayarları",
+    "cancel": "İptal",
+    "saveChanges": "Değişiklikleri Kaydet",
+    "copied": "Kopyalandı",
+    "collapse": "Daralt"
+  },
+  "comments": {
+    "addReviewComment": "İnceleme Yorumu Ekle",
+    "addPlaceholder": "Yorum ekle...",
+    "editPlaceholder": "Yorumu düzenle...",
+    "copyToReview": "İncelemeye kopyala"
+  },
+  "confirm": {
+    "defaultConfirm": "Onayla",
+    "defaultCancel": "İptal"
+  },
+  "dialogs": {
+    "selectGitRepository": "Git Deposu Seç",
+    "chooseExistingRepo": "Dosya sisteminizden mevcut bir depo seçin"
+  },
+  "empty": {
+    "noChanges": "Görüntülenecek değişiklik yok"
+  },
+  "commandBar": {
+    "noResults": "Sonuç bulunamadı.",
+    "back": "Geri",
+    "defaultPlaceholder": "Bir komut yazın veya arayın...",
+    "selectBranch": "Branch Seç",
+    "selectBranchFor": "{{repoName}} için Branch Seç"
+  },
+  "chatBox": {
+    "variants": "Varyantlar",
+    "customise": "Özelleştir"
+  },
+  "projects": {
+    "noProjectFound": "Proje bulunamadı",
+    "createFirstPrompt": "Görevler üzerinde çalışmaya başlamak için önce bir proje oluşturun.",
+    "createNew": "Yeni proje oluştur",
+    "noProjectsFound": "Proje bulunamadı"
+  },
+  "betaWorkspaces": {
+    "title": "Taşınma zamanı!",
+    "intro": "Vibe Kanban'ın arayüzünü sıfırdan yeniden inşa ettik ve Workspace'ler artık önerilen kullanım şekli.",
+    "newUiDescription": "Yeni arayüz günlük çalışma için tasarlandı: Agent'ları yönetme, değişiklikleri önizleme ve kodu inceleme. Ayrıca eski arayüzde bulunmayan özellikleri de sunuyor:",
+    "newFeatures": {
+      "multiRepo": "Aynı anda birden fazla depoyu düzenleyin",
+      "multiAgent": "Tek bir Workspace'te birden fazla Agent görüşmesi çalıştırın (farklı Agent'lar dahil)",
+      "commandBar": "Komut çubuğuyla daha hızlı gezinme"
+    },
+    "oldUiDescription": "Şimdilik bazı özellikler hâlâ mevcut arayüzde bulunuyor:",
+    "oldFeatures": {
+      "kanban": "Kanban panosunda görevleri yönetme",
+      "settings": "Ayarları değiştirme",
+      "projects": "Projeleri yönetme"
+    },
+    "transition": "Önümüzdeki birkaç hafta boyunca geçiş sürecinde her iki görünüm arasında geçiş yapacaksınız.",
+    "optOutNote": "Bilgi: Eski Yerel Projeler görünümü yakında kullanılamayacak ve artık kullanılmamalıdır.",
+    "joinBeta": "Betaya Katıl",
+    "maybeLater": "Şimdi Değil"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Hoş Geldiniz",
+      "content": "Workspace'ler sayfasına hoş geldiniz. Tüm projelerinizdeki Workspace'leri tek bir görünümde görebilir ve Agent'larınızın çalışmalarını en hızlı şekilde inceleyebilirsiniz. Gezinme çubuğundaki simge aracılığıyla istediğiniz zaman geri bildirim paylaşın."
+    },
+    "commandBar": {
+      "title": "Komut Çubuğu",
+      "content": "Komut çubuğu, gezinme için merkezi merkezinizdir. CMD+K ile açarak bir Workspace'teki tüm eylemleri arayabilir ve erişebilirsiniz."
+    },
+    "contextBar": {
+      "title": "Bağlam Çubuğu",
+      "content": "Bağlam çubuğu paneller arasında hızlıca geçiş yapmanızı sağlar. Size en uygun konuma sürükleyin."
+    },
+    "sidebar": {
+      "title": "Workspace Kenar Çubuğu",
+      "content": "Tüm Workspace'lerinizin durumunu bir bakışta görün. Bildirimler hangilerine ilgilenilmesi gerektiğini vurgular. Kenar çubuğunuzu temiz tutmak için birleştirilmiş Workspace'leri arşivleyin."
+    },
+    "multiRepo": {
+      "title": "Çoklu Depo Desteği",
+      "content": "Tek bir Workspace'e birden fazla depo ekleyin. Bir depoda çalışırken başka bir depodaki koda başvurun veya birden fazla depoda aynı anda değişiklik uygulayın."
+    },
+    "sessions": {
+      "title": "Çoklu Oturumlar",
+      "content": "Tek bir Workspace içinde farklı Agent'larla oturumlar dahil birden fazla Agent görüşme oturumu oluşturun. Bu, görüşme sınırlarını aşmanıza veya ayrı konularda inceleme Agent'ları başlatmanıza yardımcı olur."
+    },
+    "preview": {
+      "title": "Değişiklikleri Önizle",
+      "content": "Çalışmanızı bağlam değiştirmeden yerleşik tarayıcıda önizleyin. Masaüstü, mobil ve özel görünüm alanı boyutlarında test edin."
+    },
+    "diffs": {
+      "title": "Diff'ler ve Yorumlar",
+      "content": "Yeniden tasarlanan Diff paneli, değişikliklerinizin dosya ağacını içerir. Agent'a geri bildirim vermek için Diff'lere doğrudan yorum yapın ve Workspace'iniz bir PR'a bağlıyken GitHub yorumlarını görüntüleyin."
+    },
+    "classicUi": {
+      "title": "Klasik Arayüze Dön",
+      "content": "Klasik Kanban panosuna dönmek için gezinme çubuğunun sol tarafındaki çıkış simgesine tıklayın. Yeni arayüzü tamamen devre dışı bırakmak için ayarlardaki \"Beta Özellikleri\" altında \"Workspace'ler Betasını Etkinleştir\" seçeneğini güncelleyin."
+    }
+  },
+  "logs": {
+    "searchLogs": "Günlüklerde ara",
+    "selectProcessToView": "Günlükleri görüntülemek için bir işlem seçin"
+  },
+  "processes": {
+    "noProcesses": "İşlem yok",
+    "terminal": "Terminal"
+  },
+  "search": {
+    "matchCount": "{{current}} / {{total}}",
+    "noMatches": "Eşleşme yok"
+  },
+  "contextUsage": {
+    "label": "Bağlam kullanımı",
+    "emptyTooltip": "Bağlam kullanımı bir sonraki yanıttan sonra görünür",
+    "tooltip": "Bağlam: %{{percentage}} · {{used}} / {{total}} token",
+    "ariaLabel": "Bağlam kullanımı: %{{percentage}}"
+  },
+  "shortcuts": {
+    "title": "Klavye Kısayolları",
+    "inWorkspace": "(Workspace'te)",
+    "sequentialHint": "Sıralı kısayollar: İlk tuşa basın, ardından 500ms içinde ikinci tuşa basın.",
+    "configurableHint": "Ayarlar → Genel → Mesaj Girişi bölümünden yapılandırılabilir",
+    "groups": {
+      "quickActions": "Hızlı Eylemler",
+      "navigation": "Gezinme",
+      "modifiers": "Değiştiriciler",
+      "goTo": "Git (G ...)",
+      "workspace": "Workspace (W ...)",
+      "view": "Görünüm (V ...)",
+      "issues": "Sorunlar (I ...)",
+      "git": "Git (X ...)",
+      "yank": "Kopyala (Y ...)",
+      "toggle": "Aç/Kapat (T ...)",
+      "run": "Çalıştır (R ...)"
+    },
+    "actions": {
+      "showHelp": "Bu yardımı göster",
+      "closeCancel": "Kapat/iptal et",
+      "createNewTask": "Yeni görev oluştur",
+      "deleteSelected": "Seçileni sil",
+      "focusSearch": "Aramaya odaklan",
+      "moveDown": "Aşağı taşı",
+      "moveUp": "Yukarı taşı",
+      "moveLeft": "Sola taşı",
+      "moveRight": "Sağa taşı",
+      "openCommandBar": "Komut çubuğunu aç",
+      "sendMessage": "Mesaj gönder",
+      "settings": "Ayarlara git",
+      "new-workspace": "Yeni Workspace'e git",
+      "duplicate-workspace": "Workspace'i çoğalt",
+      "rename-workspace": "Workspace'i yeniden adlandır",
+      "pin-workspace": "Workspace'i sabitle/sabitlemekten çıkar",
+      "archive-workspace": "Workspace'i arşivle",
+      "delete-workspace": "Workspace'i sil",
+      "toggle-changes-mode": "Değişiklikler panelini aç/kapat",
+      "toggle-logs-mode": "Günlükler panelini aç/kapat",
+      "toggle-preview-mode": "Önizleme panelini aç/kapat",
+      "toggle-left-sidebar": "Sol Kenar Çubuğunu aç/kapat",
+      "toggle-left-main-panel": "Sohbet panelini aç/kapat",
+      "create-issue": "Sorun Oluştur",
+      "change-issue-status": "Durumu Değiştir",
+      "change-issue-priority": "Önceliği Değiştir",
+      "change-assignees": "Atananları Değiştir",
+      "make-sub-issue-of": "Alt Sorun Yap",
+      "add-sub-issue": "Alt Sorun Ekle",
+      "remove-parent-issue": "Üst Sorunu Kaldır",
+      "link-workspace": "Workspace Bağla",
+      "duplicate-issue": "Sorunu Çoğalt",
+      "delete-issue": "Sorunu Sil",
+      "git-create-pr": "Pull Request Oluştur",
+      "git-merge": "Branch'i Merge et",
+      "git-rebase": "Branch'i Rebase et",
+      "git-push": "Değişiklikleri Push et",
+      "copy-path": "Yolu kopyala",
+      "copy-raw-logs": "Ham günlükleri kopyala",
+      "toggle-dev-server": "Dev Server'ı aç/kapat",
+      "toggle-wrap-lines": "Satır kaydırmayı aç/kapat",
+      "run-setup-script": "Setup Script çalıştır",
+      "run-cleanup-script": "Cleanup Script çalıştır",
+      "run-archive-script": "Archive Script çalıştır"
+    }
+  },
+  "typeahead": {
+    "tags": "Tag'ler",
+    "files": "Dosyalar",
+    "commands": "Komutlar",
+    "chooseRepo": "Depo seç",
+    "selectedRepo": "Seçili depo: {{repoName}}",
+    "missingRepo": "Seçili depo artık mevcut değil.",
+    "noTagsOrFiles": "Tag veya dosya bulunamadı",
+    "noCommands": "Bu Agent için kullanılabilir komut yok."
+  },
+  "kanban": {
+    "noStatusesFound": "Bu proje için durum bulunamadı",
+    "noVisibleStatuses": "Tüm durumlar gizli. Sorunları görmek için görüntüleme ayarlarını kullanın veya başka bir sekmeye geçin.",
+    "noProjectFound": "Proje bulunamadı",
+    "noOrganizationFound": "Organizasyon bulunamadı",
+    "unassigned": "Atanmamış",
+    "noTagsAvailable": "Kullanılabilir Tag yok",
+    "createNewIssue": "Yeni sorun oluştur",
+    "createNewTag": "Yeni Tag oluştur",
+    "searchTags": "Tag ara...",
+    "selectColorFor": "Renk seç:",
+    "createTag": "Oluştur",
+    "filesCount": "{{count}} Dosya",
+    "attachmentsTitle": "Ekler ({{count}})",
+    "deleteAttachmentAria": "{{filename}} dosyasını sil",
+    "noPrCreated": "PR oluşturulmadı",
+    "noCommentsYet": "Henüz yorum yok",
+    "createdBy": "Oluşturan",
+    "comments": "Yorumlar",
+    "enterCommentPlaceholder": "Yorumunuzu buraya yazın...",
+    "attachImage": "Görsel ekle",
+    "attachFile": "Dosya ekle",
+    "attachFileHint": "Dosya ekle (her biri en fazla 20MB)",
+    "attach": "Ekle",
+    "dropImagesHere": "Görselleri buraya bırakın",
+    "dropFilesHere": "Dosyaları buraya bırakın",
+    "imageDropHint": "PNG, JPG, GIF en fazla 20MB",
+    "fileDropHint": "Herhangi bir dosya türü en fazla 20MB",
+    "unknownFile": "Bilinmeyen dosya",
+    "unknownUser": "Bilinmeyen Kullanıcı",
+    "deletedUser": "Silinen Kullanıcı",
+    "replyQuotePrefix": "yazdı:",
+    "moreActions": "Diğer eylemler",
+    "closePanel": "Paneli kapat",
+    "issueTitlePlaceholder": "Sorun Başlığı...",
+    "issueDescriptionPlaceholder": "Görev açıklamasını buraya girin...",
+    "createDraftWorkspaceImmediately": "Draft Workspace'i hemen oluştur",
+    "createDraftWorkspaceDescription": "Otomatik olarak bir Workspace oluşturmak için işaretleyin",
+    "createTask": "Görev Oluştur",
+    "newIssue": "Yeni Sorun",
+    "previewCodeBlock": "[Kod bloğu]",
+    "previewImage": "[Görsel]",
+    "previewImageWithName": "[Görsel: {{name}}]",
+    "previewFile": "[Dosya]",
+    "previewFileWithName": "[Dosya: {{name}}]",
+    "imageAttachmentNameFallback": "Ek",
+    "removeImage": "Görseli kaldır",
+    "maxImagesAtOnce": "Aynı anda en fazla {{count}} görsel",
+    "maxFilesAtOnce": "Aynı anda en fazla {{count}} dosya",
+    "fileNotImage": "{{filename}} dosyası bir görsel değil",
+    "fileExceedsLimit": "{{filename}} dosyası 20MB sınırını aşıyor",
+    "unknownError": "Bilinmeyen hata",
+    "failedToUploadFile": "{{filename}} yüklenemedi: {{message}}",
+    "downloadAttachment": "Eki indir",
+    "downloadAttachmentAria": "{{filename}} dosyasını indir",
+    "subIssues": "Alt sorunlar",
+    "noSubIssues": "Alt sorun yok",
+    "markIndependentIssue": "Bağımsız sorun olarak işaretle",
+    "parentIssue": "Üst Sorun",
+    "subIssueIndicator": "↳",
+    "showSubIssues": "Alt sorunları göster",
+    "viewTabs": {
+      "active": "Aktif",
+      "all": "Tümü"
+    },
+    "loginRequired": {
+      "title": "Oturum açma gerekli",
+      "description": "Bu projeyi görüntülemek için lütfen oturum açın.",
+      "action": "Oturum Aç"
+    }
+  },
+  "createMode": {
+    "headings": {
+      "repoStep": "Hangi depolar üzerinde çalışmak istiyorsunuz?",
+      "chatStep": "Ne üzerinde çalışmak istiyorsunuz?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Son Kullanılan",
+        "browse": "Göz At",
+        "create": "Oluştur"
+      }
+    }
+  },
+  "syncError": {
+    "networkErrors": "Ağ Hataları",
+    "streamsAffected": "{{count}} akış etkilendi",
+    "streamsAffected_other": "{{count}} akış etkilendi",
+    "status": "(durum {{status}})",
+    "refreshPage": "Sayfayı Yenile"
+  },
+  "migration": {
+    "allProjectsMigrated": "Tüm projeleriniz zaten buluta taşındı.",
+    "continueToProjects": "Projelere Devam Et"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Kanban",
+      "title": "Kanban Panoları",
+      "description": "Kodlama Agent'larınızı Kanban panolarıyla düzenlemek için oturum açın.",
+      "migrateOldProjects": "Eski projeleri taşı"
+    }
+  }
+}

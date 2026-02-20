@@ -1,0 +1,92 @@
+{
+  "createDialog": {
+    "title": "Yeni Organizasyon Oluştur",
+    "description": "Ekibinizle iş birliği yapmak için yeni bir organizasyon oluşturun.",
+    "nameLabel": "Organizasyon Adı",
+    "namePlaceholder": "ör. Acme Şirketi",
+    "slugLabel": "Slug",
+    "slugPlaceholder": "ör. acme-sirketi",
+    "slugHelper": "URL'lerde kullanılır. Yalnızca küçük harf, rakam ve tire.",
+    "creating": "Oluşturuluyor...",
+    "createButton": "Organizasyon Oluştur"
+  },
+  "inviteDialog": {
+    "title": "Üye Davet Et",
+    "description": "Organizasyonunuza katılması için bir davetiye gönderin.",
+    "emailLabel": "E-posta Adresi",
+    "emailPlaceholder": "meslektas@example.com",
+    "roleLabel": "Rol",
+    "rolePlaceholder": "Bir rol seçin",
+    "roleHelper": "Yöneticiler üyeleri ve organizasyon ayarlarını yönetebilir.",
+    "sending": "Gönderiliyor...",
+    "sendButton": "Davetiye Gönder",
+    "subscriptionRequired": "Daha fazla üye eklemek için abonelik gerekli",
+    "upgradePrompt": "Ek üye davet etmek için organizasyonunuzun planını yükseltin.",
+    "upgradeButton": "Planı Yükselt"
+  },
+  "roles": {
+    "member": "Üye",
+    "admin": "Yönetici"
+  },
+  "memberList": {
+    "title": "Üyeler",
+    "description": "{{orgName}} organizasyonundaki üyeleri ve rollerini yönetin",
+    "inviteButton": "Üye Davet Et",
+    "loading": "Üyeler yükleniyor...",
+    "none": "Üye bulunamadı",
+    "you": "Siz"
+  },
+  "invitationList": {
+    "title": "Bekleyen Davetiyeler",
+    "description": "{{orgName}} için bekleyen davetleri görüntüleyin",
+    "loading": "Davetiyeler yükleniyor...",
+    "none": "Bekleyen davetiye yok",
+    "invited": "Davet edildi: {{date}}",
+    "pending": "Bekliyor"
+  },
+  "settings": {
+    "title": "Organizasyon Ayarları",
+    "description": "Organizasyon üyelerini ve izinleri yönetin",
+    "selectLabel": "Organizasyon Seçin",
+    "selectPlaceholder": "Bir organizasyon seçin",
+    "selectHelper": "Üyelerini görüntülemek ve yönetmek için bir organizasyon seçin",
+    "noOrganizations": "Kullanılabilir organizasyon yok",
+    "loadingOrganizations": "Organizasyonlar yükleniyor...",
+    "loadError": "Organizasyonlar yüklenemedi",
+    "dangerZone": "Tehlikeli Bölge",
+    "dangerZoneDescription": "Geri alınamaz ve yıkıcı işlemler",
+    "deleteOrganization": "Organizasyonu Sil",
+    "deleteOrganizationDescription": "Bu organizasyonu ve tüm verilerini kalıcı olarak sil",
+    "confirmDelete": "{{orgName}} organizasyonunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "deleteSuccess": "Organizasyon başarıyla silindi",
+    "deleteError": "Organizasyon silinemedi"
+  },
+  "loginRequired": {
+    "title": "Oturum açma gerekli",
+    "description": "Organizasyon ayarlarını yönetmek için oturum açmanız gerekiyor.",
+    "action": "Oturum Aç"
+  },
+  "confirmRemoveMember": "Bu üyeyi organizasyondan çıkarmak istediğinizden emin misiniz?",
+  "sharedProjects": {
+    "title": "Paylaşılan Projeler",
+    "description": "{{orgName}} içindeki uzak projeler ve yerel proje bağlantıları",
+    "loading": "Projeler yükleniyor...",
+    "noProjects": "Bu organizasyonda paylaşılan proje bulunamadı",
+    "notLinked": "Bağlı değil",
+    "linkedTo": "Bağlı: {{projectName}}",
+    "linked": "Bağlı",
+    "linkProject": "Proje bağla...",
+    "noAvailableProjects": "Kullanılabilir proje yok"
+  },
+  "billing": {
+    "title": "Faturalandırma ve Abonelik",
+    "description": "Organizasyonunuzun abonelik ve faturalandırma ayarlarını yönetin",
+    "manageButton": "Faturalandırmayı Yönet",
+    "openInBrowser": "Yeni bir tarayıcı sekmesinde açılır"
+  },
+  "personalOrg": {
+    "cannotInvite": "Kişisel organizasyonlara ek üye eklenemez.",
+    "createOrgPrompt": "Başkalarıyla iş birliği yapmak için bir organizasyon oluşturun.",
+    "createOrgButton": "Organizasyon Oluştur"
+  }
+}
