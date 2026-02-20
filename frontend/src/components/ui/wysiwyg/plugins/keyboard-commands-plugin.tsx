@@ -8,6 +8,7 @@ import {
   KEY_TAB_COMMAND,
   KEY_MODIFIER_COMMAND,
   KEY_ENTER_COMMAND,
+  FORMAT_TEXT_COMMAND,
   OUTDENT_CONTENT_COMMAND,
   COMMAND_PRIORITY_NORMAL,
   COMMAND_PRIORITY_HIGH,
@@ -173,6 +174,30 @@ export function KeyboardCommandsPlugin({
       COMMAND_PRIORITY_NORMAL
     );
 
+    const unregisterInlineCode = editor.registerCommand(
+      KEY_MODIFIER_COMMAND,
+      (event: KeyboardEvent) => {
+        if (!(event.metaKey || event.ctrlKey)) {
+          return false;
+        }
+
+        if (event.key.toLowerCase() !== 'e') {
+          return false;
+        }
+
+        // Avoid overriding browser/system shortcuts while IME is composing.
+        if (event.isComposing) {
+          return false;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
+        return true;
+      },
+      COMMAND_PRIORITY_NORMAL
+    );
+
     const unregisterEnter = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event: KeyboardEvent | null) => {
@@ -205,6 +230,7 @@ export function KeyboardCommandsPlugin({
       unregisterTab();
       unregisterModifier();
       unregisterEnter();
+      unregisterInlineCode();
     };
   }, [
     editor,

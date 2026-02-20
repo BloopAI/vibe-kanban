@@ -378,6 +378,7 @@
       "moveLeft": "왼쪽으로 이동",
       "moveRight": "오른쪽으로 이동",
       "openCommandBar": "명령 바 열기",
+      "formatInlineCode": "Format inline code",
       "sendMessage": "메시지 보내기",
       "settings": "설정으로 이동",
       "new-workspace": "새 워크스페이스로 이동",

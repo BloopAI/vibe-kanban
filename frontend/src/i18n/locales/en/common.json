@@ -392,6 +392,7 @@
       "moveLeft": "Move left",
       "moveRight": "Move right",
       "openCommandBar": "Open command bar",
+      "formatInlineCode": "Format inline code",
       "sendMessage": "Send message",
       "settings": "Go to Settings",
       "new-workspace": "Go to New Workspace",

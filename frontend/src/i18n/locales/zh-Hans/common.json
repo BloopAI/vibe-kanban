@@ -378,6 +378,7 @@
       "moveLeft": "向左移动",
       "moveRight": "向右移动",
       "openCommandBar": "打开命令栏",
+      "formatInlineCode": "Format inline code",
       "sendMessage": "发送消息",
       "settings": "前往设置",
       "new-workspace": "前往新工作区",

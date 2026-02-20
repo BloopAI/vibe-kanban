@@ -378,6 +378,7 @@
       "moveLeft": "左に移動",
       "moveRight": "右に移動",
       "openCommandBar": "コマンドバーを開く",
+      "formatInlineCode": "Format inline code",
       "sendMessage": "メッセージを送信",
       "settings": "設定に移動",
       "new-workspace": "新しいワークスペースに移動",

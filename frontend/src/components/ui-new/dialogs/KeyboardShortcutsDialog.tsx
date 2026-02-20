@@ -66,6 +66,10 @@ function useShortcutGroups(): ShortcutGroup[] {
           keys: [mod, 'K'],
           description: t('shortcuts.actions.openCommandBar'),
         },
+        {
+          keys: [mod, 'E'],
+          description: t('shortcuts.actions.formatInlineCode'),
+        },
         sendShortcut === 'Enter'
           ? {
               keys: enterKey,
