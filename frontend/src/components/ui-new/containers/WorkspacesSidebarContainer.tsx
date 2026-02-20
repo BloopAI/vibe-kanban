@@ -558,7 +558,7 @@ export function WorkspacesSidebarContainer({
             aria-label="Open workspace sort settings"
             title="Sort workspaces"
             className={cn(
-              '!h-cta !px-base !py-0',
+              '!h-cta !px-half !py-0',
               hasNonDefaultSort && 'text-brand hover:text-brand'
             )}
             iconClassName="size-icon-lg"
@@ -569,7 +569,7 @@ export function WorkspacesSidebarContainer({
             aria-label="Open workspace filter settings"
             title="Filter workspaces"
             className={cn(
-              '!h-cta !px-base !py-0',
+              '!h-cta !px-half !py-0',
               hasActiveFilters && 'text-brand hover:text-brand'
             )}
             iconClassName="size-icon-lg"
