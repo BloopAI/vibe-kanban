@@ -9,6 +9,10 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
+  buildProjectRootPath,
+  parseProjectSidebarRoute,
+} from '@/lib/routes/projectSidebarRoutes';
+import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
   CreateRemoteProjectDialog,
@@ -44,6 +48,7 @@ export function SharedAppLayout() {
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const prevOrgIdRef = useRef<string | null>(null);
+  const projectLastPathRef = useRef<Record<string, string>>({});
 
   // Auto-select first org if none selected or selection is invalid
   useEffect(() => {
@@ -117,13 +122,27 @@ export function SharedAppLayout() {
     ? location.pathname.split('/')[2]
     : null;
 
+  // Remember the last visited route for each project so AppBar clicks can
+  // reopen the previous issue/workspace selection.
+  useEffect(() => {
+    const route = parseProjectSidebarRoute(location.pathname);
+    if (!route) {
+      return;
+    }
+
+    const pathWithSearch = `${location.pathname}${location.search}`;
+    projectLastPathRef.current[route.projectId] = pathWithSearch;
+  }, [location.pathname, location.search]);
+
   const handleWorkspacesClick = useCallback(() => {
     navigate('/workspaces');
   }, [navigate]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
-      navigate(`/projects/${projectId}`);
+      navigate(
+        projectLastPathRef.current[projectId] ?? buildProjectRootPath(projectId)
+      );
     },
     [navigate]
   );
