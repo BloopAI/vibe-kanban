@@ -1,0 +1,78 @@
+{
+  "createDialog": {
+    "title": "Yeni Organizasyon Oluştur",
+    "description": "Ekibinizle iş birliği yapmak için yeni bir organizasyon oluşturun.",
+    "nameLabel": "Organizasyon Adı",
+    "namePlaceholder": "Örn: Acme A.Ş.",
+    "slugLabel": "Kısaltma (Slug)",
+    "slugPlaceholder": "Örn: acme-as",
+    "slugHelper": "URL'lerde kullanılır. Sadece küçük harfler, sayılar ve tire işaretleri kullanılabilir.",
+    "creating": "Oluşturuluyor...",
+    "createButton": "Organizasyon Oluştur"
+  },
+  "inviteDialog": {
+    "title": "Üye Davet Et",
+    "description": "Organizasyonunuza katılması için bir davet gönderin.",
+    "emailLabel": "E-posta Adresi",
+    "emailPlaceholder": "isarkadasi@ornek.com",
+    "roleLabel": "Rol",
+    "rolePlaceholder": "Bir rol seçin",
+    "roleHelper": "Yöneticiler üyeleri ve organizasyon ayarlarını yönetebilir.",
+    "sending": "Gönderiliyor...",
+    "sendButton": "Davet Gönder"
+  },
+  "roles": {
+    "member": "Üye",
+    "admin": "Yönetici"
+  },
+  "memberList": {
+    "title": "Üyeler",
+    "description": "{{orgName}} organizasyonundaki üyeleri ve rollerini yönetin",
+    "inviteButton": "Üye Davet Et",
+    "loading": "Üyeler yükleniyor...",
+    "none": "Üye bulunamadı",
+    "you": "Siz"
+  },
+  "invitationList": {
+    "title": "Bekleyen Davetler",
+    "description": "{{orgName}} için bekleyen davetleri görüntüleyin",
+    "loading": "Davetler yükleniyor...",
+    "none": "Bekleyen davet yok",
+    "invited": "{{date}} tarihinde davet edildi",
+    "pending": "Bekliyor"
+  },
+  "settings": {
+    "title": "Organizasyon Ayarları",
+    "description": "Organizasyon üyelerini ve izinlerini yönetin",
+    "selectLabel": "Organizasyon Seçin",
+    "selectPlaceholder": "Bir organizasyon seçin",
+    "selectHelper": "Üyelerini görüntülemek ve yönetmek için bir organizasyon seçin",
+    "noOrganizations": "Kullanılabilir organizasyon yok",
+    "loadingOrganizations": "Organizasyonlar yükleniyor...",
+    "loadError": "Organizasyonlar yüklenemedi",
+    "dangerZone": "Tehlikeli Bölge",
+    "dangerZoneDescription": "Geri alınamaz ve yıkıcı işlemler",
+    "deleteOrganization": "Organizasyonu Sil",
+    "deleteOrganizationDescription": "Bu organizasyonu ve tüm verilerini kalıcı olarak sil",
+    "confirmDelete": "{{orgName}} organizasyonunu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "deleteSuccess": "Organizasyon başarıyla silindi",
+    "deleteError": "Organizasyon silinemedi"
+  },
+  "loginRequired": {
+    "title": "Giriş Gerekli",
+    "description": "Organizasyon ayarlarını yönetmek için giriş yapmanız gerekir.",
+    "action": "Giriş Yap"
+  },
+  "confirmRemoveMember": "Bu üyeyi organizasyondan çıkarmak istediğinizden emin misiniz?",
+  "sharedProjects": {
+    "title": "Paylaşılan Projeler",
+    "description": "{{orgName}} içindeki uzak projeler ve yerel projelerle bağlantıları",
+    "loading": "Projeler yükleniyor...",
+    "noProjects": "Bu organizasyonda paylaşılan proje bulunamadı",
+    "notLinked": "Bağlı değil",
+    "linkedTo": "Bağlı olduğu yer: {{projectName}}",
+    "linked": "Bağlı",
+    "linkProject": "Projeyi bağla...",
+    "noAvailableProjects": "Kullanılabilir proje yok"
+  }
+}
