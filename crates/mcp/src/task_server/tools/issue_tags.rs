@@ -1,6 +1,5 @@
 use api_types::{
-    CreateIssueTagRequest, Issue, IssueTag, ListIssueTagsResponse, ListTagsResponse,
-    MutationResponse,
+    CreateIssueTagRequest, IssueTag, ListIssueTagsResponse, ListTagsResponse, MutationResponse,
 };
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -65,12 +64,8 @@ struct McpListIssueTagsResponse {
 struct McpAddIssueTagRequest {
     #[schemars(description = "Issue ID to attach the tag to")]
     issue_id: Uuid,
-    #[schemars(description = "Tag ID to attach (use this or tag_name)")]
-    tag_id: Option<Uuid>,
-    #[schemars(
-        description = "Tag name to attach (resolved automatically). Use list_tags to see available names."
-    )]
-    tag_name: Option<String>,
+    #[schemars(description = "Tag ID to attach")]
+    tag_id: Uuid,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -80,12 +75,8 @@ struct McpAddIssueTagResponse {
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpRemoveIssueTagRequest {
-    #[schemars(description = "Issue-tag relation ID to remove (use this or issue_id + tag_name)")]
-    issue_tag_id: Option<Uuid>,
-    #[schemars(description = "Issue ID (required when using tag_name to remove)")]
-    issue_id: Option<Uuid>,
-    #[schemars(description = "Tag name to remove (resolved automatically)")]
-    tag_name: Option<String>,
+    #[schemars(description = "Issue-tag relation ID to remove")]
+    issue_tag_id: Uuid,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -160,35 +151,11 @@ impl TaskServer {
         })
     }
 
-    #[tool(
-        description = "Attach a tag to an issue. Provide either tag_id or tag_name (resolved automatically)."
-    )]
+    #[tool(description = "Attach a tag to an issue.")]
     async fn add_issue_tag(
         &self,
-        Parameters(McpAddIssueTagRequest {
-            issue_id,
-            tag_id,
-            tag_name,
-        }): Parameters<McpAddIssueTagRequest>,
+        Parameters(McpAddIssueTagRequest { issue_id, tag_id }): Parameters<McpAddIssueTagRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let tag_id = match (tag_id, tag_name) {
-            (Some(id), _) => id,
-            (None, Some(name)) => {
-                let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
-                let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
-                    Ok(i) => i,
-                    Err(e) => return Ok(e),
-                };
-                match self.resolve_tag_id(issue.project_id, &name).await {
-                    Ok(id) => id,
-                    Err(e) => return Ok(e),
-                }
-            }
-            (None, None) => {
-                return Self::err("Either tag_id or tag_name is required", None::<&str>);
-            }
-        };
-
         let payload = CreateIssueTagRequest {
             id: None,
             issue_id,
@@ -207,61 +174,21 @@ impl TaskServer {
         })
     }
 
-    #[tool(
-        description = "Remove a tag from an issue. Provide issue_tag_id directly, or issue_id + tag_name to resolve automatically."
-    )]
+    #[tool(description = "Remove a tag from an issue using issue_tag_id.")]
     async fn remove_issue_tag(
         &self,
-        Parameters(McpRemoveIssueTagRequest {
-            issue_tag_id,
-            issue_id,
-            tag_name,
-        }): Parameters<McpRemoveIssueTagRequest>,
+        Parameters(McpRemoveIssueTagRequest { issue_tag_id }): Parameters<
+            McpRemoveIssueTagRequest,
+        >,
     ) -> Result<CallToolResult, ErrorData> {
-        let resolved_issue_tag_id = match (issue_tag_id, issue_id, tag_name) {
-            (Some(id), _, _) => id,
-            (None, Some(issue_id), Some(tag_name)) => {
-                let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
-                let issue: Issue = match self.send_json(self.client.get(&issue_url)).await {
-                    Ok(i) => i,
-                    Err(e) => return Ok(e),
-                };
-                let tag_id = match self.resolve_tag_id(issue.project_id, &tag_name).await {
-                    Ok(id) => id,
-                    Err(e) => return Ok(e),
-                };
-                let list_url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
-                let response: ListIssueTagsResponse =
-                    match self.send_json(self.client.get(&list_url)).await {
-                        Ok(r) => r,
-                        Err(e) => return Ok(e),
-                    };
-                match response.issue_tags.iter().find(|it| it.tag_id == tag_id) {
-                    Some(it) => it.id,
-                    None => {
-                        return Self::err(
-                            format!("Tag '{}' is not attached to this issue", tag_name),
-                            None::<String>,
-                        );
-                    }
-                }
-            }
-            _ => {
-                return Self::err(
-                    "Provide issue_tag_id, or both issue_id and tag_name",
-                    None::<&str>,
-                );
-            }
-        };
-
-        let url = self.url(&format!("/api/remote/issue-tags/{}", resolved_issue_tag_id));
+        let url = self.url(&format!("/api/remote/issue-tags/{}", issue_tag_id));
         if let Err(e) = self.send_empty_json(self.client.delete(&url)).await {
             return Ok(e);
         }
 
         TaskServer::success(&McpRemoveIssueTagResponse {
             success: true,
-            issue_tag_id: resolved_issue_tag_id.to_string(),
+            issue_tag_id: issue_tag_id.to_string(),
         })
     }
 }

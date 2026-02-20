@@ -1,4 +1,4 @@
-use api_types::{Issue, ListProjectStatusesResponse, ListTagsResponse, ProjectStatus};
+use api_types::{Issue, ListProjectStatusesResponse, ProjectStatus};
 use db::models::tag::Tag;
 use regex::Regex;
 use rmcp::{
@@ -264,32 +264,6 @@ impl TaskServer {
                 .unwrap_or_else(|| status_id.to_string()),
             Err(_) => status_id.to_string(),
         }
-    }
-
-    // Resolves a tag name to a tag_id using project tags (case-insensitive).
-    async fn resolve_tag_id(
-        &self,
-        project_id: Uuid,
-        tag_name: &str,
-    ) -> Result<Uuid, CallToolResult> {
-        let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
-        let response: ListTagsResponse = self.send_json(self.client.get(&url)).await?;
-        response
-            .tags
-            .iter()
-            .find(|t| t.name.eq_ignore_ascii_case(tag_name))
-            .map(|t| t.id)
-            .ok_or_else(|| {
-                let available: Vec<&str> = response.tags.iter().map(|t| t.name.as_str()).collect();
-                Self::err(
-                    format!(
-                        "Unknown tag '{}'. Available tags: {:?}",
-                        tag_name, available
-                    ),
-                    None::<String>,
-                )
-                .unwrap()
-            })
     }
 
     // Links a workspace to a remote issue by fetching issue.project_id and calling link endpoint.
