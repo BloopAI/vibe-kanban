@@ -44,9 +44,13 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
 
     // Fetch issue data via Electric sync to show issue simple_id
     const isLinkedToIssue = !!linkedIssueId;
-    const { data: issues } = useShape(PROJECT_ISSUES_SHAPE, {
-      project_id: linkedProjectId ?? '',
-    }, { enabled: !!linkedProjectId });
+    const { data: issues } = useShape(
+      PROJECT_ISSUES_SHAPE,
+      {
+        project_id: linkedProjectId ?? '',
+      },
+      { enabled: !!linkedProjectId }
+    );
     const linkedIssue = useMemo(
       () => (linkedIssueId ? issues.find((i) => i.id === linkedIssueId) : null),
       [issues, linkedIssueId]
@@ -99,78 +103,62 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
           </DialogHeader>
 
           <div className="py-4 space-y-4">
-            <div className="flex items-start space-x-3">
-              <Checkbox
-                id="delete-branches"
-                checked={deleteBranches}
-                onCheckedChange={(checked) => setDeleteBranches(checked)}
-                disabled={!canDeleteBranches}
-              />
-              <div className="flex flex-col gap-1">
-                <label
-                  htmlFor="delete-branches"
-                  className={`text-sm font-medium leading-none cursor-pointer ${
-                    !canDeleteBranches
-                      ? 'text-muted-foreground cursor-not-allowed'
-                      : ''
-                  }`}
-                  onClick={() =>
-                    canDeleteBranches && setDeleteBranches(!deleteBranches)
-                  }
-                >
-                  <span className="flex items-center gap-2">
-                    <GitBranchIcon className="h-4 w-4" />
-                    <>
-                      {t(
-                        'workspaces.deleteDialog.deleteBranchLabel',
-                        'Delete branch'
-                      )}{' '}
-                      <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
-                        {branchName}
-                      </code>
-                    </>
-                  </span>
-                </label>
-                {hasOpenPR && (
-                  <p className="text-xs text-muted-foreground">
-                    {t(
-                      'workspaces.deleteDialog.cannotDeleteOpenPr',
-                      'Cannot delete branch while PR is open'
-                    )}
-                  </p>
-                )}
+            <div className="flex flex-col gap-1">
+              <div
+                className={`flex items-center gap-3 text-sm font-medium select-none ${
+                  canDeleteBranches
+                    ? 'cursor-pointer'
+                    : 'text-muted-foreground cursor-not-allowed'
+                }`}
+                onClick={() => {
+                  if (canDeleteBranches) setDeleteBranches((v) => !v);
+                }}
+              >
+                <Checkbox
+                  checked={deleteBranches}
+                  disabled={!canDeleteBranches}
+                />
+                <span className="flex items-center gap-2">
+                  <GitBranchIcon className="h-4 w-4" />
+                  {t(
+                    'workspaces.deleteDialog.deleteBranchLabel',
+                    'Delete branch'
+                  )}{' '}
+                  <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+                    {branchName}
+                  </code>
+                </span>
               </div>
+              {hasOpenPR && (
+                <p className="text-xs text-muted-foreground pl-7">
+                  {t(
+                    'workspaces.deleteDialog.cannotDeleteOpenPr',
+                    'Cannot delete branch while PR is open'
+                  )}
+                </p>
+              )}
             </div>
             {isLinkedToIssue && (
-              <div className="flex items-start space-x-3">
-                <Checkbox
-                  id="unlink-from-issue"
-                  checked={unlinkFromIssue}
-                  onCheckedChange={(checked) => setUnlinkFromIssue(checked)}
-                />
-                <label
-                  htmlFor="unlink-from-issue"
-                  className="text-sm font-medium leading-none cursor-pointer"
-                  onClick={() => setUnlinkFromIssue(!unlinkFromIssue)}
-                >
-                  <span className="flex items-center gap-2">
-                    <LinkBreakIcon className="h-4 w-4" />
+              <div
+                className="flex items-center gap-3 text-sm font-medium cursor-pointer select-none"
+                onClick={() => setUnlinkFromIssue((v) => !v)}
+              >
+                <Checkbox checked={unlinkFromIssue} />
+                <span className="flex items-center gap-2">
+                  <LinkBreakIcon className="h-4 w-4" />
+                  {t(
+                    'workspaces.deleteDialog.unlinkFromIssueLabel',
+                    'Also unlink from issue'
+                  )}
+                  {linkedIssue?.simple_id && (
                     <>
-                      {t(
-                        'workspaces.deleteDialog.unlinkFromIssueLabel',
-                        'Also unlink from issue'
-                      )}
-                      {linkedIssue?.simple_id && (
-                        <>
-                          {' '}
-                          <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
-                            {linkedIssue.simple_id}
-                          </code>
-                        </>
-                      )}
+                      {' '}
+                      <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
+                        {linkedIssue.simple_id}
+                      </code>
                     </>
-                  </span>
-                </label>
+                  )}
+                </span>
               </div>
             )}
           </div>
