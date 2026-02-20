@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
@@ -34,6 +41,41 @@ interface WorkspaceCreatePanelProps {
   onOpenIssue: (issueId: string) => void;
   onClose: () => void;
   children: ReactNode;
+}
+
+type IssuePanelResolution = 'resolving' | 'ready' | 'missing';
+
+type RightPanelState =
+  | { kind: 'closed' }
+  | { kind: 'create-issue' }
+  | { kind: 'issue'; issueId: string; resolution: IssuePanelResolution }
+  | { kind: 'issue-workspace'; workspaceId: string }
+  | { kind: 'workspace-create'; draftId: string; issueId: string | null };
+
+function resolveIssuePanelResolution({
+  issueId,
+  hasIssue,
+  isProjectLoading,
+  expectedIssueId,
+}: {
+  issueId: string;
+  hasIssue: boolean;
+  isProjectLoading: boolean;
+  expectedIssueId: string | null;
+}): IssuePanelResolution {
+  if (isProjectLoading) {
+    return 'resolving';
+  }
+
+  if (hasIssue) {
+    return 'ready';
+  }
+
+  if (expectedIssueId === issueId) {
+    return 'resolving';
+  }
+
+  return 'missing';
 }
 
 function WorkspaceCreatePanel({
@@ -275,16 +317,101 @@ function WorkspaceSessionPanel({
 
 export function ProjectRightSidebarContainer() {
   const navigate = useNavigate();
-  const { getIssue } = useProjectContext();
+  const {
+    getIssue,
+    isLoading: isProjectLoading,
+    issuesById,
+  } = useProjectContext();
   const {
     issueId,
     workspaceId,
     draftId,
+    isCreateMode,
     isWorkspaceCreateMode,
     openIssue,
     openIssueWorkspace,
     closePanel,
   } = useKanbanNavigation();
+  const [expectedIssueId, setExpectedIssueId] = useState<string | null>(null);
+
+  const markExpectedIssue = useCallback((nextIssueId: string) => {
+    setExpectedIssueId(nextIssueId);
+  }, []);
+
+  // Keep transient create expectations scoped to the current issue route only.
+  useEffect(() => {
+    if (!expectedIssueId) {
+      return;
+    }
+
+    if (!issueId || issueId !== expectedIssueId) {
+      setExpectedIssueId(null);
+      return;
+    }
+
+    if (issuesById.has(expectedIssueId)) {
+      setExpectedIssueId(null);
+    }
+  }, [expectedIssueId, issueId, issuesById]);
+
+  const issuePanelResolution = useMemo<IssuePanelResolution | null>(() => {
+    if (!issueId || isCreateMode || workspaceId || isWorkspaceCreateMode) {
+      return null;
+    }
+
+    return resolveIssuePanelResolution({
+      issueId,
+      hasIssue: issuesById.has(issueId),
+      isProjectLoading,
+      expectedIssueId,
+    });
+  }, [
+    issueId,
+    isCreateMode,
+    workspaceId,
+    isWorkspaceCreateMode,
+    issuesById,
+    isProjectLoading,
+    expectedIssueId,
+  ]);
+
+  const rightPanelState = useMemo<RightPanelState>(() => {
+    if (isWorkspaceCreateMode) {
+      if (draftId) {
+        return {
+          kind: 'workspace-create',
+          draftId,
+          issueId,
+        };
+      }
+      return { kind: 'closed' };
+    }
+
+    if (workspaceId) {
+      return { kind: 'issue-workspace', workspaceId };
+    }
+
+    if (isCreateMode) {
+      return { kind: 'create-issue' };
+    }
+
+    if (issueId) {
+      return {
+        kind: 'issue',
+        issueId,
+        resolution: issuePanelResolution ?? 'resolving',
+      };
+    }
+
+    return { kind: 'closed' };
+  }, [
+    isWorkspaceCreateMode,
+    draftId,
+    issueId,
+    workspaceId,
+    isCreateMode,
+    issuePanelResolution,
+  ]);
 
   const handleOpenIssueFromCreate = useCallback(
     (targetIssueId: string) => {
@@ -305,8 +432,20 @@ export function ProjectRightSidebarContainer() {
     [issueId, openIssueWorkspace, navigate]
   );
 
-  if (isWorkspaceCreateMode && draftId) {
-    const linkedIssueId = issueId;
+  useEffect(() => {
+    if (rightPanelState.kind !== 'issue') {
+      return;
+    }
+
+    if (rightPanelState.resolution !== 'missing') {
+      return;
+    }
+
+    closePanel();
+  }, [rightPanelState, closePanel]);
+
+  if (rightPanelState.kind === 'workspace-create') {
+    const linkedIssueId = rightPanelState.issueId;
     const linkedIssueSimpleId = linkedIssueId
       ? (getIssue(linkedIssueId)?.simple_id ?? null)
       : null;
@@ -318,18 +457,37 @@ export function ProjectRightSidebarContainer() {
         onOpenIssue={handleOpenIssueFromCreate}
         onClose={closePanel}
       >
-        <CreateModeProvider key={draftId} draftId={draftId}>
+        <CreateModeProvider
+          key={rightPanelState.draftId}
+          draftId={rightPanelState.draftId}
+        >
           <CreateChatBoxContainer onWorkspaceCreated={handleWorkspaceCreated} />
         </CreateModeProvider>
       </WorkspaceCreatePanel>
     );
   }
 
-  if (workspaceId) {
+  if (rightPanelState.kind === 'issue-workspace') {
     return (
-      <WorkspaceSessionPanel workspaceId={workspaceId} onClose={closePanel} />
+      <WorkspaceSessionPanel
+        workspaceId={rightPanelState.workspaceId}
+        onClose={closePanel}
+      />
     );
   }
 
-  return <KanbanIssuePanelContainer />;
+  if (rightPanelState.kind === 'closed') {
+    return null;
+  }
+
+  return (
+    <KanbanIssuePanelContainer
+      issueResolution={
+        rightPanelState.kind === 'issue'
+          ? rightPanelState.resolution
+          : undefined
+      }
+      onExpectIssueOpen={markExpectedIssue}
+    />
+  );
 }
