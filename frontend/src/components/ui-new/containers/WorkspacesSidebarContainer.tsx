@@ -94,39 +94,43 @@ function WorkspacesSortDialog({
 }: WorkspacesSortDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Sort workspaces</DialogTitle>
-          <DialogDescription>
-            Choose how workspaces are ordered in the sidebar.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md p-0">
+        <div className="border-b border-border px-double pb-base pt-double">
+          <DialogHeader className="space-y-half">
+            <DialogTitle>Sort workspaces</DialogTitle>
+            <DialogDescription>
+              Choose how workspaces are ordered in the sidebar.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex flex-col gap-base pt-half">
-          <div className="flex items-center justify-between gap-base">
-            <span className="text-sm text-low">Sort by</span>
-            <PropertyDropdown
-              value={sortBy}
-              options={SORT_BY_OPTIONS}
-              onChange={onSortByChange}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-base">
-            <span className="text-sm text-low">Sort order</span>
-            <ButtonGroup>
-              <ButtonGroupItem
-                active={sortOrder === 'desc'}
-                onClick={() => onSortOrderChange('desc')}
-              >
-                Desc
-              </ButtonGroupItem>
-              <ButtonGroupItem
-                active={sortOrder === 'asc'}
-                onClick={() => onSortOrderChange('asc')}
-              >
-                Asc
-              </ButtonGroupItem>
-            </ButtonGroup>
+        <div className="px-double py-double">
+          <div className="flex flex-col gap-base">
+            <div className="flex items-center justify-between gap-base">
+              <span className="text-sm text-low">Sort by</span>
+              <PropertyDropdown
+                value={sortBy}
+                options={SORT_BY_OPTIONS}
+                onChange={onSortByChange}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-base">
+              <span className="text-sm text-low">Sort order</span>
+              <ButtonGroup>
+                <ButtonGroupItem
+                  active={sortOrder === 'desc'}
+                  onClick={() => onSortOrderChange('desc')}
+                >
+                  Desc
+                </ButtonGroupItem>
+                <ButtonGroupItem
+                  active={sortOrder === 'asc'}
+                  onClick={() => onSortOrderChange('asc')}
+                >
+                  Asc
+                </ButtonGroupItem>
+              </ButtonGroup>
+            </div>
           </div>
         </div>
       </DialogContent>
@@ -159,39 +163,43 @@ function WorkspacesFilterDialog({
 }: WorkspacesFilterDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Filter workspaces</DialogTitle>
-          <DialogDescription>
-            Narrow down workspaces by project and PR state.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-md p-0">
+        <div className="border-b border-border px-double pb-base pt-double">
+          <DialogHeader className="space-y-half">
+            <DialogTitle>Filter workspaces</DialogTitle>
+            <DialogDescription>
+              Narrow down workspaces by project and PR state.
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        <div className="flex flex-col gap-base pt-half">
-          <MultiSelectDropdown
-            values={projectIds}
-            options={projectOptions}
-            onChange={onProjectFilterChange}
-            icon={FolderIcon}
-            label="Project"
-          />
-          <PropertyDropdown
-            value={prFilter}
-            options={PR_FILTER_OPTIONS}
-            onChange={onPrFilterChange}
-            icon={GitPullRequestIcon}
-            label="PR"
-          />
-          {hasActiveFilters && (
-            <div className="flex justify-end">
-              <PrimaryButton
-                variant="tertiary"
-                value="Clear filters"
-                actionIcon={XIcon}
-                onClick={onClearFilters}
-              />
-            </div>
-          )}
+        <div className="px-double py-double">
+          <div className="flex flex-col gap-base">
+            <MultiSelectDropdown
+              values={projectIds}
+              options={projectOptions}
+              onChange={onProjectFilterChange}
+              icon={FolderIcon}
+              label="Project"
+            />
+            <PropertyDropdown
+              value={prFilter}
+              options={PR_FILTER_OPTIONS}
+              onChange={onPrFilterChange}
+              icon={GitPullRequestIcon}
+              label="PR"
+            />
+            {hasActiveFilters && (
+              <div className="flex justify-end">
+                <PrimaryButton
+                  variant="tertiary"
+                  value="Clear filters"
+                  actionIcon={XIcon}
+                  onClick={onClearFilters}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -549,14 +557,22 @@ export function WorkspacesSidebarContainer({
             onClick={() => setIsSortDialogOpen(true)}
             aria-label="Open workspace sort settings"
             title="Sort workspaces"
-            className={cn(hasNonDefaultSort && 'text-brand hover:text-brand')}
+            className={cn(
+              'p-base',
+              hasNonDefaultSort && 'text-brand hover:text-brand'
+            )}
+            iconClassName="size-icon-base"
           />
           <IconButton
             icon={FunnelIcon}
             onClick={() => setIsFilterDialogOpen(true)}
             aria-label="Open workspace filter settings"
             title="Filter workspaces"
-            className={cn(hasActiveFilters && 'text-brand hover:text-brand')}
+            className={cn(
+              'p-base',
+              hasActiveFilters && 'text-brand hover:text-brand'
+            )}
+            iconClassName="size-icon-base"
           />
         </div>
       </div>
