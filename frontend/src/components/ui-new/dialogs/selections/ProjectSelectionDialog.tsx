@@ -68,6 +68,7 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
   const {
     statuses,
     issues,
+    issueAssignees,
     issueRelationships,
     updateIssue,
     insertIssueRelationship,
@@ -257,6 +258,13 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
           const params = new URLSearchParams({ mode: 'create' });
           if (defaultStatusId) params.set('statusId', defaultStatusId);
           params.set('parentIssueId', selection.parentIssueId);
+          // Carry over assignees from parent issue
+          const parentAssigneeIds = issueAssignees
+            .filter((a) => a.issue_id === selection.parentIssueId)
+            .map((a) => a.user_id);
+          if (parentAssigneeIds.length > 0) {
+            params.set('assignees', parentAssigneeIds.join(','));
+          }
           navigate(`/projects/${projectId}?${params.toString()}`);
         }
       } else if (selection.type === 'relationship') {
@@ -286,6 +294,7 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
       listViewStatusFilter,
       visibleStatuses,
       statuses,
+      issueAssignees,
     ]
   );
 
