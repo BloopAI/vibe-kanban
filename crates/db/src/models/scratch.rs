@@ -50,6 +50,52 @@ pub struct WorkspacePanelStateData {
     pub is_left_main_panel_visible: bool,
 }
 
+/// Workspace sidebar PR filter state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspacePrFilterData {
+    #[default]
+    All,
+    HasPr,
+    NoPr,
+}
+
+/// Workspace sidebar sort field
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceSortByData {
+    #[default]
+    UpdatedAt,
+    CreatedAt,
+}
+
+/// Workspace sidebar sort order
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceSortOrderData {
+    Asc,
+    #[default]
+    Desc,
+}
+
+/// Workspace sidebar filter state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+pub struct WorkspaceFilterStateData {
+    #[serde(default)]
+    pub project_ids: Vec<String>,
+    #[serde(default)]
+    pub pr_filter: WorkspacePrFilterData,
+}
+
+/// Workspace sidebar sort state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+pub struct WorkspaceSortStateData {
+    #[serde(default)]
+    pub sort_by: WorkspaceSortByData,
+    #[serde(default)]
+    pub sort_order: WorkspaceSortOrderData,
+}
+
 /// Data for UI preferences scratch (global preferences stored per-user or per-device)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UiPreferencesData {
@@ -83,6 +129,12 @@ pub struct UiPreferencesData {
     /// Workspace-specific panel states
     #[serde(default)]
     pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
+    /// Workspace sidebar filter preferences
+    #[serde(default)]
+    pub workspace_filters: WorkspaceFilterStateData,
+    /// Workspace sidebar sort preferences
+    #[serde(default)]
+    pub workspace_sort: WorkspaceSortStateData,
 }
 
 /// Linked issue data for draft workspace scratch

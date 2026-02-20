@@ -13,6 +13,11 @@ import {
   type RightMainPanelMode,
   type ContextBarPosition,
   type WorkspacePanelState,
+  type WorkspaceFilterState,
+  type WorkspaceSortState,
+  type WorkspacePrFilter,
+  type WorkspaceSortBy,
+  type WorkspaceSortOrder,
 } from '@/stores/useUiPreferencesStore';
 import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
 
@@ -35,6 +40,8 @@ function storeToScratchData(state: {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   workspacePanelStates: Record<string, WorkspacePanelState>;
+  workspaceFilters: WorkspaceFilterState;
+  workspaceSort: WorkspaceSortState;
 }): UiPreferencesData {
   const workspacePanelStates: { [key: string]: WorkspacePanelStateData } = {};
   for (const [key, value] of Object.entries(state.workspacePanelStates)) {
@@ -55,6 +62,14 @@ function storeToScratchData(state: {
     is_right_sidebar_visible: state.isRightSidebarVisible,
     is_terminal_visible: state.isTerminalVisible,
     workspace_panel_states: workspacePanelStates,
+    workspace_filters: {
+      project_ids: state.workspaceFilters.projectIds,
+      pr_filter: state.workspaceFilters.prFilter,
+    },
+    workspace_sort: {
+      sort_by: state.workspaceSort.sortBy,
+      sort_order: state.workspaceSort.sortOrder,
+    },
   };
 }
 
@@ -72,6 +87,8 @@ function scratchDataToStore(data: UiPreferencesData): {
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
   workspacePanelStates: Record<string, WorkspacePanelState>;
+  workspaceFilters: WorkspaceFilterState;
+  workspaceSort: WorkspaceSortState;
 } {
   const workspacePanelStates: Record<string, WorkspacePanelState> = {};
   if (data.workspace_panel_states) {
@@ -111,6 +128,16 @@ function scratchDataToStore(data: UiPreferencesData): {
     isRightSidebarVisible: data.is_right_sidebar_visible ?? true,
     isTerminalVisible: data.is_terminal_visible ?? true,
     workspacePanelStates,
+    workspaceFilters: {
+      projectIds: data.workspace_filters?.project_ids ?? [],
+      prFilter:
+        (data.workspace_filters?.pr_filter as WorkspacePrFilter) ?? 'all',
+    },
+    workspaceSort: {
+      sortBy: (data.workspace_sort?.sort_by as WorkspaceSortBy) ?? 'updated_at',
+      sortOrder:
+        (data.workspace_sort?.sort_order as WorkspaceSortOrder) ?? 'desc',
+    },
   };
 }
 
@@ -141,6 +168,8 @@ export function useUiPreferencesScratch() {
     isRightSidebarVisible: state.isRightSidebarVisible,
     isTerminalVisible: state.isTerminalVisible,
     workspacePanelStates: state.workspacePanelStates,
+    workspaceFilters: state.workspaceFilters,
+    workspaceSort: state.workspaceSort,
   }));
 
   // Extract scratch data
@@ -166,6 +195,8 @@ export function useUiPreferencesScratch() {
       isRightSidebarVisible: currentState.isRightSidebarVisible,
       isTerminalVisible: currentState.isTerminalVisible,
       workspacePanelStates: currentState.workspacePanelStates,
+      workspaceFilters: currentState.workspaceFilters,
+      workspaceSort: currentState.workspaceSort,
     });
 
     try {
@@ -207,6 +238,8 @@ export function useUiPreferencesScratch() {
         isRightSidebarVisible: serverState.isRightSidebarVisible,
         isTerminalVisible: serverState.isTerminalVisible,
         workspacePanelStates: serverState.workspacePanelStates,
+        workspaceFilters: serverState.workspaceFilters,
+        workspaceSort: serverState.workspaceSort,
       });
 
       // Allow a brief delay for state to settle
