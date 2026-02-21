@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
+import { cn } from '../lib/cn';
 
 export type CommentCardVariant = 'user' | 'github' | 'input';
 
