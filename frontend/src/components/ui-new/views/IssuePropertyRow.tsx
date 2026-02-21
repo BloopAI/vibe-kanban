@@ -6,7 +6,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
+import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 

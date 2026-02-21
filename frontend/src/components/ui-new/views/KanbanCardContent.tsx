@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { ResolvedRelationship } from '@/lib/resolveRelationships';
-import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
+import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RunningDots } from '@vibe/ui/components/RunningDots';

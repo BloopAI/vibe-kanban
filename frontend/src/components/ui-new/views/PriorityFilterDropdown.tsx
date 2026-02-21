@@ -5,7 +5,7 @@ import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
 } from '@vibe/ui/components/MultiSelectDropdown';
-import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
+import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 
 const PRIORITIES: IssuePriority[] = ['urgent', 'high', 'medium', 'low'];
 

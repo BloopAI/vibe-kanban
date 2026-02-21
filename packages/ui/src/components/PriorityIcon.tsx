@@ -1,19 +1,20 @@
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import {
   ArrowFatLineUpIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   MinusIcon,
 } from '@phosphor-icons/react';
-import type { IssuePriority } from 'shared/remote-types';
+
+export type PriorityLevel = 'urgent' | 'high' | 'medium' | 'low';
 
 export interface PriorityIconProps {
-  priority: IssuePriority | null;
+  priority: PriorityLevel | null;
   className?: string;
 }
 
 const priorityConfig: Record<
-  IssuePriority,
+  PriorityLevel,
   { icon: typeof ArrowUpIcon; colorClass: string }
 > = {
   urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
