@@ -1,7 +1,7 @@
 import { forwardRef } from 'react';
 import { cn } from '../lib/cn';
 
-const PRESET_COLORS = [
+export const PRESET_COLORS = [
   '0 84% 60%',
   '24 95% 53%',
   '45 93% 58%',

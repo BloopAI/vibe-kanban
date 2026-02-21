@@ -1,24 +1,28 @@
 import type { RefObject } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon, CheckIcon } from '@phosphor-icons/react';
-import type { Tag } from 'shared/remote-types';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/Dropdown';
-import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
-import { PRESET_COLORS } from '@/lib/colors';
+} from './Dropdown';
+import { InlineColorPicker, PRESET_COLORS } from './ColorPicker';
 
 // Re-export for backwards compatibility
 export const TAG_COLORS = PRESET_COLORS;
 
+export interface SearchableTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
 interface SearchableTagDropdownProps {
-  filteredTags: Tag[];
+  filteredTags: SearchableTag[];
   selectedTagIds: string[];
   onTagToggle: (tagId: string) => void;
   trigger: React.ReactNode;

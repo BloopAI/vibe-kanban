@@ -6,7 +6,7 @@ import { PrBadge } from '@vibe/ui/components/PrBadge';
 
 // Re-export PRESET_COLORS (and TAG_COLORS for backwards compatibility)
 export { PRESET_COLORS } from '@/lib/colors';
-export { TAG_COLORS } from '@/components/ui-new/primitives/SearchableTagDropdown';
+export { TAG_COLORS } from '@vibe/ui/components/SearchableTagDropdown';
 
 export interface LinkedPullRequest {
   id: string;
