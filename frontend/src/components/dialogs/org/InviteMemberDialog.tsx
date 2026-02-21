@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -9,7 +9,7 @@ import {
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
 import { InputField } from '@vibe/ui/components/InputField';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   ButtonGroup,
   ButtonGroupItem,

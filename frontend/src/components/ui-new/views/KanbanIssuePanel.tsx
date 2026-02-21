@@ -19,7 +19,7 @@ import type {
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IconButton } from '@vibe/ui/components/IconButton';

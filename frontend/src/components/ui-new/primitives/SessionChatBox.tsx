@@ -32,7 +32,7 @@ import {
   type EditorProps,
   type ModelSelectorProps,
 } from './ChatBoxBase';
-import { PrimaryButton } from './PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { ToolbarIconButton, ToolbarDropdown } from './Toolbar';
 import {
   type ActionDefinition,

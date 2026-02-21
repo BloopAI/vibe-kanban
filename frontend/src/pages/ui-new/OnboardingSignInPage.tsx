@@ -11,7 +11,7 @@ import { usePostHog } from 'posthog-js/react';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTheme } from '@/components/ThemeProvider';
 import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { resolveAppPath } from '@/lib/routes/pathResolution';

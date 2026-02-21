@@ -37,7 +37,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { AgentIcon, getAgentName } from '@/components/agents/AgentIcon';
 import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
 import { cn } from '@/lib/utils';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 type SoundOption = {
   value: SoundFile;

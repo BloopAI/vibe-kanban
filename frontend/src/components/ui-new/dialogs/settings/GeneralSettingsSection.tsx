@@ -29,7 +29,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 import { cn } from '@/lib/utils';
-import { PrimaryButton } from '../../primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import {
   DropdownMenu,

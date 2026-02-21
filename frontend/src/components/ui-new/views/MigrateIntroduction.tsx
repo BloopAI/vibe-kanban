@@ -8,7 +8,7 @@ import {
   CloudIcon,
   SignInIcon,
 } from '@phosphor-icons/react';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 interface MigrateIntroductionProps {
   isSignedIn: boolean;

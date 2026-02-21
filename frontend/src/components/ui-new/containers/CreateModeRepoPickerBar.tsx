@@ -14,7 +14,7 @@ import { repoApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CreateRepoDialog } from '@/components/ui-new/dialogs/CreateRepoDialog';
 import {
   SelectionDialog,

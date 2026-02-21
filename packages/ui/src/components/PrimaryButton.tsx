@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils';
 import { SpinnerIcon, type Icon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 interface PrimaryButtonProps {
   variant?: 'default' | 'secondary' | 'tertiary';

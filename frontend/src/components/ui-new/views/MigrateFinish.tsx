@@ -4,7 +4,7 @@ import {
   ArrowSquareOutIcon,
   ArrowCounterClockwiseIcon,
 } from '@phosphor-icons/react';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 interface MigratedProject {
   localId: string;

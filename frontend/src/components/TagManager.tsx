@@ -4,7 +4,7 @@ import { PlusIcon, PencilSimpleIcon, TrashIcon } from '@phosphor-icons/react';
 import { SpinnerGap } from '@phosphor-icons/react';
 import { tagsApi } from '@/lib/api';
 import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import type { Tag } from 'shared/types';
 

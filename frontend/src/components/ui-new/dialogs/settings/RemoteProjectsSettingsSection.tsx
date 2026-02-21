@@ -32,7 +32,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '../../primitives/Popover';
-import { PrimaryButton } from '../../primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Switch } from '@/components/ui/switch';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useAuth } from '@/hooks/auth/useAuth';

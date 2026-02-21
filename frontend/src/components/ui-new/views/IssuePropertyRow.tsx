@@ -3,7 +3,7 @@ import { PlusIcon, UsersIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';

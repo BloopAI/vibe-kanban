@@ -13,7 +13,7 @@ import {
   type EditorProps,
   type ModelSelectorProps,
 } from './ChatBoxBase';
-import { PrimaryButton } from './PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 

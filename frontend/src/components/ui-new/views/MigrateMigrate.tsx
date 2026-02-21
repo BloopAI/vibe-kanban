@@ -5,7 +5,7 @@ import {
   ArrowRightIcon,
   ArrowCounterClockwiseIcon,
 } from '@phosphor-icons/react';
-import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import type { MigrationReport, EntityReport } from 'shared/types';
 
 interface MigrateMigrateProps {

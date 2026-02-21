@@ -29,7 +29,7 @@ import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { cn } from '@/lib/utils';
 import { getRemoteApiUrl } from '@/lib/remoteApi';
-import { PrimaryButton } from '../../primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   DropdownMenu,
   DropdownMenuContent,

@@ -9,7 +9,7 @@ import {
   CommandGroup,
   CommandItem,
 } from './Command';
-import { PrimaryButton } from './PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 export interface MultiSelectOption<T extends string = string> {
   value: T;

@@ -17,7 +17,7 @@ import {
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { PrimaryButton } from '../primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   IconButtonGroup,
   IconButtonGroupItem,

@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
 } from '../../primitives/Dropdown';
-import { PrimaryButton } from '../../primitives/PrimaryButton';
+import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 // ============================================================================
 // Two-Column Picker Components
