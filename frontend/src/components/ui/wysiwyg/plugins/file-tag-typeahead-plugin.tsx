@@ -466,6 +466,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
         return createPortal(
           <TypeaheadMenu
             anchorEl={anchorRef.current}
+            editorEl={editor.getRootElement()}
             onClickOutside={closeTypeahead}
           >
             <TypeaheadMenu.Header>

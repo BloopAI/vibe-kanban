@@ -1,18 +1,12 @@
 import {
   useRef,
   useEffect,
-  useMemo,
   useCallback,
   useState,
   type ReactNode,
   type MouseEvent,
   type CSSProperties,
 } from 'react';
-import {
-  Popover,
-  PopoverAnchor,
-  PopoverContent,
-} from '@/components/ui-new/primitives/Popover';
 
 // --- Headless Compound Components ---
 
@@ -21,7 +15,8 @@ type VerticalSide = 'top' | 'bottom';
 interface TypeaheadPlacement {
   side: VerticalSide;
   maxHeight: number;
-  alignOffset: number;
+  left: number;
+  top: number;
 }
 
 const VIEWPORT_PADDING = 16;
@@ -35,10 +30,13 @@ function getViewportHeight() {
   return window.visualViewport?.height ?? window.innerHeight;
 }
 
-function getAvailableVerticalSpace(anchorRect: DOMRect) {
+function getAvailableVerticalSpace(anchorRect: DOMRect, editorRect?: DOMRect) {
   const viewportHeight = getViewportHeight();
+  // When an editor rect is available, measure space above the entire editor
+  // input so the menu doesn't overlap earlier lines of text.
+  const topEdge = editorRect ? editorRect.top : anchorRect.top;
   return {
-    above: anchorRect.top - VIEWPORT_PADDING - MENU_SIDE_OFFSET,
+    above: topEdge - VIEWPORT_PADDING - MENU_SIDE_OFFSET,
     below:
       viewportHeight - anchorRect.bottom - VIEWPORT_PADDING - MENU_SIDE_OFFSET,
   };
@@ -75,64 +73,81 @@ function clampMenuHeight(height: number) {
   );
 }
 
-function getAlignOffset(anchorRect: DOMRect): number {
+function getPlacement(
+  anchorEl: HTMLElement,
+  previousSide?: VerticalSide,
+  editorEl?: HTMLElement | null
+): TypeaheadPlacement {
+  const anchorRect = anchorEl.getBoundingClientRect();
+  const editorRect = editorEl?.getBoundingClientRect();
+  const { above, below } = getAvailableVerticalSpace(anchorRect, editorRect);
+  const side = chooseStableSide(previousSide, above, below);
+  const rawHeight = side === 'bottom' ? below : above;
+
+  // Horizontal: align to anchor left, but shift left if it would overflow
   const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
   const rightOverflow =
     anchorRect.left + MAX_MENU_WIDTH - viewportWidth + VIEWPORT_PADDING;
-  return rightOverflow > 0 ? -rightOverflow : 0;
-}
+  const left =
+    rightOverflow > 0 ? anchorRect.left - rightOverflow : anchorRect.left;
 
-function getPlacement(
-  anchorEl: HTMLElement,
-  previousSide?: VerticalSide
-): TypeaheadPlacement {
-  const anchorRect = anchorEl.getBoundingClientRect();
-  const { above, below } = getAvailableVerticalSpace(anchorRect);
-  const side = chooseStableSide(previousSide, above, below);
-  const rawHeight = side === 'bottom' ? below : above;
+  // Vertical: below the anchor or above the editor (if available)
+  let top: number;
+  if (side === 'bottom') {
+    top = anchorRect.bottom + MENU_SIDE_OFFSET;
+  } else {
+    // Position above the editor top edge (or anchor if no editor)
+    const topEdge = editorRect ? editorRect.top : anchorRect.top;
+    top = topEdge - MENU_SIDE_OFFSET;
+  }
 
   return {
     side,
     maxHeight: clampMenuHeight(rawHeight),
-    alignOffset: getAlignOffset(anchorRect),
+    left,
+    top,
   };
 }
 
 interface TypeaheadMenuProps {
   anchorEl: HTMLElement;
+  editorEl?: HTMLElement | null;
   onClickOutside?: () => void;
   children: ReactNode;
 }
 
 function TypeaheadMenuRoot({
   anchorEl,
+  editorEl,
   onClickOutside,
   children,
 }: TypeaheadMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<TypeaheadPlacement>(() =>
-    getPlacement(anchorEl)
+    getPlacement(anchorEl, undefined, editorEl)
   );
 
   const syncPlacement = useCallback(() => {
     setPlacement((previous) => {
-      const next = getPlacement(anchorEl, previous.side);
-      // Use a tolerance for maxHeight to prevent re-renders from sub-pixel
-      // anchor rect changes. Without this, tiny fluctuations in the anchor
-      // position cause maxHeight to change by 1-2px, triggering a state
-      // update → re-render → @floating-ui reposition cycle that manifests
-      // as the popover visually jumping.
+      const next = getPlacement(anchorEl, previous.side, editorEl);
       const maxHeightStable =
         Math.abs(next.maxHeight - previous.maxHeight) < 10;
+      const leftStable = Math.abs(next.left - previous.left) < 2;
+      // Use a line-height–sized tolerance for vertical position so that
+      // sub-pixel anchor movements within the same line don't cause updates.
+      // The position only needs to change on line wraps (~20px jump).
+      const topStable = Math.abs(next.top - previous.top) < 10;
       if (
         next.side === previous.side &&
         maxHeightStable &&
-        next.alignOffset === previous.alignOffset
+        leftStable &&
+        topStable
       ) {
         return previous;
       }
       return next;
     });
-  }, [anchorEl]);
+  }, [anchorEl, editorEl]);
 
   useEffect(() => {
     syncPlacement();
@@ -148,8 +163,6 @@ function TypeaheadMenuRoot({
       vv.addEventListener('resize', updateOnFrame);
       vv.addEventListener('scroll', updateOnFrame);
     }
-    const observer = new ResizeObserver(updateOnFrame);
-    observer.observe(anchorEl);
 
     return () => {
       window.removeEventListener('resize', updateOnFrame);
@@ -158,49 +171,47 @@ function TypeaheadMenuRoot({
         vv.removeEventListener('resize', updateOnFrame);
         vv.removeEventListener('scroll', updateOnFrame);
       }
-      observer.disconnect();
     };
   }, [anchorEl, syncPlacement]);
 
-  // Reposition during normal React renders too (e.g. typeahead cursor movement).
+  // Click-outside detection
   useEffect(() => {
-    syncPlacement();
-  });
+    if (!onClickOutside) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      const menu = menuRef.current;
+      if (menu && !menu.contains(e.target as Node)) {
+        onClickOutside();
+      }
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [onClickOutside]);
 
-  const contentStyle = useMemo(
-    () =>
-      ({
-        // Pass maxHeight as a CSS variable so the inner ScrollArea can consume
-        // it without setting an explicit maxHeight on the PopoverContent itself.
-        // Setting maxHeight directly on the PopoverContent causes @floating-ui's
-        // ResizeObserver to fire on every recalculation, triggering a reposition
-        // cycle that manifests as the popover visually jumping during typing.
-        '--typeahead-menu-max-height': `${placement.maxHeight}px`,
-      }) as CSSProperties,
-    [placement.maxHeight]
-  );
+  // When side is 'top' the menu grows upward — use bottom-anchored positioning
+  // so the menu expands upward from a fixed bottom edge.
+  const style =
+    placement.side === 'bottom'
+      ? ({
+          position: 'fixed',
+          left: placement.left,
+          top: placement.top,
+          '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+        } as CSSProperties)
+      : ({
+          position: 'fixed',
+          left: placement.left,
+          bottom: getViewportHeight() - placement.top,
+          '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+        } as CSSProperties);
 
   return (
-    <Popover open>
-      <PopoverAnchor virtualRef={{ current: anchorEl }} />
-      <PopoverContent
-        side={placement.side}
-        align="start"
-        sideOffset={MENU_SIDE_OFFSET}
-        alignOffset={placement.alignOffset}
-        avoidCollisions={false}
-        onOpenAutoFocus={(e) => e.preventDefault()}
-        onCloseAutoFocus={(e) => e.preventDefault()}
-        onInteractOutside={(e) => {
-          e.preventDefault();
-          onClickOutside?.();
-        }}
-        style={contentStyle}
-        className="w-auto min-w-80 max-w-[370px] p-0 overflow-hidden !bg-panel flex flex-col"
-      >
-        {children}
-      </PopoverContent>
-    </Popover>
+    <div
+      ref={menuRef}
+      style={style as CSSProperties}
+      className="z-[10000] w-auto min-w-80 max-w-[370px] p-0 overflow-hidden bg-panel border border-border rounded-sm shadow-md flex flex-col"
+    >
+      {children}
+    </div>
   );
 }
 
