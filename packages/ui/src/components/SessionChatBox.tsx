@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { type ChangeEvent, type ReactNode, useRef } from 'react';
 import {
+  type Icon,
   PaperclipIcon,
   CheckIcon,
   ClockIcon,
@@ -14,52 +15,24 @@ import {
   GithubLogoIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
+import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import {
-  BaseAgentCapability,
-  type BaseCodingAgent,
-  type ExecutorConfig,
-  type Session,
-  type TodoItem,
-  type TokenUsageInfo,
-} from 'shared/types';
-import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
-import { formatDateShortWithTime } from '@/utils/date';
-import { toPrettyCase } from '@/utils/string';
-import { AgentIcon } from '@/components/agents/AgentIcon';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import {
-  ChatBoxBase,
-  VisualVariant,
-  type DropzoneProps,
-} from '@vibe/ui/components/ChatBoxBase';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import {
-  ToolbarDropdown,
-  ToolbarIconButton,
-} from '@vibe/ui/components/Toolbar';
-import {
-  type ActionDefinition,
-  type ActionVisibilityContext,
-  isSpecialIcon,
-} from '../actions';
-import {
-  isActionEnabled,
-  getActionTooltip,
-} from '../actions/useActionVisibility';
+  type EditorProps,
+  type ExecutorProps,
+} from './CreateChatBox';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
+import { PrimaryButton } from './PrimaryButton';
+import type { LocalImageMetadata } from './TaskAttemptContext';
+import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import {
-  type EditorProps,
-  type ExecutorProps,
-  type ModelSelectorProps,
-} from '@vibe/ui/components/CreateChatBox';
-import { ContextUsageGauge } from '@vibe/ui/components/ContextUsageGauge';
-import { TodoProgressPopup } from '@vibe/ui/components/TodoProgressPopup';
-import { useUserSystem } from '@/components/ConfigProvider';
-import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
+  ContextUsageGauge,
+  type ContextUsageInfo,
+} from './ContextUsageGauge';
+import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -80,18 +53,31 @@ interface ActionsProps {
   onPasteFiles: (files: File[]) => void;
 }
 
-interface SessionProps {
-  sessions: Session[];
+export interface SessionOption<TExecutor extends string = string> {
+  id: string;
+  created_at: string | Date;
+  executor?: TExecutor | string | null;
+}
+
+interface SessionProps<TExecutor extends string = string> {
+  sessions: SessionOption<TExecutor>[];
   selectedSessionId?: string;
   onSelectSession: (sessionId: string) => void;
   isNewSessionMode?: boolean;
   onNewSession?: () => void;
 }
 
+export interface SessionToolbarActionItem {
+  id: string;
+  icon: Icon;
+  label: string;
+  tooltip?: string;
+  onClick: () => void;
+  disabled?: boolean;
+}
+
 interface ToolbarActionsProps {
-  actions: ActionDefinition[];
-  context: ActionVisibilityContext;
-  onExecuteAction: (action: ActionDefinition) => void;
+  items: SessionToolbarActionItem[];
 }
 
 interface StatsProps {
@@ -137,44 +123,90 @@ interface ReviewCommentsProps {
   onClear: () => void;
 }
 
-interface SessionChatBoxProps {
+export interface SessionChatBoxEditorRenderProps<
+  TExecutor extends string = string,
+> {
+  focusKey: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCmdEnter: () => void;
+  disabled: boolean;
+  repoIds?: string[];
+  executor: TExecutor | null;
+  onPasteFiles: (files: File[]) => void;
+  localImages?: LocalImageMetadata[];
+}
+
+interface SessionChatBoxProps<TExecutor extends string = string> {
   status: ExecutionStatus;
   editor: EditorProps;
+  renderEditor: (
+    props: SessionChatBoxEditorRenderProps<TExecutor>
+  ) => ReactNode;
   actions: ActionsProps;
-  session: SessionProps;
-  workspaceId?: string;
+  session: SessionProps<TExecutor>;
   stats?: StatsProps;
   feedbackMode?: FeedbackModeProps;
   editMode?: EditModeProps;
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
-  modelSelector?: ModelSelectorProps<ExecutorConfig>;
+  modelSelector?: ReactNode;
   error?: string | null;
   repoIds?: string[];
-  agent?: BaseCodingAgent | null;
-  executor?: ExecutorProps<BaseCodingAgent>;
-  todos?: TodoItem[];
-  inProgressTodo?: TodoItem | null;
+  agent?: TExecutor | null;
+  executor?: ExecutorProps<TExecutor>;
+  formatExecutorLabel?: (executor: TExecutor) => string;
+  emptyExecutorLabel?: string;
+  renderAgentIcon?: (
+    executor: TExecutor | string | null | undefined,
+    className?: string
+  ) => ReactNode;
+  formatSessionDate?: (createdAt: string | Date) => string;
+  todos?: TodoProgressItem[];
+  inProgressTodo?: TodoProgressItem | null;
   localImages?: LocalImageMetadata[];
   onPrCommentClick?: () => void;
   onViewCode?: () => void;
   onOpenWorkspace?: () => void;
   onScrollToPreviousMessage?: () => void;
-  tokenUsageInfo?: TokenUsageInfo | null;
+  tokenUsageInfo?: ContextUsageInfo | null;
+  supportsContextUsage?: boolean;
   dropzone?: DropzoneProps;
+}
+
+function defaultExecutorLabel(executor: string) {
+  return executor
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function defaultFormatSessionDate(createdAt: string | Date) {
+  const date = createdAt instanceof Date ? createdAt : new Date(createdAt);
+  if (Number.isNaN(date.getTime())) {
+    return String(createdAt);
+  }
+
+  return date.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 /**
  * Full-featured chat box for session mode.
  * Supports queue, stop, attach, feedback mode, stats, and session switching.
  */
-export function SessionChatBox({
+export function SessionChatBox<TExecutor extends string = string>({
   status,
   editor,
+  renderEditor,
   actions,
   session,
-  workspaceId,
   stats,
   feedbackMode,
   editMode,
@@ -186,6 +218,10 @@ export function SessionChatBox({
   repoIds,
   agent,
   executor,
+  formatExecutorLabel = defaultExecutorLabel,
+  emptyExecutorLabel = 'Select Executor',
+  renderAgentIcon,
+  formatSessionDate = defaultFormatSessionDate,
   todos,
   inProgressTodo,
   localImages,
@@ -194,14 +230,11 @@ export function SessionChatBox({
   onOpenWorkspace,
   onScrollToPreviousMessage,
   tokenUsageInfo,
+  supportsContextUsage,
   dropzone,
-}: SessionChatBoxProps) {
+}: SessionChatBoxProps<TExecutor>) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { capabilities, config } = useUserSystem();
-
-  const supportsContextUsage =
-    agent && capabilities?.[agent]?.includes(BaseAgentCapability.CONTEXT_USAGE);
 
   // Determine if in feedback mode, edit mode, or approval mode
   const isInFeedbackMode = feedbackMode?.isActive ?? false;
@@ -218,12 +251,13 @@ export function SessionChatBox({
         : 'normal';
 
   // Derived state from status
-  const isDisabled =
+  const isDisabled = Boolean(
     status === 'sending' ||
-    status === 'stopping' ||
-    feedbackMode?.isSubmitting ||
-    editMode?.isSubmitting ||
-    approvalMode?.isSubmitting;
+      status === 'stopping' ||
+      feedbackMode?.isSubmitting ||
+      editMode?.isSubmitting ||
+      approvalMode?.isSubmitting
+  );
   const hasContent =
     editor.value.trim().length > 0 || (reviewComments?.count ?? 0) > 0;
   const canSend =
@@ -268,7 +302,7 @@ export function SessionChatBox({
   };
 
   // File input handlers
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((f) =>
       f.type.startsWith('image/')
     );
@@ -468,7 +502,7 @@ export function SessionChatBox({
 
   // Banner content
   const renderBanner = () => {
-    const banners: React.ReactNode[] = [];
+    const banners: ReactNode[] = [];
 
     // Review comments banner
     if (reviewComments && reviewComments.count > 0) {
@@ -525,54 +559,35 @@ export function SessionChatBox({
 
   return (
     <ChatBoxBase
-      editor={
-        <WYSIWYGEditor
-          key={focusKey}
-          placeholder={placeholder}
-          value={editor.value}
-          onChange={editor.onChange}
-          onCmdEnter={handleCmdEnter}
-          disabled={isDisabled}
-          className="min-h-double max-h-[50vh] overflow-y-auto"
-          repoIds={repoIds}
-          executor={agent || executor?.selected || null}
-          autoFocus
-          onPasteFiles={actions.onPasteFiles}
-          localImages={localImages}
-          sendShortcut={config?.send_message_shortcut}
-        />
-      }
+      editor={renderEditor({
+        focusKey,
+        placeholder,
+        value: editor.value,
+        onChange: editor.onChange,
+        onCmdEnter: handleCmdEnter,
+        disabled: isDisabled,
+        repoIds,
+        executor: agent || executor?.selected || null,
+        onPasteFiles: actions.onPasteFiles,
+        localImages,
+      })}
       error={displayError}
       banner={renderBanner()}
       visualVariant={getVisualVariant()}
       isRunning={showRunningAnimation}
       dropzone={dropzone}
-      modelSelector={
-        modelSelector && agent ? (
-          <ModelSelectorContainer
-            agent={agent}
-            workspaceId={workspaceId}
-            onAdvancedSettings={modelSelector.onAdvancedSettings}
-            presets={modelSelector.presets}
-            selectedPreset={modelSelector.selectedPreset}
-            onPresetSelect={modelSelector.onPresetSelect}
-            onOverrideChange={modelSelector.onOverrideChange}
-            executorConfig={modelSelector.executorConfig}
-            presetOptions={modelSelector.presetOptions}
-          />
-        ) : undefined
-      }
+      modelSelector={modelSelector}
       headerLeft={
         <>
           {/* New session mode: agent icon + executor dropdown */}
           {isNewSessionMode && executor && (
             <>
-              <AgentIcon agent={agent} className="size-icon-xl" />
+              {renderAgentIcon?.(agent, 'size-icon-xl')}
               <ToolbarDropdown
                 label={
                   executor.selected
-                    ? toPrettyCase(executor.selected)
-                    : 'Select Executor'
+                    ? formatExecutorLabel(executor.selected)
+                    : emptyExecutorLabel
                 }
               >
                 <DropdownMenuLabel>
@@ -584,7 +599,7 @@ export function SessionChatBox({
                     icon={executor.selected === exec ? CheckIcon : undefined}
                     onClick={() => executor.onChange(exec)}
                   >
-                    {toPrettyCase(exec)}
+                    {formatExecutorLabel(exec)}
                   </DropdownMenuItem>
                 ))}
               </ToolbarDropdown>
@@ -687,7 +702,7 @@ export function SessionChatBox({
                   onClick={onScrollToPreviousMessage}
                 />
               )}
-              <AgentIcon agent={agent} className="size-icon-xl" />
+              {renderAgentIcon?.(agent, 'size-icon-xl')}
             </>
           )}
           {/* Todo progress popup - always rendered, disabled when no todos */}
@@ -724,13 +739,10 @@ export function SessionChatBox({
                     onClick={() => onSelectSession(s.id)}
                   >
                     <span className="flex items-center gap-1.5">
-                      <AgentIcon
-                        agent={s.executor as BaseCodingAgent}
-                        className="size-icon shrink-0"
-                      />
+                      {renderAgentIcon?.(s.executor ?? null, 'size-icon shrink-0')}
                       {index === 0
                         ? t('conversation.sessions.latest')
-                        : formatDateShortWithTime(s.created_at)}
+                        : formatSessionDate(s.created_at)}
                     </span>
                   </DropdownMenuItem>
                 ))}
@@ -769,31 +781,16 @@ export function SessionChatBox({
               disabled={isDisabled || isRunning}
             />
           )}
-          {toolbarActions?.actions.map((action) => {
-            const icon = action.icon;
-            // Skip special icons in toolbar (only standard phosphor icons)
-            if (isSpecialIcon(icon)) return null;
-            const actionEnabled = isActionEnabled(
-              action,
-              toolbarActions.context
-            );
-            const isButtonDisabled = isDisabled || isRunning || !actionEnabled;
-            const label =
-              typeof action.label === 'function'
-                ? action.label()
-                : action.label;
-            const tooltip = getActionTooltip(action, toolbarActions.context);
-            return (
-              <ToolbarIconButton
-                key={action.id}
-                icon={icon}
-                aria-label={label}
-                title={tooltip}
-                onClick={() => toolbarActions.onExecuteAction(action)}
-                disabled={isButtonDisabled}
-              />
-            );
-          })}
+          {toolbarActions?.items.map((item) => (
+            <ToolbarIconButton
+              key={item.id}
+              icon={item.icon}
+              aria-label={item.label}
+              title={item.tooltip}
+              onClick={item.onClick}
+              disabled={isDisabled || isRunning || Boolean(item.disabled)}
+            />
+          ))}
         </>
       }
       footerRight={renderActionButtons()}

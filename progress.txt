@@ -3752,3 +3752,61 @@ Plan adjustments from new information:
 - The render-prop + injected-node pattern is working for chat primitives that wrap `ChatBoxBase` and need app-owned editor/model integrations.
 - Top-level `ui-new/primitives` now contains only `SessionChatBox.tsx` (plus `conversation/` and `model-selector/` subfolders).
 - Next likely extraction candidate: `ui-new/primitives/SessionChatBox.tsx` (using the same package-presentational + frontend adapter pattern, while lifting remaining app hooks/actions and mode-specific orchestration to container-level inputs where needed).
+
+## 2026-02-21 - UI package extraction: SessionChatBox
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/SessionChatBox.tsx` as the next extraction candidate.
+- It was the final remaining top-level primitive in `ui-new/primitives` after the `CreateChatBox` extraction.
+- Main package-boundary blockers were frontend-only dependencies embedded inside the component: `WYSIWYGEditor`, `AgentIcon`, `ModelSelectorContainer`, action visibility helpers (`isSpecialIcon`, `isActionEnabled`, `getActionTooltip`), app utility formatters (`toPrettyCase`, `formatDateShortWithTime`), and `useUserSystem`-driven context-usage capability checks.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/SessionChatBox.tsx packages/ui/src/components/SessionChatBox.tsx`
+- Package updates:
+  - Replaced frontend-bound imports with package-local imports (`./ChatBoxBase`, `./CreateChatBox`, `./Toolbar`, `./Dropdown`, `./PrimaryButton`, `./ContextUsageGauge`, `./TodoProgressPopup`, `./TaskAttemptContext`).
+  - Converted component API to a package-safe presentational contract:
+    - added `renderEditor` render-prop (`SessionChatBoxEditorRenderProps`) for app-owned editor wiring
+    - changed `modelSelector` from config object behavior to `ReactNode`
+    - added adapter props for app-specific rendering/formatting:
+      - `renderAgentIcon`
+      - `formatExecutorLabel`
+      - `formatSessionDate`
+      - `supportsContextUsage`
+    - replaced action-definition/context coupling with precomputed toolbar items:
+      - `SessionToolbarActionItem[]` via `toolbarActions.items`
+  - Introduced package-safe structural types for session/todo/context usage:
+    - `SessionOption`
+    - `TodoProgressItem` usage
+    - `ContextUsageInfo` usage
+- Frontend callsite updates:
+  - `frontend/src/components/ui-new/containers/SessionChatBoxContainer.tsx`
+    - switched import to `@vibe/ui/components/SessionChatBox`
+    - injected editor rendering through `renderEditor` using app-owned `WYSIWYGEditor`
+    - injected agent icon rendering through `renderAgentIcon` using app-owned `AgentIcon`
+    - injected session date and executor label formatting (`formatDateShortWithTime`, `toPrettyCase`)
+    - moved toolbar action enablement/tooltip/icon filtering into the container (`isSpecialIcon`, `isActionEnabled`, `getActionTooltip`)
+    - replaced old `toolbarActions` shape with precomputed `toolbarActions.items`
+    - moved context-usage capability calculation into container via `useUserSystem().capabilities`
+    - injected model selector UI as `modelSelector` node (`ModelSelectorContainer`)
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The presentational-component + container-adapter pattern also scales to deeply stateful chat primitives without leaking app hooks into the package.
+- `frontend/src/components/ui-new/primitives` now has no top-level files; remaining candidates are under `conversation/` and `model-selector/`.
+- Next likely extraction candidate: `ui-new/primitives/conversation/ToolStatusDot.tsx` (small, widely reused, low-coupling primitive; extraction should only require package-local `cn` and structural status typing).

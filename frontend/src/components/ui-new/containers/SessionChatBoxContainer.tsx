@@ -3,14 +3,17 @@ import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
+  BaseAgentCapability,
   type Session,
   type ToolStatus,
   type BaseCodingAgent,
 } from 'shared/types';
+import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
 import { useUserSystem } from '@/components/ConfigProvider';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import { useEntries, useTokenUsage } from '@/contexts/EntriesContext';
@@ -30,19 +33,25 @@ import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { buildAgentPrompt } from '@/utils/promptMessage';
+import { formatDateShortWithTime } from '@/utils/date';
+import { toPrettyCase } from '@/utils/string';
 import {
   SessionChatBox,
   type ExecutionStatus,
-} from '../primitives/SessionChatBox';
+  type SessionChatBoxEditorRenderProps,
+} from '@vibe/ui/components/SessionChatBox';
+import { ModelSelectorContainer } from './ModelSelectorContainer';
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/lib/routes/navigation';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
-import { Actions, type ActionDefinition } from '../actions';
+import { Actions, isSpecialIcon, type ActionDefinition } from '../actions';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import {
+  getActionTooltip,
+  isActionEnabled,
   isActionVisible,
   useActionVisibilityContext,
 } from '../actions/useActionVisibility';
@@ -279,7 +288,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }, [workspaceId, repoWithConflicts, attemptBranch]);
 
   // User profiles, config preference, and latest executor from processes
-  const { profiles, config } = useUserSystem();
+  const { profiles, config, capabilities } = useUserSystem();
 
   // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
@@ -401,6 +410,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     configExecutorProfile: config?.executor_profile,
     onPersist: (cfg) => void saveToScratch(localMessageRef.current, cfg),
   });
+
+  const supportsContextUsage =
+    !!effectiveExecutor &&
+    capabilities?.[effectiveExecutor]?.includes(
+      BaseAgentCapability.CONTEXT_USAGE
+    );
 
   // Navigate to agent settings to customise variants
   const handleCustomise = () => {
@@ -670,6 +685,29 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     [actionCtx]
   );
 
+  const toolbarActionItems = useMemo(
+    () =>
+      toolbarActionsList.flatMap((action) => {
+        if (isSpecialIcon(action.icon)) {
+          return [];
+        }
+
+        const label = action.label;
+
+        return [
+          {
+            id: action.id,
+            icon: action.icon,
+            label,
+            tooltip: getActionTooltip(action, actionCtx),
+            disabled: !isActionEnabled(action, actionCtx),
+            onClick: () => handleToolbarAction(action),
+          },
+        ];
+      }),
+    [toolbarActionsList, actionCtx, handleToolbarAction]
+  );
+
   // Handle approve action
   const handleApprove = useCallback(async () => {
     if (!pendingApproval) return;
@@ -757,14 +795,73 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     localMessage,
   ]);
 
+  const renderEditor = useCallback(
+    ({
+      focusKey,
+      placeholder,
+      value,
+      onChange,
+      onCmdEnter,
+      disabled,
+      repoIds,
+      executor,
+      onPasteFiles,
+      localImages,
+    }: SessionChatBoxEditorRenderProps<BaseCodingAgent>) => (
+      <WYSIWYGEditor
+        key={focusKey}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onCmdEnter={onCmdEnter}
+        disabled={disabled}
+        className="min-h-double max-h-[50vh] overflow-y-auto"
+        repoIds={repoIds}
+        executor={executor}
+        autoFocus
+        onPasteFiles={onPasteFiles}
+        localImages={localImages}
+        sendShortcut={config?.send_message_shortcut}
+      />
+    ),
+    [config?.send_message_shortcut]
+  );
+
+  const modelSelectorNode = effectiveExecutor ? (
+    <ModelSelectorContainer
+      agent={effectiveExecutor}
+      workspaceId={workspaceId}
+      onAdvancedSettings={handleCustomise}
+      presets={variantOptions}
+      selectedPreset={selectedVariant}
+      onPresetSelect={setSelectedVariant}
+      onOverrideChange={setExecutorOverrides}
+      executorConfig={executorConfig}
+      presetOptions={presetOptions}
+    />
+  ) : undefined;
+
   // In placeholder mode, render a disabled version to maintain visual structure
   if (mode === 'placeholder') {
     return (
-      <SessionChatBox
+      <SessionChatBox<BaseCodingAgent>
         status="idle"
+        renderEditor={renderEditor}
         repoIds={repoIds}
-        workspaceId={workspaceId}
         tokenUsageInfo={tokenUsageInfo}
+        supportsContextUsage={false}
+        formatExecutorLabel={toPrettyCase}
+        formatSessionDate={(createdAt) =>
+          formatDateShortWithTime(
+            createdAt instanceof Date ? createdAt.toISOString() : createdAt
+          )
+        }
+        renderAgentIcon={(executor, className) => (
+          <AgentIcon
+            agent={executor as BaseCodingAgent | null | undefined}
+            className={className}
+          />
+        )}
         editor={{
           value: '',
           onChange: () => {},
@@ -794,16 +891,29 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   }
 
   return (
-    <SessionChatBox
+    <SessionChatBox<BaseCodingAgent>
       status={status}
       onViewCode={disableViewCode ? undefined : handleViewCode}
       onOpenWorkspace={
         showOpenWorkspaceButton && workspaceId ? handleOpenWorkspace : undefined
       }
       onScrollToPreviousMessage={onScrollToPreviousMessage}
+      renderEditor={renderEditor}
       repoIds={repoIds}
-      workspaceId={workspaceId}
       tokenUsageInfo={tokenUsageInfo}
+      supportsContextUsage={supportsContextUsage}
+      formatExecutorLabel={toPrettyCase}
+      formatSessionDate={(createdAt) =>
+        formatDateShortWithTime(
+          createdAt instanceof Date ? createdAt.toISOString() : createdAt
+        )
+      }
+      renderAgentIcon={(executor, className) => (
+        <AgentIcon
+          agent={executor as BaseCodingAgent | null | undefined}
+          className={className}
+        />
+      )}
       editor={{
         value: editorValue,
         onChange: handleEditorChange,
@@ -823,9 +933,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onNewSession: onStartNewSession,
       }}
       toolbarActions={{
-        actions: toolbarActionsList,
-        context: actionCtx,
-        onExecuteAction: handleToolbarAction,
+        items: toolbarActionItems,
       }}
       onPrCommentClick={
         actionCtx.hasOpenPR ? handleInsertPrComments : undefined
@@ -892,15 +1000,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }
       localImages={localImages}
       dropzone={{ getRootProps, getInputProps, isDragActive }}
-      modelSelector={{
-        onAdvancedSettings: handleCustomise,
-        presets: variantOptions,
-        selectedPreset: selectedVariant,
-        onPresetSelect: setSelectedVariant,
-        onOverrideChange: setExecutorOverrides,
-        executorConfig,
-        presetOptions,
-      }}
+      modelSelector={modelSelectorNode}
     />
   );
 }
