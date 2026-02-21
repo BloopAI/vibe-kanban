@@ -1,10 +1,10 @@
+import type { ReactNode } from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
-import { cn } from '@/lib/utils';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { getModifierKey } from '@/utils/platform';
+import { cn } from '../lib/cn';
+import { getModifierKey } from '../lib/platform';
 
 interface TooltipProps {
-  children: React.ReactNode;
+  children: ReactNode;
   content: string;
   shortcut?: string;
   side?: 'top' | 'bottom' | 'left' | 'right';
@@ -18,14 +18,13 @@ export function Tooltip({
   side = 'bottom',
   className,
 }: TooltipProps) {
-  const container = usePortalContainer();
   const formattedShortcut = shortcut?.replace('{mod}', getModifierKey());
 
   return (
     <TooltipPrimitive.Provider delayDuration={300}>
       <TooltipPrimitive.Root>
         <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
-        <TooltipPrimitive.Portal container={container}>
+        <TooltipPrimitive.Portal>
           <TooltipPrimitive.Content
             side={side}
             sideOffset={4}

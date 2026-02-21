@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { PencilSimpleIcon, ArrowUUpLeftIcon } from '@phosphor-icons/react';
 import { ChatEntryContainer } from './ChatEntryContainer';
 import { ChatMarkdown } from './ChatMarkdown';
-import { Tooltip } from '../Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 interface ChatUserMessageProps {
   content: string;

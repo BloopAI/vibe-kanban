@@ -5,7 +5,7 @@ import { Circle, Check, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TodoItem } from 'shared/types';
 import { Popover, PopoverTrigger, PopoverContent } from './Popover';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 interface TodoProgressPopupProps {
   todos: TodoItem[];

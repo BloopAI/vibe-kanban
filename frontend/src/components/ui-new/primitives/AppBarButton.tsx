@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 interface AppBarButtonProps {
   icon?: Icon;

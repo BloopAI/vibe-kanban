@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
-import { Tooltip } from '../primitives/Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { SyncErrorIndicator } from '../primitives/SyncErrorIndicator';
 import {
   type ActionDefinition,

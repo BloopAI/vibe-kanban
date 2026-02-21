@@ -1161,3 +1161,53 @@ Validation:
 Plan adjustments from new information:
 - Remaining unmoved `extract-now` primitive is `IconButtonGroup`, which remains blocked by unextracted `Tooltip`.
 - Next dependency-unblocking candidate should be `ui-new/primitives/Tooltip.tsx`.
+
+## 2026-02-21 - UI package extraction: Tooltip
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/Tooltip.tsx` as the next dependency-unblocking move after `Command`.
+- This was required to unblock the final remaining `extract-now` primitive, `IconButtonGroup`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Tooltip.tsx packages/ui/src/components/Tooltip.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Tooltip.tsx` to use package-local imports (`../lib/cn`).
+  - Removed app-only `PortalContainerContext` coupling; tooltip now uses default Radix portal behavior.
+  - Replaced frontend util dependency by adding package-local `packages/ui/src/lib/platform.ts` (`isMac`, `getModifierKey`).
+  - Added `@radix-ui/react-tooltip` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/primitives/AppBar.tsx`
+  - `frontend/src/components/ui-new/primitives/AppBarButton.tsx`
+  - `frontend/src/components/ui-new/primitives/AppBarSocialLink.tsx`
+  - `frontend/src/components/ui-new/primitives/ContextBar.tsx`
+  - `frontend/src/components/ui-new/primitives/ContextUsageGauge.tsx`
+  - `frontend/src/components/ui-new/primitives/IconButtonGroup.tsx`
+  - `frontend/src/components/ui-new/primitives/TodoProgressPopup.tsx`
+  - `frontend/src/components/ui-new/primitives/UserAvatar.tsx`
+  - `frontend/src/components/ui-new/dialogs/KeyboardShortcutsDialog.tsx`
+  - `frontend/src/components/ui-new/containers/CopyButton.tsx`
+  - `frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx`
+  - `frontend/src/components/ui-new/views/FileTree.tsx`
+  - `frontend/src/components/ui-new/views/Navbar.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Additional hidden relative imports of `Tooltip` were surfaced during type-check in containers/views/conversation paths; these were migrated and checks re-run.
+- `IconButtonGroup` is now unblocked and is the next recommended `extract-now` candidate.

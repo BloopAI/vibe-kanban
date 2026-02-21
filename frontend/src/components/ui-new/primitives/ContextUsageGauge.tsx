@@ -2,7 +2,7 @@ import type { TokenUsageInfo } from 'shared/types';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);

@@ -2,7 +2,7 @@ import type { RefObject } from 'react';
 import { CopyIcon, type Icon } from '@phosphor-icons/react';
 import type { EditorType } from 'shared/types';
 import { cn } from '@/lib/utils';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
 import {

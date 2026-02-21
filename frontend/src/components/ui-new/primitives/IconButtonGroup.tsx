@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import type { Icon } from '@phosphor-icons/react';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 interface ButtonGroupProps {
   children: React.ReactNode;

@@ -24,7 +24,7 @@ import {
   PopoverContent,
   PopoverClose,
 } from './Popover';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';
 import { useTranslation } from 'react-i18next';

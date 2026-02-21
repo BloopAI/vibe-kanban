@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { Tooltip } from './Tooltip';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 export interface UserAvatarProps {
   user: OrganizationMemberWithProfile;
