@@ -103,10 +103,12 @@ const PIERRE_DIFFS_THEME_CSS = `
     width: 22px !important;
   }
 
-  /* Make annotation content span full width including under line numbers */
+  /* Keep annotations full-row without inheriting long-line scroll width */
   [data-annotation-content] {
     grid-column: 1 / -1 !important;
-    width: 100% !important;
+    left: 0 !important;
+    width: var(--diffs-column-width, 100%) !important;
+    max-width: 100% !important;
   }
   
   [data-line-annotation] {
