@@ -16,7 +16,7 @@ import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
 import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { PrBadge } from '@vibe/ui/components/PrBadge';
-import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
+import { RelationshipBadge } from '@vibe/ui/components/RelationshipBadge';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
 
 export type TagEditProps = {

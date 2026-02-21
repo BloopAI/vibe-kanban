@@ -10,7 +10,7 @@ import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
 import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
-import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
+import { RelationshipBadge } from '@vibe/ui/components/RelationshipBadge';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")

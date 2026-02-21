@@ -1,14 +1,19 @@
 'use client';
 
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import {
   ArrowBendUpRightIcon,
   ProhibitIcon,
   ArrowsLeftRightIcon,
   CopyIcon,
 } from '@phosphor-icons/react';
-import type { RelationshipDisplayType } from '@/lib/resolveRelationships';
-import { getRelationshipLabel } from '@/lib/resolveRelationships';
+
+export type RelationshipDisplayType =
+  | 'blocks'
+  | 'blocked_by'
+  | 'related'
+  | 'duplicate_of'
+  | 'duplicated_by';
 
 export interface RelationshipBadgeProps {
   displayType: RelationshipDisplayType;
@@ -25,6 +30,21 @@ const RELATIONSHIP_ICONS = {
   duplicate_of: CopyIcon,
   duplicated_by: CopyIcon,
 } as const;
+
+function getRelationshipLabel(displayType: RelationshipDisplayType): string {
+  switch (displayType) {
+    case 'blocks':
+      return 'blocks';
+    case 'blocked_by':
+      return 'blocked by';
+    case 'related':
+      return 'related';
+    case 'duplicate_of':
+      return 'dup of';
+    case 'duplicated_by':
+      return 'dup';
+  }
+}
 
 export function RelationshipBadge({
   displayType,

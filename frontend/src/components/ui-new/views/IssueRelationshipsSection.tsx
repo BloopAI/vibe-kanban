@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { XIcon } from '@phosphor-icons/react';
 import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { CollapsibleSectionHeader } from '@vibe/ui/components/CollapsibleSectionHeader';
-import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
+import { RelationshipBadge } from '@vibe/ui/components/RelationshipBadge';
 import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
 
 export interface IssueRelationshipsSectionProps {
