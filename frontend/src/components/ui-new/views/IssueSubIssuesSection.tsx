@@ -6,7 +6,7 @@ import {
   CollapsibleSectionHeader,
   type SectionAction,
 } from '@vibe/ui/components/CollapsibleSectionHeader';
-import { SubIssueRow } from '@/components/ui-new/primitives/SubIssueRow';
+import { SubIssueRow } from '@vibe/ui/components/SubIssueRow';
 import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
 
 export interface SubIssueData {

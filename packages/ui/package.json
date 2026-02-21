@@ -14,6 +14,7 @@
     "./lib/*": "./src/lib/*.ts"
   },
   "dependencies": {
+    "@hello-pangea/dnd": "^18.0.1",
     "@lexical/code": "^0.36.2",
     "@lexical/link": "^0.36.2",
     "@lexical/list": "^0.36.2",

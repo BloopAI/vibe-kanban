@@ -8,19 +8,17 @@ import {
   LinkBreakIcon,
   TrashIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import type { IssuePriority } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
-import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
+import { cn } from '../lib/cn';
+import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
+import { StatusDot } from './StatusDot';
+import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/DropdownMenu';
+} from './DropdownMenu';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -50,9 +48,9 @@ export interface SubIssueRowProps {
   index: number;
   simpleId: string;
   title: string;
-  priority: IssuePriority | null;
+  priority: PriorityLevel | null;
   statusColor: string;
-  assignees: OrganizationMemberWithProfile[];
+  assignees: KanbanAssigneeUser[];
   createdAt: string;
   onClick?: () => void;
   onPriorityClick?: (e: React.MouseEvent) => void;

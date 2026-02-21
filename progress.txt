@@ -3397,3 +3397,52 @@ Plan adjustments from new information:
 - Store-coupled primitives can be extracted cleanly by making package components controlled/presentational and introducing thin frontend wrappers for persistence hooks.
 - Consolidating shared domain types (like `RepoAction`) under package component exports keeps store/hooks/frontend views aligned without local primitive imports.
 - Next likely extraction candidate: `ui-new/primitives/SubIssueRow.tsx` (single callsite; move is feasible by replacing shared type imports with structural props and package-local utilities).
+
+## 2026-02-21 - UI package extraction: SubIssueRow
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/SubIssueRow.tsx` as the next extraction candidate.
+- It had a single callsite in `IssueSubIssuesSection.tsx` and mostly reused existing package components (`PriorityIcon`, `StatusDot`, `KanbanAssignee`, `DropdownMenu`).
+- New information: this component introduces drag-and-drop usage in `@vibe/ui`, so `@hello-pangea/dnd` needed to be declared in the package dependencies.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/SubIssueRow.tsx packages/ui/src/components/SubIssueRow.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Updated package self imports:
+    - `@vibe/ui/components/PriorityIcon` -> `./PriorityIcon`
+    - `@vibe/ui/components/StatusDot` -> `./StatusDot`
+    - `@vibe/ui/components/KanbanAssignee` -> `./KanbanAssignee`
+    - `@vibe/ui/components/DropdownMenu` -> `./DropdownMenu`
+  - Removed shared type coupling with package-local types:
+    - `IssuePriority` -> `PriorityLevel`
+    - `OrganizationMemberWithProfile[]` -> `KanbanAssigneeUser[]`
+  - Added explicit package dependency:
+    - `packages/ui/package.json`: `@hello-pangea/dnd`
+    - lockfile updated (`pnpm-lock.yaml`)
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/views/IssueSubIssuesSection.tsx`
+  - Replaced local primitive import with `@vibe/ui/components/SubIssueRow`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Drag/drop primitives migrate cleanly when package dependencies are declared explicitly instead of relying on frontend-only dependency declarations.
+- Structural prop typing (`PriorityLevel`, `KanbanAssigneeUser`) keeps package components decoupled from generated shared types while preserving compatibility at callsites.
+- Next likely extraction candidate: `ui-new/primitives/SearchableTagDropdown.tsx` (container-managed state already exists; requires decoupling from `shared/remote-types` `Tag` and app-local `PRESET_COLORS` import).
