@@ -16,7 +16,11 @@ import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
-import { ImageNode, IMAGE_TRANSFORMER } from './wysiwyg/nodes/image-node';
+import {
+  ImageNode,
+  IMAGE_TRANSFORMER,
+  $isImageNode,
+} from './wysiwyg/nodes/image-node';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
@@ -37,7 +41,7 @@ import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext'
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from '@vibe/ui/components/KeyboardCommandsPlugin';
-import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
+import { ImageKeyboardPlugin } from '@vibe/ui/components/ImageKeyboardPlugin';
 import { ComponentInfoKeyboardPlugin } from './wysiwyg/plugins/component-info-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
@@ -441,7 +445,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       sendShortcut={sendShortcut}
                     />
                   </TypeaheadOpenProvider>
-                  <ImageKeyboardPlugin />
+                  <ImageKeyboardPlugin isTargetNode={$isImageNode} />
                   <ComponentInfoKeyboardPlugin />
                   <CodeBlockShortcutPlugin />
                 </>

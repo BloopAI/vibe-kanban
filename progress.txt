@@ -2074,3 +2074,41 @@ Validation:
 Plan adjustments from new information:
 - Remaining low-level editor plugins (`image-keyboard-plugin`, `component-info-keyboard-plugin`) depend on app-local node guards and need small API decoupling before/while moving.
 - Next likely candidate is `frontend/src/components/ui/wysiwyg/plugins/image-keyboard-plugin.tsx` by injecting/passing node guard logic instead of importing app-local node modules directly.
+
+## 2026-02-21 - UI package extraction: wysiwyg/image-keyboard-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/image-keyboard-plugin.tsx` as the next low-risk extraction candidate.
+- It has a single callsite in `ui/wysiwyg.tsx` and only required a small decoupling from frontend-local node helpers.
+- New information: node guard coupling can be removed cleanly by passing a guard function prop from the app layer.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/image-keyboard-plugin.tsx packages/ui/src/components/ImageKeyboardPlugin.tsx`
+- Package updates:
+  - Removed direct dependency on frontend-local `image-node` by introducing a component prop:
+    - `isTargetNode: (node: LexicalNode) => boolean`
+  - Generalized internal deletion logic from image-specific handling to target-node handling.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+  - Passes `$isImageNode` into `<ImageKeyboardPlugin isTargetNode={$isImageNode} />`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- App-specific lexical node predicates should be injected into extracted editor plugins to keep `@vibe/ui` package boundaries clean.
+- Next likely candidate is `frontend/src/components/ui/wysiwyg/plugins/component-info-keyboard-plugin.tsx` using the same guard-injection pattern.

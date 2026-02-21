@@ -6,24 +6,30 @@ import {
   COMMAND_PRIORITY_LOW,
   $getSelection,
   $isNodeSelection,
+  type LexicalNode,
 } from 'lexical';
-import { $isImageNode } from '../nodes/image-node';
 
-export function ImageKeyboardPlugin() {
+type ImageKeyboardPluginProps = {
+  isTargetNode: (node: LexicalNode) => boolean;
+};
+
+export function ImageKeyboardPlugin({
+  isTargetNode,
+}: ImageKeyboardPluginProps) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    const deleteSelectedImages = (): boolean => {
+    const deleteSelectedNodes = (): boolean => {
       const selection = $getSelection();
       if (!$isNodeSelection(selection)) return false;
 
       const nodes = selection.getNodes();
-      const imageNodes = nodes.filter($isImageNode);
+      const targetNodes = nodes.filter(isTargetNode);
 
-      if (imageNodes.length === 0) return false;
+      if (targetNodes.length === 0) return false;
 
-      for (const imageNode of imageNodes) {
-        imageNode.remove();
+      for (const node of targetNodes) {
+        node.remove();
       }
 
       return true;
@@ -31,13 +37,13 @@ export function ImageKeyboardPlugin() {
 
     const unregisterBackspace = editor.registerCommand(
       KEY_BACKSPACE_COMMAND,
-      () => deleteSelectedImages(),
+      () => deleteSelectedNodes(),
       COMMAND_PRIORITY_LOW
     );
 
     const unregisterDelete = editor.registerCommand(
       KEY_DELETE_COMMAND,
-      () => deleteSelectedImages(),
+      () => deleteSelectedNodes(),
       COMMAND_PRIORITY_LOW
     );
 
@@ -45,7 +51,7 @@ export function ImageKeyboardPlugin() {
       unregisterBackspace();
       unregisterDelete();
     };
-  }, [editor]);
+  }, [editor, isTargetNode]);
 
   return null;
 }
