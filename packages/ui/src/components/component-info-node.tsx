@@ -4,12 +4,12 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@vibe/ui/components/RadixTooltip';
+} from './RadixTooltip';
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
-} from '@vibe/ui/components/create-decorator-node';
+} from './create-decorator-node';
 
 /**
  * Data model for a detected UI component.

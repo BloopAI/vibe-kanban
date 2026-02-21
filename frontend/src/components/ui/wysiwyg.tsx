@@ -32,7 +32,7 @@ import {
   COMPONENT_INFO_TRANSFORMER,
   COMPONENT_INFO_EXPORT_TRANSFORMER,
   $isComponentInfoNode,
-} from './wysiwyg/nodes/component-info-node';
+} from '@vibe/ui/components/component-info-node';
 import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   TaskAttemptContext,

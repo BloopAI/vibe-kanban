@@ -2451,3 +2451,48 @@ Validation:
 
 Plan adjustments from new information:
 - Remaining local WYSIWYG extraction scope was further narrowed to shared decorator helper + node implementations.
+
+## 2026-02-21 - UI package extraction: wysiwyg/component-info-node
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/nodes/component-info-node.tsx` as the next low-risk extraction candidate.
+- It now depended only on lexical types and package-level shared primitives (`RadixTooltip`, `create-decorator-node`), with no app-specific imports.
+- New information: this move confirms the decorator-node extraction strategy works and significantly reduces remaining frontend-local editor scope.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/nodes/component-info-node.tsx packages/ui/src/components/component-info-node.tsx`
+- Package updates:
+  - Updated moved file imports to package-relative paths:
+    - `./RadixTooltip`
+    - `./create-decorator-node`
+  - No dependency changes required.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+  - Replaced local import with `@vibe/ui/components/component-info-node`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Remaining local WYSIWYG nodes are:
+  - `frontend/src/components/ui/wysiwyg/nodes/image-node.tsx`
+  - `frontend/src/components/ui/wysiwyg/nodes/pr-comment-node.tsx`
+- `pr-comment-node.tsx` currently depends on frontend `PrCommentCard`; extraction likely needs either:
+  - moving `frontend/src/components/ui/pr-comment-card.tsx` into `@vibe/ui`, or
+  - introducing a renderer injection boundary.
+- `image-node.tsx` has deeper app coupling (hooks/dialog + attachment/image APIs) and is likely the highest-effort remaining node.
+- Next likely candidate: `frontend/src/components/ui/pr-comment-card.tsx` as an enabler for `pr-comment-node.tsx` extraction.
