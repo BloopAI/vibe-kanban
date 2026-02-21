@@ -14,7 +14,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@vibe/ui/components/Select';
 import { EditorType } from 'shared/types';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';

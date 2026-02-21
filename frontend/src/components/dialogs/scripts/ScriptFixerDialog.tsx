@@ -18,7 +18,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@vibe/ui/components/Select';
 import { AutoExpandingTextarea } from '@vibe/ui/components/AutoExpandingTextarea';
 import { VirtualizedProcessLogs } from '@/components/ui-new/containers/VirtualizedProcessLogs';
 import { RunningDots } from '@vibe/ui/components/RunningDots';

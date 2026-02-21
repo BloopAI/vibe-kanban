@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@vibe/ui/components/Select';
 import { Trash2 } from 'lucide-react';
 import type { OrganizationMemberWithProfile, MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
