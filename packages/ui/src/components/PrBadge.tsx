@@ -1,11 +1,12 @@
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { GitPullRequestIcon } from '@phosphor-icons/react';
-import type { PullRequestStatus } from 'shared/remote-types';
+
+export type PrBadgeStatus = 'open' | 'merged' | 'closed';
 
 export interface PrBadgeProps {
   number: number;
   url: string;
-  status: PullRequestStatus;
+  status: PrBadgeStatus;
   className?: string;
 }
 

@@ -15,7 +15,7 @@ import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
-import { PrBadge } from '@/components/ui-new/primitives/PrBadge';
+import { PrBadge } from '@vibe/ui/components/PrBadge';
 import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
 

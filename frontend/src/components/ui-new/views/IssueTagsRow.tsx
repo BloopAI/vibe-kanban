@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import { PlusIcon, HashIcon } from '@phosphor-icons/react';
 import type { Tag, PullRequestStatus } from 'shared/remote-types';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
-import { PrBadge } from '@/components/ui-new/primitives/PrBadge';
+import { PrBadge } from '@vibe/ui/components/PrBadge';
 
 // Re-export PRESET_COLORS (and TAG_COLORS for backwards compatibility)
 export { PRESET_COLORS } from '@/lib/colors';
