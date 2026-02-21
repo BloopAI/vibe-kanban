@@ -6,7 +6,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@vibe/ui/components/RadixTooltip';
 import { cn } from '@/lib/utils';
 import {
   DragDropContext,

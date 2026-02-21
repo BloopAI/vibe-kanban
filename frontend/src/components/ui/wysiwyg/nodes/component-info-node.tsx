@@ -4,7 +4,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@vibe/ui/components/RadixTooltip';
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,

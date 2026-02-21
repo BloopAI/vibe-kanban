@@ -15,7 +15,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip.tsx';
+} from '@vibe/ui/components/RadixTooltip';
 import { Input } from '@vibe/ui/components/Input';
 import type { GitBranch } from 'shared/types';
 

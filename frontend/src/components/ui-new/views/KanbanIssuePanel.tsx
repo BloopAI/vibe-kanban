@@ -33,7 +33,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@vibe/ui/components/RadixTooltip';
 import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
 
 export type IssuePanelMode = 'create' | 'edit';

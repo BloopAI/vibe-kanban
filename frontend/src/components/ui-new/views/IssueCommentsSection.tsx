@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@vibe/ui/components/RadixTooltip';
 import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { CollapsibleSectionHeader } from '@vibe/ui/components/CollapsibleSectionHeader';

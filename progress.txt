@@ -1537,3 +1537,49 @@ Plan adjustments from new information:
 - `components/ui` extraction can continue with similar low-risk primitives.
 - Next recommended candidate is `frontend/src/components/ui/tooltip.tsx` (same portal decoupling pattern, no additional package dependencies expected).
 - `frontend/src/components/ui/dialog.tsx` remains deferred due app-level keyboard scope coupling (`react-hotkeys-hook`, `@/keyboard`).
+
+## 2026-02-21 - UI package extraction: ui/tooltip (as RadixTooltip)
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/tooltip.tsx` as the next candidate after `Select`.
+- It matches the same low-risk extraction pattern as `DropdownMenu` and `Select` (Radix primitive + app portal decoupling).
+- New information: `@vibe/ui` already contains `packages/ui/src/components/Tooltip.tsx` with a different API, so this extracted component needed a distinct filename to preserve readability and avoid API conflicts.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/tooltip.tsx packages/ui/src/components/RadixTooltip.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/RadixTooltip.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Removed app-only `PortalContainerContext` dependency and switched to default Radix portal behavior.
+  - No new package dependencies were required (`@radix-ui/react-tooltip` was already present in `@vibe/ui`).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/tasks/BranchSelector.tsx`
+  - `frontend/src/components/tasks/Toolbar/GitOperations.tsx`
+  - `frontend/src/components/ui-new/views/KanbanIssuePanel.tsx`
+  - `frontend/src/components/ui-new/views/IssueCommentsSection.tsx`
+  - `frontend/src/components/ui-new/views/KanbanBoard.tsx`
+  - `frontend/src/components/NormalizedConversation/PendingApprovalEntry.tsx`
+  - `frontend/src/components/ui/wysiwyg/nodes/component-info-node.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Because of the existing `@vibe/ui/components/Tooltip` API, `ui/tooltip.tsx` was extracted under `RadixTooltip` to keep both component interfaces explicit.
+- Remaining `components/ui` extract-later candidate is primarily `ui/dialog.tsx`, but it remains high-coupling due keyboard scope integration (`react-hotkeys-hook`, `@/keyboard`).
+- Next recommended extraction should either:
+  - target `ui/dialog.tsx` with explicit decoupling strategy, or
+  - shift to a new package scope (`@vibe/editor-ui`) per audit recommendation.

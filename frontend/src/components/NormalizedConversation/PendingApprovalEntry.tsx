@@ -14,7 +14,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from '@vibe/ui/components/RadixTooltip';
 import { approvalsApi } from '@/lib/api';
 import { Check, X } from 'lucide-react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
