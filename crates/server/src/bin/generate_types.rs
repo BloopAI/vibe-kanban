@@ -24,6 +24,7 @@ fn generate_types_content() -> String {
         db::models::tag::UpdateTag::decl(),
         db::models::scratch::DraftFollowUpData::decl(),
         db::models::scratch::DraftWorkspaceData::decl(),
+        db::models::scratch::DraftWorkspaceImage::decl(),
         db::models::scratch::DraftWorkspaceLinkedIssue::decl(),
         db::models::scratch::DraftWorkspaceRepo::decl(),
         db::models::scratch::DraftIssueData::decl(),

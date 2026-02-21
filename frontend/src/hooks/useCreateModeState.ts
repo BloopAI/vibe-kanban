@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
-import type { DraftWorkspaceData, ExecutorConfig, Repo } from 'shared/types';
+import type {
+  DraftWorkspaceData,
+  DraftWorkspaceImage,
+  ExecutorConfig,
+  Repo,
+} from 'shared/types';
 import { ScratchType } from 'shared/types';
 import {
   PROJECT_ISSUES_SHAPE,
@@ -49,6 +54,7 @@ interface DraftState {
   message: string;
   linkedIssue: LinkedIssue | null;
   executorConfig: ExecutorConfig | null;
+  images: DraftWorkspaceImage[];
 }
 
 type DraftAction =
@@ -70,7 +76,8 @@ type DraftAction =
   | {
       type: 'SET_EXECUTOR_CONFIG';
       config: ExecutorConfig | null;
-    };
+    }
+  | { type: 'SET_IMAGES'; images: DraftWorkspaceImage[] };
 
 // ============================================================================
 // Reducer
@@ -83,6 +90,7 @@ const draftInitialState: DraftState = {
   message: '',
   linkedIssue: null,
   executorConfig: null,
+  images: [],
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -164,6 +172,9 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
     case 'SET_EXECUTOR_CONFIG':
       return { ...state, executorConfig: action.config };
 
+    case 'SET_IMAGES':
+      return { ...state, images: action.images };
+
     default:
       return state;
   }
@@ -236,6 +247,8 @@ interface UseCreateModeStateResult {
   clearDraft: () => Promise<void>;
   clearLinkedIssue: () => void;
   setExecutorConfig: (config: ExecutorConfig | null) => void;
+  images: DraftWorkspaceImage[];
+  setImages: (images: DraftWorkspaceImage[]) => void;
 }
 
 export function useCreateModeState({
@@ -415,7 +428,8 @@ export function useCreateModeState({
       const isEmpty =
         !data.message.trim() &&
         data.repos.length === 0 &&
-        !data.executor_config;
+        !data.executor_config &&
+        data.images.length === 0;
 
       if (isEmpty && !scratch) return;
 
@@ -448,6 +462,7 @@ export function useCreateModeState({
             remote_project_id: state.linkedIssue.remoteProjectId,
           }
         : null,
+      images: state.images,
     });
   }, [
     state.phase,
@@ -455,6 +470,7 @@ export function useCreateModeState({
     state.repos,
     state.linkedIssue,
     state.executorConfig,
+    state.images,
     debouncedSave,
   ]);
 
@@ -543,6 +559,10 @@ export function useCreateModeState({
     dispatch({ type: 'SET_EXECUTOR_CONFIG', config });
   }, []);
 
+  const setImages = useCallback((images: DraftWorkspaceImage[]) => {
+    dispatch({ type: 'SET_IMAGES', images });
+  }, []);
+
   return {
     repos,
     targetBranches,
@@ -561,6 +581,8 @@ export function useCreateModeState({
     clearDraft,
     clearLinkedIssue,
     setExecutorConfig,
+    images: state.images,
+    setImages,
   };
 }
 
@@ -696,6 +718,11 @@ async function initializeState({
           title: scratchData.linked_issue.title || undefined,
           remoteProjectId: scratchData.linked_issue.remote_project_id,
         };
+      }
+
+      // Restore uploaded images
+      if (scratchData.images?.length > 0) {
+        restoredData.images = scratchData.images;
       }
 
       dispatch({ type: 'INIT_COMPLETE', data: restoredData });

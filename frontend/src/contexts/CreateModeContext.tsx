@@ -1,6 +1,6 @@
 import { useContext, useMemo, type ReactNode } from 'react';
 import { createHmrContext } from '@/lib/hmrContext.ts';
-import type { Repo, ExecutorConfig } from 'shared/types';
+import type { DraftWorkspaceImage, Repo, ExecutorConfig } from 'shared/types';
 import {
   useCreateModeState,
   type CreateModeInitialState,
@@ -37,6 +37,10 @@ interface CreateModeContextValue {
   executorConfig: ExecutorConfig | null;
   /** Update executor config (triggers debounced scratch save) */
   setExecutorConfig: (config: ExecutorConfig | null) => void;
+  /** Uploaded images persisted in the draft */
+  images: DraftWorkspaceImage[];
+  /** Update draft images (triggers debounced scratch save) */
+  setImages: (images: DraftWorkspaceImage[]) => void;
 }
 
 const CreateModeContext = createHmrContext<CreateModeContextValue | null>(
@@ -101,6 +105,8 @@ export function CreateModeProvider({
       clearLinkedIssue: state.clearLinkedIssue,
       executorConfig: state.executorConfig,
       setExecutorConfig: state.setExecutorConfig,
+      images: state.images,
+      setImages: state.setImages,
     }),
     [
       state.repos,
@@ -119,6 +125,8 @@ export function CreateModeProvider({
       state.clearLinkedIssue,
       state.executorConfig,
       state.setExecutorConfig,
+      state.images,
+      state.setImages,
     ]
   );
 

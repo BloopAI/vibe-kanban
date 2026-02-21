@@ -47,6 +47,8 @@ export function CreateChatBoxContainer({
     preferredExecutorConfig,
     executorConfig: draftConfig,
     setExecutorConfig: setDraftConfig,
+    images: draftImages,
+    setImages: setDraftImages,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -83,7 +85,7 @@ export function CreateChatBoxContainer({
   );
 
   const { uploadFiles, getImageIds, clearAttachments, localImages } =
-    useCreateAttachments(handleInsertMarkdown);
+    useCreateAttachments(handleInsertMarkdown, draftImages, setDraftImages);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {

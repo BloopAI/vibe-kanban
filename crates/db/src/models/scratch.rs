@@ -146,6 +146,17 @@ pub struct DraftWorkspaceLinkedIssue {
     pub remote_project_id: String,
 }
 
+/// Uploaded image stored in a draft workspace
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftWorkspaceImage {
+    pub id: Uuid,
+    pub file_path: String,
+    pub original_name: String,
+    #[serde(default)]
+    pub mime_type: Option<String>,
+    pub size_bytes: i64,
+}
+
 /// Data for a draft workspace scratch (new workspace creation)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftWorkspaceData {
@@ -156,6 +167,8 @@ pub struct DraftWorkspaceData {
     pub executor_config: Option<ExecutorConfig>,
     #[serde(default)]
     pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
+    #[serde(default)]
+    pub images: Vec<DraftWorkspaceImage>,
 }
 
 /// Repository entry in a draft workspace

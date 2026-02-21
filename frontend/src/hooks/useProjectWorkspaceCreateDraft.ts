@@ -32,6 +32,7 @@ export function useProjectWorkspaceCreateDraft() {
               remote_project_id: initialState.linkedIssue.remoteProjectId,
             }
           : null,
+        images: [],
       };
 
       try {
