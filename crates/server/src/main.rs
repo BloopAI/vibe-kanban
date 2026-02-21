@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes};
+use server::{DeploymentImpl, preview_proxy, routes, tunnel};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
@@ -124,11 +124,61 @@ async fn main() -> Result<(), VibeKanbanError> {
         tracing::warn!("Failed to write port file: {}", e);
     }
 
+    let shutdown_token = CancellationToken::new();
+
     tracing::info!(
         "Main server on :{}, Preview proxy on :{}",
         actual_main_port,
         actual_proxy_port
     );
+
+    // Start relay if requested
+    if std::env::var("VK_TUNNEL").is_ok() {
+        match deployment.remote_client() {
+            Ok(remote_client) => {
+                // Check if logged in, open browser if not
+                let login_status = deployment.get_login_status().await;
+                if matches!(login_status, api_types::LoginStatus::LoggedOut) {
+                    tracing::info!("Relay mode requires login. Opening browser...");
+                    let _ = open_browser(&format!("http://127.0.0.1:{actual_main_port}")).await;
+
+                    // Poll until logged in (timeout after 120s)
+                    let start = std::time::Instant::now();
+                    loop {
+                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                        let status = deployment.get_login_status().await;
+                        if !matches!(status, api_types::LoginStatus::LoggedOut) {
+                            tracing::info!("Login successful, starting relay...");
+                            break;
+                        }
+                        if start.elapsed() > std::time::Duration::from_secs(120) {
+                            tracing::error!(
+                                "Timed out waiting for login. Continuing without relay."
+                            );
+                            break;
+                        }
+                    }
+                }
+
+                match tunnel::start_relay(actual_main_port, &remote_client, shutdown_token.clone())
+                    .await
+                {
+                    Ok(()) => {
+                        tracing::info!("Relay connected to remote server");
+                        println!("\n  Relay active — access from remote frontend\n");
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to start relay: {}", e);
+                    }
+                }
+            }
+            Err(_) => {
+                tracing::error!(
+                    "VK_TUNNEL requires VK_SHARED_API_BASE to be set. Continuing without relay."
+                );
+            }
+        }
+    }
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
@@ -146,7 +196,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     }
 
     let proxy_router: Router = preview_proxy::router();
-    let shutdown_token = CancellationToken::new();
 
     let main_shutdown = shutdown_token.clone();
     let proxy_shutdown = shutdown_token.clone();

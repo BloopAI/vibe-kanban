@@ -568,6 +568,28 @@ export async function fetchGitHubAppRepositories(
   return res.json();
 }
 
+// Relay APIs
+export async function getRelayStatus(): Promise<{
+  connected: boolean;
+  relay_url?: string;
+}> {
+  const res = await authenticatedFetch(`${API_BASE}/v1/relay/mine`);
+  if (!res.ok) {
+    throw new Error(`Failed to check relay status (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getRelayAuthCode(): Promise<{ code: string }> {
+  const res = await authenticatedFetch(`${API_BASE}/v1/relay/auth-code`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to get relay auth code (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function bulkUpdateRepositoryReviewEnabled(
   orgId: string,
   enabled: boolean,

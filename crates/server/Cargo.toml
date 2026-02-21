@@ -47,7 +47,8 @@ url = "2.5"
 rand = { version = "0.8", features = ["std"] }
 sha2 = "0.10"
 regex = "1"
-tokio-tungstenite = { version = "0.24", features = ["connect"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+native-tls = "0.2"
 
 [build-dependencies]
 dotenv = "0.15"

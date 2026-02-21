@@ -26,6 +26,8 @@ pub struct RequestContext {
     pub session_id: Uuid,
     #[allow(dead_code)]
     pub access_token_expires_at: DateTime<Utc>,
+    /// The raw Bearer token string, needed for relay auth code generation.
+    pub raw_token: String,
 }
 
 pub async fn require_session(
@@ -104,6 +106,7 @@ pub async fn require_session(
         user,
         session_id: session.id,
         access_token_expires_at: identity.expires_at,
+        raw_token: bearer,
     });
 
     match session_repo.touch(session.id).await {

@@ -121,6 +121,9 @@ services:
       AZURE_STORAGE_ENDPOINT_URL: ${AZURE_STORAGE_ENDPOINT_URL:-http://azurite:10000/devstoreaccount1}
       AZURE_STORAGE_PUBLIC_ENDPOINT_URL: ${AZURE_STORAGE_PUBLIC_ENDPOINT_URL:-http://localhost:10000/devstoreaccount1}
 
+      # Relay subdomain routing (e.g. "relay.localhost:3001" for dev, "relay.vibekanban.com" for prod)
+      RELAY_BASE_DOMAIN: ${RELAY_BASE_DOMAIN:-}
+
     ports:
       - "${REMOTE_SERVER_PORTS:-127.0.0.1:3000:8081}"
     restart: unless-stopped

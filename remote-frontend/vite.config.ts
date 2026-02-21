@@ -34,5 +34,13 @@ export default defineConfig({
     fs: {
       allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '..')],
     },
+    proxy: {
+      '/v1': {
+        target: process.env.VITE_API_BASE_URL || 'https://localhost:3001',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
+      },
+    },
   }
 })

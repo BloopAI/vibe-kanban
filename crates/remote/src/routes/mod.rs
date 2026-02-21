@@ -1,7 +1,9 @@
 use axum::{
     Json, Router,
+    body::Body,
     http::{Request, header::HeaderName},
-    middleware,
+    middleware::{self, Next},
+    response::Response,
     routing::get,
 };
 use serde::Serialize;
@@ -13,7 +15,7 @@ use tower_http::{
 };
 use tracing::{Level, Span, field};
 
-use crate::{AppState, auth::require_session};
+use crate::{AppState, auth::require_session, routes::relay::extract_relay_subdomain};
 
 #[cfg(feature = "vk-billing")]
 mod billing;
@@ -49,6 +51,7 @@ mod organizations;
 pub mod project_statuses;
 pub mod projects;
 mod pull_requests;
+mod relay;
 mod review;
 pub mod tags;
 mod tokens;
@@ -132,6 +135,7 @@ pub fn router(state: AppState) -> Router {
         .merge(workspaces::router())
         .merge(billing::protected_router())
         .merge(migration::router())
+        .merge(relay::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
@@ -145,6 +149,10 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            relay_subdomain_middleware,
+        ))
         .layer(middleware::from_fn(
             crate::middleware::version::add_version_headers,
         ))
@@ -164,6 +172,29 @@ pub fn router(state: AppState) -> Router {
             MakeRequestUuid {},
         ))
         .with_state(state)
+}
+
+/// Middleware that intercepts requests on relay subdomains.
+/// If the Host header matches `{user_id}.{relay_base_domain}`, the request
+/// is handled by the relay proxy. Otherwise it passes through normally.
+async fn relay_subdomain_middleware(
+    state: axum::extract::State<AppState>,
+    request: Request<Body>,
+    next: Next,
+) -> Response {
+    if let Some(relay_base_domain) = &state.config.relay_base_domain {
+        let host = request
+            .headers()
+            .get("host")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+
+        if extract_relay_subdomain(host, relay_base_domain).is_some() {
+            return relay::relay_subdomain_proxy(state, request).await;
+        }
+    }
+
+    next.run(request).await
 }
 
 #[derive(Serialize)]

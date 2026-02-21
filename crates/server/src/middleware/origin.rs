@@ -1,4 +1,7 @@
-use std::{net::IpAddr, sync::OnceLock};
+use std::{
+    net::IpAddr,
+    sync::{OnceLock, RwLock},
+};
 
 use axum::{
     body::Body,
@@ -61,6 +64,11 @@ pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
         .iter()
         .any(|allowed| allowed == &origin_key)
     {
+        return Ok(());
+    }
+
+    // Check runtime-added origins (e.g., tunnel URLs)
+    if is_dynamic_origin_allowed(&origin_key) {
         return Ok(());
     }
 
@@ -135,6 +143,27 @@ fn allowed_origins() -> &'static Vec<OriginKey> {
             .filter_map(|origin| OriginKey::from_origin(origin.trim()))
             .collect()
     })
+}
+
+/// Dynamic origins added at runtime (e.g., tunnel URLs).
+static DYNAMIC_ORIGINS: RwLock<Vec<OriginKey>> = RwLock::new(Vec::new());
+
+/// Add a dynamic allowed origin at runtime (e.g., for tunnel URLs).
+pub fn add_allowed_origin(origin: &str) {
+    if let Some(key) = OriginKey::from_origin(origin) {
+        if let Ok(mut origins) = DYNAMIC_ORIGINS.write() {
+            if !origins.contains(&key) {
+                origins.push(key);
+            }
+        }
+    }
+}
+
+fn is_dynamic_origin_allowed(origin_key: &OriginKey) -> bool {
+    DYNAMIC_ORIGINS
+        .read()
+        .ok()
+        .is_some_and(|origins| origins.iter().any(|allowed| allowed == origin_key))
 }
 
 #[cfg(test)]

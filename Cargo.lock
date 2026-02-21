@@ -198,6 +198,7 @@ checksum = "5f0e0fee31ef5ed1ba1316088939cea399010ed7731dba877ed44aeb407a75ea"
 name = "api-types"
 version = "0.1.17"
 dependencies = [
+ "base64",
  "chrono",
  "schemars 1.2.1",
  "serde",
@@ -7436,6 +7437,7 @@ dependencies = [
  "git2",
  "local-deployment",
  "mime_guess",
+ "native-tls",
  "os_info",
  "rand 0.8.5",
  "regex",
@@ -8521,7 +8523,9 @@ checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
 dependencies = [
  "futures-util",
  "log",
+ "native-tls",
  "tokio",
+ "tokio-native-tls",
  "tungstenite 0.24.0",
 ]
 
@@ -8969,6 +8973,7 @@ dependencies = [
  "http",
  "httparse",
  "log",
+ "native-tls",
  "rand 0.8.5",
  "sha1",
  "thiserror 1.0.69",

@@ -9,6 +9,7 @@ import OrganizationPage from "./pages/OrganizationPage";
 import UpgradePage from "./pages/UpgradePage";
 import UpgradeCompletePage from "./pages/UpgradeCompletePage";
 import UpgradeSuccessPage from "./pages/UpgradeSuccessPage";
+import RelayPage from "./pages/RelayPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 const router = createBrowserRouter([
@@ -39,6 +40,10 @@ const router = createBrowserRouter([
   {
     path: "/account/organizations/:orgId",
     element: <OrganizationPage />,
+  },
+  {
+    path: "/relay",
+    element: <RelayPage />,
   },
   {
     path: "/upgrade",

@@ -86,6 +86,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "api-types"
 version = "0.1.17"
 dependencies = [
+ "base64",
  "chrono",
  "schemars",
  "serde",
