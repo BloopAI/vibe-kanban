@@ -40,7 +40,7 @@ import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plug
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ComponentInfoKeyboardPlugin } from './wysiwyg/plugins/component-info-keyboard-plugin';
 import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
-import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
+import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { StaticToolbarPlugin } from './wysiwyg/plugins/static-toolbar-plugin';
 import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';

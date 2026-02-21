@@ -1927,3 +1927,39 @@ Validation:
 Plan adjustments from new information:
 - Continue moving self-contained lexical plugins first.
 - Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/clickable-code-plugin.tsx` (single callsite, no app-local imports; callback props passed by caller).
+
+## 2026-02-21 - UI package extraction: wysiwyg/clickable-code-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/clickable-code-plugin.tsx` as the next low-risk candidate.
+- It is self-contained plugin logic (React + lexical context hook only) and had a single callsite in `ui/wysiwyg.tsx`.
+- New information: plugin-specific callback props (`findMatchingDiffPath`, `onCodeClick`) already isolate app behavior at the callsite, so package extraction is straightforward.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/clickable-code-plugin.tsx packages/ui/src/components/ClickableCodePlugin.tsx`
+- Package updates:
+  - No dependency changes were required.
+  - Plugin implementation remained unchanged.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue prioritizing self-contained lexical plugins before plugins that import app-local nodes/contexts.
+- Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/markdown-sync-plugin.tsx` (single callsite, lexical-only dependencies).
