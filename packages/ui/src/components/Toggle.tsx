@@ -1,5 +1,5 @@
-import { cn } from '@/lib/utils';
-import { Switch } from '@vibe/ui/components/Switch';
+import { Switch } from './Switch';
+import { cn } from '../lib/cn';
 
 interface ToggleProps {
   checked: boolean;

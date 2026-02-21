@@ -20,7 +20,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import { Toggle } from '@/components/ui-new/primitives/Toggle';
+import { Toggle } from '@vibe/ui/components/Toggle';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import { AutoResizeTextarea } from '@vibe/ui/components/AutoResizeTextarea';
