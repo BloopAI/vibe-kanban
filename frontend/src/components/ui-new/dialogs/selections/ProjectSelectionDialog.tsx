@@ -6,8 +6,12 @@ import {
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
 import { CommandDialog } from '@vibe/ui/components/Command';
-import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
+import {
+  CommandBar,
+  type CommandBarGroupItem,
+} from '@vibe/ui/components/CommandBar';
 import type {
+  PageId,
   StatusItem,
   ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
@@ -16,7 +20,10 @@ import { buildStatusSelectionPages } from './statusSelection';
 import { buildPrioritySelectionPages } from './prioritySelection';
 import { buildSubIssueSelectionPages } from './subIssueSelection';
 import { buildRelationshipSelectionPages } from './relationshipSelection';
-import { resolveLabel } from '@/components/ui-new/actions';
+import {
+  resolveLabel,
+  type ActionDefinition,
+} from '@/components/ui-new/actions';
 import type { SelectionPage } from '../SelectionDialog';
 import type { StatusSelectionResult } from './statusSelection';
 import type { PrioritySelectionResult } from './prioritySelection';
@@ -264,8 +271,8 @@ function ProjectSelectionContent({ selection }: { selection: SelectionMode }) {
   );
 
   const handleSelect = useCallback(
-    (item: ResolvedGroupItem) => {
-      const result = currentPage.onSelect(item);
+    (item: CommandBarGroupItem<ActionDefinition, PageId>) => {
+      const result = currentPage.onSelect(item as ResolvedGroupItem);
       if (result.type === 'complete') {
         handleResult(result.data);
         modal.resolve(result.data);

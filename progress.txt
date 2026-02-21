@@ -1407,3 +1407,45 @@ Plan adjustments from new information:
 - `CollapsibleSectionHeader` is now unblocked and extracted without app-store dependencies.
 - Remaining major `extract-later` primitive with notable app coupling is `ui-new/primitives/CommandBar.tsx` (depends on app action/page models and IDE icon rendering).
 - Next recommended cycle should target `CommandBar` with API decoupling (inject icon renderer and resolved item model via props) before or during extraction.
+
+## 2026-02-21 - UI package extraction: CommandBar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining `extract-later` set
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/CommandBar.tsx` as the next candidate because it was the remaining high-coupling primitive in the `@vibe/ui` extraction track.
+- Main blocker was direct coupling to app-specific action/page models and app-only icon rendering (`ide-icon`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/CommandBar.tsx packages/ui/src/components/CommandBar.tsx`
+- Package updates:
+  - Reworked `packages/ui/src/components/CommandBar.tsx` to remove app imports (`@/components/ui-new/actions/*`, `@/components/ide/IdeIcon`).
+  - Introduced package-local exported types for command bar data models and made the component generic over action and page ID types.
+  - Added `renderSpecialActionIcon` prop so frontend can provide app-specific icon rendering (e.g. `ide-icon`) while keeping `@vibe/ui` decoupled.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/dialogs/CommandBarDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/SelectionDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`
+- App boundary handling:
+  - Kept app state machine types unchanged by casting at dialog boundaries where app code still expects `ResolvedGroupItem`.
+  - Wired `renderSpecialActionIcon` in `CommandBarDialog` to render IDE icons using `visibilityContext.editorType`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- `CommandBar` extraction is now complete and decoupled from app modules.
+- Within the audited `ui-new/primitives` extraction track for `@vibe/ui`, there are no remaining high-priority primitive candidates from the prior backlog.
+- Next extraction work should likely shift to a new scope (for example `components/ui/wysiwyg` into a dedicated package as noted in audit recommendations) rather than continuing `@vibe/ui` primitive moves.

@@ -1,80 +1,188 @@
 import {
+  ArrowDownIcon,
+  ArrowFatLineUpIcon,
+  ArrowUpIcon,
   CaretLeftIcon,
   CopyIcon,
   FolderIcon,
   GitBranchIcon,
-  ArrowFatLineUpIcon,
-  ArrowUpIcon,
   MinusIcon,
-  ArrowDownIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
+import type { Icon } from '@phosphor-icons/react';
+import type { ReactNode } from 'react';
 import { useDeferredValue, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Command,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
+  CommandList,
   CommandShortcut,
-} from '@vibe/ui/components/Command';
-import type { ActionDefinition, ActionIcon } from '../actions';
-import { isSpecialIcon } from '../actions';
-import type {
-  ResolvedGroup,
-  ResolvedGroupItem,
-  StatusItem,
-} from '../actions/pages';
-import { IdeIcon } from '@/components/ide/IdeIcon';
+} from './Command';
 
-/**
- * Render an action icon, handling special icon types
- */
-function ActionItemIcon({ icon }: { icon: ActionIcon }) {
-  if (isSpecialIcon(icon)) {
-    if (icon === 'ide-icon') {
-      return <IdeIcon className="h-4 w-4" />;
-    }
-    if (icon === 'copy-icon') {
-      return <CopyIcon className="h-4 w-4" weight="regular" />;
-    }
-  }
-  // Regular phosphor icon
-  const IconComponent = icon;
-  return <IconComponent className="h-4 w-4" weight="regular" />;
+type PriorityId = 'urgent' | 'high' | 'medium' | 'low';
+
+export interface CommandBarAction {
+  id: string;
+  icon: Icon | string;
+  shortcut?: string;
+  variant?: 'default' | 'destructive' | string;
+  keywords?: string[];
 }
 
-// Resolved page structure with pre-processed groups
-interface ResolvedCommandBarPage {
+export interface CommandBarGroup<
+  TAction extends CommandBarAction,
+  TPageId extends string = string,
+> {
+  label: string;
+  items: CommandBarGroupItem<TAction, TPageId>[];
+}
+
+export interface CommandBarPage<
+  TAction extends CommandBarAction,
+  TPageId extends string = string,
+> {
   id: string;
   title?: string;
-  groups: ResolvedGroup[];
+  groups: CommandBarGroup<TAction, TPageId>[];
 }
 
-interface CommandBarProps {
-  // Resolved page with groups already processed
-  page: ResolvedCommandBarPage;
-  // Whether back navigation is available
+export interface CommandBarStatusItem {
+  id: string;
+  name: string;
+  color: string;
+}
+
+interface PageItem<TPageId extends string = string> {
+  type: 'page';
+  pageId: TPageId;
+  label: string;
+  icon: Icon;
+}
+
+interface RepoItem {
+  type: 'repo';
+  repo: {
+    id: string;
+    display_name: string;
+  };
+}
+
+interface BranchItem {
+  type: 'branch';
+  branch: {
+    name: string;
+    isCurrent: boolean;
+  };
+}
+
+interface StatusItem {
+  type: 'status';
+  status: CommandBarStatusItem;
+}
+
+interface PriorityItem {
+  type: 'priority';
+  priority: {
+    id: string | null;
+    name: string;
+  };
+}
+
+interface CreateSubIssueItem {
+  type: 'createSubIssue';
+}
+
+interface IssueItem {
+  type: 'issue';
+  issue: {
+    id: string;
+    simple_id: string;
+    title: string;
+    status_id: string;
+    priority?: string | null;
+  };
+}
+
+interface ActionItem<TAction extends CommandBarAction> {
+  type: 'action';
+  action: TAction;
+}
+
+export type CommandBarGroupItem<
+  TAction extends CommandBarAction,
+  TPageId extends string = string,
+> =
+  | PageItem<TPageId>
+  | RepoItem
+  | BranchItem
+  | StatusItem
+  | PriorityItem
+  | CreateSubIssueItem
+  | IssueItem
+  | ActionItem<TAction>;
+
+interface CommandBarProps<
+  TAction extends CommandBarAction,
+  TPageId extends string = string,
+> {
+  page: CommandBarPage<TAction, TPageId>;
   canGoBack: boolean;
-  // Called when user clicks back
   onGoBack: () => void;
-  // Called when user selects an item (action or page)
-  onSelect: (item: ResolvedGroupItem) => void;
-  // Get resolved label for an action
-  getLabel: (action: ActionDefinition) => string;
-  // Controlled search value
+  onSelect: (item: CommandBarGroupItem<TAction, TPageId>) => void;
+  getLabel: (action: TAction) => string;
   search: string;
-  // Called when search changes
   onSearchChange: (search: string) => void;
-  // Statuses for looking up issue status colors
-  statuses?: StatusItem[];
+  statuses?: CommandBarStatusItem[];
+  renderSpecialActionIcon?: (iconName: string) => ReactNode;
 }
 
 const BRANCH_SEARCH_RESULT_LIMIT = 300;
 
-export function CommandBar({
+const PRIORITY_CONFIG: Record<
+  PriorityId,
+  { icon: Icon; colorClass: string }
+> = {
+  urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
+  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+  medium: { icon: MinusIcon, colorClass: 'text-low' },
+  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+};
+
+function getPriorityConfig(priorityId: string | null | undefined) {
+  if (!priorityId) return null;
+  if (priorityId in PRIORITY_CONFIG) {
+    return PRIORITY_CONFIG[priorityId as PriorityId];
+  }
+  return null;
+}
+
+function ActionItemIcon({
+  icon,
+  renderSpecialActionIcon,
+}: {
+  icon: Icon | string;
+  renderSpecialActionIcon?: (iconName: string) => ReactNode;
+}) {
+  if (typeof icon === 'string') {
+    if (icon === 'copy-icon') {
+      return <CopyIcon className="h-4 w-4" weight="regular" />;
+    }
+    const customIcon = renderSpecialActionIcon?.(icon);
+    return customIcon ? <>{customIcon}</> : null;
+  }
+
+  const IconComponent = icon;
+  return <IconComponent className="h-4 w-4" weight="regular" />;
+}
+
+export function CommandBar<
+  TAction extends CommandBarAction,
+  TPageId extends string = string,
+>({
   page,
   canGoBack,
   onGoBack,
@@ -83,7 +191,8 @@ export function CommandBar({
   search,
   onSearchChange,
   statuses = [],
-}: CommandBarProps) {
+  renderSpecialActionIcon,
+}: CommandBarProps<TAction, TPageId>) {
   const { t } = useTranslation('common');
   const deferredSearch = useDeferredValue(search);
   const normalizedSearch = deferredSearch.trim().toLowerCase();
@@ -95,11 +204,11 @@ export function CommandBar({
     }
 
     const isBranchSelectionPage = page.id === 'selectBranch';
-    const groups: ResolvedGroup[] = [];
+    const groups: CommandBarGroup<TAction, TPageId>[] = [];
     let remainingBranchResults = BRANCH_SEARCH_RESULT_LIMIT;
 
     for (const group of page.groups) {
-      const matchedItems: ResolvedGroupItem[] = [];
+      const matchedItems: CommandBarGroupItem<TAction, TPageId>[] = [];
 
       for (const item of group.items) {
         const label = getItemSearchLabel(item, getLabel);
@@ -129,7 +238,7 @@ export function CommandBar({
     }
 
     return groups;
-  }, [isSearching, page.groups, page.id, normalizedSearch, getLabel]);
+  }, [getLabel, isSearching, normalizedSearch, page.groups, page.id]);
 
   return (
     <Command
@@ -154,7 +263,6 @@ export function CommandBar({
             </CommandItem>
           </CommandGroup>
         )}
-        {/* Render groups directly - order is explicit from page definition */}
         {filteredGroups.map((group) => (
           <CommandGroup key={group.label} heading={group.label}>
             {group.items.map((item) => {
@@ -170,7 +278,9 @@ export function CommandBar({
                     <span>{item.label}</span>
                   </CommandItem>
                 );
-              } else if (item.type === 'repo') {
+              }
+
+              if (item.type === 'repo') {
                 return (
                   <CommandItem
                     key={item.repo.id}
@@ -181,7 +291,9 @@ export function CommandBar({
                     <span>{item.repo.display_name}</span>
                   </CommandItem>
                 );
-              } else if (item.type === 'branch') {
+              }
+
+              if (item.type === 'branch') {
                 return (
                   <CommandItem
                     key={item.branch.name}
@@ -197,7 +309,9 @@ export function CommandBar({
                     )}
                   </CommandItem>
                 );
-              } else if (item.type === 'status') {
+              }
+
+              if (item.type === 'status') {
                 return (
                   <CommandItem
                     key={item.status.id}
@@ -211,19 +325,10 @@ export function CommandBar({
                     <span>{item.status.name}</span>
                   </CommandItem>
                 );
-              } else if (item.type === 'priority') {
-                const priorityConfig = {
-                  urgent: {
-                    icon: ArrowFatLineUpIcon,
-                    colorClass: 'text-error',
-                  },
-                  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
-                  medium: { icon: MinusIcon, colorClass: 'text-low' },
-                  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
-                } as const;
-                const config = item.priority.id
-                  ? priorityConfig[item.priority.id]
-                  : null;
+              }
+
+              if (item.type === 'priority') {
+                const config = getPriorityConfig(item.priority.id);
                 const IconComponent = config?.icon;
                 return (
                   <CommandItem
@@ -240,7 +345,9 @@ export function CommandBar({
                     <span>{item.priority.name}</span>
                   </CommandItem>
                 );
-              } else if (item.type === 'createSubIssue') {
+              }
+
+              if (item.type === 'createSubIssue') {
                 return (
                   <CommandItem
                     key="create-sub-issue"
@@ -254,23 +361,14 @@ export function CommandBar({
                     <span>{t('kanban.createNewIssue')}</span>
                   </CommandItem>
                 );
-              } else if (item.type === 'issue') {
-                const priorityConfig = {
-                  urgent: {
-                    icon: ArrowFatLineUpIcon,
-                    colorClass: 'text-error',
-                  },
-                  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
-                  medium: { icon: MinusIcon, colorClass: 'text-low' },
-                  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
-                } as const;
-                const config = item.issue.priority
-                  ? priorityConfig[item.issue.priority]
-                  : null;
+              }
+
+              if (item.type === 'issue') {
+                const config = getPriorityConfig(item.issue.priority ?? null);
                 const PriorityIconComponent = config?.icon;
                 const statusColor =
-                  statuses.find((s) => s.id === item.issue.status_id)?.color ??
-                  '0 0% 50%';
+                  statuses.find((status) => status.id === item.issue.status_id)
+                    ?.color ?? '0 0% 50%';
                 return (
                   <CommandItem
                     key={item.issue.id}
@@ -288,35 +386,35 @@ export function CommandBar({
                     </span>
                     <div
                       className="h-2 w-2 rounded-full shrink-0"
-                      style={{
-                        backgroundColor: `hsl(${statusColor})`,
-                      }}
+                      style={{ backgroundColor: `hsl(${statusColor})` }}
                     />
                     <span className="truncate">{item.issue.title}</span>
                   </CommandItem>
                 );
-              } else if (item.type === 'action') {
-                const label = getLabel(item.action);
-                return (
-                  <CommandItem
-                    key={item.action.id}
-                    value={`${item.action.id} ${label}`}
-                    onSelect={() => onSelect(item)}
-                    className={
-                      item.action.variant === 'destructive'
-                        ? 'text-error'
-                        : undefined
-                    }
-                  >
-                    <ActionItemIcon icon={item.action.icon} />
-                    <span>{label}</span>
-                    {item.action.shortcut && (
-                      <CommandShortcut>{item.action.shortcut}</CommandShortcut>
-                    )}
-                  </CommandItem>
-                );
               }
-              return null;
+
+              const label = getLabel(item.action);
+              return (
+                <CommandItem
+                  key={item.action.id}
+                  value={`${item.action.id} ${label}`}
+                  onSelect={() => onSelect(item)}
+                  className={
+                    item.action.variant === 'destructive'
+                      ? 'text-error'
+                      : undefined
+                  }
+                >
+                  <ActionItemIcon
+                    icon={item.action.icon}
+                    renderSpecialActionIcon={renderSpecialActionIcon}
+                  />
+                  <span>{label}</span>
+                  {item.action.shortcut && (
+                    <CommandShortcut>{item.action.shortcut}</CommandShortcut>
+                  )}
+                </CommandItem>
+              );
             })}
           </CommandGroup>
         ))}
@@ -325,10 +423,13 @@ export function CommandBar({
   );
 }
 
-function getItemSearchLabel(
-  item: ResolvedGroupItem,
-  getLabel: (action: ActionDefinition) => string
-): string {
+function getItemSearchLabel<
+  TAction extends CommandBarAction,
+  TPageId extends string,
+>(
+  item: CommandBarGroupItem<TAction, TPageId>,
+  getLabel: (action: TAction) => string
+) {
   if (item.type === 'page') {
     return `${item.pageId} ${item.label}`;
   }
@@ -350,9 +451,6 @@ function getItemSearchLabel(
   if (item.type === 'createSubIssue') {
     return 'create new issue';
   }
-  if (item.type === 'action') {
-    const keywords = item.action.keywords?.join(' ') ?? '';
-    return `${item.action.id} ${getLabel(item.action)} ${keywords}`.trim();
-  }
-  return '';
+  const keywords = item.action.keywords?.join(' ') ?? '';
+  return `${item.action.id} ${getLabel(item.action)} ${keywords}`.trim();
 }

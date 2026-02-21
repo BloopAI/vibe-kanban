@@ -5,15 +5,22 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@vibe/ui/components/Command';
-import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
+import {
+  CommandBar,
+  type CommandBarGroupItem,
+} from '@vibe/ui/components/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { attemptKeys } from '@/hooks/useAttempt';
+import { IdeIcon } from '@/components/ide/IdeIcon';
 import type {
   PageId,
   ResolvedGroupItem,
 } from '@/components/ui-new/actions/pages';
-import { ActionTargetType } from '@/components/ui-new/actions';
+import {
+  ActionTargetType,
+  type ActionDefinition,
+} from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '@/components/ui-new/actions/useActionVisibility';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';
@@ -93,8 +100,11 @@ function CommandBarContent({
 
   // Handle item selection with side effects
   const handleSelect = useCallback(
-    async (item: ResolvedGroupItem) => {
-      const effect = dispatch({ type: 'SELECT_ITEM', item });
+    async (item: CommandBarGroupItem<ActionDefinition, PageId>) => {
+      const effect = dispatch({
+        type: 'SELECT_ITEM',
+        item: item as ResolvedGroupItem,
+      });
       if (effect.type !== 'execute') return;
 
       modal.hide();
@@ -171,6 +181,14 @@ function CommandBarContent({
         getLabel={(action) => getLabel(action, workspace, visibilityContext)}
         search={state.search}
         onSearchChange={(query) => dispatch({ type: 'SEARCH_CHANGE', query })}
+        renderSpecialActionIcon={(iconName) =>
+          iconName === 'ide-icon' ? (
+            <IdeIcon
+              editorType={visibilityContext.editorType}
+              className="h-4 w-4"
+            />
+          ) : null
+        }
       />
     </CommandDialog>
   );

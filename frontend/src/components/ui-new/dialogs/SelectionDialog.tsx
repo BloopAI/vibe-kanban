@@ -2,13 +2,20 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { CommandDialog } from '@vibe/ui/components/Command';
-import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
+import {
+  CommandBar,
+  type CommandBarGroupItem,
+} from '@vibe/ui/components/CommandBar';
 import type {
+  PageId,
   ResolvedGroup,
   ResolvedGroupItem,
   StatusItem,
 } from '@/components/ui-new/actions/pages';
-import { resolveLabel } from '@/components/ui-new/actions';
+import {
+  resolveLabel,
+  type ActionDefinition,
+} from '@/components/ui-new/actions';
 
 export interface SelectionPage<TResult = unknown> {
   id: string;
@@ -88,8 +95,8 @@ const SelectionDialogImpl = NiceModal.create<SelectionDialogProps>(
     };
 
     const handleSelect = useCallback(
-      (item: ResolvedGroupItem) => {
-        const result = currentPage.onSelect(item);
+      (item: CommandBarGroupItem<ActionDefinition, PageId>) => {
+        const result = currentPage.onSelect(item as ResolvedGroupItem);
         if (result.type === 'complete') {
           modal.resolve(result.data);
           modal.hide();
