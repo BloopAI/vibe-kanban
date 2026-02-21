@@ -354,6 +354,9 @@ importers:
       '@lexical/link':
         specifier: ^0.36.2
         version: 0.36.2
+      '@lexical/list':
+        specifier: ^0.36.2
+        version: 0.36.2
       '@lexical/markdown':
         specifier: ^0.36.2
         version: 0.36.2

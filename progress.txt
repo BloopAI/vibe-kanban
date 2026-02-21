@@ -2000,3 +2000,41 @@ Validation:
 Plan adjustments from new information:
 - Continue extracting self-contained lexical plugins with minimal app-local coupling.
 - Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/keyboard-commands-plugin.tsx` (single callsite; no frontend-only imports).
+
+## 2026-02-21 - UI package extraction: wysiwyg/keyboard-commands-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/keyboard-commands-plugin.tsx` as the next low-risk candidate.
+- It has a single callsite in `ui/wysiwyg.tsx` and no frontend app-runtime dependencies.
+- New information: the plugin had a type-only dependency on `shared/types`, which is not resolvable inside `packages/ui` with current tsconfig settings.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/keyboard-commands-plugin.tsx packages/ui/src/components/KeyboardCommandsPlugin.tsx`
+- Package updates:
+  - Added `@lexical/list` to `packages/ui/package.json`.
+  - Synced lockfile (`pnpm-lock.yaml`) via `pnpm install`.
+  - Replaced `import type { SendMessageShortcut } from 'shared/types'` with a local union type (`'ModifierEnter' | 'Enter'`) inside the moved file to remove cross-package coupling.
+  - Switched internal import to relative path (`./TypeaheadOpenContext`) for package-local clarity.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- When extracting to `@vibe/ui`, avoid importing app-level generated shared types unless package tsconfig/path support is added; prefer local explicit unions for simple configuration enums.
+- Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/paste-markdown-plugin.tsx` (single callsite, lexical-only dependencies).

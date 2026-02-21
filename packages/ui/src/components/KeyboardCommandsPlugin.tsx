@@ -16,8 +16,9 @@ import {
 } from 'lexical';
 import { $convertToMarkdownString, type Transformer } from '@lexical/markdown';
 import { $isListItemNode } from '@lexical/list';
-import type { SendMessageShortcut } from 'shared/types';
-import { useTypeaheadOpen } from '@vibe/ui/components/TypeaheadOpenContext';
+import { useTypeaheadOpen } from './TypeaheadOpenContext';
+
+type SendMessageShortcut = 'ModifierEnter' | 'Enter';
 
 type Props = {
   onCmdEnter?: () => void;
