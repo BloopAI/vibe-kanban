@@ -1817,3 +1817,77 @@ Validation:
 Plan adjustments from new information:
 - Editor context extraction can continue with small, decoupled modules.
 - Next likely low-risk candidate is `ui/wysiwyg/plugins/read-only-link-plugin.tsx` (self-contained lexical plugin with minimal app coupling).
+
+## 2026-02-21 - UI package extraction: wysiwyg/read-only-link-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/read-only-link-plugin.tsx` as the next low-risk candidate.
+- It is self-contained editor plugin logic (no app-local imports) and had a single direct callsite in `ui/wysiwyg.tsx`.
+- New information: to host this plugin in `@vibe/ui`, lexical package dependencies needed to be declared in `packages/ui`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/read-only-link-plugin.tsx packages/ui/src/components/ReadOnlyLinkPlugin.tsx`
+- Package updates:
+  - Added `@lexical/react` and `@lexical/link` dependencies to `packages/ui/package.json`.
+  - Synced lockfile (`pnpm-lock.yaml`) via `pnpm install`.
+  - Plugin implementation stayed unchanged.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Additional self-contained lexical plugins can move directly into `@vibe/ui` with low risk.
+- Next likely low-risk candidate is `ui/wysiwyg/plugins/code-block-shortcut-plugin.tsx` (single callsite, lexical-only dependencies).
+
+## 2026-02-21 - UI package extraction: wysiwyg/code-block-shortcut-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/code-block-shortcut-plugin.tsx` as the next low-risk candidate.
+- It is self-contained plugin logic (Lexical + React only) with a single direct callsite in `ui/wysiwyg.tsx`.
+- New information: extracting lexical plugins into `@vibe/ui` requires explicitly declaring lexical package dependencies in `packages/ui/package.json` for readability and package correctness.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/code-block-shortcut-plugin.tsx packages/ui/src/components/CodeBlockShortcutPlugin.tsx`
+- Package updates:
+  - Added `@lexical/code` and `lexical` dependencies to `packages/ui/package.json`.
+  - Synced lockfile with `pnpm install`.
+  - Plugin implementation remained unchanged.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue moving self-contained lexical plugins first to keep extraction low-risk and readable.
+- Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/code-highlight-plugin.tsx` (single callsite, lexical-only dependencies).

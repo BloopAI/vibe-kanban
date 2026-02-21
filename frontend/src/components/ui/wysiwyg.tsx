@@ -39,11 +39,11 @@ import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typ
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';
 import { ImageKeyboardPlugin } from './wysiwyg/plugins/image-keyboard-plugin';
 import { ComponentInfoKeyboardPlugin } from './wysiwyg/plugins/component-info-keyboard-plugin';
-import { ReadOnlyLinkPlugin } from './wysiwyg/plugins/read-only-link-plugin';
+import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from './wysiwyg/plugins/clickable-code-plugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { StaticToolbarPlugin } from './wysiwyg/plugins/static-toolbar-plugin';
-import { CodeBlockShortcutPlugin } from './wysiwyg/plugins/code-block-shortcut-plugin';
+import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
 import { PasteMarkdownPlugin } from './wysiwyg/plugins/paste-markdown-plugin';
 import { MarkdownSyncPlugin } from './wysiwyg/plugins/markdown-sync-plugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
