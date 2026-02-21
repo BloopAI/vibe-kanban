@@ -1,9 +1,8 @@
-//! Relay routes: WebSocket control channel and HTTP/WS proxy.
+//! Relay routes: WebSocket control channel and HTTP proxy over yamux streams.
 //!
-//! - `GET /relay/connect` — Protected. Local server connects here via WebSocket.
-//! - `GET /relay/mine` — Protected. Phone frontend checks if relay is active.
-//! - `ANY /relay/proxy/{*path}` — Protected. Proxies API calls to local.
-//! - Subdomain routing: `{user_id}.{RELAY_BASE_DOMAIN}` — Serves the full local
+//! - `GET /relay/connect/{host_id}` — Protected. Local host connects via WebSocket.
+//! - `POST /relay/sessions/{session_id}/auth-code` — Protected. Issues one-time code.
+//! - Subdomain routing: `{host_id}.{RELAY_BASE_DOMAIN}` — Serves the full local
 //!   frontend+API through the relay. Auth via `relay_token` cookie.
 
 use std::sync::Arc;
@@ -11,27 +10,31 @@ use std::sync::Arc;
 use axum::{
     Extension, Json, Router,
     body::Body,
-    extract::{FromRequestParts, Request, State, ws::WebSocketUpgrade},
-    http::{HeaderMap, HeaderName, HeaderValue, StatusCode, uri::Authority},
+    extract::{Path, Request, State, ws::Message as AxumWsMessage, ws::WebSocketUpgrade},
+    http::{StatusCode, Uri},
     response::{IntoResponse, Response},
-    routing::{any, get, post},
+    routing::{get, post},
 };
-use axum_extra::headers::{Cookie, HeaderMapExt, Host};
+use axum_extra::headers::{Cookie, HeaderMapExt};
 use chrono::Utc;
-use futures::{SinkExt, stream::{SplitSink, SplitStream, StreamExt}};
-use tokio::sync::{mpsc, oneshot};
-use url::form_urlencoded;
+use futures_util::StreamExt;
+use hyper::{
+    client::conn::http1 as client_http1,
+    upgrade,
+};
+use hyper_util::rt::TokioIo;
+use serde::Serialize;
+use tokio_yamux::{Config as YamuxConfig, Session};
+use url::{Url, form_urlencoded};
+use utils::ws_io::{WsIoReadMessage, WsMessageStreamIo};
 use uuid::Uuid;
-
-use api_types::{Base64Bytes, LocalToRelay, RelayStatus, RelayToLocal};
 
 use crate::{
     AppState,
-    auth::RequestContext,
+    auth::{RequestContext, request_context_from_access_token},
     db::{
-        auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
+        hosts::HostRepository,
         identity_errors::IdentityError,
-        users::UserRepository,
     },
     relay::{ActiveRelay, RelayRegistry},
 };
@@ -44,131 +47,69 @@ fn normalized_relay_path(uri: &axum::http::Uri, strip_prefix: &str) -> String {
     format!("{path}{query}")
 }
 
-fn is_ws_upgrade_request(headers: &HeaderMap) -> bool {
-    headers
-        .get("upgrade")
-        .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.eq_ignore_ascii_case("websocket"))
-}
-
-fn should_skip_request_header(name: &HeaderName) -> bool {
-    matches!(
-        name.as_str(),
-        "host"
-            | "connection"
-            | "transfer-encoding"
-            | "upgrade"
-            | "proxy-connection"
-            | "keep-alive"
-            | "te"
-            | "trailer"
-            | "sec-websocket-key"
-            | "sec-websocket-version"
-            | "sec-websocket-extensions"
-            | "origin"
-    )
-}
-
-fn should_strip_response_header(name: &str) -> bool {
-    matches!(
-        name,
-        "transfer-encoding" | "connection" | "content-encoding"
-    )
-}
-
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/relay/connect", get(relay_connect))
-        .route("/relay/mine", get(relay_mine))
-        .route("/relay/auth-code", post(relay_auth_code))
-        .route("/relay/proxy/{*path}", any(relay_proxy))
+        .route("/relay/connect/{host_id}", get(relay_connect))
+        .route(
+            "/relay/sessions/{session_id}/auth-code",
+            post(relay_session_auth_code),
+        )
 }
 
-async fn validate_relay_token_for_user(
+async fn validate_relay_token_for_host(
     state: &AppState,
     relay_token: &str,
-    expected_user_id: Uuid,
+    expected_host_id: Uuid,
 ) -> Result<(), Response> {
-    let identity = match state.jwt().decode_access_token(relay_token) {
-        Ok(id) => id,
-        Err(_) => {
-            return Err((StatusCode::UNAUTHORIZED, "Invalid token").into_response());
-        }
-    };
+    let ctx = request_context_from_access_token(state, relay_token).await?;
 
-    if identity.user_id != expected_user_id {
-        return Err((StatusCode::FORBIDDEN, "Token does not match relay").into_response());
-    }
-
-    let pool = state.pool();
-    let session_repo = AuthSessionRepository::new(pool);
-    let session = match session_repo.get(identity.session_id).await {
-        Ok(session) => session,
-        Err(AuthSessionError::NotFound) => {
-            return Err((StatusCode::UNAUTHORIZED, "Session not found").into_response());
-        }
-        Err(AuthSessionError::Database(error)) => {
-            tracing::warn!(?error, "failed to load relay session");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
-        }
-        Err(_) => {
-            return Err((StatusCode::UNAUTHORIZED, "Invalid session").into_response());
-        }
-    };
-
-    if session.user_id != identity.user_id {
-        return Err((StatusCode::UNAUTHORIZED, "Session user mismatch").into_response());
-    }
-
-    if session.revoked_at.is_some() {
-        return Err((StatusCode::UNAUTHORIZED, "Session revoked").into_response());
-    }
-
-    if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
-        if let Err(error) = session_repo.revoke(session.id).await {
-            tracing::warn!(?error, "failed to revoke inactive relay session");
-        }
-        return Err((StatusCode::UNAUTHORIZED, "Session expired").into_response());
-    }
-
-    let user_repo = UserRepository::new(pool);
-    match user_repo.fetch_user(identity.user_id).await {
-        Ok(_) => {}
-        Err(IdentityError::NotFound) => {
-            return Err((StatusCode::UNAUTHORIZED, "User not found").into_response());
-        }
-        Err(IdentityError::Database(error)) => {
-            tracing::warn!(?error, "failed to load relay user");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
-        }
-        Err(_) => {
-            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
-        }
-    }
-
-    if let Err(error) = session_repo.touch(session.id).await {
-        tracing::warn!(?error, "failed to touch relay session");
+    let host_repo = HostRepository::new(state.pool());
+    if let Err(error) = host_repo.assert_host_access(expected_host_id, ctx.user.id).await {
+        return Err(match error {
+            IdentityError::PermissionDenied | IdentityError::NotFound => {
+                (StatusCode::FORBIDDEN, "Host access denied").into_response()
+            }
+            IdentityError::Database(db_error) => {
+                tracing::warn!(?db_error, "failed to validate host access");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        });
     }
 
     Ok(())
 }
 
-/// Extract the relay subdomain from a `Host` header value.
-///
-/// Given `relay_base_domain = "relay.example.com"` and
-/// `host = "abcd-1234.relay.example.com"`, returns `Some("abcd-1234")`.
-pub fn extract_relay_subdomain<'a>(host: &'a str, relay_base_domain: &str) -> Option<&'a str> {
-    let parsed_base = relay_base_domain.parse::<Authority>().ok();
-    let base_host = parsed_base
-        .as_ref()
-        .map(Authority::host)
-        .unwrap_or(relay_base_domain.split(':').next().unwrap_or(relay_base_domain));
+#[derive(Debug, Serialize)]
+struct RelaySessionAuthCodeResponse {
+    session_id: Uuid,
+    relay_url: String,
+    code: String,
+}
 
-    let prefix = host.strip_suffix(base_host)?.strip_suffix('.')?;
+/// Extract the relay subdomain from a `Host` value using URL parsing.
+pub fn extract_relay_subdomain(host: &str, relay_base_domain: &str) -> Option<String> {
+    let host_domain = Url::parse(&format!("http://{host}"))
+        .ok()?
+        .host_str()?
+        .to_ascii_lowercase();
+    let base_domain = Url::parse(&format!("http://{relay_base_domain}"))
+        .ok()?
+        .host_str()?
+        .to_ascii_lowercase();
+
+    let suffix = format!(".{base_domain}");
+    let prefix = host_domain.strip_suffix(&suffix)?;
     if prefix.is_empty() {
-        return None;
+        None
+    } else {
+        Some(prefix.to_string())
     }
-    Some(prefix)
+}
+
+pub fn extract_relay_host_id(host: &str, relay_base_domain: &str) -> Option<Uuid> {
+    let subdomain = extract_relay_subdomain(host, relay_base_domain)?;
+    Uuid::parse_str(&subdomain).ok()
 }
 
 /// Handle requests arriving on a relay subdomain.
@@ -176,39 +117,18 @@ pub fn extract_relay_subdomain<'a>(host: &'a str, relay_base_domain: &str) -> Op
 /// Two modes:
 /// 1. `?code=<one-time-code>` — exchange the code for a `relay_token` cookie, redirect to `/`.
 /// 2. Normal request with `relay_token` cookie — proxy to local server.
-pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Request) -> Response {
-    let relay_base_domain = match &state.config.relay_base_domain {
-        Some(d) => d,
-        None => return (StatusCode::NOT_FOUND, "Relay subdomains not configured").into_response(),
-    };
-
-    // Extract subdomain from Host header
-    let host = request
-        .headers()
-        .typed_get::<Host>()
-        .map(|h| h.hostname().to_owned())
-        .unwrap_or_default();
-
-    let subdomain = match extract_relay_subdomain(&host, relay_base_domain) {
-        Some(s) => s.to_owned(),
-        None => return (StatusCode::NOT_FOUND, "Invalid relay subdomain").into_response(),
-    };
-
-    // Parse user_id from subdomain
-    let user_id = match uuid::Uuid::parse_str(&subdomain) {
-        Ok(id) => id,
-        Err(_) => return (StatusCode::NOT_FOUND, "Invalid relay subdomain").into_response(),
-    };
-
-    // Check for one-time auth code in query string
+pub async fn relay_subdomain_proxy(
+    State(state): State<AppState>,
+    request: Request,
+    host_id: Uuid,
+) -> Response {
     if let Some(query) = request.uri().query()
         && let Some(code) = form_urlencoded::parse(query.as_bytes())
             .find_map(|(k, v)| (k == "code").then(|| v.into_owned()))
     {
         let registry = state.relay_registry();
         match registry.redeem_auth_code(&code).await {
-            Some((code_user_id, relay_token)) if code_user_id == user_id => {
-                // Set cookie and redirect to /
+            Some((code_host_id, relay_token)) if code_host_id == host_id => {
                 return Response::builder()
                     .status(StatusCode::FOUND)
                     .header("location", "/")
@@ -227,7 +147,6 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
         }
     }
 
-    // Normal flow: authenticate via cookie
     let relay_token = request
         .headers()
         .typed_get::<Cookie>()
@@ -238,11 +157,11 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
         None => return (StatusCode::UNAUTHORIZED, "Missing relay_token cookie").into_response(),
     };
 
-    if let Err(response) = validate_relay_token_for_user(&state, &relay_token, user_id).await {
+    if let Err(response) = validate_relay_token_for_host(&state, &relay_token, host_id).await {
         return response;
     }
 
-    do_relay_proxy_for_user(state, user_id, request, "").await
+    do_relay_proxy_for_host(state, host_id, request, "").await
 }
 
 // ── Control Channel ────────────────────────────────────────────────────
@@ -250,146 +169,112 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
 /// Local server connects here to establish a relay control channel.
 async fn relay_connect(
     State(state): State<AppState>,
+    Path(host_id): Path<Uuid>,
     Extension(ctx): Extension<RequestContext>,
     ws: WebSocketUpgrade,
 ) -> Response {
+    let repo = HostRepository::new(state.pool());
+    if let Err(error) = repo.assert_host_access(host_id, ctx.user.id).await {
+        return match error {
+            IdentityError::PermissionDenied | IdentityError::NotFound => {
+                (StatusCode::FORBIDDEN, "Host access denied").into_response()
+            }
+            IdentityError::Database(db_error) => {
+                tracing::warn!(?db_error, "failed to validate host access for relay connect");
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
+        };
+    }
+
+    if let Err(error) = repo.mark_host_online(host_id, None).await {
+        tracing::warn!(?error, "failed to mark host online");
+    }
+
     let registry = state.relay_registry().clone();
-    let user_id = ctx.user.id;
+    let state_for_upgrade = state.clone();
 
     ws.on_upgrade(move |socket| async move {
-        handle_control_channel(socket, registry, user_id).await;
+        handle_control_channel(socket, state_for_upgrade, registry, host_id).await;
     })
 }
 
 async fn handle_control_channel(
     socket: axum::extract::ws::WebSocket,
+    state: AppState,
     registry: RelayRegistry,
-    user_id: uuid::Uuid,
+    host_id: Uuid,
 ) {
-    let (ws_sink, ws_stream) = socket.split();
+    let ws_io = WsMessageStreamIo::new(socket, read_server_message, write_server_message);
+    let mut session = Session::new_server(ws_io, YamuxConfig::default());
 
-    // Channel for sending messages to the local server
-    let (tx, rx) = mpsc::channel::<RelayToLocal>(256);
+    let relay = Arc::new(ActiveRelay::new(session.control()));
+    registry.insert(host_id, relay).await;
 
-    let relay = Arc::new(ActiveRelay::new(tx));
-    registry.insert(user_id, relay.clone()).await;
+    tracing::info!(%host_id, "Relay control channel connected");
 
-    tracing::info!(%user_id, "Relay control channel connected");
-
-    // Spawn sender task: reads from rx channel, sends as WS text frames
-    let sender_handle = tokio::spawn(sender_task(rx, ws_sink));
-
-    // Run receiver in current task: reads WS frames from local, dispatches responses
-    receiver_task(ws_stream, relay.clone()).await;
-
-    // Cleanup
-    sender_handle.abort();
-    registry.remove(&user_id).await;
-    tracing::info!(%user_id, "Relay control channel disconnected");
-}
-
-async fn sender_task(
-    mut rx: mpsc::Receiver<RelayToLocal>,
-    mut sink: SplitSink<axum::extract::ws::WebSocket, axum::extract::ws::Message>,
-) {
-    while let Some(msg) = rx.recv().await {
-        let json = match serde_json::to_string(&msg) {
-            Ok(j) => j,
-            Err(e) => {
-                tracing::error!("Failed to serialize RelayToLocal: {e}");
-                continue;
+    while let Some(stream_result) = session.next().await {
+        match stream_result {
+            Ok(_stream) => {
+                // The remote side does not currently accept streams initiated by the local side.
             }
-        };
-        if sink
-            .send(axum::extract::ws::Message::Text(json.into()))
-            .await
-            .is_err()
-        {
-            break;
-        }
-    }
-}
-
-async fn receiver_task(
-    mut stream: SplitStream<axum::extract::ws::WebSocket>,
-    relay: Arc<ActiveRelay>,
-) {
-    while let Some(msg_result) = stream.next().await {
-        let msg = match msg_result {
-            Ok(axum::extract::ws::Message::Text(text)) => text,
-            Ok(axum::extract::ws::Message::Close(_)) => break,
-            Ok(_) => continue,
-            Err(_) => break,
-        };
-
-        let parsed: LocalToRelay = match serde_json::from_str(&msg) {
-            Ok(p) => p,
-            Err(e) => {
-                tracing::warn!("Invalid LocalToRelay message: {e}");
-                continue;
-            }
-        };
-
-        match parsed {
-            LocalToRelay::HttpResponse { stream_id, .. } => {
-                if let Some(sender) = relay.pending_http.lock().await.remove(&stream_id) {
-                    let _ = sender.send(parsed);
-                }
-            }
-            LocalToRelay::WsOpened { stream_id }
-            | LocalToRelay::WsRejected { stream_id, .. }
-            | LocalToRelay::WsData { stream_id, .. }
-            | LocalToRelay::WsClose { stream_id } => {
-                if let Some(sender) = relay.active_ws.lock().await.get(&stream_id) {
-                    let _ = sender.send(parsed).await;
-                }
-            }
-            LocalToRelay::Pong { .. } => {
-                // Could update liveness tracker here
+            Err(error) => {
+                tracing::warn!(?error, %host_id, "relay session error");
+                break;
             }
         }
     }
+
+    registry.remove(&host_id).await;
+    let repo = HostRepository::new(state.pool());
+    if let Err(error) = repo.mark_host_offline(host_id).await {
+        tracing::warn!(?error, "failed to mark host offline");
+    }
+    tracing::info!(%host_id, "Relay control channel disconnected");
 }
 
-// ── Mine ───────────────────────────────────────────────────────────────
+// ── Session Auth Code ──────────────────────────────────────────────────
 
-/// Check if the authenticated user has an active relay.
-async fn relay_mine(
+/// Generate a one-time auth code for a relay session cookie exchange.
+async fn relay_session_auth_code(
     State(state): State<AppState>,
+    Path(session_id): Path<Uuid>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Response {
-    let registry = state.relay_registry();
-    let connected = registry.get(&ctx.user.id).await.is_some();
-
-    let relay_url = if connected {
-        state
-            .config
-            .relay_base_domain
-            .as_ref()
-            .map(|base| format!("https://{}.{base}/", ctx.user.id))
-    } else {
-        None
+    let relay_base_domain = match &state.config.relay_base_domain {
+        Some(base) => base,
+        None => return (StatusCode::NOT_FOUND, "Relay subdomains not configured").into_response(),
     };
 
-    Json(RelayStatus {
-        connected,
-        relay_url,
-    })
-    .into_response()
-}
+    let repo = HostRepository::new(state.pool());
+    let session = match repo.get_session_for_requester(session_id, ctx.user.id).await {
+        Ok(Some(session)) => session,
+        Ok(None) => return (StatusCode::NOT_FOUND, "Relay session not found").into_response(),
+        Err(error) => {
+            tracing::warn!(?error, "failed to load relay session");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
 
-// ── Auth Code ─────────────────────────────────────────────────────────
+    if session.ended_at.is_some() || session.state == "expired" {
+        return (StatusCode::GONE, "Relay session expired").into_response();
+    }
 
-/// Generate a one-time auth code for relay subdomain cookie exchange.
-async fn relay_auth_code(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-) -> Response {
+    if session.expires_at <= Utc::now() {
+        if let Err(error) = repo.mark_session_expired(session.id).await {
+            tracing::warn!(?error, "failed to mark relay session expired");
+        }
+        return (StatusCode::GONE, "Relay session expired").into_response();
+    }
+
     let registry = state.relay_registry();
+    if registry.get(&session.host_id).await.is_none() {
+        return (StatusCode::NOT_FOUND, "Host is not connected").into_response();
+    }
 
-    // Only issue codes when the user has an active relay
-    if registry.get(&ctx.user.id).await.is_none() {
-        return (StatusCode::NOT_FOUND, "No active relay").into_response();
+    if let Err(error) = repo.mark_session_active(session.id).await {
+        tracing::warn!(?error, "failed to mark relay session active");
+        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
     let relay_token = match state.jwt().generate_access_token(ctx.user.id, ctx.session_id) {
@@ -400,288 +285,114 @@ async fn relay_auth_code(
                 .into_response();
         }
     };
-    let code = registry.store_auth_code(ctx.user.id, relay_token).await;
+    let code = registry.store_auth_code(session.host_id, relay_token).await;
 
-    Json(serde_json::json!({ "code": code })).into_response()
-}
-
-// ── Proxy ──────────────────────────────────────────────────────────────
-
-const RELAY_PROXY_PREFIX: &str = "/v1/relay/proxy";
-
-/// Proxy HTTP and WebSocket requests through the relay to the local server.
-async fn relay_proxy(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-    request: Request,
-) -> Response {
-    do_relay_proxy_for_user(state, ctx.user.id, request, RELAY_PROXY_PREFIX).await
-}
-
-async fn do_relay_proxy_for_user(
-    state: AppState,
-    user_id: uuid::Uuid,
-    request: Request,
-    strip_prefix: &str,
-) -> Response {
-    let registry = state.relay_registry();
-
-    let relay = match registry.get(&user_id).await {
-        Some(r) => r,
-        None => {
-            return (StatusCode::NOT_FOUND, "No active relay").into_response();
-        }
-    };
-
-    if is_ws_upgrade_request(request.headers()) {
-        return handle_ws_relay(relay, request, strip_prefix).await;
-    }
-
-    handle_http_relay(relay, request, strip_prefix).await
-}
-
-async fn handle_http_relay(
-    relay: Arc<ActiveRelay>,
-    request: Request,
-    strip_prefix: &str,
-) -> Response {
-    let stream_id = relay.next_stream_id();
-
-    let (parts, body) = request.into_parts();
-
-    let full_path = normalized_relay_path(&parts.uri, strip_prefix);
-    let headers: Vec<(String, String)> = parts
-        .headers
-        .iter()
-        .filter(|(name, _)| !should_skip_request_header(name))
-        .filter_map(|(name, value)| {
-            value
-                .to_str()
-                .ok()
-                .map(|v| (name.to_string(), v.to_string()))
-        })
-        .collect();
-
-    // Read body
-    let body_bytes = match axum::body::to_bytes(body, 50 * 1024 * 1024).await {
-        Ok(b) => b.to_vec(),
-        Err(e) => {
-            tracing::error!("Failed to read request body: {e}");
-            return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
-        }
-    };
-
-    // Create oneshot channel for the response
-    let (resp_tx, resp_rx) = oneshot::channel();
-    relay.pending_http.lock().await.insert(stream_id, resp_tx);
-
-    // Send request to local server
-    let msg = RelayToLocal::HttpRequest {
-        stream_id,
-        method: parts.method.to_string(),
-        path: full_path,
-        headers,
-        body: Base64Bytes(body_bytes),
-    };
-
-    if relay.tx.send(msg).await.is_err() {
-        relay.pending_http.lock().await.remove(&stream_id);
-        return (StatusCode::BAD_GATEWAY, "Relay connection lost").into_response();
-    }
-
-    // Wait for response with timeout
-    match tokio::time::timeout(
-        std::time::Duration::from_secs(120),
-        resp_rx,
-    )
-    .await
-    {
-        Ok(Ok(LocalToRelay::HttpResponse {
-            status,
-            headers,
-            body,
-            ..
-        })) => {
-            let status_code =
-                StatusCode::from_u16(status).unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-
-            let mut response_headers = HeaderMap::new();
-            for (name, value) in &headers {
-                if !should_strip_response_header(name)
-                    && let (Ok(header_name), Ok(header_value)) = (
-                        HeaderName::try_from(name.as_str()),
-                        HeaderValue::from_str(value),
-                    )
-                {
-                    response_headers.insert(header_name, header_value);
-                }
-            }
-
-            let mut builder = Response::builder().status(status_code);
-            for (name, value) in response_headers.iter() {
-                builder = builder.header(name, value);
-            }
-
-            builder
-                .body(Body::from(body.0))
-                .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response())
-        }
-        Ok(Ok(_)) => {
-            // Unexpected message type
-            (StatusCode::BAD_GATEWAY, "Unexpected relay response").into_response()
-        }
-        Ok(Err(_)) => {
-            // Sender dropped (relay disconnected)
-            (StatusCode::BAD_GATEWAY, "Relay connection lost").into_response()
-        }
-        Err(_) => {
-            // Timeout
-            relay.pending_http.lock().await.remove(&stream_id);
-            (StatusCode::GATEWAY_TIMEOUT, "Relay request timed out").into_response()
-        }
-    }
-}
-
-async fn handle_ws_relay(
-    relay: Arc<ActiveRelay>,
-    request: Request,
-    strip_prefix: &str,
-) -> Response {
-    let (mut parts, _body) = request.into_parts();
-
-    let full_path = normalized_relay_path(&parts.uri, strip_prefix);
-    let headers: Vec<(String, String)> = parts
-        .headers
-        .iter()
-        .filter(|(name, _)| !should_skip_request_header(name))
-        .filter_map(|(name, value)| {
-            value
-                .to_str()
-                .ok()
-                .map(|v| (name.to_string(), v.to_string()))
-        })
-        .collect();
-
-    let ws = match WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
-        Ok(ws) => ws,
-        Err(e) => {
-            return (StatusCode::BAD_REQUEST, format!("WS upgrade failed: {e}")).into_response();
-        }
-    };
-
-    ws.on_upgrade(move |phone_socket| async move {
-        if let Err(e) = handle_ws_relay_connection(relay, phone_socket, full_path, headers).await {
-            tracing::warn!("WebSocket relay closed: {e}");
-        }
+    Json(RelaySessionAuthCodeResponse {
+        session_id: session.id,
+        relay_url: format!("https://{}.{relay_base_domain}/", session.host_id),
+        code,
     })
     .into_response()
 }
 
-async fn handle_ws_relay_connection(
-    relay: Arc<ActiveRelay>,
-    phone_socket: axum::extract::ws::WebSocket,
-    path: String,
-    headers: Vec<(String, String)>,
-) -> anyhow::Result<()> {
-    let stream_id = relay.next_stream_id();
+// ── Proxy ──────────────────────────────────────────────────────────────
 
-    // Create channel for messages coming back from local for this WS stream
-    let (ws_tx, mut ws_rx) = mpsc::channel::<LocalToRelay>(64);
-    relay.active_ws.lock().await.insert(stream_id, ws_tx);
-
-    // Tell local to open a WS connection
-    relay
-        .tx
-        .send(RelayToLocal::WsOpen {
-            stream_id,
-            path,
-            headers,
-        })
-        .await
-        .map_err(|_| anyhow::anyhow!("Relay disconnected"))?;
-
-    // Wait for WsOpened or WsRejected
-    let opened = match tokio::time::timeout(std::time::Duration::from_secs(30), ws_rx.recv()).await
-    {
-        Ok(Some(LocalToRelay::WsOpened { .. })) => true,
-        Ok(Some(LocalToRelay::WsRejected { .. })) => false,
-        _ => false,
+async fn do_relay_proxy_for_host(
+    state: AppState,
+    host_id: Uuid,
+    request: Request,
+    strip_prefix: &str,
+) -> Response {
+    let relay = match state.relay_registry().get(&host_id).await {
+        Some(relay) => relay,
+        None => return (StatusCode::NOT_FOUND, "No active relay").into_response(),
     };
 
-    if !opened {
-        relay.active_ws.lock().await.remove(&stream_id);
-        return Ok(());
-    }
+    proxy_over_yamux(relay, request, strip_prefix).await
+}
 
-    let (mut phone_sink, mut phone_stream) = phone_socket.split();
-
-    // Phone → Local: forward WS frames
-    let relay_tx = relay.tx.clone();
-    let phone_to_local = tokio::spawn(async move {
-        while let Some(msg_result) = phone_stream.next().await {
-            match msg_result {
-                Ok(axum::extract::ws::Message::Text(text)) => {
-                    let _ = relay_tx
-                        .send(RelayToLocal::WsData {
-                            stream_id,
-                            data: Base64Bytes(text.as_bytes().to_vec()),
-                            is_text: true,
-                        })
-                        .await;
-                }
-                Ok(axum::extract::ws::Message::Binary(data)) => {
-                    let _ = relay_tx
-                        .send(RelayToLocal::WsData {
-                            stream_id,
-                            data: Base64Bytes(data.to_vec()),
-                            is_text: false,
-                        })
-                        .await;
-                }
-                Ok(axum::extract::ws::Message::Close(_)) => {
-                    let _ = relay_tx.send(RelayToLocal::WsClose { stream_id }).await;
-                    break;
-                }
-                Ok(_) => continue,
-                Err(_) => break,
+async fn proxy_over_yamux(
+    relay: Arc<ActiveRelay>,
+    request: Request,
+    strip_prefix: &str,
+) -> Response {
+    let stream = {
+        let mut control = relay.control.lock().await;
+        match control.open_stream().await {
+            Ok(stream) => stream,
+            Err(error) => {
+                tracing::warn!(?error, "failed to open relay stream");
+                return (StatusCode::BAD_GATEWAY, "Relay connection lost").into_response();
             }
+        }
+    };
+
+    let (mut parts, body) = request.into_parts();
+    let path = normalized_relay_path(&parts.uri, strip_prefix);
+    parts.uri = match Uri::builder().path_and_query(path).build() {
+        Ok(uri) => uri,
+        Err(error) => {
+            tracing::warn!(?error, "failed to build relay proxy URI");
+            return (StatusCode::BAD_REQUEST, "Invalid request URI").into_response();
+        }
+    };
+
+    let mut outbound = Request::from_parts(parts, body);
+    let request_upgrade = upgrade::on(&mut outbound);
+
+    let (mut sender, connection) = match client_http1::Builder::new()
+        .handshake(TokioIo::new(stream))
+        .await
+    {
+        Ok(value) => value,
+        Err(error) => {
+            tracing::warn!(?error, "failed to initialize relay stream proxy connection");
+            return (StatusCode::BAD_GATEWAY, "Relay connection failed").into_response();
+        }
+    };
+
+    tokio::spawn(async move {
+        if let Err(error) = connection.with_upgrades().await {
+            tracing::debug!(?error, "relay stream connection closed");
         }
     });
 
-    // Local → Phone: forward WS frames
-    let local_to_phone = tokio::spawn(async move {
-        while let Some(msg) = ws_rx.recv().await {
-            match msg {
-                LocalToRelay::WsData {
-                    data, is_text, ..
-                } => {
-                    let ws_msg = if is_text {
-                        axum::extract::ws::Message::Text(
-                            String::from_utf8_lossy(&data.0).into_owned().into(),
-                        )
-                    } else {
-                        axum::extract::ws::Message::Binary(data.0.into())
-                    };
-                    if phone_sink.send(ws_msg).await.is_err() {
-                        break;
-                    }
-                }
-                LocalToRelay::WsClose { .. } => {
-                    let _ = phone_sink.close().await;
-                    break;
-                }
-                _ => continue,
-            }
+    let mut response = match sender.send_request(outbound).await {
+        Ok(response) => response,
+        Err(error) => {
+            tracing::warn!(?error, "relay proxy request failed");
+            return (StatusCode::BAD_GATEWAY, "Relay request failed").into_response();
         }
-    });
+    };
 
-    tokio::select! {
-        _ = phone_to_local => {}
-        _ = local_to_phone => {}
+    if response.status() == StatusCode::SWITCHING_PROTOCOLS {
+        let response_upgrade = upgrade::on(&mut response);
+        tokio::spawn(async move {
+            let Ok(from_phone) = request_upgrade.await else {
+                return;
+            };
+            let Ok(to_local) = response_upgrade.await else {
+                return;
+            };
+            let mut from_phone = TokioIo::new(from_phone);
+            let mut to_local = TokioIo::new(to_local);
+            let _ = tokio::io::copy_bidirectional(&mut from_phone, &mut to_local).await;
+        });
     }
 
-    // Cleanup
-    relay.active_ws.lock().await.remove(&stream_id);
+    let (parts, body) = response.into_parts();
+    Response::from_parts(parts, Body::new(body))
+}
 
-    Ok(())
+fn read_server_message(message: AxumWsMessage) -> WsIoReadMessage {
+    match message {
+        AxumWsMessage::Binary(data) => WsIoReadMessage::Data(data.to_vec()),
+        AxumWsMessage::Text(text) => WsIoReadMessage::Data(text.as_bytes().to_vec()),
+        AxumWsMessage::Close(_) => WsIoReadMessage::Eof,
+        _ => WsIoReadMessage::Skip,
+    }
+}
+
+fn write_server_message(bytes: Vec<u8>) -> AxumWsMessage {
+    AxumWsMessage::Binary(bytes.into())
 }

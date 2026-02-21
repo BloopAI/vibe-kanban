@@ -134,34 +134,72 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     // Start relay if requested
     if std::env::var("VK_TUNNEL").is_ok() {
-        match deployment.remote_client() {
-            Ok(remote_client) => {
-                // Check if logged in, open browser if not
-                let login_status = deployment.get_login_status().await;
-                if matches!(login_status, api_types::LoginStatus::LoggedOut) {
-                    tracing::info!("Relay mode requires login. Opening browser...");
-                    let _ = open_browser(&format!("http://127.0.0.1:{actual_main_port}")).await;
+        if let Ok(remote_client) = deployment.remote_client() {
+            // Check if logged in, open browser if not
+            let login_status = deployment.get_login_status().await;
+            if matches!(login_status, api_types::LoginStatus::LoggedOut) {
+                tracing::info!("Relay mode requires login. Opening browser...");
+                let _ = open_browser(&format!("http://127.0.0.1:{actual_main_port}")).await;
 
-                    // Poll until logged in (timeout after 120s)
-                    let start = std::time::Instant::now();
-                    loop {
-                        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                        let status = deployment.get_login_status().await;
-                        if !matches!(status, api_types::LoginStatus::LoggedOut) {
-                            tracing::info!("Login successful, starting relay...");
-                            break;
-                        }
-                        if start.elapsed() > std::time::Duration::from_secs(120) {
-                            tracing::error!(
-                                "Timed out waiting for login. Continuing without relay."
-                            );
-                            break;
-                        }
+                // Poll until logged in (timeout after 120s)
+                let start = std::time::Instant::now();
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                    let status = deployment.get_login_status().await;
+                    if !matches!(status, api_types::LoginStatus::LoggedOut) {
+                        tracing::info!("Login successful, starting relay...");
+                        break;
+                    }
+                    if start.elapsed() > std::time::Duration::from_secs(120) {
+                        tracing::error!("Timed out waiting for login. Continuing without relay.");
+                        break;
                     }
                 }
+            }
 
-                match tunnel::start_relay(actual_main_port, &remote_client, shutdown_token.clone())
-                    .await
+            let local_identity = deployment.user_id();
+            let host_name = format!("{} local ({local_identity})", env!("CARGO_PKG_NAME"));
+
+            let existing_host_id = match remote_client.list_relay_hosts().await {
+                Ok(response) => response
+                    .hosts
+                    .into_iter()
+                    .find(|host| host.name == host_name)
+                    .map(|host| host.id),
+                Err(error) => {
+                    tracing::warn!(?error, "Failed to list relay hosts");
+                    None
+                }
+            };
+
+            let maybe_host_id = if let Some(host_id) = existing_host_id {
+                Some(host_id)
+            } else {
+                let create_host = api_types::CreateRelayHostRequest {
+                    name: host_name,
+                    agent_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+                };
+
+                match remote_client.create_relay_host(&create_host).await {
+                    Ok(host) => Some(host.id),
+                    Err(error) => {
+                        tracing::error!(?error, "Failed to register relay host");
+                        tracing::error!(
+                            "Continuing without relay because host registration failed."
+                        );
+                        None
+                    }
+                }
+            };
+
+            if let Some(host_id) = maybe_host_id {
+                match tunnel::start_relay(
+                    actual_main_port,
+                    &remote_client,
+                    host_id,
+                    shutdown_token.clone(),
+                )
+                .await
                 {
                     Ok(()) => {
                         tracing::info!("Relay connected to remote server");
@@ -172,11 +210,10 @@ async fn main() -> Result<(), VibeKanbanError> {
                     }
                 }
             }
-            Err(_) => {
-                tracing::error!(
-                    "VK_TUNNEL requires VK_SHARED_API_BASE to be set. Continuing without relay."
-                );
-            }
+        } else {
+            tracing::error!(
+                "VK_TUNNEL requires VK_SHARED_API_BASE to be set. Continuing without relay."
+            );
         }
     }
 

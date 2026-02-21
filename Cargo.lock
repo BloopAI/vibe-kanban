@@ -4805,6 +4805,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nohash-hasher"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451"
+
+[[package]]
 name = "nom"
 version = "7.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6685,6 +6691,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "rmp"
+version = "0.8.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ba8be72d372b2c9b35542551678538b562e7cf86c3315773cae48dfbfe7790c"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
+name = "rmp-serde"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72f81bee8c8ef9b577d1681a70ebbc962c232461e397b22c208c43c04b67a155"
+dependencies = [
+ "rmp",
+ "serde",
+]
+
+[[package]]
 name = "rsa"
 version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7426,15 +7451,20 @@ dependencies = [
  "api-types",
  "axum",
  "base64",
+ "bytes",
  "chrono",
  "db",
  "deployment",
  "dotenv",
  "executors",
+ "futures",
  "futures-util",
  "git",
  "git-host",
  "git2",
+ "http",
+ "hyper",
+ "hyper-util",
  "local-deployment",
  "mime_guess",
  "native-tls",
@@ -7442,6 +7472,7 @@ dependencies = [
  "rand 0.8.5",
  "regex",
  "reqwest",
+ "rmp-serde",
  "rust-embed",
  "rustls",
  "schemars 1.2.1",
@@ -7457,6 +7488,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.24.0",
  "tokio-util",
+ "tokio-yamux",
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
@@ -8557,6 +8589,21 @@ dependencies = [
  "futures-util",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tokio-yamux"
+version = "0.3.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "63c31635b5c26807b3b15619bf22a76e2761c36bff915f3e3d54e79655410b74"
+dependencies = [
+ "bytes",
+ "futures",
+ "log",
+ "nohash-hasher",
+ "tokio",
+ "tokio-util",
+ "web-time",
 ]
 
 [[package]]

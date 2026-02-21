@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE relay_sessions\n            SET state = 'expired',\n                ended_at = COALESCE(ended_at, NOW())\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5ba9186639e75711df9218209ad88f91f54f9643ecf5f53af1e7bfc583727a7c"
+}

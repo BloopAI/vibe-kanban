@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE hosts\n            SET status = 'online',\n                last_seen_at = NOW(),\n                agent_version = COALESCE($2, agent_version),\n                updated_at = NOW()\n            WHERE id = $1\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c2e6a8fc112e4e2980e4dc3f1dae1ea7da376119b0f06aafbc74c7a471f17ad"
+}

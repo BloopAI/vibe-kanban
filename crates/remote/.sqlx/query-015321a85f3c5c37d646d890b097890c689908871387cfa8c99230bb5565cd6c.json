@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                h.id            AS \"id!: Uuid\",\n                h.owner_user_id AS \"owner_user_id!: Uuid\",\n                h.name,\n                h.status,\n                h.last_seen_at,\n                h.agent_version,\n                h.created_at,\n                h.updated_at,\n                COALESCE(hm.role, 'owner') AS \"access_role!\"\n            FROM hosts h\n            LEFT JOIN host_memberships hm ON hm.host_id = h.id AND hm.user_id = $1\n            WHERE h.owner_user_id = $1 OR hm.user_id = $1\n            ORDER BY h.last_seen_at DESC NULLS LAST, h.created_at DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "owner_user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "status",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_seen_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "agent_version",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "access_role!",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "015321a85f3c5c37d646d890b097890c689908871387cfa8c99230bb5565cd6c"
+}

@@ -1,6 +1,7 @@
 import type { ReviewResult } from "./types/review";
 import { clearTokens } from "./auth";
 import { getToken, triggerRefresh } from "./tokenManager";
+import type { HostWithAccess, RelaySession } from "shared/remote-types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -569,21 +570,38 @@ export async function fetchGitHubAppRepositories(
 }
 
 // Relay APIs
-export async function getRelayStatus(): Promise<{
-  connected: boolean;
-  relay_url?: string;
-}> {
-  const res = await authenticatedFetch(`${API_BASE}/v1/relay/mine`);
+export async function listRelayHosts(): Promise<{ hosts: HostWithAccess[] }> {
+  const res = await authenticatedFetch(`${API_BASE}/v1/hosts`);
   if (!res.ok) {
-    throw new Error(`Failed to check relay status (${res.status})`);
+    throw new Error(`Failed to list relay hosts (${res.status})`);
   }
   return res.json();
 }
 
-export async function getRelayAuthCode(): Promise<{ code: string }> {
-  const res = await authenticatedFetch(`${API_BASE}/v1/relay/auth-code`, {
-    method: "POST",
-  });
+export async function createRelaySession(
+  hostId: string,
+): Promise<{ session: RelaySession }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/hosts/${hostId}/sessions`,
+    {
+      method: "POST",
+    },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to create relay session (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function createRelaySessionAuthCode(
+  sessionId: string,
+): Promise<{ session_id: string; relay_url: string; code: string }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/relay/sessions/${sessionId}/auth-code`,
+    {
+      method: "POST",
+    },
+  );
   if (!res.ok) {
     throw new Error(`Failed to get relay auth code (${res.status})`);
   }

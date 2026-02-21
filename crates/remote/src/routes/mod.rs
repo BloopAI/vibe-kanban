@@ -16,7 +16,11 @@ use tower_http::{
 };
 use tracing::{Level, Span, field};
 
-use crate::{AppState, auth::require_session, routes::relay::extract_relay_subdomain};
+use crate::{
+    AppState,
+    auth::require_session,
+    routes::relay::extract_relay_host_id,
+};
 
 #[cfg(feature = "vk-billing")]
 mod billing;
@@ -178,7 +182,7 @@ pub fn router(state: AppState) -> Router {
 }
 
 /// Middleware that intercepts requests on relay subdomains.
-/// If the Host header matches `{user_id}.{relay_base_domain}`, the request
+/// If the Host header matches `{host_id}.{relay_base_domain}`, the request
 /// is handled by the relay proxy. Otherwise it passes through normally.
 async fn relay_subdomain_middleware(
     state: axum::extract::State<AppState>,
@@ -192,8 +196,8 @@ async fn relay_subdomain_middleware(
             .map(|h| h.hostname().to_owned())
             .unwrap_or_default();
 
-        if extract_relay_subdomain(&host, relay_base_domain).is_some() {
-            return relay::relay_subdomain_proxy(state, request).await;
+        if let Some(host_id) = extract_relay_host_id(&host, relay_base_domain) {
+            return relay::relay_subdomain_proxy(state, request, host_id).await;
         }
     }
 

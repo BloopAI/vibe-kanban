@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { isLoggedIn } from "../auth";
 import {
+  createRelaySession,
+  createRelaySessionAuthCode,
   initOAuth,
-  getRelayStatus,
-  getRelayAuthCode,
+  listRelayHosts,
   type OAuthProvider,
 } from "../api";
 import { generateVerifier, generateChallenge, storeVerifier } from "../pkce";
@@ -25,16 +26,21 @@ export default function RelayPage() {
 
   async function checkRelay() {
     try {
-      const status = await getRelayStatus();
-      if (status.connected && status.relay_url) {
-        // Get a one-time auth code and redirect to the relay subdomain.
-        // The relay server exchanges the code for a cookie on its domain.
-        const { code } = await getRelayAuthCode();
-        const url = new URL(status.relay_url);
-        url.searchParams.set("code", code);
-        window.location.href = url.toString();
+      const { hosts } = await listRelayHosts();
+      const connectedHost = hosts.find((host) => host.status === "online");
+      if (!connectedHost) {
+        setLoading(false);
         return;
       }
+
+      const { session } = await createRelaySession(connectedHost.id);
+      const { relay_url, code } = await createRelaySessionAuthCode(session.id);
+
+      // Exchange one-time code for relay cookie on the relay subdomain.
+      const url = new URL(relay_url);
+      url.searchParams.set("code", code);
+      window.location.href = url.toString();
+      return;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to check relay");
     }
@@ -125,10 +131,10 @@ export default function RelayPage() {
 
         <div className="bg-gray-50 rounded-lg p-4">
           <p className="text-sm text-gray-700 mb-2">
-            Start your local server with relay mode enabled:
+            Start your local server with relay mode enabled and the host ID:
           </p>
           <code className="block bg-gray-900 text-green-400 rounded px-3 py-2 text-sm font-mono">
-            VK_TUNNEL=1 vibe-kanban
+            VK_TUNNEL=1 VK_TUNNEL_HOST_ID=&lt;host-id&gt; vibe-kanban
           </code>
         </div>
 

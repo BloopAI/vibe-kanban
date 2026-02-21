@@ -1,55 +1,39 @@
-//! In-memory relay registry for active WebSocket relay connections.
+//! In-memory relay registry for active tunnel connections.
 //!
 //! Each connected local server gets an `ActiveRelay` entry. The remote
-//! relay proxy looks up relays by user ID (from JWT) to route traffic.
+//! relay proxy looks up relays by host ID and opens yamux streams over
+//! the existing control connection.
 
 use std::{
     collections::HashMap,
-    sync::{
-        Arc,
-        atomic::{AtomicU64, Ordering},
-    },
+    sync::Arc,
     time::Instant,
 };
 
-use api_types::{LocalToRelay, RelayToLocal};
-use tokio::sync::{Mutex, mpsc, oneshot};
+use tokio::sync::Mutex;
+use tokio_yamux::Control;
 use uuid::Uuid;
 
 /// An active relay connection from a local server.
 pub struct ActiveRelay {
-    /// Send messages to the local server through the control channel.
-    pub tx: mpsc::Sender<RelayToLocal>,
-    /// Pending HTTP request/response pairs, keyed by stream_id.
-    pub pending_http: Mutex<HashMap<u64, oneshot::Sender<LocalToRelay>>>,
-    /// Active WebSocket streams, keyed by stream_id.
-    pub active_ws: Mutex<HashMap<u64, mpsc::Sender<LocalToRelay>>>,
-    /// Monotonically increasing stream ID counter.
-    next_stream_id: AtomicU64,
+    /// Open yamux streams to the connected local host.
+    pub control: Mutex<Control>,
 }
 
 impl ActiveRelay {
-    pub fn new(tx: mpsc::Sender<RelayToLocal>) -> Self {
+    pub fn new(control: Control) -> Self {
         Self {
-            tx,
-            pending_http: Mutex::new(HashMap::new()),
-            active_ws: Mutex::new(HashMap::new()),
-            next_stream_id: AtomicU64::new(1),
+            control: Mutex::new(control),
         }
-    }
-
-    /// Allocate a new unique stream ID.
-    pub fn next_stream_id(&self) -> u64 {
-        self.next_stream_id.fetch_add(1, Ordering::Relaxed)
     }
 }
 
-/// Registry of all active relay connections, indexed by user ID.
+/// Registry of all active relay connections, indexed by host ID.
 #[derive(Default, Clone)]
 pub struct RelayRegistry {
     inner: Arc<Mutex<HashMap<Uuid, Arc<ActiveRelay>>>>,
     /// One-time auth codes for relay subdomain cookie exchange.
-    /// Maps code → (user_id, relay_token, created_at).
+    /// Maps code → (host_id, relay_token, created_at).
     auth_codes: Arc<Mutex<HashMap<String, (Uuid, String, Instant)>>>,
 }
 
@@ -57,38 +41,38 @@ pub struct RelayRegistry {
 const AUTH_CODE_TTL_SECS: u64 = 30;
 
 impl RelayRegistry {
-    /// Register a relay for a user. Replaces any existing relay for that user.
-    pub async fn insert(&self, user_id: Uuid, relay: Arc<ActiveRelay>) {
-        self.inner.lock().await.insert(user_id, relay);
+    /// Register a relay for a host. Replaces any existing relay for that host.
+    pub async fn insert(&self, host_id: Uuid, relay: Arc<ActiveRelay>) {
+        self.inner.lock().await.insert(host_id, relay);
     }
 
-    /// Remove the relay for a user.
-    pub async fn remove(&self, user_id: &Uuid) {
-        self.inner.lock().await.remove(user_id);
+    /// Remove the relay for a host.
+    pub async fn remove(&self, host_id: &Uuid) {
+        self.inner.lock().await.remove(host_id);
     }
 
-    /// Look up the active relay for a user.
-    pub async fn get(&self, user_id: &Uuid) -> Option<Arc<ActiveRelay>> {
-        self.inner.lock().await.get(user_id).cloned()
+    /// Look up the active relay for a host.
+    pub async fn get(&self, host_id: &Uuid) -> Option<Arc<ActiveRelay>> {
+        self.inner.lock().await.get(host_id).cloned()
     }
 
     /// Store a one-time auth code. Returns the code string.
-    pub async fn store_auth_code(&self, user_id: Uuid, relay_token: String) -> String {
+    pub async fn store_auth_code(&self, host_id: Uuid, relay_token: String) -> String {
         let code = Uuid::new_v4().to_string();
         let mut codes = self.auth_codes.lock().await;
-        // Garbage-collect expired codes while we're here
+        // Garbage-collect expired codes while we're here.
         codes.retain(|_, (_, _, created)| created.elapsed().as_secs() < AUTH_CODE_TTL_SECS);
-        codes.insert(code.clone(), (user_id, relay_token, Instant::now()));
+        codes.insert(code.clone(), (host_id, relay_token, Instant::now()));
         code
     }
 
-    /// Consume a one-time auth code. Returns (user_id, relay_token) if valid.
+    /// Consume a one-time auth code. Returns (host_id, relay_token) if valid.
     pub async fn redeem_auth_code(&self, code: &str) -> Option<(Uuid, String)> {
         let mut codes = self.auth_codes.lock().await;
-        let (user_id, token, created) = codes.remove(code)?;
+        let (host_id, token, created) = codes.remove(code)?;
         if created.elapsed().as_secs() >= AUTH_CODE_TTL_SECS {
-            return None; // Expired
+            return None;
         }
-        Some((user_id, token))
+        Some((host_id, token))
     }
 }

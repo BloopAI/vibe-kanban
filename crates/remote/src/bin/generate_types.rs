@@ -13,6 +13,7 @@ use api_types::{
     User, UserData, Workspace,
 };
 use remote::{
+    db::hosts::{Host, HostWithAccess, RelaySession},
     routes::{
         all_mutation_definitions,
         attachments::{
@@ -92,6 +93,9 @@ fn export_shapes() -> String {
         PullRequest::decl(),
         UserData::decl(),
         User::decl(),
+        Host::decl(),
+        HostWithAccess::decl(),
+        RelaySession::decl(),
         MemberRole::decl(),
         OrganizationMember::decl(),
         // Mutation request types

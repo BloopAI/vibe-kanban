@@ -26,7 +26,7 @@ CREATE TABLE relay_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     host_id UUID NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
     request_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    state TEXT NOT NULL CHECK (state IN ('requested', 'claimed', 'active', 'closed', 'expired')),
+    state TEXT NOT NULL CHECK (state IN ('requested', 'active', 'expired')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMPTZ NOT NULL,
     claimed_at TIMESTAMPTZ,

@@ -4,8 +4,9 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
+use api_types::CreateRelayHostRequest;
 use chrono::{Duration, Utc};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use uuid::Uuid;
 
 use super::error::ErrorResponse;
@@ -19,13 +20,6 @@ use crate::{
 };
 
 const RELAY_SESSION_TTL_SECS: i64 = 120;
-
-#[derive(Debug, Deserialize)]
-struct CreateHostRequest {
-    name: String,
-    #[serde(default)]
-    agent_version: Option<String>,
-}
 
 #[derive(Debug, Serialize)]
 struct ListHostsResponse {
@@ -59,7 +53,7 @@ async fn list_hosts(
 async fn create_host(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Json(payload): Json<CreateHostRequest>,
+    Json(payload): Json<CreateRelayHostRequest>,
 ) -> Result<(StatusCode, Json<Host>), ErrorResponse> {
     let name = payload.name.trim();
     if name.is_empty() || name.len() > 200 {
