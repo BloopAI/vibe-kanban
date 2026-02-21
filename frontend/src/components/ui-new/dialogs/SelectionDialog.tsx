@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { CommandDialog } from '@/components/ui-new/primitives/Command';
+import { CommandDialog } from '@vibe/ui/components/Command';
 import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import type {
   ResolvedGroup,

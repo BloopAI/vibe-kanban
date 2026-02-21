@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { Dialog, DialogContent } from '@vibe/ui/components/Dialog';
+import { cn } from '../lib/cn';
+import { Dialog, DialogContent } from './Dialog';
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,

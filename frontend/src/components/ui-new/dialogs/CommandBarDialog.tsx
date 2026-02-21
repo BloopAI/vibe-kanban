@@ -4,7 +4,7 @@ import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { defineModal } from '@/lib/modals';
-import { CommandDialog } from '@/components/ui-new/primitives/Command';
+import { CommandDialog } from '@vibe/ui/components/Command';
 import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';

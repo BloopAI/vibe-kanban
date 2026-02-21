@@ -5,7 +5,7 @@ import {
   ProjectProvider,
   useProjectContext,
 } from '@/contexts/remote/ProjectContext';
-import { CommandDialog } from '@/components/ui-new/primitives/Command';
+import { CommandDialog } from '@vibe/ui/components/Command';
 import { CommandBar } from '@/components/ui-new/primitives/CommandBar';
 import type {
   StatusItem,

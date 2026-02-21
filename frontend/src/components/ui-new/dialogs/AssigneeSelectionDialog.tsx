@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { defineModal } from '@/lib/modals';
-import { CommandDialog } from '@/components/ui-new/primitives/Command';
+import { CommandDialog } from '@vibe/ui/components/Command';
 import {
   MultiSelectCommandBar,
   type MultiSelectOption,

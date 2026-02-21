@@ -22,7 +22,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from '@/components/ui-new/primitives/Command';
+} from '@vibe/ui/components/Command';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import {
   ProjectProvider,

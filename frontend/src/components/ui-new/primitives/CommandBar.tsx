@@ -19,7 +19,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandShortcut,
-} from './Command';
+} from '@vibe/ui/components/Command';
 import type { ActionDefinition, ActionIcon } from '../actions';
 import { isSpecialIcon } from '../actions';
 import type {

@@ -8,7 +8,7 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from './Command';
+} from '@vibe/ui/components/Command';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 export interface MultiSelectOption<T extends string = string> {

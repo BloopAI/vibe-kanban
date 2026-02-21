@@ -1119,3 +1119,45 @@ Validation:
 Plan adjustments from new information:
 - `Command` is now unblocked by the `Dialog` migration and should be the next `extract-now` candidate.
 - `IconButtonGroup` still depends on unextracted `Tooltip`, so `Tooltip` remains the parallel dependency-unblocking path.
+
+## 2026-02-21 - UI package extraction: Command
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/Command.tsx` as the next `extract-now` component after `Dialog` unblocked it.
+- Dependency surface was clear (`cmdk`, `Dialog`, `cn`, `@phosphor-icons/react`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Command.tsx packages/ui/src/components/Command.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Command.tsx` to use package-local imports (`../lib/cn`, `./Dialog`).
+  - Added `cmdk` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/primitives/CommandBar.tsx`
+  - `frontend/src/components/ui-new/primitives/MultiSelectCommandBar.tsx`
+  - `frontend/src/components/ui-new/dialogs/SelectionDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/WorkspaceSelectionDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/CommandBarDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/AssigneeSelectionDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Remaining unmoved `extract-now` primitive is `IconButtonGroup`, which remains blocked by unextracted `Tooltip`.
+- Next dependency-unblocking candidate should be `ui-new/primitives/Tooltip.tsx`.
