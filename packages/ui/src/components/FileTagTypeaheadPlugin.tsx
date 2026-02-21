@@ -1,11 +1,4 @@
-import {
-  useState,
-  useCallback,
-  useContext,
-  useMemo,
-  useEffect,
-  useRef,
-} from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
@@ -25,48 +18,83 @@ import {
   GearIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
-import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
 import { useTranslation } from 'react-i18next';
-import type { Repo } from 'shared/types';
-import type { RepoItem } from '@/components/ui-new/actions/pages';
-import {
-  SelectionDialog,
-  type SelectionPage,
-} from '@/components/ui-new/dialogs/SelectionDialog';
-import {
-  buildRepoSelectionPages,
-  type RepoSelectionResult,
-} from '@/components/ui-new/dialogs/selections/repoSelection';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { WorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useTypeaheadOpen } from '@vibe/ui/components/TypeaheadOpenContext';
-import { repoApi } from '@/lib/api';
-import {
-  searchTagsAndFiles,
-  type SearchResultItem,
-} from '@/lib/searchTagsAndFiles';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
-import { TypeaheadMenu } from '@vibe/ui/components/TypeaheadMenu';
-
-class FileTagOption extends MenuOption {
-  item: SearchResultItem;
-
-  constructor(item: SearchResultItem) {
-    const key =
-      item.type === 'tag' ? `tag-${item.tag!.id}` : `file-${item.file!.path}`;
-    super(key);
-    this.item = item;
-  }
-}
+import { useTypeaheadOpen } from './TypeaheadOpenContext';
+import { TypeaheadMenu } from './TypeaheadMenu';
 
 const MAX_FILE_RESULTS = 10;
 
-interface DiffFileResult {
+type DiffFileResult = {
   path: string;
   name: string;
   is_file: boolean;
   match_type: 'FileName' | 'DirectoryName' | 'FullPath';
   score: bigint;
+};
+
+export type FileTagLike = {
+  id: string | number;
+  tag_name: string;
+  content: string;
+};
+
+export type FileResultLike = {
+  path: string;
+  name: string;
+  is_file: boolean;
+  match_type: 'FileName' | 'DirectoryName' | 'FullPath';
+  score: bigint | number;
+};
+
+export type SearchResultItemLike =
+  | {
+      type: 'tag';
+      tag: FileTagLike;
+    }
+  | {
+      type: 'file';
+      file: FileResultLike;
+    };
+
+export type RepoLike = {
+  id: string;
+  name: string;
+  display_name?: string | null;
+};
+
+type ChooseRepoResult = {
+  repoId: string;
+};
+
+type SearchArgs = {
+  repoIds?: string[];
+};
+
+type FileTagTypeaheadPluginProps = {
+  repoIds?: string[];
+  diffPaths?: Set<string>;
+  portalContainer?: HTMLElement | null;
+  preferredRepoId?: string | null;
+  setPreferredRepoId?: (repoId: string | null) => void;
+  listRecentRepos?: () => Promise<RepoLike[]>;
+  getRepoById?: (repoId: string) => Promise<RepoLike | null>;
+  chooseRepo?: (repos: RepoLike[]) => Promise<ChooseRepoResult | undefined>;
+  onCreateTag?: () => Promise<boolean>;
+  searchTagsAndFiles?: (
+    query: string,
+    args: SearchArgs
+  ) => Promise<SearchResultItemLike[]>;
+};
+
+class FileTagOption extends MenuOption {
+  item: SearchResultItemLike;
+
+  constructor(item: SearchResultItemLike) {
+    const key =
+      item.type === 'tag' ? `tag-${item.tag.id}` : `file-${item.file.path}`;
+    super(key);
+    this.item = item;
+  }
 }
 
 function getMatchingDiffFiles(
@@ -91,27 +119,31 @@ function getMatchingDiffFiles(
         name,
         is_file: true,
         match_type: nameMatches ? ('FileName' as const) : ('FullPath' as const),
-        // High score to rank diff files above server results
+        // High score to rank diff files above server results.
         score: BigInt(Number.MAX_SAFE_INTEGER),
       };
     });
 }
 
-function getRepoDisplayName(repo: Repo): string {
+function getRepoDisplayName(repo: RepoLike): string {
   return repo.display_name || repo.name;
 }
 
-function toRepoItem(repo: Repo): RepoItem {
-  return {
-    id: repo.id,
-    display_name: getRepoDisplayName(repo),
-  };
-}
-
-export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
+export function FileTagTypeaheadPlugin({
+  repoIds,
+  diffPaths,
+  portalContainer,
+  preferredRepoId,
+  setPreferredRepoId,
+  listRecentRepos,
+  getRepoById,
+  chooseRepo,
+  onCreateTag,
+  searchTagsAndFiles,
+}: FileTagTypeaheadPluginProps) {
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
-  const [recentRepoCatalog, setRecentRepoCatalog] = useState<Repo[] | null>(
+  const [recentRepoCatalog, setRecentRepoCatalog] = useState<RepoLike[] | null>(
     null
   );
   const [preferredRepoName, setPreferredRepoName] = useState<string | null>(
@@ -119,44 +151,42 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
   );
   const [showMissingRepoState, setShowMissingRepoState] = useState(false);
   const [isChoosingRepo, setIsChoosingRepo] = useState(false);
-  const portalContainer = usePortalContainer();
   const { t } = useTranslation('common');
   const { setIsOpen } = useTypeaheadOpen();
   const searchRequestRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
-  // Use context directly to gracefully handle missing WorkspaceProvider (old UI)
-  const workspaceContext = useContext(WorkspaceContext);
-  const diffPaths = useMemo(
-    () => workspaceContext?.diffPaths ?? new Set<string>(),
-    [workspaceContext?.diffPaths]
-  );
-  const preferredRepoId = useUiPreferencesStore(
-    (state) => state.fileSearchRepoId
-  );
-  const setFileSearchRepo = useUiPreferencesStore(
-    (state) => state.setFileSearchRepo
-  );
+
+  const effectiveDiffPaths = useMemo(() => diffPaths ?? new Set<string>(), [diffPaths]);
   const usePreferenceRepoSelection = repoIds === undefined;
+  const canManageRepoPreference =
+    usePreferenceRepoSelection &&
+    !!setPreferredRepoId &&
+    !!listRecentRepos &&
+    !!chooseRepo;
 
   const effectiveRepoIds = useMemo(() => {
     if (!usePreferenceRepoSelection) {
       return repoIds;
     }
     return preferredRepoId ? [preferredRepoId] : undefined;
-  }, [repoIds, preferredRepoId, usePreferenceRepoSelection]);
+  }, [preferredRepoId, repoIds, usePreferenceRepoSelection]);
 
   const canSearchFiles = Boolean(effectiveRepoIds && effectiveRepoIds.length);
 
   const loadRecentRepos = useCallback(
-    async (force = false): Promise<Repo[]> => {
+    async (force = false): Promise<RepoLike[]> => {
       if (!force && recentRepoCatalog !== null) {
         return recentRepoCatalog;
       }
-      const repos = await repoApi.listRecent();
+      if (!listRecentRepos) {
+        setRecentRepoCatalog([]);
+        return [];
+      }
+      const repos = await listRecentRepos();
       setRecentRepoCatalog(repos);
       return repos;
     },
-    [recentRepoCatalog]
+    [listRecentRepos, recentRepoCatalog]
   );
 
   const runSearch = useCallback(
@@ -167,35 +197,30 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
         scopedRepoIds && scopedRepoIds.length > 0
       );
 
-      // Get local diff files first (files from current workspace changes)
       const localFiles = fileSearchEnabled
-        ? getMatchingDiffFiles(query, diffPaths)
+        ? getMatchingDiffFiles(query, effectiveDiffPaths)
         : [];
       const localFilePaths = new Set(localFiles.map((f) => f.path));
 
       try {
-        // Here query is a string, including possible empty string ''
-        const serverResults = await searchTagsAndFiles(query, {
-          repoIds: scopedRepoIds,
-        });
+        const serverResults = searchTagsAndFiles
+          ? await searchTagsAndFiles(query, { repoIds: scopedRepoIds })
+          : [];
 
         if (requestId !== searchRequestRef.current) {
           return;
         }
 
-        // Separate tags and files from server results
         const tagResults = serverResults.filter((r) => r.type === 'tag');
         const serverFileResults = serverResults
           .filter((r) => r.type === 'file')
-          .filter((r) => !localFilePaths.has(r.file!.path)); // Dedupe
+          .filter((r) => !localFilePaths.has(r.file.path));
 
-        // Limit total file results: prioritize local diff files
         const limitedLocalFiles = localFiles.slice(0, MAX_FILE_RESULTS);
         const remainingSlots = MAX_FILE_RESULTS - limitedLocalFiles.length;
         const limitedServerFiles = serverFileResults.slice(0, remainingSlots);
 
-        // Build merged results: tags, then local files (ranked higher), then server files
-        const mergedResults: SearchResultItem[] = [
+        const mergedResults: SearchResultItemLike[] = [
           ...tagResults,
           ...limitedLocalFiles.map((file) => ({
             type: 'file' as const,
@@ -204,7 +229,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
           ...limitedServerFiles,
         ];
 
-        setOptions(mergedResults.map((r) => new FileTagOption(r)));
+        setOptions(mergedResults.map((result) => new FileTagOption(result)));
       } catch (err) {
         if (requestId === searchRequestRef.current) {
           setOptions([]);
@@ -216,11 +241,11 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
         });
       }
     },
-    [diffPaths, effectiveRepoIds]
+    [effectiveDiffPaths, effectiveRepoIds, searchTagsAndFiles]
   );
 
   useEffect(() => {
-    if (!usePreferenceRepoSelection || !preferredRepoId) {
+    if (!usePreferenceRepoSelection || !preferredRepoId || !listRecentRepos) {
       if (!preferredRepoId) {
         setPreferredRepoName(null);
       }
@@ -241,14 +266,9 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
           return;
         }
 
-        // Not all valid repos are guaranteed to be in /repos/recent.
-        // Check repo existence directly before clearing the saved preference.
-        let existingRepo: Repo | null = null;
-        try {
-          existingRepo = await repoApi.getById(preferredRepoId);
-        } catch {
-          existingRepo = null;
-        }
+        const existingRepo = getRepoById
+          ? await getRepoById(preferredRepoId)
+          : null;
 
         if (canceled) return;
         if (existingRepo) {
@@ -259,7 +279,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
 
         setPreferredRepoName(null);
         setShowMissingRepoState(true);
-        setFileSearchRepo(null);
+        setPreferredRepoId?.(null);
 
         const queryToRefresh = lastQueryRef.current;
         if (queryToRefresh !== null) {
@@ -274,24 +294,24 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
       canceled = true;
     };
   }, [
+    getRepoById,
+    listRecentRepos,
     loadRecentRepos,
     preferredRepoId,
     runSearch,
-    setFileSearchRepo,
+    setPreferredRepoId,
     usePreferenceRepoSelection,
   ]);
 
   const handleChooseRepo = useCallback(async () => {
+    if (!chooseRepo || !setPreferredRepoId) {
+      return;
+    }
+
     setIsChoosingRepo(true);
     try {
       const repos = await loadRecentRepos(true);
-      const repoResult = (await SelectionDialog.show({
-        initialPageId: 'selectRepo',
-        pages: buildRepoSelectionPages(repos.map(toRepoItem)) as Record<
-          string,
-          SelectionPage
-        >,
-      })) as RepoSelectionResult | undefined;
+      const repoResult = await chooseRepo(repos);
 
       if (!repoResult?.repoId) {
         return;
@@ -302,7 +322,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
         return;
       }
 
-      setFileSearchRepo(selectedRepo.id);
+      setPreferredRepoId(selectedRepo.id);
       setPreferredRepoName(getRepoDisplayName(selectedRepo));
       setShowMissingRepoState(false);
 
@@ -315,7 +335,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
     } finally {
       setIsChoosingRepo(false);
     }
-  }, [loadRecentRepos, runSearch, setFileSearchRepo]);
+  }, [chooseRepo, loadRecentRepos, runSearch, setPreferredRepoId]);
 
   const closeTypeahead = useCallback(() => {
     editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown'));
@@ -323,22 +343,25 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
 
   const handleCreateTag = useCallback(async () => {
     closeTypeahead();
+    if (!onCreateTag) {
+      return;
+    }
+
     try {
-      const result = await TagEditDialog.show({ tag: null });
-      if (result === 'saved') {
+      const saved = await onCreateTag();
+      if (saved) {
         const queryToRefresh = lastQueryRef.current;
         if (queryToRefresh !== null) {
           void runSearch(queryToRefresh);
         }
       }
     } catch {
-      // User cancelled
+      // User cancelled.
     }
-  }, [closeTypeahead, runSearch]);
+  }, [closeTypeahead, onCreateTag, runSearch]);
 
   const onQueryChange = useCallback(
     (query: string | null) => {
-      // Lexical uses null to indicate "no active query / close menu"
       if (query === null) {
         setOptions([]);
         return;
@@ -353,7 +376,6 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
   return (
     <LexicalTypeaheadMenuPlugin<FileTagOption>
       triggerFn={(text) => {
-        // Match @ followed by any non-whitespace characters
         const match = /(?:^|\s)@([^\s@]*)$/.exec(text);
         if (!match) return null;
         const offset = match.index + match[0].indexOf('@');
@@ -372,36 +394,27 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
           if (!nodeToReplace) return;
 
           if (option.item.type === 'tag') {
-            // For tags, keep the existing behavior (insert tag content as plain text)
-            const textToInsert = option.item.tag?.content ?? '';
+            const textToInsert = option.item.tag.content ?? '';
             const textNode = $createTextNode(textToInsert);
             nodeToReplace.replace(textNode);
             textNode.select(textToInsert.length, textToInsert.length);
           } else {
-            // For files, insert filename as inline code at cursor,
-            // and append full path as inline code at the bottom
-            const fileName = option.item.file?.name ?? '';
-            const fullPath = option.item.file?.path ?? '';
+            const fileName = option.item.file.name ?? '';
+            const fullPath = option.item.file.path ?? '';
 
-            // Step 1: Insert filename as inline code at cursor position
             const fileNameNode = $createTextNode(fileName);
             fileNameNode.toggleFormat('code');
             nodeToReplace.replace(fileNameNode);
 
-            // Add a space after the inline code for better UX
             const spaceNode = $createTextNode(' ');
             fileNameNode.insertAfter(spaceNode);
-            // setFormat must be called AFTER insertion to prevent Lexical from
-            // re-applying adjacent node formatting during reconciliation
             spaceNode.setFormat(0);
-            spaceNode.select(1, 1); // Position cursor after the space
+            spaceNode.select(1, 1);
 
-            // Step 2: Check if full path already exists at the bottom
             const root = $getRoot();
             const children = root.getChildren();
             let pathAlreadyExists = false;
 
-            // Scan all paragraphs to find if this path already exists as inline code
             for (const child of children) {
               if (!$isParagraphNode(child)) continue;
 
@@ -418,18 +431,14 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
               if (pathAlreadyExists) break;
             }
 
-            // Step 3: If path doesn't exist, append it at the bottom
             if (!pathAlreadyExists && fullPath) {
               const pathParagraph = $createParagraphNode();
               const pathNode = $createTextNode(fullPath);
               pathNode.toggleFormat('code');
               pathParagraph.append(pathNode);
 
-              // Add trailing space with cleared formatting to allow escaping inline code
               const trailingSpace = $createTextNode(' ');
               pathParagraph.append(trailingSpace);
-              // setFormat must be called AFTER append to prevent Lexical from
-              // re-applying adjacent node formatting during reconciliation
               trailingSpace.setFormat(0);
 
               root.append(pathParagraph);
@@ -447,20 +456,20 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
 
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
-        const canShowRepoSelector = usePreferenceRepoSelection;
-        const showChooseRepoControl = canShowRepoSelector && !canSearchFiles;
-        const showSelectedRepoState = canShowRepoSelector && canSearchFiles;
+        const showChooseRepoControl = canManageRepoPreference && !canSearchFiles;
+        const showSelectedRepoState = canManageRepoPreference && canSearchFiles;
         const showFilesSection =
           fileResults.length > 0 ||
           showChooseRepoControl ||
           showSelectedRepoState ||
           showMissingRepoState;
-        const hasSearchResults =
-          tagResults.length > 0 || fileResults.length > 0;
+        const hasSearchResults = tagResults.length > 0 || fileResults.length > 0;
         const showGlobalEmptyState = !hasSearchResults && !showFilesSection;
         const selectedRepoLabel = preferredRepoName ?? preferredRepoId;
         const repoCtaLabel = showSelectedRepoState
-          ? t('typeahead.selectedRepo', { repoName: selectedRepoLabel })
+          ? t('typeahead.selectedRepo', {
+              repoName: selectedRepoLabel,
+            })
           : t('typeahead.chooseRepo');
 
         return createPortal(
@@ -480,7 +489,6 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
               </TypeaheadMenu.Empty>
             ) : (
               <TypeaheadMenu.ScrollArea>
-                {/* Create Tag action */}
                 <TypeaheadMenu.Action onClick={() => void handleCreateTag()}>
                   <span className="flex items-center gap-half">
                     <PlusIcon className="size-icon-xs" weight="bold" />
@@ -488,9 +496,9 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                   </span>
                 </TypeaheadMenu.Action>
 
-                {/* Tags Section */}
                 {tagResults.map((option, index) => {
-                  const tag = option.item.tag!;
+                  if (option.item.type !== 'tag') return null;
+                  const tag = option.item.tag;
                   return (
                     <TypeaheadMenu.Item
                       key={option.key}
@@ -500,10 +508,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                       onClick={() => selectOptionAndCleanUp(option)}
                     >
                       <div className="flex items-center gap-half font-medium">
-                        <TagIcon
-                          className="size-icon-xs shrink-0"
-                          weight="bold"
-                        />
+                        <TagIcon className="size-icon-xs shrink-0" weight="bold" />
                         <span>@{tag.tag_name}</span>
                       </div>
                       {tag.content && (
@@ -516,7 +521,6 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                   );
                 })}
 
-                {/* Files Section */}
                 {showFilesSection && (
                   <>
                     {tagResults.length > 0 && <TypeaheadMenu.Divider />}
@@ -542,8 +546,9 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                       </TypeaheadMenu.Action>
                     )}
                     {fileResults.map((option) => {
+                      if (option.item.type !== 'file') return null;
                       const index = options.indexOf(option);
-                      const file = option.item.file!;
+                      const file = option.item.file;
                       return (
                         <TypeaheadMenu.Item
                           key={option.key}
@@ -559,9 +564,7 @@ export function FileTagTypeaheadPlugin({ repoIds }: { repoIds?: string[] }) {
                             />
                             <span>{file.name}</span>
                           </div>
-                          <div className="text-xs text-low truncate">
-                            {file.path}
-                          </div>
+                          <div className="text-xs text-low truncate">{file.path}</div>
                         </TypeaheadMenu.Item>
                       );
                     })}

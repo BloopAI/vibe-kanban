@@ -2,6 +2,7 @@ import {
   useMemo,
   useState,
   useCallback,
+  useContext,
   memo,
   forwardRef,
   useImperativeHandle,
@@ -39,7 +40,11 @@ import {
   type LocalImageMetadata,
 } from '@vibe/ui/components/TaskAttemptContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
-import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
+import {
+  FileTagTypeaheadPlugin,
+  type RepoLike,
+  type SearchResultItemLike,
+} from '@vibe/ui/components/FileTagTypeaheadPlugin';
 import { SlashCommandTypeaheadPlugin } from '@vibe/ui/components/SlashCommandTypeaheadPlugin';
 import { KeyboardCommandsPlugin } from '@vibe/ui/components/KeyboardCommandsPlugin';
 import { ImageKeyboardPlugin } from '@vibe/ui/components/ImageKeyboardPlugin';
@@ -64,10 +69,24 @@ import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { cn } from '@/lib/utils';
+import { repoApi } from '@/lib/api';
+import { searchTagsAndFiles } from '@/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
+import type { RepoItem } from '@/components/ui-new/actions/pages';
+import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
+import {
+  SelectionDialog,
+  type SelectionPage,
+} from '@/components/ui-new/dialogs/SelectionDialog';
+import {
+  buildRepoSelectionPages,
+  type RepoSelectionResult,
+} from '@/components/ui-new/dialogs/selections/repoSelection';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
@@ -199,6 +218,17 @@ function dedupeClipboardFiles(files: File[]): File[] {
   return uniqueByMetadata.slice(0, MAX_CLIPBOARD_PASTED_FILES);
 }
 
+function getRepoDisplayName(repo: RepoLike): string {
+  return repo.display_name || repo.name;
+}
+
+function toRepoItem(repo: RepoLike): RepoItem {
+  return {
+    id: repo.id,
+    display_name: getRepoDisplayName(repo),
+  };
+}
+
 /** Plugin to capture the Lexical editor instance into a ref */
 function EditorRefPlugin({
   editorRef,
@@ -254,10 +284,68 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     // Copy button state
     const [copied, setCopied] = useState(false);
     const portalContainer = usePortalContainer();
+    const workspaceContext = useContext(WorkspaceContext);
+    const diffPaths = useMemo(
+      () => workspaceContext?.diffPaths ?? new Set<string>(),
+      [workspaceContext?.diffPaths]
+    );
+    const preferredRepoId = useUiPreferencesStore(
+      (state) => state.fileSearchRepoId
+    );
+    const setFileSearchRepo = useUiPreferencesStore(
+      (state) => state.setFileSearchRepo
+    );
     const slashCommandsQuery = useSlashCommands(executor, {
       workspaceId: taskAttemptId,
       repoId,
     });
+    const listRecentRepos = useCallback(async () => repoApi.listRecent(), []);
+    const getRepoById = useCallback(async (targetRepoId: string) => {
+      try {
+        return await repoApi.getById(targetRepoId);
+      } catch {
+        return null;
+      }
+    }, []);
+    const chooseRepo = useCallback(async (repos: RepoLike[]) => {
+      const repoResult = (await SelectionDialog.show({
+        initialPageId: 'selectRepo',
+        pages: buildRepoSelectionPages(repos.map(toRepoItem)) as Record<
+          string,
+          SelectionPage
+        >,
+      })) as RepoSelectionResult | undefined;
+      return repoResult;
+    }, []);
+    const handleCreateTag = useCallback(async () => {
+      try {
+        const result = await TagEditDialog.show({
+          tag: null,
+        });
+        return result === 'saved';
+      } catch {
+        return false;
+      }
+    }, []);
+    const searchFileTags = useCallback(
+      async (
+        query: string,
+        options: { repoIds?: string[] }
+      ): Promise<SearchResultItemLike[]> => {
+        const results = await searchTagsAndFiles(query, options);
+        const mappedResults: SearchResultItemLike[] = [];
+        for (const result of results) {
+          if (result.type === 'tag' && result.tag) {
+            mappedResults.push({ type: 'tag', tag: result.tag });
+          }
+          if (result.type === 'file' && result.file) {
+            mappedResults.push({ type: 'file', file: result.file });
+          }
+        }
+        return mappedResults;
+      },
+      []
+    );
     const handleCopy = useCallback(async () => {
       if (!value) return;
       try {
@@ -438,7 +526,18 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   <MarkdownShortcutPlugin transformers={extendedTransformers} />
                   <PasteMarkdownPlugin transformers={extendedTransformers} />
                   <TypeaheadOpenProvider>
-                    <FileTagTypeaheadPlugin repoIds={repoIds} />
+                    <FileTagTypeaheadPlugin
+                      repoIds={repoIds}
+                      diffPaths={diffPaths}
+                      portalContainer={portalContainer}
+                      preferredRepoId={preferredRepoId}
+                      setPreferredRepoId={setFileSearchRepo}
+                      listRecentRepos={listRecentRepos}
+                      getRepoById={getRepoById}
+                      chooseRepo={chooseRepo}
+                      onCreateTag={handleCreateTag}
+                      searchTagsAndFiles={searchFileTags}
+                    />
                     {executor && (
                       <SlashCommandTypeaheadPlugin
                         enabled={true}
