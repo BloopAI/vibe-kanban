@@ -9,8 +9,7 @@ import {
   UserIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import type { OrganizationWithRole } from 'shared/types';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -18,13 +17,18 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
+
+export interface AppBarUserOrganization {
+  id: string;
+  name: string;
+}
 
 interface AppBarUserPopoverProps {
   isSignedIn: boolean;
   avatarUrl: string | null;
   avatarError: boolean;
-  organizations: OrganizationWithRole[];
+  organizations: AppBarUserOrganization[];
   selectedOrgId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
