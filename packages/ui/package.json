@@ -9,9 +9,16 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./lib/cn": "./src/lib/cn.ts"
+    "./lib/cn": "./src/lib/cn.ts",
+    "./components/RunningDots": "./src/components/RunningDots.ts"
   },
   "dependencies": {
-    "clsx": "^2.1.1"
+    "clsx": "^2.1.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17"
   }
 }

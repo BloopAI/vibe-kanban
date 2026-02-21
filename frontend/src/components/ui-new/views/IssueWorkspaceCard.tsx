@@ -11,7 +11,7 @@ import {
   CircleIcon,
 } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
-import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
+import { RunningDots } from '@vibe/ui';
 import {
   DropdownMenu,
   DropdownMenuContent,

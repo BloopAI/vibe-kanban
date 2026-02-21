@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/utils/date';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { RunningDots } from './RunningDots';
+import { RunningDots } from '@vibe/ui';
 
 interface WorkspaceSummaryProps {
   name: string;

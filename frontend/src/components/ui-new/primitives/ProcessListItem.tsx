@@ -6,7 +6,7 @@ import {
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { formatRelativeTime } from '@/utils/date';
-import { RunningDots } from './RunningDots';
+import { RunningDots } from '@vibe/ui';
 import type {
   ExecutionProcessStatus,
   ExecutionProcessRunReason,
