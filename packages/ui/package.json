@@ -34,6 +34,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "developer-icons": "^6.0.4",
     "lexical": "^0.36.2",
     "lucide-react": "^0.541.0",
     "react": "^18.2.0",

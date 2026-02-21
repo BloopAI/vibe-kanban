@@ -9,7 +9,7 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { LogIn, Loader2 } from 'lucide-react';
-import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';
+import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';

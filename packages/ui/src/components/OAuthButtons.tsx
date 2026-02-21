@@ -1,8 +1,8 @@
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { SpinnerIcon } from '@phosphor-icons/react';
 import { GitHubDark } from 'developer-icons';
 import { useTranslation } from 'react-i18next';
-import { GoogleLogo } from '@vibe/ui/components/GoogleLogo';
+import { GoogleLogo } from './GoogleLogo';
 
 export type OAuthProvider = 'github' | 'google';
 
