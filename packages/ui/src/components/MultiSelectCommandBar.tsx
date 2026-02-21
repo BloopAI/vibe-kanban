@@ -8,8 +8,8 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from '@vibe/ui/components/Command';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+} from './Command';
+import { PrimaryButton } from './PrimaryButton';
 
 export interface MultiSelectOption<T extends string = string> {
   value: T;

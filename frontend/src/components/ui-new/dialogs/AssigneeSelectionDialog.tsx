@@ -9,7 +9,7 @@ import { CommandDialog } from '@vibe/ui/components/Command';
 import {
   MultiSelectCommandBar,
   type MultiSelectOption,
-} from '@/components/ui-new/primitives/MultiSelectCommandBar';
+} from '@vibe/ui/components/MultiSelectCommandBar';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
 import {

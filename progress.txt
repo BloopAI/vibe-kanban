@@ -1327,3 +1327,39 @@ Validation:
 Plan adjustments from new information:
 - No structural plan changes required.
 - Next recommended `extract-later` candidate is `ui-new/primitives/MultiSelectCommandBar.tsx` (already consuming extracted `Command` and with bounded callsite surface), while `CollapsibleSectionHeader` remains blocked by `@/stores` coupling.
+
+## 2026-02-21 - UI package extraction: MultiSelectCommandBar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining `extract-later` set
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/MultiSelectCommandBar.tsx` as the next candidate because it has a small callsite surface and was already aligned on extracted shared primitives (`Command`, `PrimaryButton`).
+- No app-context coupling was present, making this a low-risk `extract-later` move.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/MultiSelectCommandBar.tsx packages/ui/src/components/MultiSelectCommandBar.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/MultiSelectCommandBar.tsx` to use package-local imports (`./Command`, `./PrimaryButton`).
+  - No dependency additions were required.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/dialogs/AssigneeSelectionDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required.
+- Remaining high-coupling `extract-later` primitives are `CommandBar` and `CollapsibleSectionHeader`.
+- Next recommended candidate is `ui-new/primitives/CollapsibleSectionHeader.tsx`, which can be decoupled by removing direct `@/stores` usage and exposing controlled expansion props.
