@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { CaretDownIcon, CheckIcon, type Icon } from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
 
 export interface PropertyDropdownOption<T extends string = string> {
   value: T;

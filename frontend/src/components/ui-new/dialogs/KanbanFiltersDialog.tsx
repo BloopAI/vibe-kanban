@@ -34,7 +34,7 @@ import {
 import {
   PropertyDropdown,
   type PropertyDropdownOption,
-} from '@/components/ui-new/primitives/PropertyDropdown';
+} from '@vibe/ui/components/PropertyDropdown';
 
 const SORT_OPTIONS: PropertyDropdownOption<KanbanSortField>[] = [
   { value: 'sort_order', label: 'Manual' },

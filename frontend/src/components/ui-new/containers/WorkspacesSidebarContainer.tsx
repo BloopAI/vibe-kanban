@@ -23,7 +23,7 @@ import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
 } from '@vibe/ui/components/MultiSelectDropdown';
-import { PropertyDropdown } from '@/components/ui-new/primitives/PropertyDropdown';
+import { PropertyDropdown } from '@vibe/ui/components/PropertyDropdown';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import {

@@ -3177,3 +3177,44 @@ Plan adjustments from new information:
 - Utility-label logic for small visual primitives can be duplicated intentionally in-package when it removes app-only imports and keeps package boundaries clear.
 - `ResolvedRelationship` in frontend remains compatible with package-local `RelationshipDisplayType` because the union members are identical.
 - Next likely extraction candidate: `ui-new/primitives/PropertyDropdown.tsx` (presentational generic component; app coupling is limited to `cn` alias import).
+
+## 2026-02-21 - UI package extraction: PropertyDropdown
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/PropertyDropdown.tsx` as the next extraction candidate.
+- It is a presentational generic dropdown component with no state/store coupling and only minimal app import coupling.
+- New information: migration is straightforward because all existing callsites already pass primitive/generic props compatible with the package component API.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/PropertyDropdown.tsx packages/ui/src/components/PropertyDropdown.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Updated package self import:
+    - `@vibe/ui/components/Dropdown` -> `./Dropdown`
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/containers/WorkspacesSidebarContainer.tsx`
+  - `frontend/src/components/ui-new/dialogs/KanbanFiltersDialog.tsx`
+  - Updated both value + type imports (`PropertyDropdown`, `PropertyDropdownOption`) to `@vibe/ui/components/PropertyDropdown`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Generic presentational controls port cleanly when their value/type contracts are already local and explicit at callsites.
+- Subpath imports remain readable even for shared type imports from package components (`type PropertyDropdownOption`).
+- Next likely extraction candidate: `ui-new/primitives/SyncErrorIndicator.tsx` (single callsite; requires adapter props to decouple from `SyncErrorContext`).
