@@ -7,6 +7,7 @@ members = [
     "crates/db",
     "crates/executors",
     "crates/services",
+    "crates/relay-tunnel",
     "crates/utils",
     "crates/git",
     "crates/git-host",

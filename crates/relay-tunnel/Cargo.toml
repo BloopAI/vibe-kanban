@@ -1,0 +1,21 @@
+[package]
+name = "relay-tunnel"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+axum = { workspace = true }
+bytes = "1"
+futures = "0.3"
+futures-util = "0.3"
+http = "1"
+hyper = { version = "1", features = ["client", "server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+native-tls = "0.2"
+tokio = { workspace = true }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tokio-util = { version = "0.7", features = ["io"] }
+tokio-yamux = "0.3.17"
+tracing = { workspace = true }
+url = "2.5"

@@ -10,23 +10,16 @@ use std::sync::Arc;
 use axum::{
     Extension, Json, Router,
     body::Body,
-    extract::{Path, Request, State, ws::Message as AxumWsMessage, ws::WebSocketUpgrade},
-    http::{StatusCode, Uri},
+    extract::{Path, Request, State, ws::WebSocketUpgrade},
+    http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
 };
 use axum_extra::headers::{Cookie, HeaderMapExt};
 use chrono::Utc;
-use futures_util::StreamExt;
-use hyper::{
-    client::conn::http1 as client_http1,
-    upgrade,
-};
-use hyper_util::rt::TokioIo;
+use relay_tunnel::server::{proxy_request_over_control, run_control_channel};
 use serde::Serialize;
-use tokio_yamux::{Config as YamuxConfig, Session};
-use url::{Url, form_urlencoded};
-use utils::ws_io::{WsIoReadMessage, WsMessageStreamIo};
+use url::form_urlencoded;
 use uuid::Uuid;
 
 use crate::{
@@ -38,14 +31,6 @@ use crate::{
     },
     relay::{ActiveRelay, RelayRegistry},
 };
-
-fn normalized_relay_path(uri: &axum::http::Uri, strip_prefix: &str) -> String {
-    let raw_path = uri.path();
-    let path = raw_path.strip_prefix(strip_prefix).unwrap_or(raw_path);
-    let path = if path.is_empty() { "/" } else { path };
-    let query = uri.query().map(|q| format!("?{q}")).unwrap_or_default();
-    format!("{path}{query}")
-}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -89,22 +74,7 @@ struct RelaySessionAuthCodeResponse {
 
 /// Extract the relay subdomain from a `Host` value using URL parsing.
 pub fn extract_relay_subdomain(host: &str, relay_base_domain: &str) -> Option<String> {
-    let host_domain = Url::parse(&format!("http://{host}"))
-        .ok()?
-        .host_str()?
-        .to_ascii_lowercase();
-    let base_domain = Url::parse(&format!("http://{relay_base_domain}"))
-        .ok()?
-        .host_str()?
-        .to_ascii_lowercase();
-
-    let suffix = format!(".{base_domain}");
-    let prefix = host_domain.strip_suffix(&suffix)?;
-    if prefix.is_empty() {
-        None
-    } else {
-        Some(prefix.to_string())
-    }
+    relay_tunnel::server::extract_relay_subdomain(host, relay_base_domain)
 }
 
 pub fn extract_relay_host_id(host: &str, relay_base_domain: &str) -> Option<Uuid> {
@@ -205,24 +175,19 @@ async fn handle_control_channel(
     registry: RelayRegistry,
     host_id: Uuid,
 ) {
-    let ws_io = WsMessageStreamIo::new(socket, read_server_message, write_server_message);
-    let mut session = Session::new_server(ws_io, YamuxConfig::default());
-
-    let relay = Arc::new(ActiveRelay::new(session.control()));
-    registry.insert(host_id, relay).await;
-
-    tracing::info!(%host_id, "Relay control channel connected");
-
-    while let Some(stream_result) = session.next().await {
-        match stream_result {
-            Ok(_stream) => {
-                // The remote side does not currently accept streams initiated by the local side.
-            }
-            Err(error) => {
-                tracing::warn!(?error, %host_id, "relay session error");
-                break;
-            }
+    let registry_for_connect = registry.clone();
+    let run_result = run_control_channel(socket, move |control| {
+        let registry_for_connect = registry_for_connect.clone();
+        async move {
+            let relay = Arc::new(ActiveRelay::new(control));
+            registry_for_connect.insert(host_id, relay).await;
+            tracing::info!(%host_id, "Relay control channel connected");
         }
+    })
+    .await;
+
+    if let Err(error) = run_result {
+        tracing::warn!(?error, %host_id, "relay session error");
     }
 
     registry.remove(&host_id).await;
@@ -308,91 +273,5 @@ async fn do_relay_proxy_for_host(
         None => return (StatusCode::NOT_FOUND, "No active relay").into_response(),
     };
 
-    proxy_over_yamux(relay, request, strip_prefix).await
-}
-
-async fn proxy_over_yamux(
-    relay: Arc<ActiveRelay>,
-    request: Request,
-    strip_prefix: &str,
-) -> Response {
-    let stream = {
-        let mut control = relay.control.lock().await;
-        match control.open_stream().await {
-            Ok(stream) => stream,
-            Err(error) => {
-                tracing::warn!(?error, "failed to open relay stream");
-                return (StatusCode::BAD_GATEWAY, "Relay connection lost").into_response();
-            }
-        }
-    };
-
-    let (mut parts, body) = request.into_parts();
-    let path = normalized_relay_path(&parts.uri, strip_prefix);
-    parts.uri = match Uri::builder().path_and_query(path).build() {
-        Ok(uri) => uri,
-        Err(error) => {
-            tracing::warn!(?error, "failed to build relay proxy URI");
-            return (StatusCode::BAD_REQUEST, "Invalid request URI").into_response();
-        }
-    };
-
-    let mut outbound = Request::from_parts(parts, body);
-    let request_upgrade = upgrade::on(&mut outbound);
-
-    let (mut sender, connection) = match client_http1::Builder::new()
-        .handshake(TokioIo::new(stream))
-        .await
-    {
-        Ok(value) => value,
-        Err(error) => {
-            tracing::warn!(?error, "failed to initialize relay stream proxy connection");
-            return (StatusCode::BAD_GATEWAY, "Relay connection failed").into_response();
-        }
-    };
-
-    tokio::spawn(async move {
-        if let Err(error) = connection.with_upgrades().await {
-            tracing::debug!(?error, "relay stream connection closed");
-        }
-    });
-
-    let mut response = match sender.send_request(outbound).await {
-        Ok(response) => response,
-        Err(error) => {
-            tracing::warn!(?error, "relay proxy request failed");
-            return (StatusCode::BAD_GATEWAY, "Relay request failed").into_response();
-        }
-    };
-
-    if response.status() == StatusCode::SWITCHING_PROTOCOLS {
-        let response_upgrade = upgrade::on(&mut response);
-        tokio::spawn(async move {
-            let Ok(from_phone) = request_upgrade.await else {
-                return;
-            };
-            let Ok(to_local) = response_upgrade.await else {
-                return;
-            };
-            let mut from_phone = TokioIo::new(from_phone);
-            let mut to_local = TokioIo::new(to_local);
-            let _ = tokio::io::copy_bidirectional(&mut from_phone, &mut to_local).await;
-        });
-    }
-
-    let (parts, body) = response.into_parts();
-    Response::from_parts(parts, Body::new(body))
-}
-
-fn read_server_message(message: AxumWsMessage) -> WsIoReadMessage {
-    match message {
-        AxumWsMessage::Binary(data) => WsIoReadMessage::Data(data.to_vec()),
-        AxumWsMessage::Text(text) => WsIoReadMessage::Data(text.as_bytes().to_vec()),
-        AxumWsMessage::Close(_) => WsIoReadMessage::Eof,
-        _ => WsIoReadMessage::Skip,
-    }
-}
-
-fn write_server_message(bytes: Vec<u8>) -> AxumWsMessage {
-    AxumWsMessage::Binary(bytes.into())
+    proxy_request_over_control(relay.control.as_ref(), request, strip_prefix).await
 }

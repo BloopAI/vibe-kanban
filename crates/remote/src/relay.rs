@@ -10,21 +10,19 @@ use std::{
     time::Instant,
 };
 
+use relay_tunnel::server::SharedControl;
 use tokio::sync::Mutex;
-use tokio_yamux::Control;
 use uuid::Uuid;
 
 /// An active relay connection from a local server.
 pub struct ActiveRelay {
     /// Open yamux streams to the connected local host.
-    pub control: Mutex<Control>,
+    pub control: SharedControl,
 }
 
 impl ActiveRelay {
-    pub fn new(control: Control) -> Self {
-        Self {
-            control: Mutex::new(control),
-        }
+    pub fn new(control: SharedControl) -> Self {
+        Self { control }
     }
 }
 
