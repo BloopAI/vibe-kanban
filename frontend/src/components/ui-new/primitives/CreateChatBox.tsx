@@ -5,7 +5,7 @@ import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { AgentIcon } from '@/components/agents/AgentIcon';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@vibe/ui/components/Checkbox';
 import {
   ChatBoxBase,
   VisualVariant,

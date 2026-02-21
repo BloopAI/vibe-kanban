@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { Label } from '@/components/ui/label';
 import {
   Select,

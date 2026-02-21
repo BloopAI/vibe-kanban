@@ -10,7 +10,7 @@ import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@vibe/ui/components/Textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';

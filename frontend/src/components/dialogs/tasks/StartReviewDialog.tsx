@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@vibe/ui/components/Textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@vibe/ui/components/Switch';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/components/ConfigProvider';
