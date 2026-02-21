@@ -396,9 +396,15 @@ export const ConversationList = forwardRef<
         const rendered = list.data.getCurrentlyRendered();
         const fallbackKey = rendered[0]?.patchKey;
         const keyToAnchor = anchorKey ?? fallbackKey;
-        const anchorIndex = keyToAnchor
+        const primaryIndex = keyToAnchor
           ? data.findIndex((item) => item.patchKey === keyToAnchor)
           : -1;
+        const anchorIndex =
+          primaryIndex >= 0
+            ? primaryIndex
+            : fallbackKey
+              ? data.findIndex((item) => item.patchKey === fallbackKey)
+              : -1;
         list.data.replace(data, {
           purgeItemSizes: true,
           initialLocation:
