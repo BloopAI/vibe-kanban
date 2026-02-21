@@ -2,17 +2,17 @@ import { useRef } from 'react';
 import { CheckIcon, PaperclipIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { toPrettyCase } from '@/utils/string';
-import type { BaseCodingAgent } from 'shared/types';
+import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
 import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { useUserSystem } from '@/components/ConfigProvider';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import {
   ChatBoxBase,
   VisualVariant,
   type DropzoneProps,
-  type EditorProps,
-  type ModelSelectorProps,
-} from './ChatBoxBase';
+} from '@vibe/ui/components/ChatBoxBase';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   ToolbarDropdown,
@@ -22,6 +22,22 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
 } from '@vibe/ui/components/Dropdown';
+import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
+
+export interface EditorProps {
+  value: string;
+  onChange: (value: string) => void;
+}
+
+export interface ModelSelectorProps {
+  onAdvancedSettings: () => void;
+  presets: string[];
+  selectedPreset: string | null;
+  onPresetSelect: (presetId: string | null) => void;
+  onOverrideChange: (partial: Partial<ExecutorConfig>) => void;
+  executorConfig: ExecutorConfig | null;
+  presetOptions: ExecutorConfig | null | undefined;
+}
 
 export interface ExecutorProps {
   selected: BaseCodingAgent | null;
@@ -87,6 +103,7 @@ export function CreateChatBox({
   linkedIssue,
 }: CreateChatBoxProps) {
   const { t } = useTranslation(['common', 'tasks']);
+  const { config } = useUserSystem();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDisabled = disabled || isSending;
   const canSend = editor.value.trim().length > 0 && !isDisabled;
@@ -117,21 +134,40 @@ export function CreateChatBox({
 
   return (
     <ChatBoxBase
-      editor={editor}
-      placeholder="Describe the task..."
-      onCmdEnter={handleCmdEnter}
-      disabled={isDisabled}
-      repoIds={repoIds}
-      repoId={repoId}
-      executor={executor.selected}
-      autoFocus
+      editor={
+        <WYSIWYGEditor
+          placeholder="Describe the task..."
+          value={editor.value}
+          onChange={editor.onChange}
+          onCmdEnter={handleCmdEnter}
+          disabled={isDisabled}
+          className="min-h-double max-h-[50vh] overflow-y-auto"
+          repoIds={repoIds}
+          repoId={repoId}
+          executor={executor.selected ?? null}
+          autoFocus
+          onPasteFiles={onPasteFiles}
+          localImages={localImages}
+          sendShortcut={config?.send_message_shortcut}
+        />
+      }
       error={error}
       visualVariant={VisualVariant.NORMAL}
-      onPasteFiles={onPasteFiles}
-      localImages={localImages}
       dropzone={dropzone}
       modelSelector={
-        modelSelector && agent ? { ...modelSelector, agent } : undefined
+        modelSelector && agent ? (
+          <ModelSelectorContainer
+            agent={agent}
+            workspaceId={undefined}
+            onAdvancedSettings={modelSelector.onAdvancedSettings}
+            presets={modelSelector.presets}
+            selectedPreset={modelSelector.selectedPreset}
+            onPresetSelect={modelSelector.onPresetSelect}
+            onOverrideChange={modelSelector.onOverrideChange}
+            executorConfig={modelSelector.executorConfig}
+            presetOptions={modelSelector.presetOptions}
+          />
+        ) : undefined
       }
       headerLeft={
         <>

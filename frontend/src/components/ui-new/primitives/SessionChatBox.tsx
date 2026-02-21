@@ -25,13 +25,12 @@ import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext'
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
 import { AgentIcon } from '@/components/agents/AgentIcon';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import {
   ChatBoxBase,
   VisualVariant,
   type DropzoneProps,
-  type EditorProps,
-  type ModelSelectorProps,
-} from './ChatBoxBase';
+} from '@vibe/ui/components/ChatBoxBase';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   ToolbarDropdown,
@@ -51,13 +50,15 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@vibe/ui/components/Dropdown';
-import { type ExecutorProps } from './CreateChatBox';
+import {
+  type EditorProps,
+  type ExecutorProps,
+  type ModelSelectorProps,
+} from './CreateChatBox';
 import { ContextUsageGauge } from '@vibe/ui/components/ContextUsageGauge';
 import { TodoProgressPopup } from '@vibe/ui/components/TodoProgressPopup';
 import { useUserSystem } from '@/components/ConfigProvider';
-
-// Re-export shared types
-export type { EditorProps, ModelSelectorProps } from './ChatBoxBase';
+import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
@@ -196,7 +197,7 @@ export function SessionChatBox({
 }: SessionChatBoxProps) {
   const { t } = useTranslation('tasks');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { capabilities } = useUserSystem();
+  const { capabilities, config } = useUserSystem();
 
   const supportsContextUsage =
     agent && capabilities?.[agent]?.includes(BaseAgentCapability.CONTEXT_USAGE);
@@ -523,25 +524,42 @@ export function SessionChatBox({
 
   return (
     <ChatBoxBase
-      editor={editor}
-      placeholder={placeholder}
-      onCmdEnter={handleCmdEnter}
-      disabled={isDisabled}
-      repoIds={repoIds}
-      executor={agent || executor?.selected}
-      autoFocus={true}
-      focusKey={focusKey}
+      editor={
+        <WYSIWYGEditor
+          key={focusKey}
+          placeholder={placeholder}
+          value={editor.value}
+          onChange={editor.onChange}
+          onCmdEnter={handleCmdEnter}
+          disabled={isDisabled}
+          className="min-h-double max-h-[50vh] overflow-y-auto"
+          repoIds={repoIds}
+          executor={agent || executor?.selected || null}
+          autoFocus
+          onPasteFiles={actions.onPasteFiles}
+          localImages={localImages}
+          sendShortcut={config?.send_message_shortcut}
+        />
+      }
       error={displayError}
       banner={renderBanner()}
       visualVariant={getVisualVariant()}
       isRunning={showRunningAnimation}
-      onPasteFiles={actions.onPasteFiles}
-      localImages={localImages}
       dropzone={dropzone}
       modelSelector={
-        modelSelector && agent
-          ? { ...modelSelector, agent, workspaceId }
-          : undefined
+        modelSelector && agent ? (
+          <ModelSelectorContainer
+            agent={agent}
+            workspaceId={workspaceId}
+            onAdvancedSettings={modelSelector.onAdvancedSettings}
+            presets={modelSelector.presets}
+            selectedPreset={modelSelector.selectedPreset}
+            onPresetSelect={modelSelector.onPresetSelect}
+            onOverrideChange={modelSelector.onOverrideChange}
+            executorConfig={modelSelector.executorConfig}
+            presetOptions={modelSelector.presetOptions}
+          />
+        ) : undefined
       }
       headerLeft={
         <>

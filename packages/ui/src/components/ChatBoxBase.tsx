@@ -1,18 +1,8 @@
 import { type ReactNode } from 'react';
 import { ImageIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
-import { useUserSystem } from '@/components/ConfigProvider';
-import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
-import { Toolbar } from '@vibe/ui/components/Toolbar';
-import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
-
-export interface EditorProps {
-  value: string;
-  onChange: (value: string) => void;
-}
+import { cn } from '../lib/cn';
+import { Toolbar } from './Toolbar';
 
 export enum VisualVariant {
   NORMAL = 'NORMAL',
@@ -27,31 +17,9 @@ export interface DropzoneProps {
   isDragActive: boolean;
 }
 
-export interface ModelSelectorProps {
-  onAdvancedSettings: () => void;
-  presets: string[];
-  selectedPreset: string | null;
-  onPresetSelect: (presetId: string | null) => void;
-  onOverrideChange: (partial: Partial<ExecutorConfig>) => void;
-  executorConfig: ExecutorConfig | null;
-  presetOptions: ExecutorConfig | null | undefined;
-}
-
-export interface ChatBoxModelSelector extends ModelSelectorProps {
-  agent: BaseCodingAgent;
-  workspaceId?: string;
-}
-
 interface ChatBoxBaseProps {
-  // Editor
-  editor: EditorProps;
-  placeholder: string;
-  onCmdEnter: () => void;
-  disabled?: boolean;
-  repoIds?: string[];
-  repoId?: string;
-  executor?: BaseCodingAgent | null;
-  autoFocus?: boolean;
+  // Editor node (provided by frontend)
+  editor: ReactNode;
 
   // Error display
   error?: string | null;
@@ -68,8 +36,8 @@ interface ChatBoxBaseProps {
   // Footer right content (action buttons)
   footerRight: ReactNode;
 
-  // Model selector (rendered with footer controls)
-  modelSelector?: ChatBoxModelSelector;
+  // Model selector node (rendered with footer controls)
+  modelSelector?: ReactNode;
 
   // Banner content (queued message indicator, feedback mode indicator)
   banner?: ReactNode;
@@ -77,17 +45,8 @@ interface ChatBoxBaseProps {
   // visualVariant
   visualVariant: VisualVariant;
 
-  // File paste handler for attachments
-  onPasteFiles?: (files: File[]) => void;
-
   // Whether the workspace is running (shows animated border)
   isRunning?: boolean;
-
-  // Key to force editor remount (e.g., when entering feedback mode to trigger auto-focus)
-  focusKey?: string;
-
-  // Local images for immediate preview (before saved to server)
-  localImages?: LocalImageMetadata[];
 
   // Dropzone props for drag-and-drop image uploads
   dropzone?: DropzoneProps;
@@ -99,13 +58,6 @@ interface ChatBoxBaseProps {
  */
 export function ChatBoxBase({
   editor,
-  placeholder,
-  onCmdEnter,
-  disabled,
-  repoIds,
-  repoId,
-  executor,
-  autoFocus,
   error,
   headerRight,
   headerLeft,
@@ -114,17 +66,12 @@ export function ChatBoxBase({
   modelSelector,
   banner,
   visualVariant,
-  onPasteFiles,
   isRunning,
-  focusKey,
-  localImages,
   dropzone,
 }: ChatBoxBaseProps) {
   const { t } = useTranslation(['common', 'tasks']);
-  const { config } = useUserSystem();
 
   const isDragActive = dropzone?.isDragActive ?? false;
-  const activeModelSelector = modelSelector ?? null;
 
   return (
     <div
@@ -177,42 +124,12 @@ export function ChatBoxBase({
 
       {/* Editor area */}
       <div className="flex flex-col gap-plusfifty px-base py-base rounded-md">
-        <WYSIWYGEditor
-          key={focusKey}
-          placeholder={placeholder}
-          value={editor.value}
-          onChange={editor.onChange}
-          onCmdEnter={onCmdEnter}
-          disabled={disabled}
-          // min-h-double ensures space for at least one line of text,
-          // preventing the absolutely-positioned placeholder from overlapping
-          // with the footer when the editor is empty
-          className="min-h-double max-h-[50vh] overflow-y-auto"
-          repoIds={repoIds}
-          repoId={repoId}
-          executor={executor ?? null}
-          autoFocus={autoFocus}
-          onPasteFiles={onPasteFiles}
-          localImages={localImages}
-          sendShortcut={config?.send_message_shortcut}
-        />
+        {editor}
 
         {/* Footer - Controls */}
         <div className="flex items-end justify-between gap-base">
           <Toolbar className="flex-1 min-w-0 flex-wrap !gap-half">
-            {activeModelSelector && (
-              <ModelSelectorContainer
-                agent={activeModelSelector.agent}
-                workspaceId={activeModelSelector.workspaceId}
-                onAdvancedSettings={activeModelSelector.onAdvancedSettings}
-                presets={activeModelSelector.presets}
-                selectedPreset={activeModelSelector.selectedPreset}
-                onPresetSelect={activeModelSelector.onPresetSelect}
-                onOverrideChange={activeModelSelector.onOverrideChange}
-                executorConfig={activeModelSelector.executorConfig}
-                presetOptions={activeModelSelector.presetOptions}
-              />
-            )}
+            {modelSelector}
             {footerLeft}
           </Toolbar>
           <div className="flex shrink-0 gap-base">{footerRight}</div>
