@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 import type { OrganizationWithRole } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import { AppBarButton } from './AppBarButton';
-import { AppBarSocialLink } from './AppBarSocialLink';
+import { AppBarSocialLink } from '@vibe/ui/components/AppBarSocialLink';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
 import {
   Popover,

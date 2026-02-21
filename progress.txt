@@ -2966,3 +2966,43 @@ Plan adjustments from new information:
 - Behavior-coupled primitives can still move cleanly by introducing explicit adapter props for app-only actions.
 - Keep package-local helpers for generic display logic (like elapsed-time labels) when they don't need app state.
 - Next likely candidate: reduce duplication by refactoring `@vibe/ui/components/KanbanAssignee` to reuse `@vibe/ui/components/UserAvatar` internally before selecting another extraction target.
+
+## 2026-02-21 - UI package extraction: AppBarSocialLink
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/AppBarSocialLink.tsx` as the next extraction candidate.
+- It had the lowest coupling among remaining primitives: one callsite in `AppBar.tsx`, no app state/store hooks, and only styling + tooltip dependencies.
+- New information: this component can be moved without introducing adapter props or app-type bridges.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/AppBarSocialLink.tsx packages/ui/src/components/AppBarSocialLink.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Updated package self import:
+    - `@vibe/ui/components/Tooltip` -> `./Tooltip`
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/primitives/AppBar.tsx`
+  - Replaced local import with `@vibe/ui/components/AppBarSocialLink`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Small leaf primitives used by larger app-shell components can be extracted incrementally with minimal risk.
+- A dedicated adapter layer is unnecessary for primitives that already expose only presentational props.
+- Next likely extraction candidate: `ui-new/primitives/AppBarButton.tsx` (same app-shell cluster, similarly low coupling).

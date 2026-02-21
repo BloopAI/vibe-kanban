@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
 
 interface AppBarSocialLinkProps {
   href: string;
