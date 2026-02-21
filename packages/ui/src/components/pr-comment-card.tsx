@@ -1,6 +1,6 @@
 import { MessageSquare, Code, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 export interface PrCommentCardProps {
   author: string;

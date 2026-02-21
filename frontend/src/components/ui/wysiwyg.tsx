@@ -26,7 +26,7 @@ import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
   PR_COMMENT_EXPORT_TRANSFORMER,
-} from './wysiwyg/nodes/pr-comment-node';
+} from '@vibe/ui/components/pr-comment-node';
 import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,

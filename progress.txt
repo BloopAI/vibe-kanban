@@ -2496,3 +2496,48 @@ Plan adjustments from new information:
   - introducing a renderer injection boundary.
 - `image-node.tsx` has deeper app coupling (hooks/dialog + attachment/image APIs) and is likely the highest-effort remaining node.
 - Next likely candidate: `frontend/src/components/ui/pr-comment-card.tsx` as an enabler for `pr-comment-node.tsx` extraction.
+
+## 2026-02-21 - UI package extraction: ui/pr-comment-card + wysiwyg/pr-comment-node
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/nodes/pr-comment-node.tsx` as the next extraction candidate.
+- New information: `frontend/src/components/ui/pr-comment-card.tsx` had already been moved in the current working tree and now serves as an extracted dependency for the node move.
+- This allowed a clean completion of the full PR comment rendering chain inside `@vibe/ui`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/pr-comment-card.tsx packages/ui/src/components/pr-comment-card.tsx`
+  - `git mv frontend/src/components/ui/wysiwyg/nodes/pr-comment-node.tsx packages/ui/src/components/pr-comment-node.tsx`
+- Package updates:
+  - `packages/ui/src/components/pr-comment-card.tsx` uses package-local `cn` import (`../lib/cn`).
+  - `packages/ui/src/components/pr-comment-node.tsx` now uses package-local imports:
+    - `./pr-comment-card`
+    - `./create-decorator-node`
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/dialogs/tasks/PrCommentsDialog.tsx`
+    - `PrCommentCard` from `@vibe/ui/components/pr-comment-card`
+  - `frontend/src/components/ui/wysiwyg.tsx`
+    - `PrCommentNode`, `PR_COMMENT_TRANSFORMER`, `PR_COMMENT_EXPORT_TRANSFORMER` from `@vibe/ui/components/pr-comment-node`
+  - `frontend/src/components/ui-new/containers/SessionChatBoxContainer.tsx`
+    - `NormalizedComment` type from `@vibe/ui/components/pr-comment-node`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Remaining frontend-local WYSIWYG node scope is now:
+  - `frontend/src/components/ui/wysiwyg/nodes/image-node.tsx`
+- Next extraction likely requires an adapter-prop boundary for app-coupled hooks/APIs used by `image-node.tsx`.

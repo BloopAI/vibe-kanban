@@ -47,7 +47,7 @@ import {
   useActionVisibilityContext,
 } from '../actions/useActionVisibility';
 import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
-import type { NormalizedComment } from '@/components/ui/wysiwyg/nodes/pr-comment-node';
+import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {

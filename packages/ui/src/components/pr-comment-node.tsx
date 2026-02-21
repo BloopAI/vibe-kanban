@@ -1,11 +1,11 @@
 import { useCallback } from 'react';
 import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
-import { PrCommentCard } from '@/components/ui/pr-comment-card';
+import { PrCommentCard } from './pr-comment-card';
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
-} from '@vibe/ui/components/create-decorator-node';
+} from './create-decorator-node';
 
 /**
  * Normalized comment data stored in the node.
