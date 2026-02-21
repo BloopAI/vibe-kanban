@@ -132,9 +132,9 @@ export function SharedAppLayout() {
       return;
     }
 
-    const pathWithSearch = `${location.pathname}${location.search}`;
+    const pathWithSearch = `${location.pathname}${location.searchStr}`;
     projectLastPathRef.current[route.projectId] = pathWithSearch;
-  }, [location.pathname, location.search]);
+  }, [location.pathname, location.searchStr]);
 
   const handleWorkspacesClick = useCallback(() => {
     navigate(toWorkspaces());
