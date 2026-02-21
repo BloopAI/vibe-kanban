@@ -1,3 +1,4 @@
+use api_types::RelayHost;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -16,19 +17,6 @@ pub struct Host {
     pub agent_version: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-pub struct HostWithAccess {
-    pub id: Uuid,
-    pub owner_user_id: Uuid,
-    pub name: String,
-    pub status: String,
-    pub last_seen_at: Option<DateTime<Utc>>,
-    pub agent_version: Option<String>,
-    pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>,
-    pub access_role: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
@@ -98,9 +86,9 @@ impl<'a> HostRepository<'a> {
         Ok(host)
     }
 
-    pub async fn list_accessible_hosts(&self, user_id: Uuid) -> Result<Vec<HostWithAccess>, sqlx::Error> {
+    pub async fn list_accessible_hosts(&self, user_id: Uuid) -> Result<Vec<RelayHost>, sqlx::Error> {
         sqlx::query_as!(
-            HostWithAccess,
+            RelayHost,
             r#"
             SELECT
                 h.id            AS "id!: Uuid",

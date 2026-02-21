@@ -50,7 +50,7 @@ export type User = { id: string, email: string, first_name: string | null, last_
 
 export type Host = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, };
 
-export type HostWithAccess = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
+export type RelayHost = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
 
 export type RelaySession = { id: string, host_id: string, request_user_id: string, state: string, created_at: string, expires_at: string, claimed_at: string | null, ended_at: string | null, };
 

@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use api_types::CreateRelayHostRequest;
+use api_types::{CreateRelayHostRequest, ListRelayHostsResponse, RelayHost};
 use chrono::{Duration, Utc};
 use serde::Serialize;
 use uuid::Uuid;
@@ -14,17 +14,12 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        hosts::{Host, HostRepository, HostWithAccess, RelaySession},
+        hosts::{HostRepository, RelaySession},
         identity_errors::IdentityError,
     },
 };
 
 const RELAY_SESSION_TTL_SECS: i64 = 120;
-
-#[derive(Debug, Serialize)]
-struct ListHostsResponse {
-    hosts: Vec<HostWithAccess>,
-}
 
 #[derive(Debug, Serialize)]
 struct CreateRelaySessionResponse {
@@ -40,21 +35,21 @@ pub fn router() -> Router<AppState> {
 async fn list_hosts(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-) -> Result<Json<ListHostsResponse>, ErrorResponse> {
+) -> Result<Json<ListRelayHostsResponse>, ErrorResponse> {
     let repo = HostRepository::new(state.pool());
     let hosts = repo
         .list_accessible_hosts(ctx.user.id)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
 
-    Ok(Json(ListHostsResponse { hosts }))
+    Ok(Json(ListRelayHostsResponse { hosts }))
 }
 
 async fn create_host(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateRelayHostRequest>,
-) -> Result<(StatusCode, Json<Host>), ErrorResponse> {
+) -> Result<(StatusCode, Json<RelayHost>), ErrorResponse> {
     let name = payload.name.trim();
     if name.is_empty() || name.len() > 200 {
         return Err(ErrorResponse::new(
@@ -69,7 +64,20 @@ async fn create_host(
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create host"))?;
 
-    Ok((StatusCode::CREATED, Json(host)))
+    Ok((
+        StatusCode::CREATED,
+        Json(RelayHost {
+            id: host.id,
+            owner_user_id: host.owner_user_id,
+            name: host.name,
+            status: host.status,
+            last_seen_at: host.last_seen_at,
+            agent_version: host.agent_version,
+            created_at: host.created_at,
+            updated_at: host.updated_at,
+            access_role: "owner".to_string(),
+        }),
+    ))
 }
 
 async fn create_relay_session(

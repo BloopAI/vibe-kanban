@@ -1,7 +1,7 @@
 import type { ReviewResult } from "./types/review";
 import { clearTokens } from "./auth";
 import { getToken, triggerRefresh } from "./tokenManager";
-import type { HostWithAccess, RelaySession } from "shared/remote-types";
+import type { RelayHost, RelaySession } from "shared/remote-types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -570,7 +570,7 @@ export async function fetchGitHubAppRepositories(
 }
 
 // Relay APIs
-export async function listRelayHosts(): Promise<{ hosts: HostWithAccess[] }> {
+export async function listRelayHosts(): Promise<{ hosts: RelayHost[] }> {
   const res = await authenticatedFetch(`${API_BASE}/v1/hosts`);
   if (!res.ok) {
     throw new Error(`Failed to list relay hosts (${res.status})`);

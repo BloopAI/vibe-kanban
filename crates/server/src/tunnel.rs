@@ -54,8 +54,7 @@ pub async fn start_relay_if_requested(
     let host_name = format!("{} local ({local_identity})", env!("CARGO_PKG_NAME"));
 
     let existing_host_id = match remote_client.list_relay_hosts().await {
-        Ok(response) => response
-            .hosts
+        Ok(hosts) => hosts
             .into_iter()
             .find(|host| host.name == host_name)
             .map(|host| host.id),

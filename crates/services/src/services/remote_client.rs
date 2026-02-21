@@ -13,7 +13,7 @@ use api_types::{
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListRelayHostsResponse, ListTagsResponse, MutationResponse,
-    Organization, ProfileResponse, RelayHostRef, RevokeInvitationRequest, Tag, TokenRefreshRequest,
+    Organization, ProfileResponse, RelayHost, RevokeInvitationRequest, Tag, TokenRefreshRequest,
     TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
     UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
@@ -507,15 +507,16 @@ impl RemoteClient {
     }
 
     /// Lists relay hosts available to the current user.
-    pub async fn list_relay_hosts(&self) -> Result<ListRelayHostsResponse, RemoteClientError> {
-        self.get_authed("/v1/hosts").await
+    pub async fn list_relay_hosts(&self) -> Result<Vec<RelayHost>, RemoteClientError> {
+        let response: ListRelayHostsResponse = self.get_authed("/v1/hosts").await?;
+        Ok(response.hosts)
     }
 
     /// Creates a relay host.
     pub async fn create_relay_host(
         &self,
         request: &CreateRelayHostRequest,
-    ) -> Result<RelayHostRef, RemoteClientError> {
+    ) -> Result<RelayHost, RemoteClientError> {
         self.post_authed("/v1/hosts", Some(request)).await
     }
 
