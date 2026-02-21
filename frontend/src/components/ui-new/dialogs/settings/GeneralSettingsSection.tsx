@@ -30,7 +30,7 @@ import { useUserSystem } from '@/components/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../../primitives/PrimaryButton';
-import { IconButton } from '../../primitives/IconButton';
+import { IconButton } from '@vibe/ui/components/IconButton';
 import {
   DropdownMenu,
   DropdownMenuContent,

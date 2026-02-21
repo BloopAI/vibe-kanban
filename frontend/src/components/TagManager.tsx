@@ -5,7 +5,7 @@ import { SpinnerGap } from '@phosphor-icons/react';
 import { tagsApi } from '@/lib/api';
 import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
-import { IconButton } from '@/components/ui-new/primitives/IconButton';
+import { IconButton } from '@vibe/ui/components/IconButton';
 import type { Tag } from 'shared/types';
 
 export function TagManager() {

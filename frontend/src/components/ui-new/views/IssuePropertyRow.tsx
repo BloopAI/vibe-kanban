@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
-import { IconButton } from '@/components/ui-new/primitives/IconButton';
+import { IconButton } from '@vibe/ui/components/IconButton';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
