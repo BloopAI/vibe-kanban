@@ -8,26 +8,27 @@ import {
 import { $createTextNode, KEY_ESCAPE_COMMAND } from 'lexical';
 import { TerminalIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
-import { useTaskAttemptId } from '@vibe/ui/components/TaskAttemptContext';
-import { useTypeaheadOpen } from '@vibe/ui/components/TypeaheadOpenContext';
-import { TypeaheadMenu } from '@vibe/ui/components/TypeaheadMenu';
+import { useTypeaheadOpen } from './TypeaheadOpenContext';
+import { TypeaheadMenu } from './TypeaheadMenu';
+
+export type SlashCommandDescriptionLike = {
+  name: string;
+  description?: string | null;
+};
 
 class SlashCommandOption extends MenuOption {
-  command: SlashCommandDescription;
+  command: SlashCommandDescriptionLike;
 
-  constructor(command: SlashCommandDescription) {
+  constructor(command: SlashCommandDescriptionLike) {
     super(`slash-command-${command.name}`);
     this.command = command;
   }
 }
 
 function filterSlashCommands(
-  all: SlashCommandDescription[],
+  all: SlashCommandDescriptionLike[],
   query: string
-): SlashCommandDescription[] {
+): SlashCommandDescriptionLike[] {
   const q = query.trim().toLowerCase();
   if (!q) return all;
 
@@ -39,15 +40,19 @@ function filterSlashCommands(
 }
 
 export function SlashCommandTypeaheadPlugin({
-  agent,
-  repoId,
+  enabled,
+  commands,
+  isInitialized,
+  isDiscovering,
+  portalContainer,
 }: {
-  agent: BaseCodingAgent | null;
-  repoId?: string;
+  enabled: boolean;
+  commands: SlashCommandDescriptionLike[];
+  isInitialized: boolean;
+  isDiscovering: boolean;
+  portalContainer?: HTMLElement | null;
 }) {
   const [editor] = useLexicalComposerContext();
-  const portalContainer = usePortalContainer();
-  const taskAttemptId = useTaskAttemptId();
   const { t } = useTranslation('common');
   const { setIsOpen } = useTypeaheadOpen();
   const [options, setOptions] = useState<SlashCommandOption[]>([]);
@@ -56,38 +61,29 @@ export function SlashCommandTypeaheadPlugin({
     editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown'));
   }, [editor]);
 
-  const slashCommandsQuery = useSlashCommands(agent, {
-    workspaceId: taskAttemptId,
-    repoId,
-  });
-  const allCommands = useMemo(
-    () => slashCommandsQuery.commands ?? [],
-    [slashCommandsQuery.commands]
-  );
-  const isLoading = !slashCommandsQuery.isInitialized && !!agent;
-  const isDiscovering = slashCommandsQuery.discovering;
+  const isLoading = !isInitialized && enabled;
 
   const updateOptions = useCallback(
     (query: string | null) => {
       setActiveQuery(query);
 
-      if (!agent || query === null) {
+      if (!enabled || query === null) {
         setOptions([]);
         return;
       }
 
-      const filtered = filterSlashCommands(allCommands, query).slice(0, 20);
+      const filtered = filterSlashCommands(commands, query).slice(0, 20);
       setOptions(filtered.map((c) => new SlashCommandOption(c)));
     },
-    [agent, allCommands]
+    [enabled, commands]
   );
 
   const hasVisibleResults = useMemo(() => {
-    if (!agent || activeQuery === null) return false;
+    if (!enabled || activeQuery === null) return false;
     if (isLoading || isDiscovering) return true;
     if (!activeQuery.trim()) return true;
     return options.length > 0;
-  }, [agent, activeQuery, isDiscovering, isLoading, options.length]);
+  }, [enabled, activeQuery, isDiscovering, isLoading, options.length]);
 
   // If command list loads while menu is open, refresh options.
   useEffect(() => {
@@ -132,11 +128,10 @@ export function SlashCommandTypeaheadPlugin({
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
       ) => {
         if (!anchorRef.current) return null;
-        if (!agent) return null;
+        if (!enabled) return null;
         if (!hasVisibleResults) return null;
 
-        const isEmpty =
-          !isLoading && !isDiscovering && allCommands.length === 0;
+        const isEmpty = !isLoading && !isDiscovering && commands.length === 0;
         const showLoadingRow = isLoading || isDiscovering;
         const loadingText = isLoading
           ? 'Loading commands…'

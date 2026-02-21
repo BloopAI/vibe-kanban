@@ -40,7 +40,7 @@ import {
 } from '@vibe/ui/components/TaskAttemptContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
-import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
+import { SlashCommandTypeaheadPlugin } from '@vibe/ui/components/SlashCommandTypeaheadPlugin';
 import { KeyboardCommandsPlugin } from '@vibe/ui/components/KeyboardCommandsPlugin';
 import { ImageKeyboardPlugin } from '@vibe/ui/components/ImageKeyboardPlugin';
 import { ComponentInfoKeyboardPlugin } from '@vibe/ui/components/ComponentInfoKeyboardPlugin';
@@ -64,6 +64,7 @@ import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
 import { cn } from '@/lib/utils';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
@@ -253,6 +254,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     // Copy button state
     const [copied, setCopied] = useState(false);
     const portalContainer = usePortalContainer();
+    const slashCommandsQuery = useSlashCommands(executor, {
+      workspaceId: taskAttemptId,
+      repoId,
+    });
     const handleCopy = useCallback(async () => {
       if (!value) return;
       try {
@@ -436,8 +441,11 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     <FileTagTypeaheadPlugin repoIds={repoIds} />
                     {executor && (
                       <SlashCommandTypeaheadPlugin
-                        agent={executor}
-                        repoId={repoId}
+                        enabled={true}
+                        commands={slashCommandsQuery.commands}
+                        isInitialized={slashCommandsQuery.isInitialized}
+                        isDiscovering={slashCommandsQuery.discovering}
+                        portalContainer={portalContainer}
                       />
                     )}
                     <KeyboardCommandsPlugin
