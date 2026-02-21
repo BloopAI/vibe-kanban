@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import {
   GitBranchIcon,
   GitPullRequestIcon,
@@ -20,12 +20,11 @@ import {
   DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
 import {
   SplitButton,
   type SplitButtonOption,
-} from '@vibe/ui/components/SplitButton';
-import { useRepoAction } from '@/stores/useUiPreferencesStore';
+} from './SplitButton';
 
 export type RepoAction =
   | 'pull-request'
@@ -59,7 +58,9 @@ interface RepoCardProps {
   isPushSuccess?: boolean;
   isPushError?: boolean;
   isTargetRemote?: boolean;
-  branchDropdownContent?: React.ReactNode;
+  branchDropdownContent?: ReactNode;
+  selectedAction?: RepoAction;
+  onSelectedActionChange?: (action: RepoAction) => void;
   onChangeTarget?: () => void;
   onRebase?: () => void;
   onActionsClick?: (action: RepoAction) => void;
@@ -68,7 +69,6 @@ interface RepoCardProps {
 }
 
 export function RepoCard({
-  repoId,
   name,
   targetBranch,
   commitsAhead = 0,
@@ -82,6 +82,8 @@ export function RepoCard({
   isPushError = false,
   isTargetRemote = false,
   branchDropdownContent,
+  selectedAction = 'pull-request',
+  onSelectedActionChange,
   onChangeTarget,
   onRebase,
   onActionsClick,
@@ -90,7 +92,6 @@ export function RepoCard({
 }: RepoCardProps) {
   const { t } = useTranslation('tasks');
   const { t: tCommon } = useTranslation('common');
-  const [selectedAction, setSelectedAction] = useRepoAction(repoId);
 
   // Hide "Open pull request" and "Link pull request" when PR is already open
   // Hide "Link pull request" when any PR is already linked (open or merged)
@@ -254,7 +255,9 @@ export function RepoCard({
           <SplitButton
             options={availableActionOptions}
             selectedValue={effectiveSelectedAction}
-            onSelectionChange={setSelectedAction}
+            onSelectionChange={(action) =>
+              onSelectedActionChange?.(action)
+            }
             onAction={(action) => onActionsClick?.(action)}
           />
         </div>

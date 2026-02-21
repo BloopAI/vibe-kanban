@@ -19,7 +19,7 @@ import {
   type WorkspaceSortBy,
   type WorkspaceSortOrder,
 } from '@/stores/useUiPreferencesStore';
-import type { RepoAction } from '@/components/ui-new/primitives/RepoCard';
+import type { RepoAction } from '@vibe/ui/components/RepoCard';
 
 // Stable UUID for global UI preferences (not tied to a workspace/user)
 // This is a deterministic UUID v5 generated from the namespace "ui-preferences"

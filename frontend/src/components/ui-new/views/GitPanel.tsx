@@ -1,12 +1,10 @@
 import { GitBranchIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
-import {
-  RepoCard,
-  type RepoAction,
-} from '@/components/ui-new/primitives/RepoCard';
+import { RepoCard, type RepoAction } from '@vibe/ui/components/RepoCard';
 import { InputField } from '@vibe/ui/components/InputField';
 import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
+import { useRepoAction } from '@/stores/useUiPreferencesStore';
 
 export interface RepoInfo {
   id: string;
@@ -37,6 +35,47 @@ interface GitPanelProps {
   error?: string | null;
 }
 
+interface RepoCardWithPreferenceProps {
+  repo: RepoInfo;
+  onActionsClick?: (repoId: string, action: RepoAction) => void;
+  onPushClick?: (repoId: string) => void;
+  onMoreClick?: (repoId: string) => void;
+}
+
+function RepoCardWithPreference({
+  repo,
+  onActionsClick,
+  onPushClick,
+  onMoreClick,
+}: RepoCardWithPreferenceProps) {
+  const [selectedAction, setSelectedAction] = useRepoAction(repo.id);
+
+  return (
+    <RepoCard
+      repoId={repo.id}
+      name={repo.name}
+      targetBranch={repo.targetBranch}
+      commitsAhead={repo.commitsAhead}
+      commitsBehind={repo.commitsBehind}
+      prNumber={repo.prNumber}
+      prUrl={repo.prUrl}
+      prStatus={repo.prStatus}
+      showPushButton={repo.showPushButton}
+      isPushPending={repo.isPushPending}
+      isPushSuccess={repo.isPushSuccess}
+      isPushError={repo.isPushError}
+      isTargetRemote={repo.isTargetRemote}
+      selectedAction={selectedAction}
+      onSelectedActionChange={setSelectedAction}
+      onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
+      onRebase={() => onActionsClick?.(repo.id, 'rebase')}
+      onActionsClick={(action) => onActionsClick?.(repo.id, action)}
+      onPushClick={() => onPushClick?.(repo.id)}
+      onMoreClick={() => onMoreClick?.(repo.id)}
+    />
+  );
+}
+
 export function GitPanel({
   repos,
   workingBranchName,
@@ -59,26 +98,12 @@ export function GitPanel({
       {error && <ErrorAlert message={error} />}
       <div className="gap-base px-base">
         {repos.map((repo) => (
-          <RepoCard
+          <RepoCardWithPreference
             key={repo.id}
-            repoId={repo.id}
-            name={repo.name}
-            targetBranch={repo.targetBranch}
-            commitsAhead={repo.commitsAhead}
-            commitsBehind={repo.commitsBehind}
-            prNumber={repo.prNumber}
-            prUrl={repo.prUrl}
-            prStatus={repo.prStatus}
-            showPushButton={repo.showPushButton}
-            isPushPending={repo.isPushPending}
-            isPushSuccess={repo.isPushSuccess}
-            isPushError={repo.isPushError}
-            isTargetRemote={repo.isTargetRemote}
-            onChangeTarget={() => onActionsClick?.(repo.id, 'change-target')}
-            onRebase={() => onActionsClick?.(repo.id, 'rebase')}
-            onActionsClick={(action) => onActionsClick?.(repo.id, action)}
-            onPushClick={() => onPushClick?.(repo.id)}
-            onMoreClick={() => onMoreClick?.(repo.id)}
+            repo={repo}
+            onActionsClick={onActionsClick}
+            onPushClick={onPushClick}
+            onMoreClick={onMoreClick}
           />
         ))}
         <div className="bg-primary flex flex-col gap-base w-full p-base rounded-sm my-base">

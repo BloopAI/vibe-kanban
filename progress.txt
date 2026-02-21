@@ -3345,3 +3345,55 @@ Plan adjustments from new information:
 - Leaf presentational wrappers with prop-driven content remain the highest-throughput extraction path.
 - Converging container imports on `@vibe/ui/components/*` keeps boundaries readable and mechanical for repeated migrations.
 - Next likely extraction candidate: `ui-new/primitives/RepoCard.tsx` (requires lifting `useRepoAction` store coupling into callsites via explicit selected-action props).
+
+## 2026-02-21 - UI package extraction: RepoCard
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/RepoCard.tsx` as the next extraction candidate.
+- It is heavily reused inside Git panel flows, and its only hard package-boundary blocker was direct `useRepoAction` store usage.
+- New information: this component can be package-safe by turning selection persistence into explicit props while keeping state orchestration in frontend views.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/RepoCard.tsx packages/ui/src/components/RepoCard.tsx`
+- Package updates:
+  - Removed frontend store dependency from package component:
+    - deleted `useRepoAction` import/usage
+  - Updated package self imports:
+    - `@vibe/ui/components/Dropdown` -> `./Dropdown`
+    - `@vibe/ui/components/SplitButton` -> `./SplitButton`
+  - Added explicit controlled-selection API:
+    - `selectedAction?: RepoAction`
+    - `onSelectedActionChange?: (action: RepoAction) => void`
+    - default `selectedAction` remains `'pull-request'`
+- Frontend callsite updates:
+  - `frontend/src/components/ui-new/views/GitPanel.tsx`
+    - switched import to `@vibe/ui/components/RepoCard`
+    - introduced `RepoCardWithPreference` wrapper that owns `useRepoAction(repo.id)` and passes controlled props into `RepoCard`
+  - `frontend/src/components/ui-new/containers/GitPanelContainer.tsx`
+    - updated `RepoAction` type import to `@vibe/ui/components/RepoCard`
+- Frontend type import updates:
+  - `frontend/src/stores/useUiPreferencesStore.ts`
+  - `frontend/src/hooks/useUiPreferencesScratch.ts`
+  - both now import `RepoAction` from `@vibe/ui/components/RepoCard`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Store-coupled primitives can be extracted cleanly by making package components controlled/presentational and introducing thin frontend wrappers for persistence hooks.
+- Consolidating shared domain types (like `RepoAction`) under package component exports keeps store/hooks/frontend views aligned without local primitive imports.
+- Next likely extraction candidate: `ui-new/primitives/SubIssueRow.tsx` (single callsite; move is feasible by replacing shared type imports with structural props and package-local utilities).
