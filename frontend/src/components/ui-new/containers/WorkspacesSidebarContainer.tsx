@@ -22,7 +22,7 @@ import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
 import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
-} from '@/components/ui-new/primitives/MultiSelectDropdown';
+} from '@vibe/ui/components/MultiSelectDropdown';
 import { PropertyDropdown } from '@/components/ui-new/primitives/PropertyDropdown';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';

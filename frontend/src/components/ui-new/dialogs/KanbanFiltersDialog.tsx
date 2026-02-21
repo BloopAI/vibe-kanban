@@ -30,7 +30,7 @@ import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilter
 import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
-} from '@/components/ui-new/primitives/MultiSelectDropdown';
+} from '@vibe/ui/components/MultiSelectDropdown';
 import {
   PropertyDropdown,
   type PropertyDropdownOption,

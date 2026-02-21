@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { CaretDownIcon, type Icon } from '@phosphor-icons/react';
 import {
   DropdownMenu,
@@ -8,8 +8,8 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@vibe/ui/components/Dropdown';
-import { Badge } from '@vibe/ui/components/Badge';
+} from './Dropdown';
+import { Badge } from './Badge';
 
 export interface MultiSelectDropdownOption<T extends string = string> {
   value: T;

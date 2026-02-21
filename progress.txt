@@ -962,3 +962,41 @@ Validation:
 Plan adjustments from new information:
 - No structural plan changes required; dependency-led order remains valid.
 - Next recommended candidate is `ui-new/primitives/MultiSelectDropdown.tsx` (now unblocked, small dependency surface, 3 active callsites).
+
+## 2026-02-21 - UI package extraction: MultiSelectDropdown
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/MultiSelectDropdown.tsx` after `SplitButton` because it was dependency-unblocked by `Dropdown` and had a small callsite surface.
+- Dependency surface remained contained and already aligned in `@vibe/ui` (`Dropdown`, `Badge`, `@phosphor-icons/react`, `cn`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/MultiSelectDropdown.tsx packages/ui/src/components/MultiSelectDropdown.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/MultiSelectDropdown.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Switched internal imports to package-local `Dropdown`/`Badge` (`./Dropdown`, `./Badge`).
+  - No new package dependency additions were required.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/views/PriorityFilterDropdown.tsx`
+  - `frontend/src/components/ui-new/containers/WorkspacesSidebarContainer.tsx`
+  - `frontend/src/components/ui-new/dialogs/KanbanFiltersDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required; dependency-led order remains valid.
+- Next recommended candidate is `ui-new/primitives/SearchableDropdown.tsx` (now unblocked, focused callsite surface).
