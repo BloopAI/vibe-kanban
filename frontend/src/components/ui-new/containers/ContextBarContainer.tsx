@@ -1,18 +1,32 @@
 import { useMemo, useCallback, type RefObject } from 'react';
+import { CopyIcon } from '@phosphor-icons/react';
+import {
+  ContextBar,
+  type ContextBarRenderItem,
+} from '@vibe/ui/components/ContextBar';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserSystem } from '@/components/ConfigProvider';
-import { ContextBar } from '../primitives/ContextBar';
+import { IdeIcon } from '@/components/ide/IdeIcon';
+import { useContextBarPosition } from '@/hooks/useContextBarPosition';
 import {
   ContextBarActionGroups,
   type ActionDefinition,
   type ActionVisibilityContext,
   type ContextBarItem,
+  type SpecialIconType,
   ActionTargetType,
+  isSpecialIcon,
 } from '../actions';
+import type { EditorType } from 'shared/types';
 import {
   useActionVisibilityContext,
   isActionVisible,
+  isActionEnabled,
+  getActionIcon,
+  getActionTooltip,
 } from '../actions/useActionVisibility';
+import { CopyButton } from './CopyButton';
 
 /**
  * Check if a ContextBarItem is a divider
@@ -56,6 +70,80 @@ function filterContextBarItems(
   return result;
 }
 
+/**
+ * Get the icon class name based on action state and type.
+ */
+function getIconClassName(
+  action: ActionDefinition,
+  actionContext: ActionVisibilityContext,
+  isDisabled: boolean
+): string | undefined {
+  // Handle dev server running state (for ToggleDevServer action)
+  if (action.id === 'toggle-dev-server') {
+    const { devServerState } = actionContext;
+    if (devServerState === 'starting' || devServerState === 'stopping') {
+      return 'animate-spin';
+    }
+    if (devServerState === 'running') {
+      return 'text-error hover:text-error group-hover:text-error';
+    }
+  }
+
+  if (isDisabled) {
+    return 'opacity-40';
+  }
+
+  return undefined;
+}
+
+function buildSpecialItem(
+  iconType: SpecialIconType,
+  key: string,
+  tooltip: string,
+  shortcut: string | undefined,
+  enabled: boolean,
+  editorType: EditorType | null,
+  onExecuteAction: () => void
+): ContextBarRenderItem {
+  if (iconType === 'ide-icon') {
+    return {
+      type: 'action',
+      key,
+      label: tooltip,
+      customContent: (
+        <Tooltip content={tooltip} shortcut={shortcut} side="left">
+          <button
+            type="button"
+            className="flex items-center justify-center transition-colors drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]"
+            aria-label={tooltip}
+            onClick={onExecuteAction}
+            disabled={!enabled}
+          >
+            <IdeIcon
+              editorType={editorType}
+              className="size-icon-xs opacity-50 group-hover:opacity-80 transition-opacity"
+            />
+          </button>
+        </Tooltip>
+      ),
+    };
+  }
+
+  return {
+    type: 'action',
+    key,
+    label: tooltip,
+    customContent: (
+      <CopyButton
+        onCopy={onExecuteAction}
+        disabled={!enabled}
+        iconSize="size-icon-base"
+        icon={CopyIcon}
+      />
+    ),
+  };
+}
+
 export interface ContextBarContainerProps {
   containerRef: RefObject<HTMLElement | null>;
 }
@@ -65,7 +153,8 @@ export function ContextBarContainer({
 }: ContextBarContainerProps) {
   const { executorContext } = useActions();
   const { config } = useUserSystem();
-  const editorType = config?.editor?.editor_type ?? null;
+  const editorType =
+    (config?.editor?.editor_type as EditorType | undefined) ?? null;
 
   // Get visibility context (now includes dev server state)
   const actionCtx = useActionVisibilityContext();
@@ -80,24 +169,88 @@ export function ContextBarContainer({
     [executorContext]
   );
 
-  // Filter visible actions
-  const primaryItems = useMemo(
-    () => filterContextBarItems(ContextBarActionGroups.primary, actionCtx),
-    [actionCtx]
+  const { style, isDragging, dragHandlers } =
+    useContextBarPosition(containerRef);
+
+  const toRenderItems = useCallback(
+    (items: ContextBarItem[], prefix: string): ContextBarRenderItem[] => {
+      return items.flatMap((item, index) => {
+        if (isDivider(item)) {
+          return [{ type: 'divider', key: `${prefix}-divider-${index}` }];
+        }
+
+        const action = item;
+        const enabled = isActionEnabled(action, actionCtx);
+        const tooltip = getActionTooltip(action, actionCtx);
+        const shortcut = action.shortcut;
+        const iconClassName = getIconClassName(action, actionCtx, !enabled);
+        const key = `${prefix}-${action.id}-${index}`;
+        const execute = () => {
+          void handleExecuteAction(action);
+        };
+
+        const iconType = action.icon;
+        if (isSpecialIcon(iconType)) {
+          return [
+            buildSpecialItem(
+              iconType,
+              key,
+              tooltip,
+              shortcut,
+              enabled,
+              editorType,
+              execute
+            ),
+          ];
+        }
+
+        const icon = getActionIcon(action, actionCtx);
+        if (isSpecialIcon(icon)) {
+          return [];
+        }
+
+        return [
+          {
+            type: 'action',
+            key,
+            label: tooltip,
+            tooltip,
+            shortcut,
+            icon,
+            iconClassName,
+            disabled: !enabled,
+            onClick: execute,
+          },
+        ];
+      });
+    },
+    [actionCtx, editorType, handleExecuteAction]
   );
-  const secondaryItems = useMemo(
-    () => filterContextBarItems(ContextBarActionGroups.secondary, actionCtx),
-    [actionCtx]
-  );
+
+  // Filter visible actions and map to render items
+  const primaryItems = useMemo(() => {
+    const filtered = filterContextBarItems(
+      ContextBarActionGroups.primary,
+      actionCtx
+    );
+    return toRenderItems(filtered, 'primary');
+  }, [actionCtx, toRenderItems]);
+
+  const secondaryItems = useMemo(() => {
+    const filtered = filterContextBarItems(
+      ContextBarActionGroups.secondary,
+      actionCtx
+    );
+    return toRenderItems(filtered, 'secondary');
+  }, [actionCtx, toRenderItems]);
 
   return (
     <ContextBar
-      containerRef={containerRef}
+      style={style}
+      isDragging={isDragging}
+      onDragHandleMouseDown={dragHandlers.onMouseDown}
       primaryItems={primaryItems}
       secondaryItems={secondaryItems}
-      actionContext={actionCtx}
-      onExecuteAction={handleExecuteAction}
-      editorType={editorType}
     />
   );
 }

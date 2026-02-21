@@ -3649,3 +3649,106 @@ Plan adjustments from new information:
 - Package components stay readable and decoupled when app-owned dependencies are passed as composed nodes rather than imported directly.
 - This extraction pattern scales for other high-coupling primitives: first move shared layout shell, then keep app-specific hooks/renderers in frontend wrappers.
 - Next likely extraction candidate: `ui-new/primitives/ContextBar.tsx` (requires decoupling from `useContextBarPosition`, action visibility hooks, and app-only icon/button renderers via injected state/callback props).
+
+## 2026-02-21 - UI package extraction: ContextBar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/ContextBar.tsx` as the next extraction candidate.
+- It had a single container callsite, but package-boundary blockers were significant: app drag-position hook (`useContextBarPosition`), app action visibility logic (`useActionVisibilityContext`, `isActionVisible`, `isActionEnabled`, `getActionIcon`, `getActionTooltip`), and app-only renderers (`IdeIcon`, `CopyButton`).
+- New information: this component extracts cleanly when the package component is reduced to presentational rendering and the container owns all app-dependent action/drag logic.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/ContextBar.tsx packages/ui/src/components/ContextBar.tsx`
+- Package updates:
+  - Replaced app alias import with package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self import:
+    - `@vibe/ui/components/Tooltip` -> `./Tooltip`
+  - Removed app-boundary dependencies from package component:
+    - no `useContextBarPosition`
+    - no action visibility/action icon resolution hooks
+    - no `IdeIcon` / `CopyButton`
+  - Introduced presentational API:
+    - `ContextBarRenderItem` (`action` or `divider`)
+    - props now accept `style`, `isDragging`, `onDragHandleMouseDown`, `primaryItems`, `secondaryItems`
+    - supports either standard icon action rows or `customContent` rows for app-provided renderers
+- Frontend callsite updates:
+  - `frontend/src/components/ui-new/containers/ContextBarContainer.tsx`
+    - switched primitive import to `@vibe/ui/components/ContextBar`
+    - moved drag-position state ownership into container via `useContextBarPosition(containerRef)`
+    - moved action visibility and icon/tooltip resolution into container
+    - mapped `ContextBarActionGroups` into package `ContextBarRenderItem[]`
+    - preserved special action rendering (`ide-icon`, `copy-icon`) by passing `customContent`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For high-coupling primitives, a reliable extraction pattern is: keep package components purely presentational and move app state/behavior adapters to containers.
+- The remaining top-level `ui-new/primitives` are now `CreateChatBox.tsx` and `SessionChatBox.tsx`, both highly app-coupled.
+- Next likely extraction candidate: `ui-new/primitives/CreateChatBox.tsx` (feasible after introducing package-safe structural types and converting app-only helpers/containers to injected props, similar to the `ChatBoxBase` pattern).
+
+## 2026-02-21 - UI package extraction: CreateChatBox
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/CreateChatBox.tsx` as the next extraction candidate.
+- It had one direct callsite (`CreateChatBoxContainer`) and one type-sharing dependency (`SessionChatBox` importing its prop types), making it a lower-risk extraction than `SessionChatBox`.
+- Main package-boundary blockers were frontend-only dependencies inside the component (`AgentIcon`, `WYSIWYGEditor`, `ModelSelectorContainer`, `useUserSystem`, and `@/utils/string`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/CreateChatBox.tsx packages/ui/src/components/CreateChatBox.tsx`
+- Package updates:
+  - Replaced all `@/` and frontend container imports with package-safe APIs.
+  - Converted `CreateChatBox` to a presentational package component with injected app renderers:
+    - added `renderEditor` render-prop (`CreateChatBoxEditorRenderProps`)
+    - added `agentIcon?: ReactNode`
+    - changed `modelSelector` from config object to `ReactNode`
+  - Added generic package-safe types that no longer depend on `shared/types`:
+    - `ExecutorProps<TExecutor extends string = string>`
+    - `ModelSelectorProps<TExecutorConfig = unknown>`
+  - Added `formatExecutorLabel` / `emptyExecutorLabel` props to keep label formatting behavior at the app layer.
+- Frontend callsite updates:
+  - `frontend/src/components/ui-new/containers/CreateChatBoxContainer.tsx`
+    - switched import to `@vibe/ui/components/CreateChatBox`
+    - injected editor via `renderEditor` using app-owned `WYSIWYGEditor`
+    - injected `AgentIcon` and `ModelSelectorContainer`
+    - passed `formatExecutorLabel={toPrettyCase}` to preserve existing executor label formatting
+  - `frontend/src/components/ui-new/primitives/SessionChatBox.tsx`
+    - moved shared type imports to `@vibe/ui/components/CreateChatBox`
+    - parameterized shared types for app-specific types (`ExecutorProps<BaseCodingAgent>`, `ModelSelectorProps<ExecutorConfig>`)
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The render-prop + injected-node pattern is working for chat primitives that wrap `ChatBoxBase` and need app-owned editor/model integrations.
+- Top-level `ui-new/primitives` now contains only `SessionChatBox.tsx` (plus `conversation/` and `model-selector/` subfolders).
+- Next likely extraction candidate: `ui-new/primitives/SessionChatBox.tsx` (using the same package-presentational + frontend adapter pattern, while lifting remaining app hooks/actions and mode-specific orchestration to container-level inputs where needed).

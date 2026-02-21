@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import {
   BaseAgentCapability,
   type BaseCodingAgent,
+  type ExecutorConfig,
   type Session,
   type TodoItem,
   type TokenUsageInfo,
@@ -54,7 +55,7 @@ import {
   type EditorProps,
   type ExecutorProps,
   type ModelSelectorProps,
-} from './CreateChatBox';
+} from '@vibe/ui/components/CreateChatBox';
 import { ContextUsageGauge } from '@vibe/ui/components/ContextUsageGauge';
 import { TodoProgressPopup } from '@vibe/ui/components/TodoProgressPopup';
 import { useUserSystem } from '@/components/ConfigProvider';
@@ -148,11 +149,11 @@ interface SessionChatBoxProps {
   approvalMode?: ApprovalModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
-  modelSelector?: ModelSelectorProps;
+  modelSelector?: ModelSelectorProps<ExecutorConfig>;
   error?: string | null;
   repoIds?: string[];
   agent?: BaseCodingAgent | null;
-  executor?: ExecutorProps;
+  executor?: ExecutorProps<BaseCodingAgent>;
   todos?: TodoItem[];
   inProgressTodo?: TodoItem | null;
   localImages?: LocalImageMetadata[];

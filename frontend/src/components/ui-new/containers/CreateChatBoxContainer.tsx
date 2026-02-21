@@ -2,16 +2,19 @@ import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
 import { useCreateMode } from '@/contexts/CreateModeContext';
+import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { getSortedExecutorVariantKeys } from '@/utils/executor';
+import { toPrettyCase, splitMessageToTitleDescription } from '@/utils/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
-import { CreateChatBox } from '../primitives/CreateChatBox';
+import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
-import { splitMessageToTitleDescription } from '@/utils/string';
+import { ModelSelectorContainer } from './ModelSelectorContainer';
 
 function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;
@@ -313,6 +316,39 @@ export function CreateChatBoxContainer({
                     value: message,
                     onChange: setMessage,
                   }}
+                  renderEditor={({
+                    value,
+                    onChange,
+                    onCmdEnter,
+                    disabled,
+                    repoIds,
+                    repoId,
+                    executor,
+                    onPasteFiles,
+                    localImages,
+                  }) => (
+                    <WYSIWYGEditor
+                      placeholder="Describe the task..."
+                      value={value}
+                      onChange={onChange}
+                      onCmdEnter={onCmdEnter}
+                      disabled={disabled}
+                      className="min-h-double max-h-[50vh] overflow-y-auto"
+                      repoIds={repoIds}
+                      repoId={repoId}
+                      executor={executor}
+                      autoFocus
+                      onPasteFiles={onPasteFiles}
+                      localImages={localImages}
+                      sendShortcut={config?.send_message_shortcut}
+                    />
+                  )}
+                  agentIcon={
+                    <AgentIcon
+                      agent={effectiveExecutor}
+                      className="size-icon-xl"
+                    />
+                  }
                   onSend={handleSubmit}
                   isSending={createWorkspace.isPending}
                   disabled={!hasSelectedRepos}
@@ -321,19 +357,25 @@ export function CreateChatBoxContainer({
                     options: executorOptions,
                     onChange: handleExecutorChange,
                   }}
+                  formatExecutorLabel={toPrettyCase}
                   error={displayError}
                   repoIds={repos.map((r) => r.id)}
-                  agent={effectiveExecutor}
                   repoId={repoId}
-                  modelSelector={{
-                    onAdvancedSettings: handleCustomise,
-                    presets: variantOptions,
-                    selectedPreset: selectedVariant,
-                    onPresetSelect: handlePresetSelect,
-                    onOverrideChange: setExecutorOverrides,
-                    executorConfig,
-                    presetOptions,
-                  }}
+                  modelSelector={
+                    effectiveExecutor ? (
+                      <ModelSelectorContainer
+                        agent={effectiveExecutor}
+                        workspaceId={undefined}
+                        onAdvancedSettings={handleCustomise}
+                        presets={variantOptions}
+                        selectedPreset={selectedVariant}
+                        onPresetSelect={handlePresetSelect}
+                        onOverrideChange={setExecutorOverrides}
+                        executorConfig={executorConfig}
+                        presetOptions={presetOptions}
+                      />
+                    ) : undefined
+                  }
                   onPasteFiles={uploadFiles}
                   localImages={localImages}
                   dropzone={{ getRootProps, getInputProps, isDragActive }}

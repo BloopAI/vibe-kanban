@@ -1,48 +1,32 @@
-import { useRef } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { CheckIcon, PaperclipIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { toPrettyCase } from '@/utils/string';
-import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
-import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
-import { AgentIcon } from '@/components/agents/AgentIcon';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { useUserSystem } from '@/components/ConfigProvider';
-import { Checkbox } from '@vibe/ui/components/Checkbox';
-import {
-  ChatBoxBase,
-  VisualVariant,
-  type DropzoneProps,
-} from '@vibe/ui/components/ChatBoxBase';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import {
-  ToolbarDropdown,
-  ToolbarIconButton,
-} from '@vibe/ui/components/Toolbar';
-import {
-  DropdownMenuItem,
-  DropdownMenuLabel,
-} from '@vibe/ui/components/Dropdown';
-import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
+import { Checkbox } from './Checkbox';
+import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
+import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
+import { PrimaryButton } from './PrimaryButton';
+import type { LocalImageMetadata } from './TaskAttemptContext';
+import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 
 export interface EditorProps {
   value: string;
   onChange: (value: string) => void;
 }
 
-export interface ModelSelectorProps {
+export interface ModelSelectorProps<TExecutorConfig = unknown> {
   onAdvancedSettings: () => void;
   presets: string[];
   selectedPreset: string | null;
   onPresetSelect: (presetId: string | null) => void;
-  onOverrideChange: (partial: Partial<ExecutorConfig>) => void;
-  executorConfig: ExecutorConfig | null;
-  presetOptions: ExecutorConfig | null | undefined;
+  onOverrideChange: (partial: Partial<TExecutorConfig>) => void;
+  executorConfig: TExecutorConfig | null;
+  presetOptions: TExecutorConfig | null | undefined;
 }
 
-export interface ExecutorProps {
-  selected: BaseCodingAgent | null;
-  options: BaseCodingAgent[];
-  onChange: (executor: BaseCodingAgent) => void;
+export interface ExecutorProps<TExecutor extends string = string> {
+  selected: TExecutor | null;
+  options: TExecutor[];
+  onChange: (executor: TExecutor) => void;
 }
 
 export interface SaveAsDefaultProps {
@@ -57,18 +41,35 @@ export interface LinkedIssueBadgeProps {
   onRemove: () => void;
 }
 
-interface CreateChatBoxProps {
+export interface CreateChatBoxEditorRenderProps<TExecutor extends string = string> {
+  value: string;
+  onChange: (value: string) => void;
+  onCmdEnter: () => void;
+  disabled: boolean;
+  repoIds?: string[];
+  repoId?: string;
+  executor: TExecutor | null;
+  onPasteFiles?: (files: File[]) => void;
+  localImages?: LocalImageMetadata[];
+}
+
+interface CreateChatBoxProps<TExecutor extends string = string> {
   editor: EditorProps;
+  renderEditor: (
+    props: CreateChatBoxEditorRenderProps<TExecutor>
+  ) => ReactNode;
+  agentIcon?: ReactNode;
   onSend: () => void;
   isSending: boolean;
   disabled?: boolean;
-  executor: ExecutorProps;
+  executor: ExecutorProps<TExecutor>;
+  formatExecutorLabel?: (executor: TExecutor) => string;
+  emptyExecutorLabel?: string;
   saveAsDefault?: SaveAsDefaultProps;
   error?: string | null;
   repoIds?: string[];
   repoId?: string;
-  agent?: BaseCodingAgent | null;
-  modelSelector?: ModelSelectorProps;
+  modelSelector?: ReactNode;
   onPasteFiles?: (files: File[]) => void;
   localImages?: LocalImageMetadata[];
   dropzone?: DropzoneProps;
@@ -82,17 +83,27 @@ interface CreateChatBoxProps {
  * Lightweight chat box for create mode.
  * Supports sending and attachments - no queue, stop, or feedback functionality.
  */
-export function CreateChatBox({
+function defaultExecutorLabel(executor: string) {
+  return executor
+    .replace(/[_-]+/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function CreateChatBox<TExecutor extends string = string>({
   editor,
+  renderEditor,
+  agentIcon,
   onSend,
   isSending,
   disabled = false,
   executor,
+  formatExecutorLabel = defaultExecutorLabel,
+  emptyExecutorLabel = 'Select Executor',
   saveAsDefault,
   error,
   repoIds,
   repoId,
-  agent,
   modelSelector,
   onPasteFiles,
   localImages,
@@ -101,9 +112,8 @@ export function CreateChatBox({
   repoSummaryLabel,
   repoSummaryTitle,
   linkedIssue,
-}: CreateChatBoxProps) {
+}: CreateChatBoxProps<TExecutor>) {
   const { t } = useTranslation(['common', 'tasks']);
-  const { config } = useUserSystem();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isDisabled = disabled || isSending;
   const canSend = editor.value.trim().length > 0 && !isDisabled;
@@ -129,49 +139,29 @@ export function CreateChatBox({
   };
 
   const executorLabel = executor.selected
-    ? toPrettyCase(executor.selected)
-    : 'Select Executor';
+    ? formatExecutorLabel(executor.selected)
+    : emptyExecutorLabel;
 
   return (
     <ChatBoxBase
-      editor={
-        <WYSIWYGEditor
-          placeholder="Describe the task..."
-          value={editor.value}
-          onChange={editor.onChange}
-          onCmdEnter={handleCmdEnter}
-          disabled={isDisabled}
-          className="min-h-double max-h-[50vh] overflow-y-auto"
-          repoIds={repoIds}
-          repoId={repoId}
-          executor={executor.selected ?? null}
-          autoFocus
-          onPasteFiles={onPasteFiles}
-          localImages={localImages}
-          sendShortcut={config?.send_message_shortcut}
-        />
-      }
+      editor={renderEditor({
+        value: editor.value,
+        onChange: editor.onChange,
+        onCmdEnter: handleCmdEnter,
+        disabled: isDisabled,
+        repoIds,
+        repoId,
+        executor: executor.selected ?? null,
+        onPasteFiles,
+        localImages,
+      })}
       error={error}
       visualVariant={VisualVariant.NORMAL}
       dropzone={dropzone}
-      modelSelector={
-        modelSelector && agent ? (
-          <ModelSelectorContainer
-            agent={agent}
-            workspaceId={undefined}
-            onAdvancedSettings={modelSelector.onAdvancedSettings}
-            presets={modelSelector.presets}
-            selectedPreset={modelSelector.selectedPreset}
-            onPresetSelect={modelSelector.onPresetSelect}
-            onOverrideChange={modelSelector.onOverrideChange}
-            executorConfig={modelSelector.executorConfig}
-            presetOptions={modelSelector.presetOptions}
-          />
-        ) : undefined
-      }
+      modelSelector={modelSelector}
       headerLeft={
         <>
-          <AgentIcon agent={agent} className="size-icon-xl" />
+          {agentIcon}
           <ToolbarDropdown label={executorLabel} disabled={isDisabled}>
             <DropdownMenuLabel>
               {t('tasks:conversation.executors')}
@@ -182,7 +172,7 @@ export function CreateChatBox({
                 icon={executor.selected === exec ? CheckIcon : undefined}
                 onClick={() => executor.onChange(exec)}
               >
-                {toPrettyCase(exec)}
+                {formatExecutorLabel(exec)}
               </DropdownMenuItem>
             ))}
           </ToolbarDropdown>
