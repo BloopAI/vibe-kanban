@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 function normalizeSingleLineValue(value: string): string {
   return value.replace(/\r\n|\r|\n/g, ' ');
