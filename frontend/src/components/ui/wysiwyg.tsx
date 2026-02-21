@@ -46,7 +46,7 @@ import { ImageKeyboardPlugin } from '@vibe/ui/components/ImageKeyboardPlugin';
 import { ComponentInfoKeyboardPlugin } from '@vibe/ui/components/ComponentInfoKeyboardPlugin';
 import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
-import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
+import { ToolbarPlugin } from '@vibe/ui/components/ToolbarPlugin';
 import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
 import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
@@ -63,6 +63,7 @@ import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
@@ -251,6 +252,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     // Copy button state
     const [copied, setCopied] = useState(false);
+    const portalContainer = usePortalContainer();
     const handleCopy = useCallback(async () => {
       if (!value) return;
       try {
@@ -396,7 +398,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 editable={!disabled}
                 transformers={extendedTransformers}
               />
-              {!disabled && <ToolbarPlugin />}
+              {!disabled && <ToolbarPlugin portalContainer={portalContainer} />}
               <div className="relative">
                 <RichTextPlugin
                   contentEditable={

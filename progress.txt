@@ -2191,3 +2191,46 @@ Validation:
 Plan adjustments from new information:
 - Remaining local WYSIWYG plugins are higher-coupling (`toolbar-plugin`, `file-tag-typeahead-plugin`, `slash-command-typeahead-plugin`) due to frontend context/api dependencies.
 - Next candidate can still be `frontend/src/components/ui/wysiwyg/plugins/toolbar-plugin.tsx` if we inject portal target via props to remove direct `PortalContainerContext` usage.
+
+## 2026-02-21 - UI package extraction: wysiwyg/toolbar-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/toolbar-plugin.tsx` as the next extraction candidate.
+- It had a single callsite in `ui/wysiwyg.tsx` and was blocked mainly by direct `PortalContainerContext` usage plus app alias utility import.
+- New information: this dependency can be decoupled cleanly by injecting the portal container from the app layer.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/toolbar-plugin.tsx packages/ui/src/components/ToolbarPlugin.tsx`
+- Package updates:
+  - Replaced app utility alias import:
+    - from `@/lib/utils`
+    - to `../lib/cn`
+  - Replaced direct context dependency with prop-based injection:
+    - added `portalContainer?: HTMLElement | null`
+    - removed internal `usePortalContainer()` usage
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+  - Replaced local import with `@vibe/ui/components/ToolbarPlugin`
+  - Added `usePortalContainer()` in app layer and passed:
+    - `<ToolbarPlugin portalContainer={portalContainer} />`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Remaining local WYSIWYG plugins (`file-tag-typeahead-plugin`, `slash-command-typeahead-plugin`) are now the primary high-coupling items due to frontend API/hooks/store/context dependencies.
+- Next candidate likely requires an adapter-prop strategy (inject portal container and async search/command providers) before moving one of those plugins.
