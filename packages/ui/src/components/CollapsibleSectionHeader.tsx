@@ -1,10 +1,24 @@
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { CaretDownIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import {
-  usePersistedExpanded,
-  type PersistKey,
-} from '@/stores/useUiPreferencesStore';
+import { cn } from '../lib/cn';
+
+const STORAGE_KEY_PREFIX = 'vibe.ui.collapsible.';
+
+function getInitialExpanded(
+  persistKey: string | undefined,
+  defaultExpanded: boolean
+) {
+  if (!persistKey || typeof window === 'undefined') return defaultExpanded;
+  try {
+    const stored = window.localStorage.getItem(`${STORAGE_KEY_PREFIX}${persistKey}`);
+    if (stored == null) return defaultExpanded;
+    return stored === 'true';
+  } catch {
+    return defaultExpanded;
+  }
+}
 
 export type SectionAction = {
   icon: Icon;
@@ -13,13 +27,13 @@ export type SectionAction = {
 };
 
 interface CollapsibleSectionHeaderProps {
-  persistKey?: PersistKey;
+  persistKey?: string;
   title: string;
   defaultExpanded?: boolean;
   collapsible?: boolean;
   actions?: SectionAction[];
-  headerExtra?: React.ReactNode;
-  children?: React.ReactNode;
+  headerExtra?: ReactNode;
+  children?: ReactNode;
   className?: string;
 }
 
@@ -33,12 +47,40 @@ export function CollapsibleSectionHeader({
   children,
   className,
 }: CollapsibleSectionHeaderProps) {
-  const [expanded, toggle] = usePersistedExpanded(
-    persistKey ?? ('unused-key' as PersistKey),
-    defaultExpanded
+  const [expanded, setExpanded] = useState(() =>
+    getInitialExpanded(persistKey, defaultExpanded)
   );
 
-  const handleActionClick = (e: React.MouseEvent, onClick: () => void) => {
+  useEffect(() => {
+    setExpanded(getInitialExpanded(persistKey, defaultExpanded));
+  }, [persistKey, defaultExpanded]);
+
+  useEffect(() => {
+    if (!persistKey) return;
+    try {
+      window.localStorage.setItem(
+        `${STORAGE_KEY_PREFIX}${persistKey}`,
+        String(expanded)
+      );
+    } catch {
+      // Ignore localStorage failures (private mode/quota/security errors).
+    }
+  }, [persistKey, expanded]);
+
+  const handleActionClick = (
+    e: MouseEvent<HTMLSpanElement>,
+    onClick: () => void
+  ) => {
+    e.stopPropagation();
+    onClick();
+  };
+
+  const handleActionKeyDown = (
+    e: KeyboardEvent<HTMLSpanElement>,
+    onClick: () => void
+  ) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    e.preventDefault();
     e.stopPropagation();
     onClick();
   };
@@ -58,15 +100,7 @@ export function CollapsibleSectionHeader({
               role="button"
               tabIndex={0}
               onClick={(e) => handleActionClick(e, action.onClick)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleActionClick(
-                    e as unknown as React.MouseEvent,
-                    action.onClick
-                  );
-                }
-              }}
+              onKeyDown={(e) => handleActionKeyDown(e, action.onClick)}
               className={cn(
                 'hover:text-normal',
                 action.isActive ? 'text-brand' : 'text-low'
@@ -95,7 +129,7 @@ export function CollapsibleSectionHeader({
         {collapsible ? (
           <button
             type="button"
-            onClick={() => toggle()}
+            onClick={() => setExpanded((prev) => !prev)}
             className={cn(
               'flex items-center justify-between w-full px-base py-half cursor-pointer'
             )}

@@ -7,7 +7,7 @@ import {
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+} from '@vibe/ui/components/CollapsibleSectionHeader';
 import type { PersistKey } from '@/stores/useUiPreferencesStore';
 
 export interface IssueWorkspacesSectionProps {

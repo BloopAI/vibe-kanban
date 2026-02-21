@@ -21,7 +21,7 @@ import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
 import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
-import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
 
 interface IssueWorkspacesSectionContainerProps {
   issueId: string;

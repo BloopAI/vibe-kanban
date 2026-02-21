@@ -5,7 +5,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+} from '@vibe/ui/components/CollapsibleSectionHeader';
 import { SubIssueRow } from '@/components/ui-new/primitives/SubIssueRow';
 import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
 

@@ -12,7 +12,7 @@ import {
   IssueSubIssuesSection,
   type SubIssueData,
 } from '@/components/ui-new/views/IssueSubIssuesSection';
-import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
 
 interface IssueSubIssuesSectionContainerProps {
   issueId: string;

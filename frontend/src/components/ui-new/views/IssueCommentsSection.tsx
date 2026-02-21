@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/tooltip';
 import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
-import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+import { CollapsibleSectionHeader } from '@vibe/ui/components/CollapsibleSectionHeader';
 import {
   DropdownMenu,
   DropdownMenuTrigger,

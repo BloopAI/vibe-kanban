@@ -12,7 +12,7 @@ import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummar
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from '../primitives/CollapsibleSectionHeader';
+} from '@vibe/ui/components/CollapsibleSectionHeader';
 import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
 import type { WorkspaceLayoutMode } from '../containers/WorkspacesSidebarContainer';
 
