@@ -1696,3 +1696,40 @@ Plan adjustments from new information:
 - Dialog extraction is now complete for the legacy app dialog API, without conflicting with existing `@vibe/ui/components/Dialog`.
 - Remaining `frontend/src/components/ui/*` files are not strong `@vibe/ui` candidates (`pr-comment-card` is keep-app; `ui/wysiwyg` is better suited for a dedicated `@vibe/editor-ui` package per audit).
 - Next package extraction track should likely shift to the editor-scope split.
+
+## 2026-02-21 - UI package extraction: wysiwyg/typeahead-menu-components
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/typeahead-menu-components.tsx` as the next low-risk candidate.
+- It is a UI-only component module (no app store/context coupling) and had only two direct callsites.
+- New information: remaining extraction work now clusters around the `ui/wysiwyg` subsystem and is better handled as an editor-focused track.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/typeahead-menu-components.tsx packages/ui/src/components/TypeaheadMenu.tsx`
+- Package updates:
+  - No internal code changes were required in the moved component.
+  - No new dependencies were required in `@vibe/ui`.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui/wysiwyg/plugins/file-tag-typeahead-plugin.tsx`
+  - `frontend/src/components/ui/wysiwyg/plugins/slash-command-typeahead-plugin.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- `TypeaheadMenu` extraction confirms that additional editor primitives can be moved incrementally with low risk.
+- Most remaining candidates are `ui/wysiwyg` scoped; practical next step is to continue this editor-oriented extraction path (or formalize it under a dedicated `@vibe/editor-ui` package as recommended by the audit).

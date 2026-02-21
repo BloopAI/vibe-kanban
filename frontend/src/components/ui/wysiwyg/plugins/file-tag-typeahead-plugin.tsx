@@ -46,7 +46,7 @@ import {
   type SearchResultItem,
 } from '@/lib/searchTagsAndFiles';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
-import { TypeaheadMenu } from './typeahead-menu-components';
+import { TypeaheadMenu } from '@vibe/ui/components/TypeaheadMenu';
 
 class FileTagOption extends MenuOption {
   item: SearchResultItem;
