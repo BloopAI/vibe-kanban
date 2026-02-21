@@ -9,12 +9,25 @@ import {
   DotsThreeIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { formatRelativeTime } from '@/utils/date';
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { RunningDots } from '@vibe/ui/components/RunningDots';
+import { cn } from '../lib/cn';
+import { RunningDots } from './RunningDots';
 
-interface WorkspaceSummaryProps {
+const formatRelativeElapsed = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) return 'just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  return `${diffDays}d ago`;
+};
+
+export interface WorkspaceSummaryProps {
   name: string;
   workspaceId?: string;
   filesChanged?: number;
@@ -34,6 +47,7 @@ interface WorkspaceSummaryProps {
   summary?: boolean;
   /** Whether this is a draft workspace (shows "Draft" instead of elapsed time) */
   isDraft?: boolean;
+  onOpenWorkspaceActions?: (workspaceId: string) => void;
 }
 
 export function WorkspaceSummary({
@@ -55,6 +69,7 @@ export function WorkspaceSummary({
   className,
   summary = false,
   isDraft = false,
+  onOpenWorkspaceActions,
 }: WorkspaceSummaryProps) {
   const { t } = useTranslation('common');
   const hasChanges = filesChanged !== undefined && filesChanged > 0;
@@ -63,10 +78,8 @@ export function WorkspaceSummary({
 
   const handleOpenCommandBar = (e: React.MouseEvent) => {
     e.stopPropagation();
-    CommandBarDialog.show({
-      page: 'workspaceActions',
-      workspaceId,
-    });
+    if (!workspaceId || !onOpenWorkspaceActions) return;
+    onOpenWorkspaceActions(workspaceId);
   };
 
   return (
@@ -174,7 +187,7 @@ export function WorkspaceSummary({
                 </span>
               ) : latestProcessCompletedAt ? (
                 <span className="min-w-0 flex-1 truncate">
-                  {formatRelativeTime(latestProcessCompletedAt)}
+                  {formatRelativeElapsed(latestProcessCompletedAt)}
                 </span>
               ) : (
                 <span className="flex-1" />
@@ -201,7 +214,7 @@ export function WorkspaceSummary({
       </button>
 
       {/* Right-side hover action - more options only */}
-      {workspaceId && (
+      {workspaceId && onOpenWorkspaceActions && (
         <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-0 group-hover:opacity-100">
           {/* Gradient fade from transparent to background */}
           <div className="h-full w-6 pointer-events-none bg-gradient-to-r from-transparent to-secondary" />

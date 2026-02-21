@@ -8,7 +8,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { InputField } from '@vibe/ui/components/InputField';
-import { WorkspaceSummary } from '@/components/ui-new/primitives/WorkspaceSummary';
+import { WorkspaceSummary } from '@vibe/ui/components/WorkspaceSummary';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
@@ -51,10 +52,12 @@ function WorkspaceList({
   workspaces,
   selectedWorkspaceId,
   onSelectWorkspace,
+  onOpenWorkspaceActions,
 }: {
   workspaces: Workspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
+  onOpenWorkspaceActions: (workspaceId: string) => void;
 }) {
   return (
     <>
@@ -75,6 +78,7 @@ function WorkspaceList({
           latestProcessCompletedAt={workspace.latestProcessCompletedAt}
           latestProcessStatus={workspace.latestProcessStatus}
           prStatus={workspace.prStatus}
+          onOpenWorkspaceActions={onOpenWorkspaceActions}
           onClick={() => onSelectWorkspace(workspace.id)}
         />
       ))}
@@ -104,6 +108,12 @@ export function WorkspacesSidebar({
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const handleOpenWorkspaceActions = (workspaceId: string) => {
+    CommandBarDialog.show({
+      page: 'workspaceActions',
+      workspaceId,
+    });
+  };
 
   // Handle scroll to load more
   const handleScroll = () => {
@@ -207,6 +217,7 @@ export function WorkspacesSidebar({
                   latestProcessCompletedAt={workspace.latestProcessCompletedAt}
                   latestProcessStatus={workspace.latestProcessStatus}
                   prStatus={workspace.prStatus}
+                  onOpenWorkspaceActions={handleOpenWorkspaceActions}
                   onClick={() => onSelectWorkspace(workspace.id)}
                 />
               ))
@@ -239,6 +250,7 @@ export function WorkspacesSidebar({
                     workspaces={raisedHandWorkspaces}
                     selectedWorkspaceId={selectedWorkspaceId}
                     onSelectWorkspace={onSelectWorkspace}
+                    onOpenWorkspaceActions={handleOpenWorkspaceActions}
                   />
                 )}
               </div>
@@ -260,6 +272,7 @@ export function WorkspacesSidebar({
                     workspaces={idleWorkspaces}
                     selectedWorkspaceId={selectedWorkspaceId}
                     onSelectWorkspace={onSelectWorkspace}
+                    onOpenWorkspaceActions={handleOpenWorkspaceActions}
                   />
                 )}
               </div>
@@ -281,6 +294,7 @@ export function WorkspacesSidebar({
                     workspaces={runningWorkspaces}
                     selectedWorkspaceId={selectedWorkspaceId}
                     onSelectWorkspace={onSelectWorkspace}
+                    onOpenWorkspaceActions={handleOpenWorkspaceActions}
                   />
                 )}
               </div>
@@ -320,6 +334,7 @@ export function WorkspacesSidebar({
                 latestProcessCompletedAt={workspace.latestProcessCompletedAt}
                 latestProcessStatus={workspace.latestProcessStatus}
                 prStatus={workspace.prStatus}
+                onOpenWorkspaceActions={handleOpenWorkspaceActions}
                 onClick={() => onSelectWorkspace(workspace.id)}
               />
             ))}

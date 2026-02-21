@@ -2918,3 +2918,51 @@ Plan adjustments from new information:
 - Simple UI components that only need identity/label fields should use package-local structural prop types to avoid app type coupling.
 - As extraction continues, the remaining candidates have more behavior coupling (dialogs, store interactions, command dispatch), so adapter-prop boundaries will be required more often.
 - Next likely extraction candidate: `ui-new/primitives/WorkspaceSummary.tsx` (move with adapter boundary for command-bar action + date formatting).
+
+## 2026-02-21 - UI package extraction: WorkspaceSummary
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/WorkspaceSummary.tsx` as the next extraction candidate.
+- It is mostly presentational but had app-coupled behavior via `CommandBarDialog.show` and app date utility imports.
+- New information: this component extracts cleanly by using an action callback adapter and package-local relative-time formatting.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/WorkspaceSummary.tsx packages/ui/src/components/WorkspaceSummary.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Updated package self import:
+    - `@vibe/ui/components/RunningDots` -> `./RunningDots`
+  - Removed app-coupled imports from moved component:
+    - `formatRelativeTime` from `@/utils/date`
+    - `CommandBarDialog` from `@/components/ui-new/dialogs/CommandBarDialog`
+  - Added package-local relative-time helper `formatRelativeElapsed`.
+  - Added adapter prop to package component:
+    - `onOpenWorkspaceActions?: (workspaceId: string) => void`
+- Callsite updates to `@vibe/ui` subpath import and adapter wiring:
+  - `frontend/src/components/ui-new/views/WorkspacesSidebar.tsx`
+  - Replaced local import with `@vibe/ui/components/WorkspaceSummary`
+  - Added local `handleOpenWorkspaceActions` that calls `CommandBarDialog.show(...)`
+  - Passed `onOpenWorkspaceActions={handleOpenWorkspaceActions}` to all workspace-backed `WorkspaceSummary` callsites.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Behavior-coupled primitives can still move cleanly by introducing explicit adapter props for app-only actions.
+- Keep package-local helpers for generic display logic (like elapsed-time labels) when they don't need app state.
+- Next likely candidate: reduce duplication by refactoring `@vibe/ui/components/KanbanAssignee` to reuse `@vibe/ui/components/UserAvatar` internally before selecting another extraction target.
