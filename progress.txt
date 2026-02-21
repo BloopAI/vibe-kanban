@@ -2112,3 +2112,43 @@ Validation:
 Plan adjustments from new information:
 - App-specific lexical node predicates should be injected into extracted editor plugins to keep `@vibe/ui` package boundaries clean.
 - Next likely candidate is `frontend/src/components/ui/wysiwyg/plugins/component-info-keyboard-plugin.tsx` using the same guard-injection pattern.
+
+## 2026-02-21 - UI package extraction: wysiwyg/component-info-keyboard-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/component-info-keyboard-plugin.tsx` as the next low-risk extraction candidate.
+- It had a single callsite in `ui/wysiwyg.tsx` and the same frontend-local node-guard coupling pattern as `image-keyboard-plugin`.
+- New information: the guard-injection pattern cleanly generalizes across keyboard deletion plugins.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/component-info-keyboard-plugin.tsx packages/ui/src/components/ComponentInfoKeyboardPlugin.tsx`
+- Package updates:
+  - Removed direct dependency on frontend-local `component-info-node` by introducing:
+    - `isTargetNode: (node: LexicalNode) => boolean`
+  - Generalized node filtering/deletion to use the injected predicate.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+  - Replaced local import with `@vibe/ui/components/ComponentInfoKeyboardPlugin`.
+  - Passed `$isComponentInfoNode` into `<ComponentInfoKeyboardPlugin isTargetNode={$isComponentInfoNode} />`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue extracting keyboard/editor primitives by injecting app-specific predicates instead of importing frontend-local node modules.
+- Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/static-toolbar-plugin.tsx` (self-contained lexical formatting UI, likely only requiring package-local utility import adjustment).
+- `frontend/src/components/ui/wysiwyg/plugins/toolbar-plugin.tsx` remains higher-coupling because it depends on frontend `PortalContainerContext`.

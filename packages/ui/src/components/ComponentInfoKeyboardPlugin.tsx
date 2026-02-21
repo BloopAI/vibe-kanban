@@ -6,10 +6,16 @@ import {
   COMMAND_PRIORITY_LOW,
   $getSelection,
   $isNodeSelection,
+  type LexicalNode,
 } from 'lexical';
-import { $isComponentInfoNode } from '../nodes/component-info-node';
 
-export function ComponentInfoKeyboardPlugin() {
+type ComponentInfoKeyboardPluginProps = {
+  isTargetNode: (node: LexicalNode) => boolean;
+};
+
+export function ComponentInfoKeyboardPlugin({
+  isTargetNode,
+}: ComponentInfoKeyboardPluginProps) {
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
@@ -18,11 +24,11 @@ export function ComponentInfoKeyboardPlugin() {
       if (!$isNodeSelection(selection)) return false;
 
       const nodes = selection.getNodes();
-      const componentInfoNodes = nodes.filter($isComponentInfoNode);
+      const targetNodes = nodes.filter(isTargetNode);
 
-      if (componentInfoNodes.length === 0) return false;
+      if (targetNodes.length === 0) return false;
 
-      for (const node of componentInfoNodes) {
+      for (const node of targetNodes) {
         node.remove();
       }
 
@@ -45,7 +51,7 @@ export function ComponentInfoKeyboardPlugin() {
       unregisterBackspace();
       unregisterDelete();
     };
-  }, [editor]);
+  }, [editor, isTargetNode]);
 
   return null;
 }

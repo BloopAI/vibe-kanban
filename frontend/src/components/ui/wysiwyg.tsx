@@ -30,6 +30,7 @@ import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,
   COMPONENT_INFO_EXPORT_TRANSFORMER,
+  $isComponentInfoNode,
 } from './wysiwyg/nodes/component-info-node';
 import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
 import {
@@ -42,7 +43,7 @@ import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plu
 import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from '@vibe/ui/components/KeyboardCommandsPlugin';
 import { ImageKeyboardPlugin } from '@vibe/ui/components/ImageKeyboardPlugin';
-import { ComponentInfoKeyboardPlugin } from './wysiwyg/plugins/component-info-keyboard-plugin';
+import { ComponentInfoKeyboardPlugin } from '@vibe/ui/components/ComponentInfoKeyboardPlugin';
 import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
@@ -446,7 +447,9 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     />
                   </TypeaheadOpenProvider>
                   <ImageKeyboardPlugin isTargetNode={$isImageNode} />
-                  <ComponentInfoKeyboardPlugin />
+                  <ComponentInfoKeyboardPlugin
+                    isTargetNode={$isComponentInfoNode}
+                  />
                   <CodeBlockShortcutPlugin />
                 </>
               )}
