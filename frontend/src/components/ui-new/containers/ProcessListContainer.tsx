@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { ProcessListItem } from '../primitives/ProcessListItem';
-import { InputField } from '../primitives/InputField';
+import { InputField } from '@vibe/ui/components/InputField';
 import {
   CaretUpIcon,
   CaretDownIcon,

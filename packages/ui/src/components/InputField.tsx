@@ -5,7 +5,7 @@ import {
   type Icon,
   PencilSimpleLineIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 interface InputFieldProps {
   value: string;

@@ -8,7 +8,7 @@ import {
   type KanbanFilterState,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
-import { InputField } from '@/components/ui-new/primitives/InputField';
+import { InputField } from '@vibe/ui/components/InputField';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import {
   ButtonGroup,

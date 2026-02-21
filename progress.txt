@@ -188,3 +188,40 @@ Validation:
 Plan adjustments from new information:
 - Components that import third-party types (even as `import type`) require those packages to be declared in `@vibe/ui` for standalone type checks.
 - Next low-risk extract-now candidate is `InputField`.
+
+## 2026-02-21 - UI package extraction: InputField
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `InputField` as the next move candidate because it is an `extract-now` primitive with clear reuse across search/edit surfaces and a bounded dependency surface (`react`, `@phosphor-icons/react`, `cn`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/InputField.tsx packages/ui/src/components/InputField.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/InputField.tsx` to use package-local `cn` import (`../lib/cn`).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/views/FileTreeSearchBar.tsx`
+  - `frontend/src/components/ui-new/views/WorkspacesSidebar.tsx`
+  - `frontend/src/components/ui-new/views/GitPanel.tsx`
+  - `frontend/src/components/ui-new/containers/ProcessListContainer.tsx`
+  - `frontend/src/components/ui-new/views/KanbanFilterBar.tsx`
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+- `pnpm --filter @vibe/ui run format` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required.
+- `InputField` reused existing `@vibe/ui` dependencies, so no package dependency additions were needed this cycle.
+- Next low-risk `extract-now` candidates are `ErrorAlert` and `IconButtonGroup`.

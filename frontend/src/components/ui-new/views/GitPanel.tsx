@@ -5,7 +5,7 @@ import {
   RepoCard,
   type RepoAction,
 } from '@/components/ui-new/primitives/RepoCard';
-import { InputField } from '@/components/ui-new/primitives/InputField';
+import { InputField } from '@vibe/ui/components/InputField';
 import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
 
 export interface RepoInfo {
