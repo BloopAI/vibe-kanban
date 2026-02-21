@@ -44,7 +44,7 @@ import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
 import { StaticToolbarPlugin } from './wysiwyg/plugins/static-toolbar-plugin';
 import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
-import { PasteMarkdownPlugin } from './wysiwyg/plugins/paste-markdown-plugin';
+import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
 import { MarkdownSyncPlugin } from '@vibe/ui/components/MarkdownSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
