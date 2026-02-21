@@ -34,7 +34,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
+import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
 
 export type IssuePanelMode = 'create' | 'edit';
 

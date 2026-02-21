@@ -225,3 +225,39 @@ Plan adjustments from new information:
 - No structural plan changes required.
 - `InputField` reused existing `@vibe/ui` dependencies, so no package dependency additions were needed this cycle.
 - Next low-risk `extract-now` candidates are `ErrorAlert` and `IconButtonGroup`.
+
+## 2026-02-21 - UI package extraction: ErrorAlert
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ErrorAlert` as the next move candidate because it has a small dependency surface and only three callsites.
+- Reassessed `IconButtonGroup` and deferred it for now because it depends on `Tooltip`, which is still coupled to app context (`PortalContainerContext`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/ErrorAlert.tsx packages/ui/src/components/ErrorAlert.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/ErrorAlert.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Inlined `splitLines` helper locally in the component to remove dependency on frontend app utilities.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/views/GitPanel.tsx`
+  - `frontend/src/components/ui-new/views/IssueCommentsSection.tsx`
+  - `frontend/src/components/ui-new/views/KanbanIssuePanel.tsx`
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+- `pnpm --filter @vibe/ui run format` ✅
+
+Plan adjustments from new information:
+- `IconButtonGroup` should be treated as a follow-up extraction after tooltip decoupling (or tooltip extraction), rather than the immediate next low-risk move.
+- Next low-risk `extract-now` candidate is `PrimaryButton`.

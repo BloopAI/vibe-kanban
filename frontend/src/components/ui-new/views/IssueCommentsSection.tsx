@@ -15,7 +15,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ErrorAlert } from '@/components/ui-new/primitives/ErrorAlert';
+import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { CollapsibleSectionHeader } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 import {

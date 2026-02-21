@@ -1,6 +1,7 @@
-import { cn } from '@/lib/utils';
-import { splitLines } from '@/utils/string';
 import { XIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+
+const splitLines = (value: string): string[] => value.split(/\r\n|\r|\n/);
 
 interface ErrorAlertProps {
   message: string;
