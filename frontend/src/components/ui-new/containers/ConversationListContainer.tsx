@@ -56,7 +56,7 @@ interface MessageListContext {
   showSetupPlaceholder: boolean;
   showCleanupPlaceholder: boolean;
   resetAction: UseResetProcessResult;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }
 
 const noop = () => {};
@@ -374,7 +374,7 @@ export const ConversationList = forwardRef<
     isFirstTurn;
 
   const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const requestRemeasure = useCallback(() => {
+  const requestRemeasure = useCallback((anchorKey?: string) => {
     if (pendingRemeasureRef.current) return;
     pendingRemeasureRef.current = true;
 
@@ -394,9 +394,10 @@ export const ConversationList = forwardRef<
         list.data.replace(data, { purgeItemSizes: true });
       } else {
         const rendered = list.data.getCurrentlyRendered();
-        const anchorKey = rendered[0]?.patchKey;
-        const anchorIndex = anchorKey
-          ? data.findIndex((item) => item.patchKey === anchorKey)
+        const fallbackKey = rendered[0]?.patchKey;
+        const keyToAnchor = anchorKey ?? fallbackKey;
+        const anchorIndex = keyToAnchor
+          ? data.findIndex((item) => item.patchKey === keyToAnchor)
           : -1;
         list.data.replace(data, {
           purgeItemSizes: true,

@@ -64,7 +64,7 @@ type Props = {
   aggregatedGroup: AggregatedPatchGroup | null;
   aggregatedDiffGroup: AggregatedDiffGroup | null;
   aggregatedThinkingGroup: AggregatedThinkingGroup | null;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 };
 
 type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
@@ -424,7 +424,7 @@ function FileEditEntry({
   change: FileEditAction['changes'][number];
   expansionKey: string;
   status: ToolStatus;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   // Auto-expand when pending approval
   const pendingApproval = status.status === 'pending_approval';
@@ -434,7 +434,7 @@ function FileEditEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
   const { viewFileInChanges, diffPaths } = useChangesView();
 
@@ -507,7 +507,7 @@ function PlanEntry({
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const { t } = useTranslation('common');
   // Expand plans by default when pending approval
@@ -518,7 +518,7 @@ function PlanEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
 
   // Extract title from plan content (first line or default)
@@ -557,7 +557,7 @@ function GenericToolApprovalEntry({
   expansionKey: string;
   workspaceId: string | undefined;
   status: ToolStatus;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -565,7 +565,7 @@ function GenericToolApprovalEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
 
   return (
@@ -598,7 +598,7 @@ function UserMessageEntry({
   executionProcessId: string | undefined;
   executorCanFork: boolean;
   resetAction: UseResetProcessResult;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `user:${expansionKey}`,
@@ -606,7 +606,7 @@ function UserMessageEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
   const { startEdit, isEntryGreyed, isInEditMode } = useMessageEditContext();
   const { resetProcess, canResetProcess, isResetPending } = resetAction;
@@ -679,7 +679,7 @@ function ToolSummaryEntry({
   toolName: string;
   command: string | undefined;
   actionType: string;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `tool:${expansionKey}`,
@@ -687,7 +687,7 @@ function ToolSummaryEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
   const { viewToolContentInPanel } = useLogsPanel();
   const textRef = useRef<HTMLSpanElement>(null);
@@ -732,7 +732,7 @@ function TodoManagementEntry({
 }: {
   todos: TodoItem[];
   expansionKey: string;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `todo:${expansionKey}`,
@@ -740,7 +740,7 @@ function TodoManagementEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
 
   return <ChatTodoList todos={todos} expanded={expanded} onToggle={toggle} />;
@@ -764,7 +764,7 @@ function SubagentEntry({
   expansionKey: string;
   status: ToolStatus;
   workspaceId: string | undefined;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   // Only auto-expand if there's a result to show
   const hasResult = Boolean(result?.value);
@@ -774,7 +774,7 @@ function SubagentEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
 
   return (
@@ -800,7 +800,7 @@ function SystemMessageEntry({
 }: {
   content: string;
   expansionKey: string;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `system:${expansionKey}`,
@@ -808,7 +808,7 @@ function SystemMessageEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
 
   return (
@@ -898,7 +898,7 @@ function ErrorMessageEntry({
 }: {
   content: string;
   expansionKey: string;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, toggleExpanded] = usePersistedExpanded(
     `error:${expansionKey}`,
@@ -906,7 +906,7 @@ function ErrorMessageEntry({
   );
   const toggle = useCallback(() => {
     toggleExpanded();
-    requestRemeasure?.();
+    requestRemeasure?.(expansionKey);
   }, [requestRemeasure, toggleExpanded]);
 
   return (
@@ -922,7 +922,7 @@ function AggregatedGroupEntry({
   requestRemeasure,
 }: {
   group: AggregatedPatchGroup;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const { viewToolContentInPanel } = useLogsPanel();
   const [expanded, setExpanded] = useState(false);
@@ -991,8 +991,8 @@ function AggregatedGroupEntry({
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
-    requestRemeasure?.();
-  }, [requestRemeasure]);
+    requestRemeasure?.(group.patchKey);
+  }, [group.patchKey, requestRemeasure]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -1048,7 +1048,7 @@ function AggregatedThinkingGroupEntry({
 }: {
   group: AggregatedThinkingGroup;
   taskAttemptId: string | undefined;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1065,8 +1065,8 @@ function AggregatedThinkingGroupEntry({
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
-    requestRemeasure?.();
-  }, [requestRemeasure]);
+    requestRemeasure?.(group.patchKey);
+  }, [group.patchKey, requestRemeasure]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -1092,7 +1092,7 @@ function AggregatedDiffGroupEntry({
   requestRemeasure,
 }: {
   group: AggregatedDiffGroup;
-  requestRemeasure: () => void;
+  requestRemeasure: (anchorKey?: string) => void;
 }) {
   const { viewFileInChanges, diffPaths } = useChangesView();
   const [expanded, setExpanded] = useState(false);
@@ -1126,8 +1126,8 @@ function AggregatedDiffGroupEntry({
 
   const handleToggle = useCallback(() => {
     setExpanded((prev) => !prev);
-    requestRemeasure?.();
-  }, [requestRemeasure]);
+    requestRemeasure?.(group.patchKey);
+  }, [group.patchKey, requestRemeasure]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
