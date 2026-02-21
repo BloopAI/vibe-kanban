@@ -926,3 +926,39 @@ Validation:
 Plan adjustments from new information:
 - Structural plan update: extraction order is now dependency-led rather than strict `extract-now` ordering.
 - With `Dropdown` extracted, `SplitButton`, `SearchableDropdown`, and `MultiSelectDropdown` are now unblocked; next low-risk candidate is `ui-new/primitives/SplitButton.tsx` (no current callsites).
+
+## 2026-02-21 - UI package extraction: SplitButton
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/SplitButton.tsx` next after `Dropdown` because dependency blockers were removed and migration scope was minimal.
+- Dependency surface stayed aligned with existing `@vibe/ui` package deps (`@radix-ui/react-dropdown-menu`, `@phosphor-icons/react`, `cn`, `Dropdown`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/SplitButton.tsx packages/ui/src/components/SplitButton.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/SplitButton.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Switched internal dropdown imports to package-local relative path (`./Dropdown`).
+  - No new package dependency additions were required.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/primitives/RepoCard.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required; dependency-led order remains valid.
+- Next recommended candidate is `ui-new/primitives/MultiSelectDropdown.tsx` (now unblocked, small dependency surface, 3 active callsites).

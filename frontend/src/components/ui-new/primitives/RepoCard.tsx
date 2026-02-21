@@ -21,7 +21,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@vibe/ui/components/Dropdown';
-import { SplitButton, type SplitButtonOption } from './SplitButton';
+import {
+  SplitButton,
+  type SplitButtonOption,
+} from '@vibe/ui/components/SplitButton';
 import { useRepoAction } from '@/stores/useUiPreferencesStore';
 
 export type RepoAction =

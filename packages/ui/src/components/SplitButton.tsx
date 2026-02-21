@@ -1,11 +1,11 @@
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { CaretDownIcon, CheckIcon, type Icon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
 
 export interface SplitButtonOption<T extends string> {
   value: T;
