@@ -15,7 +15,7 @@ import { siDiscord, siGithub } from 'simple-icons';
 import { cn } from '@/lib/utils';
 import type { OrganizationWithRole } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
-import { AppBarButton } from './AppBarButton';
+import { AppBarButton } from '@vibe/ui/components/AppBarButton';
 import { AppBarSocialLink } from '@vibe/ui/components/AppBarSocialLink';
 import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
 import {
