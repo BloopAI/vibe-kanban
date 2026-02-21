@@ -2588,3 +2588,40 @@ Plan adjustments from new information:
 - Frontend-local WYSIWYG node extraction is now complete.
 - Remaining app-specific image concerns (modal wiring, attachment URL backend calls) are isolated behind explicit adapter boundaries in `frontend/src/components/ui/wysiwyg.tsx`.
 - Next extraction candidate should be chosen from remaining non-node app components still marked reusable, not from `frontend/src/components/ui/wysiwyg/nodes/`.
+
+## 2026-02-21 - UI package extraction: GoogleLogo
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/GoogleLogo.tsx` as the next low-risk extraction candidate.
+- New information: primary `extract-now`/`extract-later` reusable primitives from the original audit scope are already extracted, so next moves are selective reevaluations of low-coupling `keep-app` primitives.
+- `GoogleLogo` is a pure presentational SVG component with a single callsite and no domain/state dependencies.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/GoogleLogo.tsx packages/ui/src/components/GoogleLogo.tsx`
+- Package updates:
+  - Updated moved component import from app alias to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/primitives/OAuthButtons.tsx`
+  - Replaced local import `./GoogleLogo` with `@vibe/ui/components/GoogleLogo`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Extraction strategy is now in a selective phase: move only low-coupling, clearly reusable primitives that remain in frontend.
+- Next candidate should be another standalone presentational primitive with minimal app coupling (e.g., icon/logo/button-adjacent components), not feature containers/views/dialog workflows.
