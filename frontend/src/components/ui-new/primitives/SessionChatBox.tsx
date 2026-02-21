@@ -52,7 +52,7 @@ import {
   DropdownMenuSeparator,
 } from '@vibe/ui/components/Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
-import { ContextUsageGauge } from './ContextUsageGauge';
+import { ContextUsageGauge } from '@vibe/ui/components/ContextUsageGauge';
 import { TodoProgressPopup } from '@vibe/ui/components/TodoProgressPopup';
 import { useUserSystem } from '@/components/ConfigProvider';
 

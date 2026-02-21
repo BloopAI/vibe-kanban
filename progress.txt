@@ -3262,3 +3262,45 @@ Plan adjustments from new information:
 - For small UI primitives tied to app context, a thin app-side adapter (context read in callsite + plain props into package) keeps package boundaries readable without overengineering.
 - Keep package components context-agnostic and structurally typed where possible for faster incremental extractions.
 - Next likely extraction candidate: `ui-new/primitives/ContextUsageGauge.tsx` (single callsite in `SessionChatBox`; can be decoupled from `TokenUsageInfo` via package-local structural props).
+
+## 2026-02-21 - UI package extraction: ContextUsageGauge
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/ContextUsageGauge.tsx` as the next extraction candidate.
+- It had a single callsite in `SessionChatBox.tsx` and no app store/context coupling.
+- New information: the only package-boundary coupling was `TokenUsageInfo` from `shared/types`, which can be replaced by a local structural interface.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/ContextUsageGauge.tsx packages/ui/src/components/ContextUsageGauge.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Updated package self import:
+    - `@vibe/ui/components/Tooltip` -> `./Tooltip`
+  - Replaced shared type dependency with package-local structural type:
+    - added `ContextUsageInfo { total_tokens: number; model_context_window: number }`
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/primitives/SessionChatBox.tsx`
+  - Replaced local import with `@vibe/ui/components/ContextUsageGauge`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Structural typing for telemetry-like props (counts/limits) decouples package components from generated shared types without callsite churn.
+- Single-callsite primitives continue to be the fastest low-risk extraction path.
+- Next likely extraction candidate: `ui-new/primitives/CommentCard.tsx` (presentational primitive with simple `cn` coupling and three straightforward container callsites).

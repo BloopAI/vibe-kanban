@@ -1,15 +1,19 @@
-import type { TokenUsageInfo } from 'shared/types';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
+
+export interface ContextUsageInfo {
+  total_tokens: number;
+  model_context_window: number;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
 export interface ContextUsageGaugeProps {
-  tokenUsageInfo?: TokenUsageInfo | null;
+  tokenUsageInfo?: ContextUsageInfo | null;
   className?: string;
 }
 
