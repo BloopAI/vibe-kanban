@@ -51,7 +51,7 @@ import { HeadingNode, QuoteNode } from '@lexical/rich-text';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { ListPlugin } from '@lexical/react/LexicalListPlugin';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
-import { CodeHighlightPlugin } from './wysiwyg/plugins/code-highlight-plugin';
+import { CodeHighlightPlugin } from '@vibe/ui/components/CodeHighlightPlugin';
 import { CODE_HIGHLIGHT_CLASSES } from './wysiwyg/lib/code-highlight-theme';
 import { LinkNode } from '@lexical/link';
 import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
