@@ -17,15 +17,22 @@ use axum::{
     routing::{any, get, post},
 };
 use axum_extra::headers::{Cookie, HeaderMapExt, Host};
+use chrono::Utc;
 use futures::{SinkExt, stream::{SplitSink, SplitStream, StreamExt}};
 use tokio::sync::{mpsc, oneshot};
 use url::form_urlencoded;
+use uuid::Uuid;
 
 use api_types::{Base64Bytes, LocalToRelay, RelayStatus, RelayToLocal};
 
 use crate::{
     AppState,
     auth::RequestContext,
+    db::{
+        auth::{AuthSessionError, AuthSessionRepository, MAX_SESSION_INACTIVITY_DURATION},
+        identity_errors::IdentityError,
+        users::UserRepository,
+    },
     relay::{ActiveRelay, RelayRegistry},
 };
 
@@ -75,6 +82,75 @@ pub fn router() -> Router<AppState> {
         .route("/relay/mine", get(relay_mine))
         .route("/relay/auth-code", post(relay_auth_code))
         .route("/relay/proxy/{*path}", any(relay_proxy))
+}
+
+async fn validate_relay_token_for_user(
+    state: &AppState,
+    relay_token: &str,
+    expected_user_id: Uuid,
+) -> Result<(), Response> {
+    let identity = match state.jwt().decode_access_token(relay_token) {
+        Ok(id) => id,
+        Err(_) => {
+            return Err((StatusCode::UNAUTHORIZED, "Invalid token").into_response());
+        }
+    };
+
+    if identity.user_id != expected_user_id {
+        return Err((StatusCode::FORBIDDEN, "Token does not match relay").into_response());
+    }
+
+    let pool = state.pool();
+    let session_repo = AuthSessionRepository::new(pool);
+    let session = match session_repo.get(identity.session_id).await {
+        Ok(session) => session,
+        Err(AuthSessionError::NotFound) => {
+            return Err((StatusCode::UNAUTHORIZED, "Session not found").into_response());
+        }
+        Err(AuthSessionError::Database(error)) => {
+            tracing::warn!(?error, "failed to load relay session");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        }
+        Err(_) => {
+            return Err((StatusCode::UNAUTHORIZED, "Invalid session").into_response());
+        }
+    };
+
+    if session.user_id != identity.user_id {
+        return Err((StatusCode::UNAUTHORIZED, "Session user mismatch").into_response());
+    }
+
+    if session.revoked_at.is_some() {
+        return Err((StatusCode::UNAUTHORIZED, "Session revoked").into_response());
+    }
+
+    if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
+        if let Err(error) = session_repo.revoke(session.id).await {
+            tracing::warn!(?error, "failed to revoke inactive relay session");
+        }
+        return Err((StatusCode::UNAUTHORIZED, "Session expired").into_response());
+    }
+
+    let user_repo = UserRepository::new(pool);
+    match user_repo.fetch_user(identity.user_id).await {
+        Ok(_) => {}
+        Err(IdentityError::NotFound) => {
+            return Err((StatusCode::UNAUTHORIZED, "User not found").into_response());
+        }
+        Err(IdentityError::Database(error)) => {
+            tracing::warn!(?error, "failed to load relay user");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        }
+        Err(_) => {
+            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        }
+    }
+
+    if let Err(error) = session_repo.touch(session.id).await {
+        tracing::warn!(?error, "failed to touch relay session");
+    }
+
+    Ok(())
 }
 
 /// Extract the relay subdomain from a `Host` header value.
@@ -162,14 +238,8 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
         None => return (StatusCode::UNAUTHORIZED, "Missing relay_token cookie").into_response(),
     };
 
-    // Decode JWT and verify user matches subdomain
-    let identity = match state.jwt().decode_access_token(&relay_token) {
-        Ok(id) => id,
-        Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid token").into_response(),
-    };
-
-    if identity.user_id != user_id {
-        return (StatusCode::FORBIDDEN, "Token does not match relay").into_response();
+    if let Err(response) = validate_relay_token_for_user(&state, &relay_token, user_id).await {
+        return response;
     }
 
     do_relay_proxy_for_user(state, user_id, request, "").await
