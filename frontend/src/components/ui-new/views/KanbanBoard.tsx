@@ -20,7 +20,7 @@ import {
 import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 
 export type { DropResult } from '@hello-pangea/dnd';
 

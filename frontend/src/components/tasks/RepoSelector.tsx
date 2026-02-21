@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@/components/ui/button.tsx';
+import { Button } from '@vibe/ui/components/Button';
 import { ChevronsUpDown, FolderGit } from 'lucide-react';
 import {
   DropdownMenu,

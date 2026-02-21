@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { IdeIcon, getIdeName } from './IdeIcon';
 

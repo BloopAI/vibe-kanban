@@ -4,7 +4,7 @@ import { LogIn, type LucideIcon } from 'lucide-react';
 import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
 
 import { Alert } from '@vibe/ui/components/Alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { cn } from '@/lib/utils';
 
 interface LoginRequiredPromptProps {

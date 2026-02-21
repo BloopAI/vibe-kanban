@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { LogIn, Loader2 } from 'lucide-react';
 import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';

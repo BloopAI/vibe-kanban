@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { defineModal } from '@/lib/modals';

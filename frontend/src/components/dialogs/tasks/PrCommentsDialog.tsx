@@ -10,7 +10,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
 import { usePrComments } from '@/hooks/usePrComments';

@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@vibe/ui/components/Textarea';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@vibe/ui/components/Alert';

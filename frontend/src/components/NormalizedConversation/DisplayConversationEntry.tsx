@@ -34,7 +34,7 @@ import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
 import { cn } from '@/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import {
   ScriptFixerDialog,
   type ScriptType,

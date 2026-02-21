@@ -59,7 +59,7 @@ import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';

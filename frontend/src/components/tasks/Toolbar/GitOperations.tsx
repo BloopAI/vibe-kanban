@@ -8,7 +8,7 @@ import {
   CheckCircle,
   ExternalLink,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button.tsx';
+import { Button } from '@vibe/ui/components/Button';
 import {
   Tooltip,
   TooltipContent,

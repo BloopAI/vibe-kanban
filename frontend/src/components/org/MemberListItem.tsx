@@ -1,5 +1,5 @@
 import { Badge } from '@vibe/ui/components/Badge';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import {
   Select,
   SelectContent,

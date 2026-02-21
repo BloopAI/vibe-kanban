@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import type { GitOperationError } from 'shared/types';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';

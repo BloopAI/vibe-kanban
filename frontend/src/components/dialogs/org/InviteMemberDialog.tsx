@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
 import { Label } from '@vibe/ui/components/Label';
 import {

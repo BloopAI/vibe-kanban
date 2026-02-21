@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import type { ApprovalStatus, ToolStatus } from 'shared/types';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import {
   Tooltip,
   TooltipContent,

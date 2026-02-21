@@ -1,5 +1,5 @@
 import { Settings2, ArrowDown } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import {
   DropdownMenu,
   DropdownMenuContent,

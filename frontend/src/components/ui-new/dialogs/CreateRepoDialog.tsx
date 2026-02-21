@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from '@vibe/ui/components/Button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { FolderSimpleIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { defineModal, type NoProps } from '@/lib/modals';
