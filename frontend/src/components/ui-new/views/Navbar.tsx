@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
-import { SyncErrorIndicator } from '../primitives/SyncErrorIndicator';
+import { SyncErrorIndicator } from '@vibe/ui/components/SyncErrorIndicator';
+import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
 import {
   type ActionDefinition,
   type ActionVisibilityContext,
@@ -91,6 +92,8 @@ export function Navbar({
   onExecuteAction,
   className,
 }: NavbarProps) {
+  const syncErrorContext = useSyncErrorContext();
+
   const renderItem = (item: NavbarItem, key: string) => {
     // Render divider
     if (isDivider(item)) {
@@ -150,7 +153,7 @@ export function Navbar({
 
       {/* Right - Sync Error Indicator + Diff Controls + Panel Toggles (dividers inline) */}
       <div className="flex-1 flex items-center justify-end gap-base">
-        <SyncErrorIndicator />
+        <SyncErrorIndicator errors={syncErrorContext?.errors} />
         {rightItems.map((item, index) =>
           renderItem(
             item,

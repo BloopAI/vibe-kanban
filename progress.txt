@@ -3218,3 +3218,47 @@ Plan adjustments from new information:
 - Generic presentational controls port cleanly when their value/type contracts are already local and explicit at callsites.
 - Subpath imports remain readable even for shared type imports from package components (`type PropertyDropdownOption`).
 - Next likely extraction candidate: `ui-new/primitives/SyncErrorIndicator.tsx` (single callsite; requires adapter props to decouple from `SyncErrorContext`).
+
+## 2026-02-21 - UI package extraction: SyncErrorIndicator
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/SyncErrorIndicator.tsx` as the next extraction candidate.
+- It had a single callsite in `Navbar.tsx` and the only blocking coupling was direct `SyncErrorContext` usage.
+- New information: context-coupled leaf UI components migrate cleanly when converted to explicit data/callback props at the package boundary.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/SyncErrorIndicator.tsx packages/ui/src/components/SyncErrorIndicator.tsx`
+- Package updates:
+  - Removed frontend-only context dependency:
+    - deleted `useSyncErrorContext` import from moved component
+  - Updated package self import:
+    - `@vibe/ui/components/Popover` -> `./Popover`
+  - Added package-safe API:
+    - `SyncErrorIndicatorError` and `SyncErrorIndicatorProps`
+    - component now accepts `errors` and optional `onRefreshPage`
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/views/Navbar.tsx`
+  - replaced local primitive import with `@vibe/ui/components/SyncErrorIndicator`
+  - added `useSyncErrorContext` in `Navbar` and passed `errors={syncErrorContext?.errors}`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For small UI primitives tied to app context, a thin app-side adapter (context read in callsite + plain props into package) keeps package boundaries readable without overengineering.
+- Keep package components context-agnostic and structurally typed where possible for faster incremental extractions.
+- Next likely extraction candidate: `ui-new/primitives/ContextUsageGauge.tsx` (single callsite in `SessionChatBox`; can be decoupled from `TokenUsageInfo` via package-local structural props).

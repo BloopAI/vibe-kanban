@@ -1,27 +1,35 @@
 import { WarningIcon, ArrowClockwiseIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from '@vibe/ui/components/Popover';
+import { Popover, PopoverTrigger, PopoverContent } from './Popover';
+
+export interface SyncErrorIndicatorError {
+  streamId: string;
+  tableName: string;
+  error: {
+    message: string;
+    status?: string | number | null;
+  };
+}
+
+export interface SyncErrorIndicatorProps {
+  errors?: readonly SyncErrorIndicatorError[] | null;
+  onRefreshPage?: () => void;
+}
 
 /**
  * Displays a warning indicator when there are sync errors.
  * Shows a popover with error details on click.
  * Returns null when there are no errors.
  */
-export function SyncErrorIndicator() {
+export function SyncErrorIndicator({
+  errors,
+  onRefreshPage,
+}: SyncErrorIndicatorProps) {
   const { t } = useTranslation('common');
-  const syncErrorContext = useSyncErrorContext();
 
-  // Graceful fallback if not wrapped in provider
-  if (!syncErrorContext || !syncErrorContext.hasErrors) {
+  if (!errors || errors.length === 0) {
     return null;
   }
-
-  const { errors } = syncErrorContext;
 
   return (
     <Popover>
@@ -70,7 +78,7 @@ export function SyncErrorIndicator() {
 
           <button
             type="button"
-            onClick={() => window.location.reload()}
+            onClick={() => onRefreshPage?.() ?? window.location.reload()}
             className="flex w-full items-center justify-center gap-half rounded-sm bg-primary px-base py-half text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <ArrowClockwiseIcon className="size-icon-sm" />
