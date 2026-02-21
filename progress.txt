@@ -1963,3 +1963,40 @@ Validation:
 Plan adjustments from new information:
 - Continue prioritizing self-contained lexical plugins before plugins that import app-local nodes/contexts.
 - Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/markdown-sync-plugin.tsx` (single callsite, lexical-only dependencies).
+
+## 2026-02-21 - UI package extraction: wysiwyg/markdown-sync-plugin
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/plugins/markdown-sync-plugin.tsx` as the next low-risk candidate.
+- It is self-contained synchronization logic with one direct callsite in `ui/wysiwyg.tsx` and no app-local imports.
+- New information: the moved plugin requires explicit `@lexical/markdown` dependency declaration in `packages/ui` for package correctness.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/plugins/markdown-sync-plugin.tsx packages/ui/src/components/MarkdownSyncPlugin.tsx`
+- Package updates:
+  - Added `@lexical/markdown` to `packages/ui/package.json`.
+  - Synced lockfile (`pnpm-lock.yaml`) via `pnpm install`.
+  - Plugin implementation remained unchanged.
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue extracting self-contained lexical plugins with minimal app-local coupling.
+- Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/plugins/keyboard-commands-plugin.tsx` (single callsite; no frontend-only imports).

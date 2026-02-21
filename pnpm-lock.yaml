@@ -354,6 +354,9 @@ importers:
       '@lexical/link':
         specifier: ^0.36.2
         version: 0.36.2
+      '@lexical/markdown':
+        specifier: ^0.36.2
+        version: 0.36.2
       '@lexical/react':
         specifier: ^0.36.2
         version: 0.36.2(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(yjs@13.6.27)
