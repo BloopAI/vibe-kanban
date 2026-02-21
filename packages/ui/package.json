@@ -25,6 +25,7 @@
     "lucide-react": "^0.541.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-i18next": "^15.7.4",
     "react-virtuoso": "^4.14.0",
     "tailwind-merge": "^3.3.1"
   },

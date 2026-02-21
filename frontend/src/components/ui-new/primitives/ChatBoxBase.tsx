@@ -6,7 +6,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
 import { useUserSystem } from '@/components/ConfigProvider';
 import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
-import { Toolbar } from './Toolbar';
+import { Toolbar } from '@vibe/ui/components/Toolbar';
 import { ModelSelectorContainer } from '../containers/ModelSelectorContainer';
 
 export interface EditorProps {

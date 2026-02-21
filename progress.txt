@@ -1037,3 +1037,44 @@ Plan adjustments from new information:
 - Remaining unmoved `extract-now` primitives are now `Command`, `IconButtonGroup`, and `Toolbar`.
 - `Command` is still coupled to unextracted `Dialog`, and `IconButtonGroup` is still coupled to unextracted `Tooltip`.
 - Next low-risk unblocked candidate is `ui-new/primitives/Toolbar.tsx` (currently no active frontend callsites).
+
+## 2026-02-21 - UI package extraction: Toolbar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/Toolbar.tsx` as the next candidate because it was the lowest-risk unblocked `extract-now` primitive after `SearchableDropdown`.
+- Initial grep suggested no app callsites, but frontend type-check exposed local relative imports from chat primitives.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Toolbar.tsx packages/ui/src/components/Toolbar.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Toolbar.tsx` to use package-local imports (`../lib/cn`, `./Dropdown`).
+  - Replaced React namespace types with explicit type imports (`HTMLAttributes`, `ButtonHTMLAttributes`, `ReactNode`) for package-local readability.
+  - Added `react-i18next` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/primitives/ChatBoxBase.tsx`
+  - `frontend/src/components/ui-new/primitives/CreateChatBox.tsx`
+  - `frontend/src/components/ui-new/primitives/SessionChatBox.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Hidden local imports (`./Toolbar`) were discovered only during type-check, so future cycles should include relative-import grep for moved filenames in addition to alias-import grep.
+- Remaining unmoved `extract-now` primitives are now `Command` and `IconButtonGroup`.
+- `Command` is blocked by unextracted `Dialog`; `IconButtonGroup` is blocked by unextracted `Tooltip`.
+- Next dependency-unblocking candidate should be `ui-new/primitives/Dialog.tsx` or `ui-new/primitives/Tooltip.tsx`.
