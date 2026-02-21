@@ -2,7 +2,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from '@phosphor-icons/react';
 import {
   IconButtonGroup,
   IconButtonGroupItem,
-} from '../primitives/IconButtonGroup';
+} from '@vibe/ui/components/IconButtonGroup';
 import type { NavigationState } from '@/types/previewDevTools';
 
 interface PreviewNavigationProps {

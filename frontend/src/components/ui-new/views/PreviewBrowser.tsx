@@ -21,7 +21,7 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   IconButtonGroup,
   IconButtonGroupItem,
-} from '../primitives/IconButtonGroup';
+} from '@vibe/ui/components/IconButtonGroup';
 import { PreviewNavigation } from './PreviewNavigation';
 import type { Repo } from 'shared/types';
 import type {

@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   ButtonGroup,
   ButtonGroupItem,
-} from '@/components/ui-new/primitives/IconButtonGroup';
+} from '@vibe/ui/components/IconButtonGroup';
 
 export interface ViewNavTabsProps {
   activeView: KanbanViewMode;

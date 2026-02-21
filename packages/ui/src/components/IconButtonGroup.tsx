@@ -1,9 +1,10 @@
-import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
+import { cn } from '../lib/cn';
 import type { Icon } from '@phosphor-icons/react';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
+import { Tooltip } from './Tooltip';
 
 interface ButtonGroupProps {
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }
 
@@ -81,7 +82,7 @@ interface ButtonGroupItemProps {
   'aria-label'?: string;
   title?: string;
   className?: string;
-  children?: React.ReactNode;
+  children?: ReactNode;
 }
 
 /**

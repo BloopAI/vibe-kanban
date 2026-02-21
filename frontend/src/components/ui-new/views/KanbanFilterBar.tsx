@@ -13,7 +13,7 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   ButtonGroup,
   ButtonGroupItem,
-} from '@/components/ui-new/primitives/IconButtonGroup';
+} from '@vibe/ui/components/IconButtonGroup';
 import { KanbanFiltersDialog } from '@/components/ui-new/dialogs/KanbanFiltersDialog';
 
 interface KanbanFilterBarProps {

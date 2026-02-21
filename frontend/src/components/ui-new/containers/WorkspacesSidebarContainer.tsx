@@ -29,7 +29,7 @@ import { IconButton } from '@vibe/ui/components/IconButton';
 import {
   ButtonGroup,
   ButtonGroupItem,
-} from '@/components/ui-new/primitives/IconButtonGroup';
+} from '@vibe/ui/components/IconButtonGroup';
 import {
   Dialog,
   DialogContent,
