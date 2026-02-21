@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import { Loader2 } from 'lucide-react';
 import { tagsApi } from '@/lib/api';
 import type { Tag, CreateTag, UpdateTag } from 'shared/types';

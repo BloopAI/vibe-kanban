@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { Button } from '@vibe/ui/components/Button';
 import { Checkbox } from '@vibe/ui/components/Checkbox';

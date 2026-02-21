@@ -6,7 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab';
 import { ProcessSelectionProvider } from '@/contexts/ProcessSelectionContext';
 

@@ -5,7 +5,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { LogIn, Loader2 } from 'lucide-react';

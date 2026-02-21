@@ -1,9 +1,22 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
+import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook';
 
-import { cn } from '@/lib/utils';
-import { useHotkeysContext } from 'react-hotkeys-hook';
-import { useKeyExit, useKeySubmit, Scope } from '@/keyboard';
+import { cn } from '../lib/cn';
+
+const DIALOG_SCOPE = 'dialog';
+const KANBAN_SCOPE = 'kanban';
+const PROJECTS_SCOPE = 'projects';
+
+function assignRef<T>(ref: React.ForwardedRef<T>, value: T | null) {
+  if (typeof ref === 'function') {
+    ref(value);
+    return;
+  }
+  if (ref) {
+    ref.current = value;
+  }
+}
 
 const Dialog = React.forwardRef<
   HTMLDivElement,
@@ -14,32 +27,40 @@ const Dialog = React.forwardRef<
   }
 >(({ className, open, onOpenChange, children, uncloseable, ...props }, ref) => {
   const { enableScope, disableScope } = useHotkeysContext();
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+
+  const setDialogRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      dialogRef.current = node;
+      assignRef(ref, node);
+    },
+    [ref]
+  );
 
   // Manage dialog scope when open/closed
   React.useEffect(() => {
     if (open) {
-      enableScope(Scope.DIALOG);
-      disableScope(Scope.KANBAN);
-      disableScope(Scope.PROJECTS);
+      enableScope(DIALOG_SCOPE);
+      disableScope(KANBAN_SCOPE);
+      disableScope(PROJECTS_SCOPE);
     } else {
-      disableScope(Scope.DIALOG);
-      enableScope(Scope.KANBAN);
-      enableScope(Scope.PROJECTS);
+      disableScope(DIALOG_SCOPE);
+      enableScope(KANBAN_SCOPE);
+      enableScope(PROJECTS_SCOPE);
     }
     return () => {
-      disableScope(Scope.DIALOG);
-      enableScope(Scope.KANBAN);
-      enableScope(Scope.PROJECTS);
+      disableScope(DIALOG_SCOPE);
+      enableScope(KANBAN_SCOPE);
+      enableScope(PROJECTS_SCOPE);
     };
   }, [open, enableScope, disableScope]);
 
-  // Dialog keyboard shortcuts using semantic hooks
-  useKeyExit(
+  useHotkeys(
+    'esc',
     (e) => {
+      if (!open) return;
       if (uncloseable) return;
 
-      // Two-step Esc behavior:
-      // 1. If input/textarea is focused, blur it first
       const activeElement = document.activeElement as HTMLElement;
       if (
         activeElement &&
@@ -52,57 +73,61 @@ const Dialog = React.forwardRef<
         return;
       }
 
-      // 2. Otherwise close the dialog
       onOpenChange?.(false);
     },
     {
-      scope: Scope.DIALOG,
-      when: () => !!open,
-    }
+      enabled: !!open,
+      scopes: [DIALOG_SCOPE],
+      preventDefault: true,
+    },
+    [open, uncloseable, onOpenChange]
   );
 
-  useKeySubmit(
+  useHotkeys(
+    'enter',
     (e) => {
-      // Don't interfere if user is typing in textarea (allow new lines)
+      if (!open) return;
+
       const activeElement = document.activeElement as HTMLElement;
       if (activeElement?.tagName === 'TEXTAREA') {
         return;
       }
 
-      // Look for submit button or primary action button within this dialog
-      if (ref && typeof ref === 'object' && ref.current) {
-        // First try to find a submit button
-        const submitButton = ref.current.querySelector(
-          'button[type="submit"]'
-        ) as HTMLButtonElement;
-        if (submitButton && !submitButton.disabled) {
-          e?.preventDefault();
-          submitButton.click();
-          return;
-        }
+      const container = dialogRef.current;
+      if (!container) {
+        return;
+      }
 
-        // If no submit button, look for primary action button
-        const buttons = Array.from(
-          ref.current.querySelectorAll('button')
-        ) as HTMLButtonElement[];
-        const primaryButton = buttons.find(
-          (btn) =>
-            !btn.disabled &&
-            !btn.textContent?.toLowerCase().includes('cancel') &&
-            !btn.textContent?.toLowerCase().includes('close') &&
-            btn.type !== 'button'
-        );
+      const submitButton = container.querySelector(
+        'button[type="submit"]'
+      ) as HTMLButtonElement | null;
+      if (submitButton && !submitButton.disabled) {
+        e?.preventDefault();
+        submitButton.click();
+        return;
+      }
 
-        if (primaryButton) {
-          e?.preventDefault();
-          primaryButton.click();
-        }
+      const buttons = Array.from(
+        container.querySelectorAll('button')
+      ) as HTMLButtonElement[];
+      const primaryButton = buttons.find(
+        (btn) =>
+          !btn.disabled &&
+          !btn.textContent?.toLowerCase().includes('cancel') &&
+          !btn.textContent?.toLowerCase().includes('close') &&
+          btn.type !== 'button'
+      );
+
+      if (primaryButton) {
+        e?.preventDefault();
+        primaryButton.click();
       }
     },
     {
-      scope: Scope.DIALOG,
-      when: () => !!open,
-    }
+      enabled: !!open,
+      scopes: [DIALOG_SCOPE],
+    },
+    [open]
   );
 
   if (!open) return null;
@@ -114,7 +139,7 @@ const Dialog = React.forwardRef<
         onClick={() => (uncloseable ? {} : onOpenChange?.(false))}
       />
       <div
-        ref={ref}
+        ref={setDialogRef}
         className={cn(
           'relative z-[9999] flex flex-col w-full max-w-xl gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
           className

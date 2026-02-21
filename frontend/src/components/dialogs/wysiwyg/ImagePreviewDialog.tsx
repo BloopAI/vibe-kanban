@@ -5,7 +5,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { Loader2 } from 'lucide-react';
 import { defineModal } from '@/lib/modals';

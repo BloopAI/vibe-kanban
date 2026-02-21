@@ -5,7 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import { Loader } from '@vibe/ui/components/Loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';

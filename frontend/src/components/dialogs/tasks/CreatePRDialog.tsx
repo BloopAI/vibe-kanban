@@ -5,7 +5,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import { Label } from '@radix-ui/react-label';
 import { Textarea } from '@vibe/ui/components/Textarea';
 import { Button } from '@vibe/ui/components/Button';

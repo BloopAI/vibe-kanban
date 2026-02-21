@@ -8,7 +8,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
+} from '@vibe/ui/components/KeyboardDialog';
 import { Button } from '@vibe/ui/components/Button';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
