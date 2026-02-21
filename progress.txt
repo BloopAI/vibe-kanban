@@ -1290,3 +1290,40 @@ Validation:
 Plan adjustments from new information:
 - Hidden relative imports of `Popover` were present in app primitives (`AppBar`, `TodoProgressPopup`) and were migrated in the same cycle.
 - Next recommended candidate is `ui-new/primitives/EmojiPicker.tsx`, which can now be aligned on `@vibe/ui/components/Popover` and extracted with lower risk.
+
+## 2026-02-21 - UI package extraction: EmojiPicker
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining `extract-later` set
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/EmojiPicker.tsx` as the next candidate after `Popover` because it now had a minimal dependency surface and only one active callsite.
+- The previous app coupling (`PortalContainerContext`) could be removed by aligning the component on `@vibe/ui` `Popover` primitives.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/EmojiPicker.tsx packages/ui/src/components/EmojiPicker.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/EmojiPicker.tsx` to use package-local imports (`../lib/cn`, `./Popover`).
+  - Removed direct Radix portal/container handling and app-only `PortalContainerContext` coupling.
+  - Replaced `React.ReactNode` namespace usage with explicit `ReactNode` type import.
+  - No package dependency additions were required.
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/views/IssueCommentsSection.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required.
+- Next recommended `extract-later` candidate is `ui-new/primitives/MultiSelectCommandBar.tsx` (already consuming extracted `Command` and with bounded callsite surface), while `CollapsibleSectionHeader` remains blocked by `@/stores` coupling.

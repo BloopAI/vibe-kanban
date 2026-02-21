@@ -24,7 +24,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from '@vibe/ui/components/Dropdown';
-import { EmojiPicker } from '@/components/ui-new/primitives/EmojiPicker';
+import { EmojiPicker } from '@vibe/ui/components/EmojiPicker';
 import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
 import { formatRelativeTime } from '@/utils/date';
 import type { OrganizationMemberWithProfile } from 'shared/types';
