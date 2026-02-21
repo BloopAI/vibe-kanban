@@ -252,6 +252,32 @@ function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError';
 }
 
+function isPageVisible(): boolean {
+  return document.visibilityState === 'visible';
+}
+
+function isCancelledErrorMessage(message?: string): boolean {
+  if (!message) return false;
+  return /\bcancell?ed\b/i.test(message);
+}
+
+function isTransientElectricFailure(error: unknown): boolean {
+  if (isAbortError(error)) return true;
+  if (!isPageVisible()) return true;
+
+  const message = error instanceof Error ? error.message : String(error);
+  return isCancelledErrorMessage(message);
+}
+
+function isTransientElectricShapeError(error: {
+  name?: string;
+  message?: string;
+}): boolean {
+  if (error.name === 'AbortError') return true;
+  if (!isPageVisible()) return true;
+  return isCancelledErrorMessage(error.message);
+}
+
 function createErrorReporter(
   config?: CollectionConfig
 ): (error: SyncError) => void {
@@ -260,7 +286,7 @@ function createErrorReporter(
   return (error: SyncError) => {
     if (!handler.shouldReport(error.message)) return;
 
-    if (document.visibilityState === 'visible') {
+    if (isPageVisible()) {
       console.error('Shape sync error:', error);
     }
     config?.onError?.(error);
@@ -286,7 +312,7 @@ function createErrorHandlingFetch(args: {
     try {
       return await fetch(input, init);
     } catch (error) {
-      if (isAbortError(error)) {
+      if (isTransientElectricFailure(error)) {
         throw error;
       }
 
@@ -340,7 +366,7 @@ function createElectricShapeOptions(args: {
     }),
     onError: (error: { status?: number; message?: string; name?: string }) => {
       if (isPaused) return;
-      if (error.name === 'AbortError') return;
+      if (isTransientElectricShapeError(error)) return;
 
       const status = error.status;
       const message = error.message || String(error);
@@ -518,6 +544,7 @@ function createHybridSync(args: {
 
     let isCleanedUp = false;
     let usingFallback = false;
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
 
     let activeSync = normalizeSyncResult(args.electricSync(syncParams));
 
@@ -534,27 +561,40 @@ function createHybridSync(args: {
       switchToFallback
     );
 
-    const timeoutId = globalThis.setTimeout(() => {
-      if (isCleanedUp || usingFallback || syncParams.collection.isReady()) {
-        return;
-      }
+    const scheduleReadyTimeout = () => {
+      timeoutId = globalThis.setTimeout(() => {
+        if (isCleanedUp || usingFallback || syncParams.collection.isReady()) {
+          return;
+        }
 
-      args.reportError({
-        message: `Electric sync timed out after ${ELECTRIC_READY_TIMEOUT_MS}ms, switching to fallback`,
-      });
-      lockSourceToFallback(args.sourceKey);
-    }, ELECTRIC_READY_TIMEOUT_MS);
+        if (!isPageVisible()) {
+          scheduleReadyTimeout();
+          return;
+        }
+
+        args.reportError({
+          message: `Electric sync timed out after ${ELECTRIC_READY_TIMEOUT_MS}ms, switching to fallback`,
+        });
+        lockSourceToFallback(args.sourceKey);
+      }, ELECTRIC_READY_TIMEOUT_MS);
+    };
+
+    scheduleReadyTimeout();
 
     syncParams.collection.onFirstReady(() => {
       if (!usingFallback) {
-        globalThis.clearTimeout(timeoutId);
+        if (timeoutId) {
+          globalThis.clearTimeout(timeoutId);
+        }
       }
     });
 
     return {
       cleanup: () => {
         isCleanedUp = true;
-        globalThis.clearTimeout(timeoutId);
+        if (timeoutId) {
+          globalThis.clearTimeout(timeoutId);
+        }
         unregisterSwitcher();
         activeSync.cleanup?.();
       },
