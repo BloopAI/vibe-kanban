@@ -3046,3 +3046,49 @@ Plan adjustments from new information:
 - App-shell leaf primitives can continue to be extracted incrementally without adapter boundaries when they expose presentational-only props.
 - For remaining primitives, prioritize low-coupling components with limited callsites and minimal app-utility dependencies.
 - Next likely extraction candidate: `ui-new/primitives/ProcessListItem.tsx` (single callsite; can be decoupled with package-local enum/string unions and relative-time helper).
+
+## 2026-02-21 - UI package extraction: ProcessListItem
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/ProcessListItem.tsx` as the next extraction candidate.
+- It had a single callsite in `ProcessListContainer.tsx` and no direct store/context coupling.
+- New information: this component can be made package-safe by replacing app/shared type dependencies with plain string props plus internal mapping helpers.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/ProcessListItem.tsx packages/ui/src/components/ProcessListItem.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Updated package self import:
+    - `@vibe/ui/components/RunningDots` -> `./RunningDots`
+  - Removed app/shared dependencies from moved component:
+    - `formatRelativeTime` from `@/utils/date`
+    - `ExecutionProcessStatus` / `ExecutionProcessRunReason` from `shared/types`
+  - Added package-local helpers:
+    - `formatRelativeElapsed` for relative time labels
+    - `getRunReasonLabel`, `getRunReasonIcon`, `getStatusColor` for resilient rendering from string inputs
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/containers/ProcessListContainer.tsx`
+  - Replaced local import with `@vibe/ui/components/ProcessListItem`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For process/log primitives, using string-based props with explicit internal mapping improves package decoupling and avoids shared enum coupling.
+- Unknown/future run reasons and statuses now degrade safely in the UI component (default icon/color/label behavior).
+- Next likely extraction candidate: `ui-new/primitives/TodoProgressPopup.tsx` (single callsite; similar decoupling strategy for `TodoItem` shape and package-local imports).
