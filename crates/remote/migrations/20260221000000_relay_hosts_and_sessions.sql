@@ -1,0 +1,38 @@
+CREATE TABLE hosts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    owner_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'offline' CHECK (status IN ('offline', 'online')),
+    last_seen_at TIMESTAMPTZ,
+    agent_version TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_hosts_owner_user_id ON hosts(owner_user_id);
+CREATE INDEX idx_hosts_last_seen_at ON hosts(last_seen_at DESC);
+
+CREATE TABLE host_memberships (
+    host_id UUID NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL DEFAULT 'owner' CHECK (role IN ('owner', 'member', 'viewer')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (host_id, user_id)
+);
+
+CREATE INDEX idx_host_memberships_user_id ON host_memberships(user_id);
+
+CREATE TABLE relay_sessions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    host_id UUID NOT NULL REFERENCES hosts(id) ON DELETE CASCADE,
+    request_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    state TEXT NOT NULL CHECK (state IN ('requested', 'claimed', 'active', 'closed', 'expired')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL,
+    claimed_at TIMESTAMPTZ,
+    ended_at TIMESTAMPTZ
+);
+
+CREATE INDEX idx_relay_sessions_host_id ON relay_sessions(host_id);
+CREATE INDEX idx_relay_sessions_request_user_id ON relay_sessions(request_user_id);
+CREATE INDEX idx_relay_sessions_state_expires_at ON relay_sessions(state, expires_at);

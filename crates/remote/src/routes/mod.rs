@@ -36,6 +36,7 @@ pub(crate) mod electric_proxy;
 pub(crate) mod error;
 pub mod attachments;
 mod github_app;
+mod hosts;
 mod identity;
 pub mod issue_assignees;
 pub mod issue_comment_reactions;
@@ -115,6 +116,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
+        .merge(hosts::router())
         .merge(projects::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
