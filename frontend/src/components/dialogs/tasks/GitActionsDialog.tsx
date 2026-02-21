@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader } from '@/components/ui/loader';
+import { Loader } from '@vibe/ui/components/Loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';

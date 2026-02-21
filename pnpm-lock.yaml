@@ -363,6 +363,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      lucide-react:
+        specifier: ^0.541.0
+        version: 0.541.0(react@18.3.1)
       react:
         specifier: ^18.2.0
         version: 18.3.1
@@ -3383,6 +3386,11 @@ packages:
 
   lucide-react@0.539.0:
     resolution: {integrity: sha512-VVISr+VF2krO91FeuCrm1rSOLACQUYVy7NQkzrOty52Y8TlTPcXcMdQFj9bYzBgXbWCiywlwSZ3Z8u6a+6bMlg==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  lucide-react@0.541.0:
+    resolution: {integrity: sha512-s0Vircsu5WaGv2KoJZ5+SoxiAJ3UXV5KqEM3eIFDHaHkcLIFdIWgXtZ412+Gh02UsdS7Was+jvEpBvPCWQISlg==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -7467,6 +7475,10 @@ snapshots:
   lru_map@0.4.1: {}
 
   lucide-react@0.539.0(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+
+  lucide-react@0.541.0(react@18.3.1):
     dependencies:
       react: 18.3.1
 
