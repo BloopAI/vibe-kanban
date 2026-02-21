@@ -7,7 +7,7 @@ import {
   TableCell,
   TableEmpty,
   TableLoading,
-} from './table';
+} from '@vibe/ui/components/Table';
 
 export type ColumnDef<T> = {
   id: string;
