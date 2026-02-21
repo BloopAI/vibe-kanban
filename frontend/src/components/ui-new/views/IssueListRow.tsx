@@ -8,7 +8,7 @@ import { Draggable } from '@hello-pangea/dnd';
 import { DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
+import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
 
