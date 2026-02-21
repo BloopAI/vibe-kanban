@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import type { ModelInfo, ReasoningOption } from 'shared/types';
 
 interface ReasoningDropdownProps {

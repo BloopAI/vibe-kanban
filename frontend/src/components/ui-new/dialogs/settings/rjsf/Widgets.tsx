@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
-} from '../../../primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 // TextWidget - Text input matching settings dialog styling
 export const TextWidget = (props: WidgetProps) => {

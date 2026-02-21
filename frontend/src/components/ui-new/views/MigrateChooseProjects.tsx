@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@/components/ui-new/primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import type { Project } from 'shared/types';
 import type { OrganizationWithRole } from 'shared/types';

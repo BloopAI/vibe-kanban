@@ -15,7 +15,10 @@ import {
 } from './ChatBoxBase';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
-import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
+import {
+  DropdownMenuItem,
+  DropdownMenuLabel,
+} from '@vibe/ui/components/Dropdown';
 
 export interface ExecutorProps {
   selected: BaseCodingAgent | null;

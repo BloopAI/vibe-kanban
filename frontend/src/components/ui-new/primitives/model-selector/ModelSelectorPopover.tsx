@@ -10,7 +10,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSearchInput,
   DropdownMenuTrigger,
-} from '../Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import {
   Accordion,
   AccordionContent,

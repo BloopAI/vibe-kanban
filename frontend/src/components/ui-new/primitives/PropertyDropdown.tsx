@@ -6,7 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui-new/primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 export interface PropertyDropdownOption<T extends string = string> {
   value: T;

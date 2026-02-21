@@ -864,3 +864,65 @@ Validation:
 Plan adjustments from new information:
 - Structural queue update: the remaining `extract-now` primitives (`Command`, `IconButtonGroup`, `SearchableDropdown`, `SplitButton`, `MultiSelectDropdown`, `Toolbar`) are coupled to currently unextracted `Dialog`/`Dropdown`/`Tooltip` primitives.
 - Next practical component to move is `ui-new/primitives/Dropdown.tsx` (or equivalent dropdown primitive) to unblock multiple remaining candidates, even though it was originally flagged `extract-later`.
+
+## 2026-02-21 - UI package extraction: Dropdown
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- `extract-now` queue became dependency-blocked after `Button`; multiple remaining candidates depended on unextracted `Dropdown`/`Dialog`/`Tooltip` primitives.
+- Selected `ui-new/primitives/Dropdown.tsx` as the next dependency-unblocking move, even though audit originally marked it `extract-later`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Dropdown.tsx packages/ui/src/components/Dropdown.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Dropdown.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Removed `PortalContainerContext` coupling and switched Radix portals to default container behavior for package isolation.
+  - Added `@radix-ui/react-dropdown-menu` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/containers/ColorPickerContainer.tsx`
+  - `frontend/src/components/ui-new/containers/IssueRelationshipsSectionContainer.tsx`
+  - `frontend/src/components/ui-new/containers/KanbanContainer.tsx`
+  - `frontend/src/components/ui-new/containers/ModelSelectorContainer.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/McpSettingsSection.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/ReposSettingsSection.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/SettingsComponents.tsx`
+  - `frontend/src/components/ui-new/dialogs/settings/rjsf/Widgets.tsx`
+  - `frontend/src/components/ui-new/primitives/AppBarUserPopover.tsx`
+  - `frontend/src/components/ui-new/primitives/CreateChatBox.tsx`
+  - `frontend/src/components/ui-new/primitives/MultiSelectDropdown.tsx`
+  - `frontend/src/components/ui-new/primitives/PropertyDropdown.tsx`
+  - `frontend/src/components/ui-new/primitives/RepoCard.tsx`
+  - `frontend/src/components/ui-new/primitives/SearchableDropdown.tsx`
+  - `frontend/src/components/ui-new/primitives/SearchableTagDropdown.tsx`
+  - `frontend/src/components/ui-new/primitives/SessionChatBox.tsx`
+  - `frontend/src/components/ui-new/primitives/SplitButton.tsx`
+  - `frontend/src/components/ui-new/primitives/Toolbar.tsx`
+  - `frontend/src/components/ui-new/primitives/model-selector/ModelList.tsx`
+  - `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx`
+  - `frontend/src/components/ui-new/views/IssueCommentsSection.tsx`
+  - `frontend/src/components/ui-new/views/MigrateChooseProjects.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Structural plan update: extraction order is now dependency-led rather than strict `extract-now` ordering.
+- With `Dropdown` extracted, `SplitButton`, `SearchableDropdown`, and `MultiSelectDropdown` are now unblocked; next low-risk candidate is `ui-new/primitives/SplitButton.tsx` (no current callsites).

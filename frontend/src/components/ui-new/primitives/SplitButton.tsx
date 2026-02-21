@@ -5,7 +5,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 export interface SplitButtonOption<T extends string> {
   value: T;

@@ -8,8 +8,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 
-import { cn } from '@/lib/utils';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { cn } from '../lib/cn';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 
@@ -119,9 +118,8 @@ const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
 >(({ className, ...props }, ref) => {
-  const container = usePortalContainer();
   return (
-    <DropdownMenuPrimitive.Portal container={container}>
+    <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.SubContent
         ref={ref}
         className={cn(
@@ -147,9 +145,8 @@ const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => {
-  const container = usePortalContainer();
   return (
-    <DropdownMenuPrimitive.Portal container={container}>
+    <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         ref={ref}
         sideOffset={sideOffset}

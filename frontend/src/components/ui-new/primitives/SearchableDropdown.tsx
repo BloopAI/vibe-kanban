@@ -8,7 +8,7 @@ import {
   DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 interface SearchableDropdownProps<T> {
   /** Array of filtered items to display */

@@ -8,7 +8,7 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from '@/components/ui-new/primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { Badge } from '@vibe/ui/components/Badge';
 
 export interface MultiSelectDropdownOption<T extends string = string> {

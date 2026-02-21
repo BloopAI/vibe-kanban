@@ -26,7 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../../primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import {
   Popover,
   PopoverContent,

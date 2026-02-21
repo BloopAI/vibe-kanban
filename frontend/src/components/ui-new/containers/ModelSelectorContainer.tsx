@@ -41,7 +41,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTriggerButton,
-} from '../primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 interface ModelSelectorContainerProps {
   agent: BaseCodingAgent | null;

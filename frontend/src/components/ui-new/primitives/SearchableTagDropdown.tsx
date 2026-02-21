@@ -10,7 +10,7 @@ import {
   DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 import { PRESET_COLORS } from '@/lib/colors';
 

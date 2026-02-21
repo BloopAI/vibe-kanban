@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
-} from '../../primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 // ============================================================================

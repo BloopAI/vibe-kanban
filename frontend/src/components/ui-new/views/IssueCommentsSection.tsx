@@ -23,7 +23,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@/components/ui-new/primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { EmojiPicker } from '@/components/ui-new/primitives/EmojiPicker';
 import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
 import { formatRelativeTime } from '@/utils/date';

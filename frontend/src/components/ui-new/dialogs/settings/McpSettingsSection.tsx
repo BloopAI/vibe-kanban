@@ -14,7 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   DropdownMenuTriggerButton,
-} from '../../primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import {
   SettingsCard,
   SettingsField,

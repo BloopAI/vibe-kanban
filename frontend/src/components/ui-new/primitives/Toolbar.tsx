@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuLabel,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 interface ToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
   children: React.ReactNode;

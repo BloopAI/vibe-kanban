@@ -44,7 +44,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui-new/primitives/Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import type { IssuePriority } from 'shared/remote-types';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {

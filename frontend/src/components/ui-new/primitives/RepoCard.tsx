@@ -20,7 +20,7 @@ import {
   DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { SplitButton, type SplitButtonOption } from './SplitButton';
 import { useRepoAction } from '@/stores/useUiPreferencesStore';
 

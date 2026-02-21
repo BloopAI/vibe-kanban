@@ -18,7 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 
 interface AppBarUserPopoverProps {
   isSignedIn: boolean;

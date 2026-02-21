@@ -47,7 +47,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from './Dropdown';
+} from '@vibe/ui/components/Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
 import { ContextUsageGauge } from './ContextUsageGauge';
 import { TodoProgressPopup } from './TodoProgressPopup';
