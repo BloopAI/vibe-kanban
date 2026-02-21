@@ -10,7 +10,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./lib/cn": "./src/lib/cn.ts",
-    "./components/RunningDots": "./src/components/RunningDots.ts"
+    "./components/RunningDots": "./src/components/RunningDots.tsx"
   },
   "dependencies": {
     "clsx": "^2.1.1",

@@ -21,3 +21,12 @@
 - Note:
   - Initial `.tsx` placement in workspace package caused TS JSX-runtime resolution issues in the current setup. Converting `RunningDots` to a non-JSX `.ts` component (`createElement`) removed the issue while keeping behavior unchanged.
 
+
+## 2026-02-21 - JSX restoration for RunningDots
+
+- Converted `packages/ui/src/components/RunningDots` back to standard JSX (`.tsx`).
+- Updated `packages/ui/package.json` export path for `./components/RunningDots` to `.tsx`.
+- Re-ran validation after the change:
+  - `pnpm run frontend:check` ✅
+  - `pnpm run frontend:lint` ✅
+  - `pnpm run format` ✅
