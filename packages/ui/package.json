@@ -19,6 +19,7 @@
     "@lexical/list": "^0.36.2",
     "@lexical/markdown": "^0.36.2",
     "@lexical/react": "^0.36.2",
+    "@lexical/table": "^0.36.2",
     "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-dialog": "^1.1.4",
@@ -42,10 +43,10 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.55.0",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-react-hooks": "^4.6.0",

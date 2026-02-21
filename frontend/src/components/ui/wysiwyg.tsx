@@ -33,7 +33,7 @@ import {
   COMPONENT_INFO_EXPORT_TRANSFORMER,
   $isComponentInfoNode,
 } from './wysiwyg/nodes/component-info-node';
-import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
+import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   TaskAttemptContext,
   LocalImagesContext,
