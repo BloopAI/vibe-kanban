@@ -47,7 +47,7 @@ import { ComponentInfoKeyboardPlugin } from '@vibe/ui/components/ComponentInfoKe
 import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from './wysiwyg/plugins/toolbar-plugin';
-import { StaticToolbarPlugin } from './wysiwyg/plugins/static-toolbar-plugin';
+import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
 import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
 import { MarkdownSyncPlugin } from '@vibe/ui/components/MarkdownSyncPlugin';
