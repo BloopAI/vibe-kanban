@@ -5,7 +5,7 @@ import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from '@/components/ui-new/primitives/Popover';
+} from '@vibe/ui/components/Popover';
 
 /**
  * Displays a warning indicator when there are sync errors.

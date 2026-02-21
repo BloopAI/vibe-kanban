@@ -23,7 +23,7 @@ import {
   PopoverTrigger,
   PopoverContent,
   PopoverClose,
-} from './Popover';
+} from '@vibe/ui/components/Popover';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';

@@ -4,7 +4,11 @@ import { ListChecksIcon } from '@phosphor-icons/react';
 import { Circle, Check, CircleDot } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TodoItem } from 'shared/types';
-import { Popover, PopoverTrigger, PopoverContent } from './Popover';
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from '@vibe/ui/components/Popover';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 interface TodoProgressPopupProps {

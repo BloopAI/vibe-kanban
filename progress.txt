@@ -1250,3 +1250,43 @@ Validation:
 Plan adjustments from new information:
 - The `extract-now` primitive set from the audit is now complete.
 - Next migrations must come from `extract-later` candidates and should prioritize dependency decoupling work (`Popover`, `EmojiPicker`, `CommandBar`, `CollapsibleSectionHeader`) before extraction.
+
+## 2026-02-21 - UI package extraction: Popover
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining `extract-later` set
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/Popover.tsx` as the next candidate because it had low migration risk and a narrow app-only coupling (`PortalContainerContext`).
+- `CommandBar` and `CollapsibleSectionHeader` remain higher-coupling candidates; `Popover` provides cleaner dependency unblocking for later primitives.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Popover.tsx packages/ui/src/components/Popover.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Popover.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Removed app-only `PortalContainerContext` coupling; `PopoverContent` now uses default Radix portal behavior.
+  - Added `@radix-ui/react-popover` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`
+  - `frontend/src/components/ui-new/primitives/SyncErrorIndicator.tsx`
+  - `frontend/src/components/ui-new/primitives/AppBar.tsx`
+  - `frontend/src/components/ui-new/primitives/TodoProgressPopup.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Hidden relative imports of `Popover` were present in app primitives (`AppBar`, `TodoProgressPopup`) and were migrated in the same cycle.
+- Next recommended candidate is `ui-new/primitives/EmojiPicker.tsx`, which can now be aligned on `@vibe/ui/components/Popover` and extracted with lower risk.
