@@ -390,7 +390,22 @@ export const ConversationList = forwardRef<
       if (!list) return;
       const data = list.data.get();
       if (!data.length) return;
-      list.data.replace(data, { purgeItemSizes: true });
+      if (wasAtBottom) {
+        list.data.replace(data, { purgeItemSizes: true });
+      } else {
+        const rendered = list.data.getCurrentlyRendered();
+        const anchorKey = rendered[0]?.patchKey;
+        const anchorIndex = anchorKey
+          ? data.findIndex((item) => item.patchKey === anchorKey)
+          : -1;
+        list.data.replace(data, {
+          purgeItemSizes: true,
+          initialLocation:
+            anchorIndex >= 0
+              ? { index: anchorIndex, align: 'start' }
+              : undefined,
+        });
+      }
       if (wasAtBottom) {
         list.scrollToItem({ index: 'LAST', align: 'end', behavior: 'auto' });
         if (snapTimeoutRef.current) {
