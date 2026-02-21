@@ -1,6 +1,6 @@
-import type { ReactNode, RefObject } from 'react';
+import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,7 @@ import {
   DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
 
 interface SearchableDropdownProps<T> {
   /** Array of filtered items to display */
@@ -25,7 +25,7 @@ interface SearchableDropdownProps<T> {
   onSelect: (item: T) => void;
 
   /** Trigger element (uses asChild pattern) */
-  trigger: React.ReactNode;
+  trigger: ReactNode;
 
   /** Search state */
   searchTerm: string;
@@ -40,7 +40,7 @@ interface SearchableDropdownProps<T> {
   onOpenChange: (open: boolean) => void;
 
   /** Keyboard handler */
-  onKeyDown: (e: React.KeyboardEvent) => void;
+  onKeyDown: (e: KeyboardEvent) => void;
 
   /** Virtuoso ref for scrolling */
   virtuosoRef: RefObject<VirtuosoHandle | null>;
@@ -97,13 +97,13 @@ export function SearchableDropdown<T>({
           </div>
         ) : (
           <Virtuoso
-            ref={virtuosoRef as React.RefObject<VirtuosoHandle>}
+            ref={virtuosoRef as RefObject<VirtuosoHandle>}
             style={{ height: '16rem' }}
             totalCount={filteredItems.length}
-            computeItemKey={(idx) =>
+            computeItemKey={(idx: number) =>
               getItemKey(filteredItems[idx]) ?? String(idx)
             }
-            itemContent={(idx) => {
+            itemContent={(idx: number) => {
               const item = filteredItems[idx];
               const key = getItemKey(item);
               const isHighlighted = idx === highlightedIndex;
