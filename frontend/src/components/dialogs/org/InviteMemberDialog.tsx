@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { MemberRole } from 'shared/types';

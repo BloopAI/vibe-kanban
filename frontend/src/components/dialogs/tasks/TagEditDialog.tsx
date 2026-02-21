@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@vibe/ui/components/Input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@vibe/ui/components/Textarea';
-import { Alert } from '@/components/ui/alert';
+import { Alert } from '@vibe/ui/components/Alert';
 import {
   Dialog,
   DialogContent,

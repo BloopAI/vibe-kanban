@@ -11,7 +11,7 @@ import { Textarea } from '@vibe/ui/components/Textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@vibe/ui/components/Input';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@vibe/ui/components/Alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/lib/api.ts';

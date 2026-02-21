@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { LogIn, Loader2 } from 'lucide-react';
 import { OAuthSignInButton } from '@/components/ui-new/primitives/OAuthButtons';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';

@@ -12,7 +12,7 @@ import { AlertTriangle, Loader2 } from 'lucide-react';
 import { defineModal } from '@/lib/modals';
 import { useForcePush } from '@/hooks/useForcePush';
 import { useState } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { useTranslation } from 'react-i18next';
 
 export interface ForcePushDialogProps {

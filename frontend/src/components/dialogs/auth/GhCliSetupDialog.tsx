@@ -11,7 +11,7 @@ import { defineModal, getErrorMessage } from '@/lib/modals';
 import { attemptsApi } from '@/lib/api';
 import type { GhCliSetupError } from 'shared/types';
 import { useRef, useState } from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
