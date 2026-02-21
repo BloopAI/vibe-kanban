@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as SwitchPrimitives from '@radix-ui/react-switch';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 const switchRootClassName =
   'peer inline-flex h-[18px] w-8 shrink-0 cursor-pointer items-center ' +
