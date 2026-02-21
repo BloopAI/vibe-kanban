@@ -10,7 +10,6 @@ use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,
-    browser::open_browser,
     port_file::write_port_file_with_proxy,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
@@ -132,97 +131,16 @@ async fn main() -> Result<(), VibeKanbanError> {
         actual_proxy_port
     );
 
-    // Start relay if requested
-    if std::env::var("VK_TUNNEL").is_ok() {
-        if let Ok(remote_client) = deployment.remote_client() {
-            // Check if logged in, open browser if not
-            let login_status = deployment.get_login_status().await;
-            if matches!(login_status, api_types::LoginStatus::LoggedOut) {
-                tracing::info!("Relay mode requires login. Opening browser...");
-                let _ = open_browser(&format!("http://127.0.0.1:{actual_main_port}")).await;
-
-                // Poll until logged in (timeout after 120s)
-                let start = std::time::Instant::now();
-                loop {
-                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                    let status = deployment.get_login_status().await;
-                    if !matches!(status, api_types::LoginStatus::LoggedOut) {
-                        tracing::info!("Login successful, starting relay...");
-                        break;
-                    }
-                    if start.elapsed() > std::time::Duration::from_secs(120) {
-                        tracing::error!("Timed out waiting for login. Continuing without relay.");
-                        break;
-                    }
-                }
-            }
-
-            let local_identity = deployment.user_id();
-            let host_name = format!("{} local ({local_identity})", env!("CARGO_PKG_NAME"));
-
-            let existing_host_id = match remote_client.list_relay_hosts().await {
-                Ok(response) => response
-                    .hosts
-                    .into_iter()
-                    .find(|host| host.name == host_name)
-                    .map(|host| host.id),
-                Err(error) => {
-                    tracing::warn!(?error, "Failed to list relay hosts");
-                    None
-                }
-            };
-
-            let maybe_host_id = if let Some(host_id) = existing_host_id {
-                Some(host_id)
-            } else {
-                let create_host = api_types::CreateRelayHostRequest {
-                    name: host_name,
-                    agent_version: Some(env!("CARGO_PKG_VERSION").to_string()),
-                };
-
-                match remote_client.create_relay_host(&create_host).await {
-                    Ok(host) => Some(host.id),
-                    Err(error) => {
-                        tracing::error!(?error, "Failed to register relay host");
-                        tracing::error!(
-                            "Continuing without relay because host registration failed."
-                        );
-                        None
-                    }
-                }
-            };
-
-            if let Some(host_id) = maybe_host_id {
-                match tunnel::start_relay(
-                    actual_main_port,
-                    &remote_client,
-                    host_id,
-                    shutdown_token.clone(),
-                )
-                .await
-                {
-                    Ok(()) => {
-                        tracing::info!("Relay connected to remote server");
-                        println!("\n  Relay active — access from remote frontend\n");
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to start relay: {}", e);
-                    }
-                }
-            }
-        } else {
-            tracing::error!(
-                "VK_TUNNEL requires VK_SHARED_API_BASE to be set. Continuing without relay."
-            );
-        }
-    }
+    tunnel::start_relay_if_requested(&deployment, actual_main_port, shutdown_token.clone()).await;
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
         let browser_port = actual_main_port;
         tokio::spawn(async move {
-            if let Err(e) = open_browser(&format!("http://127.0.0.1:{browser_port}")).await {
+            if let Err(e) =
+                utils::browser::open_browser(&format!("http://127.0.0.1:{browser_port}")).await
+            {
                 tracing::warn!(
                     "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
                     e,

@@ -8,6 +8,7 @@ use std::convert::Infallible;
 
 use anyhow::Context as _;
 use axum::body::Body;
+use deployment::Deployment as _;
 use futures_util::StreamExt;
 use http::{HeaderValue, StatusCode, header::HOST};
 use hyper::{
@@ -23,8 +24,94 @@ use tokio_tungstenite::{
 };
 use tokio_util::sync::CancellationToken;
 use tokio_yamux::{Config as YamuxConfig, Session};
-use utils::ws_io::{WsIoReadMessage, WsMessageStreamIo};
+use utils::{
+    browser::open_browser,
+    ws_io::{WsIoReadMessage, WsMessageStreamIo},
+};
 use uuid::Uuid;
+
+use crate::DeploymentImpl;
+
+/// Start relay mode if `VK_TUNNEL` is enabled.
+pub async fn start_relay_if_requested(
+    deployment: &DeploymentImpl,
+    local_port: u16,
+    shutdown: CancellationToken,
+) {
+    if std::env::var("VK_TUNNEL").is_err() {
+        return;
+    }
+
+    let Ok(remote_client) = deployment.remote_client() else {
+        tracing::error!(
+            "VK_TUNNEL requires VK_SHARED_API_BASE to be set. Continuing without relay."
+        );
+        return;
+    };
+
+    let login_status = deployment.get_login_status().await;
+    if matches!(login_status, api_types::LoginStatus::LoggedOut) {
+        tracing::info!("Relay mode requires login. Opening browser...");
+        let _ = open_browser(&format!("http://127.0.0.1:{local_port}")).await;
+
+        let start = std::time::Instant::now();
+        loop {
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+            let status = deployment.get_login_status().await;
+            if !matches!(status, api_types::LoginStatus::LoggedOut) {
+                tracing::info!("Login successful, starting relay...");
+                break;
+            }
+            if start.elapsed() > std::time::Duration::from_secs(120) {
+                tracing::error!("Timed out waiting for login. Continuing without relay.");
+                return;
+            }
+        }
+    }
+
+    let local_identity = deployment.user_id();
+    let host_name = format!("{} local ({local_identity})", env!("CARGO_PKG_NAME"));
+
+    let existing_host_id = match remote_client.list_relay_hosts().await {
+        Ok(response) => response
+            .hosts
+            .into_iter()
+            .find(|host| host.name == host_name)
+            .map(|host| host.id),
+        Err(error) => {
+            tracing::warn!(?error, "Failed to list relay hosts");
+            None
+        }
+    };
+
+    let host_id = if let Some(host_id) = existing_host_id {
+        host_id
+    } else {
+        let create_host = api_types::CreateRelayHostRequest {
+            name: host_name,
+            agent_version: Some(env!("CARGO_PKG_VERSION").to_string()),
+        };
+
+        match remote_client.create_relay_host(&create_host).await {
+            Ok(host) => host.id,
+            Err(error) => {
+                tracing::error!(?error, "Failed to register relay host");
+                tracing::error!("Continuing without relay because host registration failed.");
+                return;
+            }
+        }
+    };
+
+    match start_relay(local_port, &remote_client, host_id, shutdown).await {
+        Ok(()) => {
+            tracing::info!("Relay connected to remote server");
+            println!("\n  Relay active — access from remote frontend\n");
+        }
+        Err(error) => {
+            tracing::error!(?error, "Failed to start relay");
+        }
+    }
+}
 
 /// Start the relay client connecting to the remote server.
 ///
