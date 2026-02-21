@@ -1,6 +1,6 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
+import { Card } from '@vibe/ui/components/Card';
 import {
   Tooltip,
   TooltipContent,
