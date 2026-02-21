@@ -16,7 +16,7 @@ import {
   createDecoratorNode,
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
-} from '../lib/create-decorator-node';
+} from '@vibe/ui/components/create-decorator-node';
 
 export interface ImageData {
   src: string;

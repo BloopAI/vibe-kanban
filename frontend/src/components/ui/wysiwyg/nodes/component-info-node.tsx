@@ -9,7 +9,7 @@ import {
   createDecoratorNode,
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
-} from '../lib/create-decorator-node';
+} from '@vibe/ui/components/create-decorator-node';
 
 /**
  * Data model for a detected UI component.

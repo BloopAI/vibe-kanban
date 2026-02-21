@@ -2376,3 +2376,78 @@ Plan adjustments from new information:
   - `frontend/src/components/ui/wysiwyg/lib/`
   - `frontend/src/components/ui/wysiwyg/nodes/`
 - Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/lib/code-highlight-theme.ts` (static theme map, no app-level coupling).
+
+## 2026-02-21 - UI package extraction: wysiwyg/create-decorator-node
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/lib/create-decorator-node.tsx` as the next extraction candidate.
+- It is shared lexical/decorator infrastructure reused by multiple editor nodes and has no app-specific imports.
+- New information: moving this helper first simplifies future node extraction by reducing remaining local dependencies in `component-info-node.tsx`, `image-node.tsx`, and `pr-comment-node.tsx`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/lib/create-decorator-node.tsx packages/ui/src/components/create-decorator-node.tsx`
+- Callsite updates:
+  - `frontend/src/components/ui/wysiwyg/nodes/image-node.tsx`
+  - `frontend/src/components/ui/wysiwyg/nodes/component-info-node.tsx`
+  - `frontend/src/components/ui/wysiwyg/nodes/pr-comment-node.tsx`
+  - Each updated to import from `@vibe/ui/components/create-decorator-node`.
+- Package updates:
+  - No new dependency changes required.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Remaining editor-local scope is now concentrated in node implementations:
+  - `frontend/src/components/ui/wysiwyg/nodes/component-info-node.tsx`
+  - `frontend/src/components/ui/wysiwyg/nodes/image-node.tsx`
+  - `frontend/src/components/ui/wysiwyg/nodes/pr-comment-node.tsx`
+- Next likely low-risk candidate is `frontend/src/components/ui/wysiwyg/nodes/component-info-node.tsx` because it now depends only on package-local primitives and shared lexical helper utilities.
+
+## 2026-02-21 - UI package extraction: wysiwyg/code-highlight-theme
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/lib/code-highlight-theme.ts` as a low-risk extraction candidate.
+- It is a static token-to-class map with no app-specific dependencies.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/lib/code-highlight-theme.ts packages/ui/src/lib/code-highlight-theme.ts`
+- Callsite update to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+  - Replaced local import with `@vibe/ui/lib/code-highlight-theme`.
+- Package updates:
+  - No new dependency changes required.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Remaining local WYSIWYG extraction scope was further narrowed to shared decorator helper + node implementations.
