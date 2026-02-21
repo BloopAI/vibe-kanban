@@ -1,18 +1,20 @@
 'use client';
 
 import { useTranslation } from 'react-i18next';
-import type { ProjectStatus } from 'shared/remote-types';
-import type { KanbanViewMode } from '@/stores/useUiPreferencesStore';
-import { cn } from '@/lib/utils';
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-} from '@vibe/ui/components/IconButtonGroup';
+import { cn } from '../lib/cn';
+import { ButtonGroup, ButtonGroupItem } from './IconButtonGroup';
+
+export type ViewNavMode = 'kanban' | 'list';
+
+export type ViewNavStatus = {
+  id: string;
+  name: string;
+};
 
 export interface ViewNavTabsProps {
-  activeView: KanbanViewMode;
-  onViewChange: (view: KanbanViewMode) => void;
-  hiddenStatuses: ProjectStatus[];
+  activeView: ViewNavMode;
+  onViewChange: (view: ViewNavMode) => void;
+  hiddenStatuses: ViewNavStatus[];
   selectedStatusId: string | null;
   onStatusSelect: (statusId: string | null) => void;
   className?: string;

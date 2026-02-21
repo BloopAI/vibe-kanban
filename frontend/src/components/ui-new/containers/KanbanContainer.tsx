@@ -35,7 +35,7 @@ import {
 } from '@/components/ui-new/views/IssueWorkspaceCard';
 import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
 import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
-import { ViewNavTabs } from '@/components/ui-new/primitives/ViewNavTabs';
+import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@/components/ui-new/views/IssueListView';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
