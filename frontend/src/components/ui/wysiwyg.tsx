@@ -33,7 +33,7 @@ import {
   LocalImagesContext,
   type LocalImageMetadata,
 } from '@vibe/ui/components/TaskAttemptContext';
-import { TypeaheadOpenProvider } from './wysiwyg/context/typeahead-open-context';
+import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import { FileTagTypeaheadPlugin } from './wysiwyg/plugins/file-tag-typeahead-plugin';
 import { SlashCommandTypeaheadPlugin } from './wysiwyg/plugins/slash-command-typeahead-plugin';
 import { KeyboardCommandsPlugin } from './wysiwyg/plugins/keyboard-commands-plugin';

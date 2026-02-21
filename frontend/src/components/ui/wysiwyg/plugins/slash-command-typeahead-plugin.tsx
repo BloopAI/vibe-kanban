@@ -12,7 +12,7 @@ import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
 import { useTaskAttemptId } from '@vibe/ui/components/TaskAttemptContext';
-import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
+import { useTypeaheadOpen } from '@vibe/ui/components/TypeaheadOpenContext';
 import { TypeaheadMenu } from '@vibe/ui/components/TypeaheadMenu';
 
 class SlashCommandOption extends MenuOption {

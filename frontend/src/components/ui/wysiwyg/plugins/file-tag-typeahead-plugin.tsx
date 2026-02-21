@@ -39,7 +39,7 @@ import {
 } from '@/components/ui-new/dialogs/selections/repoSelection';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
+import { useTypeaheadOpen } from '@vibe/ui/components/TypeaheadOpenContext';
 import { repoApi } from '@/lib/api';
 import {
   searchTagsAndFiles,
