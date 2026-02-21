@@ -10,7 +10,7 @@ import {
   TriangleIcon,
   CircleIcon,
 } from '@phosphor-icons/react';
-import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import { UserAvatar } from '@vibe/ui/components/UserAvatar';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import {
   DropdownMenu,

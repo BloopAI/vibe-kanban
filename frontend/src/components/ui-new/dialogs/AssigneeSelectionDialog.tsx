@@ -10,7 +10,7 @@ import {
   MultiSelectCommandBar,
   type MultiSelectOption,
 } from '@vibe/ui/components/MultiSelectCommandBar';
-import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import { UserAvatar } from '@vibe/ui/components/UserAvatar';
 import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
 import {
   ProjectProvider,

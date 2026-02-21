@@ -1,11 +1,17 @@
 'use client';
 
-import { cn } from '@/lib/utils';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
+
+export type UserAvatarUser = {
+  first_name?: string | null;
+  last_name?: string | null;
+  username?: string | null;
+  avatar_url?: string | null;
+};
 
 export interface UserAvatarProps {
-  user: OrganizationMemberWithProfile;
+  user: UserAvatarUser;
   className?: string;
 }
 
@@ -23,7 +29,7 @@ const buildOptimizedImageUrl = (rawUrl: string): string => {
   }
 };
 
-const buildInitials = (user: OrganizationMemberWithProfile): string => {
+const buildInitials = (user: UserAvatarUser): string => {
   const first = user.first_name?.trim().charAt(0)?.toUpperCase() ?? '';
   const last = user.last_name?.trim().charAt(0)?.toUpperCase() ?? '';
 
@@ -35,7 +41,7 @@ const buildInitials = (user: OrganizationMemberWithProfile): string => {
   return handle ?? '?';
 };
 
-const buildLabel = (user: OrganizationMemberWithProfile): string => {
+const buildLabel = (user: UserAvatarUser): string => {
   const name = [user.first_name, user.last_name]
     .filter((value): value is string => Boolean(value && value.trim()))
     .join(' ');

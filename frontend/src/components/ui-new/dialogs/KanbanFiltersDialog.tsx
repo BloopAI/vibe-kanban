@@ -14,7 +14,7 @@ import {
   type KanbanFilterState,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
-import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
+import { UserAvatar } from '@vibe/ui/components/UserAvatar';
 import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 import { Badge } from '@vibe/ui/components/Badge';
 import {
