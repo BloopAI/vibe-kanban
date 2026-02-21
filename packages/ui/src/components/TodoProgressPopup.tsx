@@ -2,21 +2,25 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListChecksIcon } from '@phosphor-icons/react';
 import { Circle, Check, CircleDot } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { TodoItem } from 'shared/types';
+import { cn } from '../lib/cn';
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from '@vibe/ui/components/Popover';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
+} from './Popover';
+import { Tooltip } from './Tooltip';
+
+export interface TodoProgressItem {
+  content: string;
+  status?: string | null;
+}
 
 interface TodoProgressPopupProps {
-  todos: TodoItem[];
+  todos: TodoProgressItem[];
   className?: string;
 }
 
-function getStatusIcon(status?: string) {
+function getStatusIcon(status?: string | null) {
   const s = (status || '').toLowerCase();
   if (s === 'completed')
     return <Check aria-hidden className="size-icon-sm text-success" />;

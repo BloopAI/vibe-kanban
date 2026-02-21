@@ -53,7 +53,7 @@ import {
 } from '@vibe/ui/components/Dropdown';
 import { type ExecutorProps } from './CreateChatBox';
 import { ContextUsageGauge } from './ContextUsageGauge';
-import { TodoProgressPopup } from './TodoProgressPopup';
+import { TodoProgressPopup } from '@vibe/ui/components/TodoProgressPopup';
 import { useUserSystem } from '@/components/ConfigProvider';
 
 // Re-export shared types
