@@ -10,11 +10,8 @@
   },
   "sideEffects": false,
   "exports": {
-    "./components/Accordion": "./src/components/Accordion.tsx",
-    "./components/AutoResizeTextarea": "./src/components/AutoResizeTextarea.tsx",
-    "./lib/cn": "./src/lib/cn.ts",
-    "./components/RunningDots": "./src/components/RunningDots.tsx",
-    "./components/StatusDot": "./src/components/StatusDot.tsx"
+    "./components/*": "./src/components/*.tsx",
+    "./lib/*": "./src/lib/*.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.1",
