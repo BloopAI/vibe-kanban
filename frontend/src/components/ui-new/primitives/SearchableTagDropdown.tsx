@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from './Dropdown';
-import { InlineColorPicker } from './ColorPicker';
+import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 import { PRESET_COLORS } from '@/lib/colors';
 
 // Re-export for backwards compatibility

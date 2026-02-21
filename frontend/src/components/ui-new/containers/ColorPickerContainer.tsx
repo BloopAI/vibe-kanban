@@ -4,7 +4,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui-new/primitives/Dropdown';
-import { InlineColorPicker } from '@/components/ui-new/primitives/ColorPicker';
+import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 
 export interface ColorPickerProps {
   value: string;

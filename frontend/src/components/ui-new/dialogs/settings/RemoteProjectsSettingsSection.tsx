@@ -51,7 +51,7 @@ import {
   type Project,
 } from 'shared/remote-types';
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
-import { InlineColorPicker } from '../../primitives/ColorPicker';
+import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 import { cn } from '@/lib/utils';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import {

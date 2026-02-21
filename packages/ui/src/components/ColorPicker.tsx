@@ -1,6 +1,20 @@
 import { forwardRef } from 'react';
-import { cn } from '@/lib/utils';
-import { PRESET_COLORS } from '@/lib/colors';
+import { cn } from '../lib/cn';
+
+const PRESET_COLORS = [
+  '0 84% 60%',
+  '24 95% 53%',
+  '45 93% 58%',
+  '158 64% 52%',
+  '200 98% 39%',
+  '271 81% 56%',
+  '330 81% 60%',
+  '183 74% 44%',
+  '262 52% 47%',
+  '142 71% 45%',
+  '17 88% 40%',
+  '231 48% 48%',
+] as const;
 
 export interface InlineColorPickerProps {
   value: string;
