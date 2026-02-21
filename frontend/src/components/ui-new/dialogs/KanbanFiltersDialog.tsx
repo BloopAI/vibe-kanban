@@ -23,7 +23,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui-new/primitives/Dialog';
+} from '@vibe/ui/components/Dialog';
 import { Switch } from '@vibe/ui/components/Switch';
 import { AssigneeSelectionDialog } from '@/components/ui-new/dialogs/AssigneeSelectionDialog';
 import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';

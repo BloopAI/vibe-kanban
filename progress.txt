@@ -1078,3 +1078,44 @@ Plan adjustments from new information:
 - Remaining unmoved `extract-now` primitives are now `Command` and `IconButtonGroup`.
 - `Command` is blocked by unextracted `Dialog`; `IconButtonGroup` is blocked by unextracted `Tooltip`.
 - Next dependency-unblocking candidate should be `ui-new/primitives/Dialog.tsx` or `ui-new/primitives/Tooltip.tsx`.
+
+## 2026-02-21 - UI package extraction: Dialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui-new/primitives/Dialog.tsx` as the next dependency-unblocking move after `Toolbar`.
+- `Dialog` was chosen over `Tooltip` because it directly unblocks the remaining `extract-now` `Command` primitive and had a narrower immediate callsite surface.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Dialog.tsx packages/ui/src/components/Dialog.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Dialog.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Removed app-only `PortalContainerContext` coupling; `DialogPortal` now uses default Radix portal behavior.
+  - Removed translation coupling in close button label (uses static `Close` text).
+  - Added `@radix-ui/react-dialog` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/ui-new/primitives/Command.tsx`
+  - `frontend/src/components/ui-new/containers/WorkspacesSidebarContainer.tsx`
+  - `frontend/src/components/ui-new/dialogs/KanbanFiltersDialog.tsx`
+  - `frontend/src/components/ui-new/dialogs/ErrorDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- `Command` is now unblocked by the `Dialog` migration and should be the next `extract-now` candidate.
+- `IconButtonGroup` still depends on unextracted `Tooltip`, so `Tooltip` remains the parallel dependency-unblocking path.

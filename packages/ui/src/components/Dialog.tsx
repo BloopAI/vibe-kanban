@@ -1,9 +1,7 @@
 import * as React from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { cn } from '../lib/cn';
 
 const Dialog = DialogPrimitive.Root;
 
@@ -15,12 +13,7 @@ function DialogPortal({
   children,
   ...props
 }: DialogPrimitive.DialogPortalProps) {
-  const container = usePortalContainer();
-  return (
-    <DialogPrimitive.Portal container={container} {...props}>
-      {children}
-    </DialogPrimitive.Portal>
-  );
+  return <DialogPrimitive.Portal {...props}>{children}</DialogPrimitive.Portal>;
 }
 
 const DialogOverlay = React.forwardRef<
@@ -46,8 +39,6 @@ const DialogContent = React.forwardRef<
     hideCloseButton?: boolean;
   }
 >(({ className, children, hideCloseButton = false, ...props }, ref) => {
-  const { t } = useTranslation('common');
-
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -70,7 +61,7 @@ const DialogContent = React.forwardRef<
         {!hideCloseButton && (
           <DialogPrimitive.Close className="absolute right-base top-base rounded-sm opacity-70 ring-offset-panel transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 disabled:pointer-events-none">
             <X className="h-4 w-4 text-normal" />
-            <span className="sr-only">{t('buttons.close')}</span>
+            <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

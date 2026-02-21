@@ -36,7 +36,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui-new/primitives/Dialog';
+} from '@vibe/ui/components/Dialog';
 import {
   FunnelIcon,
   FolderIcon,
