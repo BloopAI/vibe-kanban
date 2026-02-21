@@ -1621,3 +1621,40 @@ Plan adjustments from new information:
 - Remaining near-term extraction options from this area are:
   - `frontend/src/components/ui/table/data-table.tsx` (now likely easy, but currently unused), or
   - `frontend/src/components/ui/dialog.tsx` (still higher coupling due keyboard scope integration).
+
+## 2026-02-21 - UI package extraction: ui/table/data-table
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/table/data-table.tsx` as the next candidate after `ui/table/table`.
+- It is a reusable, low-coupling wrapper around table primitives and straightforward to extract.
+- New information: there were no active imports of this file in `frontend/src` at extraction time.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/table/data-table.tsx packages/ui/src/components/DataTable.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/DataTable.tsx` to import `Table` primitives via package-local relative path (`./Table`) instead of package self-import.
+  - Added explicit React import for type usage consistency in package components.
+- Callsite updates:
+  - No callsite updates were required because there were no references to `frontend/src/components/ui/table/data-table.tsx`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The `ui/table` extraction track is now fully moved into `@vibe/ui` (`Table` + `DataTable`).
+- Remaining `components/ui` extraction candidate is primarily `ui/dialog.tsx`, which is still higher-coupling due keyboard scope integration (`react-hotkeys-hook`, `@/keyboard`).
+- After `ui/dialog.tsx`, the next major package split should likely follow the audit recommendation for a dedicated `@vibe/editor-ui` scope (`components/ui/wysiwyg`).

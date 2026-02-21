@@ -1,3 +1,4 @@
+import * as React from 'react';
 import {
   Table,
   TableHead,
@@ -7,7 +8,7 @@ import {
   TableCell,
   TableEmpty,
   TableLoading,
-} from '@vibe/ui/components/Table';
+} from './Table';
 
 export type ColumnDef<T> = {
   id: string;
