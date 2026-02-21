@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "properties": {
+    "append_prompt": {
+      "title": "Append Prompt",
+      "description": "Extra text appended to the prompt",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "textarea",
+      "default": null
+    },
+    "model": {
+      "description": "Bedrock model ID, e.g. `us.anthropic.claude-opus-4-5-20251101-v1:0`",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "agent": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "aws_region": {
+      "description": "AWS region, e.g. `us-east-1`. Falls back to AWS_REGION / AWS_DEFAULT_REGION env vars when not set.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "plan": {
+      "description": "Enable plan mode (ask for approval before making changes).",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "approvals": {
+      "description": "Require approval for risky tool calls.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "base_command_override": {
+      "title": "Base Command Override",
+      "description": "Override the base command with a custom command",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "additional_params": {
+      "title": "Additional Parameters",
+      "description": "Additional parameters to append to the base command",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "string"
+      }
+    },
+    "env": {
+      "title": "Environment Variables",
+      "description": "Environment variables to set when running the executor",
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "type": "object"
+}

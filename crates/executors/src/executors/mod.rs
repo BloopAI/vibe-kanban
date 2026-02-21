@@ -21,8 +21,8 @@ use crate::{
     command::CommandBuildError,
     env::ExecutionEnv,
     executors::{
-        amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        amp::Amp, bedrock::AwsBedrock, claude::ClaudeCode, codex::Codex, copilot::Copilot,
+        cursor::CursorAgent, droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -31,6 +31,7 @@ use crate::{
 
 pub mod acp;
 pub mod amp;
+pub mod bedrock;
 pub mod claude;
 pub mod codex;
 pub mod copilot;
@@ -118,6 +119,7 @@ pub enum CodingAgent {
     QwenCode,
     Copilot,
     Droid,
+    AwsBedrock,
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
 }
@@ -175,7 +177,7 @@ impl CodingAgent {
 
     pub fn capabilities(&self) -> Vec<BaseAgentCapability> {
         match self {
-            Self::ClaudeCode(_) => vec![
+            Self::ClaudeCode(_) | Self::AwsBedrock(_) => vec![
                 BaseAgentCapability::SessionFork,
                 BaseAgentCapability::ContextUsage,
             ],
