@@ -17,7 +17,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@vibe/ui/components/DropdownMenu';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 
 export interface WorkspacePr {

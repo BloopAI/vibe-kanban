@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu.tsx';
+} from '@vibe/ui/components/DropdownMenu';
 import type { Repo } from 'shared/types';
 
 type Props = {

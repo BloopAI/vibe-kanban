@@ -9,7 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu.tsx';
+} from '@vibe/ui/components/DropdownMenu';
 import {
   Tooltip,
   TooltipContent,

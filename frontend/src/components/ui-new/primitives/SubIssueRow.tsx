@@ -20,7 +20,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from '@vibe/ui/components/DropdownMenu';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
