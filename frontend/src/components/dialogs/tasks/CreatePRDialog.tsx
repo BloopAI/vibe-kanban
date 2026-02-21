@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Label } from '@radix-ui/react-label';
-import { Textarea } from '@/components/ui/textarea.tsx';
+import { Textarea } from '@vibe/ui/components/Textarea';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';

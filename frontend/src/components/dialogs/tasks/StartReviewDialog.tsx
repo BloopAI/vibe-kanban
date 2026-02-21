@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from '@vibe/ui/components/Textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@vibe/ui/components/Switch';
 import { Checkbox } from '@/components/ui/checkbox';
