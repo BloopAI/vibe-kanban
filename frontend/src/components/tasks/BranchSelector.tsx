@@ -16,7 +16,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip.tsx';
-import { Input } from '@/components/ui/input.tsx';
+import { Input } from '@vibe/ui/components/Input';
 import type { GitBranch } from 'shared/types';
 
 type Props = {
