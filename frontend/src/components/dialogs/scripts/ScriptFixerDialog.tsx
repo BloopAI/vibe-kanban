@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
+import { AutoExpandingTextarea } from '@vibe/ui/components/AutoExpandingTextarea';
 import { VirtualizedProcessLogs } from '@/components/ui-new/containers/VirtualizedProcessLogs';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { defineModal } from '@/lib/modals';

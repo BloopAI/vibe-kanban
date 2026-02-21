@@ -529,3 +529,38 @@ Validation:
 Plan adjustments from new information:
 - No structural plan changes required.
 - Next low-risk `extract-now` candidate is `ui/auto-expanding-textarea.tsx` (single callsite, `cn`-only dependency surface).
+
+## 2026-02-21 - UI package extraction: AutoExpandingTextarea
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui/auto-expanding-textarea.tsx` as the next low-risk `extract-now` component from the queue after `Loader`.
+- Migration scope was small: single frontend callsite and only `cn` as shared utility dependency.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/auto-expanding-textarea.tsx packages/ui/src/components/AutoExpandingTextarea.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/AutoExpandingTextarea.tsx` to use package-local `cn` import (`../lib/cn`).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/dialogs/scripts/ScriptFixerDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm --filter @vibe/ui run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required.
+- Next low-risk `extract-now` candidate is `ui/textarea.tsx` (3 callsites, `cn`-only dependency surface).
