@@ -1,4 +1,4 @@
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@vibe/ui/components/Badge';
 import { Button } from '@/components/ui/button';
 import {
   Select,

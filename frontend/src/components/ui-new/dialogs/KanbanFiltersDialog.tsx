@@ -16,7 +16,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@vibe/ui/components/Badge';
 import {
   Dialog,
   DialogContent,

@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui-new/primitives/Dropdown';
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@vibe/ui/components/Badge';
 
 export interface MultiSelectDropdownOption<T extends string = string> {
   value: T;
