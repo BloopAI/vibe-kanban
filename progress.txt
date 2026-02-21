@@ -115,3 +115,38 @@ Validation:
 Plan adjustments from new information:
 - No structural plan changes required.
 - `Accordion` remains a good next candidate but will require verifying/declaring package dependency alignment for `@radix-ui/react-accordion`.
+
+## 2026-02-21 - UI package extraction: Accordion
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `Accordion` as the next move candidate because it has low app coupling and a narrow callsite surface.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/Accordion.tsx packages/ui/src/components/Accordion.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Accordion.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Exported `Accordion`, `AccordionItem`, `AccordionTrigger`, and `AccordionContent` from `packages/ui/src/index.ts`.
+  - Added `@radix-ui/react-accordion` to `packages/ui/package.json` dependencies.
+  - Synced lockfile (`pnpm-lock.yaml`) via `pnpm install`.
+- Callsite updates to `@vibe/ui`:
+  - `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx`
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+- `pnpm --filter @vibe/ui run format` ✅
+
+Plan adjustments from new information:
+- Dependency alignment concern from prior step is now resolved for `Accordion` by explicitly declaring `@radix-ui/react-accordion` in `@vibe/ui`.
+- Next low-risk candidates are now `IconButton` or `InputField`.
