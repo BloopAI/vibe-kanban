@@ -30,4 +30,24 @@ module.exports = {
     ],
     '@typescript-eslint/no-explicit-any': 'warn',
   },
+  overrides: [
+    {
+      files: ['src/index.ts'],
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'ExportNamedDeclaration',
+            message:
+              'Root exports are not allowed in @vibe/ui. Use explicit package.json subpath exports.',
+          },
+          {
+            selector: 'ExportAllDeclaration',
+            message:
+              'Root exports are not allowed in @vibe/ui. Use explicit package.json subpath exports.',
+          },
+        ],
+      },
+    },
+  ],
 };

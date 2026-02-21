@@ -16,7 +16,7 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@vibe/ui';
+} from '@vibe/ui/components/Accordion';
 import type { ModelInfo, ModelSelectorConfig } from 'shared/types';
 import { ModelList } from './ModelList';
 import { ModelProviderIcon } from './ModelProviderIcon';

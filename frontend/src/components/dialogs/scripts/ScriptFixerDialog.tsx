@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/select';
 import { AutoExpandingTextarea } from '@/components/ui/auto-expanding-textarea';
 import { VirtualizedProcessLogs } from '@/components/ui-new/containers/VirtualizedProcessLogs';
-import { RunningDots } from '@vibe/ui';
+import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { defineModal } from '@/lib/modals';
 import { repoApi, attemptsApi } from '@/lib/api';
 import { useLogStream } from '@/hooks/useLogStream';

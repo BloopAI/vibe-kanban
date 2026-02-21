@@ -23,7 +23,7 @@ import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { Toggle } from '@/components/ui-new/primitives/Toggle';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IconButton } from '@/components/ui-new/primitives/IconButton';
-import { AutoResizeTextarea } from '@vibe/ui';
+import { AutoResizeTextarea } from '@vibe/ui/components/AutoResizeTextarea';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';

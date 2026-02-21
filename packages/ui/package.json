@@ -9,13 +9,12 @@
     "format": "prettier --config ../../frontend/.prettierrc.json --write \"src/**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "sideEffects": false,
-  "main": "./src/index.ts",
-  "module": "./src/index.ts",
-  "types": "./src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
+    "./components/Accordion": "./src/components/Accordion.tsx",
+    "./components/AutoResizeTextarea": "./src/components/AutoResizeTextarea.tsx",
     "./lib/cn": "./src/lib/cn.ts",
-    "./components/RunningDots": "./src/components/RunningDots.tsx"
+    "./components/RunningDots": "./src/components/RunningDots.tsx",
+    "./components/StatusDot": "./src/components/StatusDot.tsx"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.1",

@@ -5,7 +5,7 @@ import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PrimaryButton } from '@/components/ui-new/primitives/PrimaryButton';
 import { IconButton } from '@/components/ui-new/primitives/IconButton';
-import { StatusDot } from '@vibe/ui';
+import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';

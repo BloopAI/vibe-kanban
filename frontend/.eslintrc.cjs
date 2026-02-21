@@ -61,6 +61,11 @@ module.exports = {
             message:
               'Do not import showModal/hideModal/removeModal. Use DialogName.show(props) and DialogName.hide() instead.',
           },
+          {
+            name: '@vibe/ui',
+            message:
+              'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
+          },
         ],
       },
     ],
@@ -197,7 +202,18 @@ module.exports = {
         'src/components/dialogs/**/*.{ts,tsx}',
       ],
       rules: {
-        'no-restricted-imports': 'off',
+        'no-restricted-imports': [
+          'error',
+          {
+            paths: [
+              {
+                name: '@vibe/ui',
+                message:
+                  'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
+              },
+            ],
+          },
+        ],
         'no-restricted-syntax': 'off',
       },
     },
@@ -210,6 +226,11 @@ module.exports = {
           'error',
           {
             paths: [
+              {
+                name: '@vibe/ui',
+                message:
+                  'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
+              },
               {
                 name: 'lucide-react',
                 message: 'Use @phosphor-icons/react instead of lucide-react in ui-new components.',
@@ -296,6 +317,11 @@ module.exports = {
           'error',
           {
             paths: [
+              {
+                name: '@vibe/ui',
+                message:
+                  'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
+              },
               {
                 name: '@/lib/api',
                 message: 'Presentational components cannot import API. Pass data via props.',

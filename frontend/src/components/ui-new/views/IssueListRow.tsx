@@ -7,7 +7,7 @@ import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { Draggable } from '@hello-pangea/dnd';
 import { DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
-import { StatusDot } from '@vibe/ui';
+import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';

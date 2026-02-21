@@ -1,10 +1,2 @@
-export { cn } from './lib/cn';
-export {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from './components/Accordion';
-export { AutoResizeTextarea } from './components/AutoResizeTextarea';
-export { RunningDots } from './components/RunningDots';
-export { StatusDot } from './components/StatusDot';
+// Intentionally no root exports. Import from explicit subpaths, e.g.
+// '@vibe/ui/components/RunningDots'.
