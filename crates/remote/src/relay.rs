@@ -49,7 +49,7 @@ impl ActiveRelay {
 pub struct RelayRegistry {
     inner: Arc<Mutex<HashMap<Uuid, Arc<ActiveRelay>>>>,
     /// One-time auth codes for relay subdomain cookie exchange.
-    /// Maps code → (user_id, access_token, created_at).
+    /// Maps code → (user_id, relay_token, created_at).
     auth_codes: Arc<Mutex<HashMap<String, (Uuid, String, Instant)>>>,
 }
 
@@ -73,16 +73,16 @@ impl RelayRegistry {
     }
 
     /// Store a one-time auth code. Returns the code string.
-    pub async fn store_auth_code(&self, user_id: Uuid, access_token: String) -> String {
+    pub async fn store_auth_code(&self, user_id: Uuid, relay_token: String) -> String {
         let code = Uuid::new_v4().to_string();
         let mut codes = self.auth_codes.lock().await;
         // Garbage-collect expired codes while we're here
         codes.retain(|_, (_, _, created)| created.elapsed().as_secs() < AUTH_CODE_TTL_SECS);
-        codes.insert(code.clone(), (user_id, access_token, Instant::now()));
+        codes.insert(code.clone(), (user_id, relay_token, Instant::now()));
         code
     }
 
-    /// Consume a one-time auth code. Returns (user_id, access_token) if valid.
+    /// Consume a one-time auth code. Returns (user_id, relay_token) if valid.
     pub async fn redeem_auth_code(&self, code: &str) -> Option<(Uuid, String)> {
         let mut codes = self.auth_codes.lock().await;
         let (user_id, token, created) = codes.remove(code)?;

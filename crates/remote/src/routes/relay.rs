@@ -131,7 +131,7 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
     {
         let registry = state.relay_registry();
         match registry.redeem_auth_code(&code).await {
-            Some((code_user_id, access_token)) if code_user_id == user_id => {
+            Some((code_user_id, relay_token)) if code_user_id == user_id => {
                 // Set cookie and redirect to /
                 return Response::builder()
                     .status(StatusCode::FOUND)
@@ -139,7 +139,7 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
                     .header(
                         "set-cookie",
                         format!(
-                            "relay_token={access_token}; Path=/; HttpOnly; Secure; SameSite=Lax"
+                            "relay_token={relay_token}; Path=/; HttpOnly; Secure; SameSite=Lax"
                         ),
                     )
                     .body(Body::empty())
@@ -152,18 +152,18 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
     }
 
     // Normal flow: authenticate via cookie
-    let token = request
+    let relay_token = request
         .headers()
         .typed_get::<Cookie>()
         .and_then(|cookie| cookie.get("relay_token").map(|s| s.to_owned()));
 
-    let token = match token {
+    let relay_token = match relay_token {
         Some(t) => t,
         None => return (StatusCode::UNAUTHORIZED, "Missing relay_token cookie").into_response(),
     };
 
     // Decode JWT and verify user matches subdomain
-    let identity = match state.jwt().decode_access_token(&token) {
+    let identity = match state.jwt().decode_access_token(&relay_token) {
         Ok(id) => id,
         Err(_) => return (StatusCode::UNAUTHORIZED, "Invalid token").into_response(),
     };
@@ -322,8 +322,15 @@ async fn relay_auth_code(
         return (StatusCode::NOT_FOUND, "No active relay").into_response();
     }
 
-    let access_token = ctx.raw_token.clone();
-    let code = registry.store_auth_code(ctx.user.id, access_token).await;
+    let relay_token = match state.jwt().generate_access_token(ctx.user.id, ctx.session_id) {
+        Ok(token) => token,
+        Err(error) => {
+            tracing::error!(?error, "failed to generate relay access token");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
+                .into_response();
+        }
+    };
+    let code = registry.store_auth_code(ctx.user.id, relay_token).await;
 
     Json(serde_json::json!({ "code": code })).into_response()
 }
