@@ -6,6 +6,7 @@ use axum::{
     response::Response,
     routing::get,
 };
+use axum_extra::headers::{HeaderMapExt, Host};
 use serde::Serialize;
 use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
@@ -185,11 +186,11 @@ async fn relay_subdomain_middleware(
     if let Some(relay_base_domain) = &state.config.relay_base_domain {
         let host = request
             .headers()
-            .get("host")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("");
+            .typed_get::<Host>()
+            .map(|h| h.hostname().to_owned())
+            .unwrap_or_default();
 
-        if extract_relay_subdomain(host, relay_base_domain).is_some() {
+        if extract_relay_subdomain(&host, relay_base_domain).is_some() {
             return relay::relay_subdomain_proxy(state, request).await;
         }
     }

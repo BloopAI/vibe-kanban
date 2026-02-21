@@ -13,10 +13,9 @@ use api_types::{
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, Tag,
-    TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest,
-    UpdateMemberRoleResponse, UpdateOrganizationRequest, UpdateWorkspaceRequest,
-    UpsertPullRequestRequest, Workspace,
+    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
+    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;

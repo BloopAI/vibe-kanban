@@ -12,12 +12,14 @@ use axum::{
     Extension, Json, Router,
     body::Body,
     extract::{FromRequestParts, Request, State, ws::WebSocketUpgrade},
-    http::{HeaderMap, HeaderName, HeaderValue, StatusCode},
+    http::{HeaderMap, HeaderName, HeaderValue, StatusCode, uri::Authority},
     response::{IntoResponse, Response},
     routing::{any, get, post},
 };
+use axum_extra::headers::{Cookie, HeaderMapExt, Host};
 use futures::{SinkExt, stream::{SplitSink, SplitStream, StreamExt}};
 use tokio::sync::{mpsc, oneshot};
+use url::form_urlencoded;
 
 use api_types::{Base64Bytes, LocalToRelay, RelayStatus, RelayToLocal};
 
@@ -27,28 +29,45 @@ use crate::{
     relay::{ActiveRelay, RelayRegistry},
 };
 
-/// Headers to skip when proxying requests (hop-by-hop headers).
-const SKIP_REQUEST_HEADERS: &[&str] = &[
-    "host",
-    "connection",
-    "transfer-encoding",
-    "upgrade",
-    "proxy-connection",
-    "keep-alive",
-    "te",
-    "trailer",
-    "sec-websocket-key",
-    "sec-websocket-version",
-    "sec-websocket-extensions",
-    "origin",
-];
+fn normalized_relay_path(uri: &axum::http::Uri, strip_prefix: &str) -> String {
+    let raw_path = uri.path();
+    let path = raw_path.strip_prefix(strip_prefix).unwrap_or(raw_path);
+    let path = if path.is_empty() { "/" } else { path };
+    let query = uri.query().map(|q| format!("?{q}")).unwrap_or_default();
+    format!("{path}{query}")
+}
 
-/// Headers to strip from proxied responses.
-const STRIP_RESPONSE_HEADERS: &[&str] = &[
-    "transfer-encoding",
-    "connection",
-    "content-encoding",
-];
+fn is_ws_upgrade_request(headers: &HeaderMap) -> bool {
+    headers
+        .get("upgrade")
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.eq_ignore_ascii_case("websocket"))
+}
+
+fn should_skip_request_header(name: &HeaderName) -> bool {
+    matches!(
+        name.as_str(),
+        "host"
+            | "connection"
+            | "transfer-encoding"
+            | "upgrade"
+            | "proxy-connection"
+            | "keep-alive"
+            | "te"
+            | "trailer"
+            | "sec-websocket-key"
+            | "sec-websocket-version"
+            | "sec-websocket-extensions"
+            | "origin"
+    )
+}
+
+fn should_strip_response_header(name: &str) -> bool {
+    matches!(
+        name,
+        "transfer-encoding" | "connection" | "content-encoding"
+    )
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -63,11 +82,13 @@ pub fn router() -> Router<AppState> {
 /// Given `relay_base_domain = "relay.example.com"` and
 /// `host = "abcd-1234.relay.example.com"`, returns `Some("abcd-1234")`.
 pub fn extract_relay_subdomain<'a>(host: &'a str, relay_base_domain: &str) -> Option<&'a str> {
-    // Strip port from host if present (e.g. "x.relay.localhost:3001" → "x.relay.localhost")
-    let host_no_port = host.split(':').next().unwrap_or(host);
-    let base_no_port = relay_base_domain.split(':').next().unwrap_or(relay_base_domain);
+    let parsed_base = relay_base_domain.parse::<Authority>().ok();
+    let base_host = parsed_base
+        .as_ref()
+        .map(Authority::host)
+        .unwrap_or(relay_base_domain.split(':').next().unwrap_or(relay_base_domain));
 
-    let prefix = host_no_port.strip_suffix(base_no_port)?.strip_suffix('.')?;
+    let prefix = host.strip_suffix(base_host)?.strip_suffix('.')?;
     if prefix.is_empty() {
         return None;
     }
@@ -88,11 +109,11 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
     // Extract subdomain from Host header
     let host = request
         .headers()
-        .get("host")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("");
+        .typed_get::<Host>()
+        .map(|h| h.hostname().to_owned())
+        .unwrap_or_default();
 
-    let subdomain = match extract_relay_subdomain(host, relay_base_domain) {
+    let subdomain = match extract_relay_subdomain(&host, relay_base_domain) {
         Some(s) => s.to_owned(),
         None => return (StatusCode::NOT_FOUND, "Invalid relay subdomain").into_response(),
     };
@@ -104,34 +125,28 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
     };
 
     // Check for one-time auth code in query string
-    if let Some(query) = request.uri().query() {
-        let code = query
-            .split('&')
-            .find_map(|pair| pair.strip_prefix("code="));
-
-        if let Some(code) = code {
-            let registry = state.relay_registry();
-            match registry.redeem_auth_code(code).await {
-                Some((code_user_id, access_token)) if code_user_id == user_id => {
-                    // Set cookie and redirect to /
-                    return Response::builder()
-                        .status(StatusCode::FOUND)
-                        .header("location", "/")
-                        .header(
-                            "set-cookie",
-                            format!(
-                                "relay_token={access_token}; Path=/; HttpOnly; Secure; SameSite=Lax"
-                            ),
-                        )
-                        .body(Body::empty())
-                        .unwrap_or_else(|_| {
-                            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                        });
-                }
-                _ => {
-                    return (StatusCode::UNAUTHORIZED, "Invalid or expired code")
-                        .into_response();
-                }
+    if let Some(query) = request.uri().query()
+        && let Some(code) = form_urlencoded::parse(query.as_bytes())
+            .find_map(|(k, v)| (k == "code").then(|| v.into_owned()))
+    {
+        let registry = state.relay_registry();
+        match registry.redeem_auth_code(&code).await {
+            Some((code_user_id, access_token)) if code_user_id == user_id => {
+                // Set cookie and redirect to /
+                return Response::builder()
+                    .status(StatusCode::FOUND)
+                    .header("location", "/")
+                    .header(
+                        "set-cookie",
+                        format!(
+                            "relay_token={access_token}; Path=/; HttpOnly; Secure; SameSite=Lax"
+                        ),
+                    )
+                    .body(Body::empty())
+                    .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
+            }
+            _ => {
+                return (StatusCode::UNAUTHORIZED, "Invalid or expired code").into_response();
             }
         }
     }
@@ -139,13 +154,8 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
     // Normal flow: authenticate via cookie
     let token = request
         .headers()
-        .get_all("cookie")
-        .iter()
-        .filter_map(|v| v.to_str().ok())
-        .flat_map(|s| s.split(';'))
-        .map(|s| s.trim())
-        .find_map(|cookie| cookie.strip_prefix("relay_token="))
-        .map(|s| s.to_owned());
+        .typed_get::<Cookie>()
+        .and_then(|cookie| cookie.get("relay_token").map(|s| s.to_owned()));
 
     let token = match token {
         Some(t) => t,
@@ -162,24 +172,7 @@ pub async fn relay_subdomain_proxy(State(state): State<AppState>, request: Reque
         return (StatusCode::FORBIDDEN, "Token does not match relay").into_response();
     }
 
-    let registry = state.relay_registry();
-    let relay = match registry.get(&user_id).await {
-        Some(r) => r,
-        None => return (StatusCode::NOT_FOUND, "No active relay").into_response(),
-    };
-
-    // Check for WebSocket upgrade
-    let is_ws_upgrade = request
-        .headers()
-        .get("upgrade")
-        .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.eq_ignore_ascii_case("websocket"));
-
-    if is_ws_upgrade {
-        return handle_ws_relay(relay, request, "").await;
-    }
-
-    handle_http_relay(relay, request, "").await
+    do_relay_proxy_for_user(state, user_id, request, "").await
 }
 
 // ── Control Channel ────────────────────────────────────────────────────
@@ -208,7 +201,7 @@ async fn handle_control_channel(
     // Channel for sending messages to the local server
     let (tx, rx) = mpsc::channel::<RelayToLocal>(256);
 
-    let relay = Arc::new(ActiveRelay::new(tx, user_id));
+    let relay = Arc::new(ActiveRelay::new(tx));
     registry.insert(user_id, relay.clone()).await;
 
     tracing::info!(%user_id, "Relay control channel connected");
@@ -345,32 +338,25 @@ async fn relay_proxy(
     Extension(ctx): Extension<RequestContext>,
     request: Request,
 ) -> Response {
-    do_relay_proxy(state, ctx, request, RELAY_PROXY_PREFIX).await
+    do_relay_proxy_for_user(state, ctx.user.id, request, RELAY_PROXY_PREFIX).await
 }
 
-async fn do_relay_proxy(
+async fn do_relay_proxy_for_user(
     state: AppState,
-    ctx: RequestContext,
+    user_id: uuid::Uuid,
     request: Request,
     strip_prefix: &str,
 ) -> Response {
     let registry = state.relay_registry();
 
-    let relay = match registry.get(&ctx.user.id).await {
+    let relay = match registry.get(&user_id).await {
         Some(r) => r,
         None => {
             return (StatusCode::NOT_FOUND, "No active relay").into_response();
         }
     };
 
-    // Check for WebSocket upgrade
-    let is_ws_upgrade = request
-        .headers()
-        .get("upgrade")
-        .and_then(|v| v.to_str().ok())
-        .is_some_and(|v| v.eq_ignore_ascii_case("websocket"));
-
-    if is_ws_upgrade {
+    if is_ws_upgrade_request(request.headers()) {
         return handle_ws_relay(relay, request, strip_prefix).await;
     }
 
@@ -386,22 +372,11 @@ async fn handle_http_relay(
 
     let (parts, body) = request.into_parts();
 
-    // Strip the route prefix so local server sees the original path
-    let raw_path = parts.uri.path();
-    let path = raw_path
-        .strip_prefix(strip_prefix)
-        .unwrap_or(raw_path);
-    let path = if path.is_empty() { "/" } else { path };
-    let query = parts.uri.query().map(|q| format!("?{q}")).unwrap_or_default();
-    let full_path = format!("{path}{query}");
-
-    // Collect headers
+    let full_path = normalized_relay_path(&parts.uri, strip_prefix);
     let headers: Vec<(String, String)> = parts
         .headers
         .iter()
-        .filter(|(name, _)| {
-            !SKIP_REQUEST_HEADERS.contains(&name.as_str().to_lowercase().as_str())
-        })
+        .filter(|(name, _)| !should_skip_request_header(name))
         .filter_map(|(name, value)| {
             value
                 .to_str()
@@ -455,8 +430,7 @@ async fn handle_http_relay(
 
             let mut response_headers = HeaderMap::new();
             for (name, value) in &headers {
-                let name_lower = name.to_lowercase();
-                if !STRIP_RESPONSE_HEADERS.contains(&name_lower.as_str())
+                if !should_strip_response_header(name)
                     && let (Ok(header_name), Ok(header_value)) = (
                         HeaderName::try_from(name.as_str()),
                         HeaderValue::from_str(value),
@@ -498,21 +472,11 @@ async fn handle_ws_relay(
 ) -> Response {
     let (mut parts, _body) = request.into_parts();
 
-    let raw_path = parts.uri.path();
-    let path = raw_path
-        .strip_prefix(strip_prefix)
-        .unwrap_or(raw_path);
-    let path = if path.is_empty() { "/" } else { path };
-    let query = parts.uri.query().map(|q| format!("?{q}")).unwrap_or_default();
-    let full_path = format!("{path}{query}");
-
-    // Collect headers for WsOpen
+    let full_path = normalized_relay_path(&parts.uri, strip_prefix);
     let headers: Vec<(String, String)> = parts
         .headers
         .iter()
-        .filter(|(name, _)| {
-            !SKIP_REQUEST_HEADERS.contains(&name.as_str().to_lowercase().as_str())
-        })
+        .filter(|(name, _)| !should_skip_request_header(name))
         .filter_map(|(name, value)| {
             value
                 .to_str()

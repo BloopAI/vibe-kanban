@@ -20,8 +20,6 @@ use uuid::Uuid;
 pub struct ActiveRelay {
     /// Send messages to the local server through the control channel.
     pub tx: mpsc::Sender<RelayToLocal>,
-    /// User who owns this relay.
-    pub user_id: Uuid,
     /// Pending HTTP request/response pairs, keyed by stream_id.
     pub pending_http: Mutex<HashMap<u64, oneshot::Sender<LocalToRelay>>>,
     /// Active WebSocket streams, keyed by stream_id.
@@ -31,10 +29,9 @@ pub struct ActiveRelay {
 }
 
 impl ActiveRelay {
-    pub fn new(tx: mpsc::Sender<RelayToLocal>, user_id: Uuid) -> Self {
+    pub fn new(tx: mpsc::Sender<RelayToLocal>) -> Self {
         Self {
             tx,
-            user_id,
             pending_http: Mutex::new(HashMap::new()),
             active_ws: Mutex::new(HashMap::new()),
             next_stream_id: AtomicU64::new(1),
