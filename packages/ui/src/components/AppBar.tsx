@@ -4,6 +4,7 @@ import {
   Droppable,
   type DropResult,
 } from '@hello-pangea/dnd';
+import type { ReactNode } from 'react';
 import {
   LayoutIcon,
   PlusIcon,
@@ -11,22 +12,16 @@ import {
   SpinnerIcon,
   StarIcon,
 } from '@phosphor-icons/react';
-import { siDiscord, siGithub } from 'simple-icons';
-import { cn } from '@/lib/utils';
-import type { OrganizationWithRole } from 'shared/types';
-import type { Project as RemoteProject } from 'shared/remote-types';
-import { AppBarButton } from '@vibe/ui/components/AppBarButton';
-import { AppBarSocialLink } from '@vibe/ui/components/AppBarSocialLink';
-import { AppBarUserPopoverContainer } from '../containers/AppBarUserPopoverContainer';
+import { cn } from '../lib/cn';
+import { AppBarButton } from './AppBarButton';
+import { AppBarSocialLink } from './AppBarSocialLink';
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
   PopoverClose,
-} from '@vibe/ui/components/Popover';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
-import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
-import { useGitHubStars } from '@/hooks/useGitHubStars';
+} from './Popover';
+import { Tooltip } from './Tooltip';
 import { useTranslation } from 'react-i18next';
 
 function formatStarCount(count: number): string {
@@ -47,11 +42,7 @@ function getProjectInitials(name: string): string {
 }
 
 interface AppBarProps {
-  projects: RemoteProject[];
-  organizations: OrganizationWithRole[];
-  selectedOrgId: string;
-  onOrgSelect: (orgId: string) => void;
-  onCreateOrg: () => void;
+  projects: AppBarProject[];
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
   onProjectClick: (projectId: string) => void;
@@ -63,14 +54,21 @@ interface AppBarProps {
   isLoadingProjects?: boolean;
   onSignIn?: () => void;
   onMigrate?: () => void;
+  userPopover?: ReactNode;
+  starCount?: number | null;
+  onlineCount?: number | null;
+  githubIconPath: string;
+  discordIconPath: string;
+}
+
+export interface AppBarProject {
+  id: string;
+  name: string;
+  color: string;
 }
 
 export function AppBar({
   projects,
-  organizations,
-  selectedOrgId,
-  onOrgSelect,
-  onCreateOrg,
   onCreateProject,
   onWorkspacesClick,
   onProjectClick,
@@ -82,10 +80,13 @@ export function AppBar({
   isLoadingProjects,
   onSignIn,
   onMigrate,
+  userPopover,
+  starCount,
+  onlineCount,
+  githubIconPath,
+  discordIconPath,
 }: AppBarProps) {
   const { t } = useTranslation('common');
-  const { data: onlineCount } = useDiscordOnlineCount();
-  const { data: starCount } = useGitHubStars();
 
   return (
     <div
@@ -253,16 +254,11 @@ export function AppBar({
 
       {/* Bottom section: User popover + GitHub + Discord */}
       <div className="mt-auto pt-base flex flex-col items-center gap-4">
-        <AppBarUserPopoverContainer
-          organizations={organizations}
-          selectedOrgId={selectedOrgId}
-          onOrgSelect={onOrgSelect}
-          onCreateOrg={onCreateOrg}
-        />
+        {userPopover}
         <AppBarSocialLink
           href="https://github.com/BloopAI/vibe-kanban"
           label="Star on GitHub"
-          iconPath={siGithub.path}
+          iconPath={githubIconPath}
           badge={
             starCount != null && (
               <>
@@ -275,7 +271,7 @@ export function AppBar({
         <AppBarSocialLink
           href="https://discord.gg/AC4nwVtJM3"
           label="Join our Discord"
-          iconPath={siDiscord.path}
+          iconPath={discordIconPath}
           badge={
             onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
           }

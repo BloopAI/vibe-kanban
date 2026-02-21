@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { siDiscord, siGithub } from 'simple-icons';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 
 import { NavbarContainer } from './NavbarContainer';
-import { AppBar } from '../primitives/AppBar';
+import { AppBar } from '@vibe/ui/components/AppBar';
+import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
+import { useGitHubStars } from '@/hooks/useGitHubStars';
 import {
   buildProjectRootPath,
   parseProjectSidebarRoute,
@@ -36,6 +40,8 @@ export function SharedAppLayout() {
   const location = useLocation();
   const isMigrateRoute = location.pathname.startsWith('/migrate');
   const { isSignedIn } = useAuth();
+  const { data: onlineCount } = useDiscordOnlineCount();
+  const { data: starCount } = useGitHubStars();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -251,10 +257,6 @@ export function SharedAppLayout() {
         {!isMigrateRoute && (
           <AppBar
             projects={orderedProjects}
-            organizations={organizations}
-            selectedOrgId={selectedOrgId ?? ''}
-            onOrgSelect={setSelectedOrgId}
-            onCreateOrg={handleCreateOrg}
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
             onProjectClick={handleProjectClick}
@@ -266,6 +268,18 @@ export function SharedAppLayout() {
             isLoadingProjects={isLoading}
             onSignIn={handleSignIn}
             onMigrate={handleMigrate}
+            userPopover={
+              <AppBarUserPopoverContainer
+                organizations={organizations}
+                selectedOrgId={selectedOrgId ?? ''}
+                onOrgSelect={setSelectedOrgId}
+                onCreateOrg={handleCreateOrg}
+              />
+            }
+            starCount={starCount}
+            onlineCount={onlineCount}
+            githubIconPath={siGithub.path}
+            discordIconPath={siDiscord.path}
           />
         )}
         <div className="flex flex-col flex-1 min-w-0">
