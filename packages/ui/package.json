@@ -3,6 +3,11 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "format": "prettier --config ../../frontend/.prettierrc.json --write \"src/**/*.{ts,tsx,js,jsx,json,md}\""
+  },
   "sideEffects": false,
   "main": "./src/index.ts",
   "module": "./src/index.ts",
@@ -18,7 +23,15 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "@types/react": "^18.2.43",
-    "@types/react-dom": "^18.2.17"
+    "@types/react-dom": "^18.2.17",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "prettier": "^3.6.1",
+    "typescript": "^5.9.2"
   }
 }

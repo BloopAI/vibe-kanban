@@ -30,3 +30,19 @@
   - `pnpm run frontend:check` ✅
   - `pnpm run frontend:lint` ✅
   - `pnpm run format` ✅
+
+## 2026-02-21 - Add lint/check coverage for @vibe/ui
+
+- Added independent quality scripts for `packages/ui`:
+  - `check`: `tsc --noEmit -p tsconfig.json`
+  - `lint`: `eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0`
+  - `format`: `prettier --config ../../frontend/.prettierrc.json --write "src/**/*.{ts,tsx,js,jsx,json,md}"`
+- Added `packages/ui/tsconfig.json` and `packages/ui/.eslintrc.cjs`.
+- Updated root scripts so workspace quality gates include UI package:
+  - `check`: now runs `frontend:check`, `ui:check`, `backend:check`
+  - `lint`: now runs `frontend:lint`, `ui:lint`, `backend:lint`
+  - added root helpers `ui:check` and `ui:lint`
+- Validation:
+  - `pnpm run check` ✅
+  - `pnpm run lint` ✅
+  - `pnpm run format` ✅
