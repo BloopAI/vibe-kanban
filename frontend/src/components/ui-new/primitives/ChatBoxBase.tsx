@@ -3,7 +3,7 @@ import { ImageIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
 import { useUserSystem } from '@/components/ConfigProvider';
 import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
 import { Toolbar } from '@vibe/ui/components/Toolbar';

@@ -3,7 +3,7 @@ import { CheckIcon, PaperclipIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { toPrettyCase } from '@/utils/string';
 import type { BaseCodingAgent } from 'shared/types';
-import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import {

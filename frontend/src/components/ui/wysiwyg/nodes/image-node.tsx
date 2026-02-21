@@ -6,7 +6,7 @@ import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useTaskAttemptId,
   useLocalImages,
-} from '../context/task-attempt-context';
+} from '@vibe/ui/components/TaskAttemptContext';
 import { useImageMetadata } from '@/hooks/useImageMetadata';
 import { useAttachmentUrl } from '@/hooks/useAttachmentUrl';
 import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';

@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import type { BaseCodingAgent, SlashCommandDescription } from 'shared/types';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
-import { useTaskAttemptId } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import { useTaskAttemptId } from '@vibe/ui/components/TaskAttemptContext';
 import { useTypeaheadOpen } from '@/components/ui/wysiwyg/context/typeahead-open-context';
 import { TypeaheadMenu } from '@vibe/ui/components/TypeaheadMenu';
 

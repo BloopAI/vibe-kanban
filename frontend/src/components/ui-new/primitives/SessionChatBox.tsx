@@ -21,7 +21,7 @@ import {
   type TodoItem,
   type TokenUsageInfo,
 } from 'shared/types';
-import type { LocalImageMetadata } from '@/components/ui/wysiwyg/context/task-attempt-context';
+import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
 import { formatDateShortWithTime } from '@/utils/date';
 import { toPrettyCase } from '@/utils/string';
 import { AgentIcon } from '@/components/agents/AgentIcon';
