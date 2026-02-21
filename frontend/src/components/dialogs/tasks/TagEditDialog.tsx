@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@vibe/ui/components/Input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@vibe/ui/components/Label';
 import { Textarea } from '@vibe/ui/components/Textarea';
 import { Alert } from '@vibe/ui/components/Alert';
 import {

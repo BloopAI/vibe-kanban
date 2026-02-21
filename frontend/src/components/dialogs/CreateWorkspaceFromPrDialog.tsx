@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
-import { Label } from '@/components/ui/label';
+import { Label } from '@vibe/ui/components/Label';
 import {
   Select,
   SelectContent,

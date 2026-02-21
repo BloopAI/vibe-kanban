@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Label } from '@/components/ui/label';
+import { Label } from '@vibe/ui/components/Label';
 import BranchSelector from './BranchSelector';
 import type { RepoBranchConfig } from '@/hooks';
 

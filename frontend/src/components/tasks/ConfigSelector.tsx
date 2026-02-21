@@ -6,7 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Label } from '@/components/ui/label';
+import { Label } from '@vibe/ui/components/Label';
 import { getSortedExecutorVariantKeys } from '@/utils/executor';
 import type { ExecutorProfileId } from 'shared/types';
 

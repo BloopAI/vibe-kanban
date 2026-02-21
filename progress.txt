@@ -735,3 +735,50 @@ Validation:
 Plan adjustments from new information:
 - No structural plan changes required.
 - Next low-risk `extract-now` candidate is `ui/label.tsx` (moderate callsite surface, straightforward dependency addition for `@radix-ui/react-label`).
+
+## 2026-02-21 - UI package extraction: Label
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `ui/label.tsx` as the next `extract-now` component from the queue after `Alert`.
+- Migration risk was low-to-moderate: 12 callsites and straightforward dependency/coupling (`@radix-ui/react-label`, `class-variance-authority`, `cn`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/label.tsx packages/ui/src/components/Label.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/Label.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Added `@radix-ui/react-label` to `packages/ui/package.json` dependencies.
+  - Synced lockfile via `pnpm install` (`pnpm-lock.yaml` updated).
+- Callsite updates to `@vibe/ui` subpath imports:
+  - `frontend/src/components/dialogs/CreateWorkspaceFromPrDialog.tsx`
+  - `frontend/src/components/dialogs/org/CreateOrganizationDialog.tsx`
+  - `frontend/src/components/dialogs/org/CreateRemoteProjectDialog.tsx`
+  - `frontend/src/components/dialogs/org/InviteMemberDialog.tsx`
+  - `frontend/src/components/dialogs/scripts/ScriptFixerDialog.tsx`
+  - `frontend/src/components/dialogs/settings/CreateConfigurationDialog.tsx`
+  - `frontend/src/components/dialogs/tasks/StartReviewDialog.tsx`
+  - `frontend/src/components/dialogs/tasks/TagEditDialog.tsx`
+  - `frontend/src/components/tasks/AgentSelector.tsx`
+  - `frontend/src/components/tasks/ConfigSelector.tsx`
+  - `frontend/src/components/tasks/RepoBranchSelector.tsx`
+  - `frontend/src/components/ui-new/dialogs/ResolveConflictsDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required.
+- Next `extract-now` candidate is `ui/button.tsx` (large callsite surface, but dependency surface is already aligned in `@vibe/ui`).

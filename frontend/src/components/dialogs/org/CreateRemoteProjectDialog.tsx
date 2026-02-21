@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@vibe/ui/components/Input';
-import { Label } from '@/components/ui/label';
+import { Label } from '@vibe/ui/components/Label';
 import {
   Dialog,
   DialogContent,
