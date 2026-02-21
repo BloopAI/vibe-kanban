@@ -18,15 +18,11 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
 import {
-  ImageNode,
-  IMAGE_TRANSFORMER,
-  $isImageNode,
-} from './wysiwyg/nodes/image-node';
-import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from '@vibe/ui/components/pr-comment-node';
+import { createImageNode } from '@vibe/ui/components/image-node';
 import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,
@@ -79,6 +75,7 @@ import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import type { RepoItem } from '@/components/ui-new/actions/pages';
 import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
+import { ImagePreviewDialog } from '@/components/dialogs/wysiwyg/ImagePreviewDialog';
 import {
   SelectionDialog,
   type SelectionPage,
@@ -87,6 +84,7 @@ import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
 } from '@/components/ui-new/dialogs/selections/repoSelection';
+import { fetchAttachmentSasUrl } from '@/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
@@ -358,6 +356,17 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         // noop – bridge handles fallback
       }
     }, [value]);
+    const imageNodeDefinition = useMemo(
+      () =>
+        createImageNode({
+          fetchAttachmentUrl: fetchAttachmentSasUrl,
+          openImagePreview: (options) => {
+            ImagePreviewDialog.show(options);
+          },
+        }),
+      []
+    );
+    const { ImageNode, IMAGE_TRANSFORMER, $isImageNode } = imageNodeDefinition;
 
     const initialConfig = useMemo(
       () => ({
@@ -416,7 +425,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           TableCellNode,
         ],
       }),
-      []
+      [ImageNode]
     );
 
     // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
@@ -431,7 +440,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         CODE,
         ...TRANSFORMERS,
       ],
-      []
+      [IMAGE_TRANSFORMER]
     );
 
     // Memoized handlers for ContentEditable to prevent re-renders

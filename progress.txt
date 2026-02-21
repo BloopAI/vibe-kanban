@@ -2541,3 +2541,50 @@ Plan adjustments from new information:
 - Remaining frontend-local WYSIWYG node scope is now:
   - `frontend/src/components/ui/wysiwyg/nodes/image-node.tsx`
 - Next extraction likely requires an adapter-prop boundary for app-coupled hooks/APIs used by `image-node.tsx`.
+
+## 2026-02-21 - UI package extraction: wysiwyg/image-node
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate from remaining extraction scope
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui/wysiwyg/nodes/image-node.tsx` as the next extraction candidate.
+- It was the last frontend-local WYSIWYG node and had high app coupling via hooks/dialog/utils (`useAttachmentUrl`, `useImageMetadata`, `ImagePreviewDialog`, `downloadBlobUrl`, `formatFileSize`).
+- New information: extraction is clean when the node module uses explicit adapter injection for app-only operations.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui/wysiwyg/nodes/image-node.tsx packages/ui/src/components/image-node.tsx`
+- Package updates:
+  - Reworked `packages/ui/src/components/image-node.tsx` to export a factory:
+    - `createImageNode({ fetchAttachmentUrl, openImagePreview })`
+  - Removed frontend-only imports from the moved component.
+  - Kept metadata + attachment resolution logic package-local via React Query hooks inside `@vibe/ui`.
+  - Added package-local helpers for file size formatting and attachment download behavior.
+  - Added `@tanstack/react-query` to `packages/ui/package.json` dependencies.
+  - Lockfile updated in `pnpm-lock.yaml`.
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui/wysiwyg.tsx`
+  - Replaced local node import with `createImageNode` from `@vibe/ui/components/image-node`.
+  - Wired app adapters:
+    - `fetchAttachmentSasUrl` from `@/lib/remoteApi`
+    - `ImagePreviewDialog.show` from `@/components/dialogs/wysiwyg/ImagePreviewDialog`
+  - Updated lexical setup to consume the factory output (`ImageNode`, `IMAGE_TRANSFORMER`, `$isImageNode`).
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Frontend-local WYSIWYG node extraction is now complete.
+- Remaining app-specific image concerns (modal wiring, attachment URL backend calls) are isolated behind explicit adapter boundaries in `frontend/src/components/ui/wysiwyg.tsx`.
+- Next extraction candidate should be chosen from remaining non-node app components still marked reusable, not from `frontend/src/components/ui/wysiwyg/nodes/`.
