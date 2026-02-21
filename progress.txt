@@ -2787,3 +2787,47 @@ Plan adjustments from new information:
 - Selective extraction continues to work best for low-coupling display primitives.
 - No dependency churn in this move indicates we can prioritize similarly simple components next.
 - Next likely candidate: `ui-new/primitives/KanbanAssignee.tsx` (bounded callsites; likely requires a small package-local user shape/type boundary).
+
+## 2026-02-21 - UI package extraction: KanbanAssignee
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/KanbanAssignee.tsx` as the next extraction candidate.
+- It is a UI primitive with bounded callsites, but had coupling to app-local `UserAvatar` and `shared/types`.
+- New information: extracting this component cleanly required introducing a package-local assignee shape and internal avatar rendering.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/KanbanAssignee.tsx packages/ui/src/components/KanbanAssignee.tsx`
+- Package updates:
+  - Updated app alias import to package-local utility:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced `OrganizationMemberWithProfile` dependency with package-local user shape:
+    - `KanbanAssigneeUser`
+  - Removed app-local `UserAvatar` dependency by adding package-local `AssigneeAvatar` rendering with tooltip, image fallback, and initials.
+- Callsite updates to `@vibe/ui` subpath import:
+  - `frontend/src/components/ui-new/views/IssuePropertyRow.tsx`
+  - `frontend/src/components/ui-new/views/IssueListRow.tsx`
+  - `frontend/src/components/ui-new/views/KanbanCardContent.tsx`
+  - `frontend/src/components/ui-new/primitives/SubIssueRow.tsx`
+  - `frontend/src/components/ui-new/dialogs/KanbanFiltersDialog.tsx`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Keep preferring package-local prop shapes for reusable primitives to avoid cross-package shared type coupling.
+- Avatar presentation logic now exists both in `@vibe/ui/components/KanbanAssignee` and frontend `UserAvatar`; next extraction should likely move `UserAvatar` to unify avatar rendering behavior in the package.
+- Next likely candidate: `ui-new/primitives/UserAvatar.tsx`.

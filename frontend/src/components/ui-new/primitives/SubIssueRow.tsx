@@ -13,7 +13,7 @@ import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 import { useTranslation } from 'react-i18next';
 import {
   DropdownMenu,

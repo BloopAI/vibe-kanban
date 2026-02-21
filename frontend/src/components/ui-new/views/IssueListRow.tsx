@@ -9,7 +9,7 @@ import { DotsSixVerticalIcon } from '@phosphor-icons/react';
 import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
-import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';
 
 /**

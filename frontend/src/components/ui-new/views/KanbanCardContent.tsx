@@ -13,7 +13,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
-import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { PrBadge } from '@vibe/ui/components/PrBadge';
 import { RelationshipBadge } from '@/components/ui-new/primitives/RelationshipBadge';

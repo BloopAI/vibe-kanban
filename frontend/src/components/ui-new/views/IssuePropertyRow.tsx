@@ -8,7 +8,7 @@ import { IconButton } from '@vibe/ui/components/IconButton';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
-import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
+import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 
 const priorityLabels: Record<IssuePriority, string> = {
   urgent: 'Urgent',
