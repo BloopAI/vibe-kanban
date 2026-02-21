@@ -6,7 +6,7 @@ import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { ResolvedRelationship } from '@/lib/resolveRelationships';
 import { Droppable } from '@hello-pangea/dnd';
 import { CaretDownIcon } from '@phosphor-icons/react';
-import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
+import { StatusDot } from '@vibe/ui';
 import { KanbanBadge } from '@/components/ui-new/primitives/KanbanBadge';
 import { IssueListRow } from '@/components/ui-new/views/IssueListRow';
 import {

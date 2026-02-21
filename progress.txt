@@ -46,3 +46,39 @@
   - `pnpm run check` ✅
   - `pnpm run lint` ✅
   - `pnpm run format` ✅
+
+## 2026-02-21 - UI package extraction: StatusDot
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next `extract-now` component
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`check`, `lint`, `format`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `StatusDot` as the next move candidate because it has a minimal dependency surface (only `cn`) and clear cross-feature reuse.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/StatusDot.tsx packages/ui/src/components/StatusDot.tsx`
+- Package updates:
+  - Updated `packages/ui/src/components/StatusDot.tsx` to use package-local `cn` import (`../lib/cn`).
+  - Exported `StatusDot` from `packages/ui/src/index.ts`.
+- Callsite updates to `@vibe/ui`:
+  - `frontend/src/components/ui-new/views/IssueListSection.tsx`
+  - `frontend/src/components/ui-new/views/IssueListRow.tsx`
+  - `frontend/src/components/ui-new/views/IssuePropertyRow.tsx`
+  - `frontend/src/components/ui-new/primitives/SubIssueRow.tsx`
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+- `pnpm --filter @vibe/ui run format` ✅
+
+Plan adjustments from new information:
+- No structural plan changes required after this extraction.
+- Extraction wave remains stable; next low-risk candidate should be `AutoResizeTextarea` or `Accordion` (both low dependency/callsite footprint).

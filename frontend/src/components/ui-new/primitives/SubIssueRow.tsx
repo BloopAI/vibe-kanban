@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import type { IssuePriority } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { PriorityIcon } from '@/components/ui-new/primitives/PriorityIcon';
-import { StatusDot } from '@/components/ui-new/primitives/StatusDot';
+import { StatusDot } from '@vibe/ui';
 import { KanbanAssignee } from '@/components/ui-new/primitives/KanbanAssignee';
 import { useTranslation } from 'react-i18next';
 import {
