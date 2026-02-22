@@ -17,15 +17,13 @@ import {
   type SpecialIconType,
   ActionTargetType,
   isSpecialIcon,
-} from '../actions';
-import type { EditorType } from 'shared/types';
-import {
-  useActionVisibilityContext,
   isActionVisible,
   isActionEnabled,
   getActionIcon,
   getActionTooltip,
-} from '@/features/command-bar/ui/actions/useActionVisibility';
+} from '../actions';
+import type { EditorType } from 'shared/types';
+import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
 import { CopyButton } from './CopyButton';
 
 /**

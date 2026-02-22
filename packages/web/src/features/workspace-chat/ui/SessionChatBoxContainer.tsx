@@ -50,15 +50,13 @@ import { useInspectModeStore } from '@/features/workspace-chat/model/store/useIn
 import {
   Actions,
   isSpecialIcon,
-  type ActionDefinition,
-} from '@/components/ui-new/actions';
-import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
-import {
   getActionTooltip,
   isActionEnabled,
   isActionVisible,
-  useActionVisibilityContext,
-} from '@/features/command-bar/ui/actions/useActionVisibility';
+  type ActionDefinition,
+} from '@/components/ui-new/actions';
+import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
+import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
 import { PrCommentsDialog } from '@/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 

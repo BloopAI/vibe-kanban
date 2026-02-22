@@ -15,11 +15,11 @@ import {
   type ResolvedGroup,
   type ResolvedGroupItem,
 } from '@/features/command-bar/ui/actions/pages';
-import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
   isActionVisible,
-  isPageVisible,
-} from '@/features/command-bar/ui/actions/useActionVisibility';
+  type ActionVisibilityContext,
+} from '@/components/ui-new/actions';
+import { isPageVisible } from '@/features/command-bar/ui/actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 
 export interface ResolvedCommandBarPage {

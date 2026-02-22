@@ -15,15 +15,13 @@ import {
   type NavbarItem as ActionNavbarItem,
   type ActionVisibilityContext,
   isSpecialIcon,
-} from '../actions';
-import {
-  useActionVisibilityContext,
   getActionIcon,
   getActionTooltip,
   isActionActive,
   isActionEnabled,
   isActionVisible,
-} from '@/features/command-bar/ui/actions/useActionVisibility';
+} from '../actions';
+import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
 
 /**
  * Check if a NavbarItem is a divider

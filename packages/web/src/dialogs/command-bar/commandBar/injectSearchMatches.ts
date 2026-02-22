@@ -7,9 +7,9 @@ import {
 } from '@/features/command-bar/ui/actions/pages';
 import {
   resolveLabel,
+  isActionVisible,
   type ActionVisibilityContext,
 } from '@/components/ui-new/actions';
-import { isActionVisible } from '@/features/command-bar/ui/actions/useActionVisibility';
 
 // Derive injectable pages from Pages - all child pages of root
 const INJECTABLE_PAGE_IDS = (Object.keys(Pages) as StaticPageId[]).filter(

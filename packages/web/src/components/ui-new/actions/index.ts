@@ -1745,3 +1745,50 @@ export const ContextBarActionGroups = {
 export function isSpecialIcon(icon: ActionIcon): icon is SpecialIconType {
   return icon === 'ide-icon' || icon === 'copy-icon';
 }
+
+// Pure action helper functions (operate on ActionDefinition + ActionVisibilityContext)
+
+export function isActionVisible(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext
+): boolean {
+  return action.isVisible ? action.isVisible(ctx) : true;
+}
+
+export function isActionActive(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext
+): boolean {
+  return action.isActive ? action.isActive(ctx) : false;
+}
+
+export function isActionEnabled(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext
+): boolean {
+  return action.isEnabled ? action.isEnabled(ctx) : true;
+}
+
+export function getActionIcon(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext
+): ActionIcon {
+  return action.getIcon ? action.getIcon(ctx) : action.icon;
+}
+
+export function getActionTooltip(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext
+): string {
+  return action.getTooltip ? action.getTooltip(ctx) : resolveLabel(action);
+}
+
+export function getActionLabel(
+  action: ActionDefinition,
+  ctx: ActionVisibilityContext,
+  workspace?: Workspace
+): string {
+  return action.getLabel
+    ? action.getLabel(ctx)
+    : resolveLabel(action, workspace);
+}

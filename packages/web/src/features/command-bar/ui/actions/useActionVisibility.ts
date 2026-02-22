@@ -18,14 +18,11 @@ import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcess
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
-import type { Workspace, Merge } from 'shared/types';
+import type { Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
-  ActionDefinition,
-  ActionIcon,
   DevServerState,
 } from '@/components/ui-new/actions';
-import { resolveLabel } from '@/components/ui-new/actions';
 import type { CommandBarPage } from './pages';
 
 interface ActionVisibilityOptions {
@@ -179,16 +176,15 @@ export function useActionVisibilityContext(
   ]);
 }
 
-/**
- * Helper to check if an action is visible given the current context.
- * If the action has no isVisible condition, it's always visible.
- */
-export function isActionVisible(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): boolean {
-  return action.isVisible ? action.isVisible(ctx) : true;
-}
+// Re-export pure action helpers from shared-level actions module
+export {
+  isActionVisible,
+  isActionActive,
+  isActionEnabled,
+  getActionIcon,
+  getActionTooltip,
+  getActionLabel,
+} from '@/components/ui-new/actions';
 
 /**
  * Helper to check if a page is visible given the current context.
@@ -199,62 +195,4 @@ export function isPageVisible(
   ctx: ActionVisibilityContext
 ): boolean {
   return page.isVisible ? page.isVisible(ctx) : true;
-}
-
-/**
- * Helper to check if an action is active given the current context.
- * If the action has no isActive callback, returns false.
- */
-export function isActionActive(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): boolean {
-  return action.isActive ? action.isActive(ctx) : false;
-}
-
-/**
- * Helper to check if an action is enabled given the current context.
- * If the action has no isEnabled callback, returns true (enabled by default).
- */
-export function isActionEnabled(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): boolean {
-  return action.isEnabled ? action.isEnabled(ctx) : true;
-}
-
-/**
- * Get the icon for an action, considering dynamic icon callbacks.
- * Falls back to the static icon property.
- */
-export function getActionIcon(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): ActionIcon {
-  return action.getIcon ? action.getIcon(ctx) : action.icon;
-}
-
-/**
- * Get the tooltip for an action, considering dynamic tooltip callbacks.
- * Falls back to the resolved label.
- */
-export function getActionTooltip(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): string {
-  return action.getTooltip ? action.getTooltip(ctx) : resolveLabel(action);
-}
-
-/**
- * Get the label for an action, considering dynamic label callbacks.
- * Falls back to the resolved static label.
- */
-export function getActionLabel(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext,
-  workspace?: Workspace
-): string {
-  return action.getLabel
-    ? action.getLabel(ctx)
-    : resolveLabel(action, workspace);
 }
