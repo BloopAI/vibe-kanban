@@ -1,11 +1,24 @@
 import type { Icon } from '@phosphor-icons/react';
-import type { Issue, IssuePriority } from 'shared/remote-types';
+import type { Issue } from 'shared/remote-types';
 import {
   type ActionDefinition,
   type ActionVisibilityContext,
   Actions,
 } from '@/components/ui-new/actions';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
+
+export type {
+  RepoItem,
+  StatusItem,
+  PriorityItem,
+  BranchItem,
+} from '@/shared/types/selectionItems';
+import type {
+  RepoItem,
+  StatusItem,
+  PriorityItem,
+  BranchItem,
+} from '@/shared/types/selectionItems';
 
 // Define page IDs first to avoid circular reference
 export type PageId =
@@ -31,31 +44,6 @@ export interface CommandBarGroup {
 
 // Top-level items in a page are groups
 export type CommandBarItem = CommandBarGroup;
-
-// Repo item for dynamic repo selection page
-export interface RepoItem {
-  id: string;
-  display_name: string;
-}
-
-// Status item for dynamic status selection page
-export interface StatusItem {
-  id: string;
-  name: string;
-  color: string;
-}
-
-// Priority item for dynamic priority selection page
-export interface PriorityItem {
-  id: IssuePriority | null;
-  name: string;
-}
-
-// Branch item for dynamic branch selection page
-export interface BranchItem {
-  name: string;
-  isCurrent: boolean;
-}
 
 // Resolved types (after childPages expansion)
 export type ResolvedGroupItem =

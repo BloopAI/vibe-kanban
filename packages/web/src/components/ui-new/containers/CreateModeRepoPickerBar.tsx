@@ -12,7 +12,7 @@ import type { Repo } from 'shared/types';
 import type {
   BranchItem,
   RepoItem,
-} from '@/features/command-bar/ui/actions/pages';
+} from '@/shared/types/selectionItems';
 import { repoApi } from '@/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
