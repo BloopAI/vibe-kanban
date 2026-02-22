@@ -1,4 +1,4 @@
-import { useTheme } from '@/app/providers/ThemeProvider';
+import { useTheme } from '@/shared/hooks/useTheme';
 
 export { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
 

@@ -19,7 +19,7 @@ import {
   transformCommentsToAnnotations,
   type CommentAnnotation,
 } from '@/shared/lib/diffDataAdapter';
-import { useTheme } from '@/app/providers/ThemeProvider';
+import { useTheme } from '@/shared/hooks/useTheme';
 import { getActualTheme } from '@/shared/lib/theme';
 import {
   useDiffViewMode,

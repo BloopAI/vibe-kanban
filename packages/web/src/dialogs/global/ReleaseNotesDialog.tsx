@@ -9,7 +9,7 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { useTheme } from '@/app/providers/ThemeProvider';
+import { useTheme } from '@/shared/hooks/useTheme';
 import { getActualTheme } from '@/shared/lib/theme';
 import { defineModal, type NoProps } from '@/lib/modals';
 

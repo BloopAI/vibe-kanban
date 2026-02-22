@@ -19,7 +19,7 @@ import {
 import { getActualTheme } from '@/shared/lib/theme';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useTheme } from '@/app/providers/ThemeProvider';
+import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';

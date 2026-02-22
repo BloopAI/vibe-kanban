@@ -1,6 +1,6 @@
 import { Code2 } from 'lucide-react';
 import { EditorType } from 'shared/types';
-import { useTheme, getResolvedTheme } from '@/app/providers/ThemeProvider';
+import { useTheme, getResolvedTheme } from '@/shared/hooks/useTheme';
 import i18n from '@/i18n';
 
 type IdeIconProps = {

@@ -6,7 +6,7 @@ import { ThemeMode } from 'shared/types';
 import { OAuthDialog, type OAuthProvider } from '@/dialogs/global/OAuthDialog';
 import { usePostHog } from 'posthog-js/react';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useTheme } from '@/app/providers/ThemeProvider';
+import { useTheme } from '@/shared/hooks/useTheme';
 import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';

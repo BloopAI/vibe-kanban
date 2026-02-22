@@ -1,26 +1,13 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { createHmrContext } from '@/shared/lib/hmrContext';
+import React, { useEffect, useState } from 'react';
 import { ThemeMode } from 'shared/types';
+import { ThemeProviderContext } from '@/shared/hooks/useTheme';
+
+export { useTheme, getResolvedTheme } from '@/shared/hooks/useTheme';
 
 type ThemeProviderProps = {
   children: React.ReactNode;
   initialTheme?: ThemeMode;
 };
-
-type ThemeProviderState = {
-  theme: ThemeMode;
-  setTheme: (theme: ThemeMode) => void;
-};
-
-const initialState: ThemeProviderState = {
-  theme: ThemeMode.SYSTEM,
-  setTheme: () => null,
-};
-
-const ThemeProviderContext = createHmrContext<ThemeProviderState>(
-  'ThemeProviderContext',
-  initialState
-);
 
 export function ThemeProvider({
   children,
@@ -66,22 +53,4 @@ export function ThemeProvider({
       {children}
     </ThemeProviderContext.Provider>
   );
-}
-
-export const useTheme = () => {
-  const context = useContext(ThemeProviderContext);
-
-  if (context === undefined)
-    throw new Error('useTheme must be used within a ThemeProvider');
-
-  return context;
-};
-
-export function getResolvedTheme(theme: ThemeMode): 'light' | 'dark' {
-  if (theme === ThemeMode.SYSTEM) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light';
-  }
-  return theme === ThemeMode.DARK ? 'dark' : 'light';
 }

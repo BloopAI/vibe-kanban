@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { usePostHog } from 'posthog-js/react';
 import { ThemeMode } from 'shared/types';
-import { useTheme } from '@/app/providers/ThemeProvider';
+import { useTheme } from '@/shared/hooks/useTheme';
 import { MigrateLayout } from '@/features/migration/ui/MigrateLayout';
 
 const REMOTE_ONBOARDING_EVENTS = {
