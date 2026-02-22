@@ -1,4 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
@@ -55,6 +59,7 @@ pub struct LocalDeployment {
     shared_api_base: Option<String>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    pake_enrollments: Arc<RwLock<HashMap<Uuid, PendingPakeEnrollment>>>,
     pty: PtyService,
 }
 
@@ -63,6 +68,14 @@ struct PendingHandoff {
     provider: String,
     app_verifier: String,
 }
+
+#[derive(Debug, Clone)]
+struct PendingPakeEnrollment {
+    shared_key: Vec<u8>,
+    created_at: Instant,
+}
+
+const PAKE_ENROLLMENT_TTL: Duration = Duration::from_secs(5 * 60);
 
 #[async_trait]
 impl Deployment for LocalDeployment {
@@ -162,6 +175,7 @@ impl Deployment for LocalDeployment {
         };
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+        let pake_enrollments = Arc::new(RwLock::new(HashMap::new()));
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -216,6 +230,7 @@ impl Deployment for LocalDeployment {
             shared_api_base: api_base,
             auth_context,
             oauth_handoffs,
+            pake_enrollments,
             pty,
         };
 
@@ -339,6 +354,25 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {
+        self.pake_enrollments.write().await.insert(
+            enrollment_id,
+            PendingPakeEnrollment {
+                shared_key,
+                created_at: Instant::now(),
+            },
+        );
+    }
+
+    pub async fn take_pake_enrollment(&self, enrollment_id: &Uuid) -> Option<Vec<u8>> {
+        let mut enrollments = self.pake_enrollments.write().await;
+        let enrollment = enrollments.remove(enrollment_id)?;
+        if enrollment.created_at.elapsed() > PAKE_ENROLLMENT_TTL {
+            return None;
+        }
+        Some(enrollment.shared_key)
     }
 
     pub fn pty(&self) -> &PtyService {

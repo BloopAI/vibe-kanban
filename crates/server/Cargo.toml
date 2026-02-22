@@ -49,6 +49,8 @@ rand = { version = "0.8", features = ["std"] }
 sha2 = "0.10"
 regex = "1"
 tokio-tungstenite = { version = "0.24", features = ["connect"] }
+hmac = "0.12"
+spake2 = { version = "0.5.0-pre.0", features = ["getrandom"] }
 
 [build-dependencies]
 dotenv = "0.15"
