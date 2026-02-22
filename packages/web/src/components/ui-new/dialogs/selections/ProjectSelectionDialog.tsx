@@ -18,7 +18,7 @@ import type {
 import type { Issue } from 'shared/remote-types';
 import { buildStatusSelectionPages } from '@/features/command-bar/ui/dialogs/selections/statusSelection';
 import { buildPrioritySelectionPages } from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
-import { buildSubIssueSelectionPages } from './subIssueSelection';
+import { buildSubIssueSelectionPages } from '@/features/command-bar/ui/dialogs/selections/subIssueSelection';
 import { buildRelationshipSelectionPages } from '@/features/command-bar/ui/dialogs/selections/relationshipSelection';
 import {
   resolveLabel,
@@ -27,7 +27,7 @@ import {
 import type { SelectionPage } from '../SelectionDialog';
 import type { StatusSelectionResult } from '@/features/command-bar/ui/dialogs/selections/statusSelection';
 import type { PrioritySelectionResult } from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
-import type { SubIssueSelectionResult } from './subIssueSelection';
+import type { SubIssueSelectionResult } from '@/features/command-bar/ui/dialogs/selections/subIssueSelection';
 import type { RelationshipSelectionResult } from '@/features/command-bar/ui/dialogs/selections/relationshipSelection';
 
 // Union of all selection modes

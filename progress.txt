@@ -1404,3 +1404,36 @@
   `src/components/ui-new/dialogs/selections/subIssueSelection.ts` into
   `src/features/command-bar/ui/dialogs/selections/*` with compatibility shims
   and selective canonical callsite updates.
+
+## 2026-02-22 13:11:10 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/selections/subIssueSelection.ts` as the next low-risk command-bar selection-helper extraction.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/selections/subIssueSelection.ts`
+    -> `src/features/command-bar/ui/dialogs/selections/subIssueSelection.ts`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/selections/subIssueSelection.ts`.
+  - Updated canonical callsites to feature-owned selection helper in:
+    `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
+- Updated moved helper imports for Track-1 lint boundaries:
+  - `@/components/ui-new/dialogs/SelectionDialog`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `subIssueSelection` migration.
+  - Added a risk-controls note about `ProjectSelectionDialog` usage in
+    `src/contexts/ActionsContext.tsx` and the shim-first strategy for any
+    later dialog-file move.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`
+  into `src/features/command-bar/ui/dialogs/selections/*` with a compatibility
+  shim, then update only owned UI-layer callsites (`src/components/ui-new/**`)
+  while keeping `src/contexts/ActionsContext.tsx` on the legacy shim path.
