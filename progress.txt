@@ -6056,3 +6056,53 @@ Validation:
 Plan adjustments from new information:
 - For generic package components, make the component function itself generic (not only the props type) so callsite types infer correctly.
 - Prefer container-supplied dialog render props for filter/action surfaces that are app-workflow specific.
+
+## 2026-02-22 - UI package extraction: ChangesPanel
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/ChangesPanel.tsx` as the next extraction target.
+- It is a single-callsite view (`ChangesPanelContainer`) and the reusable part is list virtualization + layout.
+- Main couplings were frontend store state (`usePersistedExpanded`), frontend container (`PierreDiffCard`), and app utility/type imports.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/ChangesPanel.tsx packages/ui/src/components/ChangesPanel.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed frontend dependencies (`usePersistedExpanded`, `PierreDiffCard`, `calculateDefaultHeight`, shared `Diff` type).
+  - Added package-local diff/list contracts and internal default-height estimation:
+    - `ChangesPanelDiff`
+    - `DiffItemData<TDiff>`
+    - `RenderDiffItemProps<TDiff>`
+  - Converted row rendering to injected render prop:
+    - `renderDiffItem`
+  - Kept virtualization/scroller/range behavior in package component.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/ChangesPanelContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChangesPanel`
+  - Moved persisted expansion + Pierre diff rendering into container:
+    - local `PersistedDiffItem` uses `usePersistedExpanded`
+    - container passes `renderDiffItem` to package component
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For virtualized package components, keep list orchestration in the package and inject stateful row/content rendering from app containers.
+- This pattern cleanly isolates app store hooks while preserving package readability and reusability.

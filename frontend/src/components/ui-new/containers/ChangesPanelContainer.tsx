@@ -1,9 +1,15 @@
-import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
-import { ChangesPanel, ChangesPanelHandle } from '../views/ChangesPanel';
+import { memo, useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import {
+  ChangesPanel,
+  type ChangesPanelHandle,
+  type RenderDiffItemProps,
+} from '@vibe/ui/components/ChangesPanel';
 import { sortDiffs } from '@/utils/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useScrollSyncStateMachine } from '@/hooks/useScrollSyncStateMachine';
+import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
+import { PierreDiffCard } from '@/components/ui-new/containers/PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)
@@ -46,6 +52,32 @@ interface ChangesPanelContainerProps {
   /** Attempt ID for opening files in IDE */
   attemptId: string;
 }
+
+const PersistedDiffItem = memo(function PersistedDiffItem({
+  diff,
+  initialExpanded,
+  attemptId,
+}: {
+  diff: Diff;
+  initialExpanded: boolean;
+  attemptId: string;
+}) {
+  const path = diff.newPath || diff.oldPath || '';
+  const [expanded, toggle] = usePersistedExpanded(
+    `diff:${path}`,
+    initialExpanded
+  );
+
+  return (
+    <PierreDiffCard
+      diff={diff}
+      expanded={expanded}
+      onToggle={toggle}
+      attemptId={attemptId}
+      className=""
+    />
+  );
+});
 
 export function ChangesPanelContainer({
   className,
@@ -262,6 +294,17 @@ export function ChangesPanelContainer({
     scrollContainerRef.current = el instanceof HTMLElement ? el : null;
   }, []);
 
+  const renderDiffItem = useCallback(
+    ({ diff, initialExpanded, attemptId }: RenderDiffItemProps<Diff>) => (
+      <PersistedDiffItem
+        diff={diff}
+        initialExpanded={initialExpanded ?? true}
+        attemptId={attemptId}
+      />
+    ),
+    []
+  );
+
   return (
     <ChangesPanel
       ref={changesPanelRef}
@@ -270,6 +313,7 @@ export function ChangesPanelContainer({
       onDiffRef={handleDiffRef}
       onScrollerRef={handleScrollerRef}
       onRangeChanged={handleRangeChanged}
+      renderDiffItem={renderDiffItem}
       attemptId={attemptId}
     />
   );
