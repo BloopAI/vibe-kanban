@@ -18,7 +18,7 @@ ownership boundaries and no parallel "legacy vs new" trees.
   - Import boundary enforcement and phased migration path
 - Out of scope:
   - Re-doing the completed package/location cutover work
-  - Remote frontend (`remote-frontend/`) architecture changes
+  - Remote frontend (`packages/remote-web/`) architecture changes
 
 ## Parallel Phase Split (2026-02-22)
 

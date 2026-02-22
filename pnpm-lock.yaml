@@ -24,6 +24,82 @@ importers:
         specifier: ^6.3.5
         version: 6.3.5(@types/node@24.10.1)(jiti@1.21.7)(tsx@4.21.0)(yaml@2.8.0)
 
+  packages/remote-web:
+    dependencies:
+      '@git-diff-view/file':
+        specifier: ^0.0.30
+        version: 0.0.30
+      '@git-diff-view/react':
+        specifier: ^0.0.30
+        version: 0.0.30(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/react-router':
+        specifier: ^1.161.1
+        version: 1.161.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@tanstack/zod-adapter':
+        specifier: ^1.161.1
+        version: 1.161.1(@tanstack/react-router@1.161.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(zod@3.25.76)
+      clsx:
+        specifier: ^2.1.1
+        version: 2.1.1
+      highlight.js:
+        specifier: ^11.11.1
+        version: 11.11.1
+      jwt-decode:
+        specifier: ^4.0.0
+        version: 4.0.0
+      posthog-js:
+        specifier: ^1.283.0
+        version: 1.283.0
+      prettier:
+        specifier: ^3.6.1
+        version: 3.6.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-compiler-runtime:
+        specifier: ^1.0.0
+        version: 1.0.0(react@18.3.1)
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      tailwind-merge:
+        specifier: ^2.6.0
+        version: 2.6.0
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@tanstack/router-plugin':
+        specifier: ^1.161.1
+        version: 1.161.1(@tanstack/react-router@1.161.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.19(@types/node@24.10.1))
+      '@types/react':
+        specifier: ^18.2.43
+        version: 18.3.23
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.3.7(@types/react@18.3.23)
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.5.2(vite@5.4.19(@types/node@24.10.1))
+      autoprefixer:
+        specifier: ^10.4.16
+        version: 10.4.21(postcss@8.5.6)
+      babel-plugin-react-compiler:
+        specifier: ^1.0.0
+        version: 1.0.0
+      postcss:
+        specifier: ^8.4.32
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.17
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+      vite:
+        specifier: ^5.0.8
+        version: 5.4.19(@types/node@24.10.1)
+
   packages/ui:
     dependencies:
       '@ebay/nice-modal-react':
@@ -466,82 +542,6 @@ importers:
       prettier:
         specifier: ^3.6.1
         version: 3.6.1
-      tailwindcss:
-        specifier: ^3.4.0
-        version: 3.4.17
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.2
-      vite:
-        specifier: ^5.0.8
-        version: 5.4.19(@types/node@24.10.1)
-
-  remote-frontend:
-    dependencies:
-      '@git-diff-view/file':
-        specifier: ^0.0.30
-        version: 0.0.30
-      '@git-diff-view/react':
-        specifier: ^0.0.30
-        version: 0.0.30(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tanstack/react-router':
-        specifier: ^1.161.1
-        version: 1.161.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@tanstack/zod-adapter':
-        specifier: ^1.161.1
-        version: 1.161.1(@tanstack/react-router@1.161.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(zod@3.25.76)
-      clsx:
-        specifier: ^2.1.1
-        version: 2.1.1
-      highlight.js:
-        specifier: ^11.11.1
-        version: 11.11.1
-      jwt-decode:
-        specifier: ^4.0.0
-        version: 4.0.0
-      posthog-js:
-        specifier: ^1.283.0
-        version: 1.283.0
-      prettier:
-        specifier: ^3.6.1
-        version: 3.6.1
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-      react-compiler-runtime:
-        specifier: ^1.0.0
-        version: 1.0.0(react@18.3.1)
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.3.1(react@18.3.1)
-      tailwind-merge:
-        specifier: ^2.6.0
-        version: 2.6.0
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@tanstack/router-plugin':
-        specifier: ^1.161.1
-        version: 1.161.1(@tanstack/react-router@1.161.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(vite@5.4.19(@types/node@24.10.1))
-      '@types/react':
-        specifier: ^18.2.43
-        version: 18.3.23
-      '@types/react-dom':
-        specifier: ^18.2.17
-        version: 18.3.7(@types/react@18.3.23)
-      '@vitejs/plugin-react':
-        specifier: ^4.2.1
-        version: 4.5.2(vite@5.4.19(@types/node@24.10.1))
-      autoprefixer:
-        specifier: ^10.4.16
-        version: 10.4.21(postcss@8.5.6)
-      babel-plugin-react-compiler:
-        specifier: ^1.0.0
-        version: 1.0.0
-      postcss:
-        specifier: ^8.4.32
-        version: 8.5.6
       tailwindcss:
         specifier: ^3.4.0
         version: 3.4.17

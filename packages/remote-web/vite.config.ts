@@ -28,7 +28,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      shared: path.resolve(__dirname, '../shared'),
+      shared: path.resolve(__dirname, '../../shared'),
     },
   },
   server: {
@@ -37,7 +37,7 @@ export default defineConfig({
       ".trycloudflare.com", // allow all cloudflared tunnels
     ],
     fs: {
-      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '..')],
+      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '../..')],
     },
   }
 })
