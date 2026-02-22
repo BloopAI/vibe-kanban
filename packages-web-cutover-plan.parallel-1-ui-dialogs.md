@@ -79,6 +79,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/RestoreLogsDialog.tsx`.
   - [x] Moved feature dialog `PrCommentsDialog` to
         `src/features/command-bar/ui/dialogs/PrCommentsDialog.tsx`.
+  - [x] Moved feature dialog `ForcePushDialog` to
+        `src/features/command-bar/ui/dialogs/ForcePushDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -145,6 +147,8 @@ compatibility shims.
         `src/components/dialogs/tasks/RestoreLogsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/PrCommentsDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/git/ForcePushDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/scripts/ScriptFixerDialog.tsx`.
   - [x] Added compatibility shim at
@@ -247,6 +251,10 @@ compatibility shims.
         `src/components/ui-new/containers/PreviewBrowserContainer.tsx`,
         `src/components/NormalizedConversation/DisplayConversationEntry.tsx`,
         `src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/ForcePushDialog` in:
+        `src/components/ui-new/containers/GitPanelContainer.tsx`,
+        `src/hooks/useGitOperations.ts`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -343,6 +351,9 @@ compatibility shims.
   canonicalized under `src/shared/ui/dialogs/*` and imported directly from
   both `src/components/**` and `src/features/**` surfaces without violating
   current lint boundaries.
+- New information (2026-02-22): at least one additional hook-layer callsite
+  (`src/hooks/useGitOperations.ts`) can import a command-bar canonical dialog
+  path (`ForcePushDialog`) without violating current lint boundaries.
 
 ## Validation
 

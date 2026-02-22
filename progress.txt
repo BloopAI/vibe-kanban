@@ -932,3 +932,36 @@
   `src/features/command-bar/ui/dialogs/*` with a compatibility shim; update
   owned callsites first and keep non-owned paths on shim imports if boundaries
   require it.
+
+## 2026-02-22 12:31:10 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `ForcePushDialog` as the next migration target (remaining substantial legacy dialog under `components/dialogs/*`).
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/git/ForcePushDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/ForcePushDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/git/ForcePushDialog.tsx`.
+  - Updated moved dialog to named NiceModal imports (`create`, `useModal`) for
+    feature-path lint compatibility.
+- Updated callsites to canonical path
+  `@/features/command-bar/ui/dialogs/ForcePushDialog`:
+  - `src/components/ui-new/containers/GitPanelContainer.tsx`
+  - `src/hooks/useGitOperations.ts`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `ForcePushDialog`.
+  - Added a new risk-controls note that this hook-layer callsite can import the
+    canonical command-bar dialog path without violating current lint boundaries.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 with `T1.5` duplicate-dialog consolidation for
+  `src/components/dialogs/tasks/RebaseDialog.tsx` (branch-picking contract)
+  while keeping workspace-scoped `RebaseDialog` behavior stable.
