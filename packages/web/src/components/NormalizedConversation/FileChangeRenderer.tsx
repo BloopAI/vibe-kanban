@@ -5,7 +5,7 @@ import { getHighLightLanguageFromPath } from '@/shared/lib/extToLanguage';
 import { getActualTheme } from '@/shared/lib/theme';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
-import '@/app/styles/diff-style-overrides.css';
+import '@/styles/diff-style-overrides.css';
 import { useExpandable } from '@/shared/stores/useExpandableStore';
 import { cn } from '@/shared/lib/utils';
 

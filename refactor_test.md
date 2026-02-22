@@ -108,6 +108,7 @@ Use when the caller is in the wrong layer.
 | DONE | `src/components/NormalizedConversation/DisplayConversationEntry.tsx` | `14` | legacy (components) | `@/features/workspace-chat/model/store/useExpandableStore` | `legacy -> features` | A2 | Moved `useExpandableStore` to `src/shared/stores/useExpandableStore.ts`, deleted old file, repointed 3 consumers | claude | Pure generic zustand store with zero domain logic |
 | DONE | `src/components/NormalizedConversation/DisplayConversationEntry.tsx` | `36` | legacy (components) | `@/features/workspace-chat/model/contexts/RetryUiContext` | `legacy -> features` | A3 | Split `useRetryUi` hook + context + types to `src/shared/hooks/useRetryUi.ts`, kept provider in features, repointed 3 consumers | claude | Provider depends on ExecutionProcessesContext (feature), but hook/types are pure |
 | DONE | `src/components/NormalizedConversation/DisplayConversationEntry.tsx` | `42` | legacy (components) | `@/features/workspace/model/hooks/useAttemptRepo` | `legacy -> features` | A2 | Moved `useAttemptRepo` to `src/shared/hooks/useAttemptRepo.ts`, deleted old file, repointed 6 consumers | claude | No feature deps; only uses @/lib/api + shared/types |
+| DONE | `src/components/NormalizedConversation/EditDiffRenderer.tsx` | `12` | legacy (components) | `@/app/styles/diff-style-overrides.css` | `legacy -> app` | A1 | Repointed 3 files from `@/app/styles/` to existing `@/styles/` proxies; also fixed `edit-diff-overrides.css` | claude | CSS-only; `@/styles/` proxies already existed; 5 violations fixed |
 
 ## Example Entry
 
