@@ -8,6 +8,9 @@ import {
   DesktopIcon,
   GitForkIcon,
   ListIcon,
+  GearIcon,
+  KanbanIcon,
+  CaretLeftIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
@@ -106,6 +109,9 @@ export interface NavbarProps {
   mobileUserSlot?: ReactNode;
   isOnProjectPage?: boolean;
   onOpenCommandBar?: () => void;
+  onOpenSettings?: () => void;
+  onNavigateToBoard?: () => void;
+  onNavigateBack?: () => void;
   className?: string;
 }
 
@@ -120,6 +126,9 @@ export function Navbar({
   mobileUserSlot,
   isOnProjectPage = false,
   onOpenCommandBar,
+  onOpenSettings,
+  onNavigateToBoard,
+  onNavigateBack,
   className,
 }: NavbarProps) {
   const [mobileTab, setMobileTab] = useMobileActiveTab();
@@ -158,13 +167,31 @@ export function Navbar({
             </div>
           )}
           {isOnProjectPage && (
-            <div className="flex items-center gap-base flex-1 min-w-0">
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              {onNavigateBack && (
+                <button
+                  type="button"
+                  onClick={onNavigateBack}
+                  className="flex items-center justify-center rounded-sm text-low hover:text-normal shrink-0"
+                >
+                  <CaretLeftIcon className="size-icon-base" weight="bold" />
+                </button>
+              )}
               {leftSlot}
               <p className="text-base text-low truncate">{workspaceTitle}</p>
             </div>
           )}
           <div className="flex items-center gap-1 shrink-0">
             <SyncErrorIndicator />
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="flex items-center justify-center rounded-sm text-low hover:text-normal"
+              >
+                <GearIcon className="size-icon-base" />
+              </button>
+            )}
             {onOpenCommandBar && (
               <button
                 type="button"
@@ -184,6 +211,16 @@ export function Navbar({
             <p className="text-base text-low truncate flex-1 text-center">
               {workspaceTitle}
             </p>
+            {onNavigateToBoard && (
+              <button
+                type="button"
+                onClick={onNavigateToBoard}
+                className="flex items-center gap-1 shrink-0 rounded-sm px-1.5 py-0.5 text-sm text-low hover:text-normal hover:bg-panel transition-colors"
+              >
+                <KanbanIcon className="size-icon-base" />
+                <span className="hidden min-[480px]:inline">Board</span>
+              </button>
+            )}
           </div>
         )}
       </div>

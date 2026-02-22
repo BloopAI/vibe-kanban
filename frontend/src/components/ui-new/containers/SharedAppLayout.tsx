@@ -251,7 +251,12 @@ export function SharedAppLayout() {
 
   return (
     <SyncErrorProvider>
-      <div className={cn('flex bg-primary', isMobile ? 'h-dvh' : 'h-screen')}>
+      <div
+        className={cn(
+          'flex bg-primary',
+          isMobile ? 'h-dvh pb-[env(safe-area-inset-bottom)]' : 'h-screen'
+        )}
+      >
         {!isMobile && !isMigrateRoute && (
           <AppBar
             projects={orderedProjects}

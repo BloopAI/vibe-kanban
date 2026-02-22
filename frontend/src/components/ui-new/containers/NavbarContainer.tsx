@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useLocation } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
@@ -9,6 +9,7 @@ import { Navbar } from '../views/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
 import {
   NavbarActionGroups,
   NavbarDivider,
@@ -20,6 +21,11 @@ import {
   useActionVisibilityContext,
   isActionVisible,
 } from '../actions/useActionVisibility';
+import {
+  toProject,
+  toProjectIssue,
+  toWorkspaces,
+} from '@/lib/routes/navigation';
 
 /**
  * Check if a NavbarItem is a divider
@@ -68,6 +74,7 @@ interface NavbarContainerProps {
 }
 
 export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
+  const navigate = useNavigate();
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
@@ -143,6 +150,25 @@ export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
     CommandBarDialog.show();
   }, []);
 
+  const handleOpenSettings = useCallback(() => {
+    SettingsDialog.show();
+  }, []);
+
+  const handleNavigateBack = useCallback(() => {
+    navigate(toWorkspaces());
+  }, [navigate]);
+
+  const handleNavigateToBoard = useCallback(() => {
+    const projectId = linkedRemoteWorkspace?.project_id;
+    if (!projectId) return;
+    const issueId = linkedRemoteWorkspace?.issue_id;
+    if (issueId) {
+      navigate(toProjectIssue(projectId, issueId));
+    } else {
+      navigate(toProject(projectId));
+    }
+  }, [linkedRemoteWorkspace, navigate]);
+
   return (
     <Navbar
       workspaceTitle={navbarTitle}
@@ -162,6 +188,15 @@ export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
       mobileUserSlot={userPopoverSlot}
       isOnProjectPage={isOnProjectPage}
       onOpenCommandBar={mobileMode ? handleOpenCommandBar : undefined}
+      onOpenSettings={mobileMode ? handleOpenSettings : undefined}
+      onNavigateToBoard={
+        mobileMode && linkedRemoteWorkspace?.project_id
+          ? handleNavigateToBoard
+          : undefined
+      }
+      onNavigateBack={
+        mobileMode && isOnProjectPage ? handleNavigateBack : undefined
+      }
     />
   );
 }

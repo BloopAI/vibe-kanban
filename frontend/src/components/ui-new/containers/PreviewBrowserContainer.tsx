@@ -27,6 +27,7 @@ import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialo
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
@@ -91,6 +92,8 @@ export function PreviewBrowserContainer({
     (s) => s.triggerPreviewRefresh
   );
   const { repos, workspaceId } = useWorkspaceContext();
+  const isMobile = useIsMobile();
+  const [mobileUrlExpanded, setMobileUrlExpanded] = useState(false);
 
   // Get preview proxy port for security isolation
   const { data: systemInfo } = useQuery({
@@ -667,6 +670,9 @@ export function PreviewBrowserContainer({
       onToggleInspectMode={toggleInspectMode}
       isErudaVisible={isErudaVisible}
       onToggleEruda={handleToggleEruda}
+      isMobile={isMobile}
+      mobileUrlExpanded={mobileUrlExpanded}
+      onMobileUrlExpandedChange={setMobileUrlExpanded}
     />
   );
 }

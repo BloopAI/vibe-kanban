@@ -267,6 +267,25 @@
   #root {
     @apply min-h-screen;
     @apply font-normal;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent body scrolling on mobile / PWA standalone */
+  @media (max-width: 767px) {
+    html,
+    body {
+      @apply overflow-hidden;
+      height: 100%;
+    }
+  }
+
+  body {
+    background-color: #f2f2f2;
+  }
+
+  .dark body,
+  body.dark {
+    background-color: #212121;
   }
 
   .new-design {
