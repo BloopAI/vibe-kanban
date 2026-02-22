@@ -61,14 +61,6 @@
         "null"
       ]
     },
-    "aws_region": {
-      "title": "AWS Region",
-      "description": "AWS region for Bedrock (e.g. us-east-1). Falls back to AWS_REGION env var when not set.",
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "base_command_override": {
       "title": "Base Command Override",
       "description": "Override the base command with a custom command",

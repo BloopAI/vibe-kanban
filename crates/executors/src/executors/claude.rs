@@ -123,10 +123,6 @@ pub struct ClaudeCode {
     /// Requires AWS credentials via env vars or ~/.aws/credentials.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub use_bedrock: Option<bool>,
-    /// AWS region for Bedrock (e.g. `us-east-1`).
-    /// Falls back to AWS_REGION / AWS_DEFAULT_REGION env vars when not set.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub aws_region: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -622,9 +618,6 @@ impl ClaudeCode {
         // Inject AWS Bedrock env vars when use_bedrock is enabled
         if self.use_bedrock.unwrap_or(false) {
             command.env("CLAUDE_CODE_USE_BEDROCK", "1");
-            if let Some(region) = &self.aws_region {
-                command.env("AWS_REGION", region);
-            }
             tracing::info!("AWS Bedrock mode enabled");
         }
 
