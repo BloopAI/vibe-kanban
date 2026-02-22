@@ -4,7 +4,7 @@ import { XIcon } from '@phosphor-icons/react';
 import { GeneralSettingsSectionContent } from './GeneralSettingsSection';
 import { ReposSettingsSectionContent } from '@/components/ui-new/dialogs/settings/ReposSettingsSection';
 import { OrganizationsSettingsSectionContent } from './OrganizationsSettingsSection';
-import { RemoteProjectsSettingsSectionContent } from '@/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection';
+import { RemoteProjectsSettingsSectionContent } from './RemoteProjectsSettingsSection';
 import { AgentsSettingsSectionContent } from './AgentsSettingsSection';
 import { McpSettingsSectionContent } from './McpSettingsSection';
 

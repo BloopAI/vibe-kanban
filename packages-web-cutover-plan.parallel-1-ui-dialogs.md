@@ -160,6 +160,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`.
   - [x] Moved settings dialog section `OrganizationsSettingsSection` to
         `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`.
+  - [x] Moved settings dialog section `RemoteProjectsSettingsSection` to
+        `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -273,6 +275,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -288,11 +292,11 @@ compatibility shims.
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateRemoteProjectDialog` in:
-        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/features/settings/ui/dialogs/DeleteRemoteProjectDialog` in
-        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
+        `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/DeleteConfigurationDialog` in:
         `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`,
@@ -311,7 +315,7 @@ compatibility shims.
         `src/components/ui-new/actions/index.ts`,
         `src/components/ui-new/containers/SharedAppLayout.tsx`,
         `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`,
-        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
+        `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
         `src/features/kanban/ui/ProjectKanban.tsx`.
@@ -517,7 +521,7 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`,
         `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`,
         `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`,
-        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
+        `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical `McpSettingsSection` callsite to feature-owned path
         in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
   - [x] Updated canonical `AgentsSettingsSection` callsite to feature-owned
@@ -525,6 +529,9 @@ compatibility shims.
   - [x] Updated canonical `GeneralSettingsSection` callsite to feature-owned
         path in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
   - [x] Updated canonical `OrganizationsSettingsSection` callsite to
+        feature-owned path in:
+        `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
+  - [x] Updated canonical `RemoteProjectsSettingsSection` callsite to
         feature-owned path in:
         `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
 
@@ -693,8 +700,7 @@ compatibility shims.
   `src/components/ui-new/dialogs/settings/*` paths during Track 1 and import
   them by alias from canonical feature-owned settings files.
 - New information (2026-02-22): after moving `SettingsSection` into feature
-  ownership, keep section implementation modules (`ReposSettingsSection`,
-  `RemoteProjectsSettingsSection`) on legacy
+  ownership, keep section implementation modules (`ReposSettingsSection`) on legacy
   `src/components/ui-new/dialogs/settings/*` paths for this track, with a
   compatibility shim at the legacy `SettingsSection` path.
 - New information (2026-02-22): after moving `SettingsDirtyContext` into
@@ -721,6 +727,10 @@ compatibility shims.
   `@/hooks/useUserSystem`) and keep shared settings UI building blocks
   (`SettingsComponents`) on legacy settings paths behind compatibility shims
   until final consolidation.
+- New information (2026-02-22): after moving
+  `RemoteProjectsSettingsSection` into feature ownership, keep dialog
+  dependencies on `src/components/dialogs/*` shim paths and keep
+  `SettingsComponents` on legacy settings paths until final consolidation.
 
 ## Validation
 
