@@ -1,16 +1,20 @@
 import { useTranslation } from 'react-i18next';
 import { ListChecksIcon, CaretDownIcon } from '@phosphor-icons/react';
 import { Circle, Check, CircleDot } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { TodoItem } from 'shared/types';
+import { cn } from '../lib/cn';
+
+export interface TodoItemLike {
+  content: string;
+  status?: string | null;
+}
 
 interface ChatTodoListProps {
-  todos: TodoItem[];
+  todos: TodoItemLike[];
   expanded?: boolean;
   onToggle?: () => void;
 }
 
-function getStatusIcon(status?: string) {
+function getStatusIcon(status?: string | null) {
   const s = (status || '').toLowerCase();
   if (s === 'completed')
     return <Check aria-hidden className="h-4 w-4 text-success" />;

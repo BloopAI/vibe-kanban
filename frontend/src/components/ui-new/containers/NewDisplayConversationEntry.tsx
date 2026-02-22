@@ -29,7 +29,7 @@ import {
   type ScriptType,
 } from '@/components/dialogs/scripts/ScriptFixerDialog';
 import { ChatToolSummary } from '../primitives/conversation/ChatToolSummary';
-import { ChatTodoList } from '../primitives/conversation/ChatTodoList';
+import { ChatTodoList } from '@vibe/ui/components/ChatTodoList';
 import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
 import { ChatApprovalCard } from '../primitives/conversation/ChatApprovalCard';
 import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';

@@ -4018,3 +4018,47 @@ Plan adjustments from new information:
 - The conversation extraction path remains stable for single-callsite presentational components with no context/store coupling.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatTodoList.tsx` (single container callsite, no local component dependencies, and straightforward structural typing for todo items).
+
+## 2026-02-22 - UI package extraction: ChatTodoList
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatTodoList.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) and no local component imports, making it a low-risk presentational conversation primitive.
+- New information: todo status values can be nullable in practice, so package-local structural typing must permit `null`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatTodoList.tsx packages/ui/src/components/ChatTodoList.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed direct shared-type dependency:
+    - replaced `TodoItem` with exported package type `TodoItemLike` (`content: string`, `status?: string | null`)
+  - Updated internal helper typing to match nullable status:
+    - `getStatusIcon(status?: string | null)`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatTodoList`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For conversation primitives that consume normalized entry data, package types should explicitly model nullable fields from runtime payloads.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatAssistantMessage.tsx` (single callsite, but requires package-safe decoupling from app-bound `ChatMarkdown`, likely via render-prop injection).
