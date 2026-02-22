@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { NewDesignScope } from '@/components/ui-new/scope/NewDesignScope';
+import { NewDesignScope } from '@/app/providers/NewDesignScope';
 import { TerminalProvider } from '@/contexts/TerminalContext';
 import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 

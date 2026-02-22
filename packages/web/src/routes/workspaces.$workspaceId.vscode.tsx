@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { VSCodeScope } from '@/components/ui-new/scope/VSCodeScope';
+import { VSCodeScope } from '@/app/providers/VSCodeScope';
 import { TerminalProvider } from '@/contexts/TerminalContext';
 import { VSCodeWorkspacePage } from '@/pages/ui-new/VSCodeWorkspacePage';
 

@@ -280,6 +280,8 @@ module.exports = {
       // Allow NiceModal usage in lib/modals.ts, design scope files (for Provider), and dialog component files
       files: [
         'src/lib/modals.ts',
+        'src/app/providers/NewDesignScope.tsx',
+        'src/app/providers/VSCodeScope.tsx',
         'src/components/legacy-design/LegacyDesignScope.tsx',
         'src/components/ui-new/scope/NewDesignScope.tsx',
         'src/components/dialogs/**/*.{ts,tsx}',

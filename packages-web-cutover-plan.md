@@ -132,8 +132,8 @@ packages/web/src/
 
 ## Status
 
-- [ ] Phase A: foundations and guardrails (in progress, 3/4 complete)
-- [ ] Phase B: app shell + page relocation
+- [x] Phase A: foundations and guardrails
+- [ ] Phase B: app shell + page relocation (in progress)
 - [ ] Phase C: vertical feature migrations
 - [ ] Phase D: dialog/modal consolidation
 - [ ] Phase E: hooks/contexts/stores normalization
@@ -146,8 +146,21 @@ packages/web/src/
   - `@/app/*`, `@/pages/*`, `@/widgets/*`, `@/features/*`, `@/entities/*`,
     `@/shared/*`, `@/integrations/*`
 - [x] Add ESLint import-boundary rules for layer direction.
-- [ ] Add temporary compatibility re-export files where needed to avoid
-  breakage during phased moves.
+- [x] Add temporary compatibility re-export files where needed to avoid
+  breakage during phased moves:
+  - moved initial app-shell modules into `src/app/*`
+  - added compatibility shims at legacy paths:
+    - `src/main.tsx` -> `src/app/entry/Bootstrap.tsx`
+    - `src/App.tsx` -> `src/app/entry/App.tsx`
+    - `src/Router.tsx` -> `src/app/router/index.ts`
+    - `src/components/ConfigProvider.tsx` ->
+      `src/app/providers/ConfigProvider.tsx`
+    - `src/components/ThemeProvider.tsx` ->
+      `src/app/providers/ThemeProvider.tsx`
+    - `src/components/ui-new/scope/NewDesignScope.tsx` ->
+      `src/app/providers/NewDesignScope.tsx`
+    - `src/components/ui-new/scope/VSCodeScope.tsx` ->
+      `src/app/providers/VSCodeScope.tsx`
 - [x] Freeze net-new additions to `src/components/ui-new` and
   `src/components/dialogs` via CI guard script:
   - uses committed allowlist baseline (not base-branch diff) so checks are
@@ -159,6 +172,8 @@ packages/web/src/
 ## Phase B. App Shell + Page Relocation
 
 1. Move bootstrap/router/provider code into `src/app/*`.
+   - initial wave completed with compatibility shims; continue migrating
+     imports and remaining providers to canonical `@/app/*` paths
 2. Move `pages/ui-new/*` into domain page folders under `src/pages/*`.
 3. Keep `src/routes/*` in place (TanStack file-route convention), update imports
    to new page paths.

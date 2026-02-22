@@ -53,3 +53,50 @@
 - Implement remaining Phase A task:
   1. Add temporary compatibility re-export files for the first module moves in Phase B.
 
+## 2026-02-22 10:31:02 UTC
+
+- Assessed and implemented the remaining Phase A task: compatibility re-export shims.
+- Created first canonical app-shell modules under `src/app/*`:
+  - `src/app/entry/App.tsx`
+  - `src/app/entry/Bootstrap.tsx`
+  - `src/app/router/index.ts`
+  - `src/app/providers/ConfigProvider.tsx`
+  - `src/app/providers/ThemeProvider.tsx`
+  - `src/app/providers/NewDesignScope.tsx`
+  - `src/app/providers/VSCodeScope.tsx`
+- Added compatibility shim files at legacy paths so existing imports remain valid:
+  - `src/App.tsx`
+  - `src/main.tsx`
+  - `src/Router.tsx`
+  - `src/components/ConfigProvider.tsx`
+  - `src/components/ThemeProvider.tsx`
+  - `src/components/ui-new/scope/NewDesignScope.tsx`
+  - `src/components/ui-new/scope/VSCodeScope.tsx`
+- Updated key route imports to canonical app paths:
+  - `src/routes/__root.tsx`
+  - `src/routes/_app.tsx`
+  - `src/routes/index.tsx`
+  - `src/routes/onboarding.tsx`
+  - `src/routes/onboarding_.sign-in.tsx`
+  - `src/routes/workspaces.$workspaceId.vscode.tsx`
+- Updated ESLint exceptions so `NiceModal` usage remains valid in moved provider files.
+- New compatibility issue discovered and fixed:
+  - `src/lib/auth/tokenManager.ts` expects `queryClient` exported from `src/main.tsx`.
+  - Restored this via shim export: `src/main.tsx` now re-exports `queryClient` from `src/app/entry/Bootstrap.tsx`.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Marked Phase A complete.
+  - Marked compatibility re-export task complete with specific moved/shimmed module list.
+  - Marked Phase B as in progress with initial app-shell move note.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - `pnpm run web:legacy-path-guard`
+  - All passed.
+
+### Next change
+
+- Continue Phase B app-shell relocation:
+  1. Move remaining bootstrap/provider-related imports to canonical `@/app/*` paths.
+  2. Begin `pages/ui-new/*` to `pages/<domain>/*` relocation with shims.
+
