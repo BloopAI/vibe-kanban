@@ -304,3 +304,35 @@
 - Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
   `src/components/dialogs/tasks/RebaseDialog.tsx` and
   `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.
+
+## 2026-02-22 11:36:51 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next low-risk Track 1 component to move into a UI package path.
+- Selected `CreateWorkspaceFromPrDialog` for command-bar feature-owned dialog placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/CreateWorkspaceFromPrDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/CreateWorkspaceFromPrDialog.tsx`.
+  - Updated canonical callsite import to
+    `@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog` in:
+    - `src/components/ui-new/actions/index.ts`
+- Kept feature-path lint compatibility in moved file by using named imports
+  (`create`, `useModal`) from `@ebay/nice-modal-react`.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `CreateWorkspaceFromPrDialog`.
+  - Added a new-information note documenting the command-bar feature dialog
+    migration pattern.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
+  `src/components/dialogs/tasks/RebaseDialog.tsx` and
+  `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.

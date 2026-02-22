@@ -49,6 +49,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/GhCliSetupDialog.tsx`.
   - [x] Moved feature dialog `ReleaseNotesDialog` to
         `src/features/settings/ui/dialogs/ReleaseNotesDialog.tsx`.
+  - [x] Moved feature dialog `CreateWorkspaceFromPrDialog` to
+        `src/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -80,6 +82,8 @@ compatibility shims.
         `src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/TagEditDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/CreateWorkspaceFromPrDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -114,6 +118,9 @@ compatibility shims.
         `src/components/TagManager.tsx`,
         `src/components/ui/wysiwyg.tsx`,
         `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsite to
+        `@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog` in
+        `src/components/ui-new/actions/index.ts`.
 
 ## Risk Controls
 
@@ -151,6 +158,10 @@ compatibility shims.
 - New information (2026-02-22): reusable dialogs originating from
   `components/dialogs/tasks/*` can be migrated to `src/shared/ui/dialogs/*`
   when callsites span multiple non-task UI surfaces.
+- New information (2026-02-22): command-bar-owned dialogs can be migrated into
+  `src/features/command-bar/ui/dialogs/*` and consumed directly from
+  `src/components/ui-new/actions/index.ts` while keeping a legacy shim at the
+  old `components/dialogs/*` path.
 
 ## Validation
 
