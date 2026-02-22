@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils';
 import {
   ScriptFixerDialog,
   type ScriptType,
-} from '@/components/dialogs/scripts/ScriptFixerDialog';
+} from '@/shared/ui/dialogs/ScriptFixerDialog';
 import { ChatToolSummary } from '@vibe/ui/components/ChatToolSummary';
 import { ChatTodoList } from '@vibe/ui/components/ChatTodoList';
 import {

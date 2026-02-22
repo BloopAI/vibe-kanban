@@ -89,6 +89,8 @@ compatibility shims.
         `src/shared/ui/dialogs/ImagePreviewDialog.tsx`.
   - [x] Moved reusable `TagEditDialog` to
         `src/shared/ui/dialogs/TagEditDialog.tsx`.
+  - [x] Moved reusable `ScriptFixerDialog` to
+        `src/shared/ui/dialogs/ScriptFixerDialog.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -143,6 +145,8 @@ compatibility shims.
         `src/components/dialogs/tasks/RestoreLogsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/PrCommentsDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/scripts/ScriptFixerDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -237,6 +241,12 @@ compatibility shims.
         (`src/components/dialogs/tasks/PrCommentsDialog.tsx`) because
         `src/features/workspace-chat/**` cannot import directly from
         `@/features/command-bar/**` under current lint boundaries.
+  - [x] Updated canonical callsites to
+        `@/shared/ui/dialogs/ScriptFixerDialog` in:
+        `src/components/ui-new/containers/ConversationListContainer.tsx`,
+        `src/components/ui-new/containers/PreviewBrowserContainer.tsx`,
+        `src/components/NormalizedConversation/DisplayConversationEntry.tsx`,
+        `src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -328,6 +338,11 @@ compatibility shims.
   `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`) cannot import
   command-bar canonical dialog paths directly under current lint boundaries;
   keep these callsites on legacy shim imports until final consolidation.
+- New information (2026-02-22): reusable script-management dialogs with mixed
+  component + feature consumers (for example `ScriptFixerDialog`) can be
+  canonicalized under `src/shared/ui/dialogs/*` and imported directly from
+  both `src/components/**` and `src/features/**` surfaces without violating
+  current lint boundaries.
 
 ## Validation
 
