@@ -7,19 +7,28 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@vibe/ui/components/KeyboardDialog';
-import { Button } from '@vibe/ui/components/Button';
+} from './KeyboardDialog';
+import { Button } from './Button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import { FolderSimpleIcon, SpinnerIcon } from '@phosphor-icons/react';
-import { defineModal, type NoProps } from '@/lib/modals';
-import { repoApi } from '@/lib/api';
-import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
-import type { Repo } from 'shared/types';
+import { defineModal } from '../lib/modals';
 
-// Result is the created repo or undefined if canceled
-export type CreateRepoResult = Repo | undefined;
+export interface CreateRepoDialogProps {
+  onBrowseForPath?: (
+    currentPath: string
+  ) => Promise<string | null | undefined>;
+  onCreateRepo: (params: {
+    parentPath: string;
+    folderName: string;
+  }) => Promise<void>;
+}
 
-const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
+export type CreateRepoDialogResult = {
+  action: 'created' | 'canceled';
+};
+
+const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
+  ({ onBrowseForPath, onCreateRepo }) => {
   const { t } = useTranslation(['tasks', 'common']);
   const modal = useModal();
 
@@ -29,16 +38,13 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
   const [error, setError] = useState<string | null>(null);
 
   const handleBrowseForPath = useCallback(async () => {
-    const selectedPath = await FolderPickerDialog.show({
-      title: t('git.createRepo.browseDialog.title'),
-      description: t('git.createRepo.browseDialog.description'),
-      value: parentPath,
-    });
+    if (!onBrowseForPath) return;
+    const selectedPath = await onBrowseForPath(parentPath);
 
     if (selectedPath) {
       setParentPath(selectedPath);
     }
-  }, [parentPath, t]);
+  }, [onBrowseForPath, parentPath]);
 
   const handleCreate = useCallback(async () => {
     const trimmedName = name.trim();
@@ -50,11 +56,11 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
     setIsSubmitting(true);
     setError(null);
     try {
-      const repo = await repoApi.init({
-        parent_path: parentPath.trim() || '.',
-        folder_name: trimmedName,
+      await onCreateRepo({
+        parentPath: parentPath.trim() || '.',
+        folderName: trimmedName,
       });
-      modal.resolve(repo as CreateRepoResult);
+      modal.resolve({ action: 'created' } as CreateRepoDialogResult);
       modal.hide();
     } catch (err) {
       setError(
@@ -65,10 +71,10 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [name, parentPath, modal, t]);
+  }, [name, onCreateRepo, parentPath, modal, t]);
 
   const handleCancel = useCallback(() => {
-    modal.resolve(undefined as CreateRepoResult);
+    modal.resolve({ action: 'canceled' } as CreateRepoDialogResult);
     modal.hide();
   }, [modal]);
 
@@ -119,7 +125,7 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
                 variant="outline"
                 size="icon"
                 onClick={handleBrowseForPath}
-                disabled={isSubmitting}
+                disabled={isSubmitting || !onBrowseForPath}
               >
                 <FolderSimpleIcon className="h-4 w-4" weight="fill" />
               </Button>
@@ -152,8 +158,12 @@ const CreateRepoDialogImpl = NiceModal.create<NoProps>(() => {
       </DialogContent>
     </Dialog>
   );
-});
+  }
+);
 
-export const CreateRepoDialog = defineModal<void, CreateRepoResult>(
+export const CreateRepoDialog = defineModal<
+  CreateRepoDialogProps,
+  CreateRepoDialogResult
+>(
   CreateRepoDialogImpl
 );

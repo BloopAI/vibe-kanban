@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import { CreateRepoDialog } from '@/components/ui-new/dialogs/CreateRepoDialog';
+import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {
   SelectionDialog,
   type SelectionPage,
@@ -195,13 +195,25 @@ export function CreateModeRepoPickerBar({
     await runPickerAction(
       'create',
       async () => {
-        const repo = await CreateRepoDialog.show();
-        if (!repo) return;
-        await addRepoWithBranchSelection(repo);
+        await CreateRepoDialog.show({
+          onBrowseForPath: async (currentPath) =>
+            FolderPickerDialog.show({
+              title: t('git.createRepo.browseDialog.title'),
+              description: t('git.createRepo.browseDialog.description'),
+              value: currentPath,
+            }),
+          onCreateRepo: async ({ parentPath, folderName }) => {
+            const repo = await repoApi.init({
+              parent_path: parentPath,
+              folder_name: folderName,
+            });
+            await addRepoWithBranchSelection(repo);
+          },
+        });
       },
       'Failed to create repository'
     );
-  }, [addRepoWithBranchSelection, runPickerAction]);
+  }, [addRepoWithBranchSelection, runPickerAction, t]);
 
   const handleChangeBranch = useCallback(
     async (repo: Repo) => {
