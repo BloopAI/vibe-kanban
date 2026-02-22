@@ -38,7 +38,7 @@ import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
 import { ChatThinkingMessage } from '@vibe/ui/components/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
-import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
+import { ChatSubagentEntry } from '@vibe/ui/components/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
 import { ChatCollapsedThinking } from '@vibe/ui/components/ChatCollapsedThinking';
@@ -745,6 +745,9 @@ function SubagentEntry({
       onToggle={hasResult ? toggle : undefined}
       status={status}
       workspaceId={workspaceId}
+      renderMarkdown={({ content, workspaceId }) => (
+        <ChatMarkdown content={content} workspaceId={workspaceId} />
+      )}
     />
   );
 }

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,19 +8,28 @@ import {
   XCircleIcon,
   CircleNotchIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { ToolStatus, ToolResult } from 'shared/types';
-import { ChatMarkdown } from './ChatMarkdown';
+import { cn } from '../lib/cn';
+import type { ToolStatusLike } from './ToolStatusDot';
+
+export interface ChatSubagentResultLike {
+  value?: unknown | null;
+}
+
+export interface ChatSubagentEntryRenderProps {
+  content: string;
+  workspaceId?: string;
+}
 
 interface ChatSubagentEntryProps {
   description: string;
   subagentType?: string | null;
-  result?: ToolResult | null;
+  result?: ChatSubagentResultLike | null;
   expanded?: boolean;
   onToggle?: () => void;
   className?: string;
-  status?: ToolStatus;
+  status?: ToolStatusLike;
   workspaceId?: string;
+  renderMarkdown: (props: ChatSubagentEntryRenderProps) => ReactNode;
 }
 
 /**
@@ -36,6 +46,7 @@ export function ChatSubagentEntry({
   className,
   status,
   workspaceId,
+  renderMarkdown,
 }: ChatSubagentEntryProps) {
   const { t } = useTranslation('common');
 
@@ -151,7 +162,7 @@ export function ChatSubagentEntry({
             {t('conversation.output')}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ChatMarkdown content={resultContent!} workspaceId={workspaceId} />
+            {renderMarkdown({ content: resultContent!, workspaceId })}
           </div>
         </div>
       )}
