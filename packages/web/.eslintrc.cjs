@@ -213,6 +213,15 @@ module.exports = {
               'Features may only import from entities, shared, and integrations.',
           },
         ]),
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector:
+              'Program[body.length=1] > ExportNamedDeclaration[source]',
+            message:
+              'Re-export-only files in features are not allowed. They bypass layer boundaries via relative imports. Import directly from the owning layer instead.',
+          },
+        ],
       },
     },
     {
