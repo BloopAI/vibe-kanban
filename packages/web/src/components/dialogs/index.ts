@@ -66,7 +66,7 @@ export {
   CreateConfigurationDialog,
   type CreateConfigurationDialogProps,
   type CreateConfigurationResult,
-} from './settings/CreateConfigurationDialog';
+} from '@/features/settings/ui/dialogs/CreateConfigurationDialog';
 export {
   DeleteConfigurationDialog,
   type DeleteConfigurationDialogProps,

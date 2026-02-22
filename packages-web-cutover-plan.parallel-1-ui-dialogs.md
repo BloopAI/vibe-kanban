@@ -41,6 +41,8 @@ compatibility shims.
 - [ ] `T1.4` Consolidate dialog placement:
       feature dialogs -> `src/features/*/ui/dialogs/*`,
       reusable dialogs -> `src/shared/ui/dialogs/*`.
+  - [x] Moved feature dialog `CreateConfigurationDialog` to
+        `src/features/settings/ui/dialogs/CreateConfigurationDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -53,6 +55,8 @@ compatibility shims.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
   - [x] Added compatibility shim at
+        `src/components/dialogs/settings/CreateConfigurationDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/FolderPickerDialog.tsx`.
@@ -61,6 +65,10 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
+        `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
+        `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
         `src/features/kanban/ui/ProjectKanban.tsx`.
@@ -96,6 +104,10 @@ compatibility shims.
   (e.g. under `components/dialogs/wysiwyg`) can also be migrated into
   `src/shared/ui/dialogs/*` with a legacy shim and a direct canonical import
   update when callsite count is low.
+- New information (2026-02-22): files moved into
+  `src/features/*/ui/dialogs/*` are also outside the current NiceModal
+  default-import ESLint exception; use named imports (`create`, `useModal`) in
+  these feature-owned dialog files as well.
 
 ## Validation
 

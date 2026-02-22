@@ -16,7 +16,7 @@ import {
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
-import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
+import { CreateConfigurationDialog } from '@/features/settings/ui/dialogs/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/lib/utils';
