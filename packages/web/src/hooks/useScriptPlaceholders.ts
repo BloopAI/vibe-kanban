@@ -1,4 +1,4 @@
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,

@@ -5,7 +5,7 @@ import { XIcon, GearIcon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { cn } from '@/shared/lib/utils';
 import {
   sequentialBindings,

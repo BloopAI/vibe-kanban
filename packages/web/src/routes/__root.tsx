@@ -4,7 +4,7 @@ import { I18nextProvider } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
 import { ThemeMode } from 'shared/types';
 import i18n from '@/i18n';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { ThemeProvider } from '@/app/providers/ThemeProvider';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';

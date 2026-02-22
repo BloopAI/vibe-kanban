@@ -11,7 +11,7 @@ import {
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useAttemptExecution } from '../model/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';

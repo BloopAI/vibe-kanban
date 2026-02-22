@@ -31,7 +31,7 @@ import {
   resolveDefaultReasoningId,
 } from '@/shared/lib/modelSelector';
 import { profilesApi } from '@/lib/api';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getResolvedTheme, useTheme } from '@/app/providers/ThemeProvider';
 import { useModelSelectorConfig } from '@/hooks/useExecutorDiscovery';
 import { ModelSelectorPopover } from '@vibe/ui/components/ModelSelectorPopover';

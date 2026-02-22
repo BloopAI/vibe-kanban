@@ -32,7 +32,7 @@ import {
   ThemeMode,
   type EditorConfig,
 } from 'shared/types';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { AgentIcon, getAgentName } from '@/components/agents/AgentIcon';
 import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';

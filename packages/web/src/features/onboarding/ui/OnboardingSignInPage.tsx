@@ -5,7 +5,7 @@ import { Navigate, useNavigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
 import { OAuthDialog, type OAuthProvider } from '@/dialogs/global/OAuthDialog';
 import { usePostHog } from 'posthog-js/react';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/app/providers/ThemeProvider';
 import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';

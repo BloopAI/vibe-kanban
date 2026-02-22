@@ -1,5 +1,5 @@
 import { type FileChange } from 'shared/types';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { Trash2, FilePlus2, ArrowRight, FileX, FileClock } from 'lucide-react';
 import { getHighLightLanguageFromPath } from '@/shared/lib/extToLanguage';
 import { getActualTheme } from '@/shared/lib/theme';

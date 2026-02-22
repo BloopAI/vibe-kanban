@@ -10,7 +10,7 @@ import {
   useDiffViewMode,
 } from '@/shared/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useShape } from '@/integrations/electric/hooks';

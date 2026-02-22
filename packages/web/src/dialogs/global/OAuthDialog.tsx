@@ -15,7 +15,7 @@ import { useCallback, useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
 import { useAuthStatus } from '@/hooks/auth/useAuthStatus';
-import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { organizationKeys } from '@/hooks/organizationKeys';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import type { ProfileResponse } from 'shared/types';
