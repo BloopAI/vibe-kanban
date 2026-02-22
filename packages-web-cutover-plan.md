@@ -20,6 +20,43 @@ ownership boundaries and no parallel "legacy vs new" trees.
   - Re-doing the completed package/location cutover work
   - Remote frontend (`remote-frontend/`) architecture changes
 
+## Parallel Phase Split (2026-02-22)
+
+The remaining work is split into three branch-parallel tracks with explicit
+ownership to reduce merge conflicts.
+
+- Track 1 plan: `packages-web-cutover-plan.parallel-1-ui-dialogs.md`
+  - focus: UI actions hotspot + dialog consolidation
+- Track 2 plan: `packages-web-cutover-plan.parallel-2-model.md`
+  - focus: hooks/contexts/stores normalization
+- Track 3 plan: `packages-web-cutover-plan.parallel-3-shared-integrations.md`
+  - focus: shared + integrations + API split
+
+### Parallel Rules
+
+- Each branch should only modify files listed in its track ownership section.
+- Keep backward-compatible facades/shims during the parallel phase; defer
+  facade removal to final consolidation.
+- Avoid editing shared coordination files in parallel branches:
+  - `packages-web-cutover-plan.md`
+  - `progress.txt`
+  - `.github/workflows/test.yml`
+  - `packages/web/.eslintrc.cjs`
+  - `packages/web/tsconfig.json`
+  - `packages/web/vite.config.ts`
+- Use per-track progress logs instead:
+  - `progress.parallel-track-1-ui-dialogs.txt`
+  - `progress.parallel-track-2-model.txt`
+  - `progress.parallel-track-3-shared-integrations.txt`
+
+### Post-Parallel Merge
+
+After all three track branches merge, start final consolidation to:
+
+- remove temporary compatibility facades/shims,
+- complete legacy folder deletion and lint hardening,
+- run repo-wide stale-import cleanup and final verification.
+
 ## Current Structure Snapshot (2026-02-22)
 
 - `410` files under `packages/web/src`
@@ -139,6 +176,8 @@ packages/web/src/
 - [ ] Phase E: hooks/contexts/stores normalization
 - [ ] Phase F: shared/integration cleanup
 - [ ] Phase G: legacy removal + enforcement
+- [ ] Parallel Phase: execute tracks 1-3 on separate branches
+- [ ] Final Consolidation: post-merge cleanup and hardening
 
 ## Phase A. Foundations And Guardrails
 
@@ -319,9 +358,7 @@ packages/web/src/
 
 ## PR Strategy
 
-1. PR 1: aliases + import boundaries + app shell moves (no behavior change)
-2. PR 2: pages rehome + first feature slice (onboarding/migrate)
-3. PR 3: workspace slice (chat, sidebar, terminal, preview)
-4. PR 4: kanban slice + command bar/action system split
-5. PR 5: dialogs/hooks/store consolidation + API/util split
-6. PR 6: legacy folder deletion + lint hardening + final cleanup
+1. Parallel PR A: Track 1 (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`)
+2. Parallel PR B: Track 2 (`packages-web-cutover-plan.parallel-2-model.md`)
+3. Parallel PR C: Track 3 (`packages-web-cutover-plan.parallel-3-shared-integrations.md`)
+4. Final consolidation PR: shim removal + lint hardening + legacy deletion
