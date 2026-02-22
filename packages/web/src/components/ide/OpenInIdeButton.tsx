@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Button } from '@vibe/ui/components/Button';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { IdeIcon, getIdeName } from './IdeIcon';
 
 type OpenInIdeButtonProps = {

@@ -7,7 +7,7 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useDevServer } from '@/hooks/useDevServer';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useShape } from '@/lib/electric/hooks';

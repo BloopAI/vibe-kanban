@@ -4,7 +4,7 @@ import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '@vibe/ui/components/AppBarUserPopover';
 import { SettingsDialog } from '../dialogs/SettingsDialog';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useActions } from '@/contexts/ActionsContext';
 import { Actions } from '@/components/ui-new/actions';

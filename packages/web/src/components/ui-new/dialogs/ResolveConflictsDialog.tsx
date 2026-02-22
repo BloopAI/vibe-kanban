@@ -13,7 +13,7 @@ import { Label } from '@vibe/ui/components/Label';
 import { Switch } from '@vibe/ui/components/Switch';
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { sessionsApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';

@@ -4,7 +4,7 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,

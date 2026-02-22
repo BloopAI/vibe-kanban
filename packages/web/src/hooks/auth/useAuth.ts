@@ -1,4 +1,4 @@
-import { useUserSystem } from '../../components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 
 export function useAuth() {
   const { loginStatus } = useUserSystem();

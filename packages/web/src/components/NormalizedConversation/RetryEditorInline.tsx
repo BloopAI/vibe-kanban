@@ -9,7 +9,7 @@ import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useVariant } from '@/hooks/useVariant';
 import { useRetryProcess } from '@/hooks/useRetryProcess';

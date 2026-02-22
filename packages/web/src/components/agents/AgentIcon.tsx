@@ -1,5 +1,5 @@
 import { BaseCodingAgent } from 'shared/types';
-import { useTheme, getResolvedTheme } from '@/components/ThemeProvider';
+import { useTheme, getResolvedTheme } from '@/app/providers/ThemeProvider';
 
 type AgentIconProps = {
   agent: BaseCodingAgent | null | undefined;

@@ -12,7 +12,7 @@ import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useApprovalFeedbackOptional } from '@/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';

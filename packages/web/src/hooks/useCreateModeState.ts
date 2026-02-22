@@ -14,7 +14,7 @@ import {
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useWorkspaceCreateDefaults } from '@/hooks/useWorkspaceCreateDefaults';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useShape } from '@/lib/electric/hooks';
 import { repoApi } from '@/lib/api';
 

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { NewDesignScope } from '@/app/providers/NewDesignScope';
-import { LandingPage } from '@/pages/ui-new/LandingPage';
+import { LandingPage } from '@/pages/onboarding/LandingPage';
 
 function OnboardingLandingRouteComponent() {
   return (

@@ -18,8 +18,8 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { getActualTheme } from '@/utils/theme';
 import { getFileIcon } from '@/utils/fileTypeIcon';
-import { useUserSystem } from '@/components/ConfigProvider';
-import { useTheme } from '@/components/ThemeProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';

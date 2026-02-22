@@ -100,3 +100,34 @@
   1. Move remaining bootstrap/provider-related imports to canonical `@/app/*` paths.
   2. Begin `pages/ui-new/*` to `pages/<domain>/*` relocation with shims.
 
+
+## 2026-02-22 10:35:11 UTC
+
+- Reviewed `packages-web-cutover-plan.md` and `progress.txt` and selected the next Phase B migration slice.
+- Implemented app-shell import standardization:
+  - Replaced remaining `ConfigProvider` and `ThemeProvider` imports with canonical `@/app/providers/*` paths across web source files.
+- Implemented page relocation kickoff for Phase B:
+  - Moved route-level pages from `src/pages/ui-new/*` into domain folders:
+    - `src/pages/onboarding/*`
+    - `src/pages/migrate/*`
+    - `src/pages/workspaces/*`
+    - `src/pages/projects/*`
+    - `src/pages/root/*`
+  - Added temporary compatibility shims at legacy paths under `src/pages/ui-new/*` that re-export from the new canonical page paths.
+  - Updated all `src/routes/*` imports to the new `@/pages/<domain>/*` paths.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Marked Phase B items complete for:
+    1. app-shell bootstrap/router/provider relocation + canonical provider imports
+    2. page relocation from `pages/ui-new` into domain folders
+    3. route imports updated to new page paths
+  - Left Phase B global style entrypoint move pending.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Complete remaining Phase B item:
+  1. Move global style entrypoints/imports from `src/styles/*` usage into `src/app/styles/*` with compatibility shims as needed.

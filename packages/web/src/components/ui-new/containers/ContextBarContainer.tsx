@@ -6,7 +6,7 @@ import {
 } from '@vibe/ui/components/ContextBar';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { useActions } from '@/contexts/ActionsContext';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
 import {

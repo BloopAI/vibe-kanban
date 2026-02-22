@@ -171,13 +171,16 @@ packages/web/src/
 
 ## Phase B. App Shell + Page Relocation
 
-1. Move bootstrap/router/provider code into `src/app/*`.
-   - initial wave completed with compatibility shims; continue migrating
-     imports and remaining providers to canonical `@/app/*` paths
-2. Move `pages/ui-new/*` into domain page folders under `src/pages/*`.
-3. Keep `src/routes/*` in place (TanStack file-route convention), update imports
-   to new page paths.
-4. Move global style entrypoints into `src/app/styles`.
+- [x] Move bootstrap/router/provider code into `src/app/*`.
+  - completed initial wave and migrated remaining `ConfigProvider` and
+    `ThemeProvider` imports to canonical `@/app/providers/*` paths
+- [x] Move `pages/ui-new/*` into domain page folders under `src/pages/*`.
+  - moved route-level pages into
+    `src/pages/{onboarding,migrate,workspaces,projects,root}`
+  - kept temporary compatibility shims at `src/pages/ui-new/*`
+- [x] Keep `src/routes/*` in place (TanStack file-route convention), update
+  imports to new page paths.
+- [ ] Move global style entrypoints into `src/app/styles`.
 
 ## Phase C. Vertical Feature Migrations
 

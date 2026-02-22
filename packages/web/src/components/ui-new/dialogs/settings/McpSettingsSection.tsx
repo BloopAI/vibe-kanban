@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
 import { McpConfig } from 'shared/types';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
 import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
 import { cn } from '@/lib/utils';

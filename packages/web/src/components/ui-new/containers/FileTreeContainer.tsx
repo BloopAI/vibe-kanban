@@ -11,7 +11,7 @@ import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { getFileIcon } from '@/utils/fileTypeIcon';
-import { useTheme } from '@/components/ThemeProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import type { Diff } from 'shared/types';
 

@@ -25,8 +25,8 @@ import {
   getExecutorVariantKeys,
   getSortedExecutorVariantKeys,
 } from '@/utils/executor';
-import { useTheme } from '@/components/ThemeProvider';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';

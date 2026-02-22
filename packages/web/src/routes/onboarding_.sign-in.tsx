@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { NewDesignScope } from '@/app/providers/NewDesignScope';
-import { OnboardingSignInPage } from '@/pages/ui-new/OnboardingSignInPage';
+import { OnboardingSignInPage } from '@/pages/onboarding/OnboardingSignInPage';
 
 function OnboardingSignInRouteComponent() {
   return (

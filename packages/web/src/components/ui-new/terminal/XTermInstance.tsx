@@ -4,7 +4,7 @@ import { FitAddon } from '@xterm/addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
-import { useTheme } from '@/components/ThemeProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { getTerminalTheme } from '@/utils/terminalTheme';
 import { useTerminal } from '@/contexts/TerminalContext';
 

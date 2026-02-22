@@ -15,7 +15,7 @@ import {
 } from '@vibe/ui/components/Dropdown';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
-import { useUserSystem } from '@/components/ConfigProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '@/components/dialogs/settings/DeleteConfigurationDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
