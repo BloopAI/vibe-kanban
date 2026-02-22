@@ -18,7 +18,7 @@ import {
 
 import { cn } from '@/shared/lib/utils';
 import NewDisplayConversationEntry from './NewDisplayConversationEntry';
-import { ApprovalFormProvider } from '../model/contexts/ApprovalFormContext';
+import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
 import { useEntries } from '../model/contexts/EntriesContext';
 import {
   useResetProcess,
