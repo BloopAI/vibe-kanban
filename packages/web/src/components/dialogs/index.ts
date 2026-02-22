@@ -1,5 +1,5 @@
 // Global app dialogs
-export { ReleaseNotesDialog } from './global/ReleaseNotesDialog';
+export { ReleaseNotesDialog } from '@/features/settings/ui/dialogs/ReleaseNotesDialog';
 export { OAuthDialog } from './global/OAuthDialog';
 
 // Organization dialogs

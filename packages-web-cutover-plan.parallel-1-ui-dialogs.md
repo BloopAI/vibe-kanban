@@ -47,6 +47,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/DeleteConfigurationDialog.tsx`.
   - [x] Moved feature dialog `GhCliSetupDialog` to
         `src/features/settings/ui/dialogs/GhCliSetupDialog.tsx`.
+  - [x] Moved feature dialog `ReleaseNotesDialog` to
+        `src/features/settings/ui/dialogs/ReleaseNotesDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -64,6 +66,8 @@ compatibility shims.
         `src/components/dialogs/settings/DeleteConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/auth/GhCliSetupDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/global/ReleaseNotesDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
   - [x] Added compatibility shim at
@@ -84,6 +88,10 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/GhCliSetupDialog` in:
         `src/components/dialogs/tasks/CreatePRDialog.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/ReleaseNotesDialog` in:
+        `src/routes/__root.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
@@ -128,6 +136,9 @@ compatibility shims.
   `GhCliSetupDialog`) are consumed from task dialogs outside the settings
   surface; keep compatibility shims and update only minimal canonical
   callsites/barrel exports during Track 1.
+- New information (2026-02-22): feature-owned dialogs cannot import directly
+  from `@/app/providers/*` under current lint rules; use the hook facades
+  (e.g. `@/hooks/useTheme`) when a provider-backed dependency is needed.
 
 ## Validation
 
