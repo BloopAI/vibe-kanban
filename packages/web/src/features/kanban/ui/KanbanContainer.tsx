@@ -19,7 +19,7 @@ import {
   PRIORITY_ORDER,
 } from '../model/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
-import { useKanbanNavigation } from '../model/hooks/useKanbanNavigation';
+import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/components/ui-new/actions';
 import type { OrganizationMemberWithProfile } from 'shared/types';

@@ -13,7 +13,7 @@ import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useKanbanNavigation } from '@/features/kanban/model/hooks/useKanbanNavigation';
+import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';

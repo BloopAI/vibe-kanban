@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useKanbanNavigation } from '@/features/kanban/model/hooks/useKanbanNavigation';
+import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
