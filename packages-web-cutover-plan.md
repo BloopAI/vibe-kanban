@@ -29,7 +29,7 @@ package.
 - [x] Step 1 completed
 - [x] Step 2 completed
 - [x] Step 3 completed (executed before Step 2 to restore local type-check)
-- [ ] Step 4 pending
+- [x] Step 4 completed
 - [ ] Step 5 pending
 - [ ] Step 6 pending
 - [ ] Step 7 pending

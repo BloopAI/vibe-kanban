@@ -6853,3 +6853,35 @@ Validation:
 New information:
 - Running root `check` and `lint` concurrently can produce transient Cargo cache/object-file failures due overlapping Rust builds.
 - Sequential execution succeeds and reflects actual code health.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 4 (backend static embed paths)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 4 (server embed/build dist path migration)
+- [x] Ran appropriate quality checks
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 4:
+  - switch server static embed path from `frontend/dist` to `packages/web/dist`
+  - switch build-script dummy dist path likewise
+
+Refactor completed:
+- `crates/server/src/routes/frontend.rs`
+  - `#[folder = "../../frontend/dist"]` -> `#[folder = "../../packages/web/dist"]`
+- `crates/server/build.rs`
+  - dummy dist path changed to `../../packages/web/dist`
+  - warning log text updated to mention `packages/web/dist`
+  - fallback HTML message updated to instruct building `@vibe/web`
+
+Validation:
+- `pnpm run backend:check` ✅
+- `pnpm run backend:lint` ✅
+- `pnpm run format` ✅
+
+New information:
+- During `backend:check`, build script now correctly warns about creating dummy `packages/web/dist` when the web build output is absent. This confirms Step 4 path wiring is active.
