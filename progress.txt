@@ -1630,3 +1630,37 @@
   `src/shared/ui/dialogs/*` with a compatibility shim, then update owned
   callsites while keeping non-owned `src/features/workspace/**` callers on the
   legacy shim path if needed for boundary safety.
+
+## 2026-02-22 13:36:41 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx` as the next Track 1 dialog migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx`
+    -> `src/shared/ui/dialogs/WorkspacesGuideDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx`.
+  - Updated moved dialog for shared-ui lint compatibility:
+    - switched NiceModal usage to named imports (`create`, `useModal`).
+- Updated canonical owned callsite to shared-ui path:
+  - `src/components/ui-new/actions/index.ts`
+- Kept non-owned callsite on legacy shim path:
+  - `src/features/workspace/ui/WorkspacesLayout.tsx`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `WorkspacesGuideDialog` migration.
+  - Added risk-controls note for non-owned workspace-feature caller shim
+    retention during Track 1.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/KeyboardShortcutsDialog.tsx` into
+  `src/shared/ui/dialogs/*` with a compatibility shim, then update any owned
+  callsites and keep non-owned app-provider callers on the legacy shim path if
+  needed for boundary safety.

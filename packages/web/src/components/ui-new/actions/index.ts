@@ -80,7 +80,7 @@ import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/features/command-bar/ui/dialogs/EditorSelectionDialog';
 import { StartReviewDialog } from '@/features/command-bar/ui/dialogs/StartReviewDialog';
 import posthog from 'posthog-js';
-import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { WorkspacesGuideDialog } from '@/shared/ui/dialogs/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog';
 

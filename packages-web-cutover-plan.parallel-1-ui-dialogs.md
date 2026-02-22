@@ -142,6 +142,8 @@ compatibility shims.
         `src/shared/ui/dialogs/TagEditDialog.tsx`.
   - [x] Moved reusable `ScriptFixerDialog` to
         `src/shared/ui/dialogs/ScriptFixerDialog.tsx`.
+  - [x] Moved reusable `WorkspacesGuideDialog` to
+        `src/shared/ui/dialogs/WorkspacesGuideDialog.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -235,6 +237,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/WorkspaceSelectionDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/ResolveConflictsDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -458,6 +462,11 @@ compatibility shims.
   - [x] Kept non-owned `ResolveConflictsDialog` callsite on the legacy shim
         path in `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`
         to avoid Track 1 ownership churn.
+  - [x] Updated canonical `WorkspacesGuideDialog` callsite to shared-ui path
+        in: `src/components/ui-new/actions/index.ts`.
+  - [x] Kept non-owned `WorkspacesGuideDialog` callsite on the legacy shim
+        path in `src/features/workspace/ui/WorkspacesLayout.tsx` to avoid
+        Track 1 ownership churn.
 
 ## Risk Controls
 
@@ -612,6 +621,9 @@ compatibility shims.
   boundaries; keep these internal feature callsites (for example
   `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` ->
   `ResolveConflictsDialog`) on legacy shim imports until final consolidation.
+- New information (2026-02-22): after moving `WorkspacesGuideDialog` into
+  shared-ui ownership, keep non-owned `src/features/workspace/**` callsites on
+  the legacy shim path during Track 1 to minimize cross-branch churn.
 
 ## Validation
 
