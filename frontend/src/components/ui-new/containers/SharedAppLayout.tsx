@@ -272,9 +272,9 @@ export function SharedAppLayout() {
             onMigrate={handleMigrate}
           />
         )}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
           <NavbarContainer mobileMode={isMobile} />
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-0 overflow-hidden">
             <Outlet />
           </div>
         </div>

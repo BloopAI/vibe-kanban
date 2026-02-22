@@ -8,6 +8,7 @@ import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { Navbar } from '../views/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import {
   NavbarActionGroups,
   NavbarDivider,
@@ -138,6 +139,10 @@ export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
     />
   ) : undefined;
 
+  const handleOpenCommandBar = useCallback(() => {
+    CommandBarDialog.show();
+  }, []);
+
   return (
     <Navbar
       workspaceTitle={navbarTitle}
@@ -155,6 +160,8 @@ export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
       onExecuteAction={handleExecuteAction}
       mobileMode={mobileMode}
       mobileUserSlot={userPopoverSlot}
+      isOnProjectPage={isOnProjectPage}
+      onOpenCommandBar={mobileMode ? handleOpenCommandBar : undefined}
     />
   );
 }

@@ -317,6 +317,7 @@ type State = {
 
   // Mobile tab state
   mobileActiveTab: MobileTab;
+  mobileCodePanel: RightMainPanelMode;
 
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
@@ -392,6 +393,7 @@ type State = {
 
   // Mobile tab actions
   setMobileActiveTab: (tab: MobileTab) => void;
+  setMobileCodePanel: (panel: RightMainPanelMode) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -427,6 +429,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Mobile tab state
   mobileActiveTab: 'chat' as MobileTab,
+  mobileCodePanel: 'changes' as RightMainPanelMode,
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -731,6 +734,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Mobile tab actions
   setMobileActiveTab: (tab) => set({ mobileActiveTab: tab }),
+  setMobileCodePanel: (panel) => set({ mobileCodePanel: panel }),
 }));
 
 // Hook for repo action preference
@@ -816,6 +820,13 @@ export function useMobileActiveTab() {
   const tab = useUiPreferencesStore((s) => s.mobileActiveTab);
   const set = useUiPreferencesStore((s) => s.setMobileActiveTab);
   return [tab, set] as const;
+}
+
+// Hook for mobile code panel sub-tab (changes/logs/preview)
+export function useMobileCodePanel() {
+  const panel = useUiPreferencesStore((s) => s.mobileCodePanel);
+  const set = useUiPreferencesStore((s) => s.setMobileCodePanel);
+  return [panel, set] as const;
 }
 
 // Hook for workspace-specific panel state

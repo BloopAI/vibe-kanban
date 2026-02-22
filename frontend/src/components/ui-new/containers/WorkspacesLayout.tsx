@@ -26,7 +26,9 @@ import {
   usePaneSize,
   useWorkspacePanelState,
   useMobileActiveTab,
+  useMobileCodePanel,
   RIGHT_MAIN_PANEL_MODES,
+  type RightMainPanelMode,
 } from '@/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/lib/routes/navigation';
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -116,6 +118,7 @@ export function WorkspacesLayout() {
 
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
+  const [mobileCodePanel, setMobileCodePanel] = useMobileCodePanel();
 
   const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
     PERSIST_KEYS.rightMainPanel,
@@ -137,13 +140,22 @@ export function WorkspacesLayout() {
 
   // Mobile layout: single full-width panel at a time
   if (isMobile) {
+    const CODE_SUB_TABS: {
+      id: RightMainPanelMode;
+      label: string;
+    }[] = [
+      { id: RIGHT_MAIN_PANEL_MODES.CHANGES, label: 'Changes' },
+      { id: RIGHT_MAIN_PANEL_MODES.LOGS, label: 'Logs' },
+      { id: RIGHT_MAIN_PANEL_MODES.PREVIEW, label: 'Preview' },
+    ];
+
     const mobileContent = (
       <ReviewProvider attemptId={selectedWorkspace?.id}>
         <ChangesViewProvider>
           {/* Workspaces tab */}
           <div
             className={cn(
-              'h-full overflow-hidden',
+              'h-full overflow-auto',
               mobileTab !== 'workspaces' && 'hidden'
             )}
           >
@@ -175,19 +187,51 @@ export function WorkspacesLayout() {
               />
             )}
           </div>
-          {/* Changes tab */}
+          {/* Code tab (changes/logs/preview with sub-tabs) */}
           <div
             className={cn(
-              'h-full overflow-hidden',
+              'h-full flex flex-col overflow-hidden',
               mobileTab !== 'changes' && 'hidden'
             )}
           >
-            {selectedWorkspace?.id && (
-              <ChangesPanelContainer
-                attemptId={selectedWorkspace.id}
-                className=""
-              />
-            )}
+            {/* Sub-tab selector */}
+            <div className="flex items-center gap-1 px-base py-1 bg-secondary border-b shrink-0">
+              {CODE_SUB_TABS.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setMobileCodePanel(sub.id)}
+                  className={cn(
+                    'px-2 py-0.5 rounded-sm text-sm',
+                    mobileCodePanel === sub.id
+                      ? 'text-normal bg-fill-tertiary'
+                      : 'text-low hover:text-normal'
+                  )}
+                >
+                  {sub.label}
+                </button>
+              ))}
+            </div>
+            {/* Sub-tab content */}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {mobileCodePanel === RIGHT_MAIN_PANEL_MODES.CHANGES &&
+                selectedWorkspace?.id && (
+                  <ChangesPanelContainer
+                    attemptId={selectedWorkspace.id}
+                    className=""
+                  />
+                )}
+              {mobileCodePanel === RIGHT_MAIN_PANEL_MODES.LOGS && (
+                <LogsContentContainer className="" />
+              )}
+              {mobileCodePanel === RIGHT_MAIN_PANEL_MODES.PREVIEW &&
+                selectedWorkspace?.id && (
+                  <PreviewBrowserContainer
+                    attemptId={selectedWorkspace.id}
+                    className=""
+                  />
+                )}
+            </div>
           </div>
           {/* Git tab */}
           <div
@@ -209,7 +253,7 @@ export function WorkspacesLayout() {
     );
 
     return (
-      <div className="flex flex-col flex-1 min-h-0 h-full">
+      <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
         {isCreateMode ? (
           <CreateModeProvider>{mobileContent}</CreateModeProvider>
         ) : (

@@ -4,7 +4,8 @@ import {
   LayoutIcon,
   ChatsTeardropIcon,
   GitDiffIcon,
-  SidebarSimpleIcon,
+  TerminalIcon,
+  ListIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
@@ -81,7 +82,7 @@ const MOBILE_TABS: { id: MobileTab; icon: Icon; label: string }[] = [
   { id: 'workspaces', icon: LayoutIcon, label: 'Wksps' },
   { id: 'chat', icon: ChatsTeardropIcon, label: 'Chat' },
   { id: 'changes', icon: GitDiffIcon, label: 'Code' },
-  { id: 'git', icon: SidebarSimpleIcon, label: 'Git' },
+  { id: 'git', icon: TerminalIcon, label: 'Git' },
 ];
 
 export interface NavbarProps {
@@ -99,6 +100,8 @@ export interface NavbarProps {
   // Mobile mode props
   mobileMode?: boolean;
   mobileUserSlot?: ReactNode;
+  isOnProjectPage?: boolean;
+  onOpenCommandBar?: () => void;
   className?: string;
 }
 
@@ -111,6 +114,8 @@ export function Navbar({
   onExecuteAction,
   mobileMode = false,
   mobileUserSlot,
+  isOnProjectPage = false,
+  onOpenCommandBar,
   className,
 }: NavbarProps) {
   const [mobileTab, setMobileTab] = useMobileActiveTab();
@@ -118,44 +123,65 @@ export function Navbar({
   if (mobileMode) {
     return (
       <div className={cn('shrink-0', className)}>
-        {/* Row 1 - Tab Bar */}
+        {/* Row 1 - Tab Bar (workspaces pages) or minimal header (project pages) */}
         <nav className="flex items-center bg-secondary border-b px-base py-half">
-          <div className="flex items-center gap-base flex-1">
-            {MOBILE_TABS.map((tab) => {
-              const isActive = mobileTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setMobileTab(tab.id)}
-                  className={cn(
-                    'flex items-center gap-1 px-1.5 py-1 rounded-sm text-sm',
-                    isActive
-                      ? 'text-normal border-b-2 border-brand'
-                      : 'text-low hover:text-normal'
-                  )}
-                >
-                  <tab.icon
-                    className="size-icon-base"
-                    weight={isActive ? 'fill' : 'regular'}
-                  />
-                  <span className="hidden min-[480px]:inline">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <div className="flex items-center">
+          {!isOnProjectPage && (
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              {MOBILE_TABS.map((tab) => {
+                const isActive = mobileTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setMobileTab(tab.id)}
+                    className={cn(
+                      'flex items-center gap-1 px-1.5 py-1 rounded-sm text-sm shrink-0',
+                      isActive
+                        ? 'text-normal border-b-2 border-brand'
+                        : 'text-low hover:text-normal'
+                    )}
+                  >
+                    <tab.icon
+                      className="size-icon-base"
+                      weight={isActive ? 'fill' : 'regular'}
+                    />
+                    <span className="hidden min-[480px]:inline">
+                      {tab.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {isOnProjectPage && (
+            <div className="flex items-center gap-base flex-1 min-w-0">
+              {leftSlot}
+              <p className="text-base text-low truncate">{workspaceTitle}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-1 shrink-0">
             <SyncErrorIndicator />
+            {onOpenCommandBar && (
+              <button
+                type="button"
+                onClick={onOpenCommandBar}
+                className="flex items-center justify-center rounded-sm text-low hover:text-normal"
+              >
+                <ListIcon className="size-icon-base" />
+              </button>
+            )}
             {mobileUserSlot}
           </div>
         </nav>
-        {/* Row 2 - Info Bar */}
-        <div className="flex items-center gap-base px-base py-half bg-secondary border-b">
-          {leftSlot}
-          <p className="text-base text-low truncate flex-1 text-center">
-            {workspaceTitle}
-          </p>
-        </div>
+        {/* Row 2 - Info Bar (workspaces pages only) */}
+        {!isOnProjectPage && (
+          <div className="flex items-center gap-base px-base py-half bg-secondary border-b">
+            {leftSlot}
+            <p className="text-base text-low truncate flex-1 text-center">
+              {workspaceTitle}
+            </p>
+          </div>
+        )}
       </div>
     );
   }
