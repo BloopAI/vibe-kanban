@@ -22,7 +22,7 @@ import { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranche
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useWorkspaces } from '@/features/workspace/model/hooks/useWorkspaces';
+import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { attemptsApi, type Result } from '@/lib/api';
 import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
 import { RebaseInProgressDialog } from '@vibe/ui/components/RebaseInProgressDialog';

@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   useWorkspaces,
   type SidebarWorkspace,
-} from '@/features/workspace/model/hooks/useWorkspaces';
+} from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';

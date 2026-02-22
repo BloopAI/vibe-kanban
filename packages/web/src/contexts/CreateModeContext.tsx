@@ -5,7 +5,7 @@ import {
   useCreateModeState,
   type CreateModeInitialState,
 } from '@/shared/hooks/useCreateModeState';
-import { useWorkspaces } from '@/features/workspace/model/hooks/useWorkspaces';
+import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { useUserContext } from '@/contexts/remote/UserContext';
 
 interface LinkedIssue {
