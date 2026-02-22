@@ -11,7 +11,7 @@ import {
 } from '@/shared/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
+import { useDevServer } from '@/hooks';
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useShape } from '@/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';

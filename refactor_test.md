@@ -104,6 +104,7 @@ Use when the caller is in the wrong layer.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DONE | `src/features/command-bar/ui/actions/useActionVisibility.ts` | `8` | feature | `@/features/workspace-chat/model/store/useDiffViewStore` | `features -> features` | A2 | Moved `useDiffViewStore` to `src/shared/stores` and repointed imports | codex | First lint violation from current run |
 | DONE | `src/features/command-bar/ui/actions/useActionVisibility.ts` | `13` | feature | `@/app/providers/ConfigProvider` | `features -> app` | A3 | Split `useUserSystem` hook + context types to `src/shared/hooks/useUserSystem.ts`, kept provider in `app`, repointed all 30 consumers | claude | Cross-cutting config access used by 31 files; eliminated 8 lint errors |
+| DONE | `src/features/command-bar/ui/actions/useActionVisibility.ts` | `14` | feature | `@/features/workspace/model/hooks/useDevServer` | `features -> features` | A1 | Repointed import to `@/hooks` barrel re-export (already existed in `hooks/index.ts`) | claude | Import path change only; no module move needed |
 
 ## Example Entry
 
