@@ -5583,3 +5583,49 @@ Validation:
 
 Plan adjustments from new information:
 - For remaining leaf rows in `ui-new/views`, prefer extracting components that can derive prop contracts from existing package child components to minimize cross-package type dependencies.
+
+## 2026-02-22 - UI package extraction: IssueWorkspaceCard
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueWorkspaceCard.tsx` as the next extraction target.
+- It is a view-level leaf component with no container dependencies and three straightforward callsites (`IssueWorkspacesSection`, `IssueWorkspacesSectionContainer`, `KanbanContainer`).
+- New information: components that only depend on existing package primitives can usually be extracted by replacing app/shared imports with package-local contracts, without adapter props.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueWorkspaceCard.tsx packages/ui/src/components/IssueWorkspaceCard.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/UserAvatar` -> `./UserAvatar`
+    - `@vibe/ui/components/RunningDots` -> `./RunningDots`
+    - `@vibe/ui/components/DropdownMenu` -> `./DropdownMenu`
+  - Removed shared type dependency (`shared/types`) by reusing package-local type contract:
+    - `owner: UserAvatarUser | null`
+- Frontend callsite updates:
+  - Updated imports in:
+    - `frontend/src/components/ui-new/views/IssueWorkspacesSection.tsx`
+    - `frontend/src/components/ui-new/containers/IssueWorkspacesSectionContainer.tsx`
+    - `frontend/src/components/ui-new/containers/KanbanContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueWorkspaceCard`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Prioritize remaining view extractions where shared type usage can be replaced by existing package component contracts (e.g., avatar/assignee types), since these moves stay small and readable.

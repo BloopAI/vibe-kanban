@@ -19,7 +19,7 @@ import {
 } from '@/lib/workspaceCreateState';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
-import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
+import type { WorkspaceWithStats } from '@vibe/ui/components/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
 import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
 

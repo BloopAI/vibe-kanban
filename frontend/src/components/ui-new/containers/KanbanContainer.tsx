@@ -32,7 +32,7 @@ import {
   IssueWorkspaceCard,
   type WorkspaceWithStats,
   type WorkspacePr,
-} from '@/components/ui-new/views/IssueWorkspaceCard';
+} from '@vibe/ui/components/IssueWorkspaceCard';
 import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
 import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';

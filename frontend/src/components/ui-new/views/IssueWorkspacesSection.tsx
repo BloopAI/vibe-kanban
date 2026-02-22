@@ -3,7 +3,7 @@ import {
   IssueWorkspaceCard,
   IssueWorkspaceCreateCard,
   type WorkspaceWithStats,
-} from '@/components/ui-new/views/IssueWorkspaceCard';
+} from '@vibe/ui/components/IssueWorkspaceCard';
 import {
   CollapsibleSectionHeader,
   type SectionAction,

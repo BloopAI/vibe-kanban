@@ -1,4 +1,4 @@
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { useTranslation } from 'react-i18next';
 import {
   GitPullRequestIcon,
@@ -10,15 +10,14 @@ import {
   TriangleIcon,
   CircleIcon,
 } from '@phosphor-icons/react';
-import { UserAvatar } from '@vibe/ui/components/UserAvatar';
-import { RunningDots } from '@vibe/ui/components/RunningDots';
+import { UserAvatar, type UserAvatarUser } from './UserAvatar';
+import { RunningDots } from './RunningDots';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/DropdownMenu';
-import type { OrganizationMemberWithProfile } from 'shared/types';
+} from './DropdownMenu';
 
 export interface WorkspacePr {
   number: number;
@@ -35,7 +34,7 @@ export interface WorkspaceWithStats {
   linesAdded: number;
   linesRemoved: number;
   prs: WorkspacePr[];
-  owner: OrganizationMemberWithProfile | null;
+  owner: UserAvatarUser | null;
   updatedAt: string;
   isOwnedByCurrentUser: boolean;
   isRunning?: boolean;
