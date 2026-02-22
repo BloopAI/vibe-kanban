@@ -155,6 +155,25 @@ module.exports = {
   },
   overrides: [
     {
+      // Prevent barrel files from re-exporting feature internals,
+      // which would let consumers bypass layer boundary restrictions.
+      files: ['src/hooks/index.ts', 'src/contexts/index.ts'],
+      rules: {
+        'no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: ['@/features/**'],
+                message:
+                  'Barrel files must not re-export from features. Move the hook/module to shared or the appropriate layer first.',
+              },
+            ],
+          },
+        ],
+      },
+    },
+    {
       files: ['src/routes/**/*.{ts,tsx}', 'src/routeTree.gen.ts'],
       rules: {
         'check-file/filename-naming-convention': 'off',
