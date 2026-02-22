@@ -277,6 +277,11 @@
       @apply overflow-hidden;
       height: 100%;
     }
+
+    /* Mobile font scaling - controlled via --mobile-font-scale CSS variable */
+    .new-design {
+      font-size: var(--mobile-font-scale, 100%);
+    }
   }
 
   body {

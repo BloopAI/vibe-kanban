@@ -27,6 +27,11 @@ import {
 } from '@/utils/executor';
 import { useTheme } from '@/components/ThemeProvider';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import {
+  type MobileFontScale,
+  useMobileFontScale,
+} from '@/stores/useUiPreferencesStore';
 import { TagManager } from '@/components/TagManager';
 import { cn } from '@/lib/utils';
 import { PrimaryButton } from '../../primitives/PrimaryButton';
@@ -70,6 +75,8 @@ export function GeneralSettingsSection() {
     null
   );
   const { setTheme } = useTheme();
+  const isMobile = useIsMobile();
+  const [mobileFontScale, setMobileFontScale] = useMobileFontScale();
 
   // Executor options for the default coding agent dropdown
   const executorOptions = profiles
@@ -285,6 +292,26 @@ export function GeneralSettingsSection() {
             placeholder={t('settings.general.appearance.language.placeholder')}
           />
         </SettingsField>
+
+        {isMobile && (
+          <SettingsField
+            label="Mobile Font Size"
+            description="Scale text size on mobile for better readability"
+          >
+            <SettingsSelect
+              value={mobileFontScale}
+              options={[
+                {
+                  value: 'default' as MobileFontScale,
+                  label: 'Default (100%)',
+                },
+                { value: 'small' as MobileFontScale, label: 'Small (95%)' },
+                { value: 'smaller' as MobileFontScale, label: 'Smaller (90%)' },
+              ]}
+              onChange={(value: MobileFontScale) => setMobileFontScale(value)}
+            />
+          </SettingsField>
+        )}
       </SettingsCard>
 
       {/* Editor */}
