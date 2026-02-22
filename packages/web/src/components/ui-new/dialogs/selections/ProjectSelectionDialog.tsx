@@ -17,7 +17,7 @@ import type {
 } from '@/features/command-bar/ui/actions/pages';
 import type { Issue } from 'shared/remote-types';
 import { buildStatusSelectionPages } from './statusSelection';
-import { buildPrioritySelectionPages } from './prioritySelection';
+import { buildPrioritySelectionPages } from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
 import { buildSubIssueSelectionPages } from './subIssueSelection';
 import { buildRelationshipSelectionPages } from './relationshipSelection';
 import {
@@ -26,7 +26,7 @@ import {
 } from '@/components/ui-new/actions';
 import type { SelectionPage } from '../SelectionDialog';
 import type { StatusSelectionResult } from './statusSelection';
-import type { PrioritySelectionResult } from './prioritySelection';
+import type { PrioritySelectionResult } from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
 import type { SubIssueSelectionResult } from './subIssueSelection';
 import type { RelationshipSelectionResult } from './relationshipSelection';
 
