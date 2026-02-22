@@ -26,7 +26,7 @@ import {
   KanbanCards,
   KanbanHeader,
   type DropResult,
-} from '@/components/ui-new/views/KanbanBoard';
+} from '@vibe/ui/components/KanbanBoard';
 import { KanbanCardContent } from '@/components/ui-new/views/KanbanCardContent';
 import {
   IssueWorkspaceCard,

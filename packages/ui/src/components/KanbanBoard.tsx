@@ -1,13 +1,13 @@
 'use client';
 
-import { Card } from '@vibe/ui/components/Card';
+import { Card } from './Card';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@vibe/ui/components/RadixTooltip';
-import { cn } from '@/lib/utils';
+} from './RadixTooltip';
+import { cn } from '../lib/cn';
 import {
   DragDropContext,
   Droppable,
@@ -17,10 +17,15 @@ import {
   type DraggableStateSnapshot,
   type DroppableProvided,
 } from '@hello-pangea/dnd';
-import { type ReactNode, type Ref, type KeyboardEvent } from 'react';
+import {
+  type KeyboardEvent,
+  type MutableRefObject,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
-import { Button } from '@vibe/ui/components/Button';
+import { Button } from './Button';
 
 export type { DropResult } from '@hello-pangea/dnd';
 
@@ -91,9 +96,8 @@ export const KanbanCard = ({
           if (typeof forwardedRef === 'function') {
             forwardedRef(node);
           } else if (forwardedRef && typeof forwardedRef === 'object') {
-            (
-              forwardedRef as React.MutableRefObject<HTMLDivElement | null>
-            ).current = node;
+            (forwardedRef as MutableRefObject<HTMLDivElement | null>).current =
+              node;
           }
         };
 

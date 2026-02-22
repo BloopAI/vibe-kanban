@@ -5864,3 +5864,47 @@ Validation:
 
 Plan adjustments from new information:
 - Prefer extracting view components by moving stateful store hooks into containers first; this keeps `@vibe/ui` components framework-agnostic and easier to reason about.
+
+## 2026-02-22 - UI package extraction: KanbanBoard
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/KanbanBoard.tsx` as the next extraction target.
+- It has a single container callsite (`KanbanContainer`) and no frontend store/context coupling.
+- New information: layout-style view primitives with package-only dependencies are the lowest-risk extractions and should be prioritized ahead of views tied to dialogs/containers.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/KanbanBoard.tsx packages/ui/src/components/KanbanBoard.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/Card` -> `./Card`
+    - `@vibe/ui/components/RadixTooltip` -> `./RadixTooltip`
+    - `@vibe/ui/components/Button` -> `./Button`
+  - Simplified React namespace usage for ref typing:
+    - `React.MutableRefObject` -> imported `MutableRefObject` type
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/KanbanContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/KanbanBoard`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue prioritizing extracted view modules that only compose package primitives and utility helpers; defer views that directly depend on app dialogs, containers, or editor integrations.
