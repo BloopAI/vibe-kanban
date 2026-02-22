@@ -5111,3 +5111,52 @@ Validation:
 Plan adjustments from new information:
 - The migrate-flow views are now fully extracted from `frontend/src/components/ui-new/views`.
 - Router-coupled behavior has a stable extraction pattern: keep route decisions in containers and pass action callbacks into `@vibe/ui` views.
+
+## 2026-02-22 - UI package extraction: TerminalPanel
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/TerminalPanel.tsx` as the next low-coupling view extraction candidate.
+- It had a single callsite (`TerminalPanelContainer`) but directly imported app-specific `TerminalTab` and `XTermInstance`.
+- New information: this class of coupling is cleanly handled by render adapters: keep the UI component as a pure list/slot renderer and inject app/runtime components from containers.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/TerminalPanel.tsx packages/ui/src/components/TerminalPanel.tsx`
+- Package updates:
+  - Removed frontend-context dependency:
+    - dropped `@/contexts/TerminalContext` type import
+  - Removed frontend runtime component dependency:
+    - dropped `../terminal/XTermInstance` import
+  - Reworked component contract to be package-agnostic:
+    - `tabs: { id: string }[]`
+    - `activeTabId: string | null`
+    - `renderTab: (tabId: string, isActive: boolean) => ReactNode`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/TerminalPanelContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/TerminalPanel`
+  - Added render adapter in container:
+    - Container now renders `XTermInstance` via `renderTab`
+    - `closeTab` remains handled in container scope
+  - Removed now-unneeded `setActiveTab` usage from container wiring
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Render-prop adapters are an effective extraction pattern for components that currently embed app-runtime widgets.
+- This creates a straightforward path for similarly structured views without dragging runtime/context dependencies into `@vibe/ui`.

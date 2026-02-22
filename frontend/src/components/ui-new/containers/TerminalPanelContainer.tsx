@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useTerminal } from '@/contexts/TerminalContext';
-import { TerminalPanel } from '../views/TerminalPanel';
+import { TerminalPanel } from '@vibe/ui/components/TerminalPanel';
+import { XTermInstance } from '../terminal/XTermInstance';
 
 export function TerminalPanelContainer() {
   const { workspace } = useWorkspaceContext();
@@ -10,7 +11,6 @@ export function TerminalPanelContainer() {
     getActiveTab,
     createTab,
     closeTab,
-    setActiveTab,
     clearWorkspaceTabs,
   } = useTerminal();
 
@@ -53,13 +53,15 @@ export function TerminalPanelContainer() {
     <TerminalPanel
       tabs={tabs}
       activeTabId={activeTab?.id ?? null}
-      workspaceId={workspaceId ?? ''}
-      containerRef={containerRef}
-      onTabSelect={(tabId) => workspaceId && setActiveTab(workspaceId, tabId)}
-      onTabClose={(tabId) => workspaceId && closeTab(workspaceId, tabId)}
-      onNewTab={() =>
-        workspaceId && containerRef && createTab(workspaceId, containerRef)
-      }
+      renderTab={(tabId, isActive) => (
+        <XTermInstance
+          key={tabId}
+          tabId={tabId}
+          workspaceId={workspaceId ?? ''}
+          isActive={isActive}
+          onClose={() => workspaceId && closeTab(workspaceId, tabId)}
+        />
+      )}
     />
   );
 }
