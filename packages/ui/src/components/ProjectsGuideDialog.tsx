@@ -2,17 +2,13 @@ import { useCallback, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal, type NoProps } from '@/lib/modals';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import {
-  GuideDialogShell,
-  type GuideDialogTopic,
-} from '@vibe/ui/components/GuideDialogShell';
+import { defineModal, type NoProps } from '../lib/modals';
+import { GuideDialogShell, type GuideDialogTopic } from './GuideDialogShell';
 
 const ProjectsGuideDialogImpl = NiceModal.create<NoProps>(() => {
   const modal = useModal();
-  const container = usePortalContainer();
   const { t } = useTranslation('common');
+  const container = typeof document !== 'undefined' ? document.body : null;
 
   const handleClose = useCallback(() => {
     modal.hide();

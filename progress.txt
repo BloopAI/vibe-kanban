@@ -6712,3 +6712,48 @@ Validation:
 Plan adjustments from new information:
 - For dialogs with lightweight computed status (like open-PR guards), pass precomputed booleans/labels from frontend callsites rather than embedding app data hooks in `@vibe/ui`.
 - This keeps package dialogs presentational while preserving behavior parity across multiple callsites.
+
+## 2026-02-22 - UI package extraction: ProjectsGuideDialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/ProjectsGuideDialog.tsx` as the next extraction target.
+- It has two direct callsites (`frontend/src/components/ui-new/actions/index.ts`, `frontend/src/components/ui-new/containers/KanbanContainer.tsx`) and a thin wrapper around `GuideDialogShell`.
+- Main couplings were frontend-only modal utility import and portal-container context usage.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/ProjectsGuideDialog.tsx packages/ui/src/components/ProjectsGuideDialog.tsx`
+- Package updates:
+  - Replaced frontend modal helper import:
+    - `@/lib/modals` -> `../lib/modals`
+  - Replaced package self import alias with relative import:
+    - `@vibe/ui/components/GuideDialogShell` -> `./GuideDialogShell`
+  - Removed dependency on frontend portal context (`usePortalContainer`) and now portals to `document.body` when available.
+  - Preserved dialog API and behavior (`ProjectsGuideDialog.show()`, ESC-to-close, existing topic content).
+- Frontend callsite updates:
+  - Updated imports in:
+    - `frontend/src/components/ui-new/actions/index.ts`
+    - `frontend/src/components/ui-new/containers/KanbanContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/ProjectsGuideDialog`
+  - No behavioral callsite changes required.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Thin modal wrappers around already-extracted UI shells can be moved incrementally with minimal risk if frontend-only portal/context dependencies are removed.
+- For global dialogs invoked from both actions and containers, package-level portal defaults (`document.body`) reduce callsite complexity and avoid cross-package context coupling.

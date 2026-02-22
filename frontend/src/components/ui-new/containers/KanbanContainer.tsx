@@ -39,7 +39,7 @@ import { KanbanFilterBar } from '@vibe/ui/components/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
+import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
 import { KanbanFiltersDialog } from '@/components/ui-new/dialogs/KanbanFiltersDialog';
 import {
   DropdownMenu,
