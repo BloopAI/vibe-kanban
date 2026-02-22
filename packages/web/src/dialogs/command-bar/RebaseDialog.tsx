@@ -20,7 +20,7 @@ import { useGitOperations } from '@/hooks/useGitOperations';
 import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
 import { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
-import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useWorkspaces } from '@/features/workspace/model/hooks/useWorkspaces';
 import { attemptsApi, type Result } from '@/lib/api';

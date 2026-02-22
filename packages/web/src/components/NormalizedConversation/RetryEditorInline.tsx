@@ -10,7 +10,7 @@ import { imagesApi } from '@/lib/api';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useVariant } from '@/hooks/useVariant';
 import { useRetryProcess } from '@/features/workspace-chat/model/hooks/useRetryProcess';
 import { executorConfigFromAction } from '@/shared/lib/executor';

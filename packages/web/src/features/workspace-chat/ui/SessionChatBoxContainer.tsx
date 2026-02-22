@@ -27,7 +27,7 @@ import { useSessionQueueInteraction } from '../model/hooks/useSessionQueueIntera
 import { useSessionSend } from '../model/hooks/useSessionSend';
 import { useSessionAttachments } from '../model/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '../model/hooks/useMessageEditRetry';
-import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useAttemptBranch } from '../model/hooks/useAttemptBranch';
 import { useApprovalMutation } from '../model/hooks/useApprovalMutation';
 import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';

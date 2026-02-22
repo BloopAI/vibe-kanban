@@ -1,4 +1,4 @@
-export { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+export { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 export { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
 export {
