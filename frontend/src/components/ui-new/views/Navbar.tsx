@@ -167,6 +167,16 @@ export function Navbar({
                   </button>
                 );
               })}
+              {onNavigateToBoard && (
+                <button
+                  type="button"
+                  onClick={onNavigateToBoard}
+                  className="flex items-center gap-1 px-1.5 py-1 rounded-sm text-sm shrink-0 text-low hover:text-normal"
+                >
+                  <KanbanIcon className="size-icon-base" />
+                  <span className="hidden min-[480px]:inline">Board</span>
+                </button>
+              )}
             </div>
           )}
           {isOnProjectPage && (
@@ -184,7 +194,7 @@ export function Navbar({
               <p className="text-base text-low truncate">{workspaceTitle}</p>
             </div>
           )}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <SyncErrorIndicator />
             {onReload && (
               <button
@@ -223,16 +233,6 @@ export function Navbar({
             <p className="text-base text-low truncate flex-1 text-center">
               {workspaceTitle}
             </p>
-            {onNavigateToBoard && (
-              <button
-                type="button"
-                onClick={onNavigateToBoard}
-                className="flex items-center gap-1 shrink-0 rounded-sm px-1.5 py-0.5 text-sm text-low hover:text-normal hover:bg-panel transition-colors"
-              >
-                <KanbanIcon className="size-icon-base" />
-                <span className="hidden min-[480px]:inline">Board</span>
-              </button>
-            )}
           </div>
         )}
       </div>
