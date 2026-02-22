@@ -71,6 +71,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/EditBranchNameDialog.tsx`.
   - [x] Moved feature dialog `EditorSelectionDialog` to
         `src/features/command-bar/ui/dialogs/EditorSelectionDialog.tsx`.
+  - [x] Moved feature dialog `ViewProcessesDialog` to
+        `src/features/command-bar/ui/dialogs/ViewProcessesDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -127,6 +129,8 @@ compatibility shims.
         `src/components/dialogs/tasks/EditBranchNameDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/EditorSelectionDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/ViewProcessesDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -208,6 +212,9 @@ compatibility shims.
         `src/components/dialogs/index.ts`,
         `src/components/ui-new/actions/index.ts`,
         `src/hooks/useOpenInEditor.ts`.
+  - [x] Updated canonical callsite to
+        `@/features/command-bar/ui/dialogs/ViewProcessesDialog` in
+        `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.

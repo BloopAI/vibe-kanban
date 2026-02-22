@@ -44,7 +44,7 @@ export {
 export {
   ViewProcessesDialog,
   type ViewProcessesDialogProps,
-} from './tasks/ViewProcessesDialog';
+} from '@/features/command-bar/ui/dialogs/ViewProcessesDialog';
 export {
   GitActionsDialog,
   type GitActionsDialogProps,
