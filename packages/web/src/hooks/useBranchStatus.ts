@@ -1,11 +1,1 @@
-import { useQuery } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
-
-export function useBranchStatus(attemptId?: string) {
-  return useQuery({
-    queryKey: ['branchStatus', attemptId],
-    queryFn: () => attemptsApi.getBranchStatus(attemptId!),
-    enabled: !!attemptId,
-    refetchInterval: 5000,
-  });
-}
+export * from '@/features/workspace/model/hooks/useBranchStatus';

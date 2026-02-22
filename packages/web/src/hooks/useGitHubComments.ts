@@ -3,7 +3,7 @@ import { usePrComments } from './usePrComments';
 import {
   usePersistedExpanded,
   PERSIST_KEYS,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import type { UnifiedPrComment } from 'shared/types';
 import { DiffSide } from '@/types/diff';
 

@@ -11,13 +11,13 @@ import { WorkspacesMain } from '@vibe/ui/components/WorkspacesMain';
 import {
   ConversationList,
   type ConversationListHandle,
-} from '@/components/ui-new/containers/ConversationListContainer';
+} from '@/features/workspace-chat/ui/ConversationListContainer';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
-import { EntriesProvider } from '@/contexts/EntriesContext';
-import { MessageEditProvider } from '@/contexts/MessageEditContext';
-import { RetryUiProvider } from '@/contexts/RetryUiContext';
-import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
+import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
+import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
+import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 export interface WorkspacesMainContainerHandle {

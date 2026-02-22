@@ -3,8 +3,8 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { BaseAgentCapability } from 'shared/types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
-import { useRetryUi } from '@/contexts/RetryUiContext';
-import { useAttemptExecution } from '@/hooks/useAttemptExecution';
+import { useRetryUi } from '@/features/workspace-chat/model/contexts/RetryUiContext';
+import { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
 import { RetryEditorInline } from './RetryEditorInline';
 
 const UserMessage = ({

@@ -1,8 +1,8 @@
-import { useRebase } from './useRebase';
-import { useMerge } from './useMerge';
-import { usePush } from './usePush';
-import { useForcePush } from './useForcePush';
-import { useChangeTargetBranch } from './useChangeTargetBranch';
+import { useRebase } from '@/features/workspace/model/hooks/useRebase';
+import { useMerge } from '@/features/workspace/model/hooks/useMerge';
+import { usePush } from '@/features/workspace/model/hooks/usePush';
+import { useForcePush } from '@/features/workspace/model/hooks/useForcePush';
+import { useChangeTargetBranch } from '@/features/workspace/model/hooks/useChangeTargetBranch';
 import { useGitOperationsError } from '@/contexts/GitOperationsContext';
 import { Result } from '@/lib/api';
 import type { GitOperationError, PushTaskAttemptRequest } from 'shared/types';

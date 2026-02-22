@@ -9,7 +9,7 @@ import { createHmrContext } from '@/lib/hmrContext.ts';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 /** Callback type for scroll-to-file implementation (provided by ChangesPanelContainer) */

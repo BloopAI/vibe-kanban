@@ -18,7 +18,7 @@ import {
   useExpandedAll,
   usePersistedExpanded,
   useUiPreferencesStore,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import {
   CollapsibleSectionHeader,
   type SectionAction,

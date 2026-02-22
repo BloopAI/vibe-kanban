@@ -5,7 +5,7 @@ import { useCreateMode } from '@/contexts/CreateModeContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
+import { useCreateWorkspace } from '@/features/workspace/model/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';

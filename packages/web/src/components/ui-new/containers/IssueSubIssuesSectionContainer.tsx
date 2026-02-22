@@ -3,7 +3,7 @@ import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { PlusIcon, LinkIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useKanbanNavigation } from '@/features/kanban/model/hooks/useKanbanNavigation';
 import { useActions } from '@/contexts/ActionsContext';
 import { Actions } from '@/components/ui-new/actions';
 import { bulkUpdateIssues } from '@/lib/remoteApi';

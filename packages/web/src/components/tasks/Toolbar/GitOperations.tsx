@@ -23,7 +23,7 @@ import { BranchRebaseDialog } from '@/features/command-bar/ui/dialogs/BranchReba
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 
 import { useTranslation } from 'react-i18next';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
 import { useGitOperations } from '@/hooks/useGitOperations';
 import { useRepoBranches } from '@/hooks';
 

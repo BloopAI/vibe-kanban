@@ -13,10 +13,13 @@ import {
   KANBAN_PROJECT_VIEW_IDS,
   type KanbanFilterState,
   type KanbanSortField,
-} from '@/stores/useUiPreferencesStore';
-import { useKanbanFilters, PRIORITY_ORDER } from '@/hooks/useKanbanFilters';
+} from '@/shared/stores/useUiPreferencesStore';
+import {
+  useKanbanFilters,
+  PRIORITY_ORDER,
+} from '../model/hooks/useKanbanFilters';
 import { bulkUpdateIssues, type BulkUpdateIssueItem } from '@/lib/remoteApi';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useKanbanNavigation } from '../model/hooks/useKanbanNavigation';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/components/ui-new/actions';
 import type { OrganizationMemberWithProfile } from 'shared/types';

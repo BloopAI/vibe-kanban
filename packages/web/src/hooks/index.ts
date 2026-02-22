@@ -1,23 +1,26 @@
 export { useBranchStatus } from './useBranchStatus';
 export { useAttemptExecution } from './useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
-export { useTaskAttempt, useTaskAttemptWithSession } from './useTaskAttempt';
+export {
+  useTaskAttempt,
+  useTaskAttemptWithSession,
+} from '@/features/workspace/model/hooks/useTaskAttempt';
 export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
-export { useDevServer } from './useDevServer';
-export { useRebase } from './useRebase';
-export { useChangeTargetBranch } from './useChangeTargetBranch';
+export { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
+export { useRebase } from '@/features/workspace/model/hooks/useRebase';
+export { useChangeTargetBranch } from '@/features/workspace/model/hooks/useChangeTargetBranch';
 export { useRenameBranch } from './useRenameBranch';
-export { useMerge } from './useMerge';
+export { useMerge } from '@/features/workspace/model/hooks/useMerge';
 export { usePush } from './usePush';
-export { useAttemptConflicts } from './useAttemptConflicts';
+export { useAttemptConflicts } from '@/features/workspace/model/hooks/useAttemptConflicts';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
 export { useAttempt } from './useAttempt';
-export { useRepoBranches } from './useRepoBranches';
-export { useRepoBranchSelection } from './useRepoBranchSelection';
-export type { RepoBranchConfig } from './useRepoBranchSelection';
-export { useTaskAttempts } from './useTaskAttempts';
+export { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
+export { useRepoBranchSelection } from '@/features/workspace/model/hooks/useRepoBranchSelection';
+export type { RepoBranchConfig } from '@/features/workspace/model/hooks/useRepoBranchSelection';
+export { useTaskAttempts } from '@/features/workspace/model/hooks/useTaskAttempts';
 export { useAuth } from './auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
 export { useAuthStatus } from './auth/useAuthStatus';

@@ -11,7 +11,7 @@ import type { LogsPanelContent } from '@/components/ui-new/containers/LogsConten
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 
 interface LogsPanelContextValue {

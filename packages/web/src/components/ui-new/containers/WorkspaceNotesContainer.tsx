@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useWorkspaceNotes } from '@/hooks/useWorkspaceNotes';
+import { useWorkspaceNotes } from '@/features/workspace/model/hooks/useWorkspaceNotes';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { SpinnerIcon } from '@phosphor-icons/react';
 

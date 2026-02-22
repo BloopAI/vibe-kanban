@@ -14,14 +14,14 @@ import {
   MOBILE_HEIGHT,
   PHONE_FRAME_PADDING,
 } from '@vibe/ui/components/PreviewBrowser';
-import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
-import { usePreviewUrl } from '../hooks/usePreviewUrl';
+import { usePreviewDevServer } from '@/features/workspace/model/hooks/usePreviewDevServer';
+import { usePreviewUrl } from '@/hooks/usePreviewUrl';
 import {
   usePreviewSettings,
   type ScreenSize,
 } from '@/hooks/usePreviewSettings';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/shared/ui/dialogs/ScriptFixerDialog';
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';

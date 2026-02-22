@@ -292,6 +292,17 @@ packages/web/src/
      - updated moved workspace-chat feature files to use hook adapters
        (`src/hooks/useUserSystem.ts`, `src/hooks/useTheme.ts`) instead of
        importing `@/app/*` directly
+     - moved conversation list container from
+       `src/components/ui-new/containers/ConversationListContainer.tsx` to
+       `src/features/workspace-chat/ui/ConversationListContainer.tsx`
+     - updated canonical imports to conversation list feature path in:
+       - `src/components/ui-new/containers/WorkspacesMainContainer.tsx`
+       - `src/components/ui-new/containers/ProjectRightSidebarContainer.tsx`
+     - kept temporary compatibility shim at legacy path:
+       - `src/components/ui-new/containers/ConversationListContainer.tsx`
+     - kept `src/features/workspace/ui/VSCodeWorkspacePage.tsx` on the legacy
+       shim import path to satisfy current feature-layer import boundaries
+       (`no-restricted-imports`)
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders
@@ -305,6 +316,9 @@ packages/web/src/
      (legacy shim retained)
    - [x] `src/components/ui-new/containers/NewDisplayConversationEntry.tsx` ->
      `src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`
+     (legacy shim retained)
+   - [x] `src/components/ui-new/containers/ConversationListContainer.tsx` ->
+     `src/features/workspace-chat/ui/ConversationListContainer.tsx`
      (legacy shim retained)
 
 ## Phase D. Dialog/Modal Consolidation

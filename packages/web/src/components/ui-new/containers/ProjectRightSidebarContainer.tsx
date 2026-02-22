@@ -12,21 +12,21 @@ import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
-import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
-import { EntriesProvider } from '@/contexts/EntriesContext';
-import { MessageEditProvider } from '@/contexts/MessageEditContext';
+import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
+import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
+import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
+import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
-import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
-import { useAttempt } from '@/hooks/useAttempt';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useWorkspaceSessions } from '@/features/workspace/model/hooks/useWorkspaceSessions';
+import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
+import { useKanbanNavigation } from '@/features/kanban/model/hooks/useKanbanNavigation';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
 import {
   ConversationList,
   type ConversationListHandle,
-} from '@/components/ui-new/containers/ConversationListContainer';
+} from '@/features/workspace-chat/ui/ConversationListContainer';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { toWorkspace } from '@/shared/lib/routes/navigation';

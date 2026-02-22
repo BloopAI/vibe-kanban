@@ -15,8 +15,8 @@ import { LoginRequiredPrompt } from '@/shared/ui/dialogs/LoginRequiredPrompt';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
+import { useKanbanNavigation } from '../model/hooks/useKanbanNavigation';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
   buildIssueCreatePath,

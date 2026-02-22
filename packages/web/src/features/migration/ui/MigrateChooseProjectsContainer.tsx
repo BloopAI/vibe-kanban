@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects } from '../model/hooks/useProjects';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { MigrateChooseProjects } from '@vibe/ui/components/MigrateChooseProjects';
 

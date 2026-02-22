@@ -25,7 +25,7 @@ import {
   useDiffViewMode,
   useWrapTextDiff,
   useIgnoreWhitespaceDiff,
-} from '@/stores/useDiffViewStore';
+} from '@/features/workspace-chat/model/store/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';

@@ -3,7 +3,7 @@ import type {
   OrganizationWithRole,
   ListOrganizationsResponse,
 } from 'shared/types';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 
 interface UseOrganizationSelectionOptions {
   organizations: ListOrganizationsResponse | undefined;

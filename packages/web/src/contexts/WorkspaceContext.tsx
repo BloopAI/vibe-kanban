@@ -6,17 +6,17 @@ import {
   useWorkspaces,
   workspaceSummaryKeys,
   type SidebarWorkspace,
-} from '@/components/ui-new/hooks/useWorkspaces';
-import { useAttempt } from '@/hooks/useAttempt';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
+} from '@/features/workspace/model/hooks/useWorkspaces';
+import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
+import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useWorkspaceSessions } from '@/features/workspace/model/hooks/useWorkspaceSessions';
 import {
   useGitHubComments,
   type NormalizedGitHubComment,
 } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
-import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useDiffViewStore } from '@/features/workspace-chat/model/store/useDiffViewStore';
 import { toWorkspace, toWorkspacesCreate } from '@/lib/routes/navigation';
 import type {
   Workspace as ApiWorkspace,

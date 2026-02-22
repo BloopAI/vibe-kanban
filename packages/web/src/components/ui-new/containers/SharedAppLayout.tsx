@@ -8,7 +8,7 @@ import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/hooks/useGitHubStars';

@@ -8,7 +8,7 @@ import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useScrollSyncStateMachine } from '@/hooks/useScrollSyncStateMachine';
-import { usePersistedExpanded } from '@/stores/useUiPreferencesStore';
+import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
 import { PierreDiffCard } from '@/components/ui-new/containers/PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 

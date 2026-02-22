@@ -11,13 +11,13 @@ import {
 } from 'lucide-react';
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
-import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/features/workspace-chat/model/hooks/useExecutionProcesses';
 import { useLogStream } from '@/hooks/useLogStream';
 import { ProcessLogsViewerContent } from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
-import { useProcessSelection } from '@/contexts/ProcessSelectionContext';
-import { useRetryUi } from '@/contexts/RetryUiContext';
+import { useProcessSelection } from '@/features/workspace-chat/model/contexts/ProcessSelectionContext';
+import { useRetryUi } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 
 interface ProcessesTabProps {
   sessionId?: string;

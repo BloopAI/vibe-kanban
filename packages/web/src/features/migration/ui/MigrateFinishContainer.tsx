@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects } from '../model/hooks/useProjects';
 import {
   MigrateFinish,
   type MigrateFinishProject,

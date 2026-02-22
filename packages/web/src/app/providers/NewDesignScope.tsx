@@ -11,7 +11,7 @@ import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
 import { useIssueShortcuts } from '@/keyboard/useIssueShortcuts';
-import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
 import { useKeyShowHelp, Scope } from '@/keyboard';

@@ -8,7 +8,7 @@ import {
 import {
   useContextBarPosition as useContextBarPositionStore,
   type ContextBarPosition,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 
 const EDGE_PADDING = 16;
 

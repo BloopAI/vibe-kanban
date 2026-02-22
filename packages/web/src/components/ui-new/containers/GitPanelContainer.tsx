@@ -1,10 +1,10 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { usePush } from '@/hooks/usePush';
-import { useRenameBranch } from '@/hooks/useRenameBranch';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { usePush } from '@/features/workspace/model/hooks/usePush';
+import { useRenameBranch } from '@/features/workspace/model/hooks/useRenameBranch';
+import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ForcePushDialog } from '@/features/command-bar/ui/dialogs/ForcePushDialog';
 import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';

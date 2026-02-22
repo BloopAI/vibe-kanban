@@ -16,7 +16,7 @@ import {
   type WorkspacePrFilter,
   type WorkspaceSortBy,
   type WorkspaceSortOrder,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
 import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
 import {

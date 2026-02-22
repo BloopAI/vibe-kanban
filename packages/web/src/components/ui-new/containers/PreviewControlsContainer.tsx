@@ -1,12 +1,12 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PreviewControls } from '@vibe/ui/components/PreviewControls';
-import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
+import { usePreviewDevServer } from '@/features/workspace/model/hooks/usePreviewDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { VirtualizedProcessLogs } from './VirtualizedProcessLogs';

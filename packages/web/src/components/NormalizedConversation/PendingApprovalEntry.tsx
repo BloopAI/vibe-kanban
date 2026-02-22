@@ -22,7 +22,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/contexts/TabNavigationContext';
 import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
-import { useApprovalForm } from '@/contexts/ApprovalFormContext';
+import { useApprovalForm } from '@/features/workspace-chat/model/contexts/ApprovalFormContext';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
 

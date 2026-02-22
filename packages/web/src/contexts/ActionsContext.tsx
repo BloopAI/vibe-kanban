@@ -9,7 +9,7 @@ import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { buildIssueCreatePath } from '@/lib/routes/projectSidebarRoutes';
 import {
@@ -23,7 +23,7 @@ import {
 import { getActionLabel } from '@/features/command-bar/ui/actions/useActionVisibility';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { UserContext } from '@/contexts/remote/UserContext';
-import { useDevServer } from '@/hooks/useDevServer';
+import { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useLogStream } from '@/hooks/useLogStream';
 

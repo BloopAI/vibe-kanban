@@ -5,7 +5,7 @@ import { AppBarUserPopover } from '@vibe/ui/components/AppBarUserPopover';
 import { SettingsDialog } from '@/features/settings/ui/dialogs/SettingsDialog';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useActions } from '@/contexts/ActionsContext';
 import { Actions } from '@/components/ui-new/actions';
 import { toMigrate } from '@/shared/lib/routes/navigation';

@@ -4,8 +4,8 @@ import type { DraftWorkspaceImage, Repo, ExecutorConfig } from 'shared/types';
 import {
   useCreateModeState,
   type CreateModeInitialState,
-} from '@/hooks/useCreateModeState';
-import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
+} from '@/features/workspace/model/hooks/useCreateModeState';
+import { useWorkspaces } from '@/features/workspace/model/hooks/useWorkspaces';
 import { useUserContext } from '@/contexts/remote/UserContext';
 
 interface LinkedIssue {
