@@ -1,17 +1,26 @@
 import { useTranslation } from 'react-i18next';
-import { CaretDownIcon, ArrowSquareUpRightIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { getFileIcon } from '@/utils/fileTypeIcon';
-import { useTheme } from '@/components/ThemeProvider';
-import { getActualTheme } from '@/utils/theme';
-import { ToolStatus } from 'shared/types';
-import { inIframe, openFileInVSCode } from '@/vscode/bridge';
-import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 import {
-  DiffViewBody,
-  useDiffData,
-  type DiffInput,
-} from './PierreConversationDiff';
+  CaretDownIcon,
+  ArrowSquareUpRightIcon,
+  FileIcon as DefaultFileIcon,
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
+
+export type ChatFileEntryDiffInput =
+  | {
+      type: 'content';
+      oldContent: string;
+      newContent: string;
+      oldPath?: string;
+      newPath: string;
+    }
+  | {
+      type: 'unified';
+      path: string;
+      unifiedDiff: string;
+      hasLineNumbers?: boolean;
+    };
 
 interface ChatFileEntryProps {
   filename: string;
@@ -20,11 +29,19 @@ interface ChatFileEntryProps {
   expanded?: boolean;
   onToggle?: () => void;
   className?: string;
-  status?: ToolStatus;
+  status?: ToolStatusLike;
   /** Optional diff content for expanded view */
-  diffContent?: DiffInput;
+  diffContent?: ChatFileEntryDiffInput;
   /** Optional callback to open file in changes panel */
   onOpenInChanges?: () => void;
+  /** Optional file icon override from the app layer */
+  fileIcon?: React.ElementType;
+  /** Whether host app is running inside VSCode iframe */
+  isVSCode?: boolean;
+  /** Optional VSCode file opener from the app layer */
+  onOpenInVSCode?: (filename: string) => void;
+  /** Optional diff renderer from the app layer */
+  renderDiffBody?: (diffContent: ChatFileEntryDiffInput) => React.ReactNode;
 }
 
 export function ChatFileEntry({
@@ -37,28 +54,24 @@ export function ChatFileEntry({
   status,
   diffContent,
   onOpenInChanges,
+  fileIcon,
+  isVSCode = false,
+  onOpenInVSCode,
+  renderDiffBody,
 }: ChatFileEntryProps) {
   const { t } = useTranslation('tasks');
-  const { theme } = useTheme();
-  const actualTheme = getActualTheme(theme);
   const hasStats = additions !== undefined || deletions !== undefined;
-  const FileIcon = getFileIcon(filename, actualTheme);
+  const FileIcon = fileIcon ?? DefaultFileIcon;
   const isDenied = status?.status === 'denied';
-  const isVSCode = inIframe();
+  const hasDiffContent = Boolean(diffContent && renderDiffBody);
 
   const handleClick = () => {
     if (isVSCode) {
-      openFileInVSCode(filename, { openAsDiff: false });
-    } else {
-      onToggle?.();
+      onOpenInVSCode?.(filename);
+      return;
     }
+    onToggle?.();
   };
-
-  // Process diff content if provided
-  const diffData = useDiffData(
-    diffContent ?? { type: 'unified', path: filename, unifiedDiff: '' }
-  );
-  const hasDiffContent = diffContent && diffData.isValid;
 
   // If we have diff content, wrap in a container with the diff body
   if (hasDiffContent) {
@@ -126,15 +139,7 @@ export function ChatFileEntry({
         </div>
 
         {/* Diff body - shown when expanded */}
-        {!isVSCode && expanded && (
-          <DiffViewBody
-            fileDiffMetadata={diffData.fileDiffMetadata}
-            unifiedDiff={diffData.unifiedDiff}
-            isValid={diffData.isValid}
-            hideLineNumbers={diffData.hideLineNumbers}
-            theme={actualTheme}
-          />
-        )}
+        {!isVSCode && expanded && diffContent && renderDiffBody?.(diffContent)}
       </div>
     );
   }

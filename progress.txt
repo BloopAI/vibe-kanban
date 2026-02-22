@@ -4482,3 +4482,58 @@ Plan adjustments from new information:
 - Aggregated conversation renderers that only need status display can stay package-local by using `ToolStatusLike`, without importing shared models.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatFileEntry.tsx` (single callsite, but requires decoupling from theme/file-icon/VSCode bridge and diff-render dependencies via injected props or package-local adapters).
+
+## 2026-02-22 - UI package extraction: ChatFileEntry
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatFileEntry.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) but relied on app-specific integrations (theme resolution, file icon mapping, VSCode bridge, and diff rendering hooks).
+- New information: this component extracts cleanly when app-specific behavior is injected as explicit adapter props, keeping package UI reusable while preserving frontend-owned integrations.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatFileEntry.tsx packages/ui/src/components/ChatFileEntry.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced direct shared-type dependency:
+    - `ToolStatus` -> `ToolStatusLike`
+  - Removed frontend-only dependencies (`ThemeProvider`, `fileTypeIcon`, `vscode/bridge`, `PierreConversationDiff` hooks/components)
+  - Added explicit adapter API:
+    - `fileIcon?: React.ElementType`
+    - `isVSCode?: boolean`
+    - `onOpenInVSCode?: (filename: string) => void`
+    - `renderDiffBody?: (diffContent) => React.ReactNode`
+  - Added package-local diff input export:
+    - `ChatFileEntryDiffInput`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatFileEntry`
+  - Added frontend adapter wiring in `FileEditEntry`:
+    - icon adapter via `getFileIcon(path, actualTheme)`
+    - VSCode adapter via `inIframe()` / `openFileInVSCode`
+    - diff renderer adapter via new `FileEntryDiffBody` helper (`useDiffData` + `DiffViewBody`)
+    - diff validity gating before passing `diffContent`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For components that mix reusable UI with environment integrations, extraction should favor a package component plus frontend adapter props rather than pulling app services into `@vibe/ui`.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatAggregatedDiffEntries.tsx` (single callsite; similar theme/icon/VSCode/diff dependencies and likely same adapter-based decoupling pattern).

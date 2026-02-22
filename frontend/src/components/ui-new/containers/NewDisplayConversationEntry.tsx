@@ -16,7 +16,10 @@ import {
   usePersistedExpanded,
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
+import { getActualTheme } from '@/utils/theme';
+import { getFileIcon } from '@/utils/fileTypeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { useTheme } from '@/components/ThemeProvider';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetProcess';
@@ -30,7 +33,10 @@ import {
 } from '@/components/dialogs/scripts/ScriptFixerDialog';
 import { ChatToolSummary } from '@vibe/ui/components/ChatToolSummary';
 import { ChatTodoList } from '@vibe/ui/components/ChatTodoList';
-import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
+import {
+  ChatFileEntry,
+  type ChatFileEntryDiffInput,
+} from '@vibe/ui/components/ChatFileEntry';
 import { ChatApprovalCard } from '@vibe/ui/components/ChatApprovalCard';
 import { ChatUserMessage } from '@vibe/ui/components/ChatUserMessage';
 import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
@@ -43,7 +49,11 @@ import { ChatAggregatedToolEntries } from '@vibe/ui/components/ChatAggregatedToo
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
 import { ChatCollapsedThinking } from '@vibe/ui/components/ChatCollapsedThinking';
 import { ChatMarkdown } from '../primitives/conversation/ChatMarkdown';
-import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
+import {
+  DiffViewBody,
+  useDiffData,
+} from '../primitives/conversation/PierreConversationDiff';
+import { inIframe, openFileInVSCode } from '@/vscode/bridge';
 import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
@@ -400,6 +410,30 @@ function NewDisplayConversationEntry(props: Props) {
 /**
  * File edit entry with expandable diff
  */
+function FileEntryDiffBody({
+  diffContent,
+}: {
+  diffContent: ChatFileEntryDiffInput;
+}) {
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
+  const diffData = useDiffData(diffContent);
+
+  if (!diffData.isValid) {
+    return null;
+  }
+
+  return (
+    <DiffViewBody
+      fileDiffMetadata={diffData.fileDiffMetadata}
+      unifiedDiff={diffData.unifiedDiff}
+      isValid={diffData.isValid}
+      hideLineNumbers={diffData.hideLineNumbers}
+      theme={actualTheme}
+    />
+  );
+}
+
 function FileEditEntry({
   path,
   change,
@@ -417,7 +451,14 @@ function FileEditEntry({
     expansionKey as PersistKey,
     pendingApproval
   );
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
   const { viewFileInChanges, diffPaths } = useChangesView();
+  const FileIcon = useMemo(
+    () => getFileIcon(path, actualTheme),
+    [path, actualTheme]
+  );
+  const isVSCode = inIframe();
 
   // Calculate diff stats for edit changes
   const { additions, deletions } = useMemo(() => {
@@ -432,7 +473,7 @@ function FileEditEntry({
     change.action === 'write' ? change.content.split('\n').length : undefined;
 
   // Build diff content for rendering when expanded
-  const diffContent: DiffInput | undefined = useMemo(() => {
+  const diffContent: ChatFileEntryDiffInput | undefined = useMemo(() => {
     if (change.action === 'edit' && change.unified_diff) {
       return {
         type: 'unified',
@@ -452,11 +493,18 @@ function FileEditEntry({
     }
     return undefined;
   }, [change, path]);
+  const diffPreviewData = useDiffData(
+    diffContent ?? { type: 'unified', path, unifiedDiff: '' }
+  );
+  const hasDiffContent = Boolean(diffContent && diffPreviewData.isValid);
 
   // Only show "open in changes" button if the file exists in current diffs
   const handleOpenInChanges = useCallback(() => {
     viewFileInChanges(path);
   }, [viewFileInChanges, path]);
+  const handleOpenInVSCode = useCallback((filename: string) => {
+    openFileInVSCode(filename, { openAsDiff: false });
+  }, []);
 
   const canOpenInChanges = diffPaths.has(path);
 
@@ -468,7 +516,17 @@ function FileEditEntry({
       expanded={expanded}
       onToggle={toggle}
       status={status}
-      diffContent={diffContent}
+      fileIcon={FileIcon}
+      isVSCode={isVSCode}
+      onOpenInVSCode={handleOpenInVSCode}
+      diffContent={hasDiffContent ? diffContent : undefined}
+      renderDiffBody={
+        hasDiffContent
+          ? (entryDiffContent) => (
+              <FileEntryDiffBody diffContent={entryDiffContent} />
+            )
+          : undefined
+      }
       onOpenInChanges={canOpenInChanges ? handleOpenInChanges : undefined}
     />
   );
