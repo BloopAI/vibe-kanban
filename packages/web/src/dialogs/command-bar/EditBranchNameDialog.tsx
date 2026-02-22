@@ -12,7 +12,7 @@ import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, getErrorMessage } from '@/lib/modals';
-import { useRenameBranch } from '@/features/workspace/model/hooks/useRenameBranch';
+import { useRenameBranch } from '@/shared/hooks/useRenameBranch';
 
 export interface EditBranchNameDialogProps {
   attemptId: string;
