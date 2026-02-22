@@ -59,7 +59,7 @@ export {
 } from './tasks/StartReviewDialog';
 
 // Auth dialogs
-export { GhCliSetupDialog } from './auth/GhCliSetupDialog';
+export { GhCliSetupDialog } from '@/features/settings/ui/dialogs/GhCliSetupDialog';
 
 // Settings dialogs
 export {

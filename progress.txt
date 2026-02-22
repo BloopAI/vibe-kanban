@@ -199,3 +199,37 @@
 
 - Continue `T1.4/T1.6/T1.7` with another feature/global dialog move, or begin
   `T1.5` by converging duplicate `RebaseDialog` implementations.
+
+## 2026-02-22 11:25:56 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next low-risk Track 1 component to move into a UI package path.
+- Selected `GhCliSetupDialog` for feature-owned dialog placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/auth/GhCliSetupDialog.tsx`
+    -> `src/features/settings/ui/dialogs/GhCliSetupDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/auth/GhCliSetupDialog.tsx`.
+  - Updated canonical callsites/import surfaces to
+    `@/features/settings/ui/dialogs/GhCliSetupDialog` in:
+    - `src/components/dialogs/tasks/CreatePRDialog.tsx`
+    - `src/components/dialogs/index.ts`
+- Kept feature-owned dialog lint compatibility by using named imports
+  (`create`, `useModal`) from `@ebay/nice-modal-react` in the moved file.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `GhCliSetupDialog`.
+  - Added a new-information note that some settings-owned integration dialogs
+    are consumed from task dialogs, so Track 1 should keep shims and limit
+    canonical callsite updates.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
+  `src/components/dialogs/tasks/RebaseDialog.tsx` and
+  `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.

@@ -45,6 +45,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/CreateConfigurationDialog.tsx`.
   - [x] Moved feature dialog `DeleteConfigurationDialog` to
         `src/features/settings/ui/dialogs/DeleteConfigurationDialog.tsx`.
+  - [x] Moved feature dialog `GhCliSetupDialog` to
+        `src/features/settings/ui/dialogs/GhCliSetupDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -61,6 +63,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/settings/DeleteConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/dialogs/auth/GhCliSetupDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/FolderPickerDialog.tsx`.
@@ -76,6 +80,10 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/DeleteConfigurationDialog` in:
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/GhCliSetupDialog` in:
+        `src/components/dialogs/tasks/CreatePRDialog.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
@@ -116,6 +124,10 @@ compatibility shims.
   `src/features/*/ui/dialogs/*` are also outside the current NiceModal
   default-import ESLint exception; use named imports (`create`, `useModal`) in
   these feature-owned dialog files as well.
+- New information (2026-02-22): some feature-owned integration dialogs (like
+  `GhCliSetupDialog`) are consumed from task dialogs outside the settings
+  surface; keep compatibility shims and update only minimal canonical
+  callsites/barrel exports during Track 1.
 
 ## Validation
 
