@@ -1,2 +1,10 @@
-# Progress Log: Parallel Track 3 (Shared + Integrations + API Split)
+# Progress Log - Track 3 (Shared + Integrations)
+
+Reset date: 2026-02-22
+
+## Entry Template
+
+- YYYY-MM-DD HH:MM UTC - What changed; key files; checks run.
+
+## Entries
 

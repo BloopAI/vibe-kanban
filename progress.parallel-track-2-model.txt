@@ -1,2 +1,10 @@
-# Progress Log: Parallel Track 2 (Hooks, Contexts, and Stores)
+# Progress Log - Track 2 (Model Layer)
+
+Reset date: 2026-02-22
+
+## Entry Template
+
+- YYYY-MM-DD HH:MM UTC - What changed; key files; checks run.
+
+## Entries
 

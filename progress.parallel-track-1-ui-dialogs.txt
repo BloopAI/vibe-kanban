@@ -1,2 +1,10 @@
-# Progress Log: Parallel Track 1 (UI Surface + Dialog Consolidation)
+# Progress Log - Track 1 (UI Actions + Dialogs)
+
+Reset date: 2026-02-22
+
+## Entry Template
+
+- YYYY-MM-DD HH:MM UTC - What changed; key files; checks run.
+
+## Entries
 
