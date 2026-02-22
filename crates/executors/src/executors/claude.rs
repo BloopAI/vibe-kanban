@@ -622,7 +622,6 @@ impl ClaudeCode {
         // Inject AWS Bedrock env vars when use_bedrock is enabled
         if self.use_bedrock.unwrap_or(false) {
             command.env("CLAUDE_CODE_USE_BEDROCK", "1");
-            command.env("ANTHROPIC_API_KEY", "bedrock");
             if let Some(region) = &self.aws_region {
                 command.env("AWS_REGION", region);
             }
