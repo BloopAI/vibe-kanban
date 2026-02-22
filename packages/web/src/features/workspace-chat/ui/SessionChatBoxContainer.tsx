@@ -19,7 +19,7 @@ import { useEntries, useTokenUsage } from '../model/contexts/EntriesContext';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
-import { useTodos } from '@/features/workspace-chat/model/hooks/useTodos';
+import { useTodos } from '../model/hooks/useTodos';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '../model/hooks/useSessionMessageEditor';
@@ -46,7 +46,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/shared/lib/routes/navigation';
-import { useInspectModeStore } from '@/features/workspace-chat/model/store/useInspectModeStore';
+import { useInspectModeStore } from '../model/store/useInspectModeStore';
 import {
   Actions,
   isSpecialIcon,
