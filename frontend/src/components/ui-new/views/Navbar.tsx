@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Icon } from '@phosphor-icons/react';
 import {
   LayoutIcon,
@@ -134,6 +135,7 @@ export function Navbar({
   onReload,
   className,
 }: NavbarProps) {
+  const { t } = useTranslation(['common']);
   const [mobileTab, setMobileTab] = useMobileActiveTab();
 
   if (mobileMode) {
@@ -174,7 +176,9 @@ export function Navbar({
                   className="flex items-center gap-1 px-1.5 py-1 rounded-sm text-sm shrink-0 text-low hover:text-normal"
                 >
                   <KanbanIcon className="size-icon-base" />
-                  <span className="hidden min-[480px]:inline">Board</span>
+                  <span className="hidden min-[480px]:inline">
+                    {t('common:kanban.board')}
+                  </span>
                 </button>
               )}
             </div>

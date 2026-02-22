@@ -441,6 +441,7 @@
     "noCommands": "No commands available for this agent."
   },
   "kanban": {
+    "board": "Board",
     "noStatusesFound": "No statuses found for this project",
     "noVisibleStatuses": "All statuses are hidden. Use display settings or switch to another tab to view issues.",
     "noProjectFound": "No project found",
