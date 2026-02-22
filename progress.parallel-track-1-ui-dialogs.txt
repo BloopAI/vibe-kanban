@@ -8,3 +8,15 @@ Reset date: 2026-02-22
 
 ## Entries
 
+- 2026-02-22 14:42 UTC - Pre-parallel stabilization pass:
+  moved `components/ui-new/dialogs/KanbanFiltersDialog.tsx` to canonical
+  `features/kanban/ui/dialogs/KanbanFiltersDialog.tsx`; moved settings RJSF
+  modules (`Fields.tsx`, `Templates.tsx`, `Widgets.tsx`, `theme.ts`) to
+  `features/settings/ui/dialogs/settings/rjsf/**`; added strict legacy
+  re-export facades at original `components/ui-new/dialogs/**` paths; repointed
+  callsites in `features/kanban/ui/KanbanContainer.tsx` and
+  `features/settings/ui/dialogs/settings/ExecutorConfigForm.tsx`; resolved
+  feature-layer lint boundary in kanban dialog by importing
+  `@/components/ui-new/dialogs/AssigneeSelectionDialog` compatibility
+  entrypoint. Checks: `pnpm run format`, `pnpm run web:check`,
+  `pnpm run web:lint` all passed.
