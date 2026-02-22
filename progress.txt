@@ -4640,3 +4640,58 @@ Plan adjustments from new information:
 - For content-rendering primitives, extraction should keep package responsibility to UI layout and style contracts while passing app-specific rendering and navigation hooks as explicit adapters.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/PierreConversationDiff.tsx` (last remaining conversation primitive in frontend; heavier due `@pierre/diffs` integration and diff view store coupling).
+
+## 2026-02-22 - UI package extraction: PierreConversationDiff
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/PierreConversationDiff.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) and still contained app-only dependencies (`@/` aliases, diff store hooks, theme/file icon helpers, shared type imports, frontend style path).
+- New information: this diff renderer extracts cleanly when `@vibe/ui` owns the rendering logic and accepts app-owned runtime configuration (`diffMode`, theme, icon) through explicit props.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/PierreConversationDiff.tsx packages/ui/src/components/PierreConversationDiff.tsx`
+- Package updates:
+  - Replaced app aliases and shared type coupling:
+    - `@/lib/utils` -> `../lib/cn`
+    - `ToolStatus` -> `ToolStatusLike`
+  - Removed frontend store/theme dependencies from package internals:
+    - removed `useDiffViewMode`, `useWrapTextDiff`, `useIgnoreWhitespaceDiff`, `useTheme`, `getActualTheme`, `getFileIcon`
+  - Added explicit package API for host adapters:
+    - `DiffViewTheme`, `DiffViewMode`
+    - `DiffViewCard` now accepts `theme`, optional `diffMode`, optional `wrapText`, optional `ignoreWhitespace`, optional `fileIcon`
+    - `DiffViewBody` now accepts optional `diffMode` and optional `invalidMessage`
+  - Inlined diff stat parsing helper in the package module to avoid frontend util dependency.
+  - Added package-local style asset for `@pierre/diffs` overrides:
+    - `packages/ui/src/styles/diff-style-overrides.css`
+    - `PierreConversationDiff` now imports `../styles/diff-style-overrides.css`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/PierreConversationDiff`
+  - Added `useDiffViewMode()` in container and passed `diffMode` into `DiffViewBody` to preserve global split/unified behavior.
+- Workspace/package config updates:
+  - Added `@pierre/diffs` dependency to `packages/ui/package.json`
+  - Ran `pnpm install` to update lockfile/workspace resolution.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅ (after `pnpm install`)
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Conversation primitive extraction from `frontend/src/components/ui-new/primitives/conversation/` is now complete.
+- Remaining `ui-new/primitives` files are only `model-selector` primitives; continuing extraction likely requires a decision on whether model/provider domain UI should remain app-owned or move into `@vibe/ui`.
+- Next likely candidate if extraction continues: `frontend/src/components/ui-new/primitives/model-selector/ModelProviderIcon.tsx` (smallest surface area in the remaining primitive set).

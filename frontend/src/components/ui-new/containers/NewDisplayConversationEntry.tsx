@@ -53,8 +53,9 @@ import { ChatMarkdown } from '@vibe/ui/components/ChatMarkdown';
 import {
   DiffViewBody,
   useDiffData,
-} from '../primitives/conversation/PierreConversationDiff';
+} from '@vibe/ui/components/PierreConversationDiff';
 import { inIframe, openFileInVSCode } from '@/vscode/bridge';
+import { useDiffViewMode } from '@/stores/useDiffViewStore';
 import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
@@ -419,6 +420,7 @@ function FileEntryDiffBody({
 }) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
+  const diffMode = useDiffViewMode();
   const diffData = useDiffData(diffContent);
 
   if (!diffData.isValid) {
@@ -432,6 +434,7 @@ function FileEntryDiffBody({
       isValid={diffData.isValid}
       hideLineNumbers={diffData.hideLineNumbers}
       theme={actualTheme}
+      diffMode={diffMode}
     />
   );
 }
