@@ -7,19 +7,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@vibe/ui/components/KeyboardDialog';
-import { Button } from '@vibe/ui/components/Button';
-import { Input } from '@vibe/ui/components/Input';
+} from './KeyboardDialog';
+import { Button } from './Button';
+import { Input } from './Input';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
-import { attemptKeys } from '@/hooks/useAttempt';
-import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import { defineModal } from '../lib/modals';
 
 export interface RenameWorkspaceDialogProps {
-  workspaceId: string;
   currentName: string;
+  onRename: (newName: string) => Promise<void>;
 }
 
 export type RenameWorkspaceDialogResult = {
@@ -28,41 +24,19 @@ export type RenameWorkspaceDialogResult = {
 };
 
 const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
-  ({ workspaceId, currentName }) => {
+  ({ currentName, onRename }) => {
     const modal = useModal();
     const { t } = useTranslation(['common']);
-    const queryClient = useQueryClient();
     const [name, setName] = useState<string>(currentName);
     const [error, setError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
       setName(currentName);
       setError(null);
     }, [currentName]);
 
-    const renameMutation = useMutation({
-      mutationFn: async (newName: string) => {
-        return attemptsApi.update(workspaceId, { name: newName });
-      },
-      onSuccess: (_, newName) => {
-        queryClient.invalidateQueries({
-          queryKey: attemptKeys.byId(workspaceId),
-        });
-        queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
-        modal.resolve({
-          action: 'confirmed',
-          name: newName,
-        } as RenameWorkspaceDialogResult);
-        modal.hide();
-      },
-      onError: (err: unknown) => {
-        setError(
-          err instanceof Error ? err.message : 'Failed to rename workspace'
-        );
-      },
-    });
-
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
       const trimmedName = name.trim();
 
       if (trimmedName === currentName) {
@@ -71,8 +45,22 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
         return;
       }
 
+      setIsSubmitting(true);
       setError(null);
-      renameMutation.mutate(trimmedName);
+      try {
+        await onRename(trimmedName);
+        modal.resolve({
+          action: 'confirmed',
+          name: trimmedName,
+        } as RenameWorkspaceDialogResult);
+        modal.hide();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to rename workspace'
+        );
+      } finally {
+        setIsSubmitting(false);
+      }
     };
 
     const handleCancel = () => {
@@ -110,12 +98,12 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
                   setError(null);
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !renameMutation.isPending) {
-                    handleConfirm();
+                  if (e.key === 'Enter' && !isSubmitting) {
+                    void handleConfirm();
                   }
                 }}
                 placeholder={t('workspaces.rename.placeholder')}
-                disabled={renameMutation.isPending}
+                disabled={isSubmitting}
                 autoFocus
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
@@ -126,12 +114,12 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
             <Button
               variant="outline"
               onClick={handleCancel}
-              disabled={renameMutation.isPending}
+              disabled={isSubmitting}
             >
               {t('buttons.cancel')}
             </Button>
-            <Button onClick={handleConfirm} disabled={renameMutation.isPending}>
-              {renameMutation.isPending
+            <Button onClick={() => void handleConfirm()} disabled={isSubmitting}>
+              {isSubmitting
                 ? t('workspaces.rename.renaming')
                 : t('workspaces.rename.action')}
             </Button>

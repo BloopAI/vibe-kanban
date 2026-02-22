@@ -6505,3 +6505,53 @@ Validation:
 Plan adjustments from new information:
 - For dialogs that trigger backend mutations, keep package dialogs UI-only and inject operations via callback props from frontend containers/dialog parents.
 - Keep cache invalidation ownership in frontend where query keys and data lifecycles are app-specific.
+
+## 2026-02-22 - UI package extraction: RenameWorkspaceDialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/RenameWorkspaceDialog.tsx` as the next extraction target.
+- It has a single caller (`frontend/src/components/ui-new/actions/index.ts`) and is mostly presentational.
+- Main couplings were frontend-only mutation/query concerns (`attemptsApi`, `react-query` invalidation) and frontend modal helper alias imports.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/RenameWorkspaceDialog.tsx packages/ui/src/components/RenameWorkspaceDialog.tsx`
+- Package updates:
+  - Replaced package self-import aliases with relative imports:
+    - `@vibe/ui/components/KeyboardDialog` -> `./KeyboardDialog`
+    - `@vibe/ui/components/Button` -> `./Button`
+    - `@vibe/ui/components/Input` -> `./Input`
+  - Replaced frontend modal helper import:
+    - `@/lib/modals` -> `../lib/modals`
+  - Removed frontend API/query coupling by changing dialog props to callback-driven rename behavior:
+    - removed `workspaceId`
+    - added `onRename: (newName: string) => Promise<void>`
+  - Simplified mutation state to local component state (`isSubmitting`) while preserving result contract (`confirmed` / `canceled`).
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/actions/index.ts`
+  - New import path:
+    - `@vibe/ui/components/RenameWorkspaceDialog`
+  - Moved API update + invalidation logic into action caller via injected callback:
+    - `attemptsApi.update(workspaceId, { name: newName })`
+    - `invalidateWorkspaceQueries(ctx.queryClient, workspaceId)`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For rename/edit dialogs with simple data mutations, prefer callback injection from frontend action executors instead of embedding API/query logic in `@vibe/ui`.
+- Keep existing action-layer invalidation helpers as the single source of truth for cache updates when extracting dialogs.

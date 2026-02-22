@@ -72,7 +72,7 @@ import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDial
 import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
-import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
+import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
@@ -395,8 +395,11 @@ export const Actions = {
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await RenameWorkspaceDialog.show({
-        workspaceId,
         currentName: workspace.name || workspace.branch,
+        onRename: async (newName) => {
+          await attemptsApi.update(workspaceId, { name: newName });
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        },
       });
     },
   },
