@@ -4296,3 +4296,47 @@ Plan adjustments from new information:
 - For grouped markdown list renderers, package components should pass per-item markdown className through render-prop contracts to keep layout ownership in the package while preserving app renderer control.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatToolSummary.tsx` (single container callsite and no app context dependencies; primarily alias and status typing cleanup).
+
+## 2026-02-22 - UI package extraction: ChatToolSummary
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatToolSummary.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) and no app-context dependencies, making it a low-risk extraction.
+- New information: status typing can stay package-local by reusing `ToolStatusLike` from `ToolStatusDot`, avoiding direct `shared/types` coupling for this UI primitive.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatToolSummary.tsx packages/ui/src/components/ChatToolSummary.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-import:
+    - `@vibe/ui/components/ToolStatusDot` -> `./ToolStatusDot`
+  - Removed direct shared-type dependency:
+    - replaced `ToolStatus` with `ToolStatusLike` imported from `ToolStatusDot`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatToolSummary`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Conversation status-bearing primitives can standardize on package-local structural status typing (`ToolStatusLike`) rather than importing shared type models.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatSubagentEntry.tsx` (single callsite; requires markdown renderer injection plus structural type cleanup for result/status props).

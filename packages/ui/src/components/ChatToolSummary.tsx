@@ -5,16 +5,15 @@ import {
   FileTextIcon,
   GlobeIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { ToolStatus } from 'shared/types';
-import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
 
 interface ChatToolSummaryProps {
   summary: string;
   className?: string;
   expanded?: boolean;
   onToggle?: () => void;
-  status?: ToolStatus;
+  status?: ToolStatusLike;
   onViewContent?: () => void;
   toolName?: string;
   isTruncated?: boolean;
