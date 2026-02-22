@@ -16,7 +16,7 @@ import {
   useState,
 } from 'react';
 
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import NewDisplayConversationEntry from '@/features/workspace-chat/ui/NewDisplayConversationEntry';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 import { useEntries } from '@/contexts/EntriesContext';
@@ -33,8 +33,8 @@ import {
   isAggregatedThinkingGroup,
   useConversationHistory,
 } from '@/components/ui-new/hooks/useConversationHistory';
-import { aggregateConsecutiveEntries } from '@/utils/aggregateEntries';
-import type { WorkspaceWithSession } from '@/types/attempt';
+import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';

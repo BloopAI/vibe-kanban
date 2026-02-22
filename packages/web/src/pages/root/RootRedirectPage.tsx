@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Navigate } from '@tanstack/react-router';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
-import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
+import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
-import { resolveAppPath } from '@/lib/routes/pathResolution';
-import { toOnboarding, toWorkspacesCreate } from '@/lib/routes/navigation';
+import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
+import {
+  toOnboarding,
+  toWorkspacesCreate,
+} from '@/shared/lib/routes/navigation';
 
 const DEFAULT_DESTINATION = '/workspaces/create';
 

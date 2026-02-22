@@ -12,15 +12,15 @@ import type {
   AnnotationSide,
   ChangeContent,
 } from '@pierre/diffs';
-import { cn } from '@/lib/utils';
-import { DiffSide } from '@/types/diff';
+import { cn } from '@/shared/lib/utils';
+import { DiffSide } from '@/shared/types/diff';
 import {
   transformDiffToFileDiffMetadata,
   transformCommentsToAnnotations,
   type CommentAnnotation,
-} from '@/utils/diffDataAdapter';
+} from '@/shared/lib/diffDataAdapter';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { getActualTheme } from '@/utils/theme';
+import { getActualTheme } from '@/shared/lib/theme';
 import {
   useDiffViewMode,
   useWrapTextDiff,
@@ -28,14 +28,14 @@ import {
 } from '@/stores/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { getFileIcon } from '@/utils/fileTypeIcon';
+import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import { CommentWidgetLine } from './CommentWidgetLine';
-import { DisplayTruncatedPath } from '@/utils/TruncatePath';
-import { stripLineEnding, splitLines } from '@/utils/string';
+import { DisplayTruncatedPath } from '@/shared/lib/TruncatePath';
+import { stripLineEnding, splitLines } from '@/shared/lib/string';
 import type { Diff } from 'shared/types';
 
 /**

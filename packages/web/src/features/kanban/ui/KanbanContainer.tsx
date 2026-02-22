@@ -34,7 +34,7 @@ import {
   type WorkspaceWithStats,
   type WorkspacePr,
 } from '@vibe/ui/components/IssueWorkspaceCard';
-import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
+import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships';
 import { KanbanFilterBar } from '@vibe/ui/components/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';

@@ -1,5 +1,5 @@
 import type { ExecutorConfig } from 'shared/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 interface ProfileVariantBadgeProps {
   executorConfig: ExecutorConfig;

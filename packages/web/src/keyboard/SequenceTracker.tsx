@@ -1,6 +1,9 @@
 import { useContext, useState, useEffect, useRef, ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
-import { SEQUENCE_FIRST_KEYS, sequentialBindings } from './registry';
+import { createHmrContext } from '@/shared/lib/hmrContext';
+import {
+  SEQUENCE_FIRST_KEYS,
+  sequentialBindings,
+} from '@/shared/keyboard/registry';
 
 interface SequenceTrackerContextValue {
   buffer: string[];

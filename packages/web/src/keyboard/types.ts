@@ -1,4 +1,1 @@
-export type FormTag = 'input' | 'textarea' | 'select';
-export type EnableOnFormTags =
-  | boolean
-  | readonly (FormTag | Uppercase<FormTag>)[];
+export type { EnableOnFormTags, FormTag } from '@/shared/keyboard/types';

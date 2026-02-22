@@ -1,6 +1,6 @@
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import type { ExecutorProfile, ExecutorProfileId } from 'shared/types';
 
 type Props = {

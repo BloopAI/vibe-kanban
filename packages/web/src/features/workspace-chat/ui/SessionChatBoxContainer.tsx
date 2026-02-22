@@ -20,7 +20,7 @@ import { useEntries, useTokenUsage } from '@/contexts/EntriesContext';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/hooks/useTodos';
-import { getLatestConfigFromProcesses } from '@/utils/executor';
+import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '@/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '@/hooks/useSessionQueueInteraction';
@@ -32,9 +32,9 @@ import { useAttemptBranch } from '@/hooks/useAttemptBranch';
 import { useApprovalMutation } from '@/hooks/useApprovalMutation';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
-import { buildAgentPrompt } from '@/utils/promptMessage';
-import { formatDateShortWithTime } from '@/utils/date';
-import { toPrettyCase } from '@/utils/string';
+import { buildAgentPrompt } from '@/shared/lib/promptMessage';
+import { formatDateShortWithTime } from '@/shared/lib/date';
+import { toPrettyCase } from '@/shared/lib/string';
 import {
   SessionChatBox,
   type ExecutionStatus,
@@ -45,7 +45,7 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
-import { toWorkspace } from '@/lib/routes/navigation';
+import { toWorkspace } from '@/shared/lib/routes/navigation';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
 import {
   Actions,

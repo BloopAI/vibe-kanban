@@ -7,8 +7,8 @@ import { useAllOrganizationProjects } from '@/hooks/useAllOrganizationProjects';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import type { Project } from 'shared/remote-types';
-import { splitMessageToTitleDescription } from '@/utils/string';
-import { cn } from '@/lib/utils';
+import { splitMessageToTitleDescription } from '@/shared/lib/string';
+import { cn } from '@/shared/lib/utils';
 import {
   PERSIST_KEYS,
   usePersistedExpanded,

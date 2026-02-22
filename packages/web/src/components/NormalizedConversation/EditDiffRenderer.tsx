@@ -7,11 +7,11 @@ import {
 } from '@git-diff-view/react';
 import { SquarePen } from 'lucide-react';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
-import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
-import { getActualTheme } from '@/utils/theme';
+import { getHighLightLanguageFromPath } from '@/shared/lib/extToLanguage';
+import { getActualTheme } from '@/shared/lib/theme';
 import '@/app/styles/diff-style-overrides.css';
 import '@/app/styles/edit-diff-overrides.css';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 type Props = {
   path: string;

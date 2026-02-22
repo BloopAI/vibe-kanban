@@ -10,7 +10,7 @@ import {
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { VirtualizedProcessLogs } from './VirtualizedProcessLogs';
-import { getDevServerWorkingDir } from '@/lib/devServerUtils';
+import { getDevServerWorkingDir } from '@/shared/lib/devServerUtils';
 
 interface PreviewControlsContainerProps {
   attemptId: string;

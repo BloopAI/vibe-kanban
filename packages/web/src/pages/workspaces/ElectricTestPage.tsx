@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAuth, useUserOrganizations, useCurrentUser } from '@/hooks';
-import { useShape } from '@/lib/electric/hooks';
-import type { SyncError } from '@/lib/electric/types';
+import { useShape } from '@/integrations/electric/hooks';
+import type { SyncError } from '@/shared/lib/electric/types';
 import {
   PROJECTS_SHAPE,
   PROJECT_TAGS_SHAPE,

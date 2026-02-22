@@ -8,8 +8,11 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useCreateWorkspace } from '@/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
-import { getSortedExecutorVariantKeys } from '@/utils/executor';
-import { toPrettyCase, splitMessageToTitleDescription } from '@/utils/string';
+import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';
+import {
+  toPrettyCase,
+  splitMessageToTitleDescription,
+} from '@/shared/lib/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
 import { SettingsDialog } from '@/features/settings/ui/dialogs/SettingsDialog';

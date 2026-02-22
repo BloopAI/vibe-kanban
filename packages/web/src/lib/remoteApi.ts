@@ -10,7 +10,7 @@ import type {
   UpdateProjectRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
-import { tokenManager } from './auth/tokenManager';
+import { tokenManager } from '@/shared/lib/auth/tokenManager';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 

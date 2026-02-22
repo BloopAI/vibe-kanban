@@ -7,7 +7,7 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
 import { commitCommentAttachments, deleteAttachment } from '@/lib/remoteApi';
-import { extractAttachmentIds } from '@/lib/attachmentUtils';
+import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 import {
   IssueCommentsSection,
   type IssueCommentsEditorProps,

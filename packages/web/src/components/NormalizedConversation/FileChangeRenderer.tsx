@@ -1,13 +1,13 @@
 import { type FileChange } from 'shared/types';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { Trash2, FilePlus2, ArrowRight, FileX, FileClock } from 'lucide-react';
-import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
-import { getActualTheme } from '@/utils/theme';
+import { getHighLightLanguageFromPath } from '@/shared/lib/extToLanguage';
+import { getActualTheme } from '@/shared/lib/theme';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/app/styles/diff-style-overrides.css';
 import { useExpandable } from '@/stores/useExpandableStore';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 type Props = {
   path: string;

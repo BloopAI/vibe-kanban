@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { useShape } from '@/lib/electric/hooks';
+import { useShape } from '@/integrations/electric/hooks';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import { LinkIcon } from '@phosphor-icons/react';
 

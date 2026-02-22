@@ -7,7 +7,7 @@ import {
   filterRunningDevServers,
   filterDevServerProcesses,
   deduplicateDevServersByWorkingDir,
-} from '@/lib/devServerUtils';
+} from '@/shared/lib/devServerUtils';
 
 interface UsePreviewDevServerOptions {
   onStartSuccess?: () => void;

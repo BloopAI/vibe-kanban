@@ -27,7 +27,7 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
-import { toWorkspace } from '@/lib/routes/navigation';
+import { toWorkspace } from '@/shared/lib/routes/navigation';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 

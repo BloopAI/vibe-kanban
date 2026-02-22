@@ -4,7 +4,7 @@ import {
   type ChangesPanelHandle,
   type RenderDiffItemProps,
 } from '@vibe/ui/components/ChangesPanel';
-import { sortDiffs } from '@/utils/fileTreeUtils';
+import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useScrollSyncStateMachine } from '@/hooks/useScrollSyncStateMachine';

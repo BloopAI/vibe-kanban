@@ -9,7 +9,7 @@ import {
   CaretDownIcon,
   TerminalIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 export function ProcessListContainer() {
   const {

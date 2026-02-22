@@ -36,7 +36,7 @@ import { useUserSystem } from '@/hooks/useUserSystem';
 import { useTheme } from '@/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/components/agents/AgentIcon';
 import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 type SoundOption = {

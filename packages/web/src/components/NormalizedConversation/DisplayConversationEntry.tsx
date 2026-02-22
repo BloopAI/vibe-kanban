@@ -8,8 +8,8 @@ import {
   type NormalizedEntryType,
   type JsonValue,
 } from 'shared/types.ts';
-import type { WorkspaceWithSession } from '@/types/attempt';
-import type { ProcessStartPayload } from '@/types/logs';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
+import type { ProcessStartPayload } from '@/shared/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
 import { useExpandable } from '@/stores/useExpandableStore';
 import {
@@ -32,7 +32,7 @@ import {
 import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { Button } from '@vibe/ui/components/Button';
 import {

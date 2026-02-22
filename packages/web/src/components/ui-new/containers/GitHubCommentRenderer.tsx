@@ -6,7 +6,7 @@ import {
   ChatsCircleIcon,
 } from '@phosphor-icons/react';
 import { CommentCard } from '@vibe/ui/components/CommentCard';
-import { formatRelativeTime } from '@/utils/date';
+import { formatRelativeTime } from '@/shared/lib/date';
 import type { NormalizedGitHubComment } from '@/contexts/WorkspaceContext';
 
 interface GitHubCommentRendererProps {

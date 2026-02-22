@@ -6,13 +6,13 @@ import {
   getExpandedPathsForSearch,
   getAllFolderPaths,
   sortDiffs,
-} from '@/utils/fileTreeUtils';
+} from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useChangesView } from '@/contexts/ChangesViewContext';
-import { getFileIcon } from '@/utils/fileTypeIcon';
+import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { getActualTheme } from '@/utils/theme';
+import { getActualTheme } from '@/shared/lib/theme';
 import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {

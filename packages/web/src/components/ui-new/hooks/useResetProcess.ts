@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { isCodingAgent } from '@/constants/processes';
+import { isCodingAgent } from '@/shared/constants/processes';
 import { useResetProcessMutation } from './useResetProcessMutation';
 
 export interface UseResetProcessResult {

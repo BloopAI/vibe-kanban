@@ -1,5 +1,5 @@
 import { useSequenceTracker } from './SequenceTracker';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 export function SequenceIndicator() {
   const { buffer, isActive, isInvalid } = useSequenceTracker();

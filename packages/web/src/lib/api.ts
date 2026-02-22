@@ -93,8 +93,8 @@ import {
   CreateAndStartWorkspaceResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
-import type { WorkspaceWithSession } from '@/types/attempt';
-import { createWorkspaceWithSession } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
+import { createWorkspaceWithSession } from '@/shared/types/attempt';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -1108,11 +1108,12 @@ export const oauthApi = {
 };
 
 /**
- * @deprecated Use `tokenManager.getToken()` from '@/lib/auth/tokenManager' instead.
+ * @deprecated Use `tokenManager.getToken()` from
+ * `@/shared/lib/auth/tokenManager` instead.
  * This function does not handle 401 responses or token refresh coordination.
  */
 export async function getCachedToken(): Promise<string | null> {
-  const { tokenManager } = await import('./auth/tokenManager');
+  const { tokenManager } = await import('@/shared/lib/auth/tokenManager');
   return tokenManager.getToken();
 }
 

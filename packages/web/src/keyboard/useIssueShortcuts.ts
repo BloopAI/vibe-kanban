@@ -7,7 +7,7 @@ import {
   type ActionDefinition,
   ActionTargetType,
 } from '@/components/ui-new/actions';
-import { Scope } from './registry';
+import { Scope } from '@/shared/keyboard/registry';
 
 const SEQUENCE_TIMEOUT_MS = 1500;
 

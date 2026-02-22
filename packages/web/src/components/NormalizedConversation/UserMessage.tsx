@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { BaseAgentCapability } from 'shared/types';
-import type { WorkspaceWithSession } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useRetryUi } from '@/contexts/RetryUiContext';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';

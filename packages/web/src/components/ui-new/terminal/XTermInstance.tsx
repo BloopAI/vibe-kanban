@@ -5,7 +5,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import '@xterm/xterm/css/xterm.css';
 
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { getTerminalTheme } from '@/utils/terminalTheme';
+import { getTerminalTheme } from '@/shared/lib/terminalTheme';
 import { useTerminal } from '@/contexts/TerminalContext';
 
 interface XTermInstanceProps {

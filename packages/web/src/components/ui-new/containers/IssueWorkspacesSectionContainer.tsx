@@ -10,13 +10,13 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/lib/api';
-import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
   buildWorkspaceCreateInitialState,
   buildWorkspaceCreatePrompt,
-} from '@/lib/workspaceCreateState';
+} from '@/shared/lib/workspaceCreateState';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
 import type { WorkspaceWithStats } from '@vibe/ui/components/IssueWorkspaceCard';

@@ -12,10 +12,10 @@ import { useUserSystem } from '@/hooks/useUserSystem';
 import { useTheme } from '@/hooks/useTheme';
 import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import { getFirstProjectDestination } from '@/lib/firstProjectDestination';
+import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
-import { resolveAppPath } from '@/lib/routes/pathResolution';
-import { toWorkspacesCreate } from '@/lib/routes/navigation';
+import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
+import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
 
 const COMPARISON_ROWS = [
   {

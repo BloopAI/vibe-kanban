@@ -34,7 +34,7 @@ import {
   buildLinkedIssueCreateState,
   buildWorkspaceCreateInitialState,
   buildWorkspaceCreatePrompt,
-} from '@/lib/workspaceCreateState';
+} from '@/shared/lib/workspaceCreateState';
 import { ScratchType, type DraftIssueData } from 'shared/types';
 import { useScratch } from '@/hooks/useScratch';
 import {
@@ -46,7 +46,7 @@ import {
 } from './kanban-issue-panel-state';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
 import { commitIssueAttachments, deleteAttachment } from '@/lib/remoteApi';
-import { extractAttachmentIds } from '@/lib/attachmentUtils';
+import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 

@@ -21,7 +21,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import {
   buildIssueCreatePath,
   buildProjectRootPath,
-} from '@/lib/routes/projectSidebarRoutes';
+} from '@/shared/lib/routes/projectSidebarRoutes';
 
 /**
  * Component that registers project mutations with ActionsContext.

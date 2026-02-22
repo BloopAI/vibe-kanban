@@ -9,7 +9,7 @@ import {
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
+import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships';
 import { IssueRelationshipsSection } from '@vibe/ui/components/IssueRelationshipsSection';
 import {
   DropdownMenu,

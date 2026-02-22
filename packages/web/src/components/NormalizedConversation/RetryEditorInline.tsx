@@ -1,19 +1,19 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
-import type { WorkspaceWithSession } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useAttemptExecution } from '@/hooks/useAttemptExecution';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useVariant } from '@/hooks/useVariant';
 import { useRetryProcess } from '@/hooks/useRetryProcess';
-import { executorConfigFromAction } from '@/utils/executor';
+import { executorConfigFromAction } from '@/shared/lib/executor';
 
 export function RetryEditorInline({
   attempt,

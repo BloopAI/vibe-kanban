@@ -14,7 +14,7 @@ import type {
   RepoItem,
 } from '@/features/command-bar/ui/actions/pages';
 import { repoApi } from '@/lib/api';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
 import { FolderPickerDialog } from '@/shared/ui/dialogs/FolderPickerDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';

@@ -1,5 +1,5 @@
-import { createSemanticHook } from './useSemanticKey';
-import { Action } from './registry';
+import { createSemanticHook } from '@/shared/keyboard/useSemanticKey';
+import { Action } from '@/shared/keyboard/registry';
 
 /**
  * Semantic keyboard shortcut hooks

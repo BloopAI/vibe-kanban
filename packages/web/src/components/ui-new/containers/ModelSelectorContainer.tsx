@@ -11,7 +11,7 @@ import {
 } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorConfig, ModelInfo } from 'shared/types';
 import { PermissionPolicy } from 'shared/types';
-import { toPrettyCase } from '@/utils/string';
+import { toPrettyCase } from '@/shared/lib/string';
 import {
   getModelKey,
   getRecentModelEntries,
@@ -19,7 +19,7 @@ import {
   touchRecentModel,
   updateRecentModelEntries,
   setRecentReasoning,
-} from '@/utils/recentModels';
+} from '@/shared/lib/recentModels';
 import {
   getReasoningLabel,
   getSelectedModel,
@@ -29,7 +29,7 @@ import {
   resolveDefaultModelId,
   isModelAvailable,
   resolveDefaultReasoningId,
-} from '@/utils/modelSelector';
+} from '@/shared/lib/modelSelector';
 import { profilesApi } from '@/lib/api';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { getResolvedTheme, useTheme } from '@/app/providers/ThemeProvider';

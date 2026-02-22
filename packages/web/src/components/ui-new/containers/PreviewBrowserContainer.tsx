@@ -25,7 +25,7 @@ import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/shared/ui/dialogs/ScriptFixerDialog';
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
-import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
+import { PreviewDevToolsBridge } from '@/shared/lib/previewDevToolsBridge';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
 
 const MIN_RESPONSIVE_WIDTH = 320;

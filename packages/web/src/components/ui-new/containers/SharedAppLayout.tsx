@@ -15,7 +15,7 @@ import { useGitHubStars } from '@/hooks/useGitHubStars';
 import {
   buildProjectRootPath,
   parseProjectSidebarRoute,
-} from '@/lib/routes/projectSidebarRoutes';
+} from '@/shared/lib/routes/projectSidebarRoutes';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -25,15 +25,19 @@ import {
 import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
 import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-import { useShape } from '@/lib/electric/hooks';
-import { sortProjectsByOrder } from '@/lib/projectOrder';
-import { resolveAppPath } from '@/lib/routes/pathResolution';
+import { useShape } from '@/integrations/electric/hooks';
+import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
+import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
 import {
   PROJECT_MUTATION,
   PROJECTS_SHAPE,
   type Project as RemoteProject,
 } from 'shared/remote-types';
-import { toMigrate, toProject, toWorkspaces } from '@/lib/routes/navigation';
+import {
+  toMigrate,
+  toProject,
+  toWorkspaces,
+} from '@/shared/lib/routes/navigation';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();

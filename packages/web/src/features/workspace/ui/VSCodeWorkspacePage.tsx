@@ -1,10 +1,11 @@
 // VS Code webview integration - install keyboard/clipboard bridge
-import '@/vscode/bridge';
+import '@/integrations/vscode/bridge';
 
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppWithStyleOverride } from '@/utils/StyleOverride';
-import { WebviewContextMenu } from '@/vscode/ContextMenu';
+import { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
+import { useStyleOverrideThemeSetter } from '@/utils/StyleOverride';
+import { WebviewContextMenu } from '@/integrations/vscode/ContextMenu';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
@@ -16,10 +17,11 @@ import { EntriesProvider } from '@/contexts/EntriesContext';
 import { MessageEditProvider } from '@/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
-import { createWorkspaceWithSession } from '@/types/attempt';
+import { createWorkspaceWithSession } from '@/shared/types/attempt';
 
 export function VSCodeWorkspacePage() {
   const { t } = useTranslation('common');
+  const setTheme = useStyleOverrideThemeSetter();
   const conversationListRef = useRef<ConversationListHandle>(null);
 
   const {
@@ -48,7 +50,7 @@ export function VSCodeWorkspacePage() {
   };
 
   return (
-    <AppWithStyleOverride>
+    <AppWithStyleOverride setTheme={setTheme}>
       <div className="h-screen flex flex-col bg-primary">
         <WebviewContextMenu />
 

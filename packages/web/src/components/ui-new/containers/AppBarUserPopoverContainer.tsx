@@ -8,7 +8,7 @@ import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useActions } from '@/contexts/ActionsContext';
 import { Actions } from '@/components/ui-new/actions';
-import { toMigrate } from '@/lib/routes/navigation';
+import { toMigrate } from '@/shared/lib/routes/navigation';
 
 interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];

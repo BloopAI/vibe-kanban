@@ -7,8 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/DropdownMenu';
-import { cn } from '@/lib/utils';
-import { getSortedExecutorVariantKeys } from '@/utils/executor';
+import { cn } from '@/shared/lib/utils';
+import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';
 import type { ExecutorProfile } from 'shared/types';
 
 type Props = {

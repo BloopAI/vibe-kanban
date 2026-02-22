@@ -68,9 +68,9 @@ import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { repoApi } from '@/lib/api';
-import { searchTagsAndFiles } from '@/lib/searchTagsAndFiles';
+import { searchTagsAndFiles } from '@/shared/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import type { RepoItem } from '@/features/command-bar/ui/actions/pages';
@@ -85,7 +85,7 @@ import {
   type RepoSelectionResult,
 } from '@/features/command-bar/ui/dialogs/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/lib/remoteApi';
-import { writeClipboardViaBridge } from '@/vscode/bridge';
+import { writeClipboardViaBridge } from '@/integrations/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
 

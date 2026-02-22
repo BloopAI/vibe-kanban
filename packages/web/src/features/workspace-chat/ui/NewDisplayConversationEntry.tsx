@@ -10,14 +10,14 @@ import {
   TodoItem,
   type RepoWithTargetBranch,
 } from 'shared/types';
-import type { WorkspaceWithSession } from '@/types/attempt';
-import { parseDiffStats } from '@/utils/diffStatsParser';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
+import { parseDiffStats } from '@/shared/lib/diffStatsParser';
 import {
   usePersistedExpanded,
   type PersistKey,
 } from '@/stores/useUiPreferencesStore';
-import { getActualTheme } from '@/utils/theme';
-import { getFileIcon } from '@/utils/fileTypeIcon';
+import { getActualTheme } from '@/shared/lib/theme';
+import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useUserSystem } from '@/hooks/useUserSystem';
 import { useTheme } from '@/hooks/useTheme';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
@@ -27,7 +27,7 @@ import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetPr
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import {
   ScriptFixerDialog,
   type ScriptType,
@@ -54,7 +54,7 @@ import {
   DiffViewBody,
   useDiffData,
 } from '@vibe/ui/components/PierreConversationDiff';
-import { inIframe, openFileInVSCode } from '@/vscode/bridge';
+import { inIframe, openFileInVSCode } from '@/integrations/vscode/bridge';
 import { useDiffViewMode } from '@/stores/useDiffViewStore';
 import type {
   AggregatedPatchGroup,

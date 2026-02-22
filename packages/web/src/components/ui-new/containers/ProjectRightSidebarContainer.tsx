@@ -28,8 +28,8 @@ import {
   type ConversationListHandle,
 } from '@/components/ui-new/containers/ConversationListContainer';
 import { RetryUiProvider } from '@/contexts/RetryUiContext';
-import { createWorkspaceWithSession } from '@/types/attempt';
-import { toWorkspace } from '@/lib/routes/navigation';
+import { createWorkspaceWithSession } from '@/shared/types/attempt';
+import { toWorkspace } from '@/shared/lib/routes/navigation';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
