@@ -13,7 +13,7 @@ import {
   MOBILE_WIDTH,
   MOBILE_HEIGHT,
   PHONE_FRAME_PADDING,
-} from '../views/PreviewBrowser';
+} from '@vibe/ui/components/PreviewBrowser';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { usePreviewUrl } from '../hooks/usePreviewUrl';
 import {

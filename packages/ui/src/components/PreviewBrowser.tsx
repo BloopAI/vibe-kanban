@@ -1,4 +1,9 @@
-import type { RefObject } from 'react';
+import type {
+  CSSProperties,
+  MouseEvent,
+  RefObject,
+  TouchEvent,
+} from 'react';
 import {
   PlayIcon,
   SpinnerIcon,
@@ -16,24 +21,32 @@ import {
   TerminalIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import { cn } from '../lib/cn';
+import { PrimaryButton } from './PrimaryButton';
 import {
   IconButtonGroup,
   IconButtonGroupItem,
-} from '@vibe/ui/components/IconButtonGroup';
-import { PreviewNavigation } from '@vibe/ui/components/PreviewNavigation';
-import type { Repo } from 'shared/types';
-import type {
-  ScreenSize,
-  ResponsiveDimensions,
-} from '@/hooks/usePreviewSettings';
-import type { NavigationState } from '@/types/previewDevTools';
+} from './IconButtonGroup';
+import {
+  PreviewNavigation,
+  type PreviewNavigationState,
+} from './PreviewNavigation';
 
 export const MOBILE_WIDTH = 390;
 export const MOBILE_HEIGHT = 844;
 // Phone frame adds padding (p-3 = 12px * 2) and rounded corners
 export const PHONE_FRAME_PADDING = 24;
+
+export type PreviewBrowserScreenSize = 'desktop' | 'mobile' | 'responsive';
+
+export interface PreviewBrowserResponsiveDimensions {
+  width: number;
+  height: number;
+}
+
+export interface PreviewBrowserRepo {
+  dev_server_script?: string | null;
+}
 
 interface PreviewBrowserProps {
   url?: string;
@@ -54,22 +67,22 @@ interface PreviewBrowserProps {
   isServerRunning: boolean;
   showIframe: boolean;
   allowManualUrl?: boolean;
-  screenSize: ScreenSize;
-  localDimensions: ResponsiveDimensions;
-  onScreenSizeChange: (size: ScreenSize) => void;
+  screenSize: PreviewBrowserScreenSize;
+  localDimensions: PreviewBrowserResponsiveDimensions;
+  onScreenSizeChange: (size: PreviewBrowserScreenSize) => void;
   onResizeStart: (
     direction: 'right' | 'bottom' | 'corner'
-  ) => (e: React.MouseEvent | React.TouchEvent) => void;
+  ) => (e: MouseEvent | TouchEvent) => void;
   isResizing: boolean;
   containerRef: RefObject<HTMLDivElement>;
-  repos: Repo[];
+  repos: PreviewBrowserRepo[];
   handleEditDevScript: () => void;
   handleFixDevScript?: () => void;
   hasFailedDevServer?: boolean;
   mobileScale: number;
   className?: string;
   iframeRef: RefObject<HTMLIFrameElement>;
-  navigation: NavigationState | null;
+  navigation: PreviewNavigationState | null;
   onNavigateBack: () => void;
   onNavigateForward: () => void;
   isInspectMode: boolean;
@@ -129,7 +142,7 @@ export function PreviewBrowser({
     (repo) => repo.dev_server_script && repo.dev_server_script.trim() !== ''
   );
 
-  const getIframeContainerStyle = (): React.CSSProperties => {
+  const getIframeContainerStyle = (): CSSProperties => {
     switch (screenSize) {
       case 'mobile':
         return {

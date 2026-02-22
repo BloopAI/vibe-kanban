@@ -5765,3 +5765,52 @@ Validation:
 
 Plan adjustments from new information:
 - For section-level extractions that already render package child components, prefer importing child prop contracts (`PriorityLevel`, `KanbanAssigneeUser`) instead of pulling shared domain types into `@vibe/ui`.
+
+## 2026-02-22 - UI package extraction: PreviewBrowser
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/PreviewBrowser.tsx` as the next extraction target.
+- It has a single container callsite (`PreviewBrowserContainer`) and no direct frontend component dependencies.
+- New information: remaining view extractions are cleaner when component-level coupling is mostly type-only; local package contracts can replace app/shared type imports without behavior changes.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/PreviewBrowser.tsx packages/ui/src/components/PreviewBrowser.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/PrimaryButton` -> `./PrimaryButton`
+    - `@vibe/ui/components/IconButtonGroup` -> `./IconButtonGroup`
+    - `@vibe/ui/components/PreviewNavigation` -> `./PreviewNavigation`
+  - Removed frontend/shared type dependencies by introducing package-local contracts:
+    - `PreviewBrowserScreenSize`
+    - `PreviewBrowserResponsiveDimensions`
+    - `PreviewBrowserRepo` (uses only `dev_server_script`)
+  - Replaced navigation type coupling with package-local exported type:
+    - `NavigationState` from `@/types/previewDevTools` -> `PreviewNavigationState` from `./PreviewNavigation`
+  - Replaced `React` namespace type references with direct type imports (`CSSProperties`, `MouseEvent`, `TouchEvent`) to keep package typing explicit.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/PreviewBrowserContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/PreviewBrowser`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For remaining view moves, prioritize components where shared/frontend imports are type-only and can be replaced by package-local structural interfaces.
