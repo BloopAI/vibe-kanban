@@ -1,8 +1,8 @@
 use axum::{
     Router,
     extract::{Json as ExtractJson, State},
-    response::Json as ResponseJson,
-    routing::post,
+    response::{Html, Json as ResponseJson},
+    routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::VerifyingKey;
@@ -56,6 +56,7 @@ struct TrustedPublicKeysFile {
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
+        .route("/auth/trusted-keys/spake2/test-page", get(spake2_test_page))
         .route(
             "/auth/trusted-keys/spake2/start",
             post(start_spake2_enrollment),
@@ -64,6 +65,10 @@ pub fn router() -> Router<DeploymentImpl> {
             "/auth/trusted-keys/spake2/finish",
             post(finish_spake2_enrollment),
         )
+}
+
+async fn spake2_test_page() -> Html<&'static str> {
+    Html(include_str!("auth_spake2_test_page.html"))
 }
 
 async fn start_spake2_enrollment(
