@@ -27,7 +27,7 @@ WORKDIR /app
 
 # Copy package files for dependency caching
 COPY package*.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY frontend/package*.json ./frontend/
+COPY packages/web/package*.json ./packages/web/
 COPY npx-cli/package*.json ./npx-cli/
 
 # Install pnpm and dependencies
@@ -38,7 +38,7 @@ COPY . .
 
 # Build application
 RUN npm run generate-types
-RUN cd frontend && pnpm run build
+RUN cd packages/web && pnpm run build
 RUN cargo build --release --bin server
 
 # Runtime stage

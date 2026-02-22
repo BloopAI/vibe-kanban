@@ -6885,3 +6885,39 @@ Validation:
 
 New information:
 - During `backend:check`, build script now correctly warns about creating dummy `packages/web/dist` when the web build output is absent. This confirms Step 4 path wiring is active.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 5 (build and container scripts)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 5 (Docker + local build + remote Docker updates)
+- [x] Ran quality checks (typecheck/lint) and format
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 5:
+  - root `Dockerfile` should build web app from `packages/web`
+  - `local-build.sh` should build web app from `packages/web`
+  - `crates/remote/Dockerfile` should copy `packages/web/package.json` instead of `frontend/package.json`
+
+Refactor completed:
+- `Dockerfile`
+  - `COPY frontend/package*.json ./frontend/` -> `COPY packages/web/package*.json ./packages/web/`
+  - `RUN cd frontend && pnpm run build` -> `RUN cd packages/web && pnpm run build`
+- `local-build.sh`
+  - build step switched from `(cd frontend && npm run build)` to `(cd packages/web && npm run build)`
+  - log line updated from `Building frontend...` to `Building web app...`
+- `crates/remote/Dockerfile`
+  - `COPY frontend/package.json frontend/package.json` -> `COPY packages/web/package.json packages/web/package.json`
+  - kept `remote-frontend` build flow unchanged.
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+
+New information:
+- No additional structural plan changes required from Step 5.
