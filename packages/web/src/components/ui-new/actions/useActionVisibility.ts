@@ -23,7 +23,7 @@ import type {
   DevServerState,
 } from './index';
 import { resolveLabel } from './index';
-import type { CommandBarPage } from './pages';
+import type { CommandBarPage } from '@/features/command-bar/ui/actions/pages';
 
 interface ActionVisibilityOptions {
   projectId?: string;

@@ -2,7 +2,7 @@ import { useReducer, useCallback, useRef } from 'react';
 import type {
   PageId,
   ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
+} from '@/features/command-bar/ui/actions/pages';
 import type { ActionDefinition } from '@/components/ui-new/actions';
 
 export interface CommandBarState {

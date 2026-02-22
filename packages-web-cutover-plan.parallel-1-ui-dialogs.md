@@ -34,10 +34,18 @@ compatibility shims.
 ## Work Packages
 
 - [ ] `T1.1` Decompose `src/components/ui-new/actions/index.ts` hotspot.
+  - [x] Extracted command-bar page metadata and static page definitions from
+        `src/components/ui-new/actions/pages.ts` into
+        `src/features/command-bar/ui/actions/pages.ts`.
 - [ ] `T1.2` Move action definitions into feature-owned modules and shared
       primitives where appropriate.
+  - [x] Moved the `pages.ts` action model/types module into
+        `src/features/command-bar/ui/actions/pages.ts`.
 - [ ] `T1.3` Keep `src/components/ui-new/actions/index.ts` as compatibility
       re-export facade.
+  - [x] Added compatibility facade at
+        `src/components/ui-new/actions/pages.ts` that re-exports from the
+        canonical feature-owned path.
 - [ ] `T1.4` Consolidate dialog placement:
       feature dialogs -> `src/features/*/ui/dialogs/*`,
       reusable dialogs -> `src/shared/ui/dialogs/*`.
@@ -267,6 +275,21 @@ compatibility shims.
         `@/features/command-bar/ui/dialogs/BranchRebaseDialog` in:
         `src/components/tasks/Toolbar/GitOperations.tsx`,
         `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/actions/pages` in:
+        `src/components/ui-new/actions/useActionVisibility.ts`,
+        `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`,
+        `src/components/ui-new/dialogs/CommandBarDialog.tsx`,
+        `src/components/ui-new/dialogs/SelectionDialog.tsx`,
+        `src/components/ui-new/dialogs/commandBar/injectSearchMatches.ts`,
+        `src/components/ui-new/dialogs/commandBar/useCommandBarState.ts`,
+        `src/components/ui-new/dialogs/commandBar/useResolvedPage.ts`,
+        `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`,
+        `src/components/ui-new/dialogs/selections/branchSelection.ts`,
+        `src/components/ui-new/dialogs/selections/prioritySelection.ts`,
+        `src/components/ui-new/dialogs/selections/repoSelection.ts`,
+        `src/components/ui-new/dialogs/selections/statusSelection.ts`,
+        `src/components/ui/wysiwyg.tsx`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -370,6 +393,10 @@ compatibility shims.
   canonicalized under command-bar when they use distinct names/paths:
   workspace-scoped rebase remains `RebaseDialog`, while branch-picking task
   rebase is now `BranchRebaseDialog`.
+- New information (2026-02-22): `ui-new/actions/pages.ts` can be moved into
+  `src/features/command-bar/ui/actions/*` with a legacy facade at the old path
+  and broad callsite canonicalization, enabling staged decomposition of the
+  `ui-new/actions/index.ts` hotspot without behavior changes.
 
 ## Validation
 

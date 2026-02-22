@@ -4,7 +4,7 @@ import {
   getPageActions,
   type StaticPageId,
   type ResolvedGroup,
-} from '@/components/ui-new/actions/pages';
+} from '@/features/command-bar/ui/actions/pages';
 import {
   resolveLabel,
   type ActionVisibilityContext,

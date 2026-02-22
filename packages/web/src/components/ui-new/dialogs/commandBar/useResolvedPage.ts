@@ -14,7 +14,7 @@ import {
   type CommandBarGroupItem,
   type ResolvedGroup,
   type ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
+} from '@/features/command-bar/ui/actions/pages';
 import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
   isActionVisible,

@@ -11,7 +11,7 @@ import type {
   ResolvedGroup,
   ResolvedGroupItem,
   StatusItem,
-} from '@/components/ui-new/actions/pages';
+} from '@/features/command-bar/ui/actions/pages';
 import {
   resolveLabel,
   type ActionDefinition,

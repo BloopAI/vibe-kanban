@@ -16,7 +16,7 @@ import { IdeIcon } from '@/components/ide/IdeIcon';
 import type {
   PageId,
   ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
+} from '@/features/command-bar/ui/actions/pages';
 import {
   ActionTargetType,
   type ActionDefinition,

@@ -14,7 +14,7 @@ import type {
   PageId,
   StatusItem,
   ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
+} from '@/features/command-bar/ui/actions/pages';
 import type { Issue } from 'shared/remote-types';
 import { buildStatusSelectionPages } from './statusSelection';
 import { buildPrioritySelectionPages } from './prioritySelection';

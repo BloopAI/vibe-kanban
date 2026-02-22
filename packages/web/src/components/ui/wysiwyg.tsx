@@ -73,7 +73,7 @@ import { repoApi } from '@/lib/api';
 import { searchTagsAndFiles } from '@/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
-import type { RepoItem } from '@/components/ui-new/actions/pages';
+import type { RepoItem } from '@/features/command-bar/ui/actions/pages';
 import { TagEditDialog } from '@/shared/ui/dialogs/TagEditDialog';
 import { ImagePreviewDialog } from '@/shared/ui/dialogs/ImagePreviewDialog';
 import {
