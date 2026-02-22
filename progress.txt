@@ -4742,3 +4742,53 @@ Plan adjustments from new information:
 - The model-selector area is now partially extracted (`ModelProviderIcon` in `@vibe/ui`, `ModelList`/`ModelSelectorPopover` still in frontend).
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/model-selector/ModelList.tsx`.
   - It will require decoupling from frontend utilities (`getModelKey`, `getReasoningLabel`) via injected formatter helpers or by moving those pure helpers into `@vibe/ui`.
+
+## 2026-02-22 - UI package extraction: ModelList
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/model-selector/ModelList.tsx` as the next extraction candidate.
+- It had a single callsite (`ModelSelectorPopover`) and moderate coupling to frontend-only helpers (`getModelKey`, `getReasoningLabel`, `toPrettyCase`) plus shared type imports.
+- New information: this primitive can be extracted cleanly by embedding small pure helper logic in the package component and using structural prop types rather than shared model imports.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/model-selector/ModelList.tsx packages/ui/src/components/ModelList.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-import:
+    - `@vibe/ui/components/Dropdown` -> `./Dropdown`
+  - Removed frontend utility coupling by adding package-local helpers:
+    - `toPrettyCase`
+    - `getReasoningLabel`
+    - `getModelKey`
+  - Removed shared type coupling by defining structural package-local types:
+    - `ModelReasoningOption`
+    - `ModelListModel`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx`
+  - New import path:
+    - `@vibe/ui/components/ModelList`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Model-selector extraction now includes `ModelProviderIcon` and `ModelList` in `@vibe/ui`.
+- Remaining model-selector primitive in frontend: `ModelSelectorPopover`.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx`.
+  - It still depends on frontend-specific model selection/recency helpers (`getSelectedModel`, `sortByRecency`, `sortProvidersByRecency`), so extraction will likely require injected data transforms or moving pure helper logic into package-local modules.

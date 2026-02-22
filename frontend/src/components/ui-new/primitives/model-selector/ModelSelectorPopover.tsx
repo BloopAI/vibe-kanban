@@ -19,8 +19,8 @@ import {
   AccordionTrigger,
 } from '@vibe/ui/components/Accordion';
 import { ModelProviderIcon } from '@vibe/ui/components/ModelProviderIcon';
+import { ModelList } from '@vibe/ui/components/ModelList';
 import type { ModelInfo, ModelSelectorConfig } from 'shared/types';
-import { ModelList } from './ModelList';
 
 interface ModelSelectorPopoverProps {
   isOpen: boolean;

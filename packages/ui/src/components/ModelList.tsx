@@ -1,19 +1,51 @@
 import type { Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrainIcon, CaretDownIcon, CheckIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { getModelKey } from '@/utils/recentModels';
-import { getReasoningLabel } from '@/utils/modelSelector';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/Dropdown';
-import type { ModelInfo, ReasoningOption } from 'shared/types';
+} from './Dropdown';
+
+export interface ModelReasoningOption {
+  id: string;
+  label: string;
+  is_default?: boolean;
+}
+
+export interface ModelListModel {
+  id: string;
+  name: string;
+  provider_id?: string | null;
+  reasoning_options: ModelReasoningOption[];
+}
+
+function toPrettyCase(value: string): string {
+  return value
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function getReasoningLabel(
+  options: ModelReasoningOption[],
+  selectedId: string | null
+): string | null {
+  if (!selectedId) return null;
+  return (
+    options.find((option) => option.id === selectedId)?.label ??
+    toPrettyCase(selectedId)
+  );
+}
+
+function getModelKey(model: ModelListModel): string {
+  return model.provider_id ? `${model.provider_id}/${model.id}` : model.id;
+}
 
 interface ReasoningDropdownProps {
-  options: ReasoningOption[];
+  options: ModelReasoningOption[];
   selectedId: string | null;
   onSelect: (reasoningId: string | null) => void;
 }
@@ -73,11 +105,11 @@ function ReasoningDropdown({
 }
 
 export interface ModelListProps {
-  models: ModelInfo[];
+  models: ModelListModel[];
   selectedModelId: string | null;
   searchQuery: string;
   onSelect: (id: string, providerId?: string) => void;
-  reasoningOptions: ReasoningOption[];
+  reasoningOptions: ModelReasoningOption[];
   selectedReasoningId: string | null;
   onReasoningSelect: (reasoningId: string | null) => void;
   justifyEnd?: boolean;
