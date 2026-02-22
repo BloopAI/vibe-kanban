@@ -1,4 +1,4 @@
-import { WorkspacesLayout } from '@/components/ui-new/containers/WorkspacesLayout';
+import { WorkspacesLayout } from '@/features/workspace/ui/WorkspacesLayout';
 
 export function Workspaces() {
   return <WorkspacesLayout />;

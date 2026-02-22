@@ -211,6 +211,13 @@ packages/web/src/
        - `src/hooks/useUserSystem.ts`
        to keep feature files from importing `@/app/*` directly under current
        lint boundary rules
+     - moved workspace page-level composition from
+       `src/components/ui-new/containers/WorkspacesLayout.tsx` to
+       `src/features/workspace/ui/WorkspacesLayout.tsx`
+     - updated `src/pages/workspaces/Workspaces.tsx` to import from
+       `@/features/workspace/ui/WorkspacesLayout`
+     - kept temporary compatibility shim at legacy
+       `src/components/ui-new/containers/WorkspacesLayout.tsx`
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders
