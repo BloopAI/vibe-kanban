@@ -85,6 +85,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/commandBar/useResolvedPage.ts`.
   - [x] Moved command-bar dialog helper `injectSearchMatches` to
         `src/features/command-bar/ui/dialogs/commandBar/injectSearchMatches.ts`.
+  - [x] Moved command-bar selection helper `repoSelection` to
+        `src/features/command-bar/ui/dialogs/selections/repoSelection.ts`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -192,6 +194,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/commandBar/injectSearchMatches.ts`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/selections/repoSelection.ts`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -268,6 +272,13 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `./injectSearchMatches` in
         `src/features/command-bar/ui/dialogs/commandBar/useResolvedPage.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/selections/repoSelection` in:
+        `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`,
+        `src/components/ui/wysiwyg.tsx`.
+  - [x] Updated canonical repo-selection callsites in
+        `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx` to:
+        `./selections/repoSelection` (type import and dynamic import).
   - [x] Kept `CommandBarDialog` feature-layer callsite on the legacy shim path
         (`src/features/kanban/ui/KanbanContainer.tsx`) because
         `src/features/kanban/**` cannot import directly from

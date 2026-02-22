@@ -83,7 +83,7 @@ import {
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
-} from '@/components/ui-new/dialogs/selections/repoSelection';
+} from '@/features/command-bar/ui/dialogs/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';

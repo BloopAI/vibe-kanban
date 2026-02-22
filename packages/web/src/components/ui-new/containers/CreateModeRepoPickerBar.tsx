@@ -26,7 +26,7 @@ import {
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
-} from '../dialogs/selections/repoSelection';
+} from '@/features/command-bar/ui/dialogs/selections/repoSelection';
 import {
   buildBranchSelectionPages,
   type BranchSelectionResult,

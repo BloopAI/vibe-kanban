@@ -20,7 +20,7 @@ import {
 } from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '../actions/useActionVisibility';
 import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
-import type { RepoSelectionResult } from '@/components/ui-new/dialogs/selections/repoSelection';
+import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
 
@@ -123,7 +123,7 @@ function CommandBarContent({
             '@/components/ui-new/dialogs/SelectionDialog'
           );
           const { buildRepoSelectionPages } = await import(
-            '@/components/ui-new/dialogs/selections/repoSelection'
+            './selections/repoSelection'
           );
           const result = await SelectionDialog.show({
             initialPageId: 'selectRepo',
