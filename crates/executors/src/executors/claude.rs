@@ -119,6 +119,14 @@ pub struct ClaudeCode {
     pub dangerously_skip_permissions: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub disable_api_key: Option<bool>,
+    /// Route API calls through AWS Bedrock instead of the Anthropic API.
+    /// Requires AWS credentials via env vars or ~/.aws/credentials.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub use_bedrock: Option<bool>,
+    /// AWS region for Bedrock (e.g. `us-east-1`).
+    /// Falls back to AWS_REGION / AWS_DEFAULT_REGION env vars when not set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aws_region: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -246,6 +254,27 @@ fn default_discovered_options() -> crate::executor_discovery::ExecutorDiscovered
                 ("claude-opus-4-6[1m]", "Opus (1M context)"),
                 ("claude-haiku-4-5-20251001", "Haiku"),
                 ("claude-sonnet-4-5-20250929", "Sonnet"),
+                // AWS Bedrock cross-region inference profile IDs
+                (
+                    "us.anthropic.claude-opus-4-5-20251101-v1:0",
+                    "Opus 4.5 (Bedrock)",
+                ),
+                (
+                    "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+                    "Sonnet 4.5 (Bedrock)",
+                ),
+                (
+                    "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+                    "Haiku 4.5 (Bedrock)",
+                ),
+                (
+                    "us.anthropic.claude-opus-4-20250514-v1:0",
+                    "Opus 4 (Bedrock)",
+                ),
+                (
+                    "us.anthropic.claude-sonnet-4-20250514-v1:0",
+                    "Sonnet 4 (Bedrock)",
+                ),
             ]
             .into_iter()
             .map(|(id, name)| ModelInfo {
@@ -585,6 +614,16 @@ impl ClaudeCode {
         env.clone()
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
+
+        // Inject AWS Bedrock env vars when use_bedrock is enabled
+        if self.use_bedrock.unwrap_or(false) {
+            command.env("CLAUDE_CODE_USE_BEDROCK", "1");
+            command.env("ANTHROPIC_API_KEY", "bedrock");
+            if let Some(region) = &self.aws_region {
+                command.env("AWS_REGION", region);
+            }
+            tracing::info!("AWS Bedrock mode enabled");
+        }
 
         // Remove ANTHROPIC_API_KEY if disable_api_key is enabled
         if self.disable_api_key.unwrap_or(false) {
