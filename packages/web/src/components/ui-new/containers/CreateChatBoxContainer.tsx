@@ -12,7 +12,7 @@ import { getSortedExecutorVariantKeys } from '@/utils/executor';
 import { toPrettyCase, splitMessageToTitleDescription } from '@/utils/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
-import { SettingsDialog } from '../dialogs/SettingsDialog';
+import { SettingsDialog } from '@/features/settings/ui/dialogs/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
 import { ModelSelectorContainer } from './ModelSelectorContainer';
 

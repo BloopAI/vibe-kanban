@@ -146,6 +146,8 @@ compatibility shims.
         `src/shared/ui/dialogs/WorkspacesGuideDialog.tsx`.
   - [x] Moved reusable `KeyboardShortcutsDialog` to
         `src/shared/ui/dialogs/KeyboardShortcutsDialog.tsx`.
+  - [x] Moved feature dialog `SettingsDialog` to
+        `src/features/settings/ui/dialogs/SettingsDialog.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -245,6 +247,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/KeyboardShortcutsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/SettingsDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -474,6 +478,13 @@ compatibility shims.
   - [x] Kept non-owned `KeyboardShortcutsDialog` callsite on the legacy shim
         path in `src/app/providers/NewDesignScope.tsx` to avoid Track 1
         ownership churn.
+  - [x] Updated canonical `SettingsDialog` callsites to feature-owned path in:
+        `src/components/ui-new/actions/index.ts`,
+        `src/components/ui-new/containers/AppBarUserPopoverContainer.tsx`,
+        `src/components/ui-new/containers/CreateChatBoxContainer.tsx`.
+  - [x] Kept non-owned `SettingsDialog` callsite on the legacy shim path in
+        `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx` to avoid
+        Track 1 ownership churn.
 
 ## Risk Controls
 
@@ -635,6 +646,11 @@ compatibility shims.
   shared-ui ownership, keep non-owned app-provider callers (currently
   `src/app/providers/NewDesignScope.tsx`) on the legacy shim path during
   Track 1 to avoid cross-scope ownership churn.
+- New information (2026-02-22): after moving `SettingsDialog` into feature
+  ownership, keep `SettingsSection` and `SettingsDirtyContext` on their legacy
+  `src/components/ui-new/dialogs/settings/*` paths during Track 1 and import
+  them from the canonical feature dialog by alias until the settings subtree is
+  migrated in a dedicated follow-up.
 
 ## Validation
 

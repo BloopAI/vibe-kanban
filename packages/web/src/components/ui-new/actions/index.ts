@@ -81,7 +81,7 @@ import { EditorSelectionDialog } from '@/features/command-bar/ui/dialogs/EditorS
 import { StartReviewDialog } from '@/features/command-bar/ui/dialogs/StartReviewDialog';
 import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/shared/ui/dialogs/WorkspacesGuideDialog';
-import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
+import { SettingsDialog } from '@/features/settings/ui/dialogs/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
