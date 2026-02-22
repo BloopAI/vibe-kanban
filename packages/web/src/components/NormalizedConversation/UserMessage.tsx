@@ -3,7 +3,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { BaseAgentCapability } from 'shared/types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useRetryUi } from '@/features/workspace-chat/model/contexts/RetryUiContext';
+import { useRetryUi } from '@/shared/hooks/useRetryUi';
 import { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
 import { RetryEditorInline } from './RetryEditorInline';
 

@@ -33,7 +33,7 @@ import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
 import { cn } from '@/shared/lib/utils';
-import { useRetryUi } from '@/features/workspace-chat/model/contexts/RetryUiContext';
+import { useRetryUi } from '@/shared/hooks/useRetryUi';
 import { Button } from '@vibe/ui/components/Button';
 import {
   ScriptFixerDialog,

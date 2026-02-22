@@ -17,7 +17,7 @@ import { ProcessLogsViewerContent } from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
 import { useProcessSelection } from '@/features/workspace-chat/model/contexts/ProcessSelectionContext';
-import { useRetryUi } from '@/features/workspace-chat/model/contexts/RetryUiContext';
+import { useRetryUi } from '@/shared/hooks/useRetryUi';
 
 interface ProcessesTabProps {
   sessionId?: string;
