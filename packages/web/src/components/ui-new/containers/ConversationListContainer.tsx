@@ -17,7 +17,7 @@ import {
 } from 'react';
 
 import { cn } from '@/lib/utils';
-import NewDisplayConversationEntry from './NewDisplayConversationEntry';
+import NewDisplayConversationEntry from '@/features/workspace-chat/ui/NewDisplayConversationEntry';
 import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
 import { useEntries } from '@/contexts/EntriesContext';
 import {

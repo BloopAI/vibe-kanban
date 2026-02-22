@@ -20,7 +20,7 @@ import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { useWorkspaceSessions } from '@/hooks/useWorkspaceSessions';
 import { useAttempt } from '@/hooks/useAttempt';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
+import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
 import {

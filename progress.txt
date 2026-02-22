@@ -357,3 +357,44 @@
      into a feature-owned workspace-chat path with compatibility shim.
   2. Move `src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
      into the same feature slice and update imports to canonical paths.
+
+## 2026-02-22 10:56:42 UTC
+
+- Reviewed `packages-web-cutover-plan.md` and `progress.txt` and selected the next queued Phase C workspace-chat hotspot migration.
+- Implemented workspace-chat container migration:
+  - Moved `src/components/ui-new/containers/SessionChatBoxContainer.tsx`
+    -> `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`.
+  - Moved `src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+    -> `src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`.
+  - Added temporary compatibility shims at the legacy paths so existing
+    imports continue to resolve during phased cutover.
+- Updated imports to canonical feature paths:
+  - `src/components/ui-new/containers/WorkspacesMainContainer.tsx`
+  - `src/components/ui-new/containers/ProjectRightSidebarContainer.tsx`
+  - `src/components/ui-new/containers/ConversationListContainer.tsx`
+- New information discovered and handled:
+  - Feature lint boundaries still prohibit `@/app/*` imports from
+    `src/features/*`.
+  - Updated moved files to consume hook adapters instead:
+    `@/hooks/useUserSystem` and `@/hooks/useTheme`.
+  - Kept `src/features/workspace/ui/VSCodeWorkspacePage.tsx` on the legacy
+    shim import path for now to avoid introducing cross-feature relative
+    imports under current layer restrictions.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Added Phase C progress bullets for the two workspace-chat moves,
+    canonical import updates, shims, and adapter-hook usage.
+  - Marked both Phase C hotspots complete:
+    `SessionChatBoxContainer` and `NewDisplayConversationEntry`.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Phase C hotspot decomposition:
+  1. Start extracting `src/components/ui-new/actions/index.ts` into a
+     feature-owned command/actions slice (with compatibility exports).
+  2. Follow with `src/lib/api.ts` domain split once action dependencies are
+     clearer.

@@ -237,6 +237,22 @@ packages/web/src/
        `src/components/ui-new/containers/KanbanContainer.tsx`
      - updated moved kanban feature file to use `src/hooks/useUserSystem.ts`
        adapter instead of importing `@/app/*` directly
+     - moved session chat composer container from
+       `src/components/ui-new/containers/SessionChatBoxContainer.tsx` to
+       `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`
+     - moved conversation entry renderer from
+       `src/components/ui-new/containers/NewDisplayConversationEntry.tsx` to
+       `src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`
+     - updated canonical imports to workspace-chat feature path in:
+       - `src/components/ui-new/containers/WorkspacesMainContainer.tsx`
+       - `src/components/ui-new/containers/ProjectRightSidebarContainer.tsx`
+       - `src/components/ui-new/containers/ConversationListContainer.tsx`
+     - kept temporary compatibility shims at legacy paths:
+       - `src/components/ui-new/containers/SessionChatBoxContainer.tsx`
+       - `src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+     - updated moved workspace-chat feature files to use hook adapters
+       (`src/hooks/useUserSystem.ts`, `src/hooks/useTheme.ts`) instead of
+       importing `@/app/*` directly
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders
@@ -245,8 +261,12 @@ packages/web/src/
    - [ ] `src/lib/api.ts`
    - [x] `src/components/ui-new/containers/KanbanContainer.tsx` ->
      `src/features/kanban/ui/KanbanContainer.tsx` (legacy shim retained)
-   - [ ] `src/components/ui-new/containers/SessionChatBoxContainer.tsx`
-   - [ ] `src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+   - [x] `src/components/ui-new/containers/SessionChatBoxContainer.tsx` ->
+     `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`
+     (legacy shim retained)
+   - [x] `src/components/ui-new/containers/NewDisplayConversationEntry.tsx` ->
+     `src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`
+     (legacy shim retained)
 
 ## Phase D. Dialog/Modal Consolidation
 
