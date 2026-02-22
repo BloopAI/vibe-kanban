@@ -176,16 +176,6 @@ export function useActionVisibilityContext(
   ]);
 }
 
-// Re-export pure action helpers from shared-level actions module
-export {
-  isActionVisible,
-  isActionActive,
-  isActionEnabled,
-  getActionIcon,
-  getActionTooltip,
-  getActionLabel,
-} from '@/components/ui-new/actions';
-
 /**
  * Helper to check if a page is visible given the current context.
  * If the page has no isVisible condition, it's always visible.
