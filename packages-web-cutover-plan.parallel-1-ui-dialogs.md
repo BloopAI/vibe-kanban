@@ -45,6 +45,8 @@ compatibility shims.
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
         `src/shared/ui/dialogs/FolderPickerDialog.tsx`.
+  - [x] Moved reusable `ConfirmDialog` to
+        `src/shared/ui/dialogs/ConfirmDialog.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
@@ -52,6 +54,8 @@ compatibility shims.
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/FolderPickerDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/shared/ConfirmDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
@@ -60,6 +64,8 @@ compatibility shims.
         `@/shared/ui/dialogs/FolderPickerDialog` in:
         `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`,
         `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
+  - [x] Updated shared-dialog barrel export to canonical path in
+        `src/components/dialogs/index.ts` for `ConfirmDialog`.
 
 ## Risk Controls
 
@@ -76,6 +82,9 @@ compatibility shims.
   Use named imports (`create`, `useModal`) from `@ebay/nice-modal-react` in
   shared dialog files, or plan an explicit lint-config update in final
   consolidation.
+- New information (2026-02-22): some reusable dialogs are primarily consumed
+  through `src/components/dialogs/index.ts` (barrel), so canonicalization can
+  be achieved by updating barrel exports while keeping legacy file shims.
 
 ## Validation
 

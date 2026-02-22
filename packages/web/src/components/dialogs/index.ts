@@ -74,7 +74,10 @@ export {
 } from './settings/DeleteConfigurationDialog';
 
 // Shared/Generic dialogs
-export { ConfirmDialog, type ConfirmDialogProps } from './shared/ConfirmDialog';
+export {
+  ConfirmDialog,
+  type ConfirmDialogProps,
+} from '@/shared/ui/dialogs/ConfirmDialog';
 export {
   FolderPickerDialog,
   type FolderPickerDialogProps,
