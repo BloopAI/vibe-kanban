@@ -97,3 +97,39 @@
 - Continue `T1.4/T1.6/T1.7` by moving the next reusable dialog candidate under
   `src/components/dialogs/shared/*` to `src/shared/ui/dialogs/*`, or start
   `T1.5` by converging duplicate `RebaseDialog` implementations.
+
+## 2026-02-22 11:15:29 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next low-risk reusable dialog move for Track 1.
+- Selected `ImagePreviewDialog` as the next component to move into canonical shared UI placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx`
+    -> `src/shared/ui/dialogs/ImagePreviewDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx`.
+  - Updated canonical callsite import:
+    `src/components/ui/wysiwyg.tsx` now imports
+    `@/shared/ui/dialogs/ImagePreviewDialog`.
+- New information discovered and handled:
+  - Shared dialog lint restriction still requires avoiding NiceModal default import.
+  - Updated moved dialog to use named imports from `@ebay/nice-modal-react`
+    (`create`, `useModal`) in the canonical shared path.
+  - Confirmed the migration pattern also applies to reusable dialogs that
+    originated outside `components/dialogs/shared/*` (e.g. `wysiwyg`).
+- Updated plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `ImagePreviewDialog`.
+  - Added a risk-controls note documenting this broader reusable-dialog
+    migration pattern.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue `T1.4/T1.6/T1.7` for any remaining reusable dialogs, then begin
+  `T1.5` by consolidating duplicate `RebaseDialog` implementations into one
+  canonical dialog with compatibility exports.

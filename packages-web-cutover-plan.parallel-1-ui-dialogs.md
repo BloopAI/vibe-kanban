@@ -47,6 +47,8 @@ compatibility shims.
         `src/shared/ui/dialogs/FolderPickerDialog.tsx`.
   - [x] Moved reusable `ConfirmDialog` to
         `src/shared/ui/dialogs/ConfirmDialog.tsx`.
+  - [x] Moved reusable `ImagePreviewDialog` to
+        `src/shared/ui/dialogs/ImagePreviewDialog.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
@@ -56,6 +58,8 @@ compatibility shims.
         `src/components/dialogs/shared/FolderPickerDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/ConfirmDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
@@ -66,6 +70,9 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
   - [x] Updated shared-dialog barrel export to canonical path in
         `src/components/dialogs/index.ts` for `ConfirmDialog`.
+  - [x] Updated canonical callsite to
+        `@/shared/ui/dialogs/ImagePreviewDialog` in
+        `src/components/ui/wysiwyg.tsx`.
 
 ## Risk Controls
 
@@ -85,6 +92,10 @@ compatibility shims.
 - New information (2026-02-22): some reusable dialogs are primarily consumed
   through `src/components/dialogs/index.ts` (barrel), so canonicalization can
   be achieved by updating barrel exports while keeping legacy file shims.
+- New information (2026-02-22): reusable dialogs outside the `shared/` folder
+  (e.g. under `components/dialogs/wysiwyg`) can also be migrated into
+  `src/shared/ui/dialogs/*` with a legacy shim and a direct canonical import
+  update when callsite count is low.
 
 ## Validation
 
