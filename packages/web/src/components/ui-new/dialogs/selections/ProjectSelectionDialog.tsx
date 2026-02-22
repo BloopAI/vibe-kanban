@@ -16,7 +16,7 @@ import type {
   ResolvedGroupItem,
 } from '@/features/command-bar/ui/actions/pages';
 import type { Issue } from 'shared/remote-types';
-import { buildStatusSelectionPages } from './statusSelection';
+import { buildStatusSelectionPages } from '@/features/command-bar/ui/dialogs/selections/statusSelection';
 import { buildPrioritySelectionPages } from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
 import { buildSubIssueSelectionPages } from './subIssueSelection';
 import { buildRelationshipSelectionPages } from './relationshipSelection';
@@ -25,7 +25,7 @@ import {
   type ActionDefinition,
 } from '@/components/ui-new/actions';
 import type { SelectionPage } from '../SelectionDialog';
-import type { StatusSelectionResult } from './statusSelection';
+import type { StatusSelectionResult } from '@/features/command-bar/ui/dialogs/selections/statusSelection';
 import type { PrioritySelectionResult } from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
 import type { SubIssueSelectionResult } from './subIssueSelection';
 import type { RelationshipSelectionResult } from './relationshipSelection';
