@@ -34,7 +34,7 @@ package.
 - [x] Step 6 completed
 - [x] Step 7 completed
 - [x] Step 8 completed
-- [ ] Step 9 pending
+- [x] Step 9 completed
 
 ## 1. Move the web app package
 

@@ -7037,3 +7037,49 @@ Validation:
 
 New information:
 - The old `frontend/` package had already been fully removed from tracked files prior to this step; this pass finalized cleanup by updating remaining ignore paths and documenting intentional historical references.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 9 (verification checklist)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 9 (full verification pass)
+- [x] Ran quality checks (`check`, `lint`, `format`) and runtime smoke checks
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Step 9 was the final pending cutover task.
+- Required action: run the full verification checklist to validate the end-to-end `@vibe/web` cutover state.
+
+Verification run completed:
+1. Install/deps
+   - `pnpm install` ✅
+2. Web app package
+   - `pnpm run web:check` ✅
+   - `pnpm run web:lint` ✅
+   - `pnpm run web:dev` ✅ (Vite served at `http://localhost:3000/`, then clean shutdown)
+   - `pnpm --filter @vibe/web run build` ✅
+3. Workspace-level
+   - `pnpm run check` ✅
+   - `pnpm run lint` ✅
+4. Backend embed check
+   - `cargo check -p server` ✅
+5. End-to-end local dev
+   - `pnpm run dev` ✅
+   - Confirmed both processes started:
+     - web: `http://localhost:3002/`
+     - backend: `Main server on :3003, Preview proxy on :3004`
+   - Clean shutdown via SIGINT ✅
+6. Formatting
+   - `pnpm run format` ✅
+
+Notable (non-blocking) warnings observed during verification:
+- Web production build reported existing Vite chunk-size and dynamic-import warnings.
+- Sentry plugin reported missing auth token in local environment; build still completed successfully.
+- Server build script emitted expected dummy `packages/web/dist` warning when applicable.
+
+Plan adjustments from new information:
+- No structural plan changes required.
+- Cutover checklist is now fully complete (Steps 1-9 all done).
