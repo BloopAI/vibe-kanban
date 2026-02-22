@@ -3,12 +3,11 @@ import {
   IssueWorkspaceCard,
   IssueWorkspaceCreateCard,
   type WorkspaceWithStats,
-} from '@vibe/ui/components/IssueWorkspaceCard';
+} from './IssueWorkspaceCard';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from '@vibe/ui/components/CollapsibleSectionHeader';
-import type { PersistKey } from '@/stores/useUiPreferencesStore';
+} from './CollapsibleSectionHeader';
 
 export interface IssueWorkspacesSectionProps {
   workspaces: WorkspaceWithStats[];
@@ -40,7 +39,7 @@ export function IssueWorkspacesSection({
   return (
     <CollapsibleSectionHeader
       title={t('workspaces.title')}
-      persistKey={'kanban-issue-workspaces' as PersistKey}
+      persistKey="kanban-issue-workspaces"
       defaultExpanded={true}
       actions={actions}
     >

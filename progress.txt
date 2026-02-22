@@ -5629,3 +5629,45 @@ Validation:
 
 Plan adjustments from new information:
 - Prioritize remaining view extractions where shared type usage can be replaced by existing package component contracts (e.g., avatar/assignee types), since these moves stay small and readable.
+
+## 2026-02-22 - UI package extraction: IssueWorkspacesSection
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueWorkspacesSection.tsx` as the next extraction target.
+- `IssueWorkspaceCard` and `CollapsibleSectionHeader` were already in `@vibe/ui`, leaving only one frontend-specific coupling (`PersistKey` type cast).
+- New information: when package components already accept primitive contracts (like `persistKey?: string`), app-specific key-type casts can be removed directly during extraction.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueWorkspacesSection.tsx packages/ui/src/components/IssueWorkspacesSection.tsx`
+- Package updates:
+  - Replaced package self-imports:
+    - `@vibe/ui/components/IssueWorkspaceCard` -> `./IssueWorkspaceCard`
+    - `@vibe/ui/components/CollapsibleSectionHeader` -> `./CollapsibleSectionHeader`
+  - Removed frontend store coupling:
+    - removed `PersistKey` import from `@/stores/useUiPreferencesStore`
+    - replaced `persistKey={'kanban-issue-workspaces' as PersistKey}` with `persistKey="kanban-issue-workspaces"`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/IssueWorkspacesSectionContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueWorkspacesSection`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Prioritize remaining view extractions where frontend-specific types are only used for compile-time casts; these can usually be replaced with existing package prop types without behavior changes.
