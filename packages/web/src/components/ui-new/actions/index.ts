@@ -1415,7 +1415,7 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,
@@ -1447,7 +1447,7 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,

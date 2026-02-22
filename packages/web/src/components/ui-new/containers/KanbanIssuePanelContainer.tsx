@@ -614,7 +614,7 @@ export function KanbanIssuePanelContainer({
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
           const { ProjectSelectionDialog } = await import(
-            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+            '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog'
           );
           const result = await ProjectSelectionDialog.show({
             projectId,
@@ -635,7 +635,7 @@ export function KanbanIssuePanelContainer({
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
           const { ProjectSelectionDialog } = await import(
-            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+            '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog'
           );
           const result = await ProjectSelectionDialog.show({
             projectId,

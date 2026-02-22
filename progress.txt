@@ -1437,3 +1437,44 @@
   into `src/features/command-bar/ui/dialogs/selections/*` with a compatibility
   shim, then update only owned UI-layer callsites (`src/components/ui-new/**`)
   while keeping `src/contexts/ActionsContext.tsx` on the legacy shim path.
+
+## 2026-02-22 13:16:56 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx` as the next Track 1 dialog migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
+  - Updated moved dialog for feature-lint compatibility:
+    - switched NiceModal usage to named imports (`create`, `useModal`)
+    - replaced feature-alias imports with relative sibling helper imports
+      (`./statusSelection`, `./prioritySelection`, `./subIssueSelection`,
+      `./relationshipSelection`)
+    - routed `pages`/`SelectionDialog` type dependencies through compatibility
+      paths.
+- Updated canonical owned callsites to feature path:
+  - `src/components/ui-new/actions/index.ts`
+  - `src/components/ui-new/containers/KanbanIssuePanelContainer.tsx`
+- Kept non-owned context-layer callsites on legacy shim path:
+  - `src/contexts/ActionsContext.tsx`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `ProjectSelectionDialog` migration.
+  - Added a risk-controls note capturing feature-import boundary adjustments in
+    the moved dialog.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 dialog extraction by moving
+  `src/components/ui-new/dialogs/SelectionDialog.tsx` into
+  `src/features/command-bar/ui/dialogs/*` with a compatibility shim and owned
+  callsite canonicalization, while preserving non-owned imports via the legacy
+  shim path.

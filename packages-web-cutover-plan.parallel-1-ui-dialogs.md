@@ -97,6 +97,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/selections/relationshipSelection.ts`.
   - [x] Moved command-bar selection helper `subIssueSelection` to
         `src/features/command-bar/ui/dialogs/selections/subIssueSelection.ts`.
+  - [x] Moved command-bar selection dialog `ProjectSelectionDialog` to
+        `src/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -216,6 +218,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/selections/subIssueSelection.ts`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -311,6 +315,14 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/command-bar/ui/dialogs/selections/subIssueSelection` in:
         `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog`
+        in:
+        `src/components/ui-new/actions/index.ts`,
+        `src/components/ui-new/containers/KanbanIssuePanelContainer.tsx`.
+  - [x] Kept `ProjectSelectionDialog` non-owned callsites on the legacy shim
+        path in `src/contexts/ActionsContext.tsx` to avoid Track 1 ownership
+        violations.
   - [x] Updated canonical repo-selection callsites in
         `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx` to:
         `./selections/repoSelection` (type import and dynamic import).
@@ -524,6 +536,10 @@ compatibility shims.
   in `src/contexts/ActionsContext.tsx` (outside Track 1 ownership); if the
   dialog is moved later in this track, keep a legacy shim at the old path and
   limit canonical import updates to owned UI surfaces.
+- New information (2026-02-22): after moving `ProjectSelectionDialog` into
+  feature ownership, keep sibling selection-helper imports relative and route
+  `pages`/`SelectionDialog` types through compatibility paths to satisfy
+  current feature import-boundary lint rules.
 
 ## Validation
 
