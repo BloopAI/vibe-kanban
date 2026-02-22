@@ -5,6 +5,8 @@ import {
   ChatsTeardropIcon,
   GitDiffIcon,
   TerminalIcon,
+  DesktopIcon,
+  GitForkIcon,
   ListIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
@@ -81,8 +83,10 @@ function NavbarIconButton({
 const MOBILE_TABS: { id: MobileTab; icon: Icon; label: string }[] = [
   { id: 'workspaces', icon: LayoutIcon, label: 'Wksps' },
   { id: 'chat', icon: ChatsTeardropIcon, label: 'Chat' },
-  { id: 'changes', icon: GitDiffIcon, label: 'Code' },
-  { id: 'git', icon: TerminalIcon, label: 'Git' },
+  { id: 'changes', icon: GitDiffIcon, label: 'Diff' },
+  { id: 'logs', icon: TerminalIcon, label: 'Logs' },
+  { id: 'preview', icon: DesktopIcon, label: 'Preview' },
+  { id: 'git', icon: GitForkIcon, label: 'Git' },
 ];
 
 export interface NavbarProps {

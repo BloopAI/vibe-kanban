@@ -9,6 +9,7 @@ import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import type { Project } from 'shared/remote-types';
 import { splitMessageToTitleDescription } from '@/utils/string';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import {
   PERSIST_KEYS,
   usePersistedExpanded,
@@ -254,6 +255,9 @@ export function WorkspacesSidebarContainer({
     selectWorkspace,
     navigateToCreate,
   } = useWorkspaceContext();
+
+  const isMobile = useIsMobile();
+  const setMobileActiveTab = useUiPreferencesStore((s) => s.setMobileActiveTab);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchive, setShowArchive] = usePersistedExpanded(
@@ -563,8 +567,18 @@ export function WorkspacesSidebarContainer({
       } else {
         selectWorkspace(id);
       }
+      // On mobile, switch to the chat tab to show the selected workspace
+      if (isMobile) {
+        setMobileActiveTab('chat');
+      }
     },
-    [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
+    [
+      selectedWorkspaceId,
+      selectWorkspace,
+      onScrollToBottom,
+      isMobile,
+      setMobileActiveTab,
+    ]
   );
 
   const searchControls = (
