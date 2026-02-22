@@ -55,7 +55,7 @@
     },
     "use_bedrock": {
       "title": "Use AWS Bedrock",
-      "description": "Route API calls through AWS Bedrock. Requires AWS credentials via env vars or ~/.aws/credentials.",
+      "description": "Route API calls through AWS Bedrock using your AWS_BEARER_TOKEN_BEDROCK. Set to true and select a Bedrock model below.",
       "type": [
         "boolean",
         "null"
