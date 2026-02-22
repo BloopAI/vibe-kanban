@@ -8,7 +8,7 @@ import { Droppable } from '@hello-pangea/dnd';
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { StatusDot } from '@vibe/ui/components/StatusDot';
 import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
-import { IssueListRow } from '@/components/ui-new/views/IssueListRow';
+import { IssueListRow } from '@vibe/ui/components/IssueListRow';
 import {
   usePersistedExpanded,
   type PersistKey,

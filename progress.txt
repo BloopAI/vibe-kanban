@@ -5393,3 +5393,51 @@ Validation:
 
 Plan adjustments from new information:
 - Continue extracting parent views after their leaf dependencies are in `@vibe/ui`, and shift app-only concerns (theme, utility resolution) to container adapters.
+
+## 2026-02-22 - UI package extraction: IssueListRow
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueListRow.tsx` as the next extraction target.
+- It has a single direct callsite in `IssueListSection` and no direct container/router coupling.
+- New information: list-row components with shared-domain props can migrate cleanly by replacing shared/app type imports with package-local structural contracts.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueListRow.tsx packages/ui/src/components/IssueListRow.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/PriorityIcon` -> `./PriorityIcon`
+    - `@vibe/ui/components/StatusDot` -> `./StatusDot`
+    - `@vibe/ui/components/KanbanBadge` -> `./KanbanBadge`
+    - `@vibe/ui/components/KanbanAssignee` -> `./KanbanAssignee`
+    - `@vibe/ui/components/RelationshipBadge` -> `./RelationshipBadge`
+  - Removed external/shared type imports (`shared/remote-types`, `shared/types`, `@/lib/resolveRelationships`) by introducing package-local structural types:
+    - `IssueListRowIssue`
+    - `IssueListRowTag`
+    - `IssueListRowRelationship`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/views/IssueListSection.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueListRow`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Keep prioritizing leaf rows/cards in remaining views; they provide low-risk extraction units and establish package-local type contracts that make later parent-view moves simpler.

@@ -1,16 +1,16 @@
 'use client';
 
-import { cn } from '@/lib/utils';
-import type { Issue, Tag } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { ResolvedRelationship } from '@/lib/resolveRelationships';
+import { cn } from '../lib/cn';
 import { Draggable } from '@hello-pangea/dnd';
 import { DotsSixVerticalIcon } from '@phosphor-icons/react';
-import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
-import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
-import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
-import { RelationshipBadge } from '@vibe/ui/components/RelationshipBadge';
+import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
+import { StatusDot } from './StatusDot';
+import { KanbanBadge } from './KanbanBadge';
+import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
+import {
+  RelationshipBadge,
+  type RelationshipDisplayType,
+} from './RelationshipBadge';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -37,13 +37,33 @@ function formatRelativeTime(dateString: string): string {
 
 const MAX_VISIBLE_TAGS = 2;
 
+export interface IssueListRowIssue {
+  id: string;
+  simple_id: string;
+  title: string;
+  priority: PriorityLevel | null;
+  created_at: string;
+}
+
+export interface IssueListRowTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface IssueListRowRelationship {
+  relationshipId: string;
+  displayType: RelationshipDisplayType;
+  relatedIssueDisplayId: string;
+}
+
 export interface IssueListRowProps {
-  issue: Issue;
+  issue: IssueListRowIssue;
   index: number;
   statusColor: string;
-  tags: Tag[];
-  relationships?: ResolvedRelationship[];
-  assignees: OrganizationMemberWithProfile[];
+  tags: IssueListRowTag[];
+  relationships?: IssueListRowRelationship[];
+  assignees: KanbanAssigneeUser[];
   onClick: () => void;
   isSelected: boolean;
   className?: string;
