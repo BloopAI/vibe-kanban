@@ -152,6 +152,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
   - [x] Moved settings dialog state context `SettingsDirtyContext` to
         `src/features/settings/ui/dialogs/settings/SettingsDirtyContext.tsx`.
+  - [x] Moved settings dialog section `McpSettingsSection` to
+        `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -257,6 +259,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/SettingsSection.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/settings/SettingsDirtyContext.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/McpSettingsSection.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -500,8 +504,10 @@ compatibility shims.
         `src/features/settings/ui/dialogs/SettingsDialog.tsx`,
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
         `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`,
-        `src/components/ui-new/dialogs/settings/McpSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`,
         `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
+  - [x] Updated canonical `McpSettingsSection` callsite to feature-owned path
+        in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
 
 ## Risk Controls
 
@@ -670,15 +676,18 @@ compatibility shims.
 - New information (2026-02-22): after moving `SettingsSection` into feature
   ownership, keep section implementation modules (`GeneralSettingsSection`,
   `ReposSettingsSection`, `OrganizationsSettingsSection`,
-  `RemoteProjectsSettingsSection`, `AgentsSettingsSection`,
-  `McpSettingsSection`) on legacy `src/components/ui-new/dialogs/settings/*`
-  paths for this track, with a compatibility shim at the legacy
-  `SettingsSection` path.
+  `RemoteProjectsSettingsSection`, `AgentsSettingsSection`) on legacy
+  `src/components/ui-new/dialogs/settings/*` paths for this track, with a
+  compatibility shim at the legacy `SettingsSection` path.
 - New information (2026-02-22): after moving `SettingsDirtyContext` into
   feature ownership, canonicalize current settings callsites to
   `src/features/settings/ui/dialogs/settings/SettingsDirtyContext.tsx` and keep
   a compatibility shim at the legacy
   `src/components/ui-new/dialogs/settings/SettingsDirtyContext.tsx` path.
+- New information (2026-02-22): after moving `McpSettingsSection` into feature
+  ownership, replace `@/app/providers/ConfigProvider` usage with the hook
+  facade `@/hooks/useUserSystem` to satisfy feature-layer import rules while
+  keeping `SettingsComponents` on legacy settings paths for staged migration.
 
 ## Validation
 
