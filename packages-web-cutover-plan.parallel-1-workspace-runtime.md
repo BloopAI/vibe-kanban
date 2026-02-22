@@ -23,23 +23,58 @@ Owned paths:
 ## Conflict Boundary
 Do not edit files owned by Track 2 or Track 3.
 
-## Work Plan
-1. Align runtime ownership boundaries.
-- Ensure workspace/chat/kanban state and side effects are owned by feature `model` and `ui` files.
-- Remove remaining runtime coupling to legacy root-layer implementation files.
+## Execution Rules
+- Do not modify shim-only files.
+- Prefer edits in owned paths first, then update only required callsites.
+- Keep behavior unchanged unless explicitly documented in PR notes.
 
-2. Normalize context and hook usage inside runtime domain.
-- Prefer feature-local model hooks and contexts in workspace/chat/kanban implementations.
-- Keep root contexts/hooks only where they are still canonical implementation, not as pass-through layer usage.
+## Task List
+### T1.1 Workspace Runtime Ownership Pass
+Task:
+- Ensure workspace runtime logic lives in `features/workspace/**` model or UI files.
 
-3. Reduce cross-domain dependencies.
-- Minimize direct imports from unrelated domains inside workspace runtime files.
-- Keep imports focused on `features/workspace*`, `features/kanban`, `shared/*`, and required `app/*` primitives.
+Completion criteria:
+- No new workspace runtime logic is added to root-level wrapper files.
+- Any edited runtime behavior file is inside owned paths.
+- `pnpm run web:check` passes.
 
-4. Verify behavior invariants.
-- Workspace open/load flows.
-- Session/chat send and retry flows.
-- Kanban filter/navigation flows.
+### T1.2 Workspace Chat Runtime Ownership Pass
+Task:
+- Consolidate chat runtime logic in `features/workspace-chat/**` model/UI files.
+
+Completion criteria:
+- Chat retry/reset/send/message-edit flows resolve through `features/workspace-chat/model/hooks/*`.
+- Chat state contexts resolve through `features/workspace-chat/model/contexts/*`.
+- `pnpm run web:lint` passes.
+
+### T1.3 Kanban Runtime Ownership Pass
+Task:
+- Keep kanban filtering/navigation and runtime UI logic in `features/kanban/**`.
+
+Completion criteria:
+- Kanban UI runtime uses `features/kanban/model/hooks/*` for stateful behavior.
+- No new kanban runtime behavior is added outside owned paths.
+- Workspace and kanban pages still render and navigate.
+
+### T1.4 Root Hook And Context Drift Reduction
+Task:
+- Reduce remaining runtime imports in workspace domains that point at legacy root runtime wrappers.
+
+Completion criteria:
+- For workspace runtime files, imports prefer feature-local modules when equivalents exist.
+- Command returns a reviewed set with no unexpected drift:
+- `rg -n "from '@/hooks/" packages/web/src/features/workspace packages/web/src/features/workspace-chat packages/web/src/features/kanban`
+- `rg -n "from '@/contexts/" packages/web/src/features/workspace packages/web/src/features/workspace-chat packages/web/src/features/kanban`
+
+### T1.5 Runtime Behavior Verification
+Task:
+- Verify key runtime user journeys did not regress.
+
+Completion criteria:
+- Workspace open/load flow works.
+- Session send/retry/edit/reset flow works.
+- Kanban filter/navigation flow works.
+- Verification notes are included in PR description.
 
 ## Validation
 Run:
@@ -51,6 +86,6 @@ Sanity grep:
 - `rg -n "from '@/contexts/" packages/web/src/features/workspace packages/web/src/features/workspace-chat packages/web/src/features/kanban`
 
 ## Definition Of Done
-- Workspace/chat/kanban runtime files compile and lint clean.
-- No new runtime logic added to shim/facade layers.
-- Runtime domain behavior matches current UI behavior.
+- T1.1 through T1.5 are complete.
+- Validation commands pass on the branch head.
+- Only Track 1 owned files and necessary callsites were changed.

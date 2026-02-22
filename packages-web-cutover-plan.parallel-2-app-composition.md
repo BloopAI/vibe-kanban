@@ -22,23 +22,58 @@ Owned paths:
 ## Conflict Boundary
 Do not edit files owned by Track 1 or Track 3.
 
-## Work Plan
-1. App shell and provider composition cleanup.
-- Confirm provider order and scope in `app/entry` and `app/providers`.
-- Keep provider responsibilities in `app/*`, not scattered in pages.
+## Execution Rules
+- Do not modify shim-only files.
+- Keep provider, router, and page orchestration logic in `app/*` and `pages/*`.
+- Keep migration and onboarding implementation inside their feature folders.
 
-2. Router and page-flow ownership cleanup.
-- Keep route/page orchestration in `app/router` and `pages/*`.
-- Keep feature-specific implementation in `features/migration` and `features/onboarding`.
+## Task List
+### T2.1 App Entry And Provider Composition
+Task:
+- Clean and lock provider composition responsibilities in `app/entry/*` and `app/providers/*`.
 
-3. Command bar action wiring cleanup.
-- Ensure command-bar action definitions stay in feature action modules.
-- Keep page/app usage consuming those actions through stable feature exports.
+Completion criteria:
+- Provider ordering is intentional and documented in code comments where needed.
+- Pages do not re-own global provider responsibilities.
+- `pnpm run web:check` passes.
 
-4. Journey-level behavior checks.
-- Root redirect and workspace landing.
-- Onboarding landing/sign-in flow.
-- Migration multi-step flow.
+### T2.2 Router And Page Ownership Cleanup
+Task:
+- Keep route composition in `app/router/*` and page orchestration in `pages/{migrate,root,workspaces}/*`.
+
+Completion criteria:
+- Pages are thin orchestration layers that delegate implementation to features.
+- Root redirect and workspace landing routes still resolve correctly.
+- `pnpm run web:lint` passes.
+
+### T2.3 Migration And Onboarding Journey Wiring
+Task:
+- Ensure onboarding and migration flows are consistently wired through feature modules.
+
+Completion criteria:
+- Onboarding landing and sign-in pages render through `features/onboarding/*`.
+- Migration journey pages render through `features/migration/*`.
+- Flow behavior is unchanged based on manual verification.
+
+### T2.4 Command Bar Action Ownership
+Task:
+- Keep command bar action definitions in `features/command-bar/ui/actions/*` and consume from stable exports.
+
+Completion criteria:
+- Action page definitions live in feature action files only.
+- No duplicate action-definition logic in app/pages files.
+- `rg -n "from '@/features/command-bar/ui/actions" packages/web/src` output matches expected consumers.
+
+### T2.5 Journey Verification
+Task:
+- Run smoke checks for app-level journeys affected by this track.
+
+Completion criteria:
+- Root redirect works.
+- Onboarding flow works.
+- Migration flow works.
+- Workspace landing flow works.
+- Verification notes are included in PR description.
 
 ## Validation
 Run:
@@ -50,6 +85,6 @@ Sanity grep:
 - `rg -n "from '@/features/command-bar/ui/actions" packages/web/src`
 
 ## Definition Of Done
-- App/provider/router/page files compile and lint clean.
-- Onboarding and migration journeys run with unchanged behavior.
-- Command bar action wiring is owned by feature action modules and not duplicated.
+- T2.1 through T2.5 are complete.
+- Validation commands pass on the branch head.
+- Only Track 2 owned files and necessary callsites were changed.

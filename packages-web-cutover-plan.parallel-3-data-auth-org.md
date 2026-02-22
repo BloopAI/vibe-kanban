@@ -20,22 +20,56 @@ Owned paths:
 ## Conflict Boundary
 Do not edit files owned by Track 1 or Track 2.
 
-## Work Plan
-1. API client boundary hardening.
-- Keep backend interaction logic centralized in `lib/api.ts` and `lib/remoteApi.ts`.
-- Remove domain leakage from auth/org hooks into unrelated UI layers.
+## Execution Rules
+- Do not modify shim-only files.
+- Keep infra contracts stable while migrating ownership.
+- Prefer mechanical import cleanups before behavior changes.
 
-2. Auth hook ownership cleanup.
-- Keep auth state/query/mutation behavior inside `hooks/auth/*`.
-- Ensure consumers import from stable auth hook entry points.
+## Task List
+### T3.1 API Client Boundary Hardening
+Task:
+- Stabilize data-client boundaries in `lib/api.ts` and `lib/remoteApi.ts`.
 
-3. Organization hook and remote context alignment.
-- Keep org querying/mutations and selection logic in org hooks.
-- Keep remote user/org/project/issue context behavior consistent and self-contained.
+Completion criteria:
+- API access paths remain centralized in these files.
+- No new API calling surfaces are introduced in unrelated layers.
+- `pnpm run web:check` passes.
 
-4. Modal infrastructure stability pass.
-- Keep modal contract/types in `lib/modals.ts`.
-- Ensure infra-level modal usage patterns stay consistent and typed.
+### T3.2 Auth Hook Ownership Cleanup
+Task:
+- Keep authentication state and mutation/query logic fully owned by `hooks/auth/*`.
+
+Completion criteria:
+- Auth behavior remains sourced from `hooks/auth/*`.
+- Consumers use stable auth hook entry points.
+- `pnpm run web:lint` passes.
+
+### T3.3 Organization Hook Consolidation
+Task:
+- Consolidate org selection/membership/project/invitation logic in the owned org hook files.
+
+Completion criteria:
+- Organization query/mutation logic is not duplicated in UI/domain files.
+- Organization selection state is consistently derived from org hooks.
+- `rg -n "from '@/hooks/useOrganization|from '@/hooks/organizationKeys" packages/web/src` shows expected consumers only.
+
+### T3.4 Remote Context Alignment
+Task:
+- Keep remote user/org/project/issue context ownership in `contexts/remote/*`.
+
+Completion criteria:
+- Remote context state derivation and provider responsibilities are self-contained.
+- No cross-domain runtime leakage into workspace/app ownership tracks.
+- `rg -n "from '@/contexts/remote" packages/web/src` shows expected consumers only.
+
+### T3.5 Modal Contract Stability
+Task:
+- Ensure `lib/modals.ts` remains the typed modal contract source for infrastructure-level usage.
+
+Completion criteria:
+- Modal argument/result contracts remain typed and consistent.
+- No duplicate modal contract definitions are introduced.
+- Verification notes are included in PR description.
 
 ## Validation
 Run:
@@ -47,6 +81,6 @@ Sanity grep:
 - `rg -n "from '@/features/workspace|from '@/features/workspace-chat|from '@/features/kanban" packages/web/src/hooks/auth packages/web/src/hooks/useOrganization* packages/web/src/contexts/remote`
 
 ## Definition Of Done
-- Data/auth/org infra files compile and lint clean.
-- Auth and org flows behave the same from UI perspective.
-- No new infra logic is introduced into shim/facade layers.
+- T3.1 through T3.5 are complete.
+- Validation commands pass on the branch head.
+- Only Track 3 owned files and necessary callsites were changed.
