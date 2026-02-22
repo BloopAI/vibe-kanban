@@ -46,7 +46,7 @@ import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
 import { ChatScriptEntry } from '@vibe/ui/components/ChatScriptEntry';
 import { ChatSubagentEntry } from '@vibe/ui/components/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '@vibe/ui/components/ChatAggregatedToolEntries';
-import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
+import { ChatAggregatedDiffEntries } from '@vibe/ui/components/ChatAggregatedDiffEntries';
 import { ChatCollapsedThinking } from '@vibe/ui/components/ChatCollapsedThinking';
 import { ChatMarkdown } from '../primitives/conversation/ChatMarkdown';
 import {
@@ -1095,9 +1095,16 @@ function AggregatedThinkingGroupEntry({
  * Aggregated diff group entry for consecutive file_edit entries on the same file
  */
 function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
   const { viewFileInChanges, diffPaths } = useChangesView();
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const FileIcon = useMemo(
+    () => getFileIcon(group.filePath, actualTheme),
+    [group.filePath, actualTheme]
+  );
+  const isVSCode = inIframe();
 
   // Extract change data and status from each entry
   const aggregatedDiffEntries = useMemo(() => {
@@ -1136,6 +1143,9 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   const handleOpenInChanges = useCallback(() => {
     viewFileInChanges(group.filePath);
   }, [viewFileInChanges, group.filePath]);
+  const handleOpenInVSCode = useCallback((filePath: string) => {
+    openFileInVSCode(filePath, { openAsDiff: false });
+  }, []);
 
   const canOpenInChanges = diffPaths.has(group.filePath);
 
@@ -1148,6 +1158,12 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
       onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
+      fileIcon={FileIcon}
+      isVSCode={isVSCode}
+      onOpenInVSCode={handleOpenInVSCode}
+      renderDiffBody={({ diffContent }) =>
+        diffContent ? <FileEntryDiffBody diffContent={diffContent} /> : null
+      }
     />
   );
 }

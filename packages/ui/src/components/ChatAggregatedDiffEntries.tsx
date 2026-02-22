@@ -1,28 +1,27 @@
 import { useMemo } from 'react';
-import { CaretDownIcon, ArrowSquareUpRightIcon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { getFileIcon } from '@/utils/fileTypeIcon';
-import { useTheme } from '@/components/ThemeProvider';
-import { getActualTheme } from '@/utils/theme';
-import { ToolStatus, ActionType } from 'shared/types';
-import { parseDiffStats } from '@/utils/diffStatsParser';
-import { inIframe, openFileInVSCode } from '@/vscode/bridge';
-import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 import {
-  DiffViewBody,
-  useDiffData,
-  type DiffInput,
-} from './PierreConversationDiff';
+  CaretDownIcon,
+  ArrowSquareUpRightIcon,
+  FileIcon as DefaultFileIcon,
+} from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
+import type { ChatFileEntryDiffInput } from './ChatFileEntry';
 
-type FileEditAction = Extract<ActionType, { action: 'file_edit' }>;
-type FileChange = FileEditAction['changes'][number];
+export type ChatAggregatedDiffChange = {
+  action: 'edit' | 'write' | 'delete' | 'rename';
+  unified_diff?: string;
+  has_line_numbers?: boolean;
+  content?: string;
+  new_path?: string;
+};
 
 export interface AggregatedDiffEntry {
   /** The file change data */
-  change: FileChange;
+  change: ChatAggregatedDiffChange;
   /** Tool status for this change */
-  status: ToolStatus | null;
+  status: ToolStatusLike | null;
   /** Unique key for expansion state */
   expansionKey: string;
 }
@@ -43,91 +42,115 @@ interface ChatAggregatedDiffEntriesProps {
   /** Callback to open file in changes panel */
   onOpenInChanges: (() => void) | null;
   className?: string;
+  fileIcon?: React.ElementType;
+  isVSCode?: boolean;
+  onOpenInVSCode?: (filePath: string) => void;
+  renderDiffBody?: (args: {
+    filePath: string;
+    change: ChatAggregatedDiffChange;
+    diffContent?: ChatFileEntryDiffInput;
+  }) => React.ReactNode;
 }
 
-/**
- * Renders a single diff entry within the aggregated view (always expanded)
- */
+function parseUnifiedDiffStats(unifiedDiff: string) {
+  let additions = 0;
+  let deletions = 0;
+
+  for (const line of unifiedDiff.split('\n')) {
+    if (line.startsWith('+++') || line.startsWith('---')) {
+      continue;
+    }
+    if (line.startsWith('+')) {
+      additions += 1;
+    } else if (line.startsWith('-')) {
+      deletions += 1;
+    }
+  }
+
+  return { additions, deletions };
+}
+
+function buildDiffContent(
+  change: ChatAggregatedDiffChange,
+  filePath: string
+): ChatFileEntryDiffInput | undefined {
+  if (change.action === 'edit' && change.unified_diff) {
+    return {
+      type: 'unified',
+      path: filePath,
+      unifiedDiff: change.unified_diff,
+      hasLineNumbers: change.has_line_numbers ?? true,
+    };
+  }
+  if (change.action === 'write' && change.content) {
+    return {
+      type: 'content',
+      oldContent: '',
+      newContent: change.content,
+      newPath: filePath,
+    };
+  }
+  return undefined;
+}
+
+function getActionLabel(change: ChatAggregatedDiffChange) {
+  switch (change.action) {
+    case 'edit':
+      return 'Edit';
+    case 'write':
+      return 'Write';
+    case 'delete':
+      return 'Delete';
+    case 'rename':
+      return change.new_path ? `Rename → ${change.new_path}` : 'Rename';
+    default:
+      return 'Change';
+  }
+}
+
 function DiffEntry({
   filePath,
   change,
   status,
+  renderDiffBody,
 }: {
   filePath: string;
-  change: FileChange;
-  status: ToolStatus | null;
+  change: ChatAggregatedDiffChange;
+  status: ToolStatusLike | null;
+  renderDiffBody?: (args: {
+    filePath: string;
+    change: ChatAggregatedDiffChange;
+    diffContent?: ChatFileEntryDiffInput;
+  }) => React.ReactNode;
 }) {
-  const { theme } = useTheme();
-  const actualTheme = getActualTheme(theme);
-
-  // Calculate diff stats
   const { additions, deletions } = useMemo(() => {
     if (change.action === 'edit' && change.unified_diff) {
-      return parseDiffStats(change.unified_diff);
+      return parseUnifiedDiffStats(change.unified_diff);
     }
     return { additions: undefined, deletions: undefined };
   }, [change]);
 
-  // For write actions, count as all additions
   const writeAdditions =
-    change.action === 'write' ? change.content.split('\n').length : undefined;
-
-  // Build diff content for rendering
-  const diffContent: DiffInput | undefined = useMemo(() => {
-    if (change.action === 'edit' && change.unified_diff) {
-      return {
-        type: 'unified',
-        path: filePath,
-        unifiedDiff: change.unified_diff,
-        hasLineNumbers: change.has_line_numbers ?? true,
-      };
-    }
-    if (change.action === 'write' && change.content) {
-      return {
-        type: 'content',
-        oldContent: '',
-        newContent: change.content,
-        newPath: filePath,
-      };
-    }
-    return undefined;
-  }, [change, filePath]);
-
-  const diffData = useDiffData(
-    diffContent ?? { type: 'unified', path: filePath, unifiedDiff: '' }
+    change.action === 'write' && change.content
+      ? change.content.split('\n').length
+      : undefined;
+  const diffContent = useMemo(
+    () => buildDiffContent(change, filePath),
+    [change, filePath]
   );
-  const hasDiffContent = diffContent && diffData.isValid;
-
   const hasStats =
     (additions !== undefined && additions > 0) ||
     (deletions !== undefined && deletions > 0) ||
     (writeAdditions !== undefined && writeAdditions > 0);
 
-  // Get a label for the change action
-  const actionLabel = useMemo(() => {
-    switch (change.action) {
-      case 'edit':
-        return 'Edit';
-      case 'write':
-        return 'Write';
-      case 'delete':
-        return 'Delete';
-      case 'rename':
-        return `Rename → ${change.new_path}`;
-      default:
-        return 'Change';
-    }
-  }, [change]);
-
   return (
     <div className="border-t border-muted/50 first:border-t-0">
-      {/* Header showing action type and stats */}
       <div className="flex items-center p-base bg-muted/10">
         <div className="flex-1 flex items-center gap-base min-w-0">
           <span className="relative shrink-0">
             {status && <ToolStatusDot status={status} className="size-2" />}
           </span>
-          <span className="text-sm text-low">{actionLabel}</span>
+          <span className="text-sm text-low">{getActionLabel(change)}</span>
           {hasStats && (
             <span className="text-sm shrink-0">
               {(additions ?? writeAdditions) !== undefined &&
@@ -148,16 +171,12 @@ function DiffEntry({
         </div>
       </div>
 
-      {/* Diff body - always shown */}
-      {hasDiffContent && (
-        <DiffViewBody
-          fileDiffMetadata={diffData.fileDiffMetadata}
-          unifiedDiff={diffData.unifiedDiff}
-          isValid={diffData.isValid}
-          hideLineNumbers={diffData.hideLineNumbers}
-          theme={actualTheme}
-        />
-      )}
+      {diffContent &&
+        renderDiffBody?.({
+          filePath,
+          change,
+          diffContent,
+        })}
     </div>
   );
 }
@@ -171,22 +190,22 @@ export function ChatAggregatedDiffEntries({
   onHoverChange,
   onOpenInChanges,
   className,
+  fileIcon,
+  isVSCode = false,
+  onOpenInVSCode,
+  renderDiffBody,
 }: ChatAggregatedDiffEntriesProps) {
   const { t } = useTranslation('tasks');
-  const { theme } = useTheme();
-  const actualTheme = getActualTheme(theme);
-  const FileIcon = getFileIcon(filePath, actualTheme);
-  const isVSCode = inIframe();
+  const FileIcon = fileIcon ?? DefaultFileIcon;
 
   const handleClick = () => {
     if (isVSCode) {
-      openFileInVSCode(filePath, { openAsDiff: false });
-    } else {
-      onToggle();
+      onOpenInVSCode?.(filePath);
+      return;
     }
+    onToggle();
   };
 
-  // Calculate total additions/deletions across all changes
   const totalStats = useMemo(() => {
     let additions = 0;
     let deletions = 0;
@@ -194,7 +213,7 @@ export function ChatAggregatedDiffEntries({
     for (const entry of entries) {
       const { change } = entry;
       if (change.action === 'edit' && change.unified_diff) {
-        const stats = parseDiffStats(change.unified_diff);
+        const stats = parseUnifiedDiffStats(change.unified_diff);
         additions += stats.additions ?? 0;
         deletions += stats.deletions ?? 0;
       } else if (change.action === 'write' && change.content) {
@@ -205,9 +224,8 @@ export function ChatAggregatedDiffEntries({
     return { additions, deletions };
   }, [entries]);
 
-  // Get the worst status among all entries
   const aggregateStatus = useMemo(() => {
-    return entries.reduce<ToolStatus | null>((worst, entry) => {
+    return entries.reduce<ToolStatusLike | null>((worst, entry) => {
       if (!entry.status) return worst;
       if (!worst) return entry.status;
 
@@ -238,7 +256,6 @@ export function ChatAggregatedDiffEntries({
         className
       )}
     >
-      {/* Header */}
       <div
         className={cn(
           'flex items-center p-base w-full',
@@ -309,7 +326,6 @@ export function ChatAggregatedDiffEntries({
         )}
       </div>
 
-      {/* Expanded content - list of individual diffs (hidden in VS Code mode) */}
       {!isVSCode && expanded && (
         <div className="border-t">
           {entries.map((entry) => (
@@ -318,6 +334,7 @@ export function ChatAggregatedDiffEntries({
               filePath={filePath}
               change={entry.change}
               status={entry.status}
+              renderDiffBody={renderDiffBody}
             />
           ))}
         </div>
