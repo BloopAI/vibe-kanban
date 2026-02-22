@@ -5,20 +5,32 @@ import {
   ArrowRightIcon,
   ArrowCounterClockwiseIcon,
 } from '@phosphor-icons/react';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import type { MigrationReport, EntityReport } from 'shared/types';
+import { PrimaryButton } from './PrimaryButton';
+
+interface MigrationEntityReport {
+  total: number;
+  migrated: number;
+  skipped: number;
+}
+
+interface MigrateMigrationReport {
+  projects: MigrationEntityReport;
+  tasks: MigrationEntityReport;
+  pr_merges: MigrationEntityReport;
+  warnings: string[];
+}
 
 interface MigrateMigrateProps {
   orgName: string;
   projectCount: number;
   isMigrating: boolean;
-  report: MigrationReport | null;
+  report: MigrateMigrationReport | null;
   error: string | null;
   onRetry: () => void;
   onContinue: () => void;
 }
 
-function formatEntityReport(report: EntityReport): string {
+function formatEntityReport(report: MigrationEntityReport): string {
   let text = `${report.migrated}/${report.total} migrated`;
   if (report.skipped > 0) {
     text += `, ${report.skipped} skipped`;

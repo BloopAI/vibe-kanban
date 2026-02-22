@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { usePostHog } from 'posthog-js/react';
 import { migrationApi } from '@/lib/api';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
-import { MigrateMigrate } from '@/components/ui-new/views/MigrateMigrate';
+import { MigrateMigrate } from '@vibe/ui/components/MigrateMigrate';
 import type { MigrationReport } from 'shared/types';
 
 const REMOTE_ONBOARDING_EVENTS = {
