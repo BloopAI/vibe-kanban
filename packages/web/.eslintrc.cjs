@@ -155,22 +155,34 @@ module.exports = {
   },
   overrides: [
     {
-      // Prevent barrel files from re-exporting feature internals,
-      // which would let consumers bypass layer boundary restrictions.
-      files: ['src/hooks/index.ts', 'src/contexts/index.ts'],
+      // Legacy directories (hooks/, contexts/, lib/, components/, utils/,
+      // constants/, types/, keyboard/) sit outside the enforced layer
+      // hierarchy. Treat them as shared-level so they cannot silently
+      // depend on higher layers and launder cross-feature imports.
+      files: [
+        'src/hooks/**/*.{ts,tsx}',
+        'src/contexts/**/*.{ts,tsx}',
+        'src/lib/**/*.{ts,tsx}',
+        'src/components/**/*.{ts,tsx}',
+        'src/utils/**/*.{ts,tsx}',
+        'src/constants/**/*.{ts,tsx}',
+        'src/types/**/*.{ts,tsx}',
+        'src/keyboard/**/*.{ts,tsx}',
+      ],
       rules: {
-        'no-restricted-imports': [
-          'error',
+        'no-restricted-imports': withLayerBoundaries([
           {
-            patterns: [
-              {
-                group: ['@/features/**'],
-                message:
-                  'Barrel files must not re-export from features. Move the hook/module to shared or the appropriate layer first.',
-              },
+            group: [
+              '@/app/**',
+              '@/pages/**',
+              '@/widgets/**',
+              '@/features/**',
+              '@/entities/**',
             ],
+            message:
+              'Legacy directories are treated as shared-level. They may only import from shared and integrations. Move this module into the appropriate layer.',
           },
-        ],
+        ]),
       },
     },
     {
