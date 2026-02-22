@@ -13,3 +13,12 @@ Track-specific implementation progress belongs in:
 
 - 2026-02-22 UTC - Reset all plan/progress files after merging parallel WIP
   branches; replaced with synchronized completion plans.
+- 2026-02-22 14:54 UTC - Cross-track drift cleanup: removed
+  `features/workspace-chat/model/hooks/**` dependency on
+  `@/components/dialogs` barrel by switching restore-log dialog imports to
+  `@/components/dialogs/tasks/RestoreLogsDialog`; normalized rebase dialog
+  compatibility exports to explicit `BranchRebaseDialog` naming in
+  `src/components/dialogs/index.ts` and
+  `src/components/dialogs/tasks/RebaseDialog.tsx` to avoid ambiguous
+  `RebaseDialog` contracts. Checks passed: `pnpm run format`,
+  `pnpm run web:check`, `pnpm run web:lint`.
