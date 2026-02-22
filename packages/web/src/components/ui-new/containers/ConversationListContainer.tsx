@@ -18,7 +18,7 @@ import {
 
 import { cn } from '@/shared/lib/utils';
 import NewDisplayConversationEntry from '@/features/workspace-chat/ui/NewDisplayConversationEntry';
-import { ApprovalFormProvider } from '@/features/workspace-chat/model/contexts/ApprovalFormContext';
+import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
 import { useEntries } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import {
   useResetProcess,
