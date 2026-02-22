@@ -1,6 +1,6 @@
 import type { IssuePriority } from 'shared/remote-types';
 import type { PriorityItem } from '@/components/ui-new/actions/pages';
-import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
+import type { SelectionPage } from '../SelectionDialog';
 
 export interface PrioritySelectionResult {
   priority: IssuePriority | null;

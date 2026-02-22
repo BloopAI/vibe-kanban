@@ -19,7 +19,7 @@ import {
   type ActionDefinition,
 } from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '../actions/useActionVisibility';
-import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
+import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
 import { useResolvedPage } from './commandBar/useResolvedPage';
@@ -120,7 +120,7 @@ function CommandBarContent({
           repoId = repos[0].id;
         } else if (!repoId && repos.length > 1) {
           const { SelectionDialog } = await import(
-            '@/components/ui-new/dialogs/SelectionDialog'
+            './SelectionDialog'
           );
           const { buildRepoSelectionPages } = await import(
             './selections/repoSelection'

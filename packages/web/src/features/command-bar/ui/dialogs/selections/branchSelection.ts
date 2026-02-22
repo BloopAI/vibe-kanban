@@ -1,6 +1,6 @@
 import i18n from '@/i18n';
 import type { BranchItem } from '@/components/ui-new/actions/pages';
-import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
+import type { SelectionPage } from '../SelectionDialog';
 
 export interface BranchSelectionResult {
   branch: string;

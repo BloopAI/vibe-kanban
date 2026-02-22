@@ -24,7 +24,7 @@ import {
   resolveLabel,
   type ActionDefinition,
 } from '@/components/ui-new/actions';
-import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
+import type { SelectionPage } from '../SelectionDialog';
 import type { StatusSelectionResult } from './statusSelection';
 import type { PrioritySelectionResult } from './prioritySelection';
 import type { SubIssueSelectionResult } from './subIssueSelection';

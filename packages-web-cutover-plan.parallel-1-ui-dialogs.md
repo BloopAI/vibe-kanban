@@ -99,6 +99,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/selections/subIssueSelection.ts`.
   - [x] Moved command-bar selection dialog `ProjectSelectionDialog` to
         `src/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog.tsx`.
+  - [x] Moved command-bar selection dialog `SelectionDialog` to
+        `src/features/command-bar/ui/dialogs/SelectionDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -220,6 +222,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/SelectionDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -323,6 +327,18 @@ compatibility shims.
   - [x] Kept `ProjectSelectionDialog` non-owned callsites on the legacy shim
         path in `src/contexts/ActionsContext.tsx` to avoid Track 1 ownership
         violations.
+  - [x] Updated canonical `SelectionDialog` callsites to feature-owned path in:
+        `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx`,
+        `src/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog.tsx`,
+        `src/features/command-bar/ui/dialogs/selections/repoSelection.ts`,
+        `src/features/command-bar/ui/dialogs/selections/branchSelection.ts`,
+        `src/features/command-bar/ui/dialogs/selections/prioritySelection.ts`,
+        `src/features/command-bar/ui/dialogs/selections/statusSelection.ts`,
+        `src/features/command-bar/ui/dialogs/selections/relationshipSelection.ts`,
+        `src/features/command-bar/ui/dialogs/selections/subIssueSelection.ts`.
+  - [x] Kept non-owned `SelectionDialog` callsites on the legacy shim path in
+        `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx` and
+        `src/components/ui/wysiwyg.tsx` to avoid Track 1 ownership churn.
   - [x] Updated canonical repo-selection callsites in
         `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx` to:
         `./selections/repoSelection` (type import and dynamic import).
@@ -540,6 +556,10 @@ compatibility shims.
   feature ownership, keep sibling selection-helper imports relative and route
   `pages`/`SelectionDialog` types through compatibility paths to satisfy
   current feature import-boundary lint rules.
+- New information (2026-02-22): after moving `SelectionDialog` into
+  feature ownership, keep non-owned consumers (currently
+  `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx` and
+  `src/components/ui/wysiwyg.tsx`) on the legacy shim path during Track 1.
 
 ## Validation
 

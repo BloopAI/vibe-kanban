@@ -1,5 +1,5 @@
 import type { Issue } from 'shared/remote-types';
-import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
+import type { SelectionPage } from '../SelectionDialog';
 
 export type SubIssueSelectionResult =
   | { type: 'selected'; issueId: string }
