@@ -31,4 +31,4 @@ export { useOrganizationMembers } from './useOrganizationMembers';
 export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
 export { useVariant } from './useVariant';
-export { useRetryProcess } from '@/features/workspace-chat/model/hooks/useRetryProcess';
+export { useRetryProcess } from '@/shared/hooks/useRetryProcess';
