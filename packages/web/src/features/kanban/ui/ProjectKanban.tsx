@@ -9,7 +9,7 @@ import {
 } from '@/contexts/remote/ProjectContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
+import { KanbanContainer } from './KanbanContainer';
 import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';

@@ -228,15 +228,25 @@ packages/web/src/
        `src/features/kanban/ui/ProjectKanban.tsx`
      - converted `src/pages/projects/ProjectKanban.tsx` into a thin
        route-level re-export wrapper
+     - moved kanban board container composition from
+       `src/components/ui-new/containers/KanbanContainer.tsx` to
+       `src/features/kanban/ui/KanbanContainer.tsx`
+     - updated `src/features/kanban/ui/ProjectKanban.tsx` to import local
+       `./KanbanContainer` canonical path
+     - kept temporary compatibility shim at legacy
+       `src/components/ui-new/containers/KanbanContainer.tsx`
+     - updated moved kanban feature file to use `src/hooks/useUserSystem.ts`
+       adapter instead of importing `@/app/*` directly
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders
 3. Decompose hotspots first:
-   - `src/components/ui-new/actions/index.ts`
-   - `src/lib/api.ts`
-   - `src/components/ui-new/containers/KanbanContainer.tsx`
-   - `src/components/ui-new/containers/SessionChatBoxContainer.tsx`
-   - `src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+   - [ ] `src/components/ui-new/actions/index.ts`
+   - [ ] `src/lib/api.ts`
+   - [x] `src/components/ui-new/containers/KanbanContainer.tsx` ->
+     `src/features/kanban/ui/KanbanContainer.tsx` (legacy shim retained)
+   - [ ] `src/components/ui-new/containers/SessionChatBoxContainer.tsx`
+   - [ ] `src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
 
 ## Phase D. Dialog/Modal Consolidation
 
