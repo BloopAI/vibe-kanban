@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { Link } from '@tanstack/react-router';
 import {
   ArrowSquareOutIcon,
   ArrowRightIcon,
@@ -7,20 +6,29 @@ import {
   CaretDownIcon,
   CloudArrowUpIcon,
 } from '@phosphor-icons/react';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import { PrimaryButton } from './PrimaryButton';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@vibe/ui/components/Dropdown';
-import { Checkbox } from '@vibe/ui/components/Checkbox';
-import type { Project } from 'shared/types';
-import type { OrganizationWithRole } from 'shared/types';
+} from './Dropdown';
+import { Checkbox } from './Checkbox';
+
+export interface MigrateChooseProjectsProject {
+  id: string;
+  name: string;
+  remote_project_id: string | null;
+}
+
+export interface MigrateChooseProjectsOrganization {
+  id: string;
+  name: string;
+}
 
 interface MigrateChooseProjectsProps {
-  projects: Project[];
-  organizations: OrganizationWithRole[];
+  projects: MigrateChooseProjectsProject[];
+  organizations: MigrateChooseProjectsOrganization[];
   selectedOrgId: string | null;
   selectedProjectIds: Set<string>;
   isLoading: boolean;
@@ -29,6 +37,8 @@ interface MigrateChooseProjectsProps {
   onSelectAll: () => void;
   onContinue: () => void;
   onSkip?: () => void;
+  onGoToCreateWorkspace?: () => void;
+  onViewMigratedProject?: (projectId: string) => void;
 }
 
 export function MigrateChooseProjects({
@@ -42,6 +52,8 @@ export function MigrateChooseProjects({
   onSelectAll,
   onContinue,
   onSkip,
+  onGoToCreateWorkspace,
+  onViewMigratedProject,
 }: MigrateChooseProjectsProps) {
   const { t } = useTranslation('common');
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
@@ -123,13 +135,16 @@ export function MigrateChooseProjects({
         {projects.length === 0 ? (
           <div className="space-y-base">
             <p className="text-sm text-low">No local projects found.</p>
-            <Link
-              to="/workspaces/create"
-              className="inline-flex items-center gap-half text-sm text-brand hover:underline"
-            >
-              Skip to create a workspace
-              <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
-            </Link>
+            {onGoToCreateWorkspace ? (
+              <button
+                type="button"
+                onClick={onGoToCreateWorkspace}
+                className="inline-flex items-center gap-half text-sm text-brand hover:underline"
+              >
+                Skip to create a workspace
+                <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="bg-secondary border rounded">
@@ -188,11 +203,12 @@ export function MigrateChooseProjects({
                   <span className="flex-1 text-sm text-low truncate">
                     {project.name}
                   </span>
-                  {project.remote_project_id ? (
-                    <Link
-                      to="/projects/$projectId"
-                      params={{ projectId: project.remote_project_id }}
-                      search={{ orgId: selectedOrgId ?? undefined }}
+                  {project.remote_project_id && onViewMigratedProject ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onViewMigratedProject(project.remote_project_id!)
+                      }
                       className="flex items-center gap-half text-sm text-brand hover:underline whitespace-nowrap"
                     >
                       View
@@ -200,7 +216,7 @@ export function MigrateChooseProjects({
                         className="size-icon-xs"
                         weight="bold"
                       />
-                    </Link>
+                    </button>
                   ) : null}
                 </div>
               ))}

@@ -5059,3 +5059,55 @@ Validation:
 Plan adjustments from new information:
 - Router coupling is now a known extractable pattern: keep navigation in frontend containers and keep `@vibe/ui` components route-agnostic.
 - This pattern can be reused for remaining route-aware migrate views if we continue this path.
+
+## 2026-02-22 - UI package extraction: MigrateChooseProjects
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/MigrateChooseProjects.tsx` as the next migrate-flow extraction target.
+- The view had a single container callsite but included router `Link` coupling and direct shared type imports.
+- New information: the `MigrateFinish` adapter approach generalizes well; route-aware interactions can be cleanly expressed as callback props from app containers.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/MigrateChooseProjects.tsx packages/ui/src/components/MigrateChooseProjects.tsx`
+- Package updates:
+  - Replaced package self-imports:
+    - `@vibe/ui/components/PrimaryButton` -> `./PrimaryButton`
+    - `@vibe/ui/components/Dropdown` -> `./Dropdown`
+    - `@vibe/ui/components/Checkbox` -> `./Checkbox`
+  - Removed router dependency from ui package component:
+    - Removed `@tanstack/react-router` `Link` usage
+    - Added callback props:
+      - `onGoToCreateWorkspace?: () => void`
+      - `onViewMigratedProject?: (projectId: string) => void`
+  - Removed `shared/types` imports via package-local structural contracts:
+    - `MigrateChooseProjectsProject`
+    - `MigrateChooseProjectsOrganization`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/MigrateChooseProjectsContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/MigrateChooseProjects`
+  - Added route adapter handlers in container:
+    - `handleGoToCreateWorkspace` -> `navigate({ to: '/workspaces/create' })`
+    - `handleViewMigratedProject` -> `navigate({ to: '/projects/$projectId', params, search })`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The migrate-flow views are now fully extracted from `frontend/src/components/ui-new/views`.
+- Router-coupled behavior has a stable extraction pattern: keep route decisions in containers and pass action callbacks into `@vibe/ui` views.
