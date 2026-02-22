@@ -3,6 +3,12 @@
   "short_name": "VK",
   "icons": [
     {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "purpose": "any",
+      "type": "image/png"
+    },
+    {
       "src": "/favicon-vk-light.svg",
       "sizes": "any",
       "purpose": "any",

@@ -5,7 +5,6 @@ import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
 import { useIsMobile } from '@/hooks/useIsMobile';
-import { cn } from '@/lib/utils';
 import { ArrowDownIcon } from '@phosphor-icons/react';
 import {
   ConversationList,
@@ -70,7 +69,7 @@ export function WorkspacesMain({
   return (
     <main
       ref={containerRef as React.RefObject<HTMLElement>}
-      className="relative flex flex-1 flex-col bg-primary h-full"
+      className="relative flex flex-1 flex-col bg-primary min-h-0"
     >
       <ApprovalFeedbackProvider>
         <EntriesProvider
@@ -122,12 +121,7 @@ export function WorkspacesMain({
               </div>
             )}
             {/* Chat box - always rendered to prevent flash during workspace switch */}
-            <div
-              className={cn(
-                'flex justify-center @container pl-px',
-                isMobile && 'pb-[env(safe-area-inset-bottom)]'
-              )}
-            >
+            <div className="flex justify-center @container pl-px">
               <SessionChatBoxContainer
                 {...(isNewSessionMode && workspaceWithSession
                   ? {
