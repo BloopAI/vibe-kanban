@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { CaretRightIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -22,9 +23,9 @@ import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useWorkspaces } from '@/components/ui-new/hooks/useWorkspaces';
-import type { Result } from '@/lib/api';
+import { attemptsApi, type Result } from '@/lib/api';
 import { ResolveConflictsDialog } from './ResolveConflictsDialog';
-import { RebaseInProgressDialog } from './RebaseInProgressDialog';
+import { RebaseInProgressDialog } from '@vibe/ui/components/RebaseInProgressDialog';
 
 export interface RebaseDialogProps {
   attemptId: string;
@@ -38,6 +39,7 @@ interface RebaseDialogContentProps {
 
 function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   const modal = useModal();
+  const queryClient = useQueryClient();
   const { t } = useTranslation(['tasks', 'common']);
   const [selectedBranch, setSelectedBranch] = useState<string>('');
   const [selectedUpstream, setSelectedUpstream] = useState<string>('');
@@ -69,6 +71,27 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
   // Check for existing conflicts and rebase state
   const isRebaseInProgress = repoStatus?.is_rebase_in_progress ?? false;
   const hasConflictedFiles = (repoStatus?.conflicted_files?.length ?? 0) > 0;
+
+  const invalidateRebaseQueries = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: ['branchStatus', attemptId],
+      }),
+      queryClient.invalidateQueries({
+        queryKey: ['attemptRepos', attemptId],
+      }),
+    ]);
+  }, [queryClient, attemptId]);
+
+  const continueRebaseInProgress = useCallback(async () => {
+    await attemptsApi.continueRebase(attemptId, { repo_id: repoId });
+    await invalidateRebaseQueries();
+  }, [attemptId, repoId, invalidateRebaseQueries]);
+
+  const abortRebaseInProgress = useCallback(async () => {
+    await attemptsApi.abortConflicts(attemptId, { repo_id: repoId });
+    await invalidateRebaseQueries();
+  }, [attemptId, repoId, invalidateRebaseQueries]);
 
   // Prevent the redirect useEffect from firing more than once. Without this,
   // every 5-second branchStatus poll that still returns conflicts would
@@ -104,9 +127,9 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
       } else {
         // Rebase in progress WITHOUT conflicts -> show simpler dialog
         RebaseInProgressDialog.show({
-          workspaceId: attemptId,
-          repoId,
           targetBranch: repoStatus.target_branch_name,
+          onContinue: continueRebaseInProgress,
+          onAbort: abortRebaseInProgress,
         });
       }
     }
@@ -121,6 +144,8 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
     modal,
     activeWorkspaceId,
     isWorkspaceRunning,
+    continueRebaseInProgress,
+    abortRebaseInProgress,
   ]);
 
   // Reset initialization flag when attemptId or repoId changes
@@ -175,9 +200,9 @@ function RebaseDialogContent({ attemptId, repoId }: RebaseDialogContentProps) {
         // Hide this dialog and show the simpler rebase in progress dialog
         modal.hide();
         await RebaseInProgressDialog.show({
-          workspaceId: attemptId,
-          repoId,
           targetBranch: selectedBranch,
+          onContinue: continueRebaseInProgress,
+          onAbort: abortRebaseInProgress,
         });
         return;
       }

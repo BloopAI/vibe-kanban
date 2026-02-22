@@ -7,17 +7,15 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@vibe/ui/components/KeyboardDialog';
-import { Button } from '@vibe/ui/components/Button';
-import { useQueryClient } from '@tanstack/react-query';
+} from './KeyboardDialog';
+import { Button } from './Button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
-import { attemptsApi } from '@/lib/api';
+import { defineModal } from '../lib/modals';
 
 export interface RebaseInProgressDialogProps {
-  workspaceId: string;
-  repoId: string;
   targetBranch: string;
+  onContinue: () => Promise<void>;
+  onAbort: () => Promise<void>;
 }
 
 export type RebaseInProgressDialogResult =
@@ -27,32 +25,19 @@ export type RebaseInProgressDialogResult =
 
 const RebaseInProgressDialogImpl =
   NiceModal.create<RebaseInProgressDialogProps>(
-    ({ workspaceId, repoId, targetBranch }) => {
+    ({ targetBranch, onContinue, onAbort }) => {
       const modal = useModal();
-      const queryClient = useQueryClient();
       const { t } = useTranslation(['tasks', 'common']);
 
       const [isSubmitting, setIsSubmitting] = useState(false);
       const [error, setError] = useState<string | null>(null);
-
-      const invalidateQueries = useCallback(async () => {
-        await Promise.all([
-          queryClient.invalidateQueries({
-            queryKey: ['branchStatus', workspaceId],
-          }),
-          queryClient.invalidateQueries({
-            queryKey: ['attemptRepos', workspaceId],
-          }),
-        ]);
-      }, [queryClient, workspaceId]);
 
       const handleContinue = useCallback(async () => {
         setIsSubmitting(true);
         setError(null);
 
         try {
-          await attemptsApi.continueRebase(workspaceId, { repo_id: repoId });
-          await invalidateQueries();
+          await onContinue();
 
           modal.resolve({
             action: 'continued',
@@ -69,15 +54,14 @@ const RebaseInProgressDialogImpl =
         } finally {
           setIsSubmitting(false);
         }
-      }, [workspaceId, repoId, invalidateQueries, modal, t]);
+      }, [onContinue, modal, t]);
 
       const handleAbort = useCallback(async () => {
         setIsSubmitting(true);
         setError(null);
 
         try {
-          await attemptsApi.abortConflicts(workspaceId, { repo_id: repoId });
-          await invalidateQueries();
+          await onAbort();
 
           modal.resolve({
             action: 'aborted',
@@ -94,7 +78,7 @@ const RebaseInProgressDialogImpl =
         } finally {
           setIsSubmitting(false);
         }
-      }, [workspaceId, repoId, invalidateQueries, modal, t]);
+      }, [onAbort, modal, t]);
 
       const handleCancel = useCallback(() => {
         modal.resolve({

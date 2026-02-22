@@ -6455,3 +6455,53 @@ Validation:
 Plan adjustments from new information:
 - For feature dialogs that mix reusable structure with app-specific modal orchestration, move only the reusable shell to `@vibe/ui` and keep portal/modal state wrappers in frontend.
 - Favor package-local utility imports (`../lib/*`) when extracted shells only need styling helpers.
+
+## 2026-02-22 - UI package extraction: RebaseInProgressDialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/RebaseInProgressDialog.tsx` as the next extraction target.
+- It has a single caller (`RebaseDialog`) and a mostly presentational UI surface.
+- Main couplings were frontend-only data operations (`attemptsApi`, `react-query` invalidation) and frontend modal helper import.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/RebaseInProgressDialog.tsx packages/ui/src/components/RebaseInProgressDialog.tsx`
+- Package updates:
+  - Replaced package self-import aliases with relative imports:
+    - `@vibe/ui/components/KeyboardDialog` -> `./KeyboardDialog`
+    - `@vibe/ui/components/Button` -> `./Button`
+  - Replaced frontend modal helper import:
+    - `@/lib/modals` -> `../lib/modals`
+  - Removed frontend API/query coupling by changing dialog props to callback-driven operations:
+    - `onContinue: () => Promise<void>`
+    - `onAbort: () => Promise<void>`
+  - Kept dialog result contract unchanged (`continued`, `aborted`, `cancelled`).
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/dialogs/RebaseDialog.tsx`
+  - New import path:
+    - `@vibe/ui/components/RebaseInProgressDialog`
+  - Moved data mutations + query invalidation into frontend caller:
+    - added `continueRebaseInProgress` and `abortRebaseInProgress`
+    - added shared `invalidateRebaseQueries`
+    - passed callbacks into `RebaseInProgressDialog.show(...)`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For dialogs that trigger backend mutations, keep package dialogs UI-only and inject operations via callback props from frontend containers/dialog parents.
+- Keep cache invalidation ownership in frontend where query keys and data lifecycles are app-specific.
