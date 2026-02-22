@@ -48,7 +48,7 @@ export {
 export {
   GitActionsDialog,
   type GitActionsDialogProps,
-} from './tasks/GitActionsDialog';
+} from '@/features/command-bar/ui/dialogs/GitActionsDialog';
 export {
   EditBranchNameDialog,
   type EditBranchNameDialogResult,
