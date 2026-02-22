@@ -25,7 +25,7 @@ import { CreatePRDialog } from '@/dialogs/command-bar/CreatePRDialog';
 import { useTranslation } from 'react-i18next';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useGitOperations } from '@/hooks/useGitOperations';
-import { useRepoBranches } from '@/hooks';
+import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
 
 interface GitOperationsProps {
   selectedAttempt: Workspace;

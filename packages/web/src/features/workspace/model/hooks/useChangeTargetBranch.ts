@@ -4,7 +4,7 @@ import type {
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
 } from 'shared/types';
-import { repoBranchKeys } from '@/features/workspace/model/hooks/useRepoBranches';
+import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
 
 type ChangeTargetBranchParams = {
   newTargetBranch: string;

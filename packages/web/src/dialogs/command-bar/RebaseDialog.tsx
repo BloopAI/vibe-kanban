@@ -18,7 +18,7 @@ import { defineModal } from '@/lib/modals';
 import { GitOperationsProvider } from '@/contexts/GitOperationsContext';
 import { useGitOperations } from '@/hooks/useGitOperations';
 import { useAttempt } from '@/shared/hooks/useAttempt';
-import { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
+import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';

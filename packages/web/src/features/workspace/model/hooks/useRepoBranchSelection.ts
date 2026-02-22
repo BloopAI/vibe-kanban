@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { repoApi } from '@/lib/api';
-import { repoBranchKeys } from '@/features/workspace/model/hooks/useRepoBranches';
+import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
 import type { GitBranch, Repo } from 'shared/types';
 
 export type RepoBranchConfig = {
