@@ -1921,3 +1921,43 @@
   into `src/features/settings/ui/dialogs/settings/*` with a compatibility shim,
   then update `SettingsSection` to consume the canonical module while keeping
   the remaining settings sections on legacy paths for staged migration.
+
+## 2026-02-22 14:01:47 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx` as the next Track 1 migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`
+    -> `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`.
+  - Updated moved section for feature-lint compatibility:
+    - replaced direct provider import (`@/app/providers/ConfigProvider`) with
+      hook facade import (`@/hooks/useUserSystem`)
+    - switched settings-owned dialog imports to legacy shim paths under
+      `src/components/dialogs/*` to satisfy current feature import-boundary
+      rules
+    - retained staged `SettingsComponents` import from legacy settings path.
+- Updated canonical owned callsite to feature path:
+  - `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `OrganizationsSettingsSection` migration.
+  - Updated existing canonical-callsite references for
+    `CreateOrganizationDialog`, `InviteMemberDialog`, and `OAuthDialog` to the
+    moved settings-section path.
+  - Updated risk-controls notes so only remaining legacy settings sections are
+    `ReposSettingsSection` and `RemoteProjectsSettingsSection`.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`
+  into `src/features/settings/ui/dialogs/settings/*` with a compatibility shim,
+  then update `SettingsSection` to consume the canonical module while keeping
+  `ReposSettingsSection` on the legacy path for staged migration.

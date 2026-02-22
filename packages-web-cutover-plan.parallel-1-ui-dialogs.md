@@ -158,6 +158,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`.
   - [x] Moved settings dialog section `GeneralSettingsSection` to
         `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`.
+  - [x] Moved settings dialog section `OrganizationsSettingsSection` to
+        `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -269,6 +271,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -276,11 +280,11 @@ compatibility shims.
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateOrganizationDialog` in:
-        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/InviteMemberDialog` in:
-        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateRemoteProjectDialog` in:
@@ -306,7 +310,7 @@ compatibility shims.
         `src/components/dialogs/index.ts`,
         `src/components/ui-new/actions/index.ts`,
         `src/components/ui-new/containers/SharedAppLayout.tsx`,
-        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`,
         `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
@@ -520,6 +524,9 @@ compatibility shims.
         path in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
   - [x] Updated canonical `GeneralSettingsSection` callsite to feature-owned
         path in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
+  - [x] Updated canonical `OrganizationsSettingsSection` callsite to
+        feature-owned path in:
+        `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
 
 ## Risk Controls
 
@@ -687,7 +694,7 @@ compatibility shims.
   them by alias from canonical feature-owned settings files.
 - New information (2026-02-22): after moving `SettingsSection` into feature
   ownership, keep section implementation modules (`ReposSettingsSection`,
-  `OrganizationsSettingsSection`, `RemoteProjectsSettingsSection`) on legacy
+  `RemoteProjectsSettingsSection`) on legacy
   `src/components/ui-new/dialogs/settings/*` paths for this track, with a
   compatibility shim at the legacy `SettingsSection` path.
 - New information (2026-02-22): after moving `SettingsDirtyContext` into
@@ -708,7 +715,7 @@ compatibility shims.
 - New information (2026-02-22): feature-owned settings sections cannot import
   sibling settings feature dialogs directly (`@/features/settings/**`) under
   current lint boundaries; use legacy dialog shim paths from
-  `src/components/dialogs/settings/*` for those dependencies during Track 1.
+  `src/components/dialogs/*` for those dependencies during Track 1.
 - New information (2026-02-22): after moving `GeneralSettingsSection` into
   feature ownership, replace provider imports with hook facades (`@/hooks/useTheme`,
   `@/hooks/useUserSystem`) and keep shared settings UI building blocks
