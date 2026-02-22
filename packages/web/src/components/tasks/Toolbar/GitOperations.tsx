@@ -19,7 +19,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { RepoBranchStatus, Merge, Workspace } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog';
 import RepoSelector from '@/components/tasks/RepoSelector';
-import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
+import { BranchRebaseDialog } from '@/features/command-bar/ui/dialogs/BranchRebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 
 import { useTranslation } from 'react-i18next';
@@ -220,7 +220,7 @@ function GitOperations({
   const handleRebaseDialogOpen = async () => {
     try {
       const defaultTargetBranch = getSelectedRepoStatus()?.target_branch_name;
-      const result = await RebaseDialog.show({
+      const result = await BranchRebaseDialog.show({
         branches,
         isRebasing: rebasing,
         initialTargetBranch: defaultTargetBranch,

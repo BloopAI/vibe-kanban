@@ -32,10 +32,10 @@ export {
   type ChangeTargetBranchDialogResult,
 } from '@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog';
 export {
-  RebaseDialog,
-  type RebaseDialogProps,
-  type RebaseDialogResult,
-} from './tasks/RebaseDialog';
+  BranchRebaseDialog as RebaseDialog,
+  type BranchRebaseDialogProps as RebaseDialogProps,
+  type BranchRebaseDialogResult as RebaseDialogResult,
+} from '@/features/command-bar/ui/dialogs/BranchRebaseDialog';
 export {
   RestoreLogsDialog,
   type RestoreLogsDialogProps,

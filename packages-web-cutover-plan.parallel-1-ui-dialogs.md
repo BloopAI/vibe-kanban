@@ -81,6 +81,9 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/PrCommentsDialog.tsx`.
   - [x] Moved feature dialog `ForcePushDialog` to
         `src/features/command-bar/ui/dialogs/ForcePushDialog.tsx`.
+  - [x] Moved feature dialog `BranchRebaseDialog` (legacy task
+        `RebaseDialog`) to
+        `src/features/command-bar/ui/dialogs/BranchRebaseDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -93,10 +96,13 @@ compatibility shims.
         `src/shared/ui/dialogs/TagEditDialog.tsx`.
   - [x] Moved reusable `ScriptFixerDialog` to
         `src/shared/ui/dialogs/ScriptFixerDialog.tsx`.
-- [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
+- [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
         compatibility shim at the legacy ui-new path.
+  - [x] Canonicalized the branch-picking task variant as
+        `src/features/command-bar/ui/dialogs/BranchRebaseDialog.tsx` and kept
+        the legacy task path as a compatibility shim.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
   - [x] Added compatibility shim at
@@ -149,6 +155,8 @@ compatibility shims.
         `src/components/dialogs/tasks/PrCommentsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/git/ForcePushDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/RebaseDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/scripts/ScriptFixerDialog.tsx`.
   - [x] Added compatibility shim at
@@ -255,6 +263,10 @@ compatibility shims.
         `@/features/command-bar/ui/dialogs/ForcePushDialog` in:
         `src/components/ui-new/containers/GitPanelContainer.tsx`,
         `src/hooks/useGitOperations.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/BranchRebaseDialog` in:
+        `src/components/tasks/Toolbar/GitOperations.tsx`,
+        `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -354,6 +366,10 @@ compatibility shims.
 - New information (2026-02-22): at least one additional hook-layer callsite
   (`src/hooks/useGitOperations.ts`) can import a command-bar canonical dialog
   path (`ForcePushDialog`) without violating current lint boundaries.
+- New information (2026-02-22): both rebase dialog concepts can be
+  canonicalized under command-bar when they use distinct names/paths:
+  workspace-scoped rebase remains `RebaseDialog`, while branch-picking task
+  rebase is now `BranchRebaseDialog`.
 
 ## Validation
 
