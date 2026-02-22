@@ -56,7 +56,7 @@ import {
   type ActionDefinition,
 } from '@/components/ui-new/actions';
 import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
-import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
+import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 import { PrCommentsDialog } from '@/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 

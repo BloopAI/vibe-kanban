@@ -23,7 +23,7 @@ import {
   getActionTooltip,
 } from '../actions';
 import type { EditorType } from 'shared/types';
-import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
+import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 import { CopyButton } from './CopyButton';
 
 /**

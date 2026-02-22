@@ -9,10 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import type { Repo } from 'shared/types';
-import type {
-  BranchItem,
-  RepoItem,
-} from '@/shared/types/selectionItems';
+import type { BranchItem, RepoItem } from '@/shared/types/selectionItems';
 import { repoApi } from '@/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';

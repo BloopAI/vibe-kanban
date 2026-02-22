@@ -21,7 +21,7 @@ import {
   isActionEnabled,
   isActionVisible,
 } from '../actions';
-import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
+import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 
 /**
  * Check if a NavbarItem is a divider

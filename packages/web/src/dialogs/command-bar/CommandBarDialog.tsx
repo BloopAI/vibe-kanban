@@ -21,7 +21,7 @@ import {
   ActionTargetType,
   type ActionDefinition,
 } from '@/components/ui-new/actions';
-import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
+import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
