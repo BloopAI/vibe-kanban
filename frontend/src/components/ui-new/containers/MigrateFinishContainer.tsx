@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '@/hooks/useProjects';
-import { MigrateFinish } from '@/components/ui-new/views/MigrateFinish';
+import {
+  MigrateFinish,
+  type MigrateFinishProject,
+} from '@vibe/ui/components/MigrateFinish';
 
 interface MigrateFinishContainerProps {
   orgId: string;
@@ -13,6 +17,7 @@ export function MigrateFinishContainer({
   projectIds,
   onMigrateMore,
 }: MigrateFinishContainerProps) {
+  const navigate = useNavigate();
   const { projects } = useProjects();
 
   const migratedProjects = useMemo(() => {
@@ -26,11 +31,24 @@ export function MigrateFinishContainer({
       }));
   }, [projectIds, projects]);
 
+  const handleViewProject = (project: MigrateFinishProject) => {
+    if (project.remoteId) {
+      navigate({
+        to: '/projects/$projectId',
+        params: { projectId: project.remoteId },
+        search: { orgId },
+      });
+      return;
+    }
+
+    navigate({ to: '/workspaces' });
+  };
+
   return (
     <MigrateFinish
-      orgId={orgId}
       migratedProjects={migratedProjects}
       onMigrateMore={onMigrateMore}
+      onViewProject={handleViewProject}
     />
   );
 }

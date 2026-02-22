@@ -5013,3 +5013,49 @@ Validation:
 Plan adjustments from new information:
 - The remaining migrate-flow views are not equally extraction-ready: `MigrateFinish` includes app-routing concerns.
 - Next candidate should either be another presentational, route-agnostic view or proceed with a small adapter boundary for router navigation.
+
+## 2026-02-22 - UI package extraction: MigrateFinish
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/MigrateFinish.tsx` as the next migrate-flow extraction target.
+- It had a single container callsite, but directly depended on router `Link` APIs.
+- New information: route-coupled views can still move into `@vibe/ui` cleanly by shifting navigation details into container-level adapter callbacks.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/MigrateFinish.tsx packages/ui/src/components/MigrateFinish.tsx`
+- Package updates:
+  - Replaced package self-import:
+    - `@vibe/ui/components/PrimaryButton` -> `./PrimaryButton`
+  - Removed router dependency from ui package component:
+    - Removed `@tanstack/react-router` `Link` usage
+    - Added explicit callback prop `onViewProject` and replaced link rendering with a button action
+  - Added exported structural type for callsite contract:
+    - `MigrateFinishProject`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/MigrateFinishContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/MigrateFinish`
+  - Added route adapter logic in container:
+    - `useNavigate()`-based `handleViewProject` to route either to `/projects/$projectId` (with `orgId` search) or `/workspaces`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Router coupling is now a known extractable pattern: keep navigation in frontend containers and keep `@vibe/ui` components route-agnostic.
+- This pattern can be reused for remaining route-aware migrate views if we continue this path.

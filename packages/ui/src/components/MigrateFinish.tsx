@@ -1,27 +1,26 @@
-import { Link } from '@tanstack/react-router';
 import {
   FolderIcon,
   ArrowSquareOutIcon,
   ArrowCounterClockwiseIcon,
 } from '@phosphor-icons/react';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import { PrimaryButton } from './PrimaryButton';
 
-interface MigratedProject {
+export interface MigrateFinishProject {
   localId: string;
   localName: string;
   remoteId: string | null;
 }
 
 interface MigrateFinishProps {
-  orgId: string;
-  migratedProjects: MigratedProject[];
+  migratedProjects: MigrateFinishProject[];
   onMigrateMore: () => void;
+  onViewProject: (project: MigrateFinishProject) => void;
 }
 
 export function MigrateFinish({
-  orgId,
   migratedProjects,
   onMigrateMore,
+  onViewProject,
 }: MigrateFinishProps) {
   return (
     <div className="max-w-2xl mx-auto py-double px-base">
@@ -51,25 +50,14 @@ export function MigrateFinish({
               <span className="flex-1 text-sm text-high truncate">
                 {project.localName}
               </span>
-              {project.remoteId ? (
-                <Link
-                  to="/projects/$projectId"
-                  params={{ projectId: project.remoteId }}
-                  search={{ orgId }}
-                  className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
-                >
-                  View
-                  <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
-                </Link>
-              ) : (
-                <Link
-                  to="/workspaces"
-                  className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
-                >
-                  View
-                  <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
-                </Link>
-              )}
+              <button
+                type="button"
+                onClick={() => onViewProject(project)}
+                className="rounded-sm px-base py-half text-cta h-cta flex gap-half items-center bg-brand hover:bg-brand-hover text-on-brand"
+              >
+                View
+                <ArrowSquareOutIcon className="size-icon-xs" weight="bold" />
+              </button>
             </div>
           ))}
         </div>
