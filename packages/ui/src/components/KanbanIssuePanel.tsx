@@ -1,6 +1,6 @@
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import {
   XIcon,
   LinkIcon,
@@ -8,37 +8,37 @@ import {
   TrashIcon,
   PaperclipIcon,
   ImageIcon,
-  PlusIcon,
 } from '@phosphor-icons/react';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import type {
-  IssuePriority,
-  ProjectStatus,
-  Tag,
-  PullRequestStatus,
-} from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import { IssueTagsRow } from '@vibe/ui/components/IssueTagsRow';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import { Toggle } from '@vibe/ui/components/Toggle';
-import { IssuePropertyRow } from '@vibe/ui/components/IssuePropertyRow';
-import { CopyButton } from '@/components/ui-new/containers/CopyButton';
-import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
-import { IconButton } from '@vibe/ui/components/IconButton';
-import { AutoResizeTextarea } from '@vibe/ui/components/AutoResizeTextarea';
-import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
-import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
-import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
-import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
+import {
+  IssueTagsRow,
+  type IssueTagBase,
+  type IssueTagsRowAddTagControlProps,
+  type LinkedPullRequest as IssueTagsLinkedPullRequest,
+} from './IssueTagsRow';
+import { PrimaryButton } from './PrimaryButton';
+import { Toggle } from './Toggle';
+import {
+  IssuePropertyRow,
+  type IssuePropertyRowProps,
+} from './IssuePropertyRow';
+import { IconButton } from './IconButton';
+import { AutoResizeTextarea } from './AutoResizeTextarea';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@vibe/ui/components/RadixTooltip';
-import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
+} from './RadixTooltip';
+import { ErrorAlert } from './ErrorAlert';
 
 export type IssuePanelMode = 'create' | 'edit';
+type IssuePriority = IssuePropertyRowProps['priority'];
+type IssueStatus = IssuePropertyRowProps['statuses'][number];
+type IssueAssignee = NonNullable<IssuePropertyRowProps['assigneeUsers']>[number];
+type IssueCreator = Exclude<IssuePropertyRowProps['creatorUser'], undefined>;
+export interface KanbanIssueTag extends IssueTagBase {
+  project_id: string;
+}
 
 export interface IssueFormData {
   title: string;
@@ -50,11 +50,20 @@ export interface IssueFormData {
   createDraftWorkspace: boolean;
 }
 
-export interface LinkedPullRequest {
-  id: string;
-  number: number;
-  url: string;
-  status: PullRequestStatus;
+export interface LinkedPullRequest extends IssueTagsLinkedPullRequest {}
+
+export interface KanbanIssueDescriptionEditorProps {
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  onCmdEnter?: () => void;
+  onPasteFiles?: (files: File[]) => void;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  className?: string;
+  showStaticToolbar?: boolean;
+  saveStatus?: 'idle' | 'saved';
+  staticToolbarActions?: ReactNode;
 }
 
 export interface KanbanIssuePanelProps {
@@ -69,15 +78,15 @@ export interface KanbanIssuePanelProps {
   ) => void;
 
   // Options for dropdowns
-  statuses: ProjectStatus[];
-  tags: Tag[];
+  statuses: IssueStatus[];
+  tags: KanbanIssueTag[];
 
   // Resolved assignee profiles for avatar display
-  assigneeUsers?: OrganizationMemberWithProfile[];
+  assigneeUsers?: IssueAssignee[];
 
   // Edit mode data
   issueId?: string | null;
-  creatorUser?: OrganizationMemberWithProfile | null;
+  creatorUser?: IssueCreator;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
   onRemoveParentIssue?: () => void;
@@ -91,10 +100,15 @@ export interface KanbanIssuePanelProps {
 
   // Tag create callback - returns the new tag ID
   onCreateTag?: (data: { name: string; color: string }) => string;
+  renderAddTagControl?: (
+    props: IssueTagsRowAddTagControlProps<KanbanIssueTag>
+  ) => ReactNode;
+  renderDescriptionEditor: (
+    props: KanbanIssueDescriptionEditorProps
+  ) => ReactNode;
 
   // Loading states
   isSubmitting?: boolean;
-  isLoading?: boolean;
 
   // Save status for description field
   descriptionSaveStatus?: 'idle' | 'saved';
@@ -119,6 +133,12 @@ export interface KanbanIssuePanelProps {
   isUploading?: boolean;
   attachmentError?: string | null;
   onDismissAttachmentError?: () => void;
+
+  // Edit-mode section renderers
+  renderWorkspacesSection?: (issueId: string) => ReactNode;
+  renderRelationshipsSection?: (issueId: string) => ReactNode;
+  renderSubIssuesSection?: (issueId: string) => ReactNode;
+  renderCommentsSection?: (issueId: string) => ReactNode;
 }
 
 export function KanbanIssuePanel({
@@ -140,6 +160,8 @@ export function KanbanIssuePanel({
   onCmdEnterSubmit,
   onDeleteDraft,
   onCreateTag,
+  renderAddTagControl,
+  renderDescriptionEditor,
   isSubmitting,
   descriptionSaveStatus,
   titleInputRef,
@@ -151,6 +173,10 @@ export function KanbanIssuePanel({
   isUploading,
   attachmentError,
   onDismissAttachmentError,
+  renderWorkspacesSection,
+  renderRelationshipsSection,
+  renderSubIssuesSection,
+  renderCommentsSection,
 }: KanbanIssuePanelProps) {
   const { t } = useTranslation('common');
   const isCreateMode = mode === 'create';
@@ -195,12 +221,14 @@ export function KanbanIssuePanel({
         <div className="flex items-center gap-half min-w-0 font-ibm-plex-mono">
           <span className={`${breadcrumbTextClass} shrink-0`}>{displayId}</span>
           {!isCreateMode && onCopyLink && (
-            <CopyButton
-              iconSize="size-icon-sm"
-              onCopy={onCopyLink}
-              disabled={false}
-              icon={LinkIcon}
-            />
+            <button
+              type="button"
+              onClick={onCopyLink}
+              className="p-half rounded-sm text-low hover:text-normal hover:bg-panel transition-colors"
+              aria-label={t('kanban.copyLink')}
+            >
+              <LinkIcon className="size-icon-sm" weight="bold" />
+            </button>
           )}
         </div>
         <div className="flex items-center gap-half">
@@ -256,31 +284,7 @@ export function KanbanIssuePanel({
             linkedPrs={isCreateMode ? [] : linkedPrs}
             onTagsChange={(tagIds) => onFormChange('tagIds', tagIds)}
             onCreateTag={onCreateTag}
-            renderAddTagControl={({
-              tags,
-              selectedTagIds,
-              onTagToggle,
-              onCreateTag,
-              disabled,
-            }) => (
-              <SearchableTagDropdownContainer
-                tags={tags}
-                selectedTagIds={selectedTagIds}
-                onTagToggle={onTagToggle}
-                onCreateTag={onCreateTag}
-                disabled={disabled}
-                contentClassName=""
-                trigger={
-                  <button
-                    type="button"
-                    className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
-                    disabled={disabled}
-                  >
-                    <PlusIcon className="size-icon-xs" weight="bold" />
-                  </button>
-                }
-              />
-            )}
+            renderAddTagControl={renderAddTagControl}
             disabled={isSubmitting}
           />
         </div>
@@ -323,50 +327,46 @@ export function KanbanIssuePanel({
               {...(dropzoneProps?.getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)}
               data-dropzone-input
             />
-            <WYSIWYGEditor
-              placeholder={t('kanban.issueDescriptionPlaceholder')}
-              value={formData.description ?? ''}
-              onChange={(value) => onFormChange('description', value || null)}
-              onCmdEnter={onCmdEnterSubmit}
-              onPasteFiles={onPasteFiles}
-              disabled={isSubmitting}
-              autoFocus={false}
-              className="min-h-[100px] px-base"
-              showStaticToolbar
-              saveStatus={descriptionSaveStatus}
-              staticToolbarActions={
-                onBrowseAttachment ? (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            if (!isSubmitting && !isUploading) {
-                              onBrowseAttachment();
-                            }
-                          }}
-                          disabled={isSubmitting || isUploading}
-                          className={cn(
-                            'p-half rounded-sm transition-colors',
-                            'text-low hover:text-normal hover:bg-panel/50',
-                            'disabled:opacity-50 disabled:cursor-not-allowed'
-                          )}
-                          title={t('kanban.attachFile')}
-                          aria-label={t('kanban.attachFile')}
-                        >
-                          <PaperclipIcon className="size-icon-sm" />
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        {t('kanban.attachFileHint')}
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ) : null
-              }
-            />
+            {renderDescriptionEditor({
+              placeholder: t('kanban.issueDescriptionPlaceholder'),
+              value: formData.description ?? '',
+              onChange: (value) => onFormChange('description', value || null),
+              onCmdEnter: onCmdEnterSubmit,
+              onPasteFiles,
+              disabled: isSubmitting,
+              autoFocus: false,
+              className: 'min-h-[100px] px-base',
+              showStaticToolbar: true,
+              saveStatus: descriptionSaveStatus,
+              staticToolbarActions: onBrowseAttachment ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          if (!isSubmitting && !isUploading) {
+                            onBrowseAttachment();
+                          }
+                        }}
+                        disabled={isSubmitting || isUploading}
+                        className={cn(
+                          'p-half rounded-sm transition-colors',
+                          'text-low hover:text-normal hover:bg-panel/50',
+                          'disabled:opacity-50 disabled:cursor-not-allowed'
+                        )}
+                        title={t('kanban.attachFile')}
+                        aria-label={t('kanban.attachFile')}
+                      >
+                        <PaperclipIcon className="size-icon-sm" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{t('kanban.attachFileHint')}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null,
+            })}
             {attachmentError && (
               <div className="px-base">
                 <ErrorAlert
@@ -434,30 +434,30 @@ export function KanbanIssuePanel({
         )}
 
         {/* Workspaces Section (Edit mode only) */}
-        {!isCreateMode && issueId && (
+        {!isCreateMode && issueId && renderWorkspacesSection && (
           <div className="border-t">
-            <IssueWorkspacesSectionContainer issueId={issueId} />
+            {renderWorkspacesSection(issueId)}
           </div>
         )}
 
         {/* Relationships Section (Edit mode only) */}
-        {!isCreateMode && issueId && (
+        {!isCreateMode && issueId && renderRelationshipsSection && (
           <div className="border-t">
-            <IssueRelationshipsSectionContainer issueId={issueId} />
+            {renderRelationshipsSection(issueId)}
           </div>
         )}
 
         {/* Sub-Issues Section (Edit mode only) */}
-        {!isCreateMode && issueId && (
+        {!isCreateMode && issueId && renderSubIssuesSection && (
           <div className="border-t">
-            <IssueSubIssuesSectionContainer issueId={issueId} />
+            {renderSubIssuesSection(issueId)}
           </div>
         )}
 
         {/* Comments Section (Edit mode only) */}
-        {!isCreateMode && issueId && (
+        {!isCreateMode && issueId && renderCommentsSection && (
           <div className="border-t">
-            <IssueCommentsSectionContainer issueId={issueId} />
+            {renderCommentsSection(issueId)}
           </div>
         )}
       </div>

@@ -6305,3 +6305,60 @@ Validation:
 Plan adjustments from new information:
 - For large app shell views, keep package components focused on layout and state display, and inject domain workflows via render slots.
 - Keep provider ownership in frontend containers when providers are tied to app data/session semantics.
+
+## 2026-02-22 - UI package extraction: KanbanIssuePanel
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/KanbanIssuePanel.tsx` as the next extraction target.
+- It is the remaining `ui-new/views` component and has a single primary container callsite (`KanbanIssuePanelContainer`).
+- Main couplings were frontend-only dependencies (`WYSIWYGEditor`, `SearchableTagDropdownContainer`, issue section containers, frontend `cn` alias, and shared app type imports).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/KanbanIssuePanel.tsx packages/ui/src/components/KanbanIssuePanel.tsx`
+- Package updates:
+  - Replaced frontend utility alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed frontend-only component dependencies by introducing injected package APIs:
+    - `renderDescriptionEditor`
+    - `renderAddTagControl`
+    - `renderWorkspacesSection`
+    - `renderRelationshipsSection`
+    - `renderSubIssuesSection`
+    - `renderCommentsSection`
+  - Replaced app-specific copy control with package-local header button using `LinkIcon`.
+  - Introduced package-local structural contracts for panel data:
+    - `IssueStatus` (via `IssuePropertyRowProps`)
+    - `KanbanIssueTag` (includes `project_id` for app dropdown compatibility)
+    - `KanbanIssueDescriptionEditorProps`
+  - Kept panel layout and behavior (header, properties, tags, title/description area, create-mode actions) inside package.
+- Frontend callsite updates:
+  - Updated imports in:
+    - `frontend/src/components/ui-new/containers/KanbanIssuePanelContainer.tsx`
+    - `frontend/src/components/ui-new/containers/kanban-issue-panel-state.ts`
+  - New import path:
+    - `@vibe/ui/components/KanbanIssuePanel`
+  - Container now owns app-specific integration wiring:
+    - injects `WYSIWYGEditor` through `renderDescriptionEditor`
+    - injects `SearchableTagDropdownContainer` through `renderAddTagControl`
+    - injects issue sections through section renderers (`IssueWorkspacesSectionContainer`, `IssueRelationshipsSectionContainer`, `IssueSubIssuesSectionContainer`, `IssueCommentsSectionContainer`)
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For feature-heavy panels, preserve package ownership of UI layout/state transitions while injecting app-specific workflows via explicit render props.
+- When app controls require richer entity shapes (e.g., tags with `project_id`), keep package contracts structural and sufficient for callsite compatibility instead of importing shared app types directly.

@@ -15,10 +15,16 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
+import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
+import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
+import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
 import {
   KanbanIssuePanel,
   type IssueFormData,
-} from '@/components/ui-new/views/KanbanIssuePanel';
+} from '@vibe/ui/components/KanbanIssuePanel';
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
@@ -983,8 +989,26 @@ export function KanbanIssuePanelContainer({
       onSubmit={handleSubmit}
       onCmdEnterSubmit={handleCmdEnterSubmit}
       onCreateTag={handleCreateTag}
+      renderAddTagControl={({
+        tags,
+        selectedTagIds,
+        onTagToggle,
+        onCreateTag,
+        disabled,
+        trigger,
+      }) => (
+        <SearchableTagDropdownContainer
+          tags={tags}
+          selectedTagIds={selectedTagIds}
+          onTagToggle={onTagToggle}
+          onCreateTag={onCreateTag}
+          disabled={disabled}
+          contentClassName=""
+          trigger={trigger}
+        />
+      )}
+      renderDescriptionEditor={(props) => <WYSIWYGEditor {...props} />}
       isSubmitting={isSubmitting}
-      isLoading={isLoading}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
@@ -1000,6 +1024,18 @@ export function KanbanIssuePanelContainer({
       isUploading={isUploading}
       attachmentError={uploadError}
       onDismissAttachmentError={clearUploadError}
+      renderWorkspacesSection={(issueId) => (
+        <IssueWorkspacesSectionContainer issueId={issueId} />
+      )}
+      renderRelationshipsSection={(issueId) => (
+        <IssueRelationshipsSectionContainer issueId={issueId} />
+      )}
+      renderSubIssuesSection={(issueId) => (
+        <IssueSubIssuesSectionContainer issueId={issueId} />
+      )}
+      renderCommentsSection={(issueId) => (
+        <IssueCommentsSectionContainer issueId={issueId} />
+      )}
     />
   );
 }
