@@ -66,9 +66,10 @@ import {
 import { attemptsApi, repoApi } from '@/lib/api';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
 import { attemptKeys } from '@/hooks/useAttempt';
+import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
+import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
 import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
@@ -1189,11 +1190,32 @@ export const Actions = {
     icon: CrosshairIcon,
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, workspaceId, repoId) => {
-      // Open dialog - it loads branches internally
+    execute: async (ctx, workspaceId, repoId) => {
+      const branches = await repoApi.getBranches(repoId);
       await ChangeTargetDialog.show({
-        attemptId: workspaceId,
-        repoId,
+        branches: branches.map((branch) => ({
+          name: branch.name,
+          isCurrent: branch.is_current,
+        })),
+        onChangeTargetBranch: async (newTargetBranch) => {
+          await attemptsApi.change_target_branch(workspaceId, {
+            new_target_branch: newTargetBranch,
+            repo_id: repoId,
+          });
+
+          ctx.queryClient.invalidateQueries({
+            queryKey: ['branchStatus', workspaceId],
+          });
+          ctx.queryClient.invalidateQueries({
+            queryKey: attemptKeys.byId(workspaceId),
+          });
+          ctx.queryClient.invalidateQueries({
+            queryKey: ['attemptRepo', workspaceId],
+          });
+          ctx.queryClient.invalidateQueries({
+            queryKey: repoBranchKeys.byRepo(repoId),
+          });
+        },
       });
     },
   },

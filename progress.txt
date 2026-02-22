@@ -6555,3 +6555,55 @@ Validation:
 Plan adjustments from new information:
 - For rename/edit dialogs with simple data mutations, prefer callback injection from frontend action executors instead of embedding API/query logic in `@vibe/ui`.
 - Keep existing action-layer invalidation helpers as the single source of truth for cache updates when extracting dialogs.
+
+## 2026-02-22 - UI package extraction: ChangeTargetDialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/ChangeTargetDialog.tsx` as the next extraction target.
+- It has a single caller (`frontend/src/components/ui-new/actions/index.ts`) and a UI-heavy surface.
+- Main couplings were frontend-only git operations/context hooks (`GitOperationsProvider`, `useGitOperations`, `useRepoBranches`) and frontend modal helper import.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/ChangeTargetDialog.tsx packages/ui/src/components/ChangeTargetDialog.tsx`
+- Package updates:
+  - Replaced package self-import aliases with relative imports:
+    - `@vibe/ui/components/KeyboardDialog` -> `./KeyboardDialog`
+    - `@vibe/ui/components/Button` -> `./Button`
+  - Replaced frontend modal helper import:
+    - `@/lib/modals` -> `../lib/modals`
+  - Removed frontend git/query coupling by changing dialog props to callback-driven + data-injected API:
+    - removed `attemptId` and `repoId`
+    - added `branches: ChangeTargetBranchOption[]`
+    - added `onChangeTargetBranch: (newTargetBranch: string) => Promise<void>`
+  - Replaced internal branch-loading + `BranchSelector` dependency with package-local `Select` rendering of injected branch options.
+  - Added local `isSubmitting` and `error` state, preserving cancellation/result behavior.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/actions/index.ts`
+  - New import path:
+    - `@vibe/ui/components/ChangeTargetDialog`
+  - Moved branch loading + mutation + query invalidation into action caller:
+    - preload branches with `repoApi.getBranches(repoId)`
+    - invoke `attemptsApi.change_target_branch(...)` inside `onChangeTargetBranch`
+    - invalidate `branchStatus`, `attempt`, `attemptRepo`, and `repoBranchKeys.byRepo(repoId)` queries.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Even dialogs previously classified `keep-app` can be extracted when converted to strict UI-only contracts (injected data + async callbacks).
+- Keep branch/data fetching and query invalidation ownership in frontend action executors; keep `@vibe/ui` dialog components pure/presentational.
