@@ -5,7 +5,7 @@ import { GeneralSettingsSectionContent } from '@/components/ui-new/dialogs/setti
 import { ReposSettingsSectionContent } from '@/components/ui-new/dialogs/settings/ReposSettingsSection';
 import { OrganizationsSettingsSectionContent } from '@/components/ui-new/dialogs/settings/OrganizationsSettingsSection';
 import { RemoteProjectsSettingsSectionContent } from '@/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection';
-import { AgentsSettingsSectionContent } from '@/components/ui-new/dialogs/settings/AgentsSettingsSection';
+import { AgentsSettingsSectionContent } from './AgentsSettingsSection';
 import { McpSettingsSectionContent } from './McpSettingsSection';
 
 export type SettingsSectionType =

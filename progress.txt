@@ -1838,3 +1838,44 @@
   `src/features/settings/ui/dialogs/settings/*` with a compatibility shim, then
   update `SettingsSection` to consume the canonical module while keeping the
   remaining settings sections on legacy paths for staged migration.
+
+## 2026-02-22 13:55:08 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx` as the next Track 1 migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`
+    -> `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`.
+  - Updated moved section for feature-lint compatibility:
+    - replaced direct provider import (`@/app/providers/ConfigProvider`) with
+      hook facade import (`@/hooks/useUserSystem`)
+    - routed `SettingsDirtyContext` to local canonical path
+    - retained staged imports to legacy settings modules for
+      `ExecutorConfigForm` and `SettingsComponents`.
+- Updated canonical owned callsite to feature path:
+  - `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`
+- New information discovered and handled:
+  - feature-owned settings sections cannot import sibling settings feature
+    dialogs directly under current lint boundaries, so `CreateConfigurationDialog`
+    and `DeleteConfigurationDialog` imports were switched to
+    `src/components/dialogs/settings/*` shim paths.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `AgentsSettingsSection` migration.
+  - Updated risk-controls notes for settings-section import boundaries and
+    staged dependency strategy.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx` into
+  `src/features/settings/ui/dialogs/settings/*` with a compatibility shim, then
+  update `SettingsSection` to consume the canonical module while keeping the
+  remaining settings sections on legacy paths for staged migration.
