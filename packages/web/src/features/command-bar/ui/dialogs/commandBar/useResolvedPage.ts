@@ -20,7 +20,7 @@ import {
   isActionVisible,
   isPageVisible,
 } from '@/components/ui-new/actions/useActionVisibility';
-import { injectSearchMatches } from '@/components/ui-new/dialogs/commandBar/injectSearchMatches';
+import { injectSearchMatches } from './injectSearchMatches';
 
 export interface ResolvedCommandBarPage {
   id: string;

@@ -83,6 +83,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/commandBar/useCommandBarState.ts`.
   - [x] Moved command-bar dialog helper `useResolvedPage` to
         `src/features/command-bar/ui/dialogs/commandBar/useResolvedPage.ts`.
+  - [x] Moved command-bar dialog helper `injectSearchMatches` to
+        `src/features/command-bar/ui/dialogs/commandBar/injectSearchMatches.ts`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -188,6 +190,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/commandBar/useResolvedPage.ts`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/commandBar/injectSearchMatches.ts`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -261,6 +265,9 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `./commandBar/useResolvedPage` in
         `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx`.
+  - [x] Updated canonical callsite to
+        `./injectSearchMatches` in
+        `src/features/command-bar/ui/dialogs/commandBar/useResolvedPage.ts`.
   - [x] Kept `CommandBarDialog` feature-layer callsite on the legacy shim path
         (`src/features/kanban/ui/KanbanContainer.tsx`) because
         `src/features/kanban/**` cannot import directly from
