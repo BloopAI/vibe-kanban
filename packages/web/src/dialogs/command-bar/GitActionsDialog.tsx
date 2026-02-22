@@ -8,7 +8,7 @@ import {
 } from '@vibe/ui/components/KeyboardDialog';
 import { Loader } from '@vibe/ui/components/Loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
-import { useTaskAttemptWithSession } from '@/features/workspace/model/hooks/useTaskAttempt';
+import { useTaskAttemptWithSession } from '@/shared/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';

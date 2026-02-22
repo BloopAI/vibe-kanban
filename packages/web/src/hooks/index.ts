@@ -1,10 +1,6 @@
 export { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 export { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
-export {
-  useTaskAttempt,
-  useTaskAttemptWithSession,
-} from '@/features/workspace/model/hooks/useTaskAttempt';
 export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
 export { useDevServer } from '@/shared/hooks/useDevServer';
