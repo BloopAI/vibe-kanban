@@ -267,6 +267,46 @@
   #root {
     @apply min-h-screen;
     @apply font-normal;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent body scrolling on mobile / PWA standalone */
+  @media (max-width: 767px) {
+    html,
+    body {
+      @apply overflow-hidden;
+      height: 100%;
+    }
+
+    /* Mobile font scaling - controlled via --mobile-font-scale CSS variable */
+    .new-design {
+      font-size: var(--mobile-font-scale, 100%);
+    }
+
+    /* Extend background to safe-area bottom (home indicator region) */
+    html,
+    body,
+    #root {
+      background-color: #f2f2f2;
+    }
+
+    .dark html,
+    html.dark,
+    .dark body,
+    body.dark,
+    .dark #root,
+    #root.dark {
+      background-color: #212121;
+    }
+  }
+
+  body {
+    background-color: #f2f2f2;
+  }
+
+  .dark body,
+  body.dark {
+    background-color: #212121;
   }
 
   .new-design {

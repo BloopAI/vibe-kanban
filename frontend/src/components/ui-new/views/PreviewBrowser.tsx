@@ -14,6 +14,7 @@ import {
   PauseIcon,
   CheckIcon,
   TerminalIcon,
+  GlobeIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
@@ -76,6 +77,9 @@ interface PreviewBrowserProps {
   onToggleInspectMode: () => void;
   isErudaVisible: boolean;
   onToggleEruda: () => void;
+  isMobile?: boolean;
+  mobileUrlExpanded?: boolean;
+  onMobileUrlExpandedChange?: (expanded: boolean) => void;
 }
 
 export function PreviewBrowser({
@@ -117,8 +121,13 @@ export function PreviewBrowser({
   onToggleInspectMode,
   isErudaVisible,
   onToggleEruda,
+  isMobile = false,
+  mobileUrlExpanded = false,
+  onMobileUrlExpandedChange,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
+  const setMobileUrlExpanded = (expanded: boolean) =>
+    onMobileUrlExpandedChange?.(expanded);
   const isLoading = isStarting || (isServerRunning && !url);
   // Use the showIframe prop from container which handles the 2-second delay
   const showIframeContent = showIframe && url && !isLoading && isServerRunning;
@@ -158,172 +167,269 @@ export function PreviewBrowser({
       )}
     >
       {/* Floating Toolbar */}
-      <div className="p-double">
+      <div className={cn(isMobile ? 'p-base' : 'p-double')}>
         <div className="backdrop-blur-sm bg-primary/80 border border-brand/20 flex items-center gap-base p-base rounded-md shadow-md shrink-0">
-          {/* Navigation (Back/Forward) */}
-          <PreviewNavigation
-            navigation={navigation}
-            onBack={onNavigateBack}
-            onForward={onNavigateForward}
-            disabled={!isServerRunning}
-          />
-
-          {/* Inspect Mode & DevTools */}
-          <IconButtonGroup>
-            <IconButtonGroupItem
-              icon={CrosshairIcon}
-              onClick={onToggleInspectMode}
-              active={isInspectMode}
-              disabled={!isServerRunning}
-              aria-label="Select element as context"
-              title="Select element as context"
-            />
-            <IconButtonGroupItem
-              icon={TerminalIcon}
-              onClick={onToggleEruda}
-              active={isErudaVisible}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.toggleDevTools')}
-              title={t('preview.toolbar.toggleDevTools')}
-            />
-          </IconButtonGroup>
-
-          {/* URL Input */}
-          <div
-            className={cn(
-              'flex items-center gap-half rounded-sm px-base py-half flex-1 min-w-0',
-              !isServerRunning && 'opacity-50'
-            )}
-          >
-            <input
-              ref={urlInputRef}
-              type="text"
-              value={urlInputValue}
-              onChange={(e) => onUrlInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onUrlSubmit()}
-              placeholder={autoDetectedUrl ?? 'Enter URL...'}
-              disabled={!isServerRunning}
-              className={cn(
-                'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
-                isUsingOverride
-                  ? 'text-normal'
-                  : 'text-low placeholder:text-low',
-                !isServerRunning && 'cursor-not-allowed'
+          {/* Mobile: expanded URL bar mode */}
+          {isMobile && mobileUrlExpanded ? (
+            <>
+              <div
+                className={cn(
+                  'flex items-center gap-half rounded-sm px-base py-half flex-1 min-w-0',
+                  !isServerRunning && 'opacity-50'
+                )}
+              >
+                <input
+                  ref={urlInputRef}
+                  type="text"
+                  value={urlInputValue}
+                  onChange={(e) => onUrlInputChange(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      onUrlSubmit();
+                      setMobileUrlExpanded(false);
+                    }
+                  }}
+                  placeholder={autoDetectedUrl ?? 'Enter URL...'}
+                  disabled={!isServerRunning}
+                  autoFocus
+                  className={cn(
+                    'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
+                    isUsingOverride
+                      ? 'text-normal'
+                      : 'text-low placeholder:text-low',
+                    !isServerRunning && 'cursor-not-allowed'
+                  )}
+                />
+              </div>
+              <IconButtonGroup>
+                <IconButtonGroupItem
+                  icon={CheckIcon}
+                  onClick={() => {
+                    onUrlSubmit();
+                    setMobileUrlExpanded(false);
+                  }}
+                  disabled={!isServerRunning}
+                  aria-label={t('preview.toolbar.submitUrl')}
+                  title={t('preview.toolbar.submitUrl')}
+                />
+                <IconButtonGroupItem
+                  icon={XIcon}
+                  onClick={() => setMobileUrlExpanded(false)}
+                  aria-label="Close URL bar"
+                  title="Close URL bar"
+                />
+              </IconButtonGroup>
+            </>
+          ) : (
+            <>
+              {/* Navigation (Back/Forward) - hidden on mobile */}
+              {!isMobile && (
+                <PreviewNavigation
+                  navigation={navigation}
+                  onBack={onNavigateBack}
+                  onForward={onNavigateForward}
+                  disabled={!isServerRunning}
+                />
               )}
-            />
-          </div>
 
-          {/* URL Actions */}
-          <IconButtonGroup>
-            <IconButtonGroupItem
-              icon={CheckIcon}
-              onClick={onUrlSubmit}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.submitUrl')}
-              title={t('preview.toolbar.submitUrl')}
-            />
-            {isUsingOverride && (
-              <IconButtonGroupItem
-                icon={XIcon}
-                onClick={onClearOverride}
-                disabled={!isServerRunning}
-                aria-label={t('preview.toolbar.clearUrlOverride')}
-                title={t('preview.toolbar.resetUrl')}
-              />
-            )}
-            <IconButtonGroupItem
-              icon={CopyIcon}
-              onClick={onCopyUrl}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.copyUrl')}
-              title={t('preview.toolbar.copyUrl')}
-            />
-            <IconButtonGroupItem
-              icon={ArrowSquareOutIcon}
-              onClick={onOpenInNewTab}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.openInTab')}
-              title={t('preview.toolbar.openInTab')}
-            />
-            <IconButtonGroupItem
-              icon={ArrowClockwiseIcon}
-              onClick={onRefresh}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.refresh')}
-              title={t('preview.toolbar.refresh')}
-            />
-          </IconButtonGroup>
+              {/* Inspect Mode & DevTools - hidden on mobile */}
+              {!isMobile && (
+                <IconButtonGroup>
+                  <IconButtonGroupItem
+                    icon={CrosshairIcon}
+                    onClick={onToggleInspectMode}
+                    active={isInspectMode}
+                    disabled={!isServerRunning}
+                    aria-label="Select element as context"
+                    title="Select element as context"
+                  />
+                  <IconButtonGroupItem
+                    icon={TerminalIcon}
+                    onClick={onToggleEruda}
+                    active={isErudaVisible}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.toggleDevTools')}
+                    title={t('preview.toolbar.toggleDevTools')}
+                  />
+                </IconButtonGroup>
+              )}
 
-          {/* Screen Size Toggle */}
-          <IconButtonGroup>
-            <IconButtonGroupItem
-              icon={MonitorIcon}
-              onClick={() => onScreenSizeChange('desktop')}
-              active={screenSize === 'desktop'}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.desktopView')}
-              title={t('preview.toolbar.desktopView')}
-            />
-            <IconButtonGroupItem
-              icon={DeviceMobileIcon}
-              onClick={() => onScreenSizeChange('mobile')}
-              active={screenSize === 'mobile'}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.mobileView')}
-              title={t('preview.toolbar.mobileView')}
-            />
-            <IconButtonGroupItem
-              icon={ArrowsOutCardinalIcon}
-              onClick={() => onScreenSizeChange('responsive')}
-              active={screenSize === 'responsive'}
-              disabled={!isServerRunning}
-              aria-label={t('preview.toolbar.responsiveView')}
-              title={t('preview.toolbar.responsiveView')}
-            />
-          </IconButtonGroup>
+              {/* URL Input - full on desktop, globe icon on mobile */}
+              {isMobile ? (
+                <IconButtonGroup>
+                  <IconButtonGroupItem
+                    icon={GlobeIcon}
+                    onClick={() => {
+                      setMobileUrlExpanded(true);
+                    }}
+                    disabled={!isServerRunning}
+                    aria-label="Show URL bar"
+                    title="Show URL bar"
+                  />
+                </IconButtonGroup>
+              ) : (
+                <div
+                  className={cn(
+                    'flex items-center gap-half rounded-sm px-base py-half flex-1 min-w-0',
+                    !isServerRunning && 'opacity-50'
+                  )}
+                >
+                  <input
+                    ref={urlInputRef}
+                    type="text"
+                    value={urlInputValue}
+                    onChange={(e) => onUrlInputChange(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && onUrlSubmit()}
+                    placeholder={autoDetectedUrl ?? 'Enter URL...'}
+                    disabled={!isServerRunning}
+                    className={cn(
+                      'flex-1 font-mono text-sm bg-transparent border-none outline-none min-w-0',
+                      isUsingOverride
+                        ? 'text-normal'
+                        : 'text-low placeholder:text-low',
+                      !isServerRunning && 'cursor-not-allowed'
+                    )}
+                  />
+                </div>
+              )}
 
-          {/* Dimensions display for responsive mode */}
-          {screenSize === 'responsive' && (
-            <span className="text-xs text-low font-mono whitespace-nowrap">
-              {Math.round(localDimensions.width)} &times;{' '}
-              {Math.round(localDimensions.height)}
-            </span>
+              {/* URL Actions - hidden on mobile (accessible via expanded URL bar) */}
+              {!isMobile && (
+                <IconButtonGroup>
+                  <IconButtonGroupItem
+                    icon={CheckIcon}
+                    onClick={onUrlSubmit}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.submitUrl')}
+                    title={t('preview.toolbar.submitUrl')}
+                  />
+                  {isUsingOverride && (
+                    <IconButtonGroupItem
+                      icon={XIcon}
+                      onClick={onClearOverride}
+                      disabled={!isServerRunning}
+                      aria-label={t('preview.toolbar.clearUrlOverride')}
+                      title={t('preview.toolbar.resetUrl')}
+                    />
+                  )}
+                  <IconButtonGroupItem
+                    icon={CopyIcon}
+                    onClick={onCopyUrl}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.copyUrl')}
+                    title={t('preview.toolbar.copyUrl')}
+                  />
+                  <IconButtonGroupItem
+                    icon={ArrowSquareOutIcon}
+                    onClick={onOpenInNewTab}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.openInTab')}
+                    title={t('preview.toolbar.openInTab')}
+                  />
+                  <IconButtonGroupItem
+                    icon={ArrowClockwiseIcon}
+                    onClick={onRefresh}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.refresh')}
+                    title={t('preview.toolbar.refresh')}
+                  />
+                </IconButtonGroup>
+              )}
+
+              {/* Mobile: essential URL actions */}
+              {isMobile && (
+                <IconButtonGroup>
+                  <IconButtonGroupItem
+                    icon={ArrowClockwiseIcon}
+                    onClick={onRefresh}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.refresh')}
+                    title={t('preview.toolbar.refresh')}
+                  />
+                  <IconButtonGroupItem
+                    icon={ArrowSquareOutIcon}
+                    onClick={onOpenInNewTab}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.openInTab')}
+                    title={t('preview.toolbar.openInTab')}
+                  />
+                </IconButtonGroup>
+              )}
+
+              {/* Screen Size Toggle - hidden on mobile */}
+              {!isMobile && (
+                <IconButtonGroup>
+                  <IconButtonGroupItem
+                    icon={MonitorIcon}
+                    onClick={() => onScreenSizeChange('desktop')}
+                    active={screenSize === 'desktop'}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.desktopView')}
+                    title={t('preview.toolbar.desktopView')}
+                  />
+                  <IconButtonGroupItem
+                    icon={DeviceMobileIcon}
+                    onClick={() => onScreenSizeChange('mobile')}
+                    active={screenSize === 'mobile'}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.mobileView')}
+                    title={t('preview.toolbar.mobileView')}
+                  />
+                  <IconButtonGroupItem
+                    icon={ArrowsOutCardinalIcon}
+                    onClick={() => onScreenSizeChange('responsive')}
+                    active={screenSize === 'responsive'}
+                    disabled={!isServerRunning}
+                    aria-label={t('preview.toolbar.responsiveView')}
+                    title={t('preview.toolbar.responsiveView')}
+                  />
+                </IconButtonGroup>
+              )}
+
+              {/* Dimensions display for responsive mode */}
+              {!isMobile && screenSize === 'responsive' && (
+                <span className="text-xs text-low font-mono whitespace-nowrap">
+                  {Math.round(localDimensions.width)} &times;{' '}
+                  {Math.round(localDimensions.height)}
+                </span>
+              )}
+
+              {/* Start/Stop Button */}
+              <IconButtonGroup>
+                <IconButtonGroupItem
+                  icon={
+                    isServerRunning
+                      ? isStopping
+                        ? SpinnerIcon
+                        : PauseIcon
+                      : isStarting
+                        ? SpinnerIcon
+                        : PlayIcon
+                  }
+                  iconClassName={
+                    (isServerRunning && isStopping) ||
+                    (!isServerRunning && isStarting)
+                      ? 'animate-spin'
+                      : undefined
+                  }
+                  onClick={isServerRunning ? onStop : onStart}
+                  disabled={
+                    isServerRunning ? isStopping : isStarting || !hasDevScript
+                  }
+                  aria-label={
+                    isServerRunning
+                      ? t('preview.toolbar.stopDevServer')
+                      : t('preview.toolbar.startDevServer')
+                  }
+                  title={
+                    isServerRunning
+                      ? t('preview.toolbar.stopDevServer')
+                      : t('preview.toolbar.startDevServer')
+                  }
+                />
+              </IconButtonGroup>
+            </>
           )}
-
-          {/* Start/Stop Button */}
-          <IconButtonGroup>
-            <IconButtonGroupItem
-              icon={
-                isServerRunning
-                  ? isStopping
-                    ? SpinnerIcon
-                    : PauseIcon
-                  : isStarting
-                    ? SpinnerIcon
-                    : PlayIcon
-              }
-              iconClassName={
-                (isServerRunning && isStopping) ||
-                (!isServerRunning && isStarting)
-                  ? 'animate-spin'
-                  : undefined
-              }
-              onClick={isServerRunning ? onStop : onStart}
-              disabled={
-                isServerRunning ? isStopping : isStarting || !hasDevScript
-              }
-              aria-label={
-                isServerRunning
-                  ? t('preview.toolbar.stopDevServer')
-                  : t('preview.toolbar.startDevServer')
-              }
-              title={
-                isServerRunning
-                  ? t('preview.toolbar.stopDevServer')
-                  : t('preview.toolbar.startDevServer')
-              }
-            />
-          </IconButtonGroup>
         </div>
       </div>
 

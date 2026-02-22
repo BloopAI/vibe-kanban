@@ -8,6 +8,10 @@ import {
   DesktopIcon,
   GitForkIcon,
   ListIcon,
+  GearIcon,
+  KanbanIcon,
+  CaretLeftIcon,
+  ArrowClockwiseIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
@@ -106,6 +110,10 @@ export interface NavbarProps {
   mobileUserSlot?: ReactNode;
   isOnProjectPage?: boolean;
   onOpenCommandBar?: () => void;
+  onOpenSettings?: () => void;
+  onNavigateToBoard?: () => void;
+  onNavigateBack?: () => void;
+  onReload?: () => void;
   className?: string;
 }
 
@@ -120,6 +128,10 @@ export function Navbar({
   mobileUserSlot,
   isOnProjectPage = false,
   onOpenCommandBar,
+  onOpenSettings,
+  onNavigateToBoard,
+  onNavigateBack,
+  onReload,
   className,
 }: NavbarProps) {
   const [mobileTab, setMobileTab] = useMobileActiveTab();
@@ -155,16 +167,53 @@ export function Navbar({
                   </button>
                 );
               })}
+              {onNavigateToBoard && (
+                <button
+                  type="button"
+                  onClick={onNavigateToBoard}
+                  className="flex items-center gap-1 px-1.5 py-1 rounded-sm text-sm shrink-0 text-low hover:text-normal"
+                >
+                  <KanbanIcon className="size-icon-base" />
+                  <span className="hidden min-[480px]:inline">Board</span>
+                </button>
+              )}
             </div>
           )}
           {isOnProjectPage && (
-            <div className="flex items-center gap-base flex-1 min-w-0">
+            <div className="flex items-center gap-1 flex-1 min-w-0">
+              {onNavigateBack && (
+                <button
+                  type="button"
+                  onClick={onNavigateBack}
+                  className="flex items-center justify-center rounded-sm text-low hover:text-normal shrink-0"
+                >
+                  <CaretLeftIcon className="size-icon-base" weight="bold" />
+                </button>
+              )}
               {leftSlot}
               <p className="text-base text-low truncate">{workspaceTitle}</p>
             </div>
           )}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-3 shrink-0">
             <SyncErrorIndicator />
+            {onReload && (
+              <button
+                type="button"
+                onClick={onReload}
+                className="flex items-center justify-center rounded-sm text-low hover:text-normal"
+              >
+                <ArrowClockwiseIcon className="size-icon-base" />
+              </button>
+            )}
+            {onOpenSettings && (
+              <button
+                type="button"
+                onClick={onOpenSettings}
+                className="flex items-center justify-center rounded-sm text-low hover:text-normal"
+              >
+                <GearIcon className="size-icon-base" />
+              </button>
+            )}
             {onOpenCommandBar && (
               <button
                 type="button"

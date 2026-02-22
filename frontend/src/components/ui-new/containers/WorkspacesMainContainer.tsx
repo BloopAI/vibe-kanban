@@ -4,6 +4,7 @@ import {
   useImperativeHandle,
   useMemo,
   useRef,
+  useState,
 } from 'react';
 import type { Workspace, Session } from 'shared/types';
 import { createWorkspaceWithSession } from '@/types/attempt';
@@ -62,6 +63,11 @@ export const WorkspacesMainContainer = forwardRef<
     conversationListRef.current?.scrollToBottom();
   }, []);
 
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const handleAtBottomChange = useCallback((atBottom: boolean) => {
+    setIsAtBottom(atBottom);
+  }, []);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -89,6 +95,8 @@ export const WorkspacesMainContainer = forwardRef<
       }}
       onScrollToPreviousMessage={handleScrollToPreviousMessage}
       onScrollToBottom={handleScrollToBottom}
+      isAtBottom={isAtBottom}
+      onAtBottomChange={handleAtBottomChange}
     />
   );
 });

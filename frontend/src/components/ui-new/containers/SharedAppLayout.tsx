@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '../primitives/AppBar';
 import { useIsMobile } from '@/hooks/useIsMobile';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -248,10 +249,30 @@ export function SharedAppLayout() {
   }, [isSignedIn, navigate]);
 
   const isMobile = useIsMobile();
+  const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
+
+  // Apply mobile font scale via CSS custom property on the root element
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isMobile && mobileFontScale !== 'default') {
+      const scaleValue = mobileFontScale === 'small' ? '95%' : '90%';
+      root.style.setProperty('--mobile-font-scale', scaleValue);
+    } else {
+      root.style.removeProperty('--mobile-font-scale');
+    }
+    return () => {
+      root.style.removeProperty('--mobile-font-scale');
+    };
+  }, [isMobile, mobileFontScale]);
 
   return (
     <SyncErrorProvider>
-      <div className={cn('flex bg-primary', isMobile ? 'h-dvh' : 'h-screen')}>
+      <div
+        className={cn(
+          'flex bg-primary',
+          isMobile ? 'h-dvh pb-[env(safe-area-inset-bottom)]' : 'h-screen'
+        )}
+      >
         {!isMobile && !isMigrateRoute && (
           <AppBar
             projects={orderedProjects}

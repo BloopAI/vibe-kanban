@@ -1,5 +1,6 @@
 import {
   DataWithScrollModifier,
+  type ListScrollLocation,
   ScrollModifier,
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
@@ -42,6 +43,7 @@ import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialo
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
+  onAtBottomChange: (atBottom: boolean) => void;
 }
 
 export interface ConversationListHandle {
@@ -178,7 +180,7 @@ const itemIdentity: VirtuosoMessageListProps<
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
->(function ConversationList({ attempt }, ref) {
+>(function ConversationList({ attempt, onAtBottomChange }, ref) {
   const resetAction = useResetProcess();
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<DisplayEntry> | null>(null);
@@ -336,6 +338,18 @@ export const ConversationList = forwardRef<
     ]
   );
 
+  // Track scroll position to detect when user is away from bottom
+  const lastAtBottomRef = useRef(true);
+  const handleScroll = useCallback(
+    (location: ListScrollLocation) => {
+      if (location.isAtBottom !== lastAtBottomRef.current) {
+        lastAtBottomRef.current = location.isAtBottom;
+        onAtBottomChange(location.isAtBottom);
+      }
+    },
+    [onAtBottomChange]
+  );
+
   // Expose scroll to previous user message functionality via ref
   useImperativeHandle(
     ref,
@@ -412,6 +426,7 @@ export const ConversationList = forwardRef<
             context={messageListContext}
             computeItemKey={computeItemKey}
             itemIdentity={itemIdentity}
+            onScroll={handleScroll}
             ItemContent={ItemContent}
             Header={({ context }) => (
               <div className="pt-2">
