@@ -22,7 +22,7 @@ import { useActionVisibilityContext } from '../actions/useActionVisibility';
 import type { SelectionPage } from '@/components/ui-new/dialogs/SelectionDialog';
 import type { RepoSelectionResult } from '@/components/ui-new/dialogs/selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';
-import { useResolvedPage } from '@/components/ui-new/dialogs/commandBar/useResolvedPage';
+import { useResolvedPage } from './commandBar/useResolvedPage';
 
 export interface CommandBarDialogProps {
   page?: PageId;
