@@ -1,5 +1,5 @@
 import { ChatMarkdown } from './ChatMarkdown';
-import { ChatEntryContainer } from './ChatEntryContainer';
+import { ChatEntryContainer } from '@vibe/ui/components/ChatEntryContainer';
 import { ToolStatus } from 'shared/types';
 
 interface ChatApprovalCardProps {

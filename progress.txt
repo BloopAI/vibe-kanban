@@ -3935,3 +3935,46 @@ Plan adjustments from new information:
 - The conversation extraction stream remains stable for presentational components with narrow prop surfaces and no context/store dependencies.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatEntryContainer.tsx` (shared across multiple conversation renderers, minimal dependency surface, and straightforward package-boundary cleanup).
+
+## 2026-02-22 - UI package extraction: ChatEntryContainer
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatEntryContainer.tsx` as the next extraction candidate.
+- It had two direct callsites (`ChatApprovalCard`, `ChatUserMessage`) and a bounded dependency surface (`@phosphor-icons/react`, `cn`, and a `ToolStatus` shape), making it a low-risk shared-conversation primitive move.
+- New information: `ToolStatus` can stay package-safe as a structural type (`{ status: string }`), avoiding direct shared-type coupling.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatEntryContainer.tsx packages/ui/src/components/ChatEntryContainer.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed direct shared-type dependency:
+    - replaced `ToolStatus` with exported package type `ChatEntryStatusLike` (`status: string`)
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/primitives/conversation/ChatApprovalCard.tsx`
+    - `frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatEntryContainer`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The conversation extraction path remains stable when shared status/state props are represented as structural package types.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatSystemMessage.tsx` (single container callsite, minimal dependencies, straightforward alias import cleanup).

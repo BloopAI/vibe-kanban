@@ -6,10 +6,13 @@ import {
   GearIcon,
   IconProps,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { ToolStatus } from 'shared/types';
+import { cn } from '../lib/cn';
 
 type Variant = 'user' | 'plan' | 'plan_denied' | 'system';
+
+export interface ChatEntryStatusLike {
+  status: string;
+}
 
 interface VariantConfig {
   icon: ComponentType<IconProps>;
@@ -54,7 +57,7 @@ interface ChatEntryContainerProps {
   children?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
-  status?: ToolStatus;
+  status?: ChatEntryStatusLike;
   isGreyed?: boolean;
 }
 

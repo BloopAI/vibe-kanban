@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { PencilSimpleIcon, ArrowUUpLeftIcon } from '@phosphor-icons/react';
-import { ChatEntryContainer } from './ChatEntryContainer';
+import { ChatEntryContainer } from '@vibe/ui/components/ChatEntryContainer';
 import { ChatMarkdown } from './ChatMarkdown';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 
