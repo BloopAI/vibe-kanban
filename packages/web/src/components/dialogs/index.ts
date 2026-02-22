@@ -15,7 +15,7 @@ export {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectDialogProps,
   type CreateRemoteProjectResult,
-} from './org/CreateRemoteProjectDialog';
+} from '@/features/settings/ui/dialogs/CreateRemoteProjectDialog';
 export { CreatePRDialog } from '@/features/command-bar/ui/dialogs/CreatePRDialog';
 export {
   EditorSelectionDialog,

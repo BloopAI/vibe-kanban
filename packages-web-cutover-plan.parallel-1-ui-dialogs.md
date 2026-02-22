@@ -45,6 +45,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/CreateConfigurationDialog.tsx`.
   - [x] Moved feature dialog `CreateOrganizationDialog` to
         `src/features/settings/ui/dialogs/CreateOrganizationDialog.tsx`.
+  - [x] Moved feature dialog `CreateRemoteProjectDialog` to
+        `src/features/settings/ui/dialogs/CreateRemoteProjectDialog.tsx`.
   - [x] Moved feature dialog `DeleteConfigurationDialog` to
         `src/features/settings/ui/dialogs/DeleteConfigurationDialog.tsx`.
   - [x] Moved feature dialog `GhCliSetupDialog` to
@@ -80,6 +82,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/org/CreateOrganizationDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/dialogs/org/CreateRemoteProjectDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/dialogs/settings/DeleteConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/auth/GhCliSetupDialog.tsx`.
@@ -113,6 +117,10 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateOrganizationDialog` in:
         `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/CreateRemoteProjectDialog` in:
+        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/DeleteConfigurationDialog` in:
@@ -229,6 +237,9 @@ compatibility shims.
   under `src/features/settings/ui/dialogs/*` with direct canonical imports in
   settings surfaces while app-layout consumers continue to resolve via the
   `src/components/dialogs/index.ts` barrel.
+- New information (2026-02-22): remote-project settings dialogs follow the
+  same migration pattern as organization dialogs: canonical imports in settings
+  surfaces plus barrel-based consumption for shared app-layout entrypoints.
 
 ## Validation
 
