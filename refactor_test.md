@@ -1,7 +1,7 @@
 # Refactor Lint Triage (no-restricted-imports)
 
-Use this file to evaluate each ESLint architecture violation and choose a
-consistent refactor action.
+Use this file to evaluate one ESLint architecture violation at a time and
+choose a consistent refactor action.
 
 ## Scope
 
@@ -11,14 +11,15 @@ This checklist is for layer-boundary violations in `packages/web`, especially:
 - `features -> features`
 - `shared -> features`
 
-## How To Use
+## How To Use (Single Issue Workflow)
 
-For each ESLint error:
+Run this workflow against exactly one ESLint error.
 
-1. Copy one row in the tracking table.
-2. Run the decision tree.
-3. Pick exactly one primary action.
+1. Paste the issue details into one row in the tracking table.
+2. Run the decision tree for that issue only.
+3. Pick exactly one primary action (`A1`-`A5`).
 4. Add follow-up tasks if needed.
+5. Implement and validate before moving to the next issue.
 
 ## Decision Tree
 
@@ -97,7 +98,7 @@ Use when the caller is in the wrong layer.
 - If it touches routing/providers/global bootstrap, it likely belongs in `app`.
 - If it encodes one domain workflow, keep it in that feature.
 
-## Per-Issue Tracking Table
+## Single-Issue Tracking Row
 
 | Status | File | Line | Importer Layer | Imported Module | Violation Type | Decision (A1-A5) | Action Summary | Owner | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -109,9 +110,9 @@ Use when the caller is in the wrong layer.
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | DONE | `src/features/command-bar/ui/actions/useActionVisibility.ts` | `8` | feature | `@/features/workspace-chat/model/store/useDiffViewStore` | `features -> features` | A2 | Move `useDiffViewStore` to `src/shared/stores` and repoint imports |  | Cross-cutting UI state |
 
-## Definition Of Done (Per Batch)
+## Definition Of Done (Per Issue)
 
-- `pnpm run web:lint` passes for targeted issues.
+- The targeted issue is resolved in `pnpm run web:lint`.
 - No new boundary violations introduced.
 - Imports point to owning layer (not convenience aliases).
 - Behavior unchanged (run relevant checks/tests).
