@@ -41,7 +41,7 @@ import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
-import { ChatCollapsedThinking } from '../primitives/conversation/ChatCollapsedThinking';
+import { ChatCollapsedThinking } from '@vibe/ui/components/ChatCollapsedThinking';
 import { ChatMarkdown } from '../primitives/conversation/ChatMarkdown';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 import type {
@@ -1017,6 +1017,13 @@ function AggregatedThinkingGroupEntry({
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
       taskAttemptId={taskAttemptId}
+      renderMarkdown={({ content, workspaceId, className }) => (
+        <ChatMarkdown
+          content={content}
+          workspaceId={workspaceId}
+          className={className}
+        />
+      )}
     />
   );
 }

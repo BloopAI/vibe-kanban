@@ -1,11 +1,17 @@
+import type { ReactNode } from 'react';
 import { ChatDotsIcon, CaretRightIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { ChatMarkdown } from './ChatMarkdown';
+import { cn } from '../lib/cn';
 
 export interface ThinkingEntry {
   content: string;
   expansionKey: string;
+}
+
+export interface ChatCollapsedThinkingRenderProps {
+  content: string;
+  workspaceId?: string;
+  className?: string;
 }
 
 interface ChatCollapsedThinkingProps {
@@ -16,6 +22,7 @@ interface ChatCollapsedThinkingProps {
   onHoverChange: (hovered: boolean) => void;
   className?: string;
   taskAttemptId?: string;
+  renderMarkdown: (props: ChatCollapsedThinkingRenderProps) => ReactNode;
 }
 
 /**
@@ -31,6 +38,7 @@ export function ChatCollapsedThinking({
   onHoverChange,
   className,
   taskAttemptId,
+  renderMarkdown,
 }: ChatCollapsedThinkingProps) {
   const { t } = useTranslation('common');
 
@@ -67,11 +75,11 @@ export function ChatCollapsedThinking({
         <div className="ml-6 pt-1 flex flex-col gap-base">
           {entries.map((entry) => (
             <div key={entry.expansionKey} className="text-sm text-low pl-base">
-              <ChatMarkdown
-                content={entry.content}
-                workspaceId={taskAttemptId}
-                className="text-sm"
-              />
+              {renderMarkdown({
+                content: entry.content,
+                workspaceId: taskAttemptId,
+                className: 'text-sm',
+              })}
             </div>
           ))}
         </div>
