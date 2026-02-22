@@ -1,4 +1,4 @@
-import { WorkspacesLayout } from '@/features/workspace/ui/WorkspacesLayout';
+import { WorkspacesLayout } from './WorkspacesLayout';
 
 export function Workspaces() {
   return <WorkspacesLayout />;
