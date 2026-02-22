@@ -7,7 +7,7 @@ import {
   TokenUsageInfo,
   ToolStatus,
 } from 'shared/types';
-import { useExecutionProcessesContext } from '../contexts/ExecutionProcessesContext';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';

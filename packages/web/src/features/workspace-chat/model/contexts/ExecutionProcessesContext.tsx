@@ -6,8 +6,6 @@ import {
   type ExecutionProcessesContextType,
 } from '@/shared/hooks/useExecutionProcessesContext';
 
-export { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-
 export const ExecutionProcessesProvider: React.FC<{
   attemptId: string | undefined;
   sessionId?: string | undefined;

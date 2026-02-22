@@ -7,12 +7,6 @@ import {
 } from '@/components/ui-new/actions';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
 
-export type {
-  RepoItem,
-  StatusItem,
-  PriorityItem,
-  BranchItem,
-} from '@/shared/types/selectionItems';
 import type {
   RepoItem,
   StatusItem,

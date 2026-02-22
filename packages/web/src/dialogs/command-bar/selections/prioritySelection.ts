@@ -1,5 +1,5 @@
 import type { IssuePriority } from 'shared/remote-types';
-import type { PriorityItem } from '@/features/command-bar/ui/actions/pages';
+import type { PriorityItem } from '@/shared/types/selectionItems';
 import type { SelectionPage } from '../SelectionDialog';
 
 export interface PrioritySelectionResult {

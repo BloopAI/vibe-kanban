@@ -1,5 +1,5 @@
 import i18n from '@/i18n';
-import type { BranchItem } from '@/features/command-bar/ui/actions/pages';
+import type { BranchItem } from '@/shared/types/selectionItems';
 import type { SelectionPage } from '../SelectionDialog';
 
 export interface BranchSelectionResult {

@@ -12,9 +12,9 @@ import {
 } from '@vibe/ui/components/CommandBar';
 import type {
   PageId,
-  StatusItem,
   ResolvedGroupItem,
 } from '@/features/command-bar/ui/actions/pages';
+import type { StatusItem } from '@/shared/types/selectionItems';
 import type { Issue } from 'shared/remote-types';
 import { buildStatusSelectionPages } from './statusSelection';
 import { buildPrioritySelectionPages } from './prioritySelection';

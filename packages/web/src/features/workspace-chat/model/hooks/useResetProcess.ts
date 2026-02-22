@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useExecutionProcessesContext } from '../contexts/ExecutionProcessesContext';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { isCodingAgent } from '@/constants/processes';

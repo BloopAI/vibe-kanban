@@ -216,10 +216,14 @@ module.exports = {
         'no-restricted-syntax': [
           'error',
           {
-            selector:
-              'Program[body.length=1] > ExportNamedDeclaration[source]',
+            selector: 'ExportNamedDeclaration[source.value=/^@\\u002F/]',
             message:
-              'Re-export-only files in features are not allowed. They bypass layer boundaries via relative imports. Import directly from the owning layer instead.',
+              'Re-exports from other layers in features are not allowed. They bypass layer boundaries. Import directly from the owning module instead.',
+          },
+          {
+            selector: 'ExportAllDeclaration[source.value=/^@\\u002F/]',
+            message:
+              'Wildcard re-exports from other layers in features are not allowed. They bypass layer boundaries.',
           },
         ],
       },

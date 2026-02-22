@@ -6,7 +6,7 @@ import {
   PatchType,
   ToolStatus,
 } from 'shared/types';
-import { useExecutionProcessesContext } from '../../contexts/ExecutionProcessesContext';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
 import type {

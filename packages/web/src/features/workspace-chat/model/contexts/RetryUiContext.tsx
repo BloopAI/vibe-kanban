@@ -5,8 +5,6 @@ import {
   type RetryUiContextType,
 } from '@/shared/hooks/useRetryUi';
 
-export { useRetryUi } from '@/shared/hooks/useRetryUi';
-
 export function RetryUiProvider({
   children,
 }: {
