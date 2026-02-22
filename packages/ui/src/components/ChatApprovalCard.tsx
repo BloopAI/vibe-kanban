@@ -1,6 +1,13 @@
-import { ChatMarkdown } from './ChatMarkdown';
-import { ChatEntryContainer } from '@vibe/ui/components/ChatEntryContainer';
-import { ToolStatus } from 'shared/types';
+import type { ReactNode } from 'react';
+import {
+  ChatEntryContainer,
+  type ChatEntryStatusLike,
+} from './ChatEntryContainer';
+
+export interface ChatApprovalCardRenderProps {
+  content: string;
+  workspaceId?: string;
+}
 
 interface ChatApprovalCardProps {
   title: string;
@@ -9,7 +16,8 @@ interface ChatApprovalCardProps {
   onToggle?: () => void;
   className?: string;
   workspaceId?: string;
-  status: ToolStatus;
+  status: ChatEntryStatusLike;
+  renderMarkdown: (props: ChatApprovalCardRenderProps) => ReactNode;
 }
 
 export function ChatApprovalCard({
@@ -20,6 +28,7 @@ export function ChatApprovalCard({
   className,
   workspaceId,
   status,
+  renderMarkdown,
 }: ChatApprovalCardProps) {
   return (
     <ChatEntryContainer
@@ -30,7 +39,7 @@ export function ChatApprovalCard({
       className={className}
       status={status}
     >
-      <ChatMarkdown content={content} workspaceId={workspaceId} />
+      {renderMarkdown({ content, workspaceId })}
     </ChatEntryContainer>
   );
 }

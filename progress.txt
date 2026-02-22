@@ -4107,3 +4107,52 @@ Plan adjustments from new information:
 - Conversation components that wrap `ChatMarkdown` should be extracted as package-presentational wrappers with injected renderers to avoid leaking app editor/context dependencies.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatApprovalCard.tsx` (same markdown-injection pattern plus structural status typing, with contained callsite impact).
+
+## 2026-02-22 - UI package extraction: ChatApprovalCard
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatApprovalCard.tsx` as the next extraction candidate.
+- It had contained callsite impact (two usage points in `NewDisplayConversationEntry`) and one clear package-boundary blocker: direct app-local markdown rendering dependency.
+- New information: the component also depended on `ToolStatus` from shared types, which is unnecessary at package boundary and can be represented structurally.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatApprovalCard.tsx packages/ui/src/components/ChatApprovalCard.tsx`
+- Package updates:
+  - Replaced app-bound markdown dependency with injected renderer API:
+    - added `ChatApprovalCardRenderProps`
+    - added required `renderMarkdown` prop
+    - component now renders markdown via `renderMarkdown({ content, workspaceId })`
+  - Removed direct shared-type dependency:
+    - replaced `ToolStatus` prop with package-safe structural type via `ChatEntryStatusLike`
+  - Updated package import boundary:
+    - switched self-import to local path (`./ChatEntryContainer`)
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatApprovalCard`
+  - Updated both callsites to pass app-owned markdown renderer:
+    - `renderMarkdown={({ content, workspaceId }) => <ChatMarkdown ... />}`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Plan/approval conversation components can be extracted safely with the same renderer-injection pattern used for assistant messages.
+- Shared status objects remain stable as structural UI props, avoiding cross-package type lock-in.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx` (single callsite and same markdown-injection pattern, with existing controls already package-safe).

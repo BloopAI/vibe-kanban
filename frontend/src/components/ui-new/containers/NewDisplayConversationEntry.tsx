@@ -31,7 +31,7 @@ import {
 import { ChatToolSummary } from '../primitives/conversation/ChatToolSummary';
 import { ChatTodoList } from '@vibe/ui/components/ChatTodoList';
 import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
-import { ChatApprovalCard } from '../primitives/conversation/ChatApprovalCard';
+import { ChatApprovalCard } from '@vibe/ui/components/ChatApprovalCard';
 import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';
 import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
 import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
@@ -505,6 +505,9 @@ function PlanEntry({
       onToggle={toggle}
       workspaceId={workspaceId}
       status={status}
+      renderMarkdown={({ content, workspaceId }) => (
+        <ChatMarkdown content={content} workspaceId={workspaceId} />
+      )}
     />
   );
 }
@@ -538,6 +541,9 @@ function GenericToolApprovalEntry({
       onToggle={toggle}
       workspaceId={workspaceId}
       status={status}
+      renderMarkdown={({ content, workspaceId }) => (
+        <ChatMarkdown content={content} workspaceId={workspaceId} />
+      )}
     />
   );
 }
