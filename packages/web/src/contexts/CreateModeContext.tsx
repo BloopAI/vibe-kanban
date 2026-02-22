@@ -4,7 +4,7 @@ import type { DraftWorkspaceImage, Repo, ExecutorConfig } from 'shared/types';
 import {
   useCreateModeState,
   type CreateModeInitialState,
-} from '@/features/workspace/model/hooks/useCreateModeState';
+} from '@/shared/hooks/useCreateModeState';
 import { useWorkspaces } from '@/features/workspace/model/hooks/useWorkspaces';
 import { useUserContext } from '@/contexts/remote/UserContext';
 
