@@ -33,7 +33,7 @@ import { ChatTodoList } from '@vibe/ui/components/ChatTodoList';
 import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
 import { ChatApprovalCard } from '../primitives/conversation/ChatApprovalCard';
 import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';
-import { ChatAssistantMessage } from '../primitives/conversation/ChatAssistantMessage';
+import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
 import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
@@ -42,6 +42,7 @@ import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry'
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
 import { ChatCollapsedThinking } from '../primitives/conversation/ChatCollapsedThinking';
+import { ChatMarkdown } from '../primitives/conversation/ChatMarkdown';
 import type { DiffInput } from '../primitives/conversation/PierreConversationDiff';
 import type {
   AggregatedPatchGroup,
@@ -608,7 +609,15 @@ function AssistantMessageEntry({
   content: string;
   workspaceId: string | undefined;
 }) {
-  return <ChatAssistantMessage content={content} workspaceId={workspaceId} />;
+  return (
+    <ChatAssistantMessage
+      content={content}
+      workspaceId={workspaceId}
+      renderMarkdown={({ content, workspaceId }) => (
+        <ChatMarkdown content={content} workspaceId={workspaceId} />
+      )}
+    />
+  );
 }
 
 /**
