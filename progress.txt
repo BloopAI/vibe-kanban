@@ -4389,3 +4389,52 @@ Plan adjustments from new information:
 - Subagent/task conversation components extract cleanly with structural status/result types plus render-prop injection for markdown output.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatScriptEntry.tsx` (single callsite; requires decoupling from `useLogsPanel` via callback prop and structural status typing).
+
+## 2026-02-22 - UI package extraction: ChatScriptEntry
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatScriptEntry.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) and one app-context dependency (`useLogsPanel`), making it a good candidate after replacing context access with an injected callback prop.
+- New information: log-panel behavior should remain in the frontend container layer while the package component receives a simple callback (`onViewProcess`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatScriptEntry.tsx packages/ui/src/components/ChatScriptEntry.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-import:
+    - `@vibe/ui/components/ToolStatusDot` -> `./ToolStatusDot`
+  - Removed direct shared-type dependency:
+    - replaced `ToolStatus` with `ToolStatusLike` imported from `ToolStatusDot`
+  - Removed app-context coupling:
+    - added required `onViewProcess` prop
+    - click handler now calls `onViewProcess(processId)`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatScriptEntry`
+  - Injected logs panel callback from container:
+    - `onViewProcess={viewProcessInPanel}`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For conversation components needing app contexts (logs, navigation, stores), extraction should use callback props so app-specific behavior stays in frontend containers.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatAggregatedToolEntries.tsx` (single container callsite; likely alias and status-type decoupling only).

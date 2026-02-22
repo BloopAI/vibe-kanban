@@ -1,16 +1,15 @@
 import { useTranslation } from 'react-i18next';
 import { TerminalIcon, WrenchIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { ToolStatus } from 'shared/types';
-import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
 
 interface ChatScriptEntryProps {
   title: string;
   processId: string;
   exitCode?: number | null;
   className?: string;
-  status: ToolStatus;
+  status: ToolStatusLike;
+  onViewProcess: (processId: string) => void;
   onFix?: () => void;
 }
 
@@ -20,10 +19,10 @@ export function ChatScriptEntry({
   exitCode,
   className,
   status,
+  onViewProcess,
   onFix,
 }: ChatScriptEntryProps) {
   const { t } = useTranslation('tasks');
-  const { viewProcessInPanel } = useLogsPanel();
   const isRunning = status.status === 'created';
   const isSuccess = status.status === 'success';
   const isFailed = status.status === 'failed';
@@ -34,7 +33,7 @@ export function ChatScriptEntry({
   };
 
   const handleClick = () => {
-    viewProcessInPanel(processId);
+    onViewProcess(processId);
   };
 
   const getSubtitle = () => {

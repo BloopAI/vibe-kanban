@@ -37,7 +37,7 @@ import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
 import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
 import { ChatThinkingMessage } from '@vibe/ui/components/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
-import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
+import { ChatScriptEntry } from '@vibe/ui/components/ChatScriptEntry';
 import { ChatSubagentEntry } from '@vibe/ui/components/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
@@ -794,6 +794,7 @@ function ScriptEntryWithFix({
   workspaceId: string | undefined;
   sessionId: string | undefined;
 }) {
+  const { viewProcessInPanel } = useLogsPanel();
   // Try to get repos from workspace context - may not be available in all contexts
   let repos: RepoWithTargetBranch[] = [];
   try {
@@ -839,6 +840,7 @@ function ScriptEntryWithFix({
       processId={processId}
       exitCode={exitCode}
       status={status}
+      onViewProcess={viewProcessInPanel}
       onFix={canFix ? handleFix : undefined}
     />
   );
