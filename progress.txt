@@ -4932,3 +4932,42 @@ Validation:
 Plan adjustments from new information:
 - The audit's broad `keep-app` classification for `ui-new/views` still holds as a default, but selective extraction is working for low-coupling view widgets.
 - Next candidate should be another single-callside, presentational view component; avoid components that pull in container logic or frontend-only infra until we define adapter boundaries.
+
+## 2026-02-22 - UI package extraction: MigrateIntroduction
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Considered additional `ui-new/views` candidates; `PreviewControls` is still higher-coupling due to frontend container and utility dependencies.
+- Selected `frontend/src/components/ui-new/views/MigrateIntroduction.tsx` as the next low-risk extraction.
+- It is presentational, has a single callsite (`MigrateIntroductionContainer`), and required only package-local import cleanup.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/MigrateIntroduction.tsx packages/ui/src/components/MigrateIntroduction.tsx`
+- Package updates:
+  - Replaced package self-import:
+    - `@vibe/ui/components/PrimaryButton` -> `./PrimaryButton`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/MigrateIntroductionContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/MigrateIntroduction`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The migrate-flow view set contains more extraction-friendly components (single container callsite, mostly presentational structure).
+- Next candidate should stay in that low-coupling subset before tackling more integrated views.
