@@ -6106,3 +6106,51 @@ Validation:
 Plan adjustments from new information:
 - For virtualized package components, keep list orchestration in the package and inject stateful row/content rendering from app containers.
 - This pattern cleanly isolates app store hooks while preserving package readability and reusability.
+
+## 2026-02-22 - UI package extraction: WorkspacesSidebar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/WorkspacesSidebar.tsx` as the next extraction target.
+- It has a single container callsite and mostly presents grouped workspace lists.
+- Main couplings were frontend-only dependencies (`CommandBarDialog`, `PERSIST_KEYS`, app `Workspace` type).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/WorkspacesSidebar.tsx packages/ui/src/components/WorkspacesSidebar.tsx`
+- Package updates:
+  - Replaced package self-imports with relative imports.
+  - Removed frontend dependencies and introduced package-local contracts:
+    - `WorkspacesSidebarWorkspace`
+    - `WorkspacesSidebarPersistKeys`
+    - `WorkspaceLayoutMode`
+  - Replaced direct action dialog usage with callback injection:
+    - `onOpenWorkspaceActions`
+  - Added package-local default persisted section keys via `DEFAULT_PERSIST_KEYS`.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/WorkspacesSidebarContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/WorkspacesSidebar`
+  - Container now owns app-specific behavior:
+    - opens workspace action command bar via `onOpenWorkspaceActions`
+    - passes store-backed persistence keys via `persistKeys`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For sidebar-style components, keep package defaults for state keys but allow explicit key override props from app stores.
+- Keep dialog launching and workflow actions in frontend containers via callbacks rather than importing app dialog modules into package components.

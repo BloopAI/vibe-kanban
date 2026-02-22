@@ -1,4 +1,5 @@
-import { useMemo, useRef } from 'react';
+import type { ReactNode } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import {
   PlusIcon,
   ArrowLeftIcon,
@@ -6,21 +7,47 @@ import {
   StackIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
-import { InputField } from '@vibe/ui/components/InputField';
-import { WorkspaceSummary } from '@vibe/ui/components/WorkspaceSummary';
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { InputField } from './InputField';
+import { WorkspaceSummary } from './WorkspaceSummary';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from '@vibe/ui/components/CollapsibleSectionHeader';
-import { PERSIST_KEYS } from '@/stores/useUiPreferencesStore';
-import type { WorkspaceLayoutMode } from '../containers/WorkspacesSidebarContainer';
+} from './CollapsibleSectionHeader';
 
-interface WorkspacesSidebarProps {
-  workspaces: Workspace[];
+export type WorkspaceLayoutMode = 'flat' | 'accordion';
+
+export interface WorkspacesSidebarWorkspace {
+  id: string;
+  name: string;
+  filesChanged?: number;
+  linesAdded?: number;
+  linesRemoved?: number;
+  isRunning?: boolean;
+  isPinned?: boolean;
+  hasPendingApproval?: boolean;
+  hasRunningDevServer?: boolean;
+  hasUnseenActivity?: boolean;
+  latestProcessCompletedAt?: string;
+  latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
+  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+}
+
+export interface WorkspacesSidebarPersistKeys {
+  raisedHand: string;
+  notRunning: string;
+  running: string;
+}
+
+const DEFAULT_PERSIST_KEYS: WorkspacesSidebarPersistKeys = {
+  raisedHand: 'workspaces-sidebar-raised-hand',
+  notRunning: 'workspaces-sidebar-not-running',
+  running: 'workspaces-sidebar-running',
+};
+
+export interface WorkspacesSidebarProps {
+  workspaces: WorkspacesSidebarWorkspace[];
   totalWorkspacesCount: number;
-  archivedWorkspaces?: Workspace[];
+  archivedWorkspaces?: WorkspacesSidebarWorkspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
   onAddWorkspace?: () => void;
@@ -45,7 +72,11 @@ interface WorkspacesSidebarProps {
   /** Whether there are more workspaces to load */
   hasMoreWorkspaces?: boolean;
   /** Controls rendered beside the search input */
-  searchControls?: React.ReactNode;
+  searchControls?: ReactNode;
+  /** Callback for opening workspace actions */
+  onOpenWorkspaceActions?: (workspaceId: string) => void;
+  /** Persist keys for collapsible sections */
+  persistKeys?: WorkspacesSidebarPersistKeys;
 }
 
 function WorkspaceList({
@@ -54,7 +85,7 @@ function WorkspaceList({
   onSelectWorkspace,
   onOpenWorkspaceActions,
 }: {
-  workspaces: Workspace[];
+  workspaces: WorkspacesSidebarWorkspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
   onOpenWorkspaceActions: (workspaceId: string) => void;
@@ -105,15 +136,17 @@ export function WorkspacesSidebar({
   onLoadMore,
   hasMoreWorkspaces = false,
   searchControls,
+  onOpenWorkspaceActions,
+  persistKeys = DEFAULT_PERSIST_KEYS,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const handleOpenWorkspaceActions = (workspaceId: string) => {
-    CommandBarDialog.show({
-      page: 'workspaceActions',
-      workspaceId,
-    });
-  };
+  const handleOpenWorkspaceActions = useCallback(
+    (workspaceId: string) => {
+      onOpenWorkspaceActions?.(workspaceId);
+    },
+    [onOpenWorkspaceActions]
+  );
 
   // Handle scroll to load more
   const handleScroll = () => {
@@ -133,7 +166,7 @@ export function WorkspacesSidebar({
   const { raisedHandWorkspaces, idleWorkspaces, runningWorkspaces } =
     useMemo(() => {
       // Running workspaces should stay in the "Running" section even if unseen.
-      const needsAttention = (ws: Workspace) =>
+      const needsAttention = (ws: WorkspacesSidebarWorkspace) =>
         ws.hasPendingApproval || (ws.hasUnseenActivity && !ws.isRunning);
 
       return {
@@ -229,7 +262,7 @@ export function WorkspacesSidebar({
             {/* Needs Attention section */}
             <CollapsibleSectionHeader
               title={t('common:workspaces.needsAttention')}
-              persistKey={PERSIST_KEYS.workspacesSidebarRaisedHand}
+              persistKey={persistKeys.raisedHand}
               defaultExpanded={true}
             >
               <div className="flex flex-col gap-base py-half">
@@ -259,7 +292,7 @@ export function WorkspacesSidebar({
             {/* Idle section */}
             <CollapsibleSectionHeader
               title={t('common:workspaces.idle')}
-              persistKey={PERSIST_KEYS.workspacesSidebarNotRunning}
+              persistKey={persistKeys.notRunning}
               defaultExpanded={true}
             >
               <div className="flex flex-col gap-base py-half">
@@ -281,7 +314,7 @@ export function WorkspacesSidebar({
             {/* Running section */}
             <CollapsibleSectionHeader
               title={t('common:workspaces.running')}
-              persistKey={PERSIST_KEYS.workspacesSidebarRunning}
+              persistKey={persistKeys.running}
               defaultExpanded={true}
             >
               <div className="flex flex-col gap-base py-half">

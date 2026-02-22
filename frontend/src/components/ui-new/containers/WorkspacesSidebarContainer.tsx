@@ -18,7 +18,11 @@ import {
   type WorkspaceSortOrder,
 } from '@/stores/useUiPreferencesStore';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
-import { WorkspacesSidebar } from '@/components/ui-new/views/WorkspacesSidebar';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import {
+  WorkspacesSidebar,
+  type WorkspacesSidebarPersistKeys,
+} from '@vibe/ui/components/WorkspacesSidebar';
 import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
@@ -567,6 +571,19 @@ export function WorkspacesSidebarContainer({
     [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
   );
 
+  const handleOpenWorkspaceActions = useCallback((workspaceId: string) => {
+    CommandBarDialog.show({
+      page: 'workspaceActions',
+      workspaceId,
+    });
+  }, []);
+
+  const sidebarPersistKeys: WorkspacesSidebarPersistKeys = {
+    raisedHand: PERSIST_KEYS.workspacesSidebarRaisedHand,
+    notRunning: PERSIST_KEYS.workspacesSidebarNotRunning,
+    running: PERSIST_KEYS.workspacesSidebarRunning,
+  };
+
   const searchControls = (
     <>
       <div className="shrink-0">
@@ -640,6 +657,8 @@ export function WorkspacesSidebarContainer({
       onLoadMore={handleLoadMore}
       hasMoreWorkspaces={hasMoreWorkspaces && !isSearching}
       searchControls={searchControls}
+      onOpenWorkspaceActions={handleOpenWorkspaceActions}
+      persistKeys={sidebarPersistKeys}
     />
   );
 }
