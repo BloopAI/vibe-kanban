@@ -74,7 +74,7 @@ import { searchTagsAndFiles } from '@/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import type { RepoItem } from '@/components/ui-new/actions/pages';
-import { TagEditDialog } from '@/components/dialogs/tasks/TagEditDialog';
+import { TagEditDialog } from '@/shared/ui/dialogs/TagEditDialog';
 import { ImagePreviewDialog } from '@/shared/ui/dialogs/ImagePreviewDialog';
 import {
   SelectionDialog,

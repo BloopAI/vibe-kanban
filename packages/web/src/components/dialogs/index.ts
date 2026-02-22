@@ -25,7 +25,7 @@ export {
   TagEditDialog,
   type TagEditDialogProps,
   type TagEditResult,
-} from './tasks/TagEditDialog';
+} from '@/shared/ui/dialogs/TagEditDialog';
 export {
   ChangeTargetBranchDialog,
   type ChangeTargetBranchDialogProps,

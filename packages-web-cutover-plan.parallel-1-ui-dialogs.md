@@ -57,6 +57,8 @@ compatibility shims.
         `src/shared/ui/dialogs/ConfirmDialog.tsx`.
   - [x] Moved reusable `ImagePreviewDialog` to
         `src/shared/ui/dialogs/ImagePreviewDialog.tsx`.
+  - [x] Moved reusable `TagEditDialog` to
+        `src/shared/ui/dialogs/TagEditDialog.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
@@ -76,6 +78,8 @@ compatibility shims.
         `src/components/dialogs/shared/ConfirmDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/wysiwyg/ImagePreviewDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/TagEditDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -105,6 +109,11 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/ImagePreviewDialog` in
         `src/components/ui/wysiwyg.tsx`.
+  - [x] Updated canonical callsites to
+        `@/shared/ui/dialogs/TagEditDialog` in:
+        `src/components/TagManager.tsx`,
+        `src/components/ui/wysiwyg.tsx`,
+        `src/components/dialogs/index.ts`.
 
 ## Risk Controls
 
@@ -139,6 +148,9 @@ compatibility shims.
 - New information (2026-02-22): feature-owned dialogs cannot import directly
   from `@/app/providers/*` under current lint rules; use the hook facades
   (e.g. `@/hooks/useTheme`) when a provider-backed dependency is needed.
+- New information (2026-02-22): reusable dialogs originating from
+  `components/dialogs/tasks/*` can be migrated to `src/shared/ui/dialogs/*`
+  when callsites span multiple non-task UI surfaces.
 
 ## Validation
 

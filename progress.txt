@@ -270,3 +270,37 @@
 - Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
   `src/components/dialogs/tasks/RebaseDialog.tsx` and
   `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.
+
+## 2026-02-22 11:33:17 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next low-risk Track 1 component to move into a UI package path.
+- Selected `TagEditDialog` for reusable shared-dialog placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/tasks/TagEditDialog.tsx`
+    -> `src/shared/ui/dialogs/TagEditDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/tasks/TagEditDialog.tsx`.
+  - Updated canonical callsites/import surfaces to
+    `@/shared/ui/dialogs/TagEditDialog` in:
+    - `src/components/TagManager.tsx`
+    - `src/components/ui/wysiwyg.tsx`
+    - `src/components/dialogs/index.ts`
+- Kept shared-dialog lint compatibility by using named imports (`create`,
+  `useModal`) from `@ebay/nice-modal-react` in the moved file.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `TagEditDialog`.
+  - Added a new-information note that some reusable dialogs can originate from
+    `components/dialogs/tasks/*` and still be promoted into shared UI.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
+  `src/components/dialogs/tasks/RebaseDialog.tsx` and
+  `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.
