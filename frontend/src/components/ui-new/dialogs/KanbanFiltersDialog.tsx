@@ -26,7 +26,7 @@ import {
 } from '@vibe/ui/components/Dialog';
 import { Switch } from '@vibe/ui/components/Switch';
 import { AssigneeSelectionDialog } from '@/components/ui-new/dialogs/AssigneeSelectionDialog';
-import { PriorityFilterDropdown } from '@/components/ui-new/views/PriorityFilterDropdown';
+import { PriorityFilterDropdown } from '@vibe/ui/components/PriorityFilterDropdown';
 import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,

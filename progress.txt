@@ -5249,3 +5249,44 @@ Validation:
 
 Plan adjustments from new information:
 - Continue prioritizing leaf view components (single-callsite, no app context coupling) as the fastest readable extraction path before tackling broader composite views.
+
+## 2026-02-22 - UI package extraction: PriorityFilterDropdown
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/PriorityFilterDropdown.tsx` as the next extraction target.
+- It is a leaf view with a single callsite in `KanbanFiltersDialog` and depends only on reusable UI primitives/icons.
+- New information: small dialog-owned filter controls are another reliable low-risk extraction class alongside nested leaf views.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/PriorityFilterDropdown.tsx packages/ui/src/components/PriorityFilterDropdown.tsx`
+- Package updates:
+  - Replaced package self-imports:
+    - `@vibe/ui/components/MultiSelectDropdown` -> `./MultiSelectDropdown`
+    - `@vibe/ui/components/PriorityIcon` -> `./PriorityIcon`
+  - Removed shared type dependency from the package component by introducing local type:
+    - `PriorityFilterValue = 'urgent' | 'high' | 'medium' | 'low'`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/dialogs/KanbanFiltersDialog.tsx`
+  - New import path:
+    - `@vibe/ui/components/PriorityFilterDropdown`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue prioritizing small leaf controls used by a single dialog/view where type/API boundaries can be localized in `@vibe/ui`.

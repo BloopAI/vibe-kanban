@@ -1,15 +1,16 @@
 import { useTranslation } from 'react-i18next';
 import { FunnelIcon } from '@phosphor-icons/react';
-import type { IssuePriority } from 'shared/remote-types';
 import {
   MultiSelectDropdown,
   type MultiSelectDropdownOption,
-} from '@vibe/ui/components/MultiSelectDropdown';
-import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
+} from './MultiSelectDropdown';
+import { PriorityIcon } from './PriorityIcon';
 
-const PRIORITIES: IssuePriority[] = ['urgent', 'high', 'medium', 'low'];
+export type PriorityFilterValue = 'urgent' | 'high' | 'medium' | 'low';
 
-const priorityLabels: Record<IssuePriority, string> = {
+const PRIORITIES: PriorityFilterValue[] = ['urgent', 'high', 'medium', 'low'];
+
+const priorityLabels: Record<PriorityFilterValue, string> = {
   urgent: 'Urgent',
   high: 'High',
   medium: 'Medium',
@@ -17,8 +18,8 @@ const priorityLabels: Record<IssuePriority, string> = {
 };
 
 export interface PriorityFilterDropdownProps {
-  values: IssuePriority[];
-  onChange: (values: IssuePriority[]) => void;
+  values: PriorityFilterValue[];
+  onChange: (values: PriorityFilterValue[]) => void;
 }
 
 export function PriorityFilterDropdown({
@@ -27,7 +28,8 @@ export function PriorityFilterDropdown({
 }: PriorityFilterDropdownProps) {
   const { t } = useTranslation('common');
 
-  const options: MultiSelectDropdownOption<IssuePriority>[] = PRIORITIES.map(
+  const options: MultiSelectDropdownOption<PriorityFilterValue>[] =
+    PRIORITIES.map(
     (p) => ({
       value: p,
       label: priorityLabels[p],
