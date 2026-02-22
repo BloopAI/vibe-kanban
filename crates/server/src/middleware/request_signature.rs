@@ -10,6 +10,7 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::{Signature, VerifyingKey};
 use serde::Deserialize;
 use tokio::fs;
+use tracing::{debug, info};
 use utils::assets::asset_dir;
 
 use crate::error::ApiError;
@@ -28,25 +29,107 @@ pub async fn require_trusted_ed25519_signature(
     request: Request,
     next: Next,
 ) -> Result<Response, ApiError> {
-    let timestamp = parse_timestamp(request.headers())?;
-    let now = current_unix_timestamp()?;
-    if !timestamp_is_within_drift(timestamp, now) {
-        return Err(ApiError::Unauthorized);
-    }
-
-    let signature = parse_signature(request.headers())?;
     let request_path = request
         .extensions()
         .get::<OriginalUri>()
         .map(|uri| uri.0.path())
-        .unwrap_or_else(|| request.uri().path());
-    let message = build_signed_message(timestamp, request.method(), request_path);
-    let trusted_keys = load_trusted_public_keys().await?;
+        .unwrap_or_else(|| request.uri().path())
+        .to_string();
+    let request_method = request.method().as_str().to_string();
 
-    if !verify_signature(&message, &signature, &trusted_keys) {
+    let timestamp = match parse_timestamp(request.headers()) {
+        Ok(timestamp) => timestamp,
+        Err(_) => {
+            info!(
+                method = %request_method,
+                path = %request_path,
+                "Rejecting signed request: missing or invalid x-vk-timestamp header"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
+
+    let now = match current_unix_timestamp() {
+        Ok(now) => now,
+        Err(_) => {
+            info!(
+                method = %request_method,
+                path = %request_path,
+                "Rejecting signed request: failed to read system clock"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
+
+    let drift_seconds = now.saturating_sub(timestamp).abs();
+    debug!(
+        method = %request_method,
+        path = %request_path,
+        timestamp,
+        now,
+        drift_seconds,
+        max_drift_seconds = MAX_TIMESTAMP_DRIFT_SECONDS,
+        "Parsed signature timestamp"
+    );
+    if !timestamp_is_within_drift(timestamp, now) {
+        info!(
+            method = %request_method,
+            path = %request_path,
+            timestamp,
+            now,
+            drift_seconds,
+            max_drift_seconds = MAX_TIMESTAMP_DRIFT_SECONDS,
+            "Rejecting signed request: timestamp is outside allowed drift"
+        );
         return Err(ApiError::Unauthorized);
     }
 
+    let signature = match parse_signature(request.headers()) {
+        Ok(signature) => signature,
+        Err(_) => {
+            info!(
+                method = %request_method,
+                path = %request_path,
+                "Rejecting signed request: missing or invalid x-vk-signature header"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
+
+    let message = build_signed_message(timestamp, request.method(), &request_path);
+    let trusted_keys = match load_trusted_public_keys().await {
+        Ok(trusted_keys) => trusted_keys,
+        Err(_) => {
+            info!(
+                method = %request_method,
+                path = %request_path,
+                "Rejecting signed request: failed to load trusted Ed25519 public keys"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
+    debug!(
+        method = %request_method,
+        path = %request_path,
+        trusted_key_count = trusted_keys.len(),
+        "Loaded trusted Ed25519 keys"
+    );
+
+    if !verify_signature(&message, &signature, &trusted_keys) {
+        info!(
+            method = %request_method,
+            path = %request_path,
+            trusted_key_count = trusted_keys.len(),
+            "Rejecting signed request: signature does not match any trusted key"
+        );
+        return Err(ApiError::Unauthorized);
+    }
+
+    info!(
+        method = %request_method,
+        path = %request_path,
+        "Accepted signed request"
+    );
     Ok(next.run(request).await)
 }
 
@@ -67,22 +150,45 @@ fn parse_signature(headers: &HeaderMap) -> Result<Signature, ApiError> {
 }
 
 fn parse_signature_base64(raw_signature: &str) -> Result<Signature, ApiError> {
-    let signature_bytes = BASE64_STANDARD
-        .decode(raw_signature)
-        .map_err(|_| ApiError::Unauthorized)?;
-    let signature_bytes: [u8; 64] = signature_bytes
-        .try_into()
-        .map_err(|_| ApiError::Unauthorized)?;
+    let signature_bytes = match BASE64_STANDARD.decode(raw_signature) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            debug!(%error, "Invalid x-vk-signature: failed base64 decode");
+            return Err(ApiError::Unauthorized);
+        }
+    };
+    let signature_length = signature_bytes.len();
+    let signature_bytes: [u8; 64] = match signature_bytes.try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            debug!(
+                signature_length,
+                "Invalid x-vk-signature: expected exactly 64 bytes"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
     Ok(Signature::from_bytes(&signature_bytes))
 }
 
 fn required_header<'a>(headers: &'a HeaderMap, name: &'static str) -> Result<&'a str, ApiError> {
-    headers
-        .get(name)
-        .and_then(|value| value.to_str().ok())
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .ok_or(ApiError::Unauthorized)
+    let Some(value) = headers.get(name) else {
+        debug!(header = name, "Missing required signed-request header");
+        return Err(ApiError::Unauthorized);
+    };
+    let Ok(value) = value.to_str() else {
+        debug!(
+            header = name,
+            "Invalid required signed-request header encoding"
+        );
+        return Err(ApiError::Unauthorized);
+    };
+    let value = value.trim();
+    if value.is_empty() {
+        debug!(header = name, "Required signed-request header is empty");
+        return Err(ApiError::Unauthorized);
+    }
+    Ok(value)
 }
 
 fn timestamp_is_within_drift(timestamp: i64, now: i64) -> bool {
@@ -99,34 +205,73 @@ fn current_unix_timestamp() -> Result<i64, ApiError> {
 
 async fn load_trusted_public_keys() -> Result<Vec<VerifyingKey>, ApiError> {
     let trusted_keys_path = asset_dir().join(TRUSTED_KEYS_FILE_NAME);
-    let file_contents = fs::read_to_string(trusted_keys_path)
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let file_contents = match fs::read_to_string(&trusted_keys_path).await {
+        Ok(contents) => contents,
+        Err(error) => {
+            debug!(
+                path = %trusted_keys_path.display(),
+                %error,
+                "Failed to read trusted Ed25519 key file"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
     parse_trusted_public_keys(&file_contents)
 }
 
 fn parse_trusted_public_keys(file_contents: &str) -> Result<Vec<VerifyingKey>, ApiError> {
-    let trusted_keys_file: TrustedPublicKeysFile =
-        serde_json::from_str(file_contents).map_err(|_| ApiError::Unauthorized)?;
+    let trusted_keys_file: TrustedPublicKeysFile = match serde_json::from_str(file_contents) {
+        Ok(file) => file,
+        Err(error) => {
+            debug!(%error, "Trusted key file is not valid JSON");
+            return Err(ApiError::Unauthorized);
+        }
+    };
     if trusted_keys_file.keys.is_empty() {
+        debug!("Trusted key file contains no keys");
         return Err(ApiError::Unauthorized);
     }
 
-    trusted_keys_file
-        .keys
-        .iter()
-        .map(|key| parse_public_key_base64(key))
-        .collect()
+    let mut parsed_keys = Vec::with_capacity(trusted_keys_file.keys.len());
+    for (index, key) in trusted_keys_file.keys.iter().enumerate() {
+        let parsed_key = match parse_public_key_base64(key) {
+            Ok(parsed_key) => parsed_key,
+            Err(_) => {
+                debug!(key_index = index, "Trusted key entry is invalid");
+                return Err(ApiError::Unauthorized);
+            }
+        };
+        parsed_keys.push(parsed_key);
+    }
+    Ok(parsed_keys)
 }
 
 fn parse_public_key_base64(raw_public_key: &str) -> Result<VerifyingKey, ApiError> {
-    let public_key_bytes = BASE64_STANDARD
-        .decode(raw_public_key)
-        .map_err(|_| ApiError::Unauthorized)?;
-    let public_key_bytes: [u8; 32] = public_key_bytes
-        .try_into()
-        .map_err(|_| ApiError::Unauthorized)?;
-    VerifyingKey::from_bytes(&public_key_bytes).map_err(|_| ApiError::Unauthorized)
+    let public_key_bytes = match BASE64_STANDARD.decode(raw_public_key) {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            debug!(%error, "Trusted key entry is not valid base64");
+            return Err(ApiError::Unauthorized);
+        }
+    };
+    let key_length = public_key_bytes.len();
+    let public_key_bytes: [u8; 32] = match public_key_bytes.try_into() {
+        Ok(bytes) => bytes,
+        Err(_) => {
+            debug!(
+                key_length,
+                "Trusted key entry has invalid length (expected 32 bytes)"
+            );
+            return Err(ApiError::Unauthorized);
+        }
+    };
+    match VerifyingKey::from_bytes(&public_key_bytes) {
+        Ok(key) => Ok(key),
+        Err(error) => {
+            debug!(%error, "Trusted key entry is not a valid Ed25519 public key");
+            Err(ApiError::Unauthorized)
+        }
+    }
 }
 
 fn verify_signature(message: &str, signature: &Signature, trusted_keys: &[VerifyingKey]) -> bool {
