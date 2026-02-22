@@ -148,6 +148,8 @@ compatibility shims.
         `src/shared/ui/dialogs/KeyboardShortcutsDialog.tsx`.
   - [x] Moved feature dialog `SettingsDialog` to
         `src/features/settings/ui/dialogs/SettingsDialog.tsx`.
+  - [x] Moved settings dialog section `SettingsSection` to
+        `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -249,6 +251,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/SettingsDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/SettingsSection.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -485,6 +489,8 @@ compatibility shims.
   - [x] Kept non-owned `SettingsDialog` callsite on the legacy shim path in
         `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx` to avoid
         Track 1 ownership churn.
+  - [x] Updated canonical `SettingsSection` callsite to feature-owned path in:
+        `src/features/settings/ui/dialogs/SettingsDialog.tsx`.
 
 ## Risk Controls
 
@@ -647,10 +653,15 @@ compatibility shims.
   `src/app/providers/NewDesignScope.tsx`) on the legacy shim path during
   Track 1 to avoid cross-scope ownership churn.
 - New information (2026-02-22): after moving `SettingsDialog` into feature
-  ownership, keep `SettingsSection` and `SettingsDirtyContext` on their legacy
+  ownership, keep settings submodules on legacy
   `src/components/ui-new/dialogs/settings/*` paths during Track 1 and import
-  them from the canonical feature dialog by alias until the settings subtree is
-  migrated in a dedicated follow-up.
+  them by alias from canonical feature-owned settings files.
+- New information (2026-02-22): after moving `SettingsSection` into feature
+  ownership, keep `SettingsDirtyContext` and section implementation modules
+  (`GeneralSettingsSection`, `ReposSettingsSection`, `OrganizationsSettingsSection`,
+  `RemoteProjectsSettingsSection`, `AgentsSettingsSection`, `McpSettingsSection`)
+  on legacy `src/components/ui-new/dialogs/settings/*` paths for this track,
+  with a compatibility shim at the legacy `SettingsSection` path.
 
 ## Validation
 

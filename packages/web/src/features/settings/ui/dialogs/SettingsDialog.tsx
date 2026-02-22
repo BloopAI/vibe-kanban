@@ -16,11 +16,11 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { cn } from '@/lib/utils';
-import { SettingsSection } from '@/components/ui-new/dialogs/settings/SettingsSection';
+import { SettingsSection } from './settings/SettingsSection';
 import type {
   SettingsSectionType,
   SettingsSectionInitialState,
-} from '@/components/ui-new/dialogs/settings/SettingsSection';
+} from './settings/SettingsSection';
 import {
   SettingsDirtyProvider,
   useSettingsDirty,
