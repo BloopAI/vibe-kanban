@@ -6,7 +6,7 @@ import {
   SpeakerHighIcon,
   SpinnerIcon,
 } from '@phosphor-icons/react';
-import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { FolderPickerDialog } from '@/shared/ui/dialogs/FolderPickerDialog';
 import {
   type BaseCodingAgent,
   DEFAULT_COMMIT_REMINDER_PROMPT,

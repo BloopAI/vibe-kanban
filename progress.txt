@@ -26,3 +26,37 @@
 - Continue `T1.4/T1.6/T1.7` with another reusable dialog migration in Track 1,
   preferably `ConfirmDialog` into `src/shared/ui/dialogs/*` with a legacy shim
   and canonical import updates.
+
+## 2026-02-22 11:09:52 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next reusable dialog migration in Track 1.
+- Selected `FolderPickerDialog` as the next low-risk component to move into canonical shared UI placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/shared/FolderPickerDialog.tsx`
+    -> `src/shared/ui/dialogs/FolderPickerDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/shared/FolderPickerDialog.tsx`.
+  - Updated all direct callsites to canonical import path:
+    - `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`
+    - `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`
+- New information discovered and handled:
+  - After move, ESLint rejected NiceModal default import in `shared/ui/dialogs`.
+  - Fixed by switching `FolderPickerDialog` to named imports from
+    `@ebay/nice-modal-react` (`create`, `useModal`) rather than default import.
+  - Documented this constraint in the Track 1 plan for subsequent shared dialog moves.
+- Updated plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `FolderPickerDialog`.
+  - Added lint-related new-information note under Risk Controls.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue `T1.4/T1.6/T1.7` by moving another reusable dialog to
+  `src/shared/ui/dialogs/*` (likely `ConfirmDialog`) with a legacy shim and
+  canonical import updates, while applying the named `create/useModal` pattern.

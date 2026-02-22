@@ -13,7 +13,7 @@ import type { BranchItem, RepoItem } from '@/components/ui-new/actions/pages';
 import { repoApi } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
-import { FolderPickerDialog } from '@/components/dialogs/shared/FolderPickerDialog';
+import { FolderPickerDialog } from '@/shared/ui/dialogs/FolderPickerDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {

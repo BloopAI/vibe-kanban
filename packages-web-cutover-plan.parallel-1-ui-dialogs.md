@@ -43,15 +43,23 @@ compatibility shims.
       reusable dialogs -> `src/shared/ui/dialogs/*`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
+  - [x] Moved reusable `FolderPickerDialog` to
+        `src/shared/ui/dialogs/FolderPickerDialog.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/shared/FolderPickerDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
         `src/features/kanban/ui/ProjectKanban.tsx`.
+  - [x] Updated canonical callsites to
+        `@/shared/ui/dialogs/FolderPickerDialog` in:
+        `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`,
+        `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
 
 ## Risk Controls
 
@@ -63,6 +71,11 @@ compatibility shims.
   `src/features/kanban/ui/ProjectKanban.tsx`, outside the strict Track 1
   ownership paths. This track updated that single import to the canonical
   shared-ui path and kept a legacy shim to minimize future cross-branch churn.
+- New information (2026-02-22): files moved into `src/shared/ui/dialogs/*` are
+  not covered by the existing NiceModal default-import ESLint exception.
+  Use named imports (`create`, `useModal`) from `@ebay/nice-modal-react` in
+  shared dialog files, or plan an explicit lint-config update in final
+  consolidation.
 
 ## Validation
 
