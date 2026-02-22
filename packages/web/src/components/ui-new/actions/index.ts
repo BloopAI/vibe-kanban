@@ -78,7 +78,7 @@ import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
-import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+import { StartReviewDialog } from '@/features/command-bar/ui/dialogs/StartReviewDialog';
 import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';

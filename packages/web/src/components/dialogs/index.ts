@@ -56,7 +56,7 @@ export {
 export {
   StartReviewDialog,
   type StartReviewDialogProps,
-} from './tasks/StartReviewDialog';
+} from '@/features/command-bar/ui/dialogs/StartReviewDialog';
 
 // Auth dialogs
 export { GhCliSetupDialog } from '@/features/settings/ui/dialogs/GhCliSetupDialog';

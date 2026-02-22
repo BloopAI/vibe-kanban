@@ -336,3 +336,40 @@
 - Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
   `src/components/dialogs/tasks/RebaseDialog.tsx` and
   `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.
+
+## 2026-02-22 11:39:00 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next low-risk Track 1 component to move into a UI package path.
+- Selected `StartReviewDialog` for command-bar feature-owned dialog placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/tasks/StartReviewDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/tasks/StartReviewDialog.tsx`.
+  - Updated canonical callsites/import surfaces to
+    `@/features/command-bar/ui/dialogs/StartReviewDialog` in:
+    - `src/components/ui-new/actions/index.ts`
+    - `src/components/dialogs/index.ts`
+- New information discovered and handled:
+  - Feature-path lint rules rejected direct `@/app/providers/*` imports.
+  - Updated moved dialog to use hook facade import
+    `@/hooks/useUserSystem` instead of `@/app/providers/ConfigProvider`.
+  - Kept feature-path NiceModal lint compatibility by using named imports
+    (`create`, `useModal`) from `@ebay/nice-modal-react`.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `StartReviewDialog`.
+  - Added a new-information note on using provider hook facades in command-bar
+    feature dialog migrations.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
+  `src/components/dialogs/tasks/RebaseDialog.tsx` and
+  `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.

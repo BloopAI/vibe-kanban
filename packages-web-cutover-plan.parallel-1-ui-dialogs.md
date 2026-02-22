@@ -51,6 +51,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/ReleaseNotesDialog.tsx`.
   - [x] Moved feature dialog `CreateWorkspaceFromPrDialog` to
         `src/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog.tsx`.
+  - [x] Moved feature dialog `StartReviewDialog` to
+        `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -84,6 +86,8 @@ compatibility shims.
         `src/components/dialogs/tasks/TagEditDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/CreateWorkspaceFromPrDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/StartReviewDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -121,6 +125,10 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog` in
         `src/components/ui-new/actions/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/StartReviewDialog` in:
+        `src/components/ui-new/actions/index.ts`,
+        `src/components/dialogs/index.ts`.
 
 ## Risk Controls
 
@@ -162,6 +170,9 @@ compatibility shims.
   `src/features/command-bar/ui/dialogs/*` and consumed directly from
   `src/components/ui-new/actions/index.ts` while keeping a legacy shim at the
   old `components/dialogs/*` path.
+- New information (2026-02-22): when moving task dialogs into command-bar
+  feature ownership, replace direct `@/app/providers/*` imports with hook
+  facades (for example `@/hooks/useUserSystem`) to satisfy layer lint rules.
 
 ## Validation
 
