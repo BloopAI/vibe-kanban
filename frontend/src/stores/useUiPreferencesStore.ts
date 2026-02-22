@@ -539,7 +539,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
         : isWideScreen()
           ? state.isLeftSidebarVisible
           : false,
-      ...(isMobile && !isCurrentlyActive && { mobileActiveTab: mode as MobileTab }),
+      ...(isMobile &&
+        !isCurrentlyActive && { mobileActiveTab: mode as MobileTab }),
     });
   },
 
