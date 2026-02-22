@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { TodoItem, NormalizedEntry } from 'shared/types';
-import type { PatchTypeWithKey } from './useConversationHistory';
+import type { PatchTypeWithKey } from '@/shared/hooks/useConversationHistory/types';
 
 interface UseTodosResult {
   todos: TodoItem[];

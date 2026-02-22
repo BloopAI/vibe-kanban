@@ -17,7 +17,7 @@ import type {
   OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
-} from './useConversationHistory/types';
+} from '@/shared/hooks/useConversationHistory/types';
 
 // Result type for the new UI's conversation history hook
 export interface UseConversationHistoryResult {
@@ -35,23 +35,7 @@ import {
   MIN_INITIAL_ENTRIES,
   nextActionPatch,
   REMAINING_BATCH_SIZE,
-} from './useConversationHistory/constants';
-
-export type {
-  AddEntryType,
-  OnEntriesUpdated,
-  PatchTypeWithKey,
-  DisplayEntry,
-  AggregatedPatchGroup,
-  AggregatedDiffGroup,
-  AggregatedThinkingGroup,
-} from './useConversationHistory/types';
-
-export {
-  isAggregatedGroup,
-  isAggregatedDiffGroup,
-  isAggregatedThinkingGroup,
-} from './useConversationHistory/types';
+} from '@/shared/hooks/useConversationHistory/constants';
 
 export const useConversationHistory = ({
   attempt,

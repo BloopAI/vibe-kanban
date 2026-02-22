@@ -17,7 +17,7 @@ import type {
   OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
-} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
+} from '@/shared/hooks/useConversationHistory/types';
 
 // Result type for the new UI's conversation history hook
 export interface UseConversationHistoryResult {
@@ -35,7 +35,7 @@ import {
   MIN_INITIAL_ENTRIES,
   nextActionPatch,
   REMAINING_BATCH_SIZE,
-} from '@/features/workspace-chat/model/hooks/useConversationHistory/constants';
+} from '@/shared/hooks/useConversationHistory/constants';
 
 export type {
   AddEntryType,
@@ -45,13 +45,13 @@ export type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
   AggregatedThinkingGroup,
-} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
+} from '@/shared/hooks/useConversationHistory/types';
 
 export {
   isAggregatedGroup,
   isAggregatedDiffGroup,
   isAggregatedThinkingGroup,
-} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
+} from '@/shared/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,

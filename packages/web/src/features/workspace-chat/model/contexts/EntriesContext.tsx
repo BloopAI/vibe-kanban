@@ -1,6 +1,6 @@
 import { useContext, useState, useMemo, useCallback, ReactNode } from 'react';
 import { createHmrContext } from '@/shared/lib/hmrContext';
-import type { PatchTypeWithKey } from '../hooks/useConversationHistory/types';
+import type { PatchTypeWithKey } from '@/shared/hooks/useConversationHistory/types';
 import type { TokenUsageInfo } from 'shared/types';
 
 interface EntriesContextType {

@@ -24,15 +24,17 @@ import {
   useResetProcess,
   type UseResetProcessResult,
 } from '../model/hooks/useResetProcess';
-import {
+import type {
   AddEntryType,
   PatchTypeWithKey,
   DisplayEntry,
+} from '@/shared/hooks/useConversationHistory/types';
+import {
   isAggregatedGroup,
   isAggregatedDiffGroup,
   isAggregatedThinkingGroup,
-  useConversationHistory,
-} from '../model/hooks/useConversationHistory';
+} from '@/shared/hooks/useConversationHistory/types';
+import { useConversationHistory } from '../model/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';

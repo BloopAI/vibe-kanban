@@ -60,7 +60,7 @@ import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
   AggregatedThinkingGroup,
-} from '../model/hooks/useConversationHistory/types';
+} from '@/shared/hooks/useConversationHistory/types';
 import {
   FileTextIcon,
   ListMagnifyingGlassIcon,
