@@ -9,7 +9,7 @@ import {
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
-import { useWorkspaceSessions } from '@/features/workspace/model/hooks/useWorkspaceSessions';
+import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import {
   useGitHubComments,
   type NormalizedGitHubComment,

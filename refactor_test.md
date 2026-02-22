@@ -122,6 +122,7 @@ Use when the caller is in the wrong layer.
 | DONE | `src/contexts/CreateModeContext.tsx` | `4` | legacy (contexts) | `@/features/workspace/model/hooks/useCreateModeState` | `legacy -> features` | A2 | Moved `useCreateModeState` and `useWorkspaceCreateDefaults` to `src/shared/hooks/`, deleted old files, repointed 3 consumers | claude | Both hooks pure/generic; only feature dep was `useWorkspaceCreateDefaults` (also pure, moved together); 1 violation eliminated |
 | DONE | `src/contexts/CreateModeContext.tsx` | `8` | legacy (contexts) | `@/features/workspace/model/hooks/useWorkspaces` | `legacy -> features` | A2 | Moved `useWorkspaces` to `src/shared/hooks/useWorkspaces.ts`, deleted old file, repointed 4 consumers | claude | Pure WS streaming + react-query hook; all deps shared-level; 2 violations eliminated |
 | DONE | `src/contexts/WorkspaceContext.tsx` | `10` | legacy (contexts) | `@/features/workspace/model/hooks/useAttempt` | `legacy -> features` | A2 | Moved `useAttempt` to `src/shared/hooks/useAttempt.ts`, deleted old file, repointed 6 consumers | claude | Pure react-query hook; zero feature deps; 2 violations eliminated |
+| DONE | `src/contexts/WorkspaceContext.tsx` | `12` | legacy (contexts) | `@/features/workspace/model/hooks/useWorkspaceSessions` | `legacy -> features` | A2 | Moved `useWorkspaceSessions` to `src/shared/hooks/useWorkspaceSessions.ts`, deleted old file, repointed 2 consumers | claude | Pure react-query + state hook; zero feature deps; 1 violation eliminated |
 
 ## Example Entry
 
