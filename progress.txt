@@ -414,3 +414,46 @@
 - Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
   `src/components/dialogs/tasks/RebaseDialog.tsx` and
   `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.
+
+## 2026-02-22 11:48:00 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`,
+  then assessed the next Track 1 migration with minimal conflict risk.
+- Selected the workspace-scoped `RebaseDialog` (previously under
+  `src/components/ui-new/dialogs`) as the next component to move into
+  feature-owned UI placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/RebaseDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/RebaseDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/RebaseDialog.tsx`.
+  - Updated canonical callsite import to
+    `@/features/command-bar/ui/dialogs/RebaseDialog` in:
+    - `src/components/ui-new/actions/index.ts`
+- New information discovered and handled:
+  - Feature-owned dialog files still require named NiceModal imports outside
+    the legacy exception paths, so the moved file now uses `create`/`useModal`.
+  - After moving into command-bar feature ownership, `ResolveConflictsDialog`
+    import had to be rewritten from relative path to
+    `@/components/ui-new/dialogs/ResolveConflictsDialog`.
+  - Duplicate `RebaseDialog` concepts are not yet fully mergeable because
+    their prop/result contracts differ between workspace-flow and
+    task-toolbar-flow variants.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Recorded this as a completed `T1.5` consolidation step.
+  - Marked the legacy shim under `T1.6`.
+  - Marked canonical `ui-new/actions` import under `T1.7`.
+  - Added a risk-controls note documenting the contract split between the two
+    `RebaseDialog` implementations.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue `T1.5` by deciding whether to keep `src/components/dialogs/tasks/RebaseDialog.tsx`
+  as a distinct task-toolbar dialog or introduce a shared internal primitive
+  that both rebase dialog entrypoints consume.

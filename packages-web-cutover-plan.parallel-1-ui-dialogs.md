@@ -66,6 +66,9 @@ compatibility shims.
   - [x] Moved reusable `TagEditDialog` to
         `src/shared/ui/dialogs/TagEditDialog.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
+  - [x] Moved workspace-scoped `RebaseDialog` to
+        `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
+        compatibility shim at the legacy ui-new path.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
   - [x] Added compatibility shim at
@@ -92,6 +95,8 @@ compatibility shims.
         `src/components/dialogs/tasks/StartReviewDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/CreatePRDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -137,6 +142,9 @@ compatibility shims.
         `@/features/command-bar/ui/dialogs/CreatePRDialog` in:
         `src/components/ui-new/actions/index.ts`,
         `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsite to
+        `@/features/command-bar/ui/dialogs/RebaseDialog` in
+        `src/components/ui-new/actions/index.ts`.
 
 ## Risk Controls
 
@@ -189,6 +197,10 @@ compatibility shims.
   directly from other `@/features/**` modules under current lint boundaries;
   when needed during Track 1, route through existing compatibility paths and
   defer deeper layer extraction to final consolidation.
+- New information (2026-02-22): the two `RebaseDialog` implementations have
+  different contracts (`attemptId/repoId` workspace flow vs branch-picking
+  result flow), so Track 1 now canonicalizes only the workspace-scoped dialog
+  in command-bar feature ownership and keeps the task-toolbar variant stable.
 
 ## Validation
 
