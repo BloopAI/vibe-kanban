@@ -28,52 +28,13 @@ Do not edit files owned by Track 1 or Track 3.
 - Keep migration and onboarding implementation inside their feature folders.
 
 ## Task List
-### T2.1 App Entry And Provider Composition
-Task:
-- Clean and lock provider composition responsibilities in `app/entry/*` and `app/providers/*`.
-
-Completion criteria:
-- Provider ordering is intentional and documented in code comments where needed.
-- Pages do not re-own global provider responsibilities.
-- `pnpm run web:check` passes.
-
-### T2.2 Router And Page Ownership Cleanup
-Task:
-- Keep route composition in `app/router/*` and page orchestration in `pages/{migrate,root,workspaces}/*`.
-
-Completion criteria:
-- Pages are thin orchestration layers that delegate implementation to features.
-- Root redirect and workspace landing routes still resolve correctly.
-- `pnpm run web:lint` passes.
-
-### T2.3 Migration And Onboarding Journey Wiring
-Task:
-- Ensure onboarding and migration flows are consistently wired through feature modules.
-
-Completion criteria:
-- Onboarding landing and sign-in pages render through `features/onboarding/*`.
-- Migration journey pages render through `features/migration/*`.
-- Flow behavior is unchanged based on manual verification.
-
-### T2.4 Command Bar Action Ownership
-Task:
-- Keep command bar action definitions in `features/command-bar/ui/actions/*` and consume from stable exports.
-
-Completion criteria:
-- Action page definitions live in feature action files only.
-- No duplicate action-definition logic in app/pages files.
-- `rg -n "from '@/features/command-bar/ui/actions" packages/web/src` output matches expected consumers.
-
-### T2.5 Journey Verification
-Task:
-- Run smoke checks for app-level journeys affected by this track.
-
-Completion criteria:
-- Root redirect works.
-- Onboarding flow works.
-- Migration flow works.
-- Workspace landing flow works.
-- Verification notes are included in PR description.
+| Task ID | Objective | Detailed Breakdown | Primary File Scope | Verification Commands | Completion Criteria |
+| --- | --- | --- | --- | --- | --- |
+| T2.1 | App entry and provider composition | 1. Audit `app/entry/*` and `app/providers/*` for provider order, scope, and ownership.<br>2. Keep global providers centralized at app entry and remove any newly found page-level provider duplication.<br>3. Add concise comments only where provider order is non-obvious.<br>4. Ensure provider wiring remains deterministic across routes. | `packages/web/src/app/entry/**`, `packages/web/src/app/providers/**` | `pnpm run web:check` | Provider composition is centralized in app entry/providers, no page-level re-ownership appears, and typecheck passes. |
+| T2.2 | Router and page ownership cleanup | 1. Keep route orchestration in `app/router/*` and page orchestration in `pages/{migrate,root,workspaces}/*`.<br>2. Ensure pages remain thin delegators into feature modules.<br>3. Remove route/page coupling that reaches into out-of-track internals.<br>4. Confirm route-level redirects and page mounting boundaries are unchanged. | `packages/web/src/app/router/**`, `packages/web/src/pages/migrate/**`, `packages/web/src/pages/root/**`, `packages/web/src/pages/workspaces/**` | `pnpm run web:lint` | Pages are orchestration-only, route behavior is unchanged, and lint passes. |
+| T2.3 | Migration and onboarding journey wiring | 1. Verify `pages/*` call into `features/migration/*` and `features/onboarding/*` consistently.<br>2. Remove any duplicate journey logic outside those features.<br>3. Keep journey state transitions in feature modules and page wrappers thin.<br>4. Validate route-to-feature handoff for each journey entry point. | `packages/web/src/features/migration/**`, `packages/web/src/features/onboarding/**`, related `pages/*` callsites | `pnpm run web:check && pnpm run web:lint` | Onboarding and migration flows are feature-owned with unchanged behavior and passing checks. |
+| T2.4 | Command-bar action ownership | 1. Keep action definition sources in `features/command-bar/ui/actions/*`.<br>2. Ensure consumers import stable feature action exports rather than redefining action metadata.<br>3. Remove accidental duplicate action configuration in app/pages layers.<br>4. Capture post-change import surface in PR notes. | `packages/web/src/features/command-bar/ui/actions/**`, app/pages consumers | `rg -n "from '@/features/command-bar/ui/actions" packages/web/src` | Action ownership is single-sourced in feature actions and consumer imports are clean and expected. |
+| T2.5 | Journey verification | 1. Smoke test root redirect behavior.<br>2. Smoke test onboarding landing/sign-in flow.<br>3. Smoke test migration multistep flow.<br>4. Smoke test workspace landing flow.<br>5. Record exact runbook and outcomes for reviewers. | App entry points and page route surfaces in scope | Manual smoke checks + rerun `pnpm run web:check` and `pnpm run web:lint` after final rebase | All app-level journeys in scope work as before and verification evidence is documented. |
 
 ## Validation
 Run:
