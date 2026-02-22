@@ -1,4 +1,4 @@
-import type { CreateModeInitialState } from '@/shared/hooks/useCreateModeState';
+import type { CreateModeInitialState } from '@/shared/types/createMode';
 
 interface WorkspaceDefaultsLike {
   preferredRepos?: CreateModeInitialState['preferredRepos'];

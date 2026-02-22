@@ -16,28 +16,16 @@ import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/integrations/electric/hooks';
 import { repoApi } from '@/lib/api';
-import { useWorkspaceCreateDefaults } from './useWorkspaceCreateDefaults';
+import { useWorkspaceCreateDefaults } from '@/shared/hooks/useWorkspaceCreateDefaults';
+export type { CreateModeInitialState } from '@/shared/types/createMode';
+import type {
+  CreateModeInitialState,
+  LinkedIssue,
+} from '@/shared/types/createMode';
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface LinkedIssue {
-  issueId: string;
-  simpleId?: string;
-  title?: string;
-  remoteProjectId: string;
-}
-
-export interface CreateModeInitialState {
-  initialPrompt?: string | null;
-  preferredRepos?: Array<{
-    repo_id: string;
-    target_branch: string | null;
-  }> | null;
-  project_id?: string | null;
-  linkedIssue?: LinkedIssue | null;
-}
 
 /** Unified repo model - keeps repo and branch together */
 interface SelectedRepo {
