@@ -132,7 +132,7 @@ packages/web/src/
 
 ## Status
 
-- [ ] Phase A: foundations and guardrails
+- [ ] Phase A: foundations and guardrails (in progress, 2/4 complete)
 - [ ] Phase B: app shell + page relocation
 - [ ] Phase C: vertical feature migrations
 - [ ] Phase D: dialog/modal consolidation
@@ -142,13 +142,15 @@ packages/web/src/
 
 ## Phase A. Foundations And Guardrails
 
-1. Add path aliases in `tsconfig.json` + `vite.config.ts` for:
-   - `@/app/*`, `@/pages/*`, `@/widgets/*`, `@/features/*`, `@/entities/*`,
-     `@/shared/*`, `@/integrations/*`
-2. Add ESLint import-boundary rules for layer direction.
-3. Add temporary compatibility re-export files where needed to avoid
-   breakage during phased moves.
-4. Freeze net-new additions to `src/components/ui-new` and `src/components/dialogs`.
+- [x] Add path aliases in `tsconfig.json` + `vite.config.ts` for:
+  - `@/app/*`, `@/pages/*`, `@/widgets/*`, `@/features/*`, `@/entities/*`,
+    `@/shared/*`, `@/integrations/*`
+- [x] Add ESLint import-boundary rules for layer direction.
+- [ ] Add temporary compatibility re-export files where needed to avoid
+  breakage during phased moves.
+- [ ] Freeze net-new additions to `src/components/ui-new` and
+  `src/components/dialogs` (add a CI guard script that blocks new files in
+  these paths while allowing edits to existing files).
 
 ## Phase B. App Shell + Page Relocation
 

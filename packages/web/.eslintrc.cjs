@@ -8,6 +8,36 @@ const presentationalComponentPatterns = [
   'src/components/ui-new/primitives/**/*.tsx',
 ];
 
+const baseRestrictedImportPaths = [
+  {
+    name: '@ebay/nice-modal-react',
+    importNames: ['default'],
+    message:
+      'Import NiceModal only in lib/modals.ts or dialog component files. Use DialogName.show(props) instead.',
+  },
+  {
+    name: '@/lib/modals',
+    importNames: ['showModal', 'hideModal', 'removeModal'],
+    message:
+      'Do not import showModal/hideModal/removeModal. Use DialogName.show(props) and DialogName.hide() instead.',
+  },
+  {
+    name: '@vibe/ui',
+    message:
+      'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
+  },
+];
+
+function withLayerBoundaries(patterns) {
+  return [
+    'error',
+    {
+      paths: baseRestrictedImportPaths,
+      patterns,
+    },
+  ];
+}
+
 module.exports = {
   root: true,
   env: {
@@ -48,25 +78,7 @@ module.exports = {
     'no-restricted-imports': [
       'error',
       {
-        paths: [
-          {
-            name: '@ebay/nice-modal-react',
-            importNames: ['default'],
-            message:
-              'Import NiceModal only in lib/modals.ts or dialog component files. Use DialogName.show(props) instead.',
-          },
-          {
-            name: '@/lib/modals',
-            importNames: ['showModal', 'hideModal', 'removeModal'],
-            message:
-              'Do not import showModal/hideModal/removeModal. Use DialogName.show(props) and DialogName.hide() instead.',
-          },
-          {
-            name: '@vibe/ui',
-            message:
-              'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
-          },
-        ],
+        paths: baseRestrictedImportPaths,
       },
     ],
     'no-restricted-syntax': [
@@ -146,6 +158,77 @@ module.exports = {
       files: ['src/routes/**/*.{ts,tsx}', 'src/routeTree.gen.ts'],
       rules: {
         'check-file/filename-naming-convention': 'off',
+      },
+    },
+    {
+      files: ['src/widgets/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**'],
+            message:
+              'Widgets may only import from features, entities, shared, and integrations.',
+          },
+        ]),
+      },
+    },
+    {
+      files: ['src/features/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**'],
+            message:
+              'Features may only import from entities, shared, and integrations.',
+          },
+        ]),
+      },
+    },
+    {
+      files: ['src/entities/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: [
+              '@/app/**',
+              '@/pages/**',
+              '@/widgets/**',
+              '@/features/**',
+              '@/entities/**',
+            ],
+            message: 'Entities may only import from shared and integrations.',
+          },
+        ]),
+      },
+    },
+    {
+      files: ['src/shared/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: [
+              '@/app/**',
+              '@/pages/**',
+              '@/widgets/**',
+              '@/features/**',
+              '@/entities/**',
+              '@/integrations/**',
+            ],
+            message: 'Shared layer may only import from shared.',
+          },
+        ]),
+      },
+    },
+    {
+      files: ['src/integrations/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**'],
+            message:
+              'Integrations must not depend on app/pages/widgets. Use shared-level contracts instead.',
+          },
+        ]),
       },
     },
     {
