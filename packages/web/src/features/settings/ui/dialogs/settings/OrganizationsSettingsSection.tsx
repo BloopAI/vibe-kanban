@@ -16,15 +16,15 @@ import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/hooks/useUserSystem';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
+import { OAuthDialog } from '../OAuthDialog';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
-} from '@/components/dialogs/org/CreateOrganizationDialog';
+} from '../CreateOrganizationDialog';
 import {
   InviteMemberDialog,
   type InviteMemberResult,
-} from '@/components/dialogs/org/InviteMemberDialog';
+} from '../InviteMemberDialog';
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';

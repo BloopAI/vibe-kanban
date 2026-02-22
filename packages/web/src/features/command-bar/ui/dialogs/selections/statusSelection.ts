@@ -1,4 +1,4 @@
-import type { StatusItem } from '@/components/ui-new/actions/pages';
+import type { StatusItem } from '../../actions/pages';
 import type { SelectionPage } from '../SelectionDialog';
 
 export interface StatusSelectionResult {

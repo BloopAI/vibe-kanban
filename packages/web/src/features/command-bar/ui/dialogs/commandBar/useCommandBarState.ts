@@ -1,9 +1,6 @@
 import { useReducer, useCallback, useRef } from 'react';
-import type {
-  PageId,
-  ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
-import type { ActionDefinition } from '@/components/ui-new/actions';
+import type { PageId, ResolvedGroupItem } from '../../actions/pages';
+import type { ActionDefinition } from '../../actions';
 
 export interface CommandBarState {
   page: PageId;

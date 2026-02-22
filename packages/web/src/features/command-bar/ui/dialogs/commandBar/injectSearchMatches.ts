@@ -4,12 +4,9 @@ import {
   getPageActions,
   type StaticPageId,
   type ResolvedGroup,
-} from '@/components/ui-new/actions/pages';
-import {
-  resolveLabel,
-  type ActionVisibilityContext,
-} from '@/components/ui-new/actions';
-import { isActionVisible } from '@/components/ui-new/actions/useActionVisibility';
+} from '../../actions/pages';
+import { resolveLabel, type ActionVisibilityContext } from '../../actions';
+import { isActionVisible } from '../../actions/useActionVisibility';
 
 // Derive injectable pages from Pages - all child pages of root
 const INJECTABLE_PAGE_IDS = (Object.keys(Pages) as StaticPageId[]).filter(

@@ -4,7 +4,7 @@ import {
   type ActionDefinition,
   type ActionVisibilityContext,
   Actions,
-} from '@/components/ui-new/actions';
+} from './index';
 import { RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
 
 // Define page IDs first to avoid circular reference

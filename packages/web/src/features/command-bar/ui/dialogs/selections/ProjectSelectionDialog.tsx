@@ -14,16 +14,13 @@ import type {
   PageId,
   StatusItem,
   ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
+} from '../../actions/pages';
 import type { Issue } from 'shared/remote-types';
 import { buildStatusSelectionPages } from './statusSelection';
 import { buildPrioritySelectionPages } from './prioritySelection';
 import { buildSubIssueSelectionPages } from './subIssueSelection';
 import { buildRelationshipSelectionPages } from './relationshipSelection';
-import {
-  resolveLabel,
-  type ActionDefinition,
-} from '@/components/ui-new/actions';
+import { resolveLabel, type ActionDefinition } from '../../actions';
 import type { SelectionPage } from '../SelectionDialog';
 import type { StatusSelectionResult } from './statusSelection';
 import type { PrioritySelectionResult } from './prioritySelection';

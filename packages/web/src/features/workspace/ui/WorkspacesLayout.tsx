@@ -18,7 +18,7 @@ import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
-import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
+import { WorkspacesGuideDialog } from '@/shared/ui/dialogs/WorkspacesGuideDialog';
 import { useUserSystem } from '@/hooks/useUserSystem';
 
 import {

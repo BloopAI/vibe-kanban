@@ -21,9 +21,9 @@ import type {
   ActionDefinition,
   ActionIcon,
   DevServerState,
-} from '@/components/ui-new/actions';
-import { resolveLabel } from '@/components/ui-new/actions';
-import type { CommandBarPage } from '@/components/ui-new/actions/pages';
+} from './index';
+import { resolveLabel } from './index';
+import type { CommandBarPage } from './pages';
 
 interface ActionVisibilityOptions {
   projectId?: string;

@@ -1,4 +1,4 @@
-import type { RepoItem } from '@/components/ui-new/actions/pages';
+import type { RepoItem } from '../../actions/pages';
 import type { SelectionPage } from '../SelectionDialog';
 
 export interface RepoSelectionResult {

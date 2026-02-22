@@ -11,11 +11,8 @@ import type {
   ResolvedGroup,
   ResolvedGroupItem,
   StatusItem,
-} from '@/components/ui-new/actions/pages';
-import {
-  resolveLabel,
-  type ActionDefinition,
-} from '@/components/ui-new/actions';
+} from '../actions/pages';
+import { resolveLabel, type ActionDefinition } from '../actions';
 
 export interface SelectionPage<TResult = unknown> {
   id: string;

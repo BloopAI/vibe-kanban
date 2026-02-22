@@ -14,10 +14,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { attemptKeys } from '@/hooks/useAttempt';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import type { PageId, ResolvedGroupItem } from '../actions/pages';
-import {
-  ActionTargetType,
-  type ActionDefinition,
-} from '@/components/ui-new/actions';
+import { ActionTargetType, type ActionDefinition } from '../actions';
 import { useActionVisibilityContext } from '../actions/useActionVisibility';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';

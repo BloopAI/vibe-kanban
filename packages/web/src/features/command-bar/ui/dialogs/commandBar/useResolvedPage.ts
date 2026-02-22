@@ -14,12 +14,12 @@ import {
   type CommandBarGroupItem,
   type ResolvedGroup,
   type ResolvedGroupItem,
-} from '@/components/ui-new/actions/pages';
-import type { ActionVisibilityContext } from '@/components/ui-new/actions';
+} from '../../actions/pages';
+import type { ActionVisibilityContext } from '../../actions';
 import {
   isActionVisible,
   isPageVisible,
-} from '@/components/ui-new/actions/useActionVisibility';
+} from '../../actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 
 export interface ResolvedCommandBarPage {
