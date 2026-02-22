@@ -4695,3 +4695,50 @@ Plan adjustments from new information:
 - Conversation primitive extraction from `frontend/src/components/ui-new/primitives/conversation/` is now complete.
 - Remaining `ui-new/primitives` files are only `model-selector` primitives; continuing extraction likely requires a decision on whether model/provider domain UI should remain app-owned or move into `@vibe/ui`.
 - Next likely candidate if extraction continues: `frontend/src/components/ui-new/primitives/model-selector/ModelProviderIcon.tsx` (smallest surface area in the remaining primitive set).
+
+## 2026-02-22 - UI package extraction: ModelProviderIcon
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/model-selector/ModelProviderIcon.tsx` as the next extraction candidate.
+- Although the audit originally marked model-selector primitives as app-owned, this file had the smallest standalone surface area and a single callsite in `ModelSelectorPopover`, making it a low-risk extraction.
+- New information: theme-coupled visual primitives can still live in `@vibe/ui` cleanly when the app passes resolved theme as a simple prop.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/model-selector/ModelProviderIcon.tsx packages/ui/src/components/ModelProviderIcon.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed direct frontend theme dependency (`useTheme`, `getResolvedTheme`) from package internals.
+  - Added explicit API:
+    - `theme?: 'light' | 'dark'` (default `'light'`)
+  - Icon suffix (`-dark` / `-light`) is now derived from this explicit prop.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx`
+  - New import path:
+    - `@vibe/ui/components/ModelProviderIcon`
+  - Added frontend theme adapter wiring:
+    - `useTheme()` + `getResolvedTheme(theme)`
+    - pass `theme={resolvedTheme}` to `ModelProviderIcon`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The model-selector area is now partially extracted (`ModelProviderIcon` in `@vibe/ui`, `ModelList`/`ModelSelectorPopover` still in frontend).
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/model-selector/ModelList.tsx`.
+  - It will require decoupling from frontend utilities (`getModelKey`, `getReasoningLabel`) via injected formatter helpers or by moving those pure helpers into `@vibe/ui`.

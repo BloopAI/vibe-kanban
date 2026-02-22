@@ -3,13 +3,18 @@ import {
   HardDriveIcon,
   SparkleIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { useTheme, getResolvedTheme } from '@/components/ThemeProvider';
+import { cn } from '../lib/cn';
 
-export function ModelProviderIcon({ providerId }: { providerId: string }) {
-  const { theme } = useTheme();
-  const resolvedTheme = getResolvedTheme(theme);
-  const suffix = resolvedTheme === 'dark' ? '-dark' : '-light';
+interface ModelProviderIconProps {
+  providerId: string;
+  theme?: 'light' | 'dark';
+}
+
+export function ModelProviderIcon({
+  providerId,
+  theme = 'light',
+}: ModelProviderIconProps) {
+  const suffix = theme === 'dark' ? '-dark' : '-light';
   const id = providerId.toLowerCase();
   const className = cn('size-icon-sm', 'flex-shrink-0');
 

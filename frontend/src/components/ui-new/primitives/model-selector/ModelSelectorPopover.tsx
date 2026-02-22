@@ -4,6 +4,7 @@ import { CaretDownIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { getSelectedModel } from '@/utils/modelSelector';
 import { sortByRecency, sortProvidersByRecency } from '@/utils/recentModels';
+import { getResolvedTheme, useTheme } from '@/components/ThemeProvider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,9 +18,9 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@vibe/ui/components/Accordion';
+import { ModelProviderIcon } from '@vibe/ui/components/ModelProviderIcon';
 import type { ModelInfo, ModelSelectorConfig } from 'shared/types';
 import { ModelList } from './ModelList';
-import { ModelProviderIcon } from './ModelProviderIcon';
 
 interface ModelSelectorPopoverProps {
   isOpen: boolean;
@@ -88,6 +89,8 @@ function ProviderAccordion({
   onExpandedProviderIdChange,
 }: ProviderAccordionProps) {
   const { t } = useTranslation('common');
+  const { theme } = useTheme();
+  const resolvedTheme = getResolvedTheme(theme);
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const selectedModel = getSelectedModel(
     config.models,
@@ -153,7 +156,10 @@ function ProviderAccordion({
                     'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand'
                   )}
                 >
-                  <ModelProviderIcon providerId={provider.id} />
+                  <ModelProviderIcon
+                    providerId={provider.id}
+                    theme={resolvedTheme}
+                  />
                   <span className="flex-1 text-left truncate">
                     {provider.name}
                   </span>
