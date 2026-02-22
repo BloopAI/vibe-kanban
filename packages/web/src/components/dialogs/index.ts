@@ -20,7 +20,7 @@ export { CreatePRDialog } from '@/features/command-bar/ui/dialogs/CreatePRDialog
 export {
   EditorSelectionDialog,
   type EditorSelectionDialogProps,
-} from './tasks/EditorSelectionDialog';
+} from '@/features/command-bar/ui/dialogs/EditorSelectionDialog';
 export {
   TagEditDialog,
   type TagEditDialogProps,
