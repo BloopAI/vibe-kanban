@@ -572,7 +572,8 @@
         "title": "Invite your team",
         "content": "We've automatically created a personal organization, and initial project so you can easily get started with Vibe Kanban. You can also create new organizations and invite your team to collaborate."
       }
-    }
+    },
+    "board": "Tableau"
   },
   "createMode": {
     "headings": {
