@@ -1,23 +1,42 @@
-import { forwardRef } from 'react';
+import { forwardRef, type ReactNode } from 'react';
 import {
   CaretDownIcon,
   CaretRightIcon,
   FolderSimpleIcon,
   GithubLogoIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { getFileIcon } from '@/utils/fileTypeIcon';
-import { useTheme } from '@/components/ThemeProvider';
-import { getActualTheme } from '@/utils/theme';
-import type { TreeNode } from '../types/fileTree';
+import { cn } from '../lib/cn';
+
+export type FileTreeNodeType = 'file' | 'folder';
+export type FileTreeNodeChangeKind =
+  | 'added'
+  | 'deleted'
+  | 'modified'
+  | 'renamed'
+  | 'copied'
+  | 'permissionChange';
+
+export interface FileTreeNodeItem {
+  id: string;
+  name: string;
+  path: string;
+  type: FileTreeNodeType;
+  diff?: {
+    oldPath?: string | null;
+  } | null;
+  changeKind?: FileTreeNodeChangeKind;
+  additions?: number | null;
+  deletions?: number | null;
+}
 
 interface FileTreeNodeProps {
-  node: TreeNode;
+  node: FileTreeNodeItem;
   depth: number;
   isExpanded?: boolean;
   isSelected?: boolean;
   onToggle?: () => void;
   onSelect?: () => void;
+  renderFileIcon?: (fileName: string) => ReactNode;
   /** GitHub comment count for this file */
   commentCount?: number;
   /** Whether to show the comment badge */
@@ -33,20 +52,18 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
       isSelected = false,
       onToggle,
       onSelect,
+      renderFileIcon,
       commentCount,
       showCommentBadge,
     },
     ref
   ) {
-    const { theme } = useTheme();
-    const actualTheme = getActualTheme(theme);
-
     const isFolder = node.type === 'folder';
     const isDeleted = node.changeKind === 'deleted';
     const isAdded = node.changeKind === 'added';
     const isRenamed = node.changeKind === 'renamed';
     const isCopied = node.changeKind === 'copied';
-    const FileIcon = isFolder ? null : getFileIcon(node.name, actualTheme);
+    const fileIcon = isFolder ? null : renderFileIcon?.(node.name);
 
     // Extract filename from path for renamed/copied display
     const getFileName = (path: string) => path.split('/').pop() || path;
@@ -103,9 +120,8 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
           <span className="shrink-0">
             {isFolder ? (
               <FolderSimpleIcon className="size-icon-sm" weight="fill" />
-            ) : FileIcon ? (
-              <FileIcon size={14} />
             ) : null}
+            {fileIcon}
           </span>
 
           {/* File/folder name - color based on change kind */}

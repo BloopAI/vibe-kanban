@@ -5,9 +5,12 @@ import {
   CaretDownIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
+import { getFileIcon } from '@/utils/fileTypeIcon';
+import { useTheme } from '@/components/ThemeProvider';
+import { getActualTheme } from '@/utils/theme';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { FileTreeSearchBar } from '@vibe/ui/components/FileTreeSearchBar';
-import { FileTreeNode } from './FileTreeNode';
+import { FileTreeNode } from '@vibe/ui/components/FileTreeNode';
 import type { TreeNode } from '../types/fileTree';
 
 interface FileTreeProps {
@@ -56,6 +59,13 @@ export function FileTree({
   hasFilesWithComments,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
+
+  const renderFileIcon = (fileName: string) => {
+    const FileIcon = getFileIcon(fileName, actualTheme);
+    return FileIcon ? <FileIcon size={14} /> : null;
+  };
 
   const renderNodes = (nodeList: TreeNode[], depth = 0) => {
     return nodeList.map((node) => (
@@ -78,6 +88,7 @@ export function FileTree({
               ? () => onSelectFile(node.path)
               : undefined
           }
+          renderFileIcon={renderFileIcon}
           commentCount={getGitHubCommentCountForFile?.(node.path)}
           showCommentBadge={showGitHubComments}
         />
