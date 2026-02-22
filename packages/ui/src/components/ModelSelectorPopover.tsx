@@ -1,32 +1,40 @@
 import type { ReactElement, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CaretDownIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { getSelectedModel } from '@/utils/modelSelector';
-import { sortByRecency, sortProvidersByRecency } from '@/utils/recentModels';
-import { getResolvedTheme, useTheme } from '@/components/ThemeProvider';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSearchInput,
   DropdownMenuTrigger,
-} from '@vibe/ui/components/Dropdown';
+} from './Dropdown';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@vibe/ui/components/Accordion';
-import { ModelProviderIcon } from '@vibe/ui/components/ModelProviderIcon';
-import { ModelList } from '@vibe/ui/components/ModelList';
-import type { ModelInfo, ModelSelectorConfig } from 'shared/types';
+} from './Accordion';
+import { ModelProviderIcon } from './ModelProviderIcon';
+import { ModelList, type ModelListModel } from './ModelList';
 
-interface ModelSelectorPopoverProps {
+type RecentAlignment = 'top' | 'bottom';
+
+interface ModelSelectorProvider {
+  id: string;
+  name: string;
+}
+
+interface ModelSelectorConfigLike {
+  models: ModelListModel[];
+  providers: ModelSelectorProvider[];
+}
+
+export interface ModelSelectorPopoverProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   trigger: ReactElement;
-  config: ModelSelectorConfig;
+  config: ModelSelectorConfigLike;
   error?: string | null;
   selectedProviderId: string | null;
   selectedModelId: string | null;
@@ -41,9 +49,118 @@ interface ModelSelectorPopoverProps {
   scrollRef?: Ref<HTMLDivElement>;
   expandedProviderId?: string;
   onExpandedProviderIdChange?: (id: string) => void;
+  resolvedTheme?: 'light' | 'dark';
 }
 
 const MODEL_LIST_PAGE_SIZE = 8;
+
+function getModelKey(model: ModelListModel): string {
+  return model.provider_id ? `${model.provider_id}/${model.id}` : model.id;
+}
+
+function getRecentIndex(
+  recentEntries: string[],
+  model: ModelListModel
+): number {
+  const key = getModelKey(model).toLowerCase();
+  return recentEntries.findIndex((entry) => entry.toLowerCase() === key);
+}
+
+function sortByRecency(
+  models: ModelListModel[],
+  recentEntries: string[],
+  align: RecentAlignment = 'bottom'
+): ModelListModel[] {
+  if (recentEntries.length === 0) {
+    return align === 'bottom' ? [...models].reverse() : [...models];
+  }
+
+  const recentMap = new Map(
+    recentEntries.map((entry, idx) => [entry.toLowerCase(), idx])
+  );
+  const nonRecent: ModelListModel[] = [];
+  const recent: { model: ModelListModel; idx: number }[] = [];
+
+  for (const model of models) {
+    const key = getModelKey(model).toLowerCase();
+    const idx = recentMap.get(key) ?? -1;
+    if (idx === -1) {
+      nonRecent.push(model);
+    } else {
+      recent.push({ model, idx });
+    }
+  }
+
+  if (align === 'bottom') {
+    nonRecent.reverse();
+  }
+
+  recent.sort((a, b) => (align === 'bottom' ? a.idx - b.idx : b.idx - a.idx));
+
+  if (align === 'top') {
+    return [...recent.map((entry) => entry.model), ...nonRecent];
+  }
+
+  return [...nonRecent, ...recent.map((entry) => entry.model)];
+}
+
+function sortProvidersByRecency(
+  providers: ModelSelectorProvider[],
+  models: ModelListModel[],
+  recentEntries: string[]
+): ModelSelectorProvider[] {
+  const baseProviders = [...providers].reverse();
+  if (recentEntries.length === 0) return baseProviders;
+
+  const recencyByProvider = new Map<string, number>();
+  for (const model of models) {
+    if (!model.provider_id) continue;
+    const idx = getRecentIndex(recentEntries, model);
+    if (idx === -1) continue;
+    const current = recencyByProvider.get(model.provider_id) ?? -1;
+    if (idx > current) {
+      recencyByProvider.set(model.provider_id, idx);
+    }
+  }
+
+  const order = new Map(
+    baseProviders.map((provider, idx) => [provider.id, idx])
+  );
+
+  return [...baseProviders].sort((a, b) => {
+    const aRecent = recencyByProvider.get(a.id) ?? -1;
+    const bRecent = recencyByProvider.get(b.id) ?? -1;
+    if (aRecent === -1 && bRecent === -1) {
+      return (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
+    }
+    if (aRecent === -1) return -1;
+    if (bRecent === -1) return 1;
+    if (aRecent === bRecent) {
+      return (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0);
+    }
+    return aRecent - bRecent;
+  });
+}
+
+function getSelectedModel(
+  models: ModelListModel[],
+  selectedProviderId: string | null,
+  selectedModelId: string | null
+): ModelListModel | null {
+  if (!selectedModelId) return null;
+  const selectedId = selectedModelId.toLowerCase();
+  if (selectedProviderId) {
+    const providerId = selectedProviderId.toLowerCase();
+    return (
+      models.find(
+        (model) =>
+          model.id.toLowerCase() === selectedId &&
+          model.provider_id?.toLowerCase() === providerId
+      ) ?? null
+    );
+  }
+  return models.find((model) => model.id.toLowerCase() === selectedId) ?? null;
+}
 
 function getPopoverWidth(hasProviders: boolean, hasReasoning: boolean): string {
   if (hasProviders) return 'w-[280px]';
@@ -51,14 +168,14 @@ function getPopoverWidth(hasProviders: boolean, hasReasoning: boolean): string {
   return 'w-[200px]';
 }
 
-function matchesSearch(model: ModelInfo, query: string): boolean {
+function matchesSearch(model: ModelListModel, query: string): boolean {
   const name = model.name?.toLowerCase() ?? '';
   const id = model.id?.toLowerCase() ?? '';
   return name.includes(query) || id.includes(query);
 }
 
 interface ProviderAccordionProps {
-  config: ModelSelectorConfig;
+  config: ModelSelectorConfigLike;
   selectedProviderId: string | null;
   selectedModelId: string | null;
   selectedReasoningId: string | null;
@@ -71,6 +188,7 @@ interface ProviderAccordionProps {
   scrollRef?: Ref<HTMLDivElement>;
   expandedProviderId: string;
   onExpandedProviderIdChange: (id: string) => void;
+  resolvedTheme: 'light' | 'dark';
 }
 
 function ProviderAccordion({
@@ -87,10 +205,9 @@ function ProviderAccordion({
   scrollRef,
   expandedProviderId,
   onExpandedProviderIdChange,
+  resolvedTheme,
 }: ProviderAccordionProps) {
   const { t } = useTranslation('common');
-  const { theme } = useTheme();
-  const resolvedTheme = getResolvedTheme(theme);
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const selectedModel = getSelectedModel(
     config.models,
@@ -98,7 +215,7 @@ function ProviderAccordion({
     selectedModelId
   );
 
-  const modelsByProvider = new Map<string, ModelInfo[]>();
+  const modelsByProvider = new Map<string, ModelListModel[]>();
   for (const model of config.models) {
     if (!model.provider_id) continue;
     const list = modelsByProvider.get(model.provider_id) ?? [];
@@ -251,6 +368,7 @@ export function ModelSelectorPopover({
   scrollRef,
   expandedProviderId = '',
   onExpandedProviderIdChange,
+  resolvedTheme = 'light',
 }: ModelSelectorPopoverProps) {
   const { t } = useTranslation('common');
   const models = config.models;
@@ -280,6 +398,7 @@ export function ModelSelectorPopover({
         scrollRef={scrollRef}
         expandedProviderId={expandedProviderId}
         onExpandedProviderIdChange={onExpandedProviderIdChange ?? (() => {})}
+        resolvedTheme={resolvedTheme}
       />
     );
   } else {

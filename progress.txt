@@ -4792,3 +4792,61 @@ Plan adjustments from new information:
 - Remaining model-selector primitive in frontend: `ModelSelectorPopover`.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx`.
   - It still depends on frontend-specific model selection/recency helpers (`getSelectedModel`, `sortByRecency`, `sortProvidersByRecency`), so extraction will likely require injected data transforms or moving pure helper logic into package-local modules.
+
+## 2026-02-22 - UI package extraction: ModelSelectorPopover
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx` as the next extraction candidate.
+- It had a single callsite (`ModelSelectorContainer`) but depended on frontend-only model selection/recency helpers and theme provider hooks.
+- New information: this component can be fully extracted by using structural config/model/provider types, package-local helper logic, and a simple `resolvedTheme` adapter prop from the frontend container.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/model-selector/ModelSelectorPopover.tsx packages/ui/src/components/ModelSelectorPopover.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/Dropdown` -> `./Dropdown`
+    - `@vibe/ui/components/Accordion` -> `./Accordion`
+    - `@vibe/ui/components/ModelProviderIcon` -> `./ModelProviderIcon`
+    - `@vibe/ui/components/ModelList` -> `./ModelList`
+  - Removed frontend utility/theme coupling by adding package-local helpers:
+    - `getSelectedModel`
+    - `getModelKey`
+    - `getRecentIndex`
+    - `sortByRecency`
+    - `sortProvidersByRecency`
+  - Removed `shared/types` dependency in this component via structural types:
+    - `ModelSelectorProvider`
+    - `ModelSelectorConfigLike`
+  - Added adapter prop:
+    - `resolvedTheme?: 'light' | 'dark'` (default `'light'`)
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/ModelSelectorContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/ModelSelectorPopover`
+  - Added frontend theme adapter wiring:
+    - `useTheme()` + `getResolvedTheme(theme)`
+    - pass `resolvedTheme={resolvedTheme}` to `ModelSelectorPopover`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- `frontend/src/components/ui-new/primitives/` no longer contains any `.tsx` primitives; extraction of this primitive layer is now complete.
+- Next migration work should be chosen from other layers based on current architecture goals (likely `ui-new/views` or selected `ui-new/dialogs` primitives), since there are no remaining `ui-new/primitives` components to move.

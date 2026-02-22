@@ -32,8 +32,9 @@ import {
 } from '@/utils/modelSelector';
 import { profilesApi } from '@/lib/api';
 import { useUserSystem } from '@/components/ConfigProvider';
+import { getResolvedTheme, useTheme } from '@/components/ThemeProvider';
 import { useModelSelectorConfig } from '@/hooks/useExecutorDiscovery';
-import { ModelSelectorPopover } from '../primitives/model-selector/ModelSelectorPopover';
+import { ModelSelectorPopover } from '@vibe/ui/components/ModelSelectorPopover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,6 +68,8 @@ export function ModelSelectorContainer({
   presetOptions,
 }: ModelSelectorContainerProps) {
   const { t } = useTranslation('common');
+  const { theme } = useTheme();
+  const resolvedTheme = getResolvedTheme(theme);
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedProviderId, setExpandedProviderId] = useState('');
@@ -483,6 +486,7 @@ export function ModelSelectorContainer({
           scrollRef={scrollRef}
           expandedProviderId={expandedProviderId}
           onExpandedProviderIdChange={setExpandedProviderId}
+          resolvedTheme={resolvedTheme}
         />
       )}
 
