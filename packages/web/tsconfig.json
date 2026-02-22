@@ -19,7 +19,7 @@
     "paths": {
       "@/*": ["./src/*"],
       "@dialogs/*": ["./src/components/dialogs/*"],
-      "shared/*": ["../shared/*"]
+      "shared/*": ["../../shared/*"]
     }
   },
   "include": ["src"],

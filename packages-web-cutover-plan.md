@@ -24,6 +24,18 @@ package.
 
 ## Execution Order
 
+## Status
+
+- [x] Step 1 completed
+- [ ] Step 2 pending
+- [x] Step 3 completed (executed before Step 2 to restore local type-check)
+- [ ] Step 4 pending
+- [ ] Step 5 pending
+- [ ] Step 6 pending
+- [ ] Step 7 pending
+- [ ] Step 8 pending
+- [ ] Step 9 pending
+
 ## 1. Move the web app package
 
 1. Create `packages/web/`.
@@ -68,6 +80,8 @@ package.
 5. `scripts/check-i18n.sh`
    - change locale path and lint working directory from `frontend/` to
      `packages/web/`
+6. Audit direct relative imports to `shared/*` inside moved app files and
+   convert them to `shared/*` alias imports where needed.
 
 ## 4. Update backend static embed paths
 

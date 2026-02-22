@@ -47,7 +47,7 @@ function executorSchemasPlugin(): Plugin {
     load(id) {
       if (id !== RESOLVED_VIRTUAL_ID) return null;
 
-      const schemasDir = path.resolve(__dirname, '../shared/schemas');
+      const schemasDir = path.resolve(__dirname, '../../shared/schemas');
       const files = fs.existsSync(schemasDir)
         ? fs.readdirSync(schemasDir).filter((f) => f.endsWith('.json'))
         : [];
@@ -110,7 +110,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      shared: path.resolve(__dirname, '../shared'),
+      shared: path.resolve(__dirname, '../../shared'),
     },
   },
   server: {
@@ -123,7 +123,7 @@ export default defineConfig({
       },
     },
     fs: {
-      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '..')],
+      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '../..')],
     },
     open: process.env.VITE_OPEN === 'true',
     allowedHosts: [

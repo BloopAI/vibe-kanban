@@ -6757,3 +6757,54 @@ Validation:
 Plan adjustments from new information:
 - Thin modal wrappers around already-extracted UI shells can be moved incrementally with minimal risk if frontend-only portal/context dependencies are removed.
 - For global dialogs invoked from both actions and containers, package-level portal defaults (`document.body`) reduce callsite complexity and avoid cross-package context coupling.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 1 + Step 3
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented next change (`frontend/` -> `packages/web/` package move)
+- [x] Ran quality checks appropriate to the migrated package
+- [x] Updated cutover plan status and added newly discovered subtask
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 1 (`Move the web app package`) from `packages-web-cutover-plan.md`.
+- After relocation, package-level typecheck exposed pathing issues tied to app relocation, so Step 3 path/tooling updates were applied in the same pass to restore local web package health.
+
+Refactor completed:
+- Moved tracked app files from `frontend/` to `packages/web/` with history preservation (`git mv`), including:
+  - app source/public/config files
+  - app `AGENTS.md`
+  - app package manifest
+- Renamed app package:
+  - `packages/web/package.json`: `name` changed from `vibe-kanban` to `@vibe/web`.
+
+Tooling/path updates completed (Step 3):
+- `packages/web/tsconfig.json`
+  - `shared/*` path updated to `../../shared/*`.
+- `packages/web/vite.config.ts`
+  - shared alias updated to `../../shared`.
+  - virtual schemas directory updated to `../../shared/schemas`.
+  - dev server FS allowlist updated to include repo root (`../..`).
+- `packages/web/tailwind.new.config.js`
+  - UI package scan path updated to `../ui/src/**/*.{ts,tsx}`.
+- `packages/ui/package.json`
+  - format script Prettier config path updated to `../../packages/web/.prettierrc.json`.
+- `scripts/check-i18n.sh`
+  - lint working directory and locale paths updated from `frontend` to `packages/web`.
+- Additional relocation fix:
+  - `packages/web/src/i18n/languages.ts` now imports `UiLanguage` from `shared/types` alias instead of old relative path.
+
+Validation:
+- `pnpm install` ✅
+- `pnpm --filter @vibe/web run check` ✅
+- `pnpm --filter @vibe/web run lint` ✅
+
+Plan adjustments from new information:
+- Added explicit plan subtask to audit direct relative imports to `shared/*` after relocation and convert to alias imports where needed.
+- Added status section to `packages-web-cutover-plan.md` to track completed vs pending steps.
+- Formatting note:
+  - Root `pnpm run format` currently fails because root script still calls `cd frontend` (expected until Step 2 root-script rewiring).
+  - Ran `cd packages/web && pnpm run format` ✅ for the migrated web package.
