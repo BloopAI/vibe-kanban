@@ -5160,3 +5160,54 @@ Validation:
 Plan adjustments from new information:
 - Render-prop adapters are an effective extraction pattern for components that currently embed app-runtime widgets.
 - This creates a straightforward path for similarly structured views without dragging runtime/context dependencies into `@vibe/ui`.
+
+## 2026-02-22 - UI package extraction: PreviewControls
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/PreviewControls.tsx` as the next extraction target.
+- It had a single callsite but was coupled to frontend-specific utilities (`getDevServerWorkingDir`), data types (`shared/types`), and container-only rendering (`VirtualizedProcessLogs`).
+- New information: this view can be extracted cleanly by moving process labeling and logs rendering to container adapters while keeping the package component focused on layout and interactions.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/PreviewControls.tsx packages/ui/src/components/PreviewControls.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed frontend/shared coupling:
+    - Removed `shared/types` imports and process/log concrete types
+    - Removed direct `VirtualizedProcessLogs` and `getDevServerWorkingDir` usage
+  - Introduced package-local structural contract:
+    - `PreviewControlsProcessTab` (`{ id: string; label: string }`)
+  - Introduced render adapter API:
+    - `logsContent: ReactNode`
+    - `isLoading: boolean`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/PreviewControlsContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/PreviewControls`
+  - Added container adapters:
+    - `processTabs` computed with `getDevServerWorkingDir` + translated fallback label
+    - `logsContent` provided via `VirtualizedProcessLogs`
+    - `isLoading` computed from `isStarting || runningDevServers.length > 0`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Adapter-based extraction is now validated for mixed-responsibility views that combine generic layout with app-specific runtime data/renderers.
+- This opens a path for additional view moves where container-owned renderers can be injected as props instead of imported inside `@vibe/ui`.

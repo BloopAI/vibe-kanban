@@ -1,37 +1,33 @@
+import type { ReactNode } from 'react';
 import { ArrowSquareOutIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
-import { VirtualizedProcessLogs } from '../containers/VirtualizedProcessLogs';
-import { getDevServerWorkingDir } from '@/lib/devServerUtils';
-import type { ExecutionProcess, PatchType } from 'shared/types';
+import { cn } from '../lib/cn';
 
-type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
+export interface PreviewControlsProcessTab {
+  id: string;
+  label: string;
+}
 
 interface PreviewControlsProps {
-  devServerProcesses: ExecutionProcess[];
+  processTabs: PreviewControlsProcessTab[];
   activeProcessId: string | null;
-  logs: LogEntry[];
-  logsError: string | null;
+  logsContent: ReactNode;
   onViewFullLogs: () => void;
   onTabChange: (processId: string) => void;
-  isStarting: boolean;
-  isServerRunning: boolean;
+  isLoading: boolean;
   className?: string;
 }
 
 export function PreviewControls({
-  devServerProcesses,
+  processTabs,
   activeProcessId,
-  logs,
-  logsError,
+  logsContent,
   onViewFullLogs,
   onTabChange,
-  isStarting,
-  isServerRunning,
+  isLoading,
   className,
 }: PreviewControlsProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const isLoading = isStarting || isServerRunning;
 
   return (
     <div
@@ -55,9 +51,9 @@ export function PreviewControls({
           </button>
         </div>
 
-        {devServerProcesses.length > 1 && (
+        {processTabs.length > 1 && (
           <div className="flex border-b border-border mx-base">
-            {devServerProcesses.map((process) => (
+            {processTabs.map((process) => (
               <button
                 key={process.id}
                 className={cn(
@@ -68,26 +64,19 @@ export function PreviewControls({
                 )}
                 onClick={() => onTabChange(process.id)}
               >
-                {getDevServerWorkingDir(process) ??
-                  t('preview.browser.devServerFallback')}
+                {process.label}
               </button>
             ))}
           </div>
         )}
 
         <div className="flex-1 min-h-0 overflow-hidden">
-          {isLoading && devServerProcesses.length === 0 ? (
+          {isLoading && processTabs.length === 0 ? (
             <div className="h-full flex items-center justify-center text-low">
               <SpinnerIcon className="size-icon-sm animate-spin" />
             </div>
-          ) : devServerProcesses.length > 0 ? (
-            <VirtualizedProcessLogs
-              logs={logs}
-              error={logsError}
-              searchQuery=""
-              matchIndices={[]}
-              currentMatchIndex={-1}
-            />
+          ) : processTabs.length > 0 ? (
+            logsContent
           ) : null}
         </div>
       </div>

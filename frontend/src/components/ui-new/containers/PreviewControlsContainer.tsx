@@ -1,5 +1,6 @@
-import { useCallback, useState, useEffect } from 'react';
-import { PreviewControls } from '../views/PreviewControls';
+import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { PreviewControls } from '@vibe/ui/components/PreviewControls';
 import { usePreviewDevServer } from '../hooks/usePreviewDevServer';
 import { useLogStream } from '@/hooks/useLogStream';
 import {
@@ -8,6 +9,8 @@ import {
 } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { VirtualizedProcessLogs } from './VirtualizedProcessLogs';
+import { getDevServerWorkingDir } from '@/lib/devServerUtils';
 
 interface PreviewControlsContainerProps {
   attemptId: string;
@@ -18,6 +21,7 @@ export function PreviewControlsContainer({
   attemptId,
   className,
 }: PreviewControlsContainerProps) {
+  const { t } = useTranslation(['tasks', 'common']);
   const { repos } = useWorkspaceContext();
   const { viewProcessInPanel } = useLogsPanel();
   const setRightMainPanelMode = useUiPreferencesStore(
@@ -38,6 +42,17 @@ export function PreviewControlsContainer({
   const activeProcess =
     devServerProcesses.find((p) => p.id === activeProcessId) ??
     devServerProcesses[0];
+
+  const processTabs = useMemo(
+    () =>
+      devServerProcesses.map((process) => ({
+        id: process.id,
+        label:
+          getDevServerWorkingDir(process) ??
+          t('preview.browser.devServerFallback'),
+      })),
+    [devServerProcesses, t]
+  );
 
   const { logs, error: logsError } = useLogStream(activeProcess?.id ?? '');
 
@@ -65,14 +80,20 @@ export function PreviewControlsContainer({
 
   return (
     <PreviewControls
-      devServerProcesses={devServerProcesses}
+      processTabs={processTabs}
       activeProcessId={activeProcess?.id ?? null}
-      logs={logs}
-      logsError={logsError}
+      logsContent={
+        <VirtualizedProcessLogs
+          logs={logs}
+          error={logsError}
+          searchQuery=""
+          matchIndices={[]}
+          currentMatchIndex={-1}
+        />
+      }
       onViewFullLogs={handleViewFullLogs}
       onTabChange={handleTabChange}
-      isStarting={isStarting}
-      isServerRunning={runningDevServers.length > 0}
+      isLoading={isStarting || runningDevServers.length > 0}
       className={className}
     />
   );
