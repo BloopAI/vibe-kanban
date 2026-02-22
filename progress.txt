@@ -5814,3 +5814,53 @@ Validation:
 
 Plan adjustments from new information:
 - For remaining view moves, prioritize components where shared/frontend imports are type-only and can be replaced by package-local structural interfaces.
+
+## 2026-02-22 - UI package extraction: GitPanel
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/GitPanel.tsx` as the next extraction target.
+- It has a single container callsite (`GitPanelContainer`) and the main coupling (`useRepoAction`) is a UI preference concern that belongs in the container layer.
+- New information: package views should stay controlled/presentational while app state hooks remain in containers.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/GitPanel.tsx packages/ui/src/components/GitPanel.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/RepoCard` -> `./RepoCard`
+    - `@vibe/ui/components/InputField` -> `./InputField`
+    - `@vibe/ui/components/ErrorAlert` -> `./ErrorAlert`
+  - Removed frontend store dependency:
+    - removed `useRepoAction` import from `@/stores/useUiPreferencesStore`
+  - Made repo action selection controlled via props:
+    - added `repoSelectedActions?: Record<string, RepoAction>`
+    - added `onRepoActionChange?: (repoId: string, action: RepoAction) => void`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/GitPanelContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/GitPanel`
+  - Added container-owned preference wiring:
+    - `repoActions` and `setRepoAction` from `useUiPreferencesStore`
+    - passed into `GitPanel` as controlled props
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Prefer extracting view components by moving stateful store hooks into containers first; this keeps `@vibe/ui` components framework-agnostic and easier to reason about.

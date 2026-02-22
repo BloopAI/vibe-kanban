@@ -4,10 +4,11 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { usePush } from '@/hooks/usePush';
 import { useRenameBranch } from '@/hooks/useRenameBranch';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
 import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import { ForcePushDialog } from '@/components/dialogs/git/ForcePushDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { GitPanel, type RepoInfo } from '@/components/ui-new/views/GitPanel';
+import { GitPanel, type RepoInfo } from '@vibe/ui/components/GitPanel';
 import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
@@ -25,6 +26,8 @@ export function GitPanelContainer({
 }: GitPanelContainerProps) {
   const { executeAction } = useActions();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
+  const repoActions = useUiPreferencesStore((s) => s.repoActions);
+  const setRepoAction = useUiPreferencesStore((s) => s.setRepoAction);
 
   // Hooks for branch management (moved from WorkspacesLayout)
   const renameBranch = useRenameBranch(selectedWorkspace?.id);
@@ -254,9 +257,11 @@ export function GitPanelContainer({
   return (
     <GitPanel
       repos={repoInfosWithPushButton}
+      repoSelectedActions={repoActions}
       workingBranchName={selectedWorkspace?.branch ?? ''}
       onWorkingBranchNameChange={handleBranchNameChange}
       onActionsClick={handleActionsClick}
+      onRepoActionChange={setRepoAction}
       onPushClick={handlePushClick}
       onMoreClick={handleMoreClick}
       onAddRepo={() => console.log('Add repo clicked')}
