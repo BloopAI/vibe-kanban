@@ -4,7 +4,7 @@ Date: 2026-02-21
 
 ## Scope
 
-- Source audited: `frontend/src/components/**/*.tsx`
+- Source audited: `packages/web/src/components/**/*.tsx`
 - Total components: 280
 - Objective: identify what should move first into a new pnpm UI library package.
 

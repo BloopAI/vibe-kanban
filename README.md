@@ -1,9 +1,9 @@
 <p align="center">
   <a href="https://vibekanban.com">
     <picture>
-      <source srcset="frontend/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="frontend/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
+      <source srcset="packages/web/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="packages/web/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/web/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
     </picture>
   </a>
 </p>
@@ -19,7 +19,7 @@
   <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
 </h1>
 
-![](frontend/public/vibe-kanban-screenshot-overview.png)
+![](packages/web/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
@@ -83,15 +83,15 @@ pnpm i
 pnpm run dev
 ```
 
-This will start the backend and frontend. A blank DB will be copied from the `dev_assets_seed` folder.
+This will start the backend and web app. A blank DB will be copied from the `dev_assets_seed` folder.
 
-### Building the frontend
+### Building the web app
 
-To build just the frontend:
+To build just the web app:
 
 ```bash
-cd frontend
-pnpm build
+cd packages/web
+pnpm run build
 ```
 
 ### Build from source (macOS)

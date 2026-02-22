@@ -32,7 +32,7 @@ package.
 - [x] Step 4 completed
 - [x] Step 5 completed
 - [x] Step 6 completed
-- [ ] Step 7 pending
+- [x] Step 7 completed
 - [ ] Step 8 pending
 - [ ] Step 9 pending
 

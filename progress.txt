@@ -6957,3 +6957,47 @@ Validation:
 
 New information:
 - No additional structural plan changes were required after Step 6.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 7 (docs and path mentions)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 7 (docs/path mention updates)
+- [x] Ran quality checks (`check`, `lint`, `format`)
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 7:
+  - update high-signal docs for the web app location move (`frontend/` -> `packages/web/`)
+  - update active path examples that still referenced `frontend/src`
+
+Refactor completed:
+- `AGENTS.md`
+  - project structure updated to `packages/web/` and `packages/web/src/components/dialogs`
+  - frontend guide link updated to `packages/web/AGENTS.md`
+  - command references updated (`frontend:dev` -> `web:dev`)
+  - wording updated from frontend-specific to web/web+ui where appropriate
+- `README.md`
+  - logo and screenshot asset paths updated from `frontend/public/*` to `packages/web/public/*`
+  - development wording updated from "frontend" to "web app"
+  - build instructions updated to:
+    - `cd packages/web`
+    - `pnpm run build`
+- `packages/ui/README.md`
+  - stale references to `frontend/tailwind.new.config.js` and `frontend/src/styles/new/index.css` updated to `packages/web/...`
+  - Tailwind scan path example updated to current `../ui/src/**/*.{ts,tsx}`
+- `packages/web/src/hooks/useGitHubComments.ts`
+  - path-format comment examples updated from `frontend/src/...` to `packages/web/src/...`
+- `docs/frontend-ui-library-refactor-audit.md`
+  - audited source path updated from `frontend/src/components/**/*.tsx` to `packages/web/src/components/**/*.tsx`
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+
+New information:
+- Active path guidance had also drifted in `packages/ui/README.md` and an in-code comment (`useGitHubComments`), so those were corrected as part of Step 7 to keep developer guidance consistent.
