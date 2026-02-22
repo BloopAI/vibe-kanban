@@ -5340,3 +5340,56 @@ Validation:
 
 Plan adjustments from new information:
 - For remaining view extractions with app runtime/theme coupling, prefer callback-based adapters (render/data functions) over pulling app contexts or utilities into `@vibe/ui`.
+
+## 2026-02-22 - UI package extraction: FileTree
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/FileTree.tsx` as the next extraction target.
+- Its child components (`FileTreeNode`, `FileTreeSearchBar`, `Tooltip`) were already in `@vibe/ui`, leaving a narrow set of app-only couplings.
+- New information: parent view extraction is clean once leaf dependencies are already migrated and remaining app coupling is moved to a container adapter.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/FileTree.tsx packages/ui/src/components/FileTree.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/Tooltip` -> `./Tooltip`
+    - `@vibe/ui/components/FileTreeSearchBar` -> `./FileTreeSearchBar`
+    - `@vibe/ui/components/FileTreeNode` -> `./FileTreeNode`
+  - Removed frontend-only dependencies from package component:
+    - removed `@/components/ThemeProvider`
+    - removed `@/utils/theme`
+    - removed `@/utils/fileTypeIcon`
+    - removed `../types/fileTree` type import
+  - Added package-local structural type:
+    - `FileTreeViewNode`
+  - Added adapter prop for app-specific icon resolution:
+    - `renderFileIcon?: (fileName: string) => ReactNode`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/FileTreeContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/FileTree`
+  - Added app-side icon adapter wiring in container:
+    - uses `useTheme`, `getActualTheme`, and `getFileIcon` to provide `renderFileIcon`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue extracting parent views after their leaf dependencies are in `@vibe/ui`, and shift app-only concerns (theme, utility resolution) to container adapters.

@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { FileTree } from '../views/FileTree';
+import { FileTree } from '@vibe/ui/components/FileTree';
 import {
   buildFileTree,
   filterFileTree,
@@ -10,6 +10,9 @@ import {
 import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useChangesView } from '@/contexts/ChangesViewContext';
+import { getFileIcon } from '@/utils/fileTypeIcon';
+import { useTheme } from '@/components/ThemeProvider';
+import { getActualTheme } from '@/utils/theme';
 import type { Diff } from 'shared/types';
 
 interface FileTreeContainerProps {
@@ -25,6 +28,9 @@ export function FileTreeContainer({
   onSelectFile,
   className,
 }: FileTreeContainerProps) {
+  const { theme } = useTheme();
+  const actualTheme = getActualTheme(theme);
+
   const { fileInView } = useChangesView();
   const [searchQuery, setSearchQuery] = useState('');
   const [collapsedPaths, setCollapsedPaths] =
@@ -173,6 +179,14 @@ export function FileTreeContainer({
     [filesWithComments, selectedPath, getFirstCommentLineForFile, selectFile]
   );
 
+  const renderFileIcon = useCallback(
+    (fileName: string) => {
+      const FileIcon = getFileIcon(fileName, actualTheme);
+      return FileIcon ? <FileIcon size={14} /> : null;
+    },
+    [actualTheme]
+  );
+
   return (
     <FileTree
       nodes={filteredTree}
@@ -183,6 +197,7 @@ export function FileTreeContainer({
       onNodeRef={handleNodeRef}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
+      renderFileIcon={renderFileIcon}
       isAllExpanded={isAllExpanded}
       onToggleExpandAll={handleToggleExpandAll}
       className={className}

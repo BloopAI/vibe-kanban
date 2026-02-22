@@ -1,25 +1,27 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   GithubLogoIcon,
   CaretUpIcon,
   CaretDownIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { getFileIcon } from '@/utils/fileTypeIcon';
-import { useTheme } from '@/components/ThemeProvider';
-import { getActualTheme } from '@/utils/theme';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
-import { FileTreeSearchBar } from '@vibe/ui/components/FileTreeSearchBar';
-import { FileTreeNode } from '@vibe/ui/components/FileTreeNode';
-import type { TreeNode } from '../types/fileTree';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
+import { FileTreeSearchBar } from './FileTreeSearchBar';
+import { FileTreeNode, type FileTreeNodeItem } from './FileTreeNode';
+
+export interface FileTreeViewNode extends FileTreeNodeItem {
+  children?: FileTreeViewNode[];
+}
 
 interface FileTreeProps {
-  nodes: TreeNode[];
+  nodes: FileTreeViewNode[];
   collapsedPaths: Set<string>;
   onToggleExpand: (path: string) => void;
   selectedPath?: string | null;
   onSelectFile?: (path: string) => void;
   onNodeRef?: (path: string, el: HTMLDivElement | null) => void;
+  renderFileIcon?: (fileName: string) => ReactNode;
   searchQuery: string;
   onSearchChange: (value: string) => void;
   isAllExpanded: boolean;
@@ -57,17 +59,10 @@ export function FileTree({
   isGitHubCommentsLoading,
   onNavigateComments,
   hasFilesWithComments,
+  renderFileIcon,
 }: FileTreeProps) {
   const { t } = useTranslation(['tasks', 'common']);
-  const { theme } = useTheme();
-  const actualTheme = getActualTheme(theme);
-
-  const renderFileIcon = (fileName: string) => {
-    const FileIcon = getFileIcon(fileName, actualTheme);
-    return FileIcon ? <FileIcon size={14} /> : null;
-  };
-
-  const renderNodes = (nodeList: TreeNode[], depth = 0) => {
+  const renderNodes = (nodeList: FileTreeViewNode[], depth = 0) => {
     return nodeList.map((node) => (
       <div key={node.id}>
         <FileTreeNode
