@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { XIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 export interface GuideDialogTopic {
   id: string;

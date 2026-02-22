@@ -6413,3 +6413,45 @@ Validation:
 Plan adjustments from new information:
 - For modal components being extracted, package-local modal helper utilities (`defineModal`, common result types) prevent recurring frontend-lib coupling.
 - Keep consumer migration simple by preserving existing `Dialog.show(...)` usage and limiting callsite changes to import-path swaps.
+
+## 2026-02-22 - UI package extraction: GuideDialogShell
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/GuideDialogShell.tsx` as the next extraction target.
+- It is a low-coupling presentational shell with two direct callsites (`ProjectsGuideDialog`, `WorkspacesGuideDialog`).
+- Main coupling was a single frontend utility import (`@/lib/utils`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/GuideDialogShell.tsx packages/ui/src/components/GuideDialogShell.tsx`
+- Package updates:
+  - Replaced frontend utility alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Kept public types exported from the component file:
+    - `GuideDialogTopic`
+- Frontend callsite updates:
+  - Updated imports in:
+    - `frontend/src/components/ui-new/dialogs/ProjectsGuideDialog.tsx`
+    - `frontend/src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx`
+  - New import path:
+    - `@vibe/ui/components/GuideDialogShell`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For feature dialogs that mix reusable structure with app-specific modal orchestration, move only the reusable shell to `@vibe/ui` and keep portal/modal state wrappers in frontend.
+- Favor package-local utility imports (`../lib/*`) when extracted shells only need styling helpers.

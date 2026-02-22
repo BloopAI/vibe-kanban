@@ -7,7 +7,7 @@ import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import {
   GuideDialogShell,
   type GuideDialogTopic,
-} from '@/components/ui-new/dialogs/GuideDialogShell';
+} from '@vibe/ui/components/GuideDialogShell';
 
 const TOPIC_IDS = [
   'welcome',

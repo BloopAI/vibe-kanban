@@ -6,7 +6,7 @@ import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
 import { ApiError, attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
-import { ErrorDialog } from '@/components/ui-new/dialogs/ErrorDialog';
+import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
 import {
   buildLinkedIssueCreateState,

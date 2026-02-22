@@ -7,9 +7,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@vibe/ui/components/Dialog';
-import { Button } from '@vibe/ui/components/Button';
-import { defineModal } from '@/lib/modals';
+} from './Dialog';
+import { Button } from './Button';
+import { defineModal } from '../lib/modals';
 
 export interface ErrorDialogProps {
   title: string;
