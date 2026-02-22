@@ -33,7 +33,7 @@ package.
 - [x] Step 5 completed
 - [x] Step 6 completed
 - [x] Step 7 completed
-- [ ] Step 8 pending
+- [x] Step 8 completed
 - [ ] Step 9 pending
 
 ## 1. Move the web app package
@@ -138,6 +138,8 @@ package.
 3. Allow remaining intentional references:
    - `remote-frontend/`
    - historical text in docs/changelogs if intentionally preserved
+   - migration history logs (`packages-web-cutover-plan.md`, `progress.txt`)
+   - fixture/mock sample content (e.g., `packages/web/src/mock/normalized_entries.json`)
 
 ## 9. Verification Checklist
 

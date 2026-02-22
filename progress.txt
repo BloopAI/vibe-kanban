@@ -7001,3 +7001,39 @@ Validation:
 
 New information:
 - Active path guidance had also drifted in `packages/ui/README.md` and an in-code comment (`useGitHubComments`), so those were corrected as part of Step 7 to keep developer guidance consistent.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 8 (remove old frontend package)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 8 (remove old `frontend/` package artifacts/references)
+- [x] Ran quality checks (`check`, `lint`, `format`)
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 8:
+  - remove old `frontend/` package
+  - ensure no active build/runtime `frontend/` references remain
+
+Refactor completed:
+- Removed stale `frontend` ignore rules and switched them to web package equivalents:
+  - `.gitignore`
+    - `frontend/dist` -> `packages/web/dist`
+    - `/frontend/.env.sentry-build-plugin` -> `/packages/web/.env.sentry-build-plugin`
+- Removed local `frontend/` directory contents during verification pass; confirmed no tracked files remain under `frontend`:
+  - `git ls-files frontend` -> `0` tracked files
+- Executed repo-wide `frontend/` audit (`rg -n "frontend/" .`) and verified remaining matches are intentional:
+  - `remote-frontend/` paths
+  - migration/history logs (`packages-web-cutover-plan.md`, `progress.txt`)
+  - fixture/mock sample content (`packages/web/src/mock/normalized_entries.json`)
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+
+New information:
+- The old `frontend/` package had already been fully removed from tracked files prior to this step; this pass finalized cleanup by updating remaining ignore paths and documenting intentional historical references.
