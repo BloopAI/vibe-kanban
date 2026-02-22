@@ -1,5 +1,6 @@
 'use client';
 
+import type { MouseEvent, ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,24 +8,54 @@ import {
   DotsThreeIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import type { IssuePriority, PullRequest, Tag } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { ResolvedRelationship } from '@/lib/resolveRelationships';
-import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
-import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
-import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
-import { RunningDots } from '@vibe/ui/components/RunningDots';
-import { PrBadge } from '@vibe/ui/components/PrBadge';
-import { RelationshipBadge } from '@vibe/ui/components/RelationshipBadge';
-import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+import { cn } from '../lib/cn';
+import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
+import { KanbanBadge } from './KanbanBadge';
+import {
+  KanbanAssignee,
+  type KanbanAssigneeUser,
+} from './KanbanAssignee';
+import { RunningDots } from './RunningDots';
+import { PrBadge, type PrBadgeStatus } from './PrBadge';
+import {
+  RelationshipBadge,
+  type RelationshipDisplayType,
+} from './RelationshipBadge';
 
-export type TagEditProps = {
-  allTags: Tag[];
+export interface KanbanTag {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface KanbanRelationship {
+  relationshipId: string;
+  displayType: RelationshipDisplayType;
+  relatedIssueDisplayId: string;
+}
+
+export interface KanbanPullRequest {
+  id: string;
+  number: number;
+  url: string;
+  status: PrBadgeStatus;
+}
+
+export interface TagEditRenderProps<TTag extends KanbanTag = KanbanTag> {
+  allTags: TTag[];
   selectedTagIds: string[];
   onTagToggle: (tagId: string) => void;
   onCreateTag: (data: { name: string; color: string }) => string;
-};
+  trigger: ReactNode;
+}
+
+export interface TagEditProps<TTag extends KanbanTag = KanbanTag> {
+  allTags: TTag[];
+  selectedTagIds: string[];
+  onTagToggle: (tagId: string) => void;
+  onCreateTag: (data: { name: string; color: string }) => string;
+  renderTagEditor?: (props: TagEditRenderProps<TTag>) => ReactNode;
+}
 
 const IMAGE_FILE_EXTENSION_REGEX =
   /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i;
@@ -84,25 +115,25 @@ function formatKanbanDescriptionPreview(
     .trim();
 }
 
-export type KanbanCardContentProps = {
+export type KanbanCardContentProps<TTag extends KanbanTag = KanbanTag> = {
   displayId: string;
   title: string;
   description?: string | null;
-  priority: IssuePriority | null;
-  tags: { id: string; name: string; color: string }[];
-  assignees: OrganizationMemberWithProfile[];
-  pullRequests?: PullRequest[];
-  relationships?: ResolvedRelationship[];
+  priority: PriorityLevel | null;
+  tags: KanbanTag[];
+  assignees: KanbanAssigneeUser[];
+  pullRequests?: KanbanPullRequest[];
+  relationships?: KanbanRelationship[];
   isSubIssue?: boolean;
   isLoading?: boolean;
   className?: string;
-  onPriorityClick?: (e: React.MouseEvent) => void;
-  onAssigneeClick?: (e: React.MouseEvent) => void;
+  onPriorityClick?: (e: MouseEvent) => void;
+  onAssigneeClick?: (e: MouseEvent) => void;
   onMoreActionsClick?: () => void;
-  tagEditProps?: TagEditProps;
+  tagEditProps?: TagEditProps<TTag>;
 };
 
-export const KanbanCardContent = ({
+export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
   displayId,
   title,
   description,
@@ -118,7 +149,7 @@ export const KanbanCardContent = ({
   onAssigneeClick,
   onMoreActionsClick,
   tagEditProps,
-}: KanbanCardContentProps) => {
+}: KanbanCardContentProps<TTag>) {
   const { t } = useTranslation('common');
   const previewDescription = useMemo(() => {
     if (!description) {
@@ -149,6 +180,15 @@ export const KanbanCardContent = ({
         <PlusIcon className="size-icon-xs text-low" weight="bold" />
       )}
     </>
+  );
+  const tagEditorTrigger = (
+    <button
+      type="button"
+      onClick={(e) => e.stopPropagation()}
+      className="flex items-center gap-half cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+    >
+      {tagsDisplay}
+    </button>
   );
 
   return (
@@ -217,23 +257,13 @@ export const KanbanCardContent = ({
             <PriorityIcon priority={priority} />
           )}
           {tagEditProps ? (
-            <SearchableTagDropdownContainer
-              tags={tagEditProps.allTags}
-              selectedTagIds={tagEditProps.selectedTagIds}
-              onTagToggle={tagEditProps.onTagToggle}
-              onCreateTag={tagEditProps.onCreateTag}
-              disabled={false}
-              contentClassName=""
-              trigger={
-                <button
-                  type="button"
-                  onClick={(e) => e.stopPropagation()}
-                  className="flex items-center gap-half cursor-pointer hover:bg-secondary rounded-sm transition-colors"
-                >
-                  {tagsDisplay}
-                </button>
-              }
-            />
+            (tagEditProps.renderTagEditor?.({
+              allTags: tagEditProps.allTags,
+              selectedTagIds: tagEditProps.selectedTagIds,
+              onTagToggle: tagEditProps.onTagToggle,
+              onCreateTag: tagEditProps.onCreateTag,
+              trigger: tagEditorTrigger,
+            }) ?? tagEditorTrigger)
           ) : (
             <>
               {tags.slice(0, 2).map((tag) => (
@@ -283,4 +313,4 @@ export const KanbanCardContent = ({
       </div>
     </div>
   );
-};
+}

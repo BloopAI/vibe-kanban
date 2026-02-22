@@ -27,7 +27,7 @@ import {
   KanbanHeader,
   type DropResult,
 } from '@vibe/ui/components/KanbanBoard';
-import { KanbanCardContent } from '@/components/ui-new/views/KanbanCardContent';
+import { KanbanCardContent } from '@vibe/ui/components/KanbanCardContent';
 import {
   IssueWorkspaceCard,
   type WorkspaceWithStats,
@@ -45,6 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
+import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
 import type { IssuePriority } from 'shared/remote-types';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
@@ -934,6 +935,23 @@ export function KanbanContainer() {
                                 onTagToggle: (tagId) =>
                                   handleCardTagToggle(issue.id, tagId),
                                 onCreateTag: handleCreateTag,
+                                renderTagEditor: ({
+                                  allTags,
+                                  selectedTagIds,
+                                  onTagToggle,
+                                  onCreateTag,
+                                  trigger,
+                                }) => (
+                                  <SearchableTagDropdownContainer
+                                    tags={allTags}
+                                    selectedTagIds={selectedTagIds}
+                                    onTagToggle={onTagToggle}
+                                    onCreateTag={onCreateTag}
+                                    disabled={false}
+                                    contentClassName=""
+                                    trigger={trigger}
+                                  />
+                                ),
                               }}
                             />
                             {issueWorkspaces.length > 0 && (
