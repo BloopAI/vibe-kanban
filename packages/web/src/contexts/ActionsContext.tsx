@@ -20,7 +20,7 @@ import {
   ActionTargetType,
   resolveLabel,
 } from '@/components/ui-new/actions';
-import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
+import { getActionLabel } from '@/features/command-bar/ui/actions/useActionVisibility';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { UserContext } from '@/contexts/remote/UserContext';
 import { useDevServer } from '@/hooks/useDevServer';

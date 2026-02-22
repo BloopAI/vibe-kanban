@@ -23,7 +23,7 @@ import {
   isActionActive,
   isActionEnabled,
   isActionVisible,
-} from '../actions/useActionVisibility';
+} from '@/features/command-bar/ui/actions/useActionVisibility';
 
 /**
  * Check if a NavbarItem is a divider

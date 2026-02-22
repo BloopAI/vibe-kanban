@@ -25,7 +25,7 @@ import {
   isActionEnabled,
   getActionIcon,
   getActionTooltip,
-} from '../actions/useActionVisibility';
+} from '@/features/command-bar/ui/actions/useActionVisibility';
 import { CopyButton } from './CopyButton';
 
 /**

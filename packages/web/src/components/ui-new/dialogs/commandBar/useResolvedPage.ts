@@ -19,7 +19,7 @@ import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
   isActionVisible,
   isPageVisible,
-} from '@/components/ui-new/actions/useActionVisibility';
+} from '@/features/command-bar/ui/actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 
 export interface ResolvedCommandBarPage {

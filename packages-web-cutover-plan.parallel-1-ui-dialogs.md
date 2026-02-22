@@ -37,15 +37,23 @@ compatibility shims.
   - [x] Extracted command-bar page metadata and static page definitions from
         `src/components/ui-new/actions/pages.ts` into
         `src/features/command-bar/ui/actions/pages.ts`.
+  - [x] Extracted action visibility context/helpers from
+        `src/components/ui-new/actions/useActionVisibility.ts` into
+        `src/features/command-bar/ui/actions/useActionVisibility.ts`.
 - [ ] `T1.2` Move action definitions into feature-owned modules and shared
       primitives where appropriate.
   - [x] Moved the `pages.ts` action model/types module into
         `src/features/command-bar/ui/actions/pages.ts`.
+  - [x] Moved the `useActionVisibility.ts` action visibility helper module into
+        `src/features/command-bar/ui/actions/useActionVisibility.ts`.
 - [ ] `T1.3` Keep `src/components/ui-new/actions/index.ts` as compatibility
       re-export facade.
   - [x] Added compatibility facade at
         `src/components/ui-new/actions/pages.ts` that re-exports from the
         canonical feature-owned path.
+  - [x] Added compatibility facade at
+        `src/components/ui-new/actions/useActionVisibility.ts` that re-exports
+        from the canonical feature-owned path.
 - [ ] `T1.4` Consolidate dialog placement:
       feature dialogs -> `src/features/*/ui/dialogs/*`,
       reusable dialogs -> `src/shared/ui/dialogs/*`.
@@ -290,6 +298,18 @@ compatibility shims.
         `src/components/ui-new/dialogs/selections/repoSelection.ts`,
         `src/components/ui-new/dialogs/selections/statusSelection.ts`,
         `src/components/ui/wysiwyg.tsx`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/actions/useActionVisibility` in:
+        `src/components/ui-new/containers/NavbarContainer.tsx`,
+        `src/components/ui-new/containers/ContextBarContainer.tsx`,
+        `src/components/ui-new/dialogs/CommandBarDialog.tsx`,
+        `src/components/ui-new/dialogs/commandBar/injectSearchMatches.ts`,
+        `src/components/ui-new/dialogs/commandBar/useResolvedPage.ts`,
+        `src/contexts/ActionsContext.tsx`.
+  - [x] Kept `useActionVisibility` feature-layer callsite on the legacy shim
+        path (`src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`)
+        because `src/features/workspace-chat/**` cannot import directly from
+        `@/features/command-bar/**` under current lint boundaries.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -397,6 +417,14 @@ compatibility shims.
   `src/features/command-bar/ui/actions/*` with a legacy facade at the old path
   and broad callsite canonicalization, enabling staged decomposition of the
   `ui-new/actions/index.ts` hotspot without behavior changes.
+- New information (2026-02-22): `ui-new/actions/useActionVisibility.ts` can be
+  moved into `src/features/command-bar/ui/actions/*` with a legacy facade at
+  the old path and selective canonical callsite updates.
+- New information (2026-02-22): non-owned feature-layer consumers in
+  `src/features/workspace-chat/**` cannot import command-bar action modules
+  (`@/features/command-bar/ui/actions/*`) directly under current lint
+  boundaries; keep these callsites on legacy shim paths until final
+  consolidation.
 
 ## Validation
 
