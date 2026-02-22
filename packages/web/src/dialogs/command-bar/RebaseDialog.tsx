@@ -19,7 +19,7 @@ import { GitOperationsProvider } from '@/contexts/GitOperationsContext';
 import { useGitOperations } from '@/hooks/useGitOperations';
 import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
 import { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
-import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useWorkspaces } from '@/features/workspace/model/hooks/useWorkspaces';

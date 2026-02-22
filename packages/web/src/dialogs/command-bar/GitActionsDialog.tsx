@@ -10,7 +10,7 @@ import { Loader } from '@vibe/ui/components/Loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
 import { useTaskAttemptWithSession } from '@/features/workspace/model/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
-import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import {
   GitOperationsProvider,

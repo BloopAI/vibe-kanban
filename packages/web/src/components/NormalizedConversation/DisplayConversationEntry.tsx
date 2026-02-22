@@ -39,7 +39,7 @@ import {
   ScriptFixerDialog,
   type ScriptType,
 } from '@/dialogs/scripts/ScriptFixerDialog';
-import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;

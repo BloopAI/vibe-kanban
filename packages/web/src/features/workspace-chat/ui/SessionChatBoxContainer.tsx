@@ -10,7 +10,7 @@ import {
 } from 'shared/types';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useAttemptExecution } from '../model/hooks/useAttemptExecution';
-import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackContext';

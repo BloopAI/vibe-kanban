@@ -8,7 +8,7 @@ import {
   type SidebarWorkspace,
 } from '@/features/workspace/model/hooks/useWorkspaces';
 import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
-import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/features/workspace/model/hooks/useWorkspaceSessions';
 import {
   useGitHubComments,
