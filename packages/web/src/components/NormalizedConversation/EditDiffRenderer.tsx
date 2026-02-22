@@ -9,8 +9,8 @@ import { SquarePen } from 'lucide-react';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { getHighLightLanguageFromPath } from '@/utils/extToLanguage';
 import { getActualTheme } from '@/utils/theme';
-import '@/styles/diff-style-overrides.css';
-import '@/styles/edit-diff-overrides.css';
+import '@/app/styles/diff-style-overrides.css';
+import '@/app/styles/edit-diff-overrides.css';
 import { cn } from '@/lib/utils';
 
 type Props = {

@@ -16,7 +16,7 @@ import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
 import { useKeyShowHelp, Scope } from '@/keyboard';
 import { KeyboardShortcutsDialog } from '@/components/ui-new/dialogs/KeyboardShortcutsDialog';
-import '@/styles/new/index.css';
+import '@/app/styles/new/index.css';
 
 interface NewDesignScopeProps {
   children: ReactNode;

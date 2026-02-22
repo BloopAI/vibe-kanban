@@ -8,7 +8,7 @@ import { ActionsProvider } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
-import '@/styles/new/index.css';
+import '@/app/styles/new/index.css';
 
 interface VSCodeScopeProps {
   children: ReactNode;

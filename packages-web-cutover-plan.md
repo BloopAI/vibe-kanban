@@ -133,7 +133,7 @@ packages/web/src/
 ## Status
 
 - [x] Phase A: foundations and guardrails
-- [ ] Phase B: app shell + page relocation (in progress)
+- [x] Phase B: app shell + page relocation
 - [ ] Phase C: vertical feature migrations
 - [ ] Phase D: dialog/modal consolidation
 - [ ] Phase E: hooks/contexts/stores normalization
@@ -180,7 +180,13 @@ packages/web/src/
   - kept temporary compatibility shims at `src/pages/ui-new/*`
 - [x] Keep `src/routes/*` in place (TanStack file-route convention), update
   imports to new page paths.
-- [ ] Move global style entrypoints into `src/app/styles`.
+- [x] Move global style entrypoints into `src/app/styles`.
+  - moved style files to canonical app paths:
+    - `src/app/styles/new/index.css`
+    - `src/app/styles/diff-style-overrides.css`
+    - `src/app/styles/edit-diff-overrides.css`
+  - updated imports to `@/app/styles/*`
+  - kept temporary compatibility shim files under `src/styles/*`
 
 ## Phase C. Vertical Feature Migrations
 

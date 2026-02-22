@@ -131,3 +131,28 @@
 
 - Complete remaining Phase B item:
   1. Move global style entrypoints/imports from `src/styles/*` usage into `src/app/styles/*` with compatibility shims as needed.
+
+## 2026-02-22 10:37:25 UTC
+
+- Reviewed `packages-web-cutover-plan.md` and `progress.txt` and selected the remaining Phase B task.
+- Implemented Phase B global style relocation:
+  - Moved style entrypoint files from `src/styles/*` to canonical app paths under `src/app/styles/*`:
+    - `src/app/styles/new/index.css`
+    - `src/app/styles/diff-style-overrides.css`
+    - `src/app/styles/edit-diff-overrides.css`
+  - Updated TypeScript imports to canonical `@/app/styles/*` paths in provider and normalized-conversation components.
+  - Added compatibility shim CSS files at legacy paths under `src/styles/*` that `@import` the new app-style locations.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Marked final Phase B task complete (global style entrypoints to `src/app/styles`).
+  - Marked Phase B complete in the Status section.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Start Phase C vertical migrations with the onboarding/migration slice:
+  1. Move migrate/onboarding flow containers from `src/components/ui-new/containers/*` into a feature-owned folder (e.g. `src/features/migration/ui/*` and `src/features/onboarding/ui/*`) with compatibility shims.
+  2. Update page imports to use the new feature paths.

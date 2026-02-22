@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { DiffView, DiffModeEnum } from '@git-diff-view/react';
 import { generateDiffFile } from '@git-diff-view/file';
-import '@/styles/diff-style-overrides.css';
-import '@/styles/edit-diff-overrides.css';
+import '@/app/styles/diff-style-overrides.css';
+import '@/app/styles/edit-diff-overrides.css';
 
 type Props = {
   content: string;
