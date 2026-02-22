@@ -6808,3 +6808,48 @@ Plan adjustments from new information:
 - Formatting note:
   - Root `pnpm run format` currently fails because root script still calls `cd frontend` (expected until Step 2 root-script rewiring).
   - Ran `cd packages/web && pnpm run format` ✅ for the migrated web package.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 2 (workspace + root scripts)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 2 (workspace + root script rewiring)
+- [x] Ran quality checks (typecheck/lint) on web and root script paths
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 2 from the cutover plan:
+  - move workspace registration from `frontend` to `packages/*` only
+  - replace root `frontend:*` script family with `web:*`
+  - rewire root composite scripts (`dev`, `dev:qa`, `check`, `lint`, `format`)
+
+Refactor completed:
+- `pnpm-workspace.yaml`
+  - removed explicit `frontend` workspace entry.
+- `package.json` scripts
+  - Added/updated:
+    - `web:dev`: `cd packages/web && pnpm run dev -- --port ${FRONTEND_PORT:-3000}`
+    - `web:check`: `pnpm --filter @vibe/web run check`
+    - `web:lint`: `pnpm --filter @vibe/web run lint`
+    - `web:format`: `pnpm --filter @vibe/web run format`
+  - Rewired composites:
+    - `check`: `web:check` + `ui:check` + `backend:check`
+    - `lint`: `web:lint` + `ui:lint` + `backend:lint`
+    - `format`: `cargo fmt --all && pnpm run web:format`
+    - `dev` and `dev:qa`: now run `web:dev` instead of `frontend:dev`
+  - Kept `FRONTEND_PORT` env usage unchanged per plan.
+
+Validation:
+- `pnpm install` ✅
+- `pnpm run web:check` ✅
+- `pnpm run web:lint` ✅
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+
+New information:
+- Running root `check` and `lint` concurrently can produce transient Cargo cache/object-file failures due overlapping Rust builds.
+- Sequential execution succeeds and reflects actual code health.

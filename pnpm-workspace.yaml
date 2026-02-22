@@ -1,5 +1,4 @@
 packages:
-  - frontend
   - remote-frontend
   - packages/*
 

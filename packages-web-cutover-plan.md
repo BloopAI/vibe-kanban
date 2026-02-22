@@ -27,7 +27,7 @@ package.
 ## Status
 
 - [x] Step 1 completed
-- [ ] Step 2 pending
+- [x] Step 2 completed
 - [x] Step 3 completed (executed before Step 2 to restore local type-check)
 - [ ] Step 4 pending
 - [ ] Step 5 pending
