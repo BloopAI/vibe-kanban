@@ -22,7 +22,7 @@ import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from '@/components/dialogs';
-import { OAuthDialog } from '@/components/dialogs/global/OAuthDialog';
+import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { useShape } from '@/lib/electric/hooks';

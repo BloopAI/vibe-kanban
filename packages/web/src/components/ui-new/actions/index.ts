@@ -619,7 +619,7 @@ export const Actions = {
     isVisible: (ctx) => !ctx.isSignedIn,
     execute: async () => {
       const { OAuthDialog } = await import(
-        '@/components/dialogs/global/OAuthDialog'
+        '@/features/settings/ui/dialogs/OAuthDialog'
       );
       await OAuthDialog.show({});
     },

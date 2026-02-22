@@ -49,6 +49,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/GhCliSetupDialog.tsx`.
   - [x] Moved feature dialog `ReleaseNotesDialog` to
         `src/features/settings/ui/dialogs/ReleaseNotesDialog.tsx`.
+  - [x] Moved feature dialog `OAuthDialog` to
+        `src/features/settings/ui/dialogs/OAuthDialog.tsx`.
   - [x] Moved feature dialog `CreateWorkspaceFromPrDialog` to
         `src/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
@@ -79,6 +81,8 @@ compatibility shims.
         `src/components/dialogs/auth/GhCliSetupDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/global/ReleaseNotesDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/global/OAuthDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
   - [x] Added compatibility shim at
@@ -114,6 +118,13 @@ compatibility shims.
         `@/features/settings/ui/dialogs/ReleaseNotesDialog` in:
         `src/routes/__root.tsx`,
         `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/OAuthDialog` in:
+        `src/components/dialogs/index.ts`,
+        `src/components/ui-new/actions/index.ts`,
+        `src/components/ui-new/containers/SharedAppLayout.tsx`,
+        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical callsite to
         `@/shared/ui/dialogs/LoginRequiredPrompt` in
         `src/features/kanban/ui/ProjectKanban.tsx`.
@@ -201,6 +212,11 @@ compatibility shims.
   different contracts (`attemptId/repoId` workspace flow vs branch-picking
   result flow), so Track 1 now canonicalizes only the workspace-scoped dialog
   in command-bar feature ownership and keeps the task-toolbar variant stable.
+- New information (2026-02-22): some `OAuthDialog` callsites remain on the
+  legacy global path by design (notably in `src/features/**`,
+  `src/shared/ui/**`, and `src/lib/**`) because those layers cannot import
+  `@/features/**` directly under current lint boundaries; keep shim coverage
+  until final consolidation.
 
 ## Validation
 
