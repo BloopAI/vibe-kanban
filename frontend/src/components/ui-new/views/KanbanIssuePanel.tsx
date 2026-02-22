@@ -8,6 +8,7 @@ import {
   TrashIcon,
   PaperclipIcon,
   ImageIcon,
+  PlusIcon,
 } from '@phosphor-icons/react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import type {
@@ -17,11 +18,12 @@ import type {
   PullRequestStatus,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
+import { IssueTagsRow } from '@vibe/ui/components/IssueTagsRow';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Toggle } from '@vibe/ui/components/Toggle';
 import { IssuePropertyRow } from '@vibe/ui/components/IssuePropertyRow';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
+import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import { AutoResizeTextarea } from '@vibe/ui/components/AutoResizeTextarea';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
@@ -254,6 +256,31 @@ export function KanbanIssuePanel({
             linkedPrs={isCreateMode ? [] : linkedPrs}
             onTagsChange={(tagIds) => onFormChange('tagIds', tagIds)}
             onCreateTag={onCreateTag}
+            renderAddTagControl={({
+              tags,
+              selectedTagIds,
+              onTagToggle,
+              onCreateTag,
+              disabled,
+            }) => (
+              <SearchableTagDropdownContainer
+                tags={tags}
+                selectedTagIds={selectedTagIds}
+                onTagToggle={onTagToggle}
+                onCreateTag={onCreateTag}
+                disabled={disabled}
+                contentClassName=""
+                trigger={
+                  <button
+                    type="button"
+                    className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
+                    disabled={disabled}
+                  >
+                    <PlusIcon className="size-icon-xs" weight="bold" />
+                  </button>
+                }
+              />
+            )}
             disabled={isSubmitting}
           />
         </div>

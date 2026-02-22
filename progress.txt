@@ -5908,3 +5908,52 @@ Validation:
 
 Plan adjustments from new information:
 - Continue prioritizing extracted view modules that only compose package primitives and utility helpers; defer views that directly depend on app dialogs, containers, or editor integrations.
+
+## 2026-02-22 - UI package extraction: IssueTagsRow
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueTagsRow.tsx` as the next extraction target.
+- It had a single callsite (`KanbanIssuePanel`) and mostly presentational logic.
+- The only hard coupling was frontend-only `SearchableTagDropdownContainer`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueTagsRow.tsx packages/ui/src/components/IssueTagsRow.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-import:
+    - `@vibe/ui/components/PrBadge` -> `./PrBadge`
+  - Replaced frontend color re-exports with package-local sources:
+    - `PRESET_COLORS` from `./ColorPicker`
+    - `TAG_COLORS` from `./SearchableTagDropdown`
+  - Removed frontend container dependency by introducing an injectable add-tag render prop:
+    - `renderAddTagControl`
+  - Generalized tag typing to preserve app tag shape at callsites:
+    - `IssueTagsRow<TTag extends IssueTagBase>`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/views/KanbanIssuePanel.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueTagsRow`
+  - Moved add-tag dropdown wiring into callsite via `SearchableTagDropdownContainer`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For package components that still need frontend containers, prefer render-prop injection from app callsites.
+- When those props carry app-specific richer types, keep package types generic so app callsites retain exact shape without casts.

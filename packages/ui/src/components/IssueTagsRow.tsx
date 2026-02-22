@@ -1,18 +1,24 @@
-import { cn } from '@/lib/utils';
+import type { ReactNode } from 'react';
 import { PlusIcon, HashIcon } from '@phosphor-icons/react';
-import type { Tag, PullRequestStatus } from 'shared/remote-types';
-import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
-import { PrBadge } from '@vibe/ui/components/PrBadge';
+import { cn } from '../lib/cn';
+import { PRESET_COLORS } from './ColorPicker';
+import { PrBadge, type PrBadgeStatus } from './PrBadge';
+import { TAG_COLORS } from './SearchableTagDropdown';
 
-// Re-export PRESET_COLORS (and TAG_COLORS for backwards compatibility)
-export { PRESET_COLORS } from '@/lib/colors';
-export { TAG_COLORS } from '@vibe/ui/components/SearchableTagDropdown';
+// Re-export for backwards compatibility.
+export { PRESET_COLORS, TAG_COLORS };
+
+export interface IssueTagBase {
+  id: string;
+  name: string;
+  color: string;
+}
 
 export interface LinkedPullRequest {
   id: string;
   number: number;
   url: string;
-  status: PullRequestStatus;
+  status: PrBadgeStatus;
 }
 
 export interface LinkedIssue {
@@ -21,27 +27,42 @@ export interface LinkedIssue {
   title: string;
 }
 
-export interface IssueTagsRowProps {
+export interface IssueTagsRowProps<TTag extends IssueTagBase = IssueTagBase> {
   selectedTagIds: string[];
-  availableTags: Tag[];
+  availableTags: TTag[];
   linkedPrs?: LinkedPullRequest[];
   linkedIssues?: LinkedIssue[];
   onTagsChange: (tagIds: string[]) => void;
   onCreateTag?: (data: { name: string; color: string }) => string;
+  renderAddTagControl?: (
+    props: IssueTagsRowAddTagControlProps<TTag>
+  ) => ReactNode;
   disabled?: boolean;
   className?: string;
 }
 
-export function IssueTagsRow({
+export interface IssueTagsRowAddTagControlProps<
+  TTag extends IssueTagBase = IssueTagBase,
+> {
+  tags: TTag[];
+  selectedTagIds: string[];
+  onTagToggle: (tagId: string) => void;
+  onCreateTag: (data: { name: string; color: string }) => string;
+  disabled: boolean;
+  trigger: ReactNode;
+}
+
+export function IssueTagsRow<TTag extends IssueTagBase>({
   selectedTagIds,
   availableTags,
   linkedPrs = [],
   linkedIssues = [],
   onTagsChange,
   onCreateTag,
+  renderAddTagControl,
   disabled,
   className,
-}: IssueTagsRowProps) {
+}: IssueTagsRowProps<TTag>) {
   const selectedTags = availableTags.filter((tag) =>
     selectedTagIds.includes(tag.id)
   );
@@ -57,6 +78,17 @@ export function IssueTagsRow({
   const handleCreateTag = (data: { name: string; color: string }): string => {
     return onCreateTag?.(data) ?? '';
   };
+
+  const addTagTrigger = (
+    <button
+      type="button"
+      className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
+      disabled={disabled}
+      aria-label="Add tag"
+    >
+      <PlusIcon className="size-icon-xs" weight="bold" />
+    </button>
+  );
 
   return (
     <div className={cn('flex items-center gap-half flex-wrap', className)}>
@@ -112,22 +144,14 @@ export function IssueTagsRow({
 
       {/* Add Tag Dropdown */}
       {onCreateTag && (
-        <SearchableTagDropdownContainer
-          tags={availableTags}
-          selectedTagIds={selectedTagIds}
-          onTagToggle={handleTagToggle}
-          onCreateTag={handleCreateTag}
-          disabled={disabled ?? false}
-          contentClassName=""
-          trigger={
-            <button
-              type="button"
-              className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
-            >
-              <PlusIcon className="size-icon-xs" weight="bold" />
-            </button>
-          }
-        />
+        (renderAddTagControl?.({
+          tags: availableTags,
+          selectedTagIds,
+          onTagToggle: handleTagToggle,
+          onCreateTag: handleCreateTag,
+          disabled: disabled ?? false,
+          trigger: addTagTrigger,
+        }) ?? addTagTrigger)
       )}
     </div>
   );
