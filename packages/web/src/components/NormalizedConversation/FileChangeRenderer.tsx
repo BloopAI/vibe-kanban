@@ -6,7 +6,7 @@ import { getActualTheme } from '@/shared/lib/theme';
 import EditDiffRenderer from './EditDiffRenderer';
 import FileContentView from './FileContentView';
 import '@/app/styles/diff-style-overrides.css';
-import { useExpandable } from '@/features/workspace-chat/model/store/useExpandableStore';
+import { useExpandable } from '@/shared/stores/useExpandableStore';
 import { cn } from '@/shared/lib/utils';
 
 type Props = {

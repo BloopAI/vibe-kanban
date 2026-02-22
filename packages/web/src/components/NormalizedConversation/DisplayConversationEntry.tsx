@@ -11,7 +11,7 @@ import {
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { ProcessStartPayload } from '@/shared/types/logs';
 import FileChangeRenderer from './FileChangeRenderer';
-import { useExpandable } from '@/features/workspace-chat/model/store/useExpandableStore';
+import { useExpandable } from '@/shared/stores/useExpandableStore';
 import {
   AlertCircle,
   Bot,

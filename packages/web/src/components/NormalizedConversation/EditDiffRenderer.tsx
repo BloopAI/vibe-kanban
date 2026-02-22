@@ -59,7 +59,7 @@ function processUnifiedDiff(unifiedDiff: string, hasLineNumbers: boolean) {
   };
 }
 
-import { useExpandable } from '@/features/workspace-chat/model/store/useExpandableStore';
+import { useExpandable } from '@/shared/stores/useExpandableStore';
 
 function EditDiffRenderer({
   path,
