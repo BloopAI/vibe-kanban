@@ -1,6 +1,6 @@
 import { ArrowsInSimpleIcon, ArrowsOutSimpleIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { InputField } from '@vibe/ui/components/InputField';
+import { InputField } from './InputField';
 
 interface FileTreeSearchBarProps {
   searchQuery: string;

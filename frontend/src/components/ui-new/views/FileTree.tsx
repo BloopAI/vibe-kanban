@@ -6,7 +6,7 @@ import {
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
-import { FileTreeSearchBar } from './FileTreeSearchBar';
+import { FileTreeSearchBar } from '@vibe/ui/components/FileTreeSearchBar';
 import { FileTreeNode } from './FileTreeNode';
 import type { TreeNode } from '../types/fileTree';
 

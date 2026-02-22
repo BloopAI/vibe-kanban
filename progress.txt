@@ -5211,3 +5211,41 @@ Validation:
 Plan adjustments from new information:
 - Adapter-based extraction is now validated for mixed-responsibility views that combine generic layout with app-specific runtime data/renderers.
 - This opens a path for additional view moves where container-owned renderers can be injected as props instead of imported inside `@vibe/ui`.
+
+## 2026-02-22 - UI package extraction: FileTreeSearchBar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/FileTreeSearchBar.tsx` as the next low-coupling extraction target.
+- It is a small presentational view with one direct frontend callsite (`FileTree.tsx`) and no app-only context/store dependencies.
+- New information: moving small nested view components (used by a larger app view) into `@vibe/ui` is a clean incremental pattern with minimal migration risk.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/FileTreeSearchBar.tsx packages/ui/src/components/FileTreeSearchBar.tsx`
+- Package updates:
+  - Replaced package self-import style for internal dependency:
+    - `@vibe/ui/components/InputField` -> `./InputField`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/views/FileTree.tsx`
+  - New import path:
+    - `@vibe/ui/components/FileTreeSearchBar`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Continue prioritizing leaf view components (single-callsite, no app context coupling) as the fastest readable extraction path before tackling broader composite views.
