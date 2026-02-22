@@ -166,6 +166,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/ReposSettingsSection.tsx`.
   - [x] Moved shared settings UI primitives `SettingsComponents` to
         `src/features/settings/ui/dialogs/settings/SettingsComponents.tsx`.
+  - [x] Moved settings form `ExecutorConfigForm` to
+        `src/features/settings/ui/dialogs/settings/ExecutorConfigForm.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -285,6 +287,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/ReposSettingsSection.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/settings/SettingsComponents.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/ExecutorConfigForm.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -553,6 +557,9 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`,
         `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`,
         `src/features/settings/ui/dialogs/settings/ReposSettingsSection.tsx`.
+  - [x] Updated canonical `ExecutorConfigForm` callsite to
+        feature-owned path in:
+        `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`.
 
 ## Risk Controls
 
@@ -759,6 +766,10 @@ compatibility shims.
   `./SettingsComponents`; keep the legacy
   `src/components/ui-new/dialogs/settings/SettingsComponents.tsx` shim for
   non-owned callers during Track 1.
+- New information (2026-02-22): after moving `ExecutorConfigForm` into
+  feature ownership, keep `rjsf` dependencies on stable legacy alias paths
+  (`src/components/ui-new/dialogs/settings/rjsf/*`) during Track 1 and defer
+  the `rjsf` subtree migration to final consolidation.
 
 ## Validation
 

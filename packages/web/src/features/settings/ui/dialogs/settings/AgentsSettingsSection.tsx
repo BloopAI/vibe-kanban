@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
-import { ExecutorConfigForm } from '@/components/ui-new/dialogs/settings/ExecutorConfigForm';
+import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
 import { useUserSystem } from '@/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '@/components/dialogs/settings/CreateConfigurationDialog';
