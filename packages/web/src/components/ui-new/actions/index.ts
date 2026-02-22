@@ -9,7 +9,7 @@ import type {
   Workspace,
 } from 'shared/types';
 import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
-import type { DiffViewMode } from '@/features/workspace-chat/model/store/useDiffViewStore';
+import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
@@ -57,7 +57,7 @@ import {
   ArrowBendUpRightIcon,
   ProhibitIcon,
 } from '@phosphor-icons/react';
-import { useDiffViewStore } from '@/features/workspace-chat/model/store/useDiffViewStore';
+import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,

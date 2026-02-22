@@ -102,7 +102,7 @@ Use when the caller is in the wrong layer.
 
 | Status | File | Line | Importer Layer | Imported Module | Violation Type | Decision (A1-A5) | Action Summary | Owner | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| TODO |  |  |  |  |  |  |  |  |  |
+| DONE | `src/features/command-bar/ui/actions/useActionVisibility.ts` | `8` | feature | `@/features/workspace-chat/model/store/useDiffViewStore` | `features -> features` | A2 | Moved `useDiffViewStore` to `src/shared/stores` and repointed imports | codex | First lint violation from current run |
 
 ## Example Entry
 

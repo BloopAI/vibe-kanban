@@ -55,7 +55,7 @@ import {
   useDiffData,
 } from '@vibe/ui/components/PierreConversationDiff';
 import { inIframe, openFileInVSCode } from '@/integrations/vscode/bridge';
-import { useDiffViewMode } from '@/features/workspace-chat/model/store/useDiffViewStore';
+import { useDiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,

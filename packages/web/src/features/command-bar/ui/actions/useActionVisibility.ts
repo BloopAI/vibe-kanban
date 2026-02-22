@@ -8,7 +8,7 @@ import {
 import {
   useDiffViewStore,
   useDiffViewMode,
-} from '@/features/workspace-chat/model/store/useDiffViewStore';
+} from '@/shared/stores/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useDevServer } from '@/features/workspace/model/hooks/useDevServer';

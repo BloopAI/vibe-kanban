@@ -16,7 +16,7 @@ import {
 } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/lib/api';
-import { useDiffViewStore } from '@/features/workspace-chat/model/store/useDiffViewStore';
+import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import { toWorkspace, toWorkspacesCreate } from '@/lib/routes/navigation';
 import type {
   Workspace as ApiWorkspace,
