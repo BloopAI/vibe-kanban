@@ -65,7 +65,7 @@ import {
   TwoColumnPickerBadge,
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
-import { useSettingsDirty } from './SettingsDirtyContext';
+import { useSettingsDirty } from '@/features/settings/ui/dialogs/settings/SettingsDirtyContext';
 
 interface FormState {
   name: string;

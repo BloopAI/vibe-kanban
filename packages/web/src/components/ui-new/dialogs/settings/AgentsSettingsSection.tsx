@@ -29,7 +29,7 @@ import {
   TwoColumnPickerBadge,
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
-import { useSettingsDirty } from './SettingsDirtyContext';
+import { useSettingsDirty } from '@/features/settings/ui/dialogs/settings/SettingsDirtyContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { getExecutorVariantKeys } from '@/utils/executor';
 

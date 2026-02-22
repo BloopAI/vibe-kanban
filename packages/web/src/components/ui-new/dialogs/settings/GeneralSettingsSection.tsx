@@ -47,7 +47,7 @@ import {
   SettingsSelect,
   SettingsTextarea,
 } from './SettingsComponents';
-import { useSettingsDirty } from './SettingsDirtyContext';
+import { useSettingsDirty } from '@/features/settings/ui/dialogs/settings/SettingsDirtyContext';
 
 export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);

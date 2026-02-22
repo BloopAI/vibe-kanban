@@ -21,7 +21,7 @@ import {
   SettingsSaveBar,
   SettingsTextarea,
 } from './SettingsComponents';
-import { useSettingsDirty } from './SettingsDirtyContext';
+import { useSettingsDirty } from '@/features/settings/ui/dialogs/settings/SettingsDirtyContext';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');

@@ -24,7 +24,7 @@ import type {
 import {
   SettingsDirtyProvider,
   useSettingsDirty,
-} from '@/components/ui-new/dialogs/settings/SettingsDirtyContext';
+} from './settings/SettingsDirtyContext';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 
 const SETTINGS_SECTIONS: {

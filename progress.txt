@@ -1767,3 +1767,38 @@
   `src/features/settings/ui/dialogs/settings/*` with a compatibility shim, then
   update canonical `SettingsDialog` and settings-section imports while keeping
   remaining settings-surface modules stable on legacy paths.
+
+## 2026-02-22 13:49:12 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/settings/SettingsDirtyContext.tsx` as the next Track 1 migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/settings/SettingsDirtyContext.tsx`
+    -> `src/features/settings/ui/dialogs/settings/SettingsDirtyContext.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/settings/SettingsDirtyContext.tsx`.
+- Updated all current callsites to canonical feature-owned path:
+  - `src/features/settings/ui/dialogs/SettingsDialog.tsx`
+  - `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`
+  - `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`
+  - `src/components/ui-new/dialogs/settings/McpSettingsSection.tsx`
+  - `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `SettingsDirtyContext` migration.
+  - Updated risk-controls notes to reflect that `SettingsDirtyContext` is now
+    canonicalized in `features/settings` while section implementations remain
+    on legacy settings paths for this track.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/settings/McpSettingsSection.tsx` into
+  `src/features/settings/ui/dialogs/settings/*` with a compatibility shim, then
+  update `SettingsSection` to consume the canonical module while leaving larger
+  settings sections on legacy paths for staged migration.
