@@ -223,6 +223,11 @@ packages/web/src/
        `src/features/workspace/ui/VSCodeWorkspacePage.tsx`
      - converted `src/pages/workspaces/VSCodeWorkspacePage.tsx` into a thin
        route-level re-export wrapper
+     - moved project-kanban page composition from
+       `src/pages/projects/ProjectKanban.tsx` to
+       `src/features/kanban/ui/ProjectKanban.tsx`
+     - converted `src/pages/projects/ProjectKanban.tsx` into a thin
+       route-level re-export wrapper
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders

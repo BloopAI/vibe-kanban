@@ -293,3 +293,34 @@
      `src/features/kanban/ui/ProjectKanban.tsx`.
   2. Keep `src/pages/projects/ProjectKanban.tsx` as a thin wrapper and
      preserve route imports.
+
+## 2026-02-22 10:49:59 UTC
+
+- Reviewed `packages-web-cutover-plan.md` and `progress.txt` and selected the next Phase C project-kanban slice.
+- Implemented project-kanban feature extraction:
+  - Moved page-level composition:
+    - `src/pages/projects/ProjectKanban.tsx`
+      -> `src/features/kanban/ui/ProjectKanban.tsx`
+  - Converted `src/pages/projects/ProjectKanban.tsx` into a thin
+    route-level wrapper re-exporting from
+    `@/features/kanban/ui/ProjectKanban`.
+- Compatibility and routing impact:
+  - Existing project route imports continue to work via the page wrapper.
+  - Existing legacy shim
+    `src/pages/ui-new/ProjectKanban.tsx` continues to resolve through the
+    canonical page path.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Added Phase C progress bullets for the project-kanban page move and
+    wrapper conversion.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Phase C kanban vertical slice:
+  1. Move `src/components/ui-new/containers/KanbanContainer.tsx` into
+     `src/features/kanban/ui/KanbanContainer.tsx` with a compatibility shim.
+  2. Update imports (including `ProjectKanban`) to the canonical feature path.
