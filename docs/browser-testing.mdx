@@ -1,28 +1,23 @@
 ---
-title: "Preview"
-description: "Set up a dev server, preview your app in the built-in browser, and inspect components across frameworks"
+title: "Browser Testing"
+description: "Preview your app in the built-in browser, inspect components, and debug with full devtools"
 ---
 
 The built-in preview browser lets you test your application, inspect components, and open full devtools — all without leaving the workspace.
 
 ## 1. Configure a dev server
 
-If no dev server script is configured, the preview panel shows a setup prompt.
+If no dev server script is configured, the preview panel shows a setup prompt. Click **Edit Dev Server Script** to open the script dialog.
 
 <Frame>
   <img src="/images/workspaces-preview-no-script.png" alt="Preview panel showing prompt to set up a dev server script" />
 </Frame>
 
-Click **Edit Dev Server Script**, enter your dev server command, and click **Save and Test** to verify it works.
+Enter the command that starts your dev server (e.g. `npm run dev`, `pnpm dev`, `yarn dev`) and click **Save and Test** to verify it works.
 
 <Frame>
   <img src="/images/workspaces-preview-script-dialog.png" alt="Script editor dialog with dev server command and Save and Test button" />
 </Frame>
-
-**Configuring the script:**
-
-1. The script input field — enter the command that starts your dev server (e.g. `npm run dev`, `pnpm dev`, `yarn dev`)
-2. The **Save and Test** button — saves the script and immediately starts the dev server so you can verify the configuration
 
 <Info>
 You can also configure dev server scripts from **Settings** → **Repos** → select your repository → **Dev Server Script**. See [Projects & Repositories](/settings/projects-repositories) for details.
@@ -36,15 +31,11 @@ Once you've saved a script, click **Start dev server** in the preview panel to l
   <img src="/images/workspaces-preview-dev-server-start.png" alt="Preview panel showing the Start dev server button" />
 </Frame>
 
-Logs stream in real-time in the **Log** panel on the right so you can see when the server is ready.
+Logs stream in real-time in the **Log** panel so you can see when the server is ready. Look for the URL output (e.g. `http://localhost:3000`) — Vibe Kanban detects this automatically and loads it in the preview.
 
 <Frame>
-  <img src="/images/workspaces-preview-dev-server-running.png" alt="Dev server log output streaming in real-time" />
+  <img src="/images/workspaces-preview-dev-server-running.png" alt="Dev server log output streaming in real-time in the Log panel" />
 </Frame>
-
-<Tip>
-Make sure your dev server prints its URL (e.g. `http://localhost:3000`) to stdout. Vibe Kanban detects this automatically and loads it in the preview.
-</Tip>
 
 ## 3. The preview browser
 
@@ -86,13 +77,13 @@ You can test your application across different viewport sizes without resizing y
 
 ## 5. Inspect components
 
-The preview browser includes a built-in click-to-component feature. Click the crosshair icon in the toolbar to enter inspect mode, hover over any element to see which component rendered it, then click to select.
+The preview browser includes a built-in click-to-component feature. Click **Select element as context** in the toolbar to enter inspect mode, hover over any element to highlight it, then click to select.
 
 <Frame>
-  <img src="/images/workspaces-preview-inspect.png" alt="Inspect mode active with a component highlighted and its name shown in a tooltip" />
+  <img src="/images/workspaces-preview-inspect.png" alt="Inspect mode showing the full flow: activating inspect, hovering over a component, and the selected context appearing in the chat" />
 </Frame>
 
-This works automatically with React, Vue, Svelte, Astro, and plain HTML — no packages to install. When you click a component, inspect mode exits and the component's name, file path, and location are captured.
+When you click a component, inspect mode exits and the component's details are sent to the chat as context — you can then ask your coding agent questions about that specific component. This works automatically with React, Vue, Svelte, Astro, and plain HTML — no packages to install.
 
 ## 6. Open DevTools
 
