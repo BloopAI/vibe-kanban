@@ -144,6 +144,8 @@ compatibility shims.
         `src/shared/ui/dialogs/ScriptFixerDialog.tsx`.
   - [x] Moved reusable `WorkspacesGuideDialog` to
         `src/shared/ui/dialogs/WorkspacesGuideDialog.tsx`.
+  - [x] Moved reusable `KeyboardShortcutsDialog` to
+        `src/shared/ui/dialogs/KeyboardShortcutsDialog.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -239,6 +241,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/ResolveConflictsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/KeyboardShortcutsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -467,6 +471,9 @@ compatibility shims.
   - [x] Kept non-owned `WorkspacesGuideDialog` callsite on the legacy shim
         path in `src/features/workspace/ui/WorkspacesLayout.tsx` to avoid
         Track 1 ownership churn.
+  - [x] Kept non-owned `KeyboardShortcutsDialog` callsite on the legacy shim
+        path in `src/app/providers/NewDesignScope.tsx` to avoid Track 1
+        ownership churn.
 
 ## Risk Controls
 
@@ -624,6 +631,10 @@ compatibility shims.
 - New information (2026-02-22): after moving `WorkspacesGuideDialog` into
   shared-ui ownership, keep non-owned `src/features/workspace/**` callsites on
   the legacy shim path during Track 1 to minimize cross-branch churn.
+- New information (2026-02-22): after moving `KeyboardShortcutsDialog` into
+  shared-ui ownership, keep non-owned app-provider callers (currently
+  `src/app/providers/NewDesignScope.tsx`) on the legacy shim path during
+  Track 1 to avoid cross-scope ownership churn.
 
 ## Validation
 
