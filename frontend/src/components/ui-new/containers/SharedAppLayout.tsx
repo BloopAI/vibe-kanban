@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
+import { cn } from '@/lib/utils';
 
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '../primitives/AppBar';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
@@ -245,10 +247,12 @@ export function SharedAppLayout() {
     }
   }, [isSignedIn, navigate]);
 
+  const isMobile = useIsMobile();
+
   return (
     <SyncErrorProvider>
-      <div className="flex h-screen bg-primary">
-        {!isMigrateRoute && (
+      <div className={cn('flex bg-primary', isMobile ? 'h-dvh' : 'h-screen')}>
+        {!isMobile && !isMigrateRoute && (
           <AppBar
             projects={orderedProjects}
             organizations={organizations}
@@ -269,7 +273,7 @@ export function SharedAppLayout() {
           />
         )}
         <div className="flex flex-col flex-1 min-w-0">
-          <NavbarContainer />
+          <NavbarContainer mobileMode={isMobile} />
           <div className="flex-1 min-h-0">
             <Outlet />
           </div>

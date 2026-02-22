@@ -4,6 +4,8 @@ import type { Session } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 import {
   ConversationList,
   type ConversationListHandle,
@@ -54,6 +56,7 @@ export function WorkspacesMain({
   onScrollToBottom,
 }: WorkspacesMainProps) {
   const { t } = useTranslation(['tasks', 'common']);
+  const isMobile = useIsMobile();
   const { session } = workspaceWithSession ?? {};
 
   // Always render the main structure to prevent chat box flash during workspace transitions
@@ -95,7 +98,12 @@ export function WorkspacesMain({
               </div>
             )}
             {/* Chat box - always rendered to prevent flash during workspace switch */}
-            <div className="flex justify-center @container pl-px">
+            <div
+              className={cn(
+                'flex justify-center @container pl-px',
+                isMobile && 'pb-[env(safe-area-inset-bottom)]'
+              )}
+            >
               <SessionChatBoxContainer
                 {...(isNewSessionMode && workspaceWithSession
                   ? {
@@ -126,8 +134,8 @@ export function WorkspacesMain({
           </MessageEditProvider>
         </EntriesProvider>
       </ApprovalFeedbackProvider>
-      {/* Context Bar - floating toolbar */}
-      {workspaceWithSession && (
+      {/* Context Bar - floating toolbar (hidden on mobile, tabs cover its actions) */}
+      {workspaceWithSession && !isMobile && (
         <ContextBarContainer containerRef={containerRef} />
       )}
     </main>

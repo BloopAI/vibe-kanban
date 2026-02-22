@@ -25,9 +25,12 @@ import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
+  useMobileActiveTab,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/lib/routes/navigation';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { cn } from '@/lib/utils';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -111,6 +114,9 @@ export function WorkspacesLayout() {
     setLeftMainPanelVisible,
   ]);
 
+  const isMobile = useIsMobile();
+  const [mobileTab] = useMobileActiveTab();
+
   const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
     PERSIST_KEYS.rightMainPanel,
     50
@@ -129,6 +135,97 @@ export function WorkspacesLayout() {
       setRightMainPanelSize(layout['right-main']);
   };
 
+  // Mobile layout: single full-width panel at a time
+  if (isMobile) {
+    const mobileContent = (
+      <ReviewProvider attemptId={selectedWorkspace?.id}>
+        <ChangesViewProvider>
+          {/* Workspaces tab */}
+          <div
+            className={cn(
+              'h-full overflow-hidden',
+              mobileTab !== 'workspaces' && 'hidden'
+            )}
+          >
+            <WorkspacesSidebarContainer
+              onScrollToBottom={handleScrollToBottom}
+            />
+          </div>
+          {/* Chat tab */}
+          <div
+            className={cn(
+              'h-full flex flex-col overflow-hidden',
+              mobileTab !== 'chat' && 'hidden'
+            )}
+          >
+            {isCreateMode ? (
+              <CreateChatBoxContainer
+                onWorkspaceCreated={handleWorkspaceCreated}
+              />
+            ) : (
+              <WorkspacesMainContainer
+                ref={mainContainerRef}
+                selectedWorkspace={selectedWorkspace ?? null}
+                selectedSession={selectedSession}
+                sessions={sessions}
+                onSelectSession={selectSession}
+                isLoading={isLoading}
+                isNewSessionMode={isNewSessionMode}
+                onStartNewSession={startNewSession}
+              />
+            )}
+          </div>
+          {/* Changes tab */}
+          <div
+            className={cn(
+              'h-full overflow-hidden',
+              mobileTab !== 'changes' && 'hidden'
+            )}
+          >
+            {selectedWorkspace?.id && (
+              <ChangesPanelContainer
+                attemptId={selectedWorkspace.id}
+                className=""
+              />
+            )}
+          </div>
+          {/* Git tab */}
+          <div
+            className={cn(
+              'h-full overflow-hidden',
+              mobileTab !== 'git' && 'hidden'
+            )}
+          >
+            {!isCreateMode && selectedWorkspace && (
+              <RightSidebar
+                rightMainPanelMode={rightMainPanelMode}
+                selectedWorkspace={selectedWorkspace}
+                repos={repos}
+              />
+            )}
+          </div>
+        </ChangesViewProvider>
+      </ReviewProvider>
+    );
+
+    return (
+      <div className="flex flex-col flex-1 min-h-0 h-full">
+        {isCreateMode ? (
+          <CreateModeProvider>{mobileContent}</CreateModeProvider>
+        ) : (
+          <ExecutionProcessesProvider
+            key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+            attemptId={selectedWorkspace?.id}
+            sessionId={selectedSessionId}
+          >
+            {mobileContent}
+          </ExecutionProcessesProvider>
+        )}
+      </div>
+    );
+  }
+
+  // Desktop layout
   const mainContent = (
     <ReviewProvider attemptId={selectedWorkspace?.id}>
       <ChangesViewProvider>

@@ -14,6 +14,8 @@ export type RightMainPanelMode =
 
 export type LayoutMode = 'workspaces' | 'kanban' | 'migrate';
 
+export type MobileTab = 'workspaces' | 'chat' | 'changes' | 'git';
+
 export type KanbanViewMode = 'kanban' | 'list';
 
 export type ContextBarPosition =
@@ -313,6 +315,9 @@ type State = {
   kanbanViewMode: KanbanViewMode;
   listViewStatusFilter: string | null;
 
+  // Mobile tab state
+  mobileActiveTab: MobileTab;
+
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
@@ -384,6 +389,9 @@ type State = {
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
   setListViewStatusFilter: (statusId: string | null) => void;
+
+  // Mobile tab actions
+  setMobileActiveTab: (tab: MobileTab) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -416,6 +424,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   // Kanban view mode state
   kanbanViewMode: 'kanban' as KanbanViewMode,
   listViewStatusFilter: null,
+
+  // Mobile tab state
+  mobileActiveTab: 'chat' as MobileTab,
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -717,6 +728,9 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   setListViewStatusFilter: (statusId) =>
     set({ listViewStatusFilter: statusId }),
+
+  // Mobile tab actions
+  setMobileActiveTab: (tab) => set({ mobileActiveTab: tab }),
 }));
 
 // Hook for repo action preference
@@ -795,6 +809,13 @@ export function usePersistedCollapsedPaths(
   );
 
   return [pathSet, setPathSet];
+}
+
+// Hook for mobile active tab
+export function useMobileActiveTab() {
+  const tab = useUiPreferencesStore((s) => s.mobileActiveTab);
+  const set = useUiPreferencesStore((s) => s.setMobileActiveTab);
+  return [tab, set] as const;
 }
 
 // Hook for workspace-specific panel state

@@ -7,6 +7,7 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { Navbar } from '../views/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
+import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import {
   NavbarActionGroups,
   NavbarDivider,
@@ -61,7 +62,11 @@ function filterNavbarItems(
   return result;
 }
 
-export function NavbarContainer() {
+interface NavbarContainerProps {
+  mobileMode: boolean;
+}
+
+export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
@@ -124,6 +129,15 @@ export function NavbarContainer() {
         ? orgName
         : selectedWorkspace?.branch;
 
+  const userPopoverSlot = mobileMode ? (
+    <AppBarUserPopoverContainer
+      organizations={orgsData?.organizations ?? []}
+      selectedOrgId={selectedOrgId ?? ''}
+      onOrgSelect={useOrganizationStore.getState().setSelectedOrgId}
+      onCreateOrg={() => {}}
+    />
+  ) : undefined;
+
   return (
     <Navbar
       workspaceTitle={navbarTitle}
@@ -139,6 +153,8 @@ export function NavbarContainer() {
       }
       actionContext={actionCtx}
       onExecuteAction={handleExecuteAction}
+      mobileMode={mobileMode}
+      mobileUserSlot={userPopoverSlot}
     />
   );
 }

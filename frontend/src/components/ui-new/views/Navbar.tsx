@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react';
 import type { Icon } from '@phosphor-icons/react';
+import {
+  LayoutIcon,
+  ChatsTeardropIcon,
+  GitDiffIcon,
+  SidebarSimpleIcon,
+} from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
 import { SyncErrorIndicator } from '../primitives/SyncErrorIndicator';
@@ -15,6 +21,10 @@ import {
   getActionIcon,
   getActionTooltip,
 } from '../actions/useActionVisibility';
+import {
+  type MobileTab,
+  useMobileActiveTab,
+} from '@/stores/useUiPreferencesStore';
 
 /**
  * Check if a NavbarItem is a divider
@@ -67,6 +77,13 @@ function NavbarIconButton({
   );
 }
 
+const MOBILE_TABS: { id: MobileTab; icon: Icon; label: string }[] = [
+  { id: 'workspaces', icon: LayoutIcon, label: 'Wksps' },
+  { id: 'chat', icon: ChatsTeardropIcon, label: 'Chat' },
+  { id: 'changes', icon: GitDiffIcon, label: 'Code' },
+  { id: 'git', icon: SidebarSimpleIcon, label: 'Git' },
+];
+
 export interface NavbarProps {
   workspaceTitle?: string;
   // Items for left side of navbar
@@ -79,6 +96,9 @@ export interface NavbarProps {
   actionContext: ActionVisibilityContext;
   // Handler to execute an action
   onExecuteAction: (action: ActionDefinition) => void;
+  // Mobile mode props
+  mobileMode?: boolean;
+  mobileUserSlot?: ReactNode;
   className?: string;
 }
 
@@ -89,8 +109,57 @@ export function Navbar({
   leftSlot,
   actionContext,
   onExecuteAction,
+  mobileMode = false,
+  mobileUserSlot,
   className,
 }: NavbarProps) {
+  const [mobileTab, setMobileTab] = useMobileActiveTab();
+
+  if (mobileMode) {
+    return (
+      <div className={cn('shrink-0', className)}>
+        {/* Row 1 - Tab Bar */}
+        <nav className="flex items-center bg-secondary border-b px-base py-half">
+          <div className="flex items-center gap-base flex-1">
+            {MOBILE_TABS.map((tab) => {
+              const isActive = mobileTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setMobileTab(tab.id)}
+                  className={cn(
+                    'flex items-center gap-1 px-1.5 py-1 rounded-sm text-sm',
+                    isActive
+                      ? 'text-normal border-b-2 border-brand'
+                      : 'text-low hover:text-normal'
+                  )}
+                >
+                  <tab.icon
+                    className="size-icon-base"
+                    weight={isActive ? 'fill' : 'regular'}
+                  />
+                  <span className="hidden min-[480px]:inline">{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="flex items-center">
+            <SyncErrorIndicator />
+            {mobileUserSlot}
+          </div>
+        </nav>
+        {/* Row 2 - Info Bar */}
+        <div className="flex items-center gap-base px-base py-half bg-secondary border-b">
+          {leftSlot}
+          <p className="text-base text-low truncate flex-1 text-center">
+            {workspaceTitle}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const renderItem = (item: NavbarItem, key: string) => {
     // Render divider
     if (isDivider(item)) {

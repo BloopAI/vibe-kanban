@@ -11,6 +11,7 @@ import { useActions } from '@/contexts/ActionsContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { KanbanContainer } from '@/components/ui-new/containers/KanbanContainer';
 import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { LoginRequiredPrompt } from '@/components/dialogs/shared/LoginRequiredPrompt';
 import { PERSIST_KEYS, usePaneSize } from '@/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
@@ -95,12 +96,25 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   const { getIssue } = useProjectContext();
   const issue = issueId ? getIssue(issueId) : undefined;
   usePageTitle(issue?.title, projectName);
+  const isMobile = useIsMobile();
   const [kanbanLeftPanelSize, setKanbanLeftPanelSize] = usePaneSize(
     PERSIST_KEYS.kanbanLeftPanel,
     75
   );
 
   const isRightPanelOpen = isPanelOpen;
+
+  if (isMobile) {
+    return isRightPanelOpen ? (
+      <div className="h-full w-full overflow-hidden bg-secondary">
+        <ProjectRightSidebarContainer />
+      </div>
+    ) : (
+      <div className="h-full w-full overflow-hidden bg-primary">
+        <KanbanContainer />
+      </div>
+    );
+  }
 
   const kanbanDefaultLayout: Layout =
     typeof kanbanLeftPanelSize === 'number'
