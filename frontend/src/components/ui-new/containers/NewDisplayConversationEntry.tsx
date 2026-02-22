@@ -32,7 +32,7 @@ import { ChatToolSummary } from '../primitives/conversation/ChatToolSummary';
 import { ChatTodoList } from '@vibe/ui/components/ChatTodoList';
 import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
 import { ChatApprovalCard } from '@vibe/ui/components/ChatApprovalCard';
-import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';
+import { ChatUserMessage } from '@vibe/ui/components/ChatUserMessage';
 import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
 import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
@@ -601,6 +601,9 @@ function UserMessageEntry({
       onEdit={canEdit ? handleEdit : undefined}
       onReset={canReset ? handleReset : undefined}
       isGreyed={isGreyed}
+      renderMarkdown={({ content, workspaceId }) => (
+        <ChatMarkdown content={content} workspaceId={workspaceId} />
+      )}
     />
   );
 }

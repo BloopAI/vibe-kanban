@@ -4156,3 +4156,50 @@ Plan adjustments from new information:
 - Shared status objects remain stable as structural UI props, avoiding cross-package type lock-in.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx` (single callsite and same markdown-injection pattern, with existing controls already package-safe).
+
+## 2026-02-22 - UI package extraction: ChatUserMessage
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) and already depended on extracted UI primitives, so scope was constrained.
+- New information: the only package-boundary blocker was direct `ChatMarkdown` usage, which matches the existing renderer-injection pattern already used by `ChatAssistantMessage` and `ChatApprovalCard`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatUserMessage.tsx packages/ui/src/components/ChatUserMessage.tsx`
+- Package updates:
+  - Replaced package self-imports to local paths:
+    - `@vibe/ui/components/ChatEntryContainer` -> `./ChatEntryContainer`
+    - `@vibe/ui/components/Tooltip` -> `./Tooltip`
+  - Replaced app-local markdown dependency with injected renderer API:
+    - added `ChatUserMessageRenderProps`
+    - added required `renderMarkdown` prop
+    - component now renders markdown via `renderMarkdown({ content, workspaceId })`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatUserMessage`
+  - Added markdown adapter prop in `UserMessageEntry`:
+    - `renderMarkdown={({ content, workspaceId }) => <ChatMarkdown ... />}`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- User-entry conversation components extract cleanly when app-bound markdown rendering is injected from the container layer.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatThinkingMessage.tsx` (single callsite and the same markdown-injection pattern with minimal dependency surface).

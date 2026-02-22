@@ -1,8 +1,13 @@
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PencilSimpleIcon, ArrowUUpLeftIcon } from '@phosphor-icons/react';
-import { ChatEntryContainer } from '@vibe/ui/components/ChatEntryContainer';
-import { ChatMarkdown } from './ChatMarkdown';
-import { Tooltip } from '@vibe/ui/components/Tooltip';
+import { ChatEntryContainer } from './ChatEntryContainer';
+import { Tooltip } from './Tooltip';
+
+export interface ChatUserMessageRenderProps {
+  content: string;
+  workspaceId?: string;
+}
 
 interface ChatUserMessageProps {
   content: string;
@@ -13,6 +18,7 @@ interface ChatUserMessageProps {
   onEdit?: () => void;
   onReset?: () => void;
   isGreyed?: boolean;
+  renderMarkdown: (props: ChatUserMessageRenderProps) => ReactNode;
 }
 
 export function ChatUserMessage({
@@ -24,6 +30,7 @@ export function ChatUserMessage({
   onEdit,
   onReset,
   isGreyed,
+  renderMarkdown,
 }: ChatUserMessageProps) {
   const { t } = useTranslation('tasks');
 
@@ -73,7 +80,7 @@ export function ChatUserMessage({
       isGreyed={isGreyed}
       headerRight={headerActions}
     >
-      <ChatMarkdown content={content} workspaceId={workspaceId} />
+      {renderMarkdown({ content, workspaceId })}
     </ChatEntryContainer>
   );
 }
