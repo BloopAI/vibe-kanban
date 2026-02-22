@@ -4,7 +4,7 @@ import { BaseAgentCapability } from 'shared/types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useRetryUi } from '@/shared/hooks/useRetryUi';
-import { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
+import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { RetryEditorInline } from './RetryEditorInline';
 
 const UserMessage = ({

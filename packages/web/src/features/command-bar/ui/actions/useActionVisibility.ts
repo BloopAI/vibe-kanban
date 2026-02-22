@@ -14,7 +14,7 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useDevServer } from '@/hooks';
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useShape } from '@/integrations/electric/hooks';
-import { useExecutionProcessesContext } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';

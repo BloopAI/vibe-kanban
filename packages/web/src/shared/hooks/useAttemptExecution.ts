@@ -1,8 +1,8 @@
 import { useMemo, useCallback } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
-import { useExecutionProcessesContext } from '../contexts/ExecutionProcessesContext';
-import { useTaskStopping } from '../store/useTaskDetailsUiStore';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
+import { useTaskStopping } from '@/shared/stores/useTaskDetailsUiStore';
 import type { AttemptData } from '@/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 

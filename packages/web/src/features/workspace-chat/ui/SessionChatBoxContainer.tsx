@@ -9,7 +9,7 @@ import {
   type BaseCodingAgent,
 } from 'shared/types';
 import { AgentIcon } from '@/components/agents/AgentIcon';
-import { useAttemptExecution } from '../model/hooks/useAttemptExecution';
+import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';

@@ -1,5 +1,5 @@
 export { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
-export { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
+export { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
 export {
   useTaskAttempt,

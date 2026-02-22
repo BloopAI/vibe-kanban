@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { imagesApi } from '@/lib/api';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
-import { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
+import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useVariant } from '@/hooks/useVariant';

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useExecutionProcessesContext } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
+import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { isCodingAgent } from '@/shared/constants/processes';
