@@ -93,6 +93,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/selections/prioritySelection.ts`.
   - [x] Moved command-bar selection helper `statusSelection` to
         `src/features/command-bar/ui/dialogs/selections/statusSelection.ts`.
+  - [x] Moved command-bar selection helper `relationshipSelection` to
+        `src/features/command-bar/ui/dialogs/selections/relationshipSelection.ts`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -208,6 +210,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/selections/statusSelection.ts`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/selections/relationshipSelection.ts`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -297,6 +301,9 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/command-bar/ui/dialogs/selections/statusSelection` in:
         `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/selections/relationshipSelection`
+        in: `src/components/ui-new/dialogs/selections/ProjectSelectionDialog.tsx`.
   - [x] Updated canonical repo-selection callsites in
         `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx` to:
         `./selections/repoSelection` (type import and dynamic import).
