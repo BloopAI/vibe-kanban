@@ -7,8 +7,6 @@ export { useDevServer } from '@/shared/hooks/useDevServer';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
 export { useAttempt } from '@/shared/hooks/useAttempt';
-export { useRepoBranchSelection } from '@/features/workspace/model/hooks/useRepoBranchSelection';
-export type { RepoBranchConfig } from '@/features/workspace/model/hooks/useRepoBranchSelection';
 export { useTaskAttempts } from '@/features/workspace/model/hooks/useTaskAttempts';
 export { useAuth } from './auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
