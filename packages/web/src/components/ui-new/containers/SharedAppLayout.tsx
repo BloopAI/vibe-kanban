@@ -23,7 +23,7 @@ import {
   type CreateRemoteProjectResult,
 } from '@/components/dialogs';
 import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { useShape } from '@/lib/electric/hooks';
 import { sortProjectsByOrder } from '@/lib/projectOrder';

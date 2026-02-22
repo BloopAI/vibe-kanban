@@ -28,7 +28,7 @@ import {
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,

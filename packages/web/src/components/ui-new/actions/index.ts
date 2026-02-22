@@ -688,7 +688,7 @@ export const Actions = {
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)
       const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+        '@/features/command-bar/ui/dialogs/CommandBarDialog'
       );
       CommandBarDialog.show();
     },

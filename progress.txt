@@ -1095,3 +1095,49 @@
 - Continue `T1.1/T1.2/T1.3` by extracting another self-contained helper from
   `src/components/ui-new/actions/index.ts` into
   `src/features/command-bar/ui/actions/*` while preserving compatibility facades.
+
+## 2026-02-22 12:49:06 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/CommandBarDialog.tsx` as the next low-risk Track 1 feature-dialog migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/CommandBarDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/CommandBarDialog.tsx`.
+  - Updated moved dialog for feature-path lint compatibility:
+    - replaced NiceModal default import with named imports (`create`,
+      `useModal`) from `@ebay/nice-modal-react`
+    - replaced feature-alias self-imports with relative imports to
+      `../actions/pages` and `../actions/useActionVisibility`
+    - switched `SelectionDialog`/repo-selection helper imports to stable
+      legacy component paths for low-risk staged migration.
+- Updated canonical callsites to
+  `@/features/command-bar/ui/dialogs/CommandBarDialog` in:
+  - `src/components/ui-new/containers/SharedAppLayout.tsx`
+  - `src/components/ui-new/containers/WorkspacesSidebarContainer.tsx`
+  - `src/components/ui-new/containers/GitPanelContainer.tsx`
+  - `src/components/ui-new/containers/KanbanIssuePanelContainer.tsx`
+  - `src/components/ui-new/actions/index.ts` (dynamic import)
+- Boundary handling:
+  - Kept `src/features/kanban/ui/KanbanContainer.tsx` on the legacy shim
+    import because `src/features/kanban/**` cannot import
+    `@/features/command-bar/**` directly under current lint rules.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `CommandBarDialog`.
+  - Added a risk-controls note for `features/kanban` command-bar import
+    boundaries.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 by moving command-bar dialog helper modules from
+  `src/components/ui-new/dialogs/commandBar/*` into
+  `src/features/command-bar/ui/dialogs/commandBar/*` with compatibility shims
+  and selective canonical callsite updates.

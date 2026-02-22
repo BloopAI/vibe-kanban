@@ -77,6 +77,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/OAuthDialog.tsx`.
   - [x] Moved feature dialog `CreateWorkspaceFromPrDialog` to
         `src/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog.tsx`.
+  - [x] Moved feature dialog `CommandBarDialog` to
+        `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -176,6 +178,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/scripts/ScriptFixerDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/CommandBarDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -236,6 +240,17 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog` in
         `src/components/ui-new/actions/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/CommandBarDialog` in:
+        `src/components/ui-new/containers/SharedAppLayout.tsx`,
+        `src/components/ui-new/containers/WorkspacesSidebarContainer.tsx`,
+        `src/components/ui-new/containers/GitPanelContainer.tsx`,
+        `src/components/ui-new/containers/KanbanIssuePanelContainer.tsx`,
+        `src/components/ui-new/actions/index.ts` (dynamic import).
+  - [x] Kept `CommandBarDialog` feature-layer callsite on the legacy shim path
+        (`src/features/kanban/ui/KanbanContainer.tsx`) because
+        `src/features/kanban/**` cannot import directly from
+        `@/features/command-bar/**` under current lint boundaries.
   - [x] Updated canonical callsites to
         `@/features/command-bar/ui/dialogs/StartReviewDialog` in:
         `src/components/ui-new/actions/index.ts`,
@@ -425,6 +440,10 @@ compatibility shims.
   (`@/features/command-bar/ui/actions/*`) directly under current lint
   boundaries; keep these callsites on legacy shim paths until final
   consolidation.
+- New information (2026-02-22): feature-layer consumers in
+  `src/features/kanban/**` also cannot import command-bar canonical dialog
+  paths directly (`@/features/command-bar/ui/dialogs/*`); keep these callsites
+  on legacy shim paths until final consolidation.
 
 ## Validation
 
