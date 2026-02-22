@@ -6921,3 +6921,39 @@ Validation:
 
 New information:
 - No additional structural plan changes required from Step 5.
+
+## 2026-02-22 - `@vibe/web` cutover: Step 6 (CI workflow updates)
+
+Plan checklist update:
+- [x] Read `packages-web-cutover-plan.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next required cutover change
+- [x] Implemented Step 6 (CI workflow path migration)
+- [x] Ran quality checks (`check`, `lint`, `format`)
+- [x] Updated plan status
+- [x] Appended progress log
+
+Assessment:
+- Next required change was Step 6:
+  - update CI path filters and workflow commands from `frontend` to `packages/web`
+  - migrate pre-release build/artifact/sourcemap paths accordingly
+
+Refactor completed:
+- `.github/workflows/test.yml`
+  - path filter updated: `frontend/**` -> `packages/web/**`
+  - frontend checks now run from `packages/web` for lint/format/build
+- `.github/workflows/pre-release.yml`
+  - version bump step updated to run `npm version` in `packages/web`
+  - commit staging updated: `frontend/package.json` -> `packages/web/package.json`
+  - web lint/typecheck/build commands now run in `packages/web`
+  - Sentry sourcemap path updated to `./packages/web/dist`
+  - artifact upload/download and release zip paths updated from `frontend/dist` to `packages/web/dist`
+  - kept artifact name `frontend-dist` for continuity across dependent jobs
+
+Validation:
+- `pnpm run check` ✅
+- `pnpm run lint` ✅
+- `pnpm run format` ✅
+
+New information:
+- No additional structural plan changes were required after Step 6.

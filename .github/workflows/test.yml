@@ -41,7 +41,7 @@ jobs:
         with:
           filters: |
             frontend:
-              - 'frontend/**'
+              - 'packages/web/**'
               - 'shared/**'
               - 'scripts/check-i18n.sh'
               - 'pnpm-lock.yaml'
@@ -107,10 +107,10 @@ jobs:
             --kill-others-on-fail \
             --names "lint,i18n,fmt,build" \
             --timings \
-            "cd frontend && npm run lint" \
+            "cd packages/web && npm run lint" \
             "GITHUB_BASE_REF=${{ github.base_ref || 'main' }} ./scripts/check-i18n.sh" \
-            "cd frontend && npm run format:check" \
-            "cd frontend && npm run build"
+            "cd packages/web && npm run format:check" \
+            "cd packages/web && npm run build"
 
   backend-schema-checks:
     needs: changes
