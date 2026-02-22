@@ -11,7 +11,7 @@ import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
 import {
   IssueSubIssuesSection,
   type SubIssueData,
-} from '@/components/ui-new/views/IssueSubIssuesSection';
+} from '@vibe/ui/components/IssueSubIssuesSection';
 import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
 
 interface IssueSubIssuesSectionContainerProps {

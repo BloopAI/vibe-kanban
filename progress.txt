@@ -5717,3 +5717,51 @@ Validation:
 
 Plan adjustments from new information:
 - Prefer migrating sections that receive already-resolved display data from containers; package-local structural interfaces are sufficient and keep `@vibe/ui` decoupled from app resolver modules.
+
+## 2026-02-22 - UI package extraction: IssueSubIssuesSection
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueSubIssuesSection.tsx` as the next extraction target.
+- It is a low-coupling section with a single container callsite and existing child dependencies already in `@vibe/ui` (`CollapsibleSectionHeader`, `SubIssueRow`).
+- New information: this section can be moved without adapters by replacing shared/store type imports with existing package component contracts.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueSubIssuesSection.tsx packages/ui/src/components/IssueSubIssuesSection.tsx`
+- Package updates:
+  - Replaced package self-imports:
+    - `@vibe/ui/components/CollapsibleSectionHeader` -> `./CollapsibleSectionHeader`
+    - `@vibe/ui/components/SubIssueRow` -> `./SubIssueRow`
+  - Removed frontend/shared dependencies:
+    - removed `IssuePriority` import from `shared/remote-types`
+    - removed `OrganizationMemberWithProfile` import from `shared/types`
+    - removed `PERSIST_KEYS`/`PersistKey` imports from `@/stores/useUiPreferencesStore`
+  - Added package-local contracts:
+    - `priority: PriorityLevel | null`
+    - `assignees: KanbanAssigneeUser[]`
+  - Replaced persist key cast:
+    - `persistKey={PERSIST_KEYS.kanbanIssueSubIssues as PersistKey}` -> `persistKey="kanban-issue-sub-issues"`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/IssueSubIssuesSectionContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueSubIssuesSection`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For section-level extractions that already render package child components, prefer importing child prop contracts (`PriorityLevel`, `KanbanAssigneeUser`) instead of pulling shared domain types into `@vibe/ui`.

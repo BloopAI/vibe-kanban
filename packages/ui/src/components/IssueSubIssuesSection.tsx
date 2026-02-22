@@ -1,21 +1,20 @@
 import { useTranslation } from 'react-i18next';
 import { Droppable } from '@hello-pangea/dnd';
-import type { IssuePriority } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from '@vibe/ui/components/CollapsibleSectionHeader';
-import { SubIssueRow } from '@vibe/ui/components/SubIssueRow';
-import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
+} from './CollapsibleSectionHeader';
+import { SubIssueRow } from './SubIssueRow';
+import type { PriorityLevel } from './PriorityIcon';
+import type { KanbanAssigneeUser } from './KanbanAssignee';
 
 export interface SubIssueData {
   id: string;
   simpleId: string;
   title: string;
-  priority: IssuePriority | null;
+  priority: PriorityLevel | null;
   statusColor: string;
-  assignees: OrganizationMemberWithProfile[];
+  assignees: KanbanAssigneeUser[];
   createdAt: string;
   parentIssueSortOrder: number | null;
 }
@@ -50,7 +49,7 @@ export function IssueSubIssuesSection({
   return (
     <CollapsibleSectionHeader
       title={t('kanban.subIssues', 'Sub-issues')}
-      persistKey={PERSIST_KEYS.kanbanIssueSubIssues as PersistKey}
+      persistKey="kanban-issue-sub-issues"
       defaultExpanded={true}
       actions={actions}
     >
