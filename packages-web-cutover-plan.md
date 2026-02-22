@@ -202,9 +202,15 @@ packages/web/src/
        `@/features/migration/ui/MigrateLayout`
      - kept temporary compatibility shims at legacy
        `src/components/ui-new/containers/Migrate*` paths
-     - onboarding flow currently has no dedicated `ui-new` container files;
-       onboarding screens are still page-local and should be extracted in a
-       later Phase C slice
+     - moved onboarding page implementations from
+       `src/pages/onboarding/*` to `src/features/onboarding/ui/*`
+     - converted `src/pages/onboarding/*` into thin route-level re-export
+       wrappers
+     - added temporary hook adapters:
+       - `src/hooks/useTheme.ts`
+       - `src/hooks/useUserSystem.ts`
+       to keep feature files from importing `@/app/*` directly under current
+       lint boundary rules
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders
