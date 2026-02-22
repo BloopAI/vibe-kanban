@@ -2,11 +2,15 @@ import { ArrowLeftIcon, ArrowRightIcon } from '@phosphor-icons/react';
 import {
   IconButtonGroup,
   IconButtonGroupItem,
-} from '@vibe/ui/components/IconButtonGroup';
-import type { NavigationState } from '@/types/previewDevTools';
+} from './IconButtonGroup';
+
+export interface PreviewNavigationState {
+  canGoBack: boolean;
+  canGoForward: boolean;
+}
 
 interface PreviewNavigationProps {
-  navigation: NavigationState | null;
+  navigation: PreviewNavigationState | null;
   onBack: () => void;
   onForward: () => void;
   disabled?: boolean;

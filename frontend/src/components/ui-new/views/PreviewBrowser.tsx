@@ -22,7 +22,7 @@ import {
   IconButtonGroup,
   IconButtonGroupItem,
 } from '@vibe/ui/components/IconButtonGroup';
-import { PreviewNavigation } from './PreviewNavigation';
+import { PreviewNavigation } from '@vibe/ui/components/PreviewNavigation';
 import type { Repo } from 'shared/types';
 import type {
   ScreenSize,

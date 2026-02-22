@@ -4889,3 +4889,46 @@ Validation:
 Plan adjustments from new information:
 - After completing primitives, migration can continue incrementally by extracting pure, presentational components from `ui-new/views`.
 - Next likely candidate: `frontend/src/components/ui-new/views/PreviewControls.tsx` or similar lightweight view-level widgets with narrow callsite surfaces.
+
+## 2026-02-22 - UI package extraction: PreviewNavigation
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Evaluated `frontend/src/components/ui-new/views/PreviewControls.tsx` first, but it pulls in additional view-level behavior (`VirtualizedProcessLogs`) and frontend utility coupling.
+- Selected `frontend/src/components/ui-new/views/PreviewNavigation.tsx` as the lower-risk next move: it is presentational and has a single callsite in `PreviewBrowser`.
+- New information: for `ui-new/views`, extraction remains practical when the component surface is narrow and frontend-specific types are replaced with structural package-local types.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/PreviewNavigation.tsx packages/ui/src/components/PreviewNavigation.tsx`
+- Package updates:
+  - Replaced package self-import:
+    - `@vibe/ui/components/IconButtonGroup` -> `./IconButtonGroup`
+  - Removed frontend type coupling:
+    - `@/types/previewDevTools`
+  - Added package-local structural type:
+    - `PreviewNavigationState`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/views/PreviewBrowser.tsx`
+  - New import path:
+    - `@vibe/ui/components/PreviewNavigation`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The audit's broad `keep-app` classification for `ui-new/views` still holds as a default, but selective extraction is working for low-coupling view widgets.
+- Next candidate should be another single-callside, presentational view component; avoid components that pull in container logic or frontend-only infra until we define adapter boundaries.
