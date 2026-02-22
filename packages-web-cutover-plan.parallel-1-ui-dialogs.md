@@ -75,6 +75,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/ViewProcessesDialog.tsx`.
   - [x] Moved feature dialog `GitActionsDialog` to
         `src/features/command-bar/ui/dialogs/GitActionsDialog.tsx`.
+  - [x] Moved feature dialog `RestoreLogsDialog` to
+        `src/features/command-bar/ui/dialogs/RestoreLogsDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -135,6 +137,8 @@ compatibility shims.
         `src/components/dialogs/tasks/ViewProcessesDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/GitActionsDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/RestoreLogsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -223,6 +227,9 @@ compatibility shims.
         `@/features/command-bar/ui/dialogs/GitActionsDialog` in
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
+        `@/features/command-bar/ui/dialogs/RestoreLogsDialog` in
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
 
@@ -305,6 +312,10 @@ compatibility shims.
   `components/dialogs` barrel export update; dialogs used only inside a single
   settings surface (for example `DeleteRemoteProjectDialog`) can be
   canonicalized with direct feature import updates plus a legacy shim.
+- New information (2026-02-22): some command-bar dialog consumers in
+  `src/hooks/**` can stay untouched during Track 1 by canonicalizing only the
+  `src/components/dialogs/index.ts` export (for example
+  `RestoreLogsDialog`), preserving ownership boundaries.
 
 ## Validation
 

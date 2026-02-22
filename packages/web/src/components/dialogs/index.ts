@@ -40,7 +40,7 @@ export {
   RestoreLogsDialog,
   type RestoreLogsDialogProps,
   type RestoreLogsDialogResult,
-} from './tasks/RestoreLogsDialog';
+} from '@/features/command-bar/ui/dialogs/RestoreLogsDialog';
 export {
   ViewProcessesDialog,
   type ViewProcessesDialogProps,

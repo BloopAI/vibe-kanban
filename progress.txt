@@ -826,3 +826,35 @@
   `src/components/dialogs/tasks/RestoreLogsDialog.tsx` into
   `src/features/command-bar/ui/dialogs/*` with compatibility shims and
   canonical import updates (including hook callsites where appropriate).
+
+## 2026-02-22 12:19:17 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `RestoreLogsDialog` as the current next component (it was the queued next-step item from the prior cycle and already move-refactored in the working tree).
+- Completed the move-first refactor state and validated canonicalization:
+  - Used `git mv` to move
+    `src/components/dialogs/tasks/RestoreLogsDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/RestoreLogsDialog.tsx`.
+  - Kept compatibility shim at legacy path:
+    `src/components/dialogs/tasks/RestoreLogsDialog.tsx`.
+  - Updated canonical callsite/export surface to
+    `@/features/command-bar/ui/dialogs/RestoreLogsDialog` in:
+    - `src/components/dialogs/index.ts`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `RestoreLogsDialog`.
+  - Added a new-information note that hook-layer consumers can remain stable by
+    canonicalizing the dialogs barrel export while keeping a legacy shim.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 dialog consolidation by moving
+  `src/components/dialogs/tasks/PrCommentsDialog.tsx` into
+  `src/features/command-bar/ui/dialogs/*` with a compatibility shim; if
+  ownership boundaries are a concern, keep cross-feature callsites on legacy
+  shim imports until final consolidation.
