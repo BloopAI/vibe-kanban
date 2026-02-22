@@ -105,6 +105,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/AssigneeSelectionDialog.tsx`.
   - [x] Moved command-bar selection dialog `WorkspaceSelectionDialog` to
         `src/features/command-bar/ui/dialogs/WorkspaceSelectionDialog.tsx`.
+  - [x] Moved feature dialog `ResolveConflictsDialog` to
+        `src/features/command-bar/ui/dialogs/ResolveConflictsDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -231,6 +233,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/AssigneeSelectionDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/WorkspaceSelectionDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/ResolveConflictsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -444,6 +448,16 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
+  - [x] Updated canonical `ResolveConflictsDialog` callsite to
+        feature-owned path in:
+        `src/components/ui-new/actions/index.ts`.
+  - [x] Kept `ResolveConflictsDialog` feature-layer callsite on the legacy
+        shim path in `src/features/command-bar/ui/dialogs/RebaseDialog.tsx`
+        because `src/features/**` cannot import directly from
+        `@/features/**` under current lint boundaries.
+  - [x] Kept non-owned `ResolveConflictsDialog` callsite on the legacy shim
+        path in `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`
+        to avoid Track 1 ownership churn.
 
 ## Risk Controls
 
@@ -589,6 +603,15 @@ compatibility shims.
   feature ownership, keep non-owned context callers (currently
   `src/contexts/ActionsContext.tsx`) on the legacy shim path while
   canonicalizing owned `src/components/ui-new/**` callsites.
+- New information (2026-02-22): after moving `ResolveConflictsDialog` into
+  feature ownership, keep non-owned workspace-chat callers (currently
+  `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`) on the legacy
+  shim path while canonicalizing owned `src/components/ui-new/**` callsites.
+- New information (2026-02-22): feature-owned command-bar dialogs cannot
+  import sibling command-bar canonical dialog paths directly under current lint
+  boundaries; keep these internal feature callsites (for example
+  `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` ->
+  `ResolveConflictsDialog`) on legacy shim imports until final consolidation.
 
 ## Validation
 

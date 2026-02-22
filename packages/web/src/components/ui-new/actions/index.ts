@@ -72,7 +72,7 @@ import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
 import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
 import { RebaseDialog } from '@/features/command-bar/ui/dialogs/RebaseDialog';
-import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
+import { ResolveConflictsDialog } from '@/features/command-bar/ui/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog';
 import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
 import { CreatePRDialog } from '@/features/command-bar/ui/dialogs/CreatePRDialog';

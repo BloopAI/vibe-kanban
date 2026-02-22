@@ -1588,3 +1588,45 @@
   `src/features/command-bar/ui/dialogs/*` with a compatibility shim, then
   update owned UI-layer/command-bar callsites while keeping
   `src/features/workspace-chat/**` callers on the legacy shim path.
+
+## 2026-02-22 13:33:08 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/ResolveConflictsDialog.tsx` as the next Track 1 dialog migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/ResolveConflictsDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/ResolveConflictsDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/ResolveConflictsDialog.tsx`.
+  - Updated moved dialog for feature-lint compatibility:
+    - switched NiceModal usage to named imports (`create`, `useModal`)
+    - replaced direct provider import with hook facade import
+      (`@/hooks/useUserSystem`).
+- Updated canonical owned callsite to feature path:
+  - `src/components/ui-new/actions/index.ts`
+- Kept non-owned callsites on legacy shim path:
+  - `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`
+- New information discovered and handled:
+  - `src/features/command-bar/**` cannot import sibling
+    `@/features/command-bar/**` dialog modules directly under current lint
+    boundaries (`no-restricted-imports`).
+  - Kept `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` on the legacy
+    shim import for `ResolveConflictsDialog`.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `ResolveConflictsDialog` migration.
+  - Added risk-controls notes documenting the feature-layer import boundary for
+    sibling command-bar dialogs.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/WorkspacesGuideDialog.tsx` into
+  `src/shared/ui/dialogs/*` with a compatibility shim, then update owned
+  callsites while keeping non-owned `src/features/workspace/**` callers on the
+  legacy shim path if needed for boundary safety.
