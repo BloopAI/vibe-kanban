@@ -43,6 +43,8 @@ compatibility shims.
       reusable dialogs -> `src/shared/ui/dialogs/*`.
   - [x] Moved feature dialog `CreateConfigurationDialog` to
         `src/features/settings/ui/dialogs/CreateConfigurationDialog.tsx`.
+  - [x] Moved feature dialog `CreateOrganizationDialog` to
+        `src/features/settings/ui/dialogs/CreateOrganizationDialog.tsx`.
   - [x] Moved feature dialog `DeleteConfigurationDialog` to
         `src/features/settings/ui/dialogs/DeleteConfigurationDialog.tsx`.
   - [x] Moved feature dialog `GhCliSetupDialog` to
@@ -76,6 +78,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/settings/CreateConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/dialogs/org/CreateOrganizationDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/dialogs/settings/DeleteConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/auth/GhCliSetupDialog.tsx`.
@@ -105,6 +109,10 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/CreateOrganizationDialog` in:
+        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/DeleteConfigurationDialog` in:
@@ -217,6 +225,10 @@ compatibility shims.
   `src/shared/ui/**`, and `src/lib/**`) because those layers cannot import
   `@/features/**` directly under current lint boundaries; keep shim coverage
   until final consolidation.
+- New information (2026-02-22): organization management dialogs can be moved
+  under `src/features/settings/ui/dialogs/*` with direct canonical imports in
+  settings surfaces while app-layout consumers continue to resolve via the
+  `src/components/dialogs/index.ts` barrel.
 
 ## Validation
 

@@ -17,7 +17,7 @@ import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
-import { CreateOrganizationDialog } from '@/components/dialogs/org/CreateOrganizationDialog';
+import { CreateOrganizationDialog } from '@/features/settings/ui/dialogs/CreateOrganizationDialog';
 import { InviteMemberDialog } from '@/components/dialogs/org/InviteMemberDialog';
 import type {
   InviteMemberResult,

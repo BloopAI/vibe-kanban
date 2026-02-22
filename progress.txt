@@ -501,3 +501,41 @@
 - Continue `T1.5` by evaluating whether remaining task-surface git dialogs
   (`ChangeTargetBranchDialog`, task `RebaseDialog`) should stay task-specific
   or be wrapped around shared primitives for final consolidation.
+
+## 2026-02-22 11:53:24 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`,
+  then assessed the next low-risk dialog move for Track 1.
+- Selected `CreateOrganizationDialog` as the next feature-owned dialog move.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/org/CreateOrganizationDialog.tsx`
+    -> `src/features/settings/ui/dialogs/CreateOrganizationDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/org/CreateOrganizationDialog.tsx`.
+  - Updated canonical callsites/import surfaces to
+    `@/features/settings/ui/dialogs/CreateOrganizationDialog` in:
+    - `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`
+    - `src/components/dialogs/index.ts`
+- New information discovered and handled:
+  - Feature-path lint rules required replacing NiceModal default import with
+    named imports (`create`, `useModal`) in the moved file.
+  - Shared app layout continues to consume this dialog through the
+    `components/dialogs` barrel, so barrel canonicalization remains a
+    low-conflict update pattern for Track 1.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `CreateOrganizationDialog`.
+  - Added a risk-controls note for organization dialog migration pattern.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 dialog consolidation by moving
+  `src/components/dialogs/org/CreateRemoteProjectDialog.tsx` into
+  `src/features/settings/ui/dialogs/*` with a compatibility shim and canonical
+  settings/barrel import updates.

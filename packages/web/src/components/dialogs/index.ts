@@ -6,7 +6,7 @@ export { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
 export {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
-} from './org/CreateOrganizationDialog';
+} from '@/features/settings/ui/dialogs/CreateOrganizationDialog';
 export {
   InviteMemberDialog,
   type InviteMemberResult,
