@@ -6154,3 +6154,55 @@ Validation:
 Plan adjustments from new information:
 - For sidebar-style components, keep package defaults for state keys but allow explicit key override props from app stores.
 - Keep dialog launching and workflow actions in frontend containers via callbacks rather than importing app dialog modules into package components.
+
+## 2026-02-22 - UI package extraction: Navbar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/Navbar.tsx` as the next extraction target.
+- It has a single container callsite (`NavbarContainer`) and can be made package-safe by moving action/sync context logic into the container.
+- Main couplings were frontend action resolution utilities and `SyncErrorContext`.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/Navbar.tsx packages/ui/src/components/Navbar.tsx`
+- Package updates:
+  - Replaced app utility alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports with relative imports.
+  - Removed frontend dependencies from package component:
+    - removed `useSyncErrorContext`
+    - removed action visibility/execution imports from `ui-new/actions`
+  - Added package-local navbar contracts:
+    - `NavbarActionItem`
+    - `NavbarDividerItem`
+    - `NavbarSectionItem`
+  - Added `syncErrors` prop and made navbar a pure render component over resolved items.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NavbarContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/Navbar`
+  - Container now owns app-specific behavior:
+    - resolves action icon/tooltip/active/enabled state via existing frontend action helpers
+    - filters unsupported special icons before mapping to package item contracts
+    - passes sync errors from `useSyncErrorContext`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For toolbar/nav components, keep package APIs focused on render-ready item models and move action-state derivation into frontend containers.
+- Filter frontend-only/special icon variants in container mapping to preserve clean package boundaries and avoid divider artifacts.

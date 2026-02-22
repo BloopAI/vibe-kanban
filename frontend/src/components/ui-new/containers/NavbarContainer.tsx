@@ -3,26 +3,32 @@ import { useLocation } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
+import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
-import { Navbar } from '../views/Navbar';
+import { Navbar, type NavbarSectionItem } from '@vibe/ui/components/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
 import {
   NavbarActionGroups,
   NavbarDivider,
   type ActionDefinition,
-  type NavbarItem,
+  type NavbarItem as ActionNavbarItem,
   type ActionVisibilityContext,
+  isSpecialIcon,
 } from '../actions';
 import {
   useActionVisibilityContext,
+  getActionIcon,
+  getActionTooltip,
+  isActionActive,
+  isActionEnabled,
   isActionVisible,
 } from '../actions/useActionVisibility';
 
 /**
  * Check if a NavbarItem is a divider
  */
-function isDivider(item: NavbarItem): item is typeof NavbarDivider {
+function isDivider(item: ActionNavbarItem): item is typeof NavbarDivider {
   return 'type' in item && item.type === 'divider';
 }
 
@@ -31,17 +37,18 @@ function isDivider(item: NavbarItem): item is typeof NavbarDivider {
  * if they would appear at the start, end, or consecutively.
  */
 function filterNavbarItems(
-  items: readonly NavbarItem[],
+  items: readonly ActionNavbarItem[],
   ctx: ActionVisibilityContext
-): NavbarItem[] {
+): ActionNavbarItem[] {
   // Filter actions by visibility, keep dividers
   const filtered = items.filter((item) => {
     if (isDivider(item)) return true;
-    return isActionVisible(item, ctx);
+    if (!isActionVisible(item, ctx)) return false;
+    return !isSpecialIcon(getActionIcon(item, ctx));
   });
 
   // Remove leading/trailing dividers and consecutive dividers
-  const result: NavbarItem[] = [];
+  const result: ActionNavbarItem[] = [];
   for (const item of filtered) {
     if (isDivider(item)) {
       // Only add divider if we have items before it and last item wasn't a divider
@@ -61,10 +68,41 @@ function filterNavbarItems(
   return result;
 }
 
+function toNavbarSectionItems(
+  items: readonly ActionNavbarItem[],
+  ctx: ActionVisibilityContext,
+  onExecuteAction: (action: ActionDefinition) => void
+): NavbarSectionItem[] {
+  return items.reduce<NavbarSectionItem[]>((result, item) => {
+    if (isDivider(item)) {
+      result.push({ type: 'divider' });
+      return result;
+    }
+
+    const icon = getActionIcon(item, ctx);
+    if (isSpecialIcon(icon)) {
+      return result;
+    }
+
+    result.push({
+      type: 'action',
+      id: item.id,
+      icon,
+      isActive: isActionActive(item, ctx),
+      tooltip: getActionTooltip(item, ctx),
+      shortcut: item.shortcut,
+      disabled: !isActionEnabled(item, ctx),
+      onClick: () => onExecuteAction(item),
+    });
+    return result;
+  }, []);
+}
+
 export function NavbarContainer() {
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
+  const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
   const isOnProjectPage = location.pathname.startsWith('/projects/');
 
@@ -104,16 +142,24 @@ export function NavbarContainer() {
     () =>
       isMigratePage
         ? []
-        : filterNavbarItems(NavbarActionGroups.left, actionCtx),
-    [actionCtx, isMigratePage]
+        : toNavbarSectionItems(
+            filterNavbarItems(NavbarActionGroups.left, actionCtx),
+            actionCtx,
+            handleExecuteAction
+          ),
+    [actionCtx, handleExecuteAction, isMigratePage]
   );
 
   const rightItems = useMemo(
     () =>
       isMigratePage
         ? []
-        : filterNavbarItems(NavbarActionGroups.right, actionCtx),
-    [actionCtx, isMigratePage]
+        : toNavbarSectionItems(
+            filterNavbarItems(NavbarActionGroups.right, actionCtx),
+            actionCtx,
+            handleExecuteAction
+          ),
+    [actionCtx, handleExecuteAction, isMigratePage]
   );
 
   const navbarTitle = isCreateMode
@@ -129,6 +175,7 @@ export function NavbarContainer() {
       workspaceTitle={navbarTitle}
       leftItems={leftItems}
       rightItems={rightItems}
+      syncErrors={syncErrorContext?.errors}
       leftSlot={
         linkedRemoteWorkspace?.issue_id ? (
           <RemoteIssueLink
@@ -137,8 +184,6 @@ export function NavbarContainer() {
           />
         ) : null
       }
-      actionContext={actionCtx}
-      onExecuteAction={handleExecuteAction}
     />
   );
 }
