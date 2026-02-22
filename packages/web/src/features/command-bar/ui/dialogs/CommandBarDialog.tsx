@@ -119,9 +119,7 @@ function CommandBarContent({
         if (!repoId && repos.length === 1) {
           repoId = repos[0].id;
         } else if (!repoId && repos.length > 1) {
-          const { SelectionDialog } = await import(
-            './SelectionDialog'
-          );
+          const { SelectionDialog } = await import('./SelectionDialog');
           const { buildRepoSelectionPages } = await import(
             './selections/repoSelection'
           );

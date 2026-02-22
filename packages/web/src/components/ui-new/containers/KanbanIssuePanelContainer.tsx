@@ -659,7 +659,7 @@ export function KanbanIssuePanelContainer({
         // For assigneeIds, open the assignee selection dialog with callback
         if (field === 'assigneeIds') {
           const { AssigneeSelectionDialog } = await import(
-            '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+            '@/features/command-bar/ui/dialogs/AssigneeSelectionDialog'
           );
           await AssigneeSelectionDialog.show({
             projectId,
