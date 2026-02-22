@@ -4850,3 +4850,42 @@ Validation:
 Plan adjustments from new information:
 - `frontend/src/components/ui-new/primitives/` no longer contains any `.tsx` primitives; extraction of this primitive layer is now complete.
 - Next migration work should be chosen from other layers based on current architecture goals (likely `ui-new/views` or selected `ui-new/dialogs` primitives), since there are no remaining `ui-new/primitives` components to move.
+
+## 2026-02-22 - UI package extraction: MigrateSidebar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- With `ui-new/primitives` exhausted, selected `frontend/src/components/ui-new/views/MigrateSidebar.tsx` as the next low-risk candidate.
+- It is a small presentational view with a single callsite (`MigrateLayout`) and no app-state or context dependencies.
+- New information: extracting select lightweight `ui-new/views` components is viable when they are pure view widgets and can be consumed from containers without additional adapters.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/MigrateSidebar.tsx packages/ui/src/components/MigrateSidebar.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/MigrateLayout.tsx`
+  - New import path:
+    - `@vibe/ui/components/MigrateSidebar`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- After completing primitives, migration can continue incrementally by extracting pure, presentational components from `ui-new/views`.
+- Next likely candidate: `frontend/src/components/ui-new/views/PreviewControls.tsx` or similar lightweight view-level widgets with narrow callsite surfaces.
