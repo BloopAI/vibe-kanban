@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { ResolvedRelationship } from '@/lib/resolveRelationships';
-import { IssueListSection } from '@/components/ui-new/views/IssueListSection';
+import { IssueListSection } from '@vibe/ui/components/IssueListSection';
 
 export interface IssueListViewProps {
   statuses: ProjectStatus[];

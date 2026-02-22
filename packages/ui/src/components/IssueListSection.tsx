@@ -1,28 +1,34 @@
 'use client';
 
-import { cn } from '@/lib/utils';
-import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { ResolvedRelationship } from '@/lib/resolveRelationships';
+import { useCallback, useState } from 'react';
+import { cn } from '../lib/cn';
 import { Droppable } from '@hello-pangea/dnd';
 import { CaretDownIcon } from '@phosphor-icons/react';
-import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { KanbanBadge } from '@vibe/ui/components/KanbanBadge';
-import { IssueListRow } from '@vibe/ui/components/IssueListRow';
+import { StatusDot } from './StatusDot';
+import { KanbanBadge } from './KanbanBadge';
 import {
-  usePersistedExpanded,
-  type PersistKey,
-} from '@/stores/useUiPreferencesStore';
+  IssueListRow,
+  type IssueListRowIssue,
+  type IssueListRowTag,
+  type IssueListRowRelationship,
+} from './IssueListRow';
+import type { KanbanAssigneeUser } from './KanbanAssignee';
+
+export interface IssueListSectionStatus {
+  id: string;
+  name: string;
+  color: string;
+}
 
 export interface IssueListSectionProps {
-  status: ProjectStatus;
+  status: IssueListSectionStatus;
   issueIds: string[];
-  issueMap: Record<string, Issue>;
-  issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
-  getTagObjectsForIssue: (issueId: string) => Tag[];
+  issueMap: Record<string, IssueListRowIssue>;
+  issueAssigneesMap: Record<string, KanbanAssigneeUser[]>;
+  getTagObjectsForIssue: (issueId: string) => IssueListRowTag[];
   getResolvedRelationshipsForIssue?: (
     issueId: string
-  ) => ResolvedRelationship[];
+  ) => IssueListRowRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
   className?: string;
@@ -39,15 +45,28 @@ export function IssueListSection({
   selectedIssueId,
   className,
 }: IssueListSectionProps) {
-  const persistKey = `list-section-${status.id}` as PersistKey;
-  const [isExpanded, setExpanded] = usePersistedExpanded(persistKey, true);
+  const storageKey = `ui.issue-list-section.${status.id}`;
+  const [isExpanded, setExpanded] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = window.localStorage.getItem(storageKey);
+    return stored == null ? true : stored === 'true';
+  });
+  const handleToggleExpanded = useCallback(() => {
+    setExpanded((prevExpanded) => {
+      const nextExpanded = !prevExpanded;
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, String(nextExpanded));
+      }
+      return nextExpanded;
+    });
+  }, [storageKey]);
 
   return (
     <div className={cn('flex flex-col', className)}>
       {/* Section Header */}
       <button
         type="button"
-        onClick={() => setExpanded(!isExpanded)}
+        onClick={handleToggleExpanded}
         className={cn(
           'flex items-center justify-between',
           'h-8 px-double py-base',
