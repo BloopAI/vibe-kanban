@@ -34,7 +34,7 @@ import { ChatFileEntry } from '../primitives/conversation/ChatFileEntry';
 import { ChatApprovalCard } from '../primitives/conversation/ChatApprovalCard';
 import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';
 import { ChatAssistantMessage } from '../primitives/conversation/ChatAssistantMessage';
-import { ChatSystemMessage } from '../primitives/conversation/ChatSystemMessage';
+import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';

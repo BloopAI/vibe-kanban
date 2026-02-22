@@ -3978,3 +3978,43 @@ Plan adjustments from new information:
 - The conversation extraction path remains stable when shared status/state props are represented as structural package types.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatSystemMessage.tsx` (single container callsite, minimal dependencies, straightforward alias import cleanup).
+
+## 2026-02-22 - UI package extraction: ChatSystemMessage
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatSystemMessage.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) and minimal dependencies (icon + `cn`), making it a low-risk conversation primitive move.
+- New information: this extraction required only alias cleanup; no API reshaping was needed.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatSystemMessage.tsx packages/ui/src/components/ChatSystemMessage.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatSystemMessage`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The conversation extraction path remains stable for single-callsite presentational components with no context/store coupling.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatTodoList.tsx` (single container callsite, no local component dependencies, and straightforward structural typing for todo items).
