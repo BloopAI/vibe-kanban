@@ -4,9 +4,9 @@ import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   useWorkspaces,
-  workspaceSummaryKeys,
   type SidebarWorkspace,
 } from '@/features/workspace/model/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/features/workspace/model/hooks/useWorkspaceSessions';

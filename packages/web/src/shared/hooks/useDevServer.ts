@@ -7,7 +7,7 @@ import {
   filterDevServerProcesses,
   deduplicateDevServersByWorkingDir,
 } from '@/lib/devServerUtils';
-import { workspaceSummaryKeys } from './useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 
 interface UseDevServerOptions {
   onStartSuccess?: () => void;

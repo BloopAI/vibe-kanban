@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
 import type { CreateAndStartWorkspaceRequest } from 'shared/types';
-import { workspaceSummaryKeys } from './useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 
 interface CreateWorkspaceParams {
   data: CreateAndStartWorkspaceRequest;

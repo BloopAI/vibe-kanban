@@ -7,7 +7,7 @@ export {
 } from '@/features/workspace/model/hooks/useTaskAttempt';
 export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
-export { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
+export { useDevServer } from '@/shared/hooks/useDevServer';
 export { useRebase } from '@/features/workspace/model/hooks/useRebase';
 export { useChangeTargetBranch } from '@/features/workspace/model/hooks/useChangeTargetBranch';
 export { useRenameBranch } from '@/features/workspace/model/hooks/useRenameBranch';

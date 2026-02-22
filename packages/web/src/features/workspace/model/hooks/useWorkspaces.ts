@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import type {
   WorkspaceWithStatus,
   WorkspaceSummary,
@@ -85,12 +86,7 @@ export const workspaceKeys = {
   all: ['workspaces'] as const,
 };
 
-// Query key factory for workspace summaries
-export const workspaceSummaryKeys = {
-  all: ['workspace-summaries'] as const,
-  byArchived: (archived: boolean) =>
-    ['workspace-summaries', archived ? 'archived' : 'active'] as const,
-};
+// workspaceSummaryKeys is imported from @/shared/hooks/workspaceSummaryKeys
 
 // Fetch workspace summaries from the API by archived status
 async function fetchWorkspaceSummariesByArchived(

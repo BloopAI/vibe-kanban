@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
-import { workspaceSummaryKeys } from '@/features/workspace/model/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import {
   filterRunningDevServers,
   filterDevServerProcesses,

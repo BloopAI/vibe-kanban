@@ -67,7 +67,7 @@ import { attemptsApi, repoApi } from '@/lib/api';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
 import { attemptKeys } from '@/features/workspace/model/hooks/useAttempt';
 import { repoBranchKeys } from '@/features/workspace/model/hooks/useRepoBranches';
-import { workspaceSummaryKeys } from '@/features/workspace/model/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
 import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';

@@ -31,7 +31,7 @@ import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useAttemptBranch } from '../model/hooks/useAttemptBranch';
 import { useApprovalMutation } from '../model/hooks/useApprovalMutation';
 import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
-import { workspaceSummaryKeys } from '@/features/workspace/model/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { buildAgentPrompt } from '@/shared/lib/promptMessage';
 import { formatDateShortWithTime } from '@/shared/lib/date';
 import { toPrettyCase } from '@/shared/lib/string';
