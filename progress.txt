@@ -5489,3 +5489,49 @@ Validation:
 
 Plan adjustments from new information:
 - For additional list-section style extractions, prefer package-local UI state persistence first; only promote app-store dependencies when cross-feature synchronization is explicitly required.
+
+## 2026-02-22 - UI package extraction: IssueListView
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueListView.tsx` as the next extraction target.
+- It is a thin parent wrapper over `IssueListSection` (already in `@vibe/ui`) with a single frontend callsite in `KanbanContainer`.
+- New information: parent list-view composition can be extracted cleanly by reusing package-local structural contracts from child components.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueListView.tsx packages/ui/src/components/IssueListView.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-import:
+    - `@vibe/ui/components/IssueListSection` -> `./IssueListSection`
+  - Removed external/shared type imports (`shared/remote-types`, `shared/types`, `@/lib/resolveRelationships`) by reusing package-local contracts:
+    - `IssueListSectionStatus`
+    - `IssueListRowIssue`
+    - `IssueListRowTag`
+    - `IssueListRowRelationship`
+    - `KanbanAssigneeUser`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/KanbanContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueListView`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- When a parent view only composes already-extracted package components, prefer reusing child component type contracts to avoid introducing new shared type layers.

@@ -1,20 +1,26 @@
 'use client';
 
-import { cn } from '@/lib/utils';
-import type { ProjectStatus, Issue, Tag } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { ResolvedRelationship } from '@/lib/resolveRelationships';
-import { IssueListSection } from '@vibe/ui/components/IssueListSection';
+import { cn } from '../lib/cn';
+import type { KanbanAssigneeUser } from './KanbanAssignee';
+import {
+  IssueListSection,
+  type IssueListSectionStatus,
+} from './IssueListSection';
+import type {
+  IssueListRowIssue,
+  IssueListRowRelationship,
+  IssueListRowTag,
+} from './IssueListRow';
 
 export interface IssueListViewProps {
-  statuses: ProjectStatus[];
+  statuses: IssueListSectionStatus[];
   items: Record<string, string[]>;
-  issueMap: Record<string, Issue>;
-  issueAssigneesMap: Record<string, OrganizationMemberWithProfile[]>;
-  getTagObjectsForIssue: (issueId: string) => Tag[];
+  issueMap: Record<string, IssueListRowIssue>;
+  issueAssigneesMap: Record<string, KanbanAssigneeUser[]>;
+  getTagObjectsForIssue: (issueId: string) => IssueListRowTag[];
   getResolvedRelationshipsForIssue?: (
     issueId: string
-  ) => ResolvedRelationship[];
+  ) => IssueListRowRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
   className?: string;
