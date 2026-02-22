@@ -1,11 +1,10 @@
 import { ListMagnifyingGlassIcon, CaretRightIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { ToolStatus } from 'shared/types';
-import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
 
 export interface AggregatedEntry {
   summary: string;
-  status?: ToolStatus;
+  status?: ToolStatusLike;
   expansionKey: string;
   content?: string;
   command?: string;
@@ -68,7 +67,7 @@ export function ChatAggregatedToolEntries({
   }
 
   // Get the worst status among all entries for the aggregate indicator
-  const aggregateStatus = entries.reduce<ToolStatus | undefined>(
+  const aggregateStatus = entries.reduce<ToolStatusLike | undefined>(
     (worst, entry) => {
       if (!entry.status) return worst;
       if (!worst) return entry.status;

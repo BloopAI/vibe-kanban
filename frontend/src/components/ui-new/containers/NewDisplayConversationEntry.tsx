@@ -39,7 +39,7 @@ import { ChatThinkingMessage } from '@vibe/ui/components/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
 import { ChatScriptEntry } from '@vibe/ui/components/ChatScriptEntry';
 import { ChatSubagentEntry } from '@vibe/ui/components/ChatSubagentEntry';
-import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';
+import { ChatAggregatedToolEntries } from '@vibe/ui/components/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '../primitives/conversation/ChatAggregatedDiffEntries';
 import { ChatCollapsedThinking } from '@vibe/ui/components/ChatCollapsedThinking';
 import { ChatMarkdown } from '../primitives/conversation/ChatMarkdown';
