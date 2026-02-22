@@ -38,7 +38,7 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
 import { CreateRemoteProjectDialog } from '@/features/settings/ui/dialogs/CreateRemoteProjectDialog';
-import { DeleteRemoteProjectDialog } from '@/components/dialogs/org/DeleteRemoteProjectDialog';
+import { DeleteRemoteProjectDialog } from '@/features/settings/ui/dialogs/DeleteRemoteProjectDialog';
 import { useShape } from '@/lib/electric/hooks';
 import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
 

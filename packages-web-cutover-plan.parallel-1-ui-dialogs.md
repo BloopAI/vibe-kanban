@@ -47,6 +47,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/CreateOrganizationDialog.tsx`.
   - [x] Moved feature dialog `CreateRemoteProjectDialog` to
         `src/features/settings/ui/dialogs/CreateRemoteProjectDialog.tsx`.
+  - [x] Moved feature dialog `DeleteRemoteProjectDialog` to
+        `src/features/settings/ui/dialogs/DeleteRemoteProjectDialog.tsx`.
   - [x] Moved feature dialog `DeleteConfigurationDialog` to
         `src/features/settings/ui/dialogs/DeleteConfigurationDialog.tsx`.
   - [x] Moved feature dialog `GhCliSetupDialog` to
@@ -83,6 +85,8 @@ compatibility shims.
         `src/components/dialogs/org/CreateOrganizationDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/org/CreateRemoteProjectDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/org/DeleteRemoteProjectDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/settings/DeleteConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
@@ -122,6 +126,9 @@ compatibility shims.
         `@/features/settings/ui/dialogs/CreateRemoteProjectDialog` in:
         `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsite to
+        `@/features/settings/ui/dialogs/DeleteRemoteProjectDialog` in
+        `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/DeleteConfigurationDialog` in:
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
@@ -240,6 +247,10 @@ compatibility shims.
 - New information (2026-02-22): remote-project settings dialogs follow the
   same migration pattern as organization dialogs: canonical imports in settings
   surfaces plus barrel-based consumption for shared app-layout entrypoints.
+- New information (2026-02-22): not every migrated settings dialog needs a
+  `components/dialogs` barrel export update; dialogs used only inside a single
+  settings surface (for example `DeleteRemoteProjectDialog`) can be
+  canonicalized with direct feature import updates plus a legacy shim.
 
 ## Validation
 
