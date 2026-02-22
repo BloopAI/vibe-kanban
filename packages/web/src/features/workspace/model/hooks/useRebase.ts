@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, Result } from '@/lib/api';
 import type { RebaseTaskAttemptRequest } from 'shared/types';
 import type { GitOperationError } from 'shared/types';
-import { repoBranchKeys } from '@/hooks/useRepoBranches';
+import { repoBranchKeys } from '@/features/workspace/model/hooks/useRepoBranches';
 
 export function useRebase(
   attemptId: string | undefined,

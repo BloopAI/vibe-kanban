@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
 import { GitBranchIcon, SpinnerIcon } from '@phosphor-icons/react';
-import { useRepoBranches } from '@/hooks/useRepoBranches';
+import { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
 import { repoApi } from '@/lib/api';
 import type { Repo, UpdateRepo } from 'shared/types';

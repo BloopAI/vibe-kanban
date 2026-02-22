@@ -12,7 +12,7 @@ import { AlertTriangle, GitCommit, Loader2 } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useKeySubmitTask } from '@/keyboard/hooks';
-import { Scope } from '@/keyboard/registry';
+import { Scope } from '@/shared/keyboard/registry';
 import { executionProcessesApi } from '@/lib/api';
 import {
   isCodingAgent,

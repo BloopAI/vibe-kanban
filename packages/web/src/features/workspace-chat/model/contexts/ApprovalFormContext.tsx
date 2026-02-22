@@ -1,5 +1,5 @@
 import { useContext, useState, ReactNode, useCallback } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 
 interface ApprovalFormState {
   isEnteringReason: boolean;

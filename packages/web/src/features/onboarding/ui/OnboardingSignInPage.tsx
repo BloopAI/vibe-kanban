@@ -5,12 +5,12 @@ import { Navigate, useNavigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
 import { OAuthDialog, type OAuthProvider } from '@/dialogs/global/OAuthDialog';
 import { usePostHog } from 'posthog-js/react';
-import { useUserSystem } from '@/hooks/useUserSystem';
-import { useTheme } from '@/hooks/useTheme';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
 import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
 

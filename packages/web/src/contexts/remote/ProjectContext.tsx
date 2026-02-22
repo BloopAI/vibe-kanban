@@ -1,10 +1,10 @@
 import { useContext, useMemo, useCallback, type ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import {
   useShape,
   type InsertResult,
   type MutationResult,
-} from '@/lib/electric/hooks';
+} from '@/integrations/electric/hooks';
 import {
   PROJECT_ISSUES_SHAPE,
   PROJECT_PROJECT_STATUSES_SHAPE,
@@ -42,7 +42,7 @@ import {
   type CreateIssueTagRequest,
   type CreateIssueRelationshipRequest,
 } from 'shared/remote-types';
-import type { SyncError } from '@/lib/electric/types';
+import type { SyncError } from '@/shared/lib/electric/types';
 
 /**
  * ProjectContext provides project-scoped data and mutations.

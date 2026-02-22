@@ -4,7 +4,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { ReviewProvider } from '@/contexts/ReviewProvider';
 import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
@@ -19,14 +19,14 @@ import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPan
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';
 import { WorkspacesGuideDialog } from '@/dialogs/shared/WorkspacesGuideDialog';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 
 import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/shared/lib/routes/navigation';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';

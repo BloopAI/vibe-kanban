@@ -1,7 +1,7 @@
 import { FieldProps } from '@rjsf/utils';
 import { PlusIcon, XIcon } from '@phosphor-icons/react';
 import { useState, useCallback, useMemo } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 type KeyValueData = Record<string, string>;
 

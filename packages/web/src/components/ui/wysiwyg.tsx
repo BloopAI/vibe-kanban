@@ -67,7 +67,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
-import { useUiPreferencesStore } from '@/stores/useUiPreferencesStore';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 import { repoApi } from '@/lib/api';
 import { searchTagsAndFiles } from '@/shared/lib/searchTagsAndFiles';

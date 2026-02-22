@@ -39,7 +39,7 @@ import { useAuth } from '@/hooks/auth/useAuth';
 import { OAuthDialog } from '@/dialogs/global/OAuthDialog';
 import { CreateRemoteProjectDialog } from '@/dialogs/org/CreateRemoteProjectDialog';
 import { DeleteRemoteProjectDialog } from '@/dialogs/org/DeleteRemoteProjectDialog';
-import { useShape } from '@/lib/electric/hooks';
+import { useShape } from '@/integrations/electric/hooks';
 import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
 
 import {
@@ -52,7 +52,7 @@ import {
 } from 'shared/remote-types';
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
 import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
 import {
   SettingsCard,

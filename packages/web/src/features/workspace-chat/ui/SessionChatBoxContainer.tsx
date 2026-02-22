@@ -10,8 +10,8 @@ import {
 } from 'shared/types';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { useAttemptExecution } from '../model/hooks/useAttemptExecution';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
@@ -19,7 +19,7 @@ import { useEntries, useTokenUsage } from '../model/contexts/EntriesContext';
 import { useExecutionProcesses } from '../model/hooks/useExecutionProcesses';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
-import { useTodos } from '@/hooks/useTodos';
+import { useTodos } from '@/features/workspace-chat/model/hooks/useTodos';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '../model/hooks/useSessionMessageEditor';
@@ -27,11 +27,11 @@ import { useSessionQueueInteraction } from '../model/hooks/useSessionQueueIntera
 import { useSessionSend } from '../model/hooks/useSessionSend';
 import { useSessionAttachments } from '../model/hooks/useSessionAttachments';
 import { useMessageEditRetry } from '../model/hooks/useMessageEditRetry';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useAttemptBranch } from '../model/hooks/useAttemptBranch';
 import { useApprovalMutation } from '../model/hooks/useApprovalMutation';
 import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
-import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/features/workspace/model/hooks/useWorkspaces';
 import { buildAgentPrompt } from '@/shared/lib/promptMessage';
 import { formatDateShortWithTime } from '@/shared/lib/date';
 import { toPrettyCase } from '@/shared/lib/string';
@@ -44,9 +44,9 @@ import { ModelSelectorContainer } from '@/components/ui-new/containers/ModelSele
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/shared/lib/routes/navigation';
-import { useInspectModeStore } from '@/stores/useInspectModeStore';
+import { useInspectModeStore } from '@/features/workspace-chat/model/store/useInspectModeStore';
 import {
   Actions,
   isSpecialIcon,
@@ -58,7 +58,7 @@ import {
   isActionEnabled,
   isActionVisible,
   useActionVisibilityContext,
-} from '@/components/ui-new/actions/useActionVisibility';
+} from '@/features/command-bar/ui/actions/useActionVisibility';
 import { PrCommentsDialog } from '@/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 

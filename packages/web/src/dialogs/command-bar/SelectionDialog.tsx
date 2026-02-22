@@ -15,7 +15,7 @@ import type {
 import {
   resolveLabel,
   type ActionDefinition,
-} from '@/features/command-bar/ui/actions';
+} from '@/components/ui-new/actions';
 
 export interface SelectionPage<TResult = unknown> {
   id: string;

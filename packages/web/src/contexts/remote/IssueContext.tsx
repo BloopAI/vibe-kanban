@@ -1,10 +1,10 @@
 import { useContext, useMemo, useCallback, type ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import {
   useShape,
   type InsertResult,
   type MutationResult,
-} from '@/lib/electric/hooks';
+} from '@/integrations/electric/hooks';
 import {
   ISSUE_COMMENTS_SHAPE,
   ISSUE_REACTIONS_SHAPE,
@@ -16,7 +16,7 @@ import {
   type UpdateIssueCommentRequest,
   type CreateIssueCommentReactionRequest,
 } from 'shared/remote-types';
-import type { SyncError } from '@/lib/electric/types';
+import type { SyncError } from '@/shared/lib/electric/types';
 
 /**
  * IssueContext provides issue-scoped data and mutations.

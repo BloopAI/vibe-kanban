@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { useLocation, useNavigate } from '@tanstack/react-router';
-import { resolveAppPath } from '@/lib/routes/pathResolution';
+import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
 import { toRoot } from '@/lib/routes/navigation';
 
 const globalVisited: string[] = [];

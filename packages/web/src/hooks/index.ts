@@ -1,5 +1,5 @@
-export { useBranchStatus } from './useBranchStatus';
-export { useAttemptExecution } from './useAttemptExecution';
+export { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+export { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
 export { useOpenInEditor } from './useOpenInEditor';
 export {
   useTaskAttempt,
@@ -10,13 +10,13 @@ export { useImageUpload } from './useImageUpload';
 export { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
 export { useRebase } from '@/features/workspace/model/hooks/useRebase';
 export { useChangeTargetBranch } from '@/features/workspace/model/hooks/useChangeTargetBranch';
-export { useRenameBranch } from './useRenameBranch';
+export { useRenameBranch } from '@/features/workspace/model/hooks/useRenameBranch';
 export { useMerge } from '@/features/workspace/model/hooks/useMerge';
-export { usePush } from './usePush';
+export { usePush } from '@/features/workspace/model/hooks/usePush';
 export { useAttemptConflicts } from '@/features/workspace/model/hooks/useAttemptConflicts';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
-export { useAttempt } from './useAttempt';
+export { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
 export { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
 export { useRepoBranchSelection } from '@/features/workspace/model/hooks/useRepoBranchSelection';
 export type { RepoBranchConfig } from '@/features/workspace/model/hooks/useRepoBranchSelection';
@@ -31,4 +31,4 @@ export { useOrganizationMembers } from './useOrganizationMembers';
 export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
 export { useVariant } from './useVariant';
-export { useRetryProcess } from './useRetryProcess';
+export { useRetryProcess } from '@/features/workspace-chat/model/hooks/useRetryProcess';

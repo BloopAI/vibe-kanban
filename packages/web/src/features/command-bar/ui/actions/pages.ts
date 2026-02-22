@@ -4,8 +4,8 @@ import {
   type ActionDefinition,
   type ActionVisibilityContext,
   Actions,
-} from './index';
-import { RIGHT_MAIN_PANEL_MODES } from '@/stores/useUiPreferencesStore';
+} from '@/components/ui-new/actions';
+import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
 
 // Define page IDs first to avoid circular reference
 export type PageId =

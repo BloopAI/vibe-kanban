@@ -1,7 +1,7 @@
 import { useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
-import { genId } from '@/utils/id';
-import { DiffSide } from '@/types/diff';
+import { createHmrContext } from '@/shared/lib/hmrContext';
+import { genId } from '@/shared/lib/id';
+import { DiffSide } from '@/shared/types/diff';
 
 export interface ReviewComment {
   id: string;

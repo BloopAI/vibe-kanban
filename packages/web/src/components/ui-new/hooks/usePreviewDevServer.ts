@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/lib/api';
-import { useAttemptExecution } from '@/hooks/useAttemptExecution';
-import { workspaceSummaryKeys } from '@/hooks/useWorkspaces';
+import { useAttemptExecution } from '@/features/workspace-chat/model/hooks/useAttemptExecution';
+import { workspaceSummaryKeys } from '@/features/workspace/model/hooks/useWorkspaces';
 import {
   filterRunningDevServers,
   filterDevServerProcesses,

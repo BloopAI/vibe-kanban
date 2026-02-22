@@ -13,8 +13,8 @@ import {
 } from 'shared/remote-types';
 import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
-import { useUserSystem } from '@/hooks/useUserSystem';
-import { useShape } from '@/lib/electric/hooks';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useShape } from '@/integrations/electric/hooks';
 import { repoApi } from '@/lib/api';
 import { useWorkspaceCreateDefaults } from './useWorkspaceCreateDefaults';
 

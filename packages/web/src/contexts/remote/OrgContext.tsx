@@ -1,11 +1,11 @@
 import { useContext, useMemo, useCallback, type ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import { useQuery } from '@tanstack/react-query';
 import {
   useShape,
   type InsertResult,
   type MutationResult,
-} from '@/lib/electric/hooks';
+} from '@/integrations/electric/hooks';
 import {
   PROJECTS_SHAPE,
   NOTIFICATIONS_SHAPE,
@@ -18,7 +18,7 @@ import {
   type UpdateNotificationRequest,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { SyncError } from '@/lib/electric/types';
+import type { SyncError } from '@/shared/lib/electric/types';
 import { organizationsApi } from '@/lib/api';
 import { organizationKeys } from '@/hooks/organizationKeys';
 

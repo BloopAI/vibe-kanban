@@ -1,8 +1,8 @@
 import { useContext, useMemo, useCallback, type ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
-import { useShape } from '@/lib/electric/hooks';
+import { createHmrContext } from '@/shared/lib/hmrContext';
+import { useShape } from '@/integrations/electric/hooks';
 import { USER_WORKSPACES_SHAPE, type Workspace } from 'shared/remote-types';
-import type { SyncError } from '@/lib/electric/types';
+import type { SyncError } from '@/shared/lib/electric/types';
 import { useAuth } from '@/hooks/auth/useAuth';
 
 /**

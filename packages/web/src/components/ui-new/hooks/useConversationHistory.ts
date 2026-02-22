@@ -7,8 +7,8 @@ import {
   TokenUsageInfo,
   ToolStatus,
 } from 'shared/types';
-import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
-import { useEntries } from '@/contexts/EntriesContext';
+import { useExecutionProcessesContext } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
+import { useEntries } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
@@ -17,7 +17,7 @@ import type {
   OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
-} from '@/hooks/useConversationHistory/types';
+} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
 
 // Result type for the new UI's conversation history hook
 export interface UseConversationHistoryResult {
@@ -35,7 +35,7 @@ import {
   MIN_INITIAL_ENTRIES,
   nextActionPatch,
   REMAINING_BATCH_SIZE,
-} from '@/hooks/useConversationHistory/constants';
+} from '@/features/workspace-chat/model/hooks/useConversationHistory/constants';
 
 export type {
   AddEntryType,
@@ -45,13 +45,13 @@ export type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,
   AggregatedThinkingGroup,
-} from '@/hooks/useConversationHistory/types';
+} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
 
 export {
   isAggregatedGroup,
   isAggregatedDiffGroup,
   isAggregatedThinkingGroup,
-} from '@/hooks/useConversationHistory/types';
+} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
 
 export const useConversationHistory = ({
   attempt,

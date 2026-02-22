@@ -31,7 +31,7 @@ import type {
   GhCliSupportVariant,
 } from '@/dialogs/auth/GhCliSetupDialog';
 import type { GhCliSetupError } from 'shared/types';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { defineModal } from '@/lib/modals';
 import { splitMessageToTitleDescription } from '@/utils/string';
 

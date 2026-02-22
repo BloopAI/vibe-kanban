@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import { useEntries } from './EntriesContext';
 
 interface EditState {

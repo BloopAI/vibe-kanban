@@ -11,7 +11,7 @@ import {
 } from '@vibe/ui/components/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { attemptKeys } from '@/hooks/useAttempt';
+import { attemptKeys } from '@/features/workspace/model/hooks/useAttempt';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import type {
   PageId,
@@ -20,7 +20,7 @@ import type {
 import {
   ActionTargetType,
   type ActionDefinition,
-} from '@/features/command-bar/ui/actions';
+} from '@/components/ui-new/actions';
 import { useActionVisibilityContext } from '@/features/command-bar/ui/actions/useActionVisibility';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';

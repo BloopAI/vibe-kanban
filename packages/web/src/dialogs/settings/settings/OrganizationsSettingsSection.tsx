@@ -14,7 +14,7 @@ import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { OAuthDialog } from '@/dialogs/global/OAuthDialog';
 import {
@@ -29,7 +29,7 @@ import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { getRemoteApiUrl } from '@/lib/remoteApi';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {

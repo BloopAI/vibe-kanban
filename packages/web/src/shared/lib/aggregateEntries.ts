@@ -5,7 +5,7 @@ import type {
   AggregatedDiffGroup,
   AggregatedThinkingGroup,
   ToolAggregationType,
-} from '@/hooks/useConversationHistory/types';
+} from '@/features/workspace-chat/model/hooks/useConversationHistory/types';
 
 /**
  * Checks if a patch entry is a user_message entry.

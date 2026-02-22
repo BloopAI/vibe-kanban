@@ -4,7 +4,7 @@ import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
@@ -43,7 +43,7 @@ import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
 import { CommandBarDialog } from '@/dialogs/command-bar/CommandBarDialog';
 import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
-import { KanbanFiltersDialog } from './dialogs/KanbanFiltersDialog';
+import { KanbanFiltersDialog } from '@/dialogs/kanban/KanbanFiltersDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,

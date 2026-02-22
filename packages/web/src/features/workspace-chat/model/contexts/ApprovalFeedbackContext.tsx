@@ -1,5 +1,5 @@
 import { useContext, useState, useCallback, ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import { useApprovalMutation } from '../hooks/useApprovalMutation';
 
 interface ActiveApproval {

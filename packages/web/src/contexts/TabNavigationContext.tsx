@@ -1,5 +1,5 @@
-import { createHmrContext } from '@/lib/hmrContext.ts';
-import type { TabType } from '@/types/tabs';
+import { createHmrContext } from '@/shared/lib/hmrContext';
+import type { TabType } from '@/shared/types/tabs';
 
 interface TabNavContextType {
   activeTab: TabType;

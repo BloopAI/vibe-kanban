@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from 'react';
-import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import { useExecutionProcessesContext } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
+import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { isCodingAgent } from '@/shared/constants/processes';
-import { useResetProcessMutation } from './useResetProcessMutation';
+import { useResetProcessMutation } from '@/features/workspace-chat/model/hooks/useResetProcessMutation';
 
 export interface UseResetProcessResult {
   resetProcess: (executionProcessId: string) => void;

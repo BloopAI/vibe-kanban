@@ -10,7 +10,7 @@ import { Button } from '@vibe/ui/components/Button';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import { defineModal } from '@/lib/modals';
-import { useForcePush } from '@/hooks/useForcePush';
+import { useForcePush } from '@/features/workspace/model/hooks/useForcePush';
 import { useState } from 'react';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { useTranslation } from 'react-i18next';

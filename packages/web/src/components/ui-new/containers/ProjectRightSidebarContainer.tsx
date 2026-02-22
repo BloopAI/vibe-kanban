@@ -27,7 +27,7 @@ import {
   ConversationList,
   type ConversationListHandle,
 } from '@/features/workspace-chat/ui/ConversationListContainer';
-import { RetryUiProvider } from '@/contexts/RetryUiContext';
+import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { toWorkspace } from '@/shared/lib/routes/navigation';
 

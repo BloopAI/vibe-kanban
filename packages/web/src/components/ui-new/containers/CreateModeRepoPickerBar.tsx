@@ -22,7 +22,7 @@ import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {
   SelectionDialog,
   type SelectionPage,
-} from '../dialogs/SelectionDialog';
+} from '@/dialogs/command-bar/SelectionDialog';
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,

@@ -5,14 +5,14 @@ import { XIcon, GearIcon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { useUserSystem } from '@/hooks/useUserSystem';
-import { cn } from '@/lib/utils';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { cn } from '@/shared/lib/utils';
 import {
   sequentialBindings,
   formatSequentialKeys,
   Scope,
-} from '@/keyboard/registry';
-import { isMac, getModifierKey } from '@/utils/platform';
+} from '@/shared/keyboard/registry';
+import { isMac, getModifierKey } from '@/shared/lib/platform';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
 
 interface ShortcutItem {

@@ -9,8 +9,8 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { useTheme } from '@/hooks/useTheme';
-import { getActualTheme } from '@/utils/theme';
+import { useTheme } from '@/app/providers/ThemeProvider';
+import { getActualTheme } from '@/shared/lib/theme';
 import { defineModal, type NoProps } from '@/lib/modals';
 
 const RELEASE_NOTES_BASE_URL = 'https://vibekanban.com/release-notes';

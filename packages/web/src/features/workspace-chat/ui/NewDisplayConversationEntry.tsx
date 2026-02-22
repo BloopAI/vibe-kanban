@@ -15,11 +15,11 @@ import { parseDiffStats } from '@/shared/lib/diffStatsParser';
 import {
   usePersistedExpanded,
   type PersistKey,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { getActualTheme } from '@/shared/lib/theme';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
-import { useUserSystem } from '@/hooks/useUserSystem';
-import { useTheme } from '@/hooks/useTheme';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
@@ -55,7 +55,7 @@ import {
   useDiffData,
 } from '@vibe/ui/components/PierreConversationDiff';
 import { inIframe, openFileInVSCode } from '@/integrations/vscode/bridge';
-import { useDiffViewMode } from '@/stores/useDiffViewStore';
+import { useDiffViewMode } from '@/features/workspace-chat/model/store/useDiffViewStore';
 import type {
   AggregatedPatchGroup,
   AggregatedDiffGroup,

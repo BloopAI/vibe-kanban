@@ -1,5 +1,5 @@
 import { WidgetProps } from '@rjsf/utils';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import {

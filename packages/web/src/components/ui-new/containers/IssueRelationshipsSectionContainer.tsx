@@ -8,7 +8,7 @@ import {
 } from '@phosphor-icons/react';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useActions } from '@/contexts/ActionsContext';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
+import { useKanbanNavigation } from '@/features/kanban/model/hooks/useKanbanNavigation';
 import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships';
 import { IssueRelationshipsSection } from '@vibe/ui/components/IssueRelationshipsSection';
 import {

@@ -3,10 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { PlusIcon } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
 import { McpConfig } from 'shared/types';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { mcpServersApi } from '@/lib/api';
-import { McpConfigStrategyGeneral } from '@/lib/mcpStrategies';
-import { cn } from '@/lib/utils';
+import { McpConfigStrategyGeneral } from '@/shared/lib/mcpStrategies';
+import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import {
   DropdownMenu,

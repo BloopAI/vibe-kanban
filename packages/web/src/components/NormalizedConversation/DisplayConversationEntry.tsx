@@ -33,13 +33,13 @@ import RawLogText from '../common/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
 import { cn } from '@/shared/lib/utils';
-import { useRetryUi } from '@/contexts/RetryUiContext';
+import { useRetryUi } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { Button } from '@vibe/ui/components/Button';
 import {
   ScriptFixerDialog,
   type ScriptType,
 } from '@/dialogs/scripts/ScriptFixerDialog';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
+import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
 
 type Props = {
   entry: NormalizedEntry | ProcessStartPayload;

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { createShapeCollection } from '@/lib/electric/collections';
+import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';

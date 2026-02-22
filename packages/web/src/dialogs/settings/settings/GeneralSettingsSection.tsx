@@ -18,17 +18,17 @@ import {
   ThemeMode,
   UiLanguage,
 } from 'shared/types';
-import { getModifierKey } from '@/utils/platform';
+import { getModifierKey } from '@/shared/lib/platform';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/utils/string';
 import {
   getExecutorVariantKeys,
   getSortedExecutorVariantKeys,
 } from '@/utils/executor';
-import { useTheme } from '@/hooks/useTheme';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useTheme } from '@/app/providers/ThemeProvider';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { TagManager } from '@/components/TagManager';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import {

@@ -8,12 +8,12 @@ import {
 } from '@phosphor-icons/react';
 import type { IssuePriority, Tag } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import {
   KANBAN_ASSIGNEE_FILTER_VALUES,
   type KanbanFilterState,
   type KanbanSortField,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 import { UserAvatar } from '@vibe/ui/components/UserAvatar';
 import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
 import { Badge } from '@vibe/ui/components/Badge';

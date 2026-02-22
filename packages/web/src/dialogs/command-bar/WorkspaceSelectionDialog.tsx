@@ -7,7 +7,7 @@ import { defineModal } from '@/lib/modals';
 import { ApiError, attemptsApi } from '@/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
-import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
+import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,

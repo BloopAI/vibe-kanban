@@ -15,7 +15,7 @@ import {
   type ResolvedGroup,
   type ResolvedGroupItem,
 } from '@/features/command-bar/ui/actions/pages';
-import type { ActionVisibilityContext } from '@/features/command-bar/ui/actions';
+import type { ActionVisibilityContext } from '@/components/ui-new/actions';
 import {
   isActionVisible,
   isPageVisible,

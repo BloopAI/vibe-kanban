@@ -1,5 +1,5 @@
 import { useContext, useState, useCallback } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import type { ReactNode } from 'react';
 
 interface SettingsDirtyContextValue {

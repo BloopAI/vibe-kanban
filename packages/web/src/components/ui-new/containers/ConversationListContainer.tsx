@@ -18,8 +18,8 @@ import {
 
 import { cn } from '@/shared/lib/utils';
 import NewDisplayConversationEntry from '@/features/workspace-chat/ui/NewDisplayConversationEntry';
-import { ApprovalFormProvider } from '@/contexts/ApprovalFormContext';
-import { useEntries } from '@/contexts/EntriesContext';
+import { ApprovalFormProvider } from '@/features/workspace-chat/model/contexts/ApprovalFormContext';
+import { useEntries } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import {
   useResetProcess,
   type UseResetProcessResult,

@@ -5,7 +5,7 @@ import { OAuthDialog } from '@/dialogs/global/OAuthDialog';
 
 import { Alert } from '@vibe/ui/components/Alert';
 import { Button } from '@vibe/ui/components/Button';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 
 interface LoginRequiredPromptProps {
   className?: string;

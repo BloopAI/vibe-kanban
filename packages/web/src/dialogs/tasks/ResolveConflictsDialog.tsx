@@ -13,14 +13,14 @@ import { Label } from '@vibe/ui/components/Label';
 import { Switch } from '@vibe/ui/components/Switch';
 import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { sessionsApi } from '@/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
-import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/features/workspace-chat/model/hooks/useExecutionProcesses';
 import { getLatestConfigFromProcesses } from '@/utils/executor';
 import type {
   BaseCodingAgent,

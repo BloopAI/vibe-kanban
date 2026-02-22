@@ -26,7 +26,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/dialogs/scripts/ScriptFixerDialog';
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/shared/lib/previewDevToolsBridge';
-import { useInspectModeStore } from '@/stores/useInspectModeStore';
+import { useInspectModeStore } from '@/features/workspace-chat/model/store/useInspectModeStore';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;

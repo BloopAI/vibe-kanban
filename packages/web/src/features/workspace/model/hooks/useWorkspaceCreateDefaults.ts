@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ExecutorConfig, RepoWithTargetBranch } from 'shared/types';
 import { attemptsApi } from '@/lib/api';
-import { useExecutionProcesses } from '@/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/features/workspace-chat/model/hooks/useExecutionProcesses';
 import { getLatestConfigFromProcesses } from '@/utils/executor';
 
 interface UseWorkspaceCreateDefaultsOptions {

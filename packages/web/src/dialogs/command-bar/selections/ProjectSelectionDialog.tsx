@@ -23,7 +23,7 @@ import { buildRelationshipSelectionPages } from './relationshipSelection';
 import {
   resolveLabel,
   type ActionDefinition,
-} from '@/features/command-bar/ui/actions';
+} from '@/components/ui-new/actions';
 import type { SelectionPage } from '../SelectionDialog';
 import type { StatusSelectionResult } from './statusSelection';
 import type { PrioritySelectionResult } from './prioritySelection';

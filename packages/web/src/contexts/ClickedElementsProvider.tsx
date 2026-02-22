@@ -1,12 +1,12 @@
 import { useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import type {
   OpenInEditorPayload,
   ComponentInfo,
   SelectedComponent,
 } from '@/utils/previewBridge';
 import type { Workspace } from 'shared/types';
-import { genId } from '@/utils/id';
+import { genId } from '@/shared/lib/id';
 
 export interface ClickedEntry {
   id: string;

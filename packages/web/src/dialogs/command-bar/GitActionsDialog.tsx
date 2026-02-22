@@ -8,10 +8,10 @@ import {
 } from '@vibe/ui/components/KeyboardDialog';
 import { Loader } from '@vibe/ui/components/Loader';
 import GitOperations from '@/components/tasks/Toolbar/GitOperations';
-import { useTaskAttemptWithSession } from '@/hooks/useTaskAttempt';
+import { useTaskAttemptWithSession } from '@/features/workspace/model/hooks/useTaskAttempt';
 import { useBranchStatus, useAttemptExecution } from '@/hooks';
-import { useAttemptRepo } from '@/hooks/useAttemptRepo';
-import { ExecutionProcessesProvider } from '@/contexts/ExecutionProcessesContext';
+import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';
+import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import {
   GitOperationsProvider,
   useGitOperationsError,

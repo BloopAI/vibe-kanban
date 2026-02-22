@@ -32,8 +32,8 @@ import {
   ThemeMode,
   type EditorConfig,
 } from 'shared/types';
-import { useUserSystem } from '@/hooks/useUserSystem';
-import { useTheme } from '@/hooks/useTheme';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useTheme } from '@/app/providers/ThemeProvider';
 import { AgentIcon, getAgentName } from '@/components/agents/AgentIcon';
 import { IdeIcon, getIdeName } from '@/components/ide/IdeIcon';
 import { cn } from '@/shared/lib/utils';

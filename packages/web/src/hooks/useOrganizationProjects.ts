@@ -1,4 +1,4 @@
-import { useShape } from '@/lib/electric/hooks';
+import { useShape } from '@/integrations/electric/hooks';
 import { PROJECTS_SHAPE } from 'shared/remote-types';
 import { useAuth } from '@/hooks/auth/useAuth';
 

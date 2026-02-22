@@ -3,7 +3,7 @@ import type {
   PageId,
   ResolvedGroupItem,
 } from '@/features/command-bar/ui/actions/pages';
-import type { ActionDefinition } from '@/features/command-bar/ui/actions';
+import type { ActionDefinition } from '@/components/ui-new/actions';
 
 export interface CommandBarState {
   page: PageId;

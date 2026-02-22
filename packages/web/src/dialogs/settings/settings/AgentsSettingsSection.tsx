@@ -15,11 +15,11 @@ import {
 } from '@vibe/ui/components/Dropdown';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
 import { useProfiles } from '@/hooks/useProfiles';
-import { useUserSystem } from '@/hooks/useUserSystem';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/utils/string';
 import {
   SettingsSaveBar,

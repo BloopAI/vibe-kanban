@@ -5,7 +5,7 @@ import {
   PERSIST_KEYS,
 } from '@/shared/stores/useUiPreferencesStore';
 import type { UnifiedPrComment } from 'shared/types';
-import { DiffSide } from '@/types/diff';
+import { DiffSide } from '@/shared/types/diff';
 
 /**
  * Normalized GitHub comment for diff view display

@@ -4,14 +4,17 @@ import {
   useUiPreferencesStore,
   useWorkspacePanelState,
   type LayoutMode,
-} from '@/stores/useUiPreferencesStore';
-import { useDiffViewStore, useDiffViewMode } from '@/stores/useDiffViewStore';
+} from '@/shared/stores/useUiPreferencesStore';
+import {
+  useDiffViewStore,
+  useDiffViewMode,
+} from '@/features/workspace-chat/model/store/useDiffViewStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useUserSystem } from '@/hooks/useUserSystem';
-import { useDevServer } from '@/hooks/useDevServer';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { useShape } from '@/lib/electric/hooks';
-import { useExecutionProcessesContext } from '@/contexts/ExecutionProcessesContext';
+import { useUserSystem } from '@/app/providers/ConfigProvider';
+import { useDevServer } from '@/features/workspace/model/hooks/useDevServer';
+import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
+import { useShape } from '@/integrations/electric/hooks';
+import { useExecutionProcessesContext } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
@@ -21,8 +24,8 @@ import type {
   ActionDefinition,
   ActionIcon,
   DevServerState,
-} from './index';
-import { resolveLabel } from './index';
+} from '@/components/ui-new/actions';
+import { resolveLabel } from '@/components/ui-new/actions';
 import type { CommandBarPage } from './pages';
 
 interface ActionVisibilityOptions {

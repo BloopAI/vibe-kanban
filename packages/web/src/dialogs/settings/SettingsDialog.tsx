@@ -15,7 +15,7 @@ import type { Icon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { usePortalContainer } from '@/contexts/PortalContainerContext';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/lib/utils';
 import { SettingsSection } from './settings/SettingsSection';
 import type {
   SettingsSectionType,

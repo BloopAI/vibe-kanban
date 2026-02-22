@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { produce } from 'immer';
 import type { Operation } from 'rfc6902';
-import { applyUpsertPatch } from '@/utils/jsonPatch';
+import { applyUpsertPatch } from '@/shared/lib/jsonPatch';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsReadyMsg = { Ready: true };

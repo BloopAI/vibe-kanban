@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { attemptsApi } from '@/lib/api';
-import { repoBranchKeys } from '@/hooks/useRepoBranches';
+import { repoBranchKeys } from '@/features/workspace/model/hooks/useRepoBranches';
 
 type MergeParams = {
   repoId: string;

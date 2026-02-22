@@ -1,5 +1,5 @@
 import { useContext, useMemo, type ReactNode } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import type { DraftWorkspaceImage, Repo, ExecutorConfig } from 'shared/types';
 import {
   useCreateModeState,

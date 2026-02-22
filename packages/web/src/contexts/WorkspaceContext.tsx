@@ -1,5 +1,5 @@
 import { useContext, ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import {

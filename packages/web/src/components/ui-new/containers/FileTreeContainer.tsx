@@ -7,7 +7,7 @@ import {
   getAllFolderPaths,
   sortDiffs,
 } from '@/shared/lib/fileTreeUtils';
-import { usePersistedCollapsedPaths } from '@/stores/useUiPreferencesStore';
+import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';

@@ -8,7 +8,7 @@ import {
 import {
   resolveLabel,
   type ActionVisibilityContext,
-} from '@/features/command-bar/ui/actions';
+} from '@/components/ui-new/actions';
 import { isActionVisible } from '@/features/command-bar/ui/actions/useActionVisibility';
 
 // Derive injectable pages from Pages - all child pages of root

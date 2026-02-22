@@ -6,8 +6,8 @@ import {
   useEffect,
   type ReactNode,
 } from 'react';
-import { createHmrContext } from '@/lib/hmrContext.ts';
-import type { SyncError } from '@/lib/electric/types';
+import { createHmrContext } from '@/shared/lib/hmrContext';
+import type { SyncError } from '@/shared/lib/electric/types';
 
 /**
  * Represents an error from a specific shape stream.

@@ -8,15 +8,15 @@ import { useStyleOverrideThemeSetter } from '@/utils/StyleOverride';
 import { WebviewContextMenu } from '@/integrations/vscode/ContextMenu';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
-import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionChatBoxContainer';
+import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import {
   ConversationList,
   type ConversationListHandle,
 } from '@/components/ui-new/containers/ConversationListContainer';
-import { EntriesProvider } from '@/contexts/EntriesContext';
-import { MessageEditProvider } from '@/contexts/MessageEditContext';
-import { RetryUiProvider } from '@/contexts/RetryUiContext';
-import { ApprovalFeedbackProvider } from '@/contexts/ApprovalFeedbackContext';
+import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
+import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
+import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
+import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 
 export function VSCodeWorkspacePage() {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from '@tanstack/react-router';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
-import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
 import {
   toOnboarding,

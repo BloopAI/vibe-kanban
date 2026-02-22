@@ -9,10 +9,10 @@ import type {
   Workspace,
 } from 'shared/types';
 import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
-import type { DiffViewMode } from '@/stores/useDiffViewStore';
+import type { DiffViewMode } from '@/features/workspace-chat/model/store/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
-import type { LayoutMode } from '@/stores/useUiPreferencesStore';
+import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import type { IssueCreateRouteOptions } from '@/lib/routes/projectSidebarRoutes';
 import {
   CopyIcon,
@@ -57,17 +57,17 @@ import {
   ArrowBendUpRightIcon,
   ProhibitIcon,
 } from '@phosphor-icons/react';
-import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useDiffViewStore } from '@/features/workspace-chat/model/store/useDiffViewStore';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 
 import { attemptsApi, repoApi } from '@/lib/api';
 import { bulkUpdateIssues } from '@/lib/remoteApi';
-import { attemptKeys } from '@/hooks/useAttempt';
-import { repoBranchKeys } from '@/hooks/useRepoBranches';
-import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
+import { attemptKeys } from '@/features/workspace/model/hooks/useAttempt';
+import { repoBranchKeys } from '@/features/workspace/model/hooks/useRepoBranches';
+import { workspaceSummaryKeys } from '@/features/workspace/model/hooks/useWorkspaces';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
 import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
@@ -632,7 +632,7 @@ export const Actions = {
     execute: async (ctx) => {
       const { oauthApi } = await import('@/lib/api');
       const { useOrganizationStore } = await import(
-        '@/stores/useOrganizationStore'
+        '@/shared/stores/useOrganizationStore'
       );
       const { organizationKeys } = await import('@/hooks/organizationKeys');
 

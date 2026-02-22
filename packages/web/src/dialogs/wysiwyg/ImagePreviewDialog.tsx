@@ -9,7 +9,7 @@ import {
 import { create, useModal } from '@ebay/nice-modal-react';
 import { Loader2 } from 'lucide-react';
 import { defineModal } from '@/lib/modals';
-import { formatFileSize } from '@/lib/utils';
+import { formatFileSize } from '@/shared/lib/utils';
 
 export interface ImagePreviewDialogProps {
   imageUrl: string;
