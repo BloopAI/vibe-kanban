@@ -67,6 +67,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/CreatePRDialog.tsx`.
   - [x] Moved feature dialog `ChangeTargetBranchDialog` to
         `src/features/command-bar/ui/dialogs/ChangeTargetBranchDialog.tsx`.
+  - [x] Moved feature dialog `EditBranchNameDialog` to
+        `src/features/command-bar/ui/dialogs/EditBranchNameDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -119,6 +121,8 @@ compatibility shims.
         `src/components/dialogs/tasks/CreatePRDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/ChangeTargetBranchDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/EditBranchNameDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -191,6 +195,9 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog` in:
         `src/components/tasks/Toolbar/GitOperations.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsite to
+        `@/features/command-bar/ui/dialogs/EditBranchNameDialog` in
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in

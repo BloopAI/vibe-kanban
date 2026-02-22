@@ -52,7 +52,7 @@ export {
 export {
   EditBranchNameDialog,
   type EditBranchNameDialogResult,
-} from './tasks/EditBranchNameDialog';
+} from '@/features/command-bar/ui/dialogs/EditBranchNameDialog';
 export {
   StartReviewDialog,
   type StartReviewDialogProps,
