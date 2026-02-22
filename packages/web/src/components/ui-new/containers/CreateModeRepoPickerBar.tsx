@@ -30,7 +30,7 @@ import {
 import {
   buildBranchSelectionPages,
   type BranchSelectionResult,
-} from '../dialogs/selections/branchSelection';
+} from '@/features/command-bar/ui/dialogs/selections/branchSelection';
 
 function toRepoItem(repo: Repo): RepoItem {
   return {

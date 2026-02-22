@@ -87,6 +87,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/commandBar/injectSearchMatches.ts`.
   - [x] Moved command-bar selection helper `repoSelection` to
         `src/features/command-bar/ui/dialogs/selections/repoSelection.ts`.
+  - [x] Moved command-bar selection helper `branchSelection` to
+        `src/features/command-bar/ui/dialogs/selections/branchSelection.ts`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -196,6 +198,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/selections/repoSelection.ts`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/selections/branchSelection.ts`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -276,6 +280,9 @@ compatibility shims.
         `@/features/command-bar/ui/dialogs/selections/repoSelection` in:
         `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`,
         `src/components/ui/wysiwyg.tsx`.
+  - [x] Updated canonical callsite to
+        `@/features/command-bar/ui/dialogs/selections/branchSelection` in
+        `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`.
   - [x] Updated canonical repo-selection callsites in
         `src/features/command-bar/ui/dialogs/CommandBarDialog.tsx` to:
         `./selections/repoSelection` (type import and dynamic import).
