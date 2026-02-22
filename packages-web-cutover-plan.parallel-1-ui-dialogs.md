@@ -103,6 +103,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/SelectionDialog.tsx`.
   - [x] Moved command-bar selection dialog `AssigneeSelectionDialog` to
         `src/features/command-bar/ui/dialogs/AssigneeSelectionDialog.tsx`.
+  - [x] Moved command-bar selection dialog `WorkspaceSelectionDialog` to
+        `src/features/command-bar/ui/dialogs/WorkspaceSelectionDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
@@ -228,6 +230,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/AssigneeSelectionDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/WorkspaceSelectionDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
@@ -348,6 +352,12 @@ compatibility shims.
         `src/components/ui-new/containers/KanbanIssuePanelContainer.tsx`,
         `src/components/ui-new/dialogs/KanbanFiltersDialog.tsx`.
   - [x] Kept non-owned `AssigneeSelectionDialog` callsite on the legacy shim
+        path in `src/contexts/ActionsContext.tsx` to avoid Track 1 ownership
+        churn.
+  - [x] Updated canonical `WorkspaceSelectionDialog` callsite to
+        feature-owned path in:
+        `src/components/ui-new/containers/IssueWorkspacesSectionContainer.tsx`.
+  - [x] Kept non-owned `WorkspaceSelectionDialog` callsite on the legacy shim
         path in `src/contexts/ActionsContext.tsx` to avoid Track 1 ownership
         churn.
   - [x] Updated canonical repo-selection callsites in
@@ -572,6 +582,10 @@ compatibility shims.
   `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx` and
   `src/components/ui/wysiwyg.tsx`) on the legacy shim path during Track 1.
 - New information (2026-02-22): after moving `AssigneeSelectionDialog` into
+  feature ownership, keep non-owned context callers (currently
+  `src/contexts/ActionsContext.tsx`) on the legacy shim path while
+  canonicalizing owned `src/components/ui-new/**` callsites.
+- New information (2026-02-22): after moving `WorkspaceSelectionDialog` into
   feature ownership, keep non-owned context callers (currently
   `src/contexts/ActionsContext.tsx`) on the legacy shim path while
   canonicalizing owned `src/components/ui-new/**` callsites.

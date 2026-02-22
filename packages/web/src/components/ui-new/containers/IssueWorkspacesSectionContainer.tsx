@@ -181,7 +181,7 @@ export function IssueWorkspacesSectionContainer({
     }
 
     const { WorkspaceSelectionDialog } = await import(
-      '@/components/ui-new/dialogs/WorkspaceSelectionDialog'
+      '@/features/command-bar/ui/dialogs/WorkspaceSelectionDialog'
     );
     await WorkspaceSelectionDialog.show({ projectId, issueId });
   }, [projectId, issueId]);
