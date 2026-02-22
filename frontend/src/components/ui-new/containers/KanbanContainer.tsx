@@ -10,6 +10,7 @@ import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
   KANBAN_ASSIGNEE_FILTER_VALUES,
+  KANBAN_PROJECT_VIEW_IDS,
   type KanbanFilterState,
   type KanbanSortField,
 } from '@/stores/useUiPreferencesStore';
@@ -34,11 +35,12 @@ import {
   type WorkspacePr,
 } from '@vibe/ui/components/IssueWorkspaceCard';
 import { resolveRelationshipsForIssue } from '@/lib/resolveRelationships';
-import { KanbanFilterBar } from '@/components/ui-new/views/KanbanFilterBar';
+import { KanbanFilterBar } from '@vibe/ui/components/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
 import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
 import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
+import { KanbanFiltersDialog } from '@/components/ui-new/dialogs/KanbanFiltersDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -819,6 +821,7 @@ export function KanbanContainer() {
             users={membersWithProfiles}
             activeViewId={activeViewId}
             onViewChange={handleKanbanProjectViewChange}
+            viewIds={KANBAN_PROJECT_VIEW_IDS}
             projectId={projectId}
             currentUserId={userId}
             filters={kanbanFilters}
@@ -835,6 +838,7 @@ export function KanbanContainer() {
             onClearFilters={clearKanbanFilters}
             onCreateIssue={handleAddTask}
             shouldAnimateCreateButton={shouldAnimateCreateButton}
+            renderFiltersDialog={(props) => <KanbanFiltersDialog {...props} />}
           />
         </div>
       </div>

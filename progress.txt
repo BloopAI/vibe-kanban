@@ -6005,3 +6005,54 @@ Validation:
 Plan adjustments from new information:
 - For interactive edit affordances (dropdowns/popovers), package components should expose a render prop that accepts a prebuilt trigger node.
 - This keeps shared UI package components readable and testable while frontend containers remain responsible for app data orchestration.
+
+## 2026-02-22 - UI package extraction: KanbanFilterBar
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/KanbanFilterBar.tsx` as the next extraction target.
+- It has a single callsite (`KanbanContainer`) and mostly composes existing package primitives.
+- Main couplings were app store constants/types (`KANBAN_PROJECT_VIEW_IDS`, `KanbanFilterState`, `KanbanSortField`) and frontend dialog (`KanbanFiltersDialog`).
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/KanbanFilterBar.tsx packages/ui/src/components/KanbanFilterBar.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports with relative imports.
+  - Removed app store dependency by introducing package-local contracts:
+    - `KanbanFilterState<TSortField>`
+    - `KanbanProjectViewIds`
+    - `KanbanFilterTag`, `KanbanFilterUser`
+  - Removed direct frontend dialog dependency by introducing render-prop injection:
+    - `renderFiltersDialog`
+  - Added optional `viewIds` prop with package-local defaults (`team`/`personal`).
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/KanbanContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/KanbanFilterBar`
+  - Passed store-backed view IDs from app:
+    - `viewIds={KANBAN_PROJECT_VIEW_IDS}`
+  - Injected frontend dialog wiring from app:
+    - `renderFiltersDialog={(props) => <KanbanFiltersDialog {...props} />}`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For generic package components, make the component function itself generic (not only the props type) so callsite types infer correctly.
+- Prefer container-supplied dialog render props for filter/action surfaces that are app-workflow specific.
