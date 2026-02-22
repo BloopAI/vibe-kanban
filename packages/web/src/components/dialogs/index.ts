@@ -30,7 +30,7 @@ export {
   ChangeTargetBranchDialog,
   type ChangeTargetBranchDialogProps,
   type ChangeTargetBranchDialogResult,
-} from './tasks/ChangeTargetBranchDialog';
+} from '@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog';
 export {
   RebaseDialog,
   type RebaseDialogProps,

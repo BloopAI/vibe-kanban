@@ -17,7 +17,7 @@ import {
 } from '@vibe/ui/components/RadixTooltip';
 import { useCallback, useMemo, useState } from 'react';
 import type { RepoBranchStatus, Merge, Workspace } from 'shared/types';
-import { ChangeTargetBranchDialog } from '@/components/dialogs/tasks/ChangeTargetBranchDialog';
+import { ChangeTargetBranchDialog } from '@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog';
 import RepoSelector from '@/components/tasks/RepoSelector';
 import { RebaseDialog } from '@/components/dialogs/tasks/RebaseDialog';
 import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';

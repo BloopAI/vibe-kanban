@@ -648,3 +648,40 @@
   `src/components/dialogs/tasks/ChangeTargetBranchDialog.tsx` into
   `src/features/command-bar/ui/dialogs/*` with a compatibility shim and
   canonical import updates in owned `ui-new/actions` and dialogs barrel paths.
+
+## 2026-02-22 12:04:45 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `ChangeTargetBranchDialog` for command-bar feature-owned placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/tasks/ChangeTargetBranchDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/ChangeTargetBranchDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/tasks/ChangeTargetBranchDialog.tsx`.
+  - Updated callsites to canonical path:
+    - `src/components/dialogs/index.ts`
+    - `src/components/tasks/Toolbar/GitOperations.tsx`
+- New information discovered and handled:
+  - Feature-path lint rules required replacing NiceModal default import with
+    named imports (`create`, `useModal`) in the moved file.
+  - Canonical import from a non-owned task-toolbar surface
+    (`src/components/tasks/Toolbar/GitOperations.tsx`) passed current lint
+    boundaries for this dialog.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `ChangeTargetBranchDialog`.
+  - Added a risk-controls note for case-by-case canonicalization of non-owned
+    task-toolbar callsites.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 dialog consolidation by moving
+  `src/components/dialogs/tasks/EditBranchNameDialog.tsx` into
+  `src/features/command-bar/ui/dialogs/*` with a compatibility shim and
+  canonical import updates.

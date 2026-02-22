@@ -65,6 +65,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
   - [x] Moved feature dialog `CreatePRDialog` to
         `src/features/command-bar/ui/dialogs/CreatePRDialog.tsx`.
+  - [x] Moved feature dialog `ChangeTargetBranchDialog` to
+        `src/features/command-bar/ui/dialogs/ChangeTargetBranchDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -115,6 +117,8 @@ compatibility shims.
         `src/components/dialogs/tasks/StartReviewDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/CreatePRDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/ChangeTargetBranchDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -184,6 +188,10 @@ compatibility shims.
         `@/features/command-bar/ui/dialogs/CreatePRDialog` in:
         `src/components/ui-new/actions/index.ts`,
         `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog` in:
+        `src/components/tasks/Toolbar/GitOperations.tsx`,
+        `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -235,6 +243,10 @@ compatibility shims.
   in non-owned task toolbar files (`src/components/tasks/**`) during Track 1;
   keep those paths stable via legacy shims and only canonicalize owned
   UI-layer imports.
+- New information (2026-02-22): at least one non-owned task-toolbar callsite
+  (`src/components/tasks/Toolbar/GitOperations.tsx`) can be canonicalized to a
+  command-bar feature dialog import without violating current lint boundaries;
+  continue validating these updates on a case-by-case basis.
 - New information (2026-02-22): feature-owned dialog files cannot import
   directly from other `@/features/**` modules under current lint boundaries;
   when needed during Track 1, route through existing compatibility paths and
