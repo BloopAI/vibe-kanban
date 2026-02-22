@@ -1,4 +1,4 @@
-import { useRebase } from '@/features/workspace/model/hooks/useRebase';
+import { useRebase } from '@/shared/hooks/useRebase';
 import { useMerge } from '@/features/workspace/model/hooks/useMerge';
 import { usePush } from '@/features/workspace/model/hooks/usePush';
 import { useForcePush } from '@/features/workspace/model/hooks/useForcePush';

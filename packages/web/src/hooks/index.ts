@@ -4,7 +4,6 @@ export { useOpenInEditor } from './useOpenInEditor';
 export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
 export { useDevServer } from '@/shared/hooks/useDevServer';
-export { useRebase } from '@/features/workspace/model/hooks/useRebase';
 export { useChangeTargetBranch } from '@/features/workspace/model/hooks/useChangeTargetBranch';
 export { useRenameBranch } from '@/features/workspace/model/hooks/useRenameBranch';
 export { useMerge } from '@/features/workspace/model/hooks/useMerge';
