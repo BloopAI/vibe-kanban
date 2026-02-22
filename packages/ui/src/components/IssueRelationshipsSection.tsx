@@ -2,13 +2,21 @@
 
 import { useTranslation } from 'react-i18next';
 import { XIcon } from '@phosphor-icons/react';
-import type { ResolvedRelationship } from '@/lib/resolveRelationships';
-import { CollapsibleSectionHeader } from '@vibe/ui/components/CollapsibleSectionHeader';
-import { RelationshipBadge } from '@vibe/ui/components/RelationshipBadge';
-import { PERSIST_KEYS, type PersistKey } from '@/stores/useUiPreferencesStore';
+import { CollapsibleSectionHeader } from './CollapsibleSectionHeader';
+import {
+  RelationshipBadge,
+  type RelationshipDisplayType,
+} from './RelationshipBadge';
+
+export interface IssueRelationshipsSectionRelationship {
+  relationshipId: string;
+  relatedIssueId: string;
+  relatedIssueDisplayId: string;
+  displayType: RelationshipDisplayType;
+}
 
 export interface IssueRelationshipsSectionProps {
-  relationships: ResolvedRelationship[];
+  relationships: IssueRelationshipsSectionRelationship[];
   onRelationshipClick: (relatedIssueId: string) => void;
   onRemoveRelationship?: (relationshipId: string) => void;
   isLoading?: boolean;
@@ -27,7 +35,7 @@ export function IssueRelationshipsSection({
   return (
     <CollapsibleSectionHeader
       title={t('kanban.relationships', 'Relationships')}
-      persistKey={PERSIST_KEYS.kanbanIssueRelationships as PersistKey}
+      persistKey="kanban-issue-relationships"
       defaultExpanded={true}
       headerExtra={headerExtra}
     >

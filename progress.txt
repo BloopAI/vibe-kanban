@@ -5671,3 +5671,49 @@ Validation:
 
 Plan adjustments from new information:
 - Prioritize remaining view extractions where frontend-specific types are only used for compile-time casts; these can usually be replaced with existing package prop types without behavior changes.
+
+## 2026-02-22 - UI package extraction: IssueRelationshipsSection
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueRelationshipsSection.tsx` as the next extraction target.
+- It is a low-coupling section with a single container callsite and existing dependencies already in `@vibe/ui` (`RelationshipBadge`, `CollapsibleSectionHeader`).
+- New information: relationship sections can migrate without shared resolver types by using package-local structural contracts for rendered relationship data.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueRelationshipsSection.tsx packages/ui/src/components/IssueRelationshipsSection.tsx`
+- Package updates:
+  - Replaced package self-imports:
+    - `@vibe/ui/components/CollapsibleSectionHeader` -> `./CollapsibleSectionHeader`
+    - `@vibe/ui/components/RelationshipBadge` -> `./RelationshipBadge`
+  - Removed frontend dependencies:
+    - removed `ResolvedRelationship` import from `@/lib/resolveRelationships`
+    - removed `PERSIST_KEYS`/`PersistKey` imports from `@/stores/useUiPreferencesStore`
+  - Added package-local contract:
+    - `IssueRelationshipsSectionRelationship` with `relationshipId`, `relatedIssueId`, `relatedIssueDisplayId`, `displayType`
+  - Replaced persist key usage:
+    - `persistKey={PERSIST_KEYS.kanbanIssueRelationships as PersistKey}` -> `persistKey="kanban-issue-relationships"`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/IssueRelationshipsSectionContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueRelationshipsSection`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- Prefer migrating sections that receive already-resolved display data from containers; package-local structural interfaces are sufficient and keep `@vibe/ui` decoupled from app resolver modules.
