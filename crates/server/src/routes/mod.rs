@@ -1,7 +1,4 @@
-use axum::{
-    Router,
-    routing::{IntoMakeService, get},
-};
+use axum::{Router, routing::get};
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 use crate::{DeploymentImpl, middleware};
@@ -30,7 +27,7 @@ pub mod tags;
 pub mod task_attempts;
 pub mod terminal;
 
-pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+pub fn router(deployment: DeploymentImpl) -> Router {
     // Create routers with different middleware layers
     let base_routes = Router::new()
         .route("/health", get(health::health_check))
@@ -63,5 +60,4 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
-        .into_make_service()
 }

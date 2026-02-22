@@ -109,6 +109,7 @@
       <h1>SPAKE2 Trusted-Key E2E Test</h1>
       <p>
         This page runs:
+        <code>/api/auth/trusted-keys/enrollment-code</code>,
         <code>/api/auth/trusted-keys/spake2/start</code>,
         <code>/api/auth/trusted-keys/spake2/finish</code>, then
         <code>/api/auth/signed-test</code> with the newly generated key.
@@ -116,13 +117,18 @@
 
       <form id="runForm">
         <div class="row">
-          <label for="password">Enrollment Password</label>
+          <label for="enrollmentCode">Enrollment Code (A-Z0-9, 6 chars)</label>
           <input
-            id="password"
-            type="password"
+            id="enrollmentCode"
+            type="text"
             autocomplete="off"
-            placeholder="Value of VK_TRUSTED_KEYS_ENROLL_PASSWORD"
+            maxlength="6"
+            placeholder="Click Generate Code or paste a code"
           />
+        </div>
+
+        <div class="row">
+          <button id="generateCode" type="button">Generate Code</button>
         </div>
 
         <div class="row">
@@ -168,12 +174,19 @@
       );
 
       const runForm = document.querySelector('#runForm');
+      const generateCodeButton = document.querySelector('#generateCode');
       const runButton = document.querySelector('#run');
-      const passwordInput = document.querySelector('#password');
+      const enrollmentCodeInput = document.querySelector('#enrollmentCode');
       const publicKeyField = document.querySelector('#publicKey');
       const privateKeyField = document.querySelector('#privateKey');
       const enrollmentIdField = document.querySelector('#enrollmentId');
       const logsField = document.querySelector('#logs');
+
+      generateCodeButton.addEventListener('click', () => {
+        generateEnrollmentCode().catch((error) => {
+          log(`ERROR: ${error instanceof Error ? error.message : String(error)}`);
+        });
+      });
 
       runForm.addEventListener('submit', (event) => {
         event.preventDefault();
@@ -364,15 +377,30 @@
         return result.json.data;
       }
 
+      async function generateEnrollmentCode() {
+        generateCodeButton.disabled = true;
+        try {
+          const codeResult = await postJson('/api/auth/trusted-keys/enrollment-code', {});
+          const codeData = unwrapApiData(codeResult, 'Generate enrollment code');
+          enrollmentCodeInput.value = codeData.enrollment_code;
+          log(`Enrollment code ready: ${codeData.enrollment_code}`);
+          return codeData.enrollment_code;
+        } finally {
+          generateCodeButton.disabled = false;
+        }
+      }
+
       async function runE2e() {
         runButton.disabled = true;
         resetOutput();
 
         try {
-          const password = passwordInput.value;
-          if (!password.trim()) {
-            throw new Error('Enrollment password is required.');
+          let enrollmentCode = enrollmentCodeInput.value.trim().toUpperCase();
+          if (!enrollmentCode) {
+            enrollmentCode = await generateEnrollmentCode();
           }
+          enrollmentCodeInput.value = enrollmentCode;
+          log(`Using enrollment code: ${enrollmentCode}`);
 
           const privateKey = ed25519.utils.randomSecretKey();
           const publicKey = ed25519.getPublicKey(privateKey);
@@ -383,7 +411,7 @@
           log('Generated browser key pair.');
 
           const x = randomScalar();
-          const passwordBytes = encoder.encode(password);
+          const passwordBytes = encoder.encode(enrollmentCode);
           const pw = await hashToScalar(passwordBytes);
           const clientPoint = ed25519.ExtendedPoint.BASE
             .multiply(x)
@@ -393,6 +421,7 @@
           log('Built SPAKE2 client message.');
 
           const startResult = await postJson('/api/auth/trusted-keys/spake2/start', {
+            enrollment_code: enrollmentCode,
             client_message_b64: clientMessageB64
           });
           const startData = unwrapApiData(startResult, 'SPAKE2 start');

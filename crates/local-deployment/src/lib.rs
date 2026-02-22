@@ -60,6 +60,8 @@ pub struct LocalDeployment {
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     pake_enrollments: Arc<RwLock<HashMap<Uuid, PendingPakeEnrollment>>>,
+    enrollment_code: Arc<RwLock<Option<String>>>,
+    rate_limit_windows: Arc<RwLock<HashMap<String, Vec<Instant>>>>,
     pty: PtyService,
 }
 
@@ -176,6 +178,8 @@ impl Deployment for LocalDeployment {
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
         let pake_enrollments = Arc::new(RwLock::new(HashMap::new()));
+        let enrollment_code = Arc::new(RwLock::new(None));
+        let rate_limit_windows = Arc::new(RwLock::new(HashMap::new()));
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -231,6 +235,8 @@ impl Deployment for LocalDeployment {
             auth_context,
             oauth_handoffs,
             pake_enrollments,
+            enrollment_code,
+            rate_limit_windows,
             pty,
         };
 
@@ -373,6 +379,45 @@ impl LocalDeployment {
             return None;
         }
         Some(enrollment.shared_key)
+    }
+
+    pub async fn get_or_set_enrollment_code(&self, new_code: String) -> String {
+        let mut enrollment_code = self.enrollment_code.write().await;
+        if let Some(existing_code) = enrollment_code.as_ref() {
+            return existing_code.clone();
+        }
+
+        *enrollment_code = Some(new_code.clone());
+        new_code
+    }
+
+    pub async fn consume_enrollment_code(&self, enrollment_code: &str) -> bool {
+        let mut stored_code = self.enrollment_code.write().await;
+        if stored_code.as_deref() != Some(enrollment_code) {
+            return false;
+        }
+
+        *stored_code = None;
+        true
+    }
+
+    pub async fn allow_rate_limited_action(
+        &self,
+        bucket: &str,
+        max_requests: usize,
+        window: Duration,
+    ) -> bool {
+        let now = Instant::now();
+        let mut windows = self.rate_limit_windows.write().await;
+        let entry = windows.entry(bucket.to_string()).or_default();
+        entry.retain(|timestamp| now.duration_since(*timestamp) <= window);
+
+        if entry.len() >= max_requests {
+            return false;
+        }
+
+        entry.push(now);
+        true
     }
 
     pub fn pty(&self) -> &PtyService {

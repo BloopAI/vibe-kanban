@@ -1,12 +1,15 @@
+use std::{net::SocketAddr, time::Duration};
+
 use axum::{
     Router,
-    extract::{Json as ExtractJson, State},
+    extract::{ConnectInfo, Json as ExtractJson, State},
     response::{Html, Json as ResponseJson},
     routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::VerifyingKey;
 use hmac::{Hmac, Mac};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use sha2::Sha256;
 use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
@@ -17,16 +20,23 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 const TRUSTED_KEYS_FILE_NAME: &str = "trusted_ed25519_public_keys.json";
-const PAKE_PASSWORD_ENV: &str = "VK_TRUSTED_KEYS_ENROLL_PASSWORD";
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
 const CLIENT_PROOF_CONTEXT: &[u8] = b"vk-spake2-client-proof-v1";
 const SERVER_PROOF_CONTEXT: &[u8] = b"vk-spake2-server-proof-v1";
+const ENROLLMENT_CODE_LENGTH: usize = 6;
+const ENROLLMENT_CODE_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
+const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
+const GENERATE_CODE_PER_IP_LIMIT: usize = 3;
+const SPAKE2_START_GLOBAL_LIMIT: usize = 30;
+const SPAKE2_START_PER_IP_LIMIT: usize = 10;
 
 type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Deserialize)]
 struct StartSpake2EnrollmentRequest {
+    enrollment_code: String,
     client_message_b64: String,
 }
 
@@ -49,6 +59,11 @@ struct FinishSpake2EnrollmentResponse {
     server_proof_b64: String,
 }
 
+#[derive(Debug, Serialize)]
+struct GenerateEnrollmentCodeResponse {
+    enrollment_code: String,
+}
+
 #[derive(Debug, Default, Deserialize, Serialize)]
 struct TrustedPublicKeysFile {
     keys: Vec<String>,
@@ -57,6 +72,10 @@ struct TrustedPublicKeysFile {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/auth/trusted-keys/spake2/test-page", get(spake2_test_page))
+        .route(
+            "/auth/trusted-keys/enrollment-code",
+            post(generate_enrollment_code),
+        )
         .route(
             "/auth/trusted-keys/spake2/start",
             post(start_spake2_enrollment),
@@ -71,15 +90,69 @@ async fn spake2_test_page() -> Html<&'static str> {
     Html(include_str!("auth_spake2_test_page.html"))
 }
 
+async fn generate_enrollment_code(
+    State(deployment): State<DeploymentImpl>,
+    ConnectInfo(client_addr): ConnectInfo<SocketAddr>,
+) -> Result<ResponseJson<ApiResponse<GenerateEnrollmentCodeResponse>>, ApiError> {
+    ensure_loopback_only(&client_addr)?;
+
+    enforce_rate_limit(
+        &deployment,
+        "trusted-keys:code-generation:global",
+        GENERATE_CODE_GLOBAL_LIMIT,
+        RATE_LIMIT_WINDOW,
+    )
+    .await?;
+    let ip_bucket = format!("trusted-keys:code-generation:ip:{}", client_addr.ip());
+    enforce_rate_limit(
+        &deployment,
+        &ip_bucket,
+        GENERATE_CODE_PER_IP_LIMIT,
+        RATE_LIMIT_WINDOW,
+    )
+    .await?;
+
+    let enrollment_code = deployment
+        .get_or_set_enrollment_code(generate_one_time_code())
+        .await;
+
+    tracing::info!(
+        client_ip = %client_addr.ip(),
+        "Issued trusted-key enrollment code"
+    );
+
+    Ok(ResponseJson(ApiResponse::success(
+        GenerateEnrollmentCodeResponse { enrollment_code },
+    )))
+}
+
 async fn start_spake2_enrollment(
     State(deployment): State<DeploymentImpl>,
+    ConnectInfo(client_addr): ConnectInfo<SocketAddr>,
     ExtractJson(payload): ExtractJson<StartSpake2EnrollmentRequest>,
 ) -> Result<ResponseJson<ApiResponse<StartSpake2EnrollmentResponse>>, ApiError> {
-    let password = load_pake_password()?;
+    enforce_rate_limit(
+        &deployment,
+        "trusted-keys:spake2-start:global",
+        SPAKE2_START_GLOBAL_LIMIT,
+        RATE_LIMIT_WINDOW,
+    )
+    .await?;
+    let ip_bucket = format!("trusted-keys:spake2-start:ip:{}", client_addr.ip());
+    enforce_rate_limit(
+        &deployment,
+        &ip_bucket,
+        SPAKE2_START_PER_IP_LIMIT,
+        RATE_LIMIT_WINDOW,
+    )
+    .await?;
+
+    let enrollment_code = normalize_enrollment_code(&payload.enrollment_code)?;
+
     let client_message = decode_base64(&payload.client_message_b64)
         .map_err(|_| ApiError::BadRequest("Invalid client_message_b64".to_string()))?;
 
-    let password = Password::new(password.as_bytes());
+    let password = Password::new(enrollment_code.as_bytes());
     let id_a = Identity::new(SPAKE2_CLIENT_ID);
     let id_b = Identity::new(SPAKE2_SERVER_ID);
     let (server_state, server_message) =
@@ -92,6 +165,14 @@ async fn start_spake2_enrollment(
         );
         ApiError::Unauthorized
     })?;
+
+    if !deployment.consume_enrollment_code(&enrollment_code).await {
+        tracing::info!(
+            client_ip = %client_addr.ip(),
+            "Rejecting SPAKE2 enrollment start: missing or invalid enrollment code"
+        );
+        return Err(ApiError::Unauthorized);
+    }
 
     let enrollment_id = Uuid::new_v4();
     deployment
@@ -157,20 +238,68 @@ async fn finish_spake2_enrollment(
     )))
 }
 
-fn load_pake_password() -> Result<String, ApiError> {
-    let password = std::env::var(PAKE_PASSWORD_ENV).map_err(|_| {
-        ApiError::Forbidden(format!(
-            "SPAKE2 enrollment is disabled ({} is not set).",
-            PAKE_PASSWORD_ENV
-        ))
-    })?;
-    if password.trim().is_empty() {
-        return Err(ApiError::Forbidden(format!(
-            "SPAKE2 enrollment is disabled ({} is empty).",
-            PAKE_PASSWORD_ENV
+fn ensure_loopback_only(client_addr: &SocketAddr) -> Result<(), ApiError> {
+    if client_addr.ip().is_loopback() {
+        return Ok(());
+    }
+
+    Err(ApiError::Forbidden(
+        "Enrollment code endpoint is only available from loopback addresses.".to_string(),
+    ))
+}
+
+async fn enforce_rate_limit(
+    deployment: &DeploymentImpl,
+    bucket: &str,
+    max_requests: usize,
+    window: Duration,
+) -> Result<(), ApiError> {
+    if deployment
+        .allow_rate_limited_action(bucket, max_requests, window)
+        .await
+    {
+        return Ok(());
+    }
+
+    tracing::info!(
+        bucket,
+        max_requests,
+        window_seconds = window.as_secs(),
+        "Rate limit exceeded for trusted-key enrollment endpoint"
+    );
+    Err(ApiError::TooManyRequests(
+        "Too many requests. Please wait and try again.".to_string(),
+    ))
+}
+
+fn normalize_enrollment_code(raw_code: &str) -> Result<String, ApiError> {
+    let code = raw_code.trim().to_ascii_uppercase();
+    if code.len() != ENROLLMENT_CODE_LENGTH {
+        return Err(ApiError::BadRequest(format!(
+            "Invalid enrollment code length. Expected {ENROLLMENT_CODE_LENGTH} characters."
         )));
     }
-    Ok(password)
+
+    if !code
+        .bytes()
+        .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
+    {
+        return Err(ApiError::BadRequest(
+            "Enrollment code must contain only A-Z and 0-9.".to_string(),
+        ));
+    }
+
+    Ok(code)
+}
+
+fn generate_one_time_code() -> String {
+    let mut rng = rand::thread_rng();
+    let mut code = String::with_capacity(ENROLLMENT_CODE_LENGTH);
+    for _ in 0..ENROLLMENT_CODE_LENGTH {
+        let idx = rng.gen_range(0..ENROLLMENT_CODE_CHARSET.len());
+        code.push(ENROLLMENT_CODE_CHARSET[idx] as char);
+    }
+    code
 }
 
 fn decode_base64(input: &str) -> Result<Vec<u8>, ApiError> {
@@ -316,5 +445,26 @@ mod tests {
 
         let parsed = parse_public_key_base64(&key_b64).unwrap();
         assert_eq!(parsed.as_bytes(), public_key.as_bytes());
+    }
+
+    #[test]
+    fn normalize_enrollment_code_accepts_valid_input() {
+        let normalized = normalize_enrollment_code("ab12z9").unwrap();
+        assert_eq!(normalized, "AB12Z9");
+    }
+
+    #[test]
+    fn normalize_enrollment_code_rejects_invalid_characters() {
+        assert!(normalize_enrollment_code("AB!2Z9").is_err());
+    }
+
+    #[test]
+    fn generate_one_time_code_uses_expected_charset_and_length() {
+        let code = generate_one_time_code();
+        assert_eq!(code.len(), ENROLLMENT_CODE_LENGTH);
+        assert!(
+            code.bytes()
+                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
+        );
     }
 }

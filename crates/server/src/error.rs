@@ -73,6 +73,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -400,6 +402,9 @@ impl IntoResponse for ApiError {
             ApiError::Conflict(msg) => ErrorInfo::conflict("ConflictError", msg.clone()),
             ApiError::Forbidden(msg) => {
                 ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
+            }
+            ApiError::TooManyRequests(msg) => {
+                ErrorInfo::with_status(StatusCode::TOO_MANY_REQUESTS, "RateLimitError", msg.clone())
             }
             ApiError::Multipart(_) => ErrorInfo::bad_request(
                 "MultipartError",
