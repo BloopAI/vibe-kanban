@@ -1,0 +1,117 @@
+# Refactor Lint Triage (no-restricted-imports)
+
+Use this file to evaluate each ESLint architecture violation and choose a
+consistent refactor action.
+
+## Scope
+
+This checklist is for layer-boundary violations in `packages/web`, especially:
+
+- `features -> app`
+- `features -> features`
+- `shared -> features`
+
+## How To Use
+
+For each ESLint error:
+
+1. Copy one row in the tracking table.
+2. Run the decision tree.
+3. Pick exactly one primary action.
+4. Add follow-up tasks if needed.
+
+## Decision Tree
+
+1. Is the imported module pure/generic and reusable across domains?
+- Yes: move it to `shared` (or import from existing `shared` module).
+- No: continue.
+
+2. Is it app wiring/runtime orchestration (providers, router, bootstrapping)?
+- Yes: keep in `app`; inject data/handlers into feature from app-level composition.
+- No: continue.
+
+3. Is it domain-specific state/model used by multiple feature slices?
+- Yes: extract stable domain contract to `shared` (types/selectors/helpers),
+  keep feature-specific adapters inside each feature.
+- No: continue.
+
+4. Is `shared` importing from `features`?
+- Yes: move the imported code/type down into `shared` (or split out a shared
+  contract); `shared` must not depend on higher layers.
+- No: continue.
+
+5. Is the import only needed because of convenience/re-export path?
+- Yes: switch import to the proper owning layer path.
+- No: continue.
+
+6. If none fit, dependency direction is likely wrong:
+- Move caller upward (to app/page) or split module responsibilities.
+
+## Action Matrix
+
+### A1: Repoint To Existing Lower Layer
+
+Use when a valid `shared`/`integrations` module already exists.
+
+- Change import path only.
+- No module move needed.
+
+### A2: Move Module Down To Shared
+
+Use when module is cross-cutting and not feature-specific.
+
+- Move file to `src/shared/...`
+- Update imports.
+- Keep naming neutral (no feature terminology in shared APIs).
+
+### A3: Split Contract From Implementation
+
+Use when feature implementation is specific but types/helpers are reusable.
+
+- Extract `type` / pure helper to `shared`.
+- Keep feature runtime logic in feature.
+
+### A4: Dependency Inversion (App Injection)
+
+Use for `features -> app` violations.
+
+- Keep provider/hooks in `app`.
+- Pass required data/functions from app to feature (props/context/adapter).
+
+### A5: Move Caller Instead Of Dependency
+
+Use when the caller is in the wrong layer.
+
+- Move caller to app/page or correct feature slice.
+- Leave dependency where it belongs.
+
+## Do Not
+
+- Do not disable `no-restricted-imports` to bypass structure issues.
+- Do not move domain-specific behavior into `shared` just to satisfy lint.
+- Do not add new cross-feature imports as "temporary" fixes.
+
+## Quick Heuristics
+
+- If 3+ feature areas import it, it likely belongs in `shared`.
+- If it touches routing/providers/global bootstrap, it likely belongs in `app`.
+- If it encodes one domain workflow, keep it in that feature.
+
+## Per-Issue Tracking Table
+
+| Status | File | Line | Importer Layer | Imported Module | Violation Type | Decision (A1-A5) | Action Summary | Owner | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| TODO |  |  |  |  |  |  |  |  |  |
+
+## Example Entry
+
+| Status | File | Line | Importer Layer | Imported Module | Violation Type | Decision (A1-A5) | Action Summary | Owner | Notes |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DONE | `src/features/command-bar/ui/actions/useActionVisibility.ts` | `8` | feature | `@/features/workspace-chat/model/store/useDiffViewStore` | `features -> features` | A2 | Move `useDiffViewStore` to `src/shared/stores` and repoint imports |  | Cross-cutting UI state |
+
+## Definition Of Done (Per Batch)
+
+- `pnpm run web:lint` passes for targeted issues.
+- No new boundary violations introduced.
+- Imports point to owning layer (not convenience aliases).
+- Behavior unchanged (run relevant checks/tests).
