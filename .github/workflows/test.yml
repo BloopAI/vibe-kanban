@@ -44,6 +44,8 @@ jobs:
               - 'packages/web/**'
               - 'shared/**'
               - 'scripts/check-i18n.sh'
+              - 'scripts/check-legacy-frontend-paths.sh'
+              - 'scripts/legacy-frontend-paths-allowlist.txt'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'package.json'
@@ -105,10 +107,11 @@ jobs:
         run: |
           npx concurrently \
             --kill-others-on-fail \
-            --names "lint,i18n,fmt,build" \
+            --names "lint,i18n,legacy,fmt,build" \
             --timings \
             "cd packages/web && npm run lint" \
             "GITHUB_BASE_REF=${{ github.base_ref || 'main' }} ./scripts/check-i18n.sh" \
+            "./scripts/check-legacy-frontend-paths.sh" \
             "cd packages/web && npm run format:check" \
             "cd packages/web && npm run build"
 

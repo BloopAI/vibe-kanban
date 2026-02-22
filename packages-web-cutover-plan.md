@@ -132,7 +132,7 @@ packages/web/src/
 
 ## Status
 
-- [ ] Phase A: foundations and guardrails (in progress, 2/4 complete)
+- [ ] Phase A: foundations and guardrails (in progress, 3/4 complete)
 - [ ] Phase B: app shell + page relocation
 - [ ] Phase C: vertical feature migrations
 - [ ] Phase D: dialog/modal consolidation
@@ -148,9 +148,13 @@ packages/web/src/
 - [x] Add ESLint import-boundary rules for layer direction.
 - [ ] Add temporary compatibility re-export files where needed to avoid
   breakage during phased moves.
-- [ ] Freeze net-new additions to `src/components/ui-new` and
-  `src/components/dialogs` (add a CI guard script that blocks new files in
-  these paths while allowing edits to existing files).
+- [x] Freeze net-new additions to `src/components/ui-new` and
+  `src/components/dialogs` via CI guard script:
+  - uses committed allowlist baseline (not base-branch diff) so checks are
+    stable while `main` and migration branches differ
+  - `scripts/check-legacy-frontend-paths.sh`
+  - `scripts/legacy-frontend-paths-allowlist.txt`
+  - wired into `.github/workflows/test.yml` frontend checks
 
 ## Phase B. App Shell + Page Relocation
 

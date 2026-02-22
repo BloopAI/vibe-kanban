@@ -16,6 +16,7 @@
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export PREVIEW_PROXY_PORT=$(node scripts/setup-dev-environment.js preview_proxy) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && concurrently \"pnpm run backend:dev:watch\" \"pnpm run web:dev\"",
     "test:npm": "./test-npm-package.sh",
     "web:lint": "pnpm --filter @vibe/web run lint",
+    "web:legacy-path-guard": "./scripts/check-legacy-frontend-paths.sh",
     "web:dev": "cd packages/web && pnpm run dev -- --port ${FRONTEND_PORT:-3000}",
     "web:check": "pnpm --filter @vibe/web run check",
     "web:format": "pnpm --filter @vibe/web run format",

@@ -23,3 +23,33 @@
   1. Add temporary compatibility re-export shims for first moved modules.
   2. Add CI guard script to block net-new files under `src/components/ui-new` and `src/components/dialogs`.
 
+## 2026-02-22 10:25:23 UTC
+
+- Assessed next Phase A item and implemented the legacy-path freeze guard.
+- Added CI/local guard command:
+  - New script: `scripts/check-legacy-frontend-paths.sh`
+  - New npm script: `web:legacy-path-guard`
+- Added allowlist baseline for currently tracked legacy files:
+  - `scripts/legacy-frontend-paths-allowlist.txt`
+- Wired guard into CI frontend checks in `.github/workflows/test.yml`.
+  - Added script + allowlist to frontend path filters.
+  - Added guard command into concurrent frontend check commands.
+- New information discovered and handled:
+  - Base-branch diff was not reliable yet because branch/main legacy trees are not aligned.
+  - Switched guard strategy to committed allowlist baseline for stable enforcement.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Kept Phase A at 3/4 complete.
+  - Marked legacy freeze task complete with script + allowlist + CI wiring details.
+  - Documented allowlist rationale.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - `pnpm run web:legacy-path-guard`
+  - All passed.
+
+### Next change
+
+- Implement remaining Phase A task:
+  1. Add temporary compatibility re-export files for the first module moves in Phase B.
+
