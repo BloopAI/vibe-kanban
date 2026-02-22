@@ -373,3 +373,44 @@
 - Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
   `src/components/dialogs/tasks/RebaseDialog.tsx` and
   `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.
+
+## 2026-02-22 11:43:05 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`,
+  then assessed the next low-risk Track 1 component to move into a UI package
+  path.
+- Selected `CreatePRDialog` for command-bar feature-owned dialog placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/tasks/CreatePRDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/CreatePRDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/tasks/CreatePRDialog.tsx`.
+  - Updated canonical callsites/import surfaces to
+    `@/features/command-bar/ui/dialogs/CreatePRDialog` in:
+    - `src/components/ui-new/actions/index.ts`
+    - `src/components/dialogs/index.ts`
+- New information discovered and handled:
+  - Feature-path lint rules rejected direct imports from another
+    `@/features/**` module (`GhCliSetupDialog`).
+  - Updated the moved dialog to consume `GhCliSetupDialog` through its existing
+    compatibility path (`@/components/dialogs/auth/GhCliSetupDialog`) to keep
+    Track 1 low-risk and lint-clean.
+  - Updated the moved dialog to use named NiceModal imports (`create`,
+    `useModal`) and hook-facade import `@/hooks/useUserSystem`.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `CreatePRDialog`.
+  - Added new-information notes for non-owned task-toolbar callsites and
+    feature-to-feature import boundary behavior.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Begin `T1.5` by consolidating duplicate `RebaseDialog` concepts between
+  `src/components/dialogs/tasks/RebaseDialog.tsx` and
+  `src/components/ui-new/dialogs/RebaseDialog.tsx` with compatibility exports.

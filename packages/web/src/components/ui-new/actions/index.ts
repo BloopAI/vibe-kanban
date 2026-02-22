@@ -75,7 +75,7 @@ import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog';
 import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
-import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
+import { CreatePRDialog } from '@/features/command-bar/ui/dialogs/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
 import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
 import { StartReviewDialog } from '@/features/command-bar/ui/dialogs/StartReviewDialog';

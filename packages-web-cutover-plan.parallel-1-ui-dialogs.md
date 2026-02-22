@@ -53,6 +53,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog.tsx`.
   - [x] Moved feature dialog `StartReviewDialog` to
         `src/features/command-bar/ui/dialogs/StartReviewDialog.tsx`.
+  - [x] Moved feature dialog `CreatePRDialog` to
+        `src/features/command-bar/ui/dialogs/CreatePRDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -88,6 +90,8 @@ compatibility shims.
         `src/components/dialogs/CreateWorkspaceFromPrDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/StartReviewDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/CreatePRDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -127,6 +131,10 @@ compatibility shims.
         `src/components/ui-new/actions/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/command-bar/ui/dialogs/StartReviewDialog` in:
+        `src/components/ui-new/actions/index.ts`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/command-bar/ui/dialogs/CreatePRDialog` in:
         `src/components/ui-new/actions/index.ts`,
         `src/components/dialogs/index.ts`.
 
@@ -173,6 +181,14 @@ compatibility shims.
 - New information (2026-02-22): when moving task dialogs into command-bar
   feature ownership, replace direct `@/app/providers/*` imports with hook
   facades (for example `@/hooks/useUserSystem`) to satisfy layer lint rules.
+- New information (2026-02-22): some command-bar dialog callsites still live
+  in non-owned task toolbar files (`src/components/tasks/**`) during Track 1;
+  keep those paths stable via legacy shims and only canonicalize owned
+  UI-layer imports.
+- New information (2026-02-22): feature-owned dialog files cannot import
+  directly from other `@/features/**` modules under current lint boundaries;
+  when needed during Track 1, route through existing compatibility paths and
+  defer deeper layer extraction to final consolidation.
 
 ## Validation
 
