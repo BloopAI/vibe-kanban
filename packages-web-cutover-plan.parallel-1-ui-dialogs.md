@@ -156,6 +156,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`.
   - [x] Moved settings dialog section `AgentsSettingsSection` to
         `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`.
+  - [x] Moved settings dialog section `GeneralSettingsSection` to
+        `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -265,6 +267,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/McpSettingsSection.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -310,7 +314,7 @@ compatibility shims.
   - [x] Updated canonical callsites to
         `@/shared/ui/dialogs/FolderPickerDialog` in:
         `src/components/ui-new/containers/CreateModeRepoPickerBar.tsx`,
-        `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`.
+        `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`.
   - [x] Updated shared-dialog barrel export to canonical path in
         `src/components/dialogs/index.ts` for `ConfirmDialog`.
   - [x] Updated canonical callsite to
@@ -507,12 +511,14 @@ compatibility shims.
         path in:
         `src/features/settings/ui/dialogs/SettingsDialog.tsx`,
         `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`,
-        `src/components/ui-new/dialogs/settings/GeneralSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`,
         `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`,
         `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Updated canonical `McpSettingsSection` callsite to feature-owned path
         in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
   - [x] Updated canonical `AgentsSettingsSection` callsite to feature-owned
+        path in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
+  - [x] Updated canonical `GeneralSettingsSection` callsite to feature-owned
         path in: `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
 
 ## Risk Controls
@@ -680,9 +686,8 @@ compatibility shims.
   `src/components/ui-new/dialogs/settings/*` paths during Track 1 and import
   them by alias from canonical feature-owned settings files.
 - New information (2026-02-22): after moving `SettingsSection` into feature
-  ownership, keep section implementation modules (`GeneralSettingsSection`,
-  `ReposSettingsSection`, `OrganizationsSettingsSection`,
-  `RemoteProjectsSettingsSection`) on legacy
+  ownership, keep section implementation modules (`ReposSettingsSection`,
+  `OrganizationsSettingsSection`, `RemoteProjectsSettingsSection`) on legacy
   `src/components/ui-new/dialogs/settings/*` paths for this track, with a
   compatibility shim at the legacy `SettingsSection` path.
 - New information (2026-02-22): after moving `SettingsDirtyContext` into
@@ -704,6 +709,11 @@ compatibility shims.
   sibling settings feature dialogs directly (`@/features/settings/**`) under
   current lint boundaries; use legacy dialog shim paths from
   `src/components/dialogs/settings/*` for those dependencies during Track 1.
+- New information (2026-02-22): after moving `GeneralSettingsSection` into
+  feature ownership, replace provider imports with hook facades (`@/hooks/useTheme`,
+  `@/hooks/useUserSystem`) and keep shared settings UI building blocks
+  (`SettingsComponents`) on legacy settings paths behind compatibility shims
+  until final consolidation.
 
 ## Validation
 

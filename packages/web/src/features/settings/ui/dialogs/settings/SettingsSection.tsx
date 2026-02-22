@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { XIcon } from '@phosphor-icons/react';
 
-import { GeneralSettingsSectionContent } from '@/components/ui-new/dialogs/settings/GeneralSettingsSection';
+import { GeneralSettingsSectionContent } from './GeneralSettingsSection';
 import { ReposSettingsSectionContent } from '@/components/ui-new/dialogs/settings/ReposSettingsSection';
 import { OrganizationsSettingsSectionContent } from '@/components/ui-new/dialogs/settings/OrganizationsSettingsSection';
 import { RemoteProjectsSettingsSectionContent } from '@/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection';
