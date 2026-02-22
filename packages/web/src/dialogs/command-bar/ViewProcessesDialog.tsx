@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
 import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab';
-import { ProcessSelectionProvider } from '@/features/workspace-chat/model/contexts/ProcessSelectionContext';
+import { ProcessSelectionProvider } from '@/shared/hooks/ProcessSelectionContext';
 
 export interface ViewProcessesDialogProps {
   sessionId: string | undefined;

@@ -16,7 +16,7 @@ import { useLogStream } from '@/hooks/useLogStream';
 import { ProcessLogsViewerContent } from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';
 
-import { useProcessSelection } from '@/features/workspace-chat/model/contexts/ProcessSelectionContext';
+import { useProcessSelection } from '@/shared/hooks/ProcessSelectionContext';
 import { useRetryUi } from '@/shared/hooks/useRetryUi';
 
 interface ProcessesTabProps {
