@@ -4591,3 +4591,52 @@ Plan adjustments from new information:
 - Components that combine reusable list chrome with environment-specific rendering should expose a small set of adapter props (`icon`, `environment`, `body renderer`) to keep package code reusable and readable.
 - No structural plan changes were required this cycle.
 - Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatMarkdown.tsx` (single container callsite; requires decoupling from `useChangesView` and app-local WYSIWYG bindings via injected renderer callbacks).
+
+## 2026-02-22 - UI package extraction: ChatMarkdown
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatMarkdown.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`NewDisplayConversationEntry`) but directly depended on app-specific integrations (`useChangesView` and app-local `WYSIWYGEditor`).
+- New information: markdown display extraction is cleanest when the package component owns layout/styling and the app injects renderer behavior.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatMarkdown.tsx packages/ui/src/components/ChatMarkdown.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Removed frontend-only dependencies (`useChangesView`, `WYSIWYGEditor`)
+  - Added render adapter API:
+    - `renderContent: (props) => ReactNode`
+  - Added reusable render props type:
+    - `ChatMarkdownRenderProps`
+  - Package component now handles markdown class composition and max-width layout, while delegating rendering via `renderContent`.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/NewDisplayConversationEntry.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatMarkdown`
+  - Added frontend wrapper component:
+    - `AppChatMarkdown` (injects `WYSIWYGEditor`, `findMatchingDiffPath`, and `onCodeClick` from `useChangesView`)
+  - Updated all markdown callsites in `NewDisplayConversationEntry` render adapters to use `AppChatMarkdown`.
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For content-rendering primitives, extraction should keep package responsibility to UI layout and style contracts while passing app-specific rendering and navigation hooks as explicit adapters.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/PierreConversationDiff.tsx` (last remaining conversation primitive in frontend; heavier due `@pierre/diffs` integration and diff view store coupling).

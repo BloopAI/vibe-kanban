@@ -20,6 +20,7 @@ import { getActualTheme } from '@/utils/theme';
 import { getFileIcon } from '@/utils/fileTypeIcon';
 import { useUserSystem } from '@/components/ConfigProvider';
 import { useTheme } from '@/components/ThemeProvider';
+import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '@/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '@/components/ui-new/hooks/useResetProcess';
@@ -48,7 +49,7 @@ import { ChatSubagentEntry } from '@vibe/ui/components/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '@vibe/ui/components/ChatAggregatedToolEntries';
 import { ChatAggregatedDiffEntries } from '@vibe/ui/components/ChatAggregatedDiffEntries';
 import { ChatCollapsedThinking } from '@vibe/ui/components/ChatCollapsedThinking';
-import { ChatMarkdown } from '../primitives/conversation/ChatMarkdown';
+import { ChatMarkdown } from '@vibe/ui/components/ChatMarkdown';
 import {
   DiffViewBody,
   useDiffData,
@@ -362,10 +363,11 @@ function NewDisplayConversationEntry(props: Props) {
           content={entry.content}
           taskAttemptId={taskAttempt?.id}
           renderMarkdown={({ content, workspaceId, className }) => (
-            <ChatMarkdown
+            <AppChatMarkdown
               content={content}
               workspaceId={workspaceId}
               className={className}
+              maxWidth={undefined}
             />
           )}
         />
@@ -430,6 +432,39 @@ function FileEntryDiffBody({
       isValid={diffData.isValid}
       hideLineNumbers={diffData.hideLineNumbers}
       theme={actualTheme}
+    />
+  );
+}
+
+function AppChatMarkdown({
+  content,
+  workspaceId,
+  className,
+  maxWidth,
+}: {
+  content: string;
+  workspaceId: string | undefined;
+  className: string | undefined;
+  maxWidth: string | undefined;
+}) {
+  const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
+
+  return (
+    <ChatMarkdown
+      content={content}
+      workspaceId={workspaceId}
+      className={className}
+      maxWidth={maxWidth}
+      renderContent={({ content, className, workspaceId }) => (
+        <WYSIWYGEditor
+          value={content}
+          disabled
+          className={className}
+          taskAttemptId={workspaceId}
+          findMatchingDiffPath={findMatchingDiffPath}
+          onCodeClick={viewFileInChanges}
+        />
+      )}
     />
   );
 }
@@ -571,7 +606,12 @@ function PlanEntry({
       workspaceId={workspaceId}
       status={status}
       renderMarkdown={({ content, workspaceId }) => (
-        <ChatMarkdown content={content} workspaceId={workspaceId} />
+        <AppChatMarkdown
+          content={content}
+          workspaceId={workspaceId}
+          className={undefined}
+          maxWidth={undefined}
+        />
       )}
     />
   );
@@ -607,7 +647,12 @@ function GenericToolApprovalEntry({
       workspaceId={workspaceId}
       status={status}
       renderMarkdown={({ content, workspaceId }) => (
-        <ChatMarkdown content={content} workspaceId={workspaceId} />
+        <AppChatMarkdown
+          content={content}
+          workspaceId={workspaceId}
+          className={undefined}
+          maxWidth={undefined}
+        />
       )}
     />
   );
@@ -667,7 +712,12 @@ function UserMessageEntry({
       onReset={canReset ? handleReset : undefined}
       isGreyed={isGreyed}
       renderMarkdown={({ content, workspaceId }) => (
-        <ChatMarkdown content={content} workspaceId={workspaceId} />
+        <AppChatMarkdown
+          content={content}
+          workspaceId={workspaceId}
+          className={undefined}
+          maxWidth={undefined}
+        />
       )}
     />
   );
@@ -688,7 +738,12 @@ function AssistantMessageEntry({
       content={content}
       workspaceId={workspaceId}
       renderMarkdown={({ content, workspaceId }) => (
-        <ChatMarkdown content={content} workspaceId={workspaceId} />
+        <AppChatMarkdown
+          content={content}
+          workspaceId={workspaceId}
+          className={undefined}
+          maxWidth={undefined}
+        />
       )}
     />
   );
@@ -804,7 +859,12 @@ function SubagentEntry({
       status={status}
       workspaceId={workspaceId}
       renderMarkdown={({ content, workspaceId }) => (
-        <ChatMarkdown content={content} workspaceId={workspaceId} />
+        <AppChatMarkdown
+          content={content}
+          workspaceId={workspaceId}
+          className={undefined}
+          maxWidth={undefined}
+        />
       )}
     />
   );
@@ -1081,10 +1141,11 @@ function AggregatedThinkingGroupEntry({
       onHoverChange={handleHoverChange}
       taskAttemptId={taskAttemptId}
       renderMarkdown={({ content, workspaceId, className }) => (
-        <ChatMarkdown
+        <AppChatMarkdown
           content={content}
           workspaceId={workspaceId}
           className={className}
+          maxWidth={undefined}
         />
       )}
     />
