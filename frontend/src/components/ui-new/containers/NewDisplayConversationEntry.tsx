@@ -35,7 +35,7 @@ import { ChatApprovalCard } from '@vibe/ui/components/ChatApprovalCard';
 import { ChatUserMessage } from '@vibe/ui/components/ChatUserMessage';
 import { ChatAssistantMessage } from '@vibe/ui/components/ChatAssistantMessage';
 import { ChatSystemMessage } from '@vibe/ui/components/ChatSystemMessage';
-import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
+import { ChatThinkingMessage } from '@vibe/ui/components/ChatThinkingMessage';
 import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
@@ -351,6 +351,13 @@ function NewDisplayConversationEntry(props: Props) {
         <ChatThinkingMessage
           content={entry.content}
           taskAttemptId={taskAttempt?.id}
+          renderMarkdown={({ content, workspaceId, className }) => (
+            <ChatMarkdown
+              content={content}
+              workspaceId={workspaceId}
+              className={className}
+            />
+          )}
         />
       );
 
