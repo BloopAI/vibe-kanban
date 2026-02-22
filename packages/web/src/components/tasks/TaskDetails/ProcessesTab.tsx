@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { executionProcessesApi } from '@/lib/api.ts';
 import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
-import { useExecutionProcesses } from '@/features/workspace-chat/model/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { useLogStream } from '@/hooks/useLogStream';
 import { ProcessLogsViewerContent } from './ProcessLogsViewer';
 import type { ExecutionProcessStatus, ExecutionProcess } from 'shared/types';

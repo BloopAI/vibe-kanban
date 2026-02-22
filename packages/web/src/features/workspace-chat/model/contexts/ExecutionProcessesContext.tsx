@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { useExecutionProcesses } from '../hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { ExecutionProcess } from 'shared/types';
 import {
   ExecutionProcessesContext,

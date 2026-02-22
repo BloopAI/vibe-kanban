@@ -16,7 +16,7 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import { useEntries, useTokenUsage } from '../model/contexts/EntriesContext';
-import { useExecutionProcesses } from '../model/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/contexts/ActionsContext';
 import { useTodos } from '@/features/workspace-chat/model/hooks/useTodos';

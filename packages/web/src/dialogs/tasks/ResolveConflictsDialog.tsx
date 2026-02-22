@@ -20,7 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
-import { useExecutionProcesses } from '@/features/workspace-chat/model/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { getLatestConfigFromProcesses } from '@/utils/executor';
 import type {
   BaseCodingAgent,

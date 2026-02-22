@@ -25,7 +25,7 @@ import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { defineModal } from '@/lib/modals';
 import { repoApi, attemptsApi } from '@/lib/api';
 import { useLogStream } from '@/hooks/useLogStream';
-import { useExecutionProcesses } from '@/features/workspace-chat/model/hooks/useExecutionProcesses';
+import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { RepoWithTargetBranch, PatchType, UpdateRepo } from 'shared/types';
 
 export type ScriptType = 'setup' | 'cleanup' | 'dev_server' | 'archive';
