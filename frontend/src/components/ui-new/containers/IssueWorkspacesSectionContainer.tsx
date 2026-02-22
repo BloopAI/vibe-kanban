@@ -18,7 +18,7 @@ import {
   buildWorkspaceCreatePrompt,
 } from '@/lib/workspaceCreateState';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
+import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
 import type { WorkspaceWithStats } from '@vibe/ui/components/IssueWorkspaceCard';
 import { IssueWorkspacesSection } from '@vibe/ui/components/IssueWorkspacesSection';
 import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
@@ -240,10 +240,15 @@ export function IssueWorkspacesSectionContainer({
       }
 
       const result = await DeleteWorkspaceDialog.show({
-        workspaceId: localWorkspaceId,
         branchName: localWorkspace.branch,
-        linkedIssueId: issueId,
-        linkedProjectId: projectId,
+        hasOpenPR:
+          workspacesWithStats
+            .find(
+              (workspace) => workspace.localWorkspaceId === localWorkspaceId
+            )
+            ?.prs.some((pr) => pr.status === 'open') ?? false,
+        isLinkedToIssue: true,
+        linkedIssueSimpleId: getIssue(issueId)?.simple_id,
       });
 
       if (result.action !== 'confirmed') {
@@ -269,7 +274,7 @@ export function IssueWorkspacesSectionContainer({
         });
       }
     },
-    [localWorkspacesById, t, issueId, projectId]
+    [localWorkspacesById, workspacesWithStats, t, issueId, getIssue]
   );
 
   // Actions for the section header

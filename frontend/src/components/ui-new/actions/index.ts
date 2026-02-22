@@ -70,7 +70,7 @@ import { repoBranchKeys } from '@/hooks/useRepoBranches';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
-import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
+import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
 import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
 import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog';
@@ -463,12 +463,21 @@ export const Actions = {
       const remoteWs = ctx.remoteWorkspaces.find(
         (w) => w.local_workspace_id === workspaceId
       );
+      const linkedIssueSimpleId = remoteWs?.issue_id
+        ? ctx.projectMutations?.getIssue(remoteWs.issue_id)?.simple_id
+        : undefined;
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const hasOpenPR = branchStatus.some((repoStatus) =>
+        repoStatus.merges?.some(
+          (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+        )
+      );
 
       const result = await DeleteWorkspaceDialog.show({
-        workspaceId,
         branchName: workspace.branch,
-        linkedIssueId: remoteWs?.issue_id ?? undefined,
-        linkedProjectId: remoteWs?.project_id,
+        hasOpenPR,
+        isLinkedToIssue: Boolean(remoteWs?.issue_id),
+        linkedIssueSimpleId,
       });
       if (result.action === 'confirmed') {
         // Calculate next workspace before deleting (only if deleting current)

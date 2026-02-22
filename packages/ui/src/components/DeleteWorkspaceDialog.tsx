@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -7,26 +7,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@vibe/ui/components/KeyboardDialog';
-import { Button } from '@vibe/ui/components/Button';
-import { Checkbox } from '@vibe/ui/components/Checkbox';
+} from './KeyboardDialog';
+import { Button } from './Button';
+import { Checkbox } from './Checkbox';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import {
   WarningIcon,
   GitBranchIcon,
   LinkBreakIcon,
 } from '@phosphor-icons/react';
-import { defineModal } from '@/lib/modals';
-import { useBranchStatus } from '@/hooks/useBranchStatus';
-import { useShape } from '@/lib/electric/hooks';
-import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
-import type { Merge } from 'shared/types';
+import { defineModal } from '../lib/modals';
 
 export interface DeleteWorkspaceDialogProps {
-  workspaceId: string;
   branchName: string;
-  linkedIssueId?: string;
-  linkedProjectId?: string;
+  hasOpenPR?: boolean;
+  isLinkedToIssue?: boolean;
+  linkedIssueSimpleId?: string;
 }
 
 export type DeleteWorkspaceDialogResult = {
@@ -36,37 +32,16 @@ export type DeleteWorkspaceDialogResult = {
 };
 
 const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
-  ({ workspaceId, branchName, linkedIssueId, linkedProjectId }) => {
+  ({
+    branchName,
+    hasOpenPR = false,
+    isLinkedToIssue = false,
+    linkedIssueSimpleId,
+  }) => {
     const modal = useModal();
     const { t } = useTranslation();
     const [deleteBranches, setDeleteBranches] = useState(false);
     const [unlinkFromIssue, setUnlinkFromIssue] = useState(true);
-
-    // Fetch issue data via Electric sync to show issue simple_id
-    const isLinkedToIssue = !!linkedIssueId;
-    const { data: issues } = useShape(
-      PROJECT_ISSUES_SHAPE,
-      {
-        project_id: linkedProjectId ?? '',
-      },
-      { enabled: !!linkedProjectId }
-    );
-    const linkedIssue = useMemo(
-      () => (linkedIssueId ? issues.find((i) => i.id === linkedIssueId) : null),
-      [issues, linkedIssueId]
-    );
-
-    // Check if branch deletion is safe by looking for open PRs
-    const { data: branchStatus } = useBranchStatus(workspaceId);
-
-    const hasOpenPR = useMemo(() => {
-      if (!branchStatus) return false;
-      return branchStatus.some((repoStatus) =>
-        repoStatus.merges?.some(
-          (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
-        )
-      );
-    }, [branchStatus]);
 
     const canDeleteBranches = !hasOpenPR;
 
@@ -150,11 +125,11 @@ const DeleteWorkspaceDialogImpl = NiceModal.create<DeleteWorkspaceDialogProps>(
                     'workspaces.deleteDialog.unlinkFromIssueLabel',
                     'Also unlink from issue'
                   )}
-                  {linkedIssue?.simple_id && (
+                  {linkedIssueSimpleId && (
                     <>
                       {' '}
                       <code className="rounded bg-muted px-1 py-0.5 text-xs font-mono">
-                        {linkedIssue.simple_id}
+                        {linkedIssueSimpleId}
                       </code>
                     </>
                   )}

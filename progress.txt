@@ -6659,3 +6659,56 @@ Validation:
 Plan adjustments from new information:
 - For extracted dialogs that need nested app dialogs (like folder pickers), inject callback adapters from frontend instead of importing app dialogs into `@vibe/ui`.
 - Keep dialog result contracts focused on UI intent when domain payloads are already handled by caller callbacks.
+
+## 2026-02-22 - UI package extraction: DeleteWorkspaceDialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/DeleteWorkspaceDialog.tsx` as the next extraction target.
+- It has two callsites (`frontend/src/components/ui-new/actions/index.ts`, `frontend/src/components/ui-new/containers/IssueWorkspacesSectionContainer.tsx`) and a mostly presentational dialog UI.
+- Main couplings were frontend-only data hooks (`useBranchStatus`, `useShape`) and frontend modal helper alias import.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/DeleteWorkspaceDialog.tsx packages/ui/src/components/DeleteWorkspaceDialog.tsx`
+- Package updates:
+  - Replaced package self-import aliases with relative imports:
+    - `@vibe/ui/components/KeyboardDialog` -> `./KeyboardDialog`
+    - `@vibe/ui/components/Button` -> `./Button`
+    - `@vibe/ui/components/Checkbox` -> `./Checkbox`
+  - Replaced frontend modal helper import:
+    - `@/lib/modals` -> `../lib/modals`
+  - Removed frontend data hook coupling by changing dialog props to injected data:
+    - removed `workspaceId`, `linkedIssueId`, `linkedProjectId`
+    - added `hasOpenPR?: boolean`
+    - added `isLinkedToIssue?: boolean`
+    - added `linkedIssueSimpleId?: string`
+  - Preserved result contract (`confirmed` / `canceled`, optional `deleteBranches`, `unlinkFromIssue`).
+- Frontend callsite updates:
+  - Updated imports in:
+    - `frontend/src/components/ui-new/actions/index.ts`
+    - `frontend/src/components/ui-new/containers/IssueWorkspacesSectionContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/DeleteWorkspaceDialog`
+  - Moved data derivation into callers:
+    - in actions: compute `hasOpenPR` from `attemptsApi.getBranchStatus(workspaceId)` and infer `linkedIssueSimpleId` from `projectMutations.getIssue(...)`
+    - in issue workspace container: compute `hasOpenPR` from workspace PR stats and pass `linkedIssueSimpleId` from `getIssue(issueId)`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For dialogs with lightweight computed status (like open-PR guards), pass precomputed booleans/labels from frontend callsites rather than embedding app data hooks in `@vibe/ui`.
+- This keeps package dialogs presentational while preserving behavior parity across multiple callsites.
