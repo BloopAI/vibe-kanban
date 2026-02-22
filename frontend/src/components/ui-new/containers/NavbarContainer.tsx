@@ -154,6 +154,10 @@ export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
     SettingsDialog.show();
   }, []);
 
+  const handleReload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
   const handleNavigateBack = useCallback(() => {
     navigate(toWorkspaces());
   }, [navigate]);
@@ -188,6 +192,7 @@ export function NavbarContainer({ mobileMode }: NavbarContainerProps) {
       mobileUserSlot={userPopoverSlot}
       isOnProjectPage={isOnProjectPage}
       onOpenCommandBar={mobileMode ? handleOpenCommandBar : undefined}
+      onReload={mobileMode ? handleReload : undefined}
       onOpenSettings={mobileMode ? handleOpenSettings : undefined}
       onNavigateToBoard={
         mobileMode && linkedRemoteWorkspace?.project_id

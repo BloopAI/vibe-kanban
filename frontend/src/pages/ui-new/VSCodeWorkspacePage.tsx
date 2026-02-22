@@ -1,7 +1,8 @@
 // VS Code webview integration - install keyboard/clipboard bridge
 import '@/vscode/bridge';
 
-import { useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { ArrowDownIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { AppWithStyleOverride } from '@/utils/StyleOverride';
 import { WebviewContextMenu } from '@/vscode/ContextMenu';
@@ -47,6 +48,11 @@ export function VSCodeWorkspacePage() {
     conversationListRef.current?.scrollToBottom();
   };
 
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  const handleAtBottomChange = useCallback((atBottom: boolean) => {
+    setIsAtBottom(atBottom);
+  }, []);
+
   return (
     <AppWithStyleOverride>
       <div className="h-screen flex flex-col bg-primary">
@@ -77,8 +83,28 @@ export function VSCodeWorkspacePage() {
                         <ConversationList
                           ref={conversationListRef}
                           attempt={workspaceWithSession}
+                          onAtBottomChange={handleAtBottomChange}
                         />
                       </RetryUiProvider>
+                    </div>
+                  </div>
+                )}
+                {/* Scroll to bottom floating button */}
+                {workspaceWithSession && !isAtBottom && (
+                  <div className="flex justify-center pointer-events-none">
+                    <div className="w-chat max-w-full relative">
+                      <button
+                        type="button"
+                        onClick={handleScrollToBottom}
+                        className="absolute bottom-2 right-4 z-10 pointer-events-auto flex items-center justify-center size-8 rounded-full bg-secondary/80 backdrop-blur-sm border border-secondary text-low hover:text-normal hover:bg-secondary shadow-md transition-all"
+                        aria-label="Scroll to bottom"
+                        title="Scroll to bottom"
+                      >
+                        <ArrowDownIcon
+                          className="size-icon-base"
+                          weight="bold"
+                        />
+                      </button>
                     </div>
                   </div>
                 )}

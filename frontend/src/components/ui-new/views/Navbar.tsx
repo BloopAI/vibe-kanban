@@ -11,6 +11,7 @@ import {
   GearIcon,
   KanbanIcon,
   CaretLeftIcon,
+  ArrowClockwiseIcon,
 } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { Tooltip } from '../primitives/Tooltip';
@@ -112,6 +113,7 @@ export interface NavbarProps {
   onOpenSettings?: () => void;
   onNavigateToBoard?: () => void;
   onNavigateBack?: () => void;
+  onReload?: () => void;
   className?: string;
 }
 
@@ -129,6 +131,7 @@ export function Navbar({
   onOpenSettings,
   onNavigateToBoard,
   onNavigateBack,
+  onReload,
   className,
 }: NavbarProps) {
   const [mobileTab, setMobileTab] = useMobileActiveTab();
@@ -183,6 +186,15 @@ export function Navbar({
           )}
           <div className="flex items-center gap-1 shrink-0">
             <SyncErrorIndicator />
+            {onReload && (
+              <button
+                type="button"
+                onClick={onReload}
+                className="flex items-center justify-center rounded-sm text-low hover:text-normal"
+              >
+                <ArrowClockwiseIcon className="size-icon-base" />
+              </button>
+            )}
             {onOpenSettings && (
               <button
                 type="button"

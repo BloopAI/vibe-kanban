@@ -6,6 +6,7 @@ import { SessionChatBoxContainer } from '@/components/ui-new/containers/SessionC
 import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { cn } from '@/lib/utils';
+import { ArrowDownIcon } from '@phosphor-icons/react';
 import {
   ConversationList,
   type ConversationListHandle,
@@ -40,6 +41,10 @@ interface WorkspacesMainProps {
   onScrollToPreviousMessage: () => void;
   /** Callback to scroll to bottom of conversation */
   onScrollToBottom: () => void;
+  /** Whether the conversation list is scrolled to the bottom */
+  isAtBottom: boolean;
+  /** Callback when conversation scroll position changes */
+  onAtBottomChange: (atBottom: boolean) => void;
 }
 
 export function WorkspacesMain({
@@ -54,6 +59,8 @@ export function WorkspacesMain({
   diffStats,
   onScrollToPreviousMessage,
   onScrollToBottom,
+  isAtBottom,
+  onAtBottomChange,
 }: WorkspacesMainProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isMobile = useIsMobile();
@@ -92,8 +99,25 @@ export function WorkspacesMain({
                     <ConversationList
                       ref={conversationListRef}
                       attempt={workspaceWithSession}
+                      onAtBottomChange={onAtBottomChange}
                     />
                   </RetryUiProvider>
+                </div>
+              </div>
+            )}
+            {/* Scroll to bottom floating button */}
+            {workspaceWithSession && !isAtBottom && (
+              <div className="flex justify-center pointer-events-none">
+                <div className="w-chat max-w-full relative">
+                  <button
+                    type="button"
+                    onClick={onScrollToBottom}
+                    className="absolute bottom-2 right-4 z-10 pointer-events-auto flex items-center justify-center size-8 rounded-full bg-secondary/80 backdrop-blur-sm border border-secondary text-low hover:text-normal hover:bg-secondary shadow-md transition-all"
+                    aria-label="Scroll to bottom"
+                    title="Scroll to bottom"
+                  >
+                    <ArrowDownIcon className="size-icon-base" weight="bold" />
+                  </button>
                 </div>
               </div>
             )}
