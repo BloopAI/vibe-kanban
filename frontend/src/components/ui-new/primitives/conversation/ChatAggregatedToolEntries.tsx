@@ -1,7 +1,7 @@
 import { ListMagnifyingGlassIcon, CaretRightIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
-import { ToolStatusDot } from './ToolStatusDot';
+import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 
 export interface AggregatedEntry {
   summary: string;

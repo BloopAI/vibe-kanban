@@ -6,7 +6,7 @@ import { useTheme } from '@/components/ThemeProvider';
 import { getActualTheme } from '@/utils/theme';
 import { ToolStatus } from 'shared/types';
 import { inIframe, openFileInVSCode } from '@/vscode/bridge';
-import { ToolStatusDot } from './ToolStatusDot';
+import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 import {
   DiffViewBody,
   useDiffData,

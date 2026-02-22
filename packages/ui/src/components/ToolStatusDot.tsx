@@ -1,8 +1,11 @@
-import { cn } from '@/lib/utils';
-import { ToolStatus } from 'shared/types';
+import { cn } from '../lib/cn';
+
+export interface ToolStatusLike {
+  status: string;
+}
 
 interface ToolStatusDotProps {
-  status: ToolStatus;
+  status: ToolStatusLike;
   className?: string;
 }
 

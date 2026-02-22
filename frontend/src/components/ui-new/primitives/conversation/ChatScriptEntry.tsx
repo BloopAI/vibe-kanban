@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { TerminalIcon, WrenchIcon } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { ToolStatus } from 'shared/types';
-import { ToolStatusDot } from './ToolStatusDot';
+import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 
 interface ChatScriptEntryProps {

@@ -8,7 +8,7 @@ import { getActualTheme } from '@/utils/theme';
 import { ToolStatus, ActionType } from 'shared/types';
 import { parseDiffStats } from '@/utils/diffStatsParser';
 import { inIframe, openFileInVSCode } from '@/vscode/bridge';
-import { ToolStatusDot } from './ToolStatusDot';
+import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 import {
   DiffViewBody,
   useDiffData,

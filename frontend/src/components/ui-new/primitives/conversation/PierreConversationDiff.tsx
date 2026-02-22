@@ -19,7 +19,7 @@ import {
 } from '@/stores/useDiffViewStore';
 import { parseDiffStats } from '@/utils/diffStatsParser';
 import { ToolStatus } from 'shared/types';
-import { ToolStatusDot } from './ToolStatusDot';
+import { ToolStatusDot } from '@vibe/ui/components/ToolStatusDot';
 import '@/styles/diff-style-overrides.css';
 
 /**
