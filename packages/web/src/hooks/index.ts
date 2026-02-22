@@ -7,7 +7,6 @@ export { useDevServer } from '@/shared/hooks/useDevServer';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
 export { useAttempt } from '@/shared/hooks/useAttempt';
-export { useTaskAttempts } from '@/features/workspace/model/hooks/useTaskAttempts';
 export { useAuth } from './auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
 export { useAuthStatus } from './auth/useAuthStatus';
