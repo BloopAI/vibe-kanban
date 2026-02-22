@@ -6255,3 +6255,53 @@ Validation:
 Plan adjustments from new information:
 - For package components that currently embed app-specific editor implementations, standardize on renderer injection (`renderX`) so package code remains presentation-only.
 - Prefer package-local structural types over app/shared type imports when only a small render subset is required.
+
+## 2026-02-22 - UI package extraction: WorkspacesMain
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/WorkspacesMain.tsx` as the next extraction target.
+- It has a single container callsite (`WorkspacesMainContainer`) and the shared value is the layout shell, while session/domain wiring is app-specific.
+- Main couplings were frontend-only providers (`EntriesProvider`, `MessageEditProvider`, `RetryUiProvider`, `ApprovalFeedbackProvider`), conversation/chat containers, and app attempt/session types.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/WorkspacesMain.tsx packages/ui/src/components/WorkspacesMain.tsx`
+- Package updates:
+  - Removed frontend container/provider imports from package component.
+  - Introduced package-local minimal contract:
+    - `WorkspacesMainWorkspace`
+  - Converted component API to slot-based rendering for app-owned content:
+    - `conversationContent`
+    - `chatBoxContent`
+    - `contextBarContent`
+  - Kept package-owned structure and loading/empty i18n states in `WorkspacesMain`.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/WorkspacesMainContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/WorkspacesMain`
+  - Container now owns app-specific behavior:
+    - wraps `WorkspacesMain` with `ApprovalFeedbackProvider`, `EntriesProvider`, `MessageEditProvider`
+    - injects conversation UI via `ConversationList` + `RetryUiProvider`
+    - injects chat box via `SessionChatBoxContainer`
+    - injects context bar via `ContextBarContainer`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For large app shell views, keep package components focused on layout and state display, and inject domain workflows via render slots.
+- Keep provider ownership in frontend containers when providers are tied to app data/session semantics.
