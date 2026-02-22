@@ -615,6 +615,10 @@ impl ClaudeCode {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
+        // Unset CLAUDECODE so the spawned claude-code process doesn't detect
+        // a nested session and refuse to start.
+        command.env_remove("CLAUDECODE");
+
         // Inject AWS Bedrock env vars when use_bedrock is enabled
         if self.use_bedrock.unwrap_or(false) {
             command.env("CLAUDE_CODE_USE_BEDROCK", "1");
