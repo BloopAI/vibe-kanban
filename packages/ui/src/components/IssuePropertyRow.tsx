@@ -1,16 +1,23 @@
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import { PlusIcon, UsersIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import type { IssuePriority, ProjectStatus } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import { IconButton } from '@vibe/ui/components/IconButton';
-import { StatusDot } from '@vibe/ui/components/StatusDot';
-import { PriorityIcon } from '@vibe/ui/components/PriorityIcon';
-import { UserAvatar } from '@vibe/ui/components/UserAvatar';
-import { KanbanAssignee } from '@vibe/ui/components/KanbanAssignee';
+import { PrimaryButton } from './PrimaryButton';
+import { IconButton } from './IconButton';
+import { StatusDot } from './StatusDot';
+import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
+import { UserAvatar, type UserAvatarUser } from './UserAvatar';
+import {
+  KanbanAssignee,
+  type KanbanAssigneeUser,
+} from './KanbanAssignee';
 
-const priorityLabels: Record<IssuePriority, string> = {
+export interface IssuePropertyStatus {
+  id: string;
+  name: string;
+  color: string;
+}
+
+const priorityLabels: Record<PriorityLevel, string> = {
   urgent: 'Urgent',
   high: 'High',
   medium: 'Medium',
@@ -19,11 +26,11 @@ const priorityLabels: Record<IssuePriority, string> = {
 
 export interface IssuePropertyRowProps {
   statusId: string;
-  priority: IssuePriority | null;
+  priority: PriorityLevel | null;
   assigneeIds: string[];
-  assigneeUsers?: OrganizationMemberWithProfile[];
-  statuses: ProjectStatus[];
-  creatorUser?: OrganizationMemberWithProfile | null;
+  assigneeUsers?: KanbanAssigneeUser[];
+  statuses: IssuePropertyStatus[];
+  creatorUser?: UserAvatarUser | null;
   parentIssue?: { id: string; simpleId: string } | null;
   onParentIssueClick?: () => void;
   onRemoveParentIssue?: () => void;

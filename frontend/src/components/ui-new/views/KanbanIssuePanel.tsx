@@ -17,10 +17,10 @@ import type {
   PullRequestStatus,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { IssuePropertyRow } from '@/components/ui-new/views/IssuePropertyRow';
 import { IssueTagsRow } from '@/components/ui-new/views/IssueTagsRow';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Toggle } from '@vibe/ui/components/Toggle';
+import { IssuePropertyRow } from '@vibe/ui/components/IssuePropertyRow';
 import { CopyButton } from '@/components/ui-new/containers/CopyButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import { AutoResizeTextarea } from '@vibe/ui/components/AutoResizeTextarea';

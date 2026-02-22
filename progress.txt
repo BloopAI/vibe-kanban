@@ -5535,3 +5535,51 @@ Validation:
 
 Plan adjustments from new information:
 - When a parent view only composes already-extracted package components, prefer reusing child component type contracts to avoid introducing new shared type layers.
+
+## 2026-02-22 - UI package extraction: IssuePropertyRow
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssuePropertyRow.tsx` as the next extraction target.
+- It is a leaf UI row with a single callsite in `KanbanIssuePanel` and no container/router coupling.
+- New information: view-level rows that already compose package primitives can be migrated cleanly by adopting package-local structural contracts and local child type exports.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssuePropertyRow.tsx packages/ui/src/components/IssuePropertyRow.tsx`
+- Package updates:
+  - Replaced app utility import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-imports:
+    - `@vibe/ui/components/PrimaryButton` -> `./PrimaryButton`
+    - `@vibe/ui/components/IconButton` -> `./IconButton`
+    - `@vibe/ui/components/StatusDot` -> `./StatusDot`
+    - `@vibe/ui/components/PriorityIcon` -> `./PriorityIcon`
+    - `@vibe/ui/components/UserAvatar` -> `./UserAvatar`
+    - `@vibe/ui/components/KanbanAssignee` -> `./KanbanAssignee`
+  - Removed external/shared type imports (`shared/remote-types`, `shared/types`) by introducing package-local contracts:
+    - `IssuePropertyStatus`
+    - reused `PriorityLevel`, `KanbanAssigneeUser`, `UserAvatarUser` from package component modules
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/views/KanbanIssuePanel.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssuePropertyRow`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For remaining leaf rows in `ui-new/views`, prefer extracting components that can derive prop contracts from existing package child components to minimize cross-package type dependencies.
