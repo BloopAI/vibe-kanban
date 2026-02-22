@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { TerminalIcon, GearSixIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 export type ScriptPlaceholderType = 'setup' | 'cleanup';
 

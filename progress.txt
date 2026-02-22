@@ -3895,3 +3895,43 @@ Plan adjustments from new information:
 - The conversation-primitives extraction path remains straightforward for small presentational components with no store/context coupling.
 - The package boundary remains stable when moved components depend only on package-local utilities and third-party UI libs.
 - Next likely extraction candidate: `ui-new/primitives/conversation/ChatScriptPlaceholder.tsx` (single container callsite; likely only requires alias import cleanup and callsite import update).
+
+## 2026-02-22 - UI package extraction: ChatScriptPlaceholder
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/primitives/conversation/ChatScriptPlaceholder.tsx` as the next extraction candidate.
+- It had a single frontend callsite (`ConversationListContainer`) and low coupling (icons, i18n, and `cn`), making it a low-risk move.
+- New information: this component required no API redesign; package-boundary compliance was achieved by switching only the `cn` import to package-local utilities.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/primitives/conversation/ChatScriptPlaceholder.tsx packages/ui/src/components/ChatScriptPlaceholder.tsx`
+- Package updates:
+  - Replaced app alias import:
+    - `@/lib/utils` -> `../lib/cn`
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/ConversationListContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/ChatScriptPlaceholder`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- The conversation extraction stream remains stable for presentational components with narrow prop surfaces and no context/store dependencies.
+- No structural plan changes were required this cycle.
+- Next likely extraction candidate: `frontend/src/components/ui-new/primitives/conversation/ChatEntryContainer.tsx` (shared across multiple conversation renderers, minimal dependency surface, and straightforward package-boundary cleanup).
