@@ -64,7 +64,7 @@ import {
   TwoColumnPickerItem,
   TwoColumnPickerBadge,
   TwoColumnPickerEmpty,
-} from '@/components/ui-new/dialogs/settings/SettingsComponents';
+} from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
 interface FormState {

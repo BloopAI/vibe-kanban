@@ -20,7 +20,7 @@ import {
   SettingsField,
   SettingsSaveBar,
   SettingsTextarea,
-} from '@/components/ui-new/dialogs/settings/SettingsComponents';
+} from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
 export function McpSettingsSection() {

@@ -164,6 +164,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Moved settings dialog section `ReposSettingsSection` to
         `src/features/settings/ui/dialogs/settings/ReposSettingsSection.tsx`.
+  - [x] Moved shared settings UI primitives `SettingsComponents` to
+        `src/features/settings/ui/dialogs/settings/SettingsComponents.tsx`.
 - [x] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
   - [x] Moved workspace-scoped `RebaseDialog` to
         `src/features/command-bar/ui/dialogs/RebaseDialog.tsx` and kept a
@@ -281,6 +283,8 @@ compatibility shims.
         `src/components/ui-new/dialogs/settings/RemoteProjectsSettingsSection.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/settings/ReposSettingsSection.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/ui-new/dialogs/settings/SettingsComponents.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
@@ -541,6 +545,14 @@ compatibility shims.
   - [x] Updated canonical `ReposSettingsSection` callsite to
         feature-owned path in:
         `src/features/settings/ui/dialogs/settings/SettingsSection.tsx`.
+  - [x] Updated canonical `SettingsComponents` callsites to
+        feature-owned path in:
+        `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`,
+        `src/features/settings/ui/dialogs/settings/ReposSettingsSection.tsx`.
 
 ## Risk Controls
 
@@ -742,6 +754,11 @@ compatibility shims.
   feature ownership, keep shared UI dependencies on stable
   `src/components/ui-new/**` alias paths (`SearchableDropdownContainer` and
   `SettingsComponents`) with a legacy shim at the old settings-section path.
+- New information (2026-02-22): after moving `SettingsComponents` into
+  feature ownership, canonical settings sections should import
+  `./SettingsComponents`; keep the legacy
+  `src/components/ui-new/dialogs/settings/SettingsComponents.tsx` shim for
+  non-owned callers during Track 1.
 
 ## Validation
 

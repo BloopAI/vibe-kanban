@@ -22,7 +22,7 @@ import {
   SettingsTextarea,
   SettingsCheckbox,
   SettingsSaveBar,
-} from '@/components/ui-new/dialogs/settings/SettingsComponents';
+} from './SettingsComponents';
 
 interface RepoScriptsFormState {
   display_name: string;

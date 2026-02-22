@@ -2043,3 +2043,40 @@
   `src/features/settings/ui/dialogs/settings/*` with a compatibility shim, then
   update all canonical settings-section imports to consume the feature-owned
   module while preserving legacy shim paths for non-owned callers.
+
+## 2026-02-22 14:12:14 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `src/components/ui-new/dialogs/settings/SettingsComponents.tsx` as the next Track 1 migration target.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/ui-new/dialogs/settings/SettingsComponents.tsx`
+    -> `src/features/settings/ui/dialogs/settings/SettingsComponents.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/ui-new/dialogs/settings/SettingsComponents.tsx`.
+  - Updated canonical feature-owned settings sections to local imports from
+    `./SettingsComponents` in:
+    - `src/features/settings/ui/dialogs/settings/AgentsSettingsSection.tsx`
+    - `src/features/settings/ui/dialogs/settings/GeneralSettingsSection.tsx`
+    - `src/features/settings/ui/dialogs/settings/McpSettingsSection.tsx`
+    - `src/features/settings/ui/dialogs/settings/OrganizationsSettingsSection.tsx`
+    - `src/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection.tsx`
+    - `src/features/settings/ui/dialogs/settings/ReposSettingsSection.tsx`
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Added completed sub-steps under `T1.4`, `T1.6`, and `T1.7` for
+    `SettingsComponents` migration.
+  - Updated risk-controls notes to document local canonical imports for
+    `SettingsComponents` and continued legacy shim support for non-owned
+    callers.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Move `src/components/ui-new/dialogs/settings/ExecutorConfigForm.tsx` into
+  `src/features/settings/ui/dialogs/settings/*` with a compatibility shim,
+  then update canonical settings-section imports to consume the feature-owned
+  module.

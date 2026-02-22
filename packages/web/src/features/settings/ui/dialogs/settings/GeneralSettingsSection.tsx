@@ -46,7 +46,7 @@ import {
   SettingsSaveBar,
   SettingsSelect,
   SettingsTextarea,
-} from '@/components/ui-new/dialogs/settings/SettingsComponents';
+} from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
 export function GeneralSettingsSection() {

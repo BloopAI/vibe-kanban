@@ -28,7 +28,7 @@ import {
   TwoColumnPickerItem,
   TwoColumnPickerBadge,
   TwoColumnPickerEmpty,
-} from '@/components/ui-new/dialogs/settings/SettingsComponents';
+} from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
 import { getExecutorVariantKeys } from '@/utils/executor';
