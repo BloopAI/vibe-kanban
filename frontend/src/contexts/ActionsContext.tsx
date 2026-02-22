@@ -10,7 +10,7 @@ import { useNavigate, useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
-import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { buildIssueCreatePath } from '@/lib/routes/projectSidebarRoutes';
 import {
   type ActionDefinition,

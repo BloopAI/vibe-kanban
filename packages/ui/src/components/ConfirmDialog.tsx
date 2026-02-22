@@ -6,8 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@vibe/ui/components/KeyboardDialog';
-import { Button } from '@vibe/ui/components/Button';
+} from './KeyboardDialog';
+import { Button } from './Button';
 import NiceModal, { useModal } from '@ebay/nice-modal-react';
 import {
   WarningIcon,
@@ -15,7 +15,7 @@ import {
   CheckCircleIcon,
   XCircleIcon,
 } from '@phosphor-icons/react';
-import { defineModal, type ConfirmResult } from '@/lib/modals';
+import { defineModal, type ConfirmResult } from '../lib/modals';
 
 export interface ConfirmDialogProps {
   title: string;

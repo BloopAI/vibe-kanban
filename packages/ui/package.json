@@ -14,6 +14,7 @@
     "./lib/*": "./src/lib/*.ts"
   },
   "dependencies": {
+    "@ebay/nice-modal-react": "^1.2.13",
     "@hello-pangea/dnd": "^18.0.1",
     "@lexical/code": "^0.36.2",
     "@lexical/link": "^0.36.2",

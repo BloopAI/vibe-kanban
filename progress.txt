@@ -6362,3 +6362,54 @@ Validation:
 Plan adjustments from new information:
 - For feature-heavy panels, preserve package ownership of UI layout/state transitions while injecting app-specific workflows via explicit render props.
 - When app controls require richer entity shapes (e.g., tags with `project_id`), keep package contracts structural and sufficient for callsite compatibility instead of importing shared app types directly.
+
+## 2026-02-22 - UI package extraction: ConfirmDialog
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/dialogs/ConfirmDialog.tsx` as the next extraction target.
+- It is used broadly across actions and containers but has a straightforward presentational/modal API.
+- Main coupling was frontend-only modal helper import (`@/lib/modals`) plus frontend-local import paths at callsites.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/dialogs/ConfirmDialog.tsx packages/ui/src/components/ConfirmDialog.tsx`
+- Package updates:
+  - Replaced package self-import aliases with relative imports:
+    - `@vibe/ui/components/KeyboardDialog` -> `./KeyboardDialog`
+    - `@vibe/ui/components/Button` -> `./Button`
+  - Removed frontend modal-helper coupling by adding package-local helper module:
+    - `packages/ui/src/lib/modals.ts`
+  - Updated dialog to consume package-local modal helpers/types:
+    - `defineModal`
+    - `ConfirmResult`
+  - Added `@ebay/nice-modal-react` dependency to `packages/ui/package.json`.
+- Frontend callsite updates:
+  - Updated imports to package path in:
+    - `frontend/src/components/ui-new/actions/index.ts`
+    - `frontend/src/components/ui-new/containers/GitPanelContainer.tsx`
+    - `frontend/src/components/ui-new/containers/IssueSubIssuesSectionContainer.tsx`
+    - `frontend/src/components/ui-new/containers/IssueWorkspacesSectionContainer.tsx`
+    - `frontend/src/contexts/ActionsContext.tsx`
+    - `frontend/src/components/ui-new/dialogs/SettingsDialog.tsx`
+  - New import path:
+    - `@vibe/ui/components/ConfirmDialog`
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For modal components being extracted, package-local modal helper utilities (`defineModal`, common result types) prevent recurring frontend-lib coupling.
+- Keep consumer migration simple by preserving existing `Dialog.show(...)` usage and limiting callsite changes to import-path swaps.
