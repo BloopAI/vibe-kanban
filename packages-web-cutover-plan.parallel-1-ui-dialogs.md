@@ -43,6 +43,8 @@ compatibility shims.
       reusable dialogs -> `src/shared/ui/dialogs/*`.
   - [x] Moved feature dialog `CreateConfigurationDialog` to
         `src/features/settings/ui/dialogs/CreateConfigurationDialog.tsx`.
+  - [x] Moved feature dialog `DeleteConfigurationDialog` to
+        `src/features/settings/ui/dialogs/DeleteConfigurationDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -57,6 +59,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/settings/CreateConfigurationDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/dialogs/settings/DeleteConfigurationDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/shared/FolderPickerDialog.tsx`.
@@ -67,6 +71,10 @@ compatibility shims.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateConfigurationDialog` in:
+        `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/DeleteConfigurationDialog` in:
         `src/components/ui-new/dialogs/settings/AgentsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsite to

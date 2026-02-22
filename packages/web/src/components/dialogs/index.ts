@@ -71,7 +71,7 @@ export {
   DeleteConfigurationDialog,
   type DeleteConfigurationDialogProps,
   type DeleteConfigurationResult,
-} from './settings/DeleteConfigurationDialog';
+} from '@/features/settings/ui/dialogs/DeleteConfigurationDialog';
 
 // Shared/Generic dialogs
 export {
