@@ -1,5 +1,6 @@
+import type { Ref, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 import {
   DotsThreeIcon,
   SmileyIcon,
@@ -14,21 +15,17 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@vibe/ui/components/RadixTooltip';
-import { ErrorAlert } from '@vibe/ui/components/ErrorAlert';
-import { UserAvatar } from '@vibe/ui/components/UserAvatar';
-import { CollapsibleSectionHeader } from '@vibe/ui/components/CollapsibleSectionHeader';
+} from './RadixTooltip';
+import { ErrorAlert } from './ErrorAlert';
+import { UserAvatar, type UserAvatarUser } from './UserAvatar';
+import { CollapsibleSectionHeader } from './CollapsibleSectionHeader';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from '@vibe/ui/components/Dropdown';
-import { EmojiPicker } from '@vibe/ui/components/EmojiPicker';
-import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
-import { formatRelativeTime } from '@/utils/date';
-import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { PersistKey } from '@/stores/useUiPreferencesStore';
+} from './Dropdown';
+import { EmojiPicker } from './EmojiPicker';
 
 export interface IssueCommentData {
   id: string;
@@ -36,7 +33,7 @@ export interface IssueCommentData {
   authorName: string;
   message: string;
   createdAt: string;
-  author?: OrganizationMemberWithProfile | null;
+  author?: UserAvatarUser | null;
   canModify: boolean;
 }
 
@@ -48,10 +45,36 @@ export interface ReactionGroup {
   userNames: string[];
 }
 
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffDays > 0) return `${diffDays}d`;
+  if (diffHours > 0) return `${diffHours}h`;
+  if (diffMinutes > 0) return `${diffMinutes}m`;
+  return 'now';
+}
+
 interface DropzoneProps {
   getRootProps: () => Record<string, unknown>;
   getInputProps: () => Record<string, unknown>;
   isDragActive: boolean;
+}
+
+export interface IssueCommentsEditorProps {
+  value: string;
+  onChange?: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  autoFocus?: boolean;
+  onCmdEnter?: () => void;
+  onPasteFiles?: (files: File[]) => void;
+  editorRef?: Ref<unknown>;
 }
 
 interface IssueCommentsSectionProps {
@@ -70,13 +93,14 @@ interface IssueCommentsSectionProps {
   onToggleReaction: (commentId: string, emoji: string) => void;
   onReply: (authorName: string, message: string) => void;
   isLoading?: boolean;
-  commentEditorRef?: React.Ref<WYSIWYGEditorRef>;
+  commentEditorRef?: Ref<unknown>;
   onPasteFiles?: (files: File[]) => void;
   dropzoneProps?: DropzoneProps;
   onBrowseAttachment?: () => void;
   isUploading?: boolean;
   attachmentError?: string | null;
   onDismissAttachmentError?: () => void;
+  renderEditor: (props: IssueCommentsEditorProps) => ReactNode;
 }
 
 export function IssueCommentsSection({
@@ -102,13 +126,14 @@ export function IssueCommentsSection({
   isUploading,
   attachmentError,
   onDismissAttachmentError,
+  renderEditor,
 }: IssueCommentsSectionProps) {
   const { t } = useTranslation('common');
 
   return (
     <CollapsibleSectionHeader
       title={t('kanban.comments')}
-      persistKey={'kanban-issue-comments' as PersistKey}
+      persistKey="kanban-issue-comments"
       defaultExpanded={true}
       actions={[]}
     >
@@ -136,6 +161,7 @@ export function IssueCommentsSection({
               reactions={reactionsByCommentId.get(comment.id) ?? []}
               onToggleReaction={(emoji) => onToggleReaction(comment.id, emoji)}
               onReply={() => onReply(comment.authorName, comment.message)}
+              renderEditor={renderEditor}
             />
           ))
         )}
@@ -146,16 +172,16 @@ export function IssueCommentsSection({
           className="relative flex flex-col gap-double bg-secondary border border-border rounded-sm p-double"
         >
           <input {...dropzoneProps?.getInputProps()} />
-          <WYSIWYGEditor
-            ref={commentEditorRef}
-            value={commentInput}
-            onChange={onCommentInputChange}
-            placeholder={t('kanban.enterCommentPlaceholder')}
-            className="min-h-[20px]"
-            onCmdEnter={onSubmitComment}
-            onPasteFiles={onPasteFiles}
-            autoFocus={false}
-          />
+          {renderEditor({
+            value: commentInput,
+            onChange: onCommentInputChange,
+            placeholder: t('kanban.enterCommentPlaceholder'),
+            className: 'min-h-[20px]',
+            onCmdEnter: onSubmitComment,
+            onPasteFiles,
+            autoFocus: false,
+            editorRef: commentEditorRef,
+          })}
           {attachmentError && (
             <div className="mb-half">
               <ErrorAlert
@@ -227,6 +253,7 @@ interface CommentItemProps {
   reactions: ReactionGroup[];
   onToggleReaction: (emoji: string) => void;
   onReply: () => void;
+  renderEditor: (props: IssueCommentsEditorProps) => ReactNode;
 }
 
 function CommentItem({
@@ -241,6 +268,7 @@ function CommentItem({
   reactions,
   onToggleReaction,
   onReply,
+  renderEditor,
 }: CommentItemProps) {
   const { t } = useTranslation('common');
   const timeAgo = formatRelativeTime(comment.createdAt);
@@ -288,13 +316,13 @@ function CommentItem({
       {/* Message - editable or read-only */}
       {isEditing ? (
         <div className="flex flex-col gap-half bg-primary border border-border rounded-sm p-double">
-          <WYSIWYGEditor
-            value={editValue}
-            onChange={onEditValueChange}
-            autoFocus
-            onCmdEnter={onSaveEdit}
-            className="min-h-[40px]"
-          />
+          {renderEditor({
+            value: editValue,
+            onChange: onEditValueChange,
+            autoFocus: true,
+            onCmdEnter: onSaveEdit,
+            className: 'min-h-[40px]',
+          })}
           <div className="flex gap-half justify-end">
             <button
               type="button"
@@ -317,11 +345,11 @@ function CommentItem({
           </div>
         </div>
       ) : (
-        <WYSIWYGEditor
-          value={comment.message}
-          disabled
-          className="text-normal"
-        />
+        renderEditor({
+          value: comment.message,
+          disabled: true,
+          className: 'text-normal',
+        })
       )}
 
       {/* Reactions row */}

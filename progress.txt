@@ -6206,3 +6206,52 @@ Validation:
 Plan adjustments from new information:
 - For toolbar/nav components, keep package APIs focused on render-ready item models and move action-state derivation into frontend containers.
 - Filter frontend-only/special icon variants in container mapping to preserve clean package boundaries and avoid divider artifacts.
+
+## 2026-02-22 - UI package extraction: IssueCommentsSection
+
+Plan checklist update:
+- [x] Read `docs/frontend-ui-library-refactor-audit.md`
+- [x] Read existing `progress.txt`
+- [x] Assess next component candidate to move into `@vibe/ui`
+- [x] Move component with `git mv` before refactor edits
+- [x] Update all frontend callsites
+- [x] Run quality checks (`format`, `frontend:check`, `ui:check`, `frontend:lint`, `ui:lint`)
+- [x] Update plan status and append progress log
+
+Assessment:
+- Selected `frontend/src/components/ui-new/views/IssueCommentsSection.tsx` as the next extraction target.
+- It has a single container callsite (`IssueCommentsSectionContainer`) and is primarily presentational with editor/reaction interactions.
+- Main couplings were frontend-only editor import/type (`WYSIWYGEditor`), app utility/store imports, and strict app type references.
+
+Refactor completed:
+- Moved with history preservation:
+  - `git mv frontend/src/components/ui-new/views/IssueCommentsSection.tsx packages/ui/src/components/IssueCommentsSection.tsx`
+- Package updates:
+  - Replaced app utility alias import:
+    - `@/lib/utils` -> `../lib/cn`
+  - Replaced package self-import aliases with relative imports.
+  - Removed app-store coupling by replacing casted persist key with plain package-local string.
+  - Removed frontend editor dependency by introducing an injected renderer contract:
+    - `IssueCommentsEditorProps`
+    - `renderEditor`
+  - Replaced shared app author type dependency with package-local compatible type via `UserAvatarUser`.
+  - Added package-local relative-time formatter to remove frontend util dependency.
+- Frontend callsite updates:
+  - Updated import in:
+    - `frontend/src/components/ui-new/containers/IssueCommentsSectionContainer.tsx`
+  - New import path:
+    - `@vibe/ui/components/IssueCommentsSection`
+  - Container now owns editor wiring:
+    - injects `renderEditor` that renders `WYSIWYGEditor`
+    - passes through editor ref + WYSIWYG-specific behaviors (`onCmdEnter`, `onPasteFiles`, `autoFocus`, etc.)
+
+Validation:
+- `pnpm run format` ✅
+- `pnpm run frontend:check` ✅
+- `pnpm run ui:check` ✅
+- `pnpm run frontend:lint` ✅
+- `pnpm run ui:lint` ✅
+
+Plan adjustments from new information:
+- For package components that currently embed app-specific editor implementations, standardize on renderer injection (`renderX`) so package code remains presentation-only.
+- Prefer package-local structural types over app/shared type imports when only a small render subset is required.

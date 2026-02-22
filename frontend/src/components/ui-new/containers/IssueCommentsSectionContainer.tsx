@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useRef } from 'react';
+import { useMemo, useCallback, useState, useRef, type Ref } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { IssueProvider, useIssueContext } from '@/contexts/remote/IssueContext';
@@ -10,10 +10,11 @@ import { commitCommentAttachments, deleteAttachment } from '@/lib/remoteApi';
 import { extractAttachmentIds } from '@/lib/attachmentUtils';
 import {
   IssueCommentsSection,
+  type IssueCommentsEditorProps,
   type IssueCommentData,
   type ReactionGroup,
-} from '@/components/ui-new/views/IssueCommentsSection';
-import type { WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
+} from '@vibe/ui/components/IssueCommentsSection';
+import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
 import { MemberRole } from 'shared/remote-types';
 
 interface IssueCommentsSectionContainerProps {
@@ -294,6 +295,33 @@ function IssueCommentsSectionContent() {
     [t]
   );
 
+  const renderEditor = useCallback(
+    ({
+      value,
+      onChange,
+      placeholder,
+      className,
+      disabled,
+      autoFocus,
+      onCmdEnter,
+      onPasteFiles,
+      editorRef,
+    }: IssueCommentsEditorProps) => (
+      <WYSIWYGEditor
+        ref={editorRef as Ref<WYSIWYGEditorRef>}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={className}
+        disabled={disabled}
+        autoFocus={autoFocus}
+        onCmdEnter={onCmdEnter}
+        onPasteFiles={onPasteFiles}
+      />
+    ),
+    []
+  );
+
   return (
     <IssueCommentsSection
       comments={commentsData}
@@ -318,6 +346,7 @@ function IssueCommentsSectionContent() {
       isUploading={isUploading}
       attachmentError={uploadError}
       onDismissAttachmentError={clearUploadError}
+      renderEditor={renderEditor}
     />
   );
 }
