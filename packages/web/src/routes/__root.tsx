@@ -8,7 +8,7 @@ import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { ThemeProvider } from '@/app/providers/ThemeProvider';
 import { usePreviousPath } from '@/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/hooks/useUiPreferencesScratch';
-import { ReleaseNotesDialog } from '@/features/settings/ui/dialogs/ReleaseNotesDialog';
+import { ReleaseNotesDialog } from '@/dialogs/global/ReleaseNotesDialog';
 
 function RootRouteComponent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '@vibe/ui/components/AppBarUserPopover';
-import { SettingsDialog } from '@/features/settings/ui/dialogs/SettingsDialog';
+import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';

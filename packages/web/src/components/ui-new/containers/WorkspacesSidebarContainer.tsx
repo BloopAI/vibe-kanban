@@ -18,7 +18,7 @@ import {
   type WorkspaceSortOrder,
 } from '@/shared/stores/useUiPreferencesStore';
 import type { Workspace } from '@/components/ui-new/hooks/useWorkspaces';
-import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
+import { CommandBarDialog } from '@/dialogs/command-bar/CommandBarDialog';
 import {
   WorkspacesSidebar,
   type WorkspacesSidebarPersistKeys,

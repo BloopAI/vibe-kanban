@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { attemptsApi } from '@/lib/api';
-import { EditorSelectionDialog } from '@/features/command-bar/ui/dialogs/EditorSelectionDialog';
+import { EditorSelectionDialog } from '@/dialogs/command-bar/EditorSelectionDialog';
 import type { EditorType } from 'shared/types';
 
 type OpenEditorOptions = {

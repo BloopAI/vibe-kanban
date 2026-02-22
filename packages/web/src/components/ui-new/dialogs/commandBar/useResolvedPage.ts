@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/commandBar/useResolvedPage';
+export * from '@/dialogs/command-bar/commandBar/useResolvedPage';

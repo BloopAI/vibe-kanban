@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/CommandBarDialog';
+export * from '@/dialogs/command-bar/CommandBarDialog';

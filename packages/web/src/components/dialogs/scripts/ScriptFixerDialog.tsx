@@ -3,4 +3,4 @@ export {
   type ScriptFixerDialogProps,
   type ScriptFixerDialogResult,
   type ScriptType,
-} from '@/shared/ui/dialogs/ScriptFixerDialog';
+} from '@/dialogs/scripts/ScriptFixerDialog';

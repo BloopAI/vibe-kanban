@@ -1,1 +1,1 @@
-export * from '@/features/settings/ui/dialogs/settings/rjsf/Templates';
+export * from '@/dialogs/settings/settings/rjsf/Templates';

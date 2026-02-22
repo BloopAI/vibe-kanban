@@ -2,4 +2,4 @@ export {
   BranchRebaseDialog,
   type BranchRebaseDialogProps,
   type BranchRebaseDialogResult,
-} from '@/features/command-bar/ui/dialogs/BranchRebaseDialog';
+} from '@/dialogs/command-bar/BranchRebaseDialog';

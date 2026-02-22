@@ -1,1 +1,1 @@
-export { KanbanFiltersDialog } from '@/features/kanban/ui/dialogs/KanbanFiltersDialog';
+export { KanbanFiltersDialog } from '@/dialogs/kanban/KanbanFiltersDialog';

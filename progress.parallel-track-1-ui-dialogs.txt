@@ -20,3 +20,14 @@ Reset date: 2026-02-22
   `@/components/ui-new/dialogs/AssigneeSelectionDialog` compatibility
   entrypoint. Checks: `pnpm run format`, `pnpm run web:check`,
   `pnpm run web:lint` all passed.
+- 2026-02-22 15:53 UTC - Executed `packages-web-dialogs-root-migration-plan.md`:
+  moved dialog implementations from `features/*/ui/dialogs/**` and
+  `shared/ui/dialogs/**` into `src/dialogs/**` (including command-bar helpers,
+  settings sections, and RJSF modules); recreated legacy files under
+  `features/*/ui/dialogs/**`, `shared/ui/dialogs/**`, `components/dialogs/**`,
+  and `components/ui-new/dialogs/**` as strict re-export facades targeting
+  `@/dialogs/**`; added canonical `src/dialogs/index.ts`; bulk-rewrote dialog
+  imports via `scripts/dialog-import-rewrite-map.tsv`; confirmed no remaining
+  imports from legacy dialog roots in `packages/web/src`. Checks:
+  `pnpm run format`, `pnpm run web:check`, `pnpm run web:lint`, and
+  `scripts/check-legacy-frontend-paths.sh` all passed.

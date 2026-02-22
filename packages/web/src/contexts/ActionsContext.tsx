@@ -161,7 +161,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const openStatusSelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId,
@@ -175,7 +175,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const openPrioritySelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId,
@@ -189,7 +189,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const openAssigneeSelection = useCallback(
     async (projectId: string, issueIds: string[], isCreateMode = false) => {
       const { AssigneeSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+        '@/dialogs/kanban/AssigneeSelectionDialog'
       );
       await AssigneeSelectionDialog.show({ projectId, issueIds, isCreateMode });
     },
@@ -204,7 +204,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       mode: 'addChild' | 'setParent' = 'addChild'
     ) => {
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       return (await ProjectSelectionDialog.show({
         projectId,
@@ -218,7 +218,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const openWorkspaceSelection = useCallback(
     async (projectId: string, issueId: string) => {
       const { WorkspaceSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/WorkspaceSelectionDialog'
+        '@/dialogs/command-bar/WorkspaceSelectionDialog'
       );
       await WorkspaceSelectionDialog.show({ projectId, issueId });
     },
@@ -234,7 +234,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       direction: 'forward' | 'reverse'
     ) => {
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId,

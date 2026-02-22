@@ -30,7 +30,7 @@ import { useMessageEditRetry } from '../model/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/hooks/useBranchStatus';
 import { useAttemptBranch } from '../model/hooks/useAttemptBranch';
 import { useApprovalMutation } from '../model/hooks/useApprovalMutation';
-import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
+import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
 import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { buildAgentPrompt } from '@/shared/lib/promptMessage';
 import { formatDateShortWithTime } from '@/shared/lib/date';
@@ -52,14 +52,14 @@ import {
   isSpecialIcon,
   type ActionDefinition,
 } from '@/components/ui-new/actions';
-import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
+import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
 import {
   getActionTooltip,
   isActionEnabled,
   isActionVisible,
   useActionVisibilityContext,
 } from '@/components/ui-new/actions/useActionVisibility';
-import { PrCommentsDialog } from '@/components/dialogs/tasks/PrCommentsDialog';
+import { PrCommentsDialog } from '@/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 
 /** Compute execution status from boolean flags */

@@ -1,1 +1,1 @@
-export * from '@/shared/ui/dialogs/WorkspacesGuideDialog';
+export * from '@/dialogs/shared/WorkspacesGuideDialog';

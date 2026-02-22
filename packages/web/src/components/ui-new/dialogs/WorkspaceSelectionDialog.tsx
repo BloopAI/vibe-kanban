@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/WorkspaceSelectionDialog';
+export * from '@/dialogs/command-bar/WorkspaceSelectionDialog';

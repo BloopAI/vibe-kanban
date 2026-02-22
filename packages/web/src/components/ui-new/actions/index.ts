@@ -71,18 +71,18 @@ import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
 import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
-import { RebaseDialog } from '@/features/command-bar/ui/dialogs/RebaseDialog';
-import { ResolveConflictsDialog } from '@/features/command-bar/ui/dialogs/ResolveConflictsDialog';
+import { RebaseDialog } from '@/dialogs/command-bar/RebaseDialog';
+import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
 import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog';
 import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
-import { CreatePRDialog } from '@/features/command-bar/ui/dialogs/CreatePRDialog';
+import { CreatePRDialog } from '@/dialogs/command-bar/CreatePRDialog';
 import { getIdeName } from '@/components/ide/IdeIcon';
-import { EditorSelectionDialog } from '@/features/command-bar/ui/dialogs/EditorSelectionDialog';
-import { StartReviewDialog } from '@/features/command-bar/ui/dialogs/StartReviewDialog';
+import { EditorSelectionDialog } from '@/dialogs/command-bar/EditorSelectionDialog';
+import { StartReviewDialog } from '@/dialogs/command-bar/StartReviewDialog';
 import posthog from 'posthog-js';
-import { WorkspacesGuideDialog } from '@/shared/ui/dialogs/WorkspacesGuideDialog';
-import { SettingsDialog } from '@/features/settings/ui/dialogs/SettingsDialog';
-import { CreateWorkspaceFromPrDialog } from '@/features/command-bar/ui/dialogs/CreateWorkspaceFromPrDialog';
+import { WorkspacesGuideDialog } from '@/dialogs/shared/WorkspacesGuideDialog';
+import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
+import { CreateWorkspaceFromPrDialog } from '@/dialogs/command-bar/CreateWorkspaceFromPrDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -618,9 +618,7 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => !ctx.isSignedIn,
     execute: async () => {
-      const { OAuthDialog } = await import(
-        '@/features/settings/ui/dialogs/OAuthDialog'
-      );
+      const { OAuthDialog } = await import('@/dialogs/global/OAuthDialog');
       await OAuthDialog.show({});
     },
   } satisfies GlobalActionDefinition,
@@ -688,7 +686,7 @@ export const Actions = {
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)
       const { CommandBarDialog } = await import(
-        '@/features/command-bar/ui/dialogs/CommandBarDialog'
+        '@/dialogs/command-bar/CommandBarDialog'
       );
       CommandBarDialog.show();
     },
@@ -1415,7 +1413,7 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
       const { ProjectSelectionDialog } = await import(
-        '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog'
+        '@/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,
@@ -1447,7 +1445,7 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
       const { ProjectSelectionDialog } = await import(
-        '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog'
+        '@/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,

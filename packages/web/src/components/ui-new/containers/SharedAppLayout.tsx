@@ -21,9 +21,9 @@ import {
   type CreateOrganizationResult,
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
-} from '@/components/dialogs';
-import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
-import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
+} from '@/dialogs';
+import { OAuthDialog } from '@/dialogs/global/OAuthDialog';
+import { CommandBarDialog } from '@/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
 import { useShape } from '@/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';

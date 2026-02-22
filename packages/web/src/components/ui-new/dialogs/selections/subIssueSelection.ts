@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/selections/subIssueSelection';
+export * from '@/dialogs/command-bar/selections/subIssueSelection';

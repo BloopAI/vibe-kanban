@@ -6,8 +6,8 @@ import { useRenameBranch } from '@/features/workspace/model/hooks/useRenameBranc
 import { useBranchStatus } from '@/features/workspace/model/hooks/useBranchStatus';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { ForcePushDialog } from '@/features/command-bar/ui/dialogs/ForcePushDialog';
-import { CommandBarDialog } from '@/features/command-bar/ui/dialogs/CommandBarDialog';
+import { ForcePushDialog } from '@/dialogs/command-bar/ForcePushDialog';
+import { CommandBarDialog } from '@/dialogs/command-bar/CommandBarDialog';
 import { GitPanel, type RepoInfo } from '@vibe/ui/components/GitPanel';
 import { Actions } from '@/components/ui-new/actions';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';

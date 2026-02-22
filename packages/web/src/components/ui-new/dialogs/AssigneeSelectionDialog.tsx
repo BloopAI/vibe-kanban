@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/AssigneeSelectionDialog';
+export * from '@/dialogs/kanban/AssigneeSelectionDialog';

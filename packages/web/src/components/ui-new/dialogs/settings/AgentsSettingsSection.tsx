@@ -1,4 +1,4 @@
 export {
   AgentsSettingsSection,
   AgentsSettingsSectionContent,
-} from '@/features/settings/ui/dialogs/settings/AgentsSettingsSection';
+} from '@/dialogs/settings/settings/AgentsSettingsSection';

@@ -74,16 +74,16 @@ import { searchTagsAndFiles } from '@/shared/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
 import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
 import type { RepoItem } from '@/features/command-bar/ui/actions/pages';
-import { TagEditDialog } from '@/shared/ui/dialogs/TagEditDialog';
-import { ImagePreviewDialog } from '@/shared/ui/dialogs/ImagePreviewDialog';
+import { TagEditDialog } from '@/dialogs/shared/TagEditDialog';
+import { ImagePreviewDialog } from '@/dialogs/wysiwyg/ImagePreviewDialog';
 import {
   SelectionDialog,
   type SelectionPage,
-} from '@/components/ui-new/dialogs/SelectionDialog';
+} from '@/dialogs/command-bar/SelectionDialog';
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
-} from '@/features/command-bar/ui/dialogs/selections/repoSelection';
+} from '@/dialogs/command-bar/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/integrations/vscode/bridge';
 import type { SendMessageShortcut } from 'shared/types';

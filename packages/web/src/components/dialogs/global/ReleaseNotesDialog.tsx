@@ -1,1 +1,1 @@
-export { ReleaseNotesDialog } from '@/features/settings/ui/dialogs/ReleaseNotesDialog';
+export { ReleaseNotesDialog } from '@/dialogs/global/ReleaseNotesDialog';

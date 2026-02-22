@@ -17,10 +17,10 @@ import {
 } from '@vibe/ui/components/RadixTooltip';
 import { useCallback, useMemo, useState } from 'react';
 import type { RepoBranchStatus, Merge, Workspace } from 'shared/types';
-import { ChangeTargetBranchDialog } from '@/features/command-bar/ui/dialogs/ChangeTargetBranchDialog';
+import { ChangeTargetBranchDialog } from '@/dialogs/command-bar/ChangeTargetBranchDialog';
 import RepoSelector from '@/components/tasks/RepoSelector';
-import { BranchRebaseDialog } from '@/features/command-bar/ui/dialogs/BranchRebaseDialog';
-import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
+import { BranchRebaseDialog } from '@/dialogs/command-bar/BranchRebaseDialog';
+import { CreatePRDialog } from '@/dialogs/command-bar/CreatePRDialog';
 
 import { useTranslation } from 'react-i18next';
 import { useAttemptRepo } from '@/features/workspace/model/hooks/useAttemptRepo';

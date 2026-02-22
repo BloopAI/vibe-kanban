@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/selections/ProjectSelectionDialog';
+export * from '@/dialogs/command-bar/selections/ProjectSelectionDialog';

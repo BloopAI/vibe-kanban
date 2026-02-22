@@ -1,1 +1,1 @@
-export { LoginRequiredPrompt } from '@/shared/ui/dialogs/LoginRequiredPrompt';
+export { LoginRequiredPrompt } from '@/dialogs/shared/LoginRequiredPrompt';

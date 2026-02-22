@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/selections/branchSelection';
+export * from '@/dialogs/command-bar/selections/branchSelection';

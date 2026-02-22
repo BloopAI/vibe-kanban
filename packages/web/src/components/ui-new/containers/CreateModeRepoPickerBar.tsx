@@ -16,7 +16,7 @@ import type {
 import { repoApi } from '@/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
-import { FolderPickerDialog } from '@/shared/ui/dialogs/FolderPickerDialog';
+import { FolderPickerDialog } from '@/dialogs/shared/FolderPickerDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {
@@ -26,11 +26,11 @@ import {
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
-} from '@/features/command-bar/ui/dialogs/selections/repoSelection';
+} from '@/dialogs/command-bar/selections/repoSelection';
 import {
   buildBranchSelectionPages,
   type BranchSelectionResult,
-} from '@/features/command-bar/ui/dialogs/selections/branchSelection';
+} from '@/dialogs/command-bar/selections/branchSelection';
 
 function toRepoItem(repo: Repo): RepoItem {
   return {

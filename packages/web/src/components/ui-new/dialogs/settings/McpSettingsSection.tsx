@@ -1,4 +1,4 @@
 export {
   McpSettingsSection,
   McpSettingsSectionContent,
-} from '@/features/settings/ui/dialogs/settings/McpSettingsSection';
+} from '@/dialogs/settings/settings/McpSettingsSection';

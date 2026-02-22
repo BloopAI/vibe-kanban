@@ -3,10 +3,7 @@ import { CheckIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
-import {
-  OAuthDialog,
-  type OAuthProvider,
-} from '@/components/dialogs/global/OAuthDialog';
+import { OAuthDialog, type OAuthProvider } from '@/dialogs/global/OAuthDialog';
 import { usePostHog } from 'posthog-js/react';
 import { useUserSystem } from '@/hooks/useUserSystem';
 import { useTheme } from '@/hooks/useTheme';

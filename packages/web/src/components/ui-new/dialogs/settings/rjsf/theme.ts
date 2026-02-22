@@ -1,1 +1,1 @@
-export * from '@/features/settings/ui/dialogs/settings/rjsf/theme';
+export * from '@/dialogs/settings/settings/rjsf/theme';

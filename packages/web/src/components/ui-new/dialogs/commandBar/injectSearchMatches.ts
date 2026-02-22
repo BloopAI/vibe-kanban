@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/commandBar/injectSearchMatches';
+export * from '@/dialogs/command-bar/commandBar/injectSearchMatches';

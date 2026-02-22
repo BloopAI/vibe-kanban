@@ -2,4 +2,4 @@ export {
   TagEditDialog,
   type TagEditDialogProps,
   type TagEditResult,
-} from '@/shared/ui/dialogs/TagEditDialog';
+} from '@/dialogs/shared/TagEditDialog';

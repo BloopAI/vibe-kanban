@@ -1,1 +1,1 @@
-export { ExecutorConfigForm } from '@/features/settings/ui/dialogs/settings/ExecutorConfigForm';
+export { ExecutorConfigForm } from '@/dialogs/settings/settings/ExecutorConfigForm';

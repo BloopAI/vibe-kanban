@@ -4,4 +4,4 @@ export {
   mapGhCliErrorToUi,
   type GhCliSupportContent,
   type GhCliSupportVariant,
-} from '@/features/settings/ui/dialogs/GhCliSetupDialog';
+} from '@/dialogs/auth/GhCliSetupDialog';

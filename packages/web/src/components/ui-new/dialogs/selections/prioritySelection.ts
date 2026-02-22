@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/selections/prioritySelection';
+export * from '@/dialogs/command-bar/selections/prioritySelection';

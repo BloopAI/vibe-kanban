@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/commandBar/useCommandBarState';
+export * from '@/dialogs/command-bar/commandBar/useCommandBarState';

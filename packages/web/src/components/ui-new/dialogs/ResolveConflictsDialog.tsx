@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/ResolveConflictsDialog';
+export * from '@/dialogs/tasks/ResolveConflictsDialog';

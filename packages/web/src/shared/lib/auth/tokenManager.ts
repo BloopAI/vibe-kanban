@@ -168,9 +168,7 @@ class TokenManager {
     // (i.e., their session expired unexpectedly). Don't prompt users who
     // intentionally logged out or were never logged in.
     if (wasLoggedIn) {
-      const { OAuthDialog } = await import(
-        '@/components/dialogs/global/OAuthDialog'
-      );
+      const { OAuthDialog } = await import('@/dialogs/global/OAuthDialog');
       void OAuthDialog.show({});
     }
   }

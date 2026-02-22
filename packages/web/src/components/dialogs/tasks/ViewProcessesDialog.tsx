@@ -1,4 +1,4 @@
 export {
   ViewProcessesDialog,
   type ViewProcessesDialogProps,
-} from '@/features/command-bar/ui/dialogs/ViewProcessesDialog';
+} from '@/dialogs/command-bar/ViewProcessesDialog';

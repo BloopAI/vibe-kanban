@@ -1,1 +1,1 @@
-export * from '@/features/settings/ui/dialogs/settings/rjsf/Fields';
+export * from '@/dialogs/settings/settings/rjsf/Fields';

@@ -1,4 +1,4 @@
 export {
   RemoteProjectsSettingsSection,
   RemoteProjectsSettingsSectionContent,
-} from '@/features/settings/ui/dialogs/settings/RemoteProjectsSettingsSection';
+} from '@/dialogs/settings/settings/RemoteProjectsSettingsSection';

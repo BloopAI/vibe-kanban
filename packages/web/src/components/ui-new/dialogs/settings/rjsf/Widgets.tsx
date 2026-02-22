@@ -1,1 +1,1 @@
-export * from '@/features/settings/ui/dialogs/settings/rjsf/Widgets';
+export * from '@/dialogs/settings/settings/rjsf/Widgets';

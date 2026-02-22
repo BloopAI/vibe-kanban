@@ -1,1 +1,1 @@
-export * from '@/shared/ui/dialogs/KeyboardShortcutsDialog';
+export * from '@/dialogs/shared/KeyboardShortcutsDialog';

@@ -1,4 +1,4 @@
 export {
   EditorSelectionDialog,
   type EditorSelectionDialogProps,
-} from '@/features/command-bar/ui/dialogs/EditorSelectionDialog';
+} from '@/dialogs/command-bar/EditorSelectionDialog';

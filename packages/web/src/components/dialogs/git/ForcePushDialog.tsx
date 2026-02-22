@@ -1,4 +1,4 @@
 export {
   ForcePushDialog,
   type ForcePushDialogProps,
-} from '@/features/command-bar/ui/dialogs/ForcePushDialog';
+} from '@/dialogs/command-bar/ForcePushDialog';

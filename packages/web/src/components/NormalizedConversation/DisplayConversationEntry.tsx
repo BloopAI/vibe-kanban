@@ -38,7 +38,7 @@ import { Button } from '@vibe/ui/components/Button';
 import {
   ScriptFixerDialog,
   type ScriptType,
-} from '@/shared/ui/dialogs/ScriptFixerDialog';
+} from '@/dialogs/scripts/ScriptFixerDialog';
 import { useAttemptRepo } from '@/hooks/useAttemptRepo';
 
 type Props = {

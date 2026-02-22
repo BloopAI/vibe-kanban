@@ -1,4 +1,4 @@
 export {
   SettingsDialog,
   type SettingsDialogProps,
-} from '@/features/settings/ui/dialogs/SettingsDialog';
+} from '@/dialogs/settings/SettingsDialog';

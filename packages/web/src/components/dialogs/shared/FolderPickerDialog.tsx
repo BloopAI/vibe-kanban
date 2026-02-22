@@ -1,4 +1,4 @@
 export {
   FolderPickerDialog,
   type FolderPickerDialogProps,
-} from '@/shared/ui/dialogs/FolderPickerDialog';
+} from '@/dialogs/shared/FolderPickerDialog';

@@ -1,1 +1,1 @@
-export * from '@/features/command-bar/ui/dialogs/selections/relationshipSelection';
+export * from '@/dialogs/command-bar/selections/relationshipSelection';
