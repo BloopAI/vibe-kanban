@@ -259,3 +259,37 @@
      `src/features/workspace/ui/VSCodeWorkspacePage.tsx` with a page wrapper.
   2. Keep compatibility paths stable and apply hook adapters where app-layer
      imports would violate feature boundaries.
+
+## 2026-02-22 10:48:02 UTC
+
+- Reviewed `packages-web-cutover-plan.md` and `progress.txt` and selected the next queued Phase C workspace task.
+- Implemented VSCode workspace page extraction:
+  - Moved page-level composition:
+    - `src/pages/workspaces/VSCodeWorkspacePage.tsx`
+      -> `src/features/workspace/ui/VSCodeWorkspacePage.tsx`
+  - Converted `src/pages/workspaces/VSCodeWorkspacePage.tsx` into a thin
+    route-level wrapper re-exporting from
+    `@/features/workspace/ui/VSCodeWorkspacePage`.
+- Compatibility and routing impact:
+  - Existing route import in
+    `src/routes/workspaces.$workspaceId.vscode.tsx` remains stable via the
+    page wrapper.
+  - Existing legacy shim
+    `src/pages/ui-new/VSCodeWorkspacePage.tsx` continues to resolve through
+    the canonical page path.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Added Phase C progress bullets for the VSCode workspace page move and
+    wrapper conversion.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Phase C vertical migrations with the project-kanban route surface:
+  1. Move `src/pages/projects/ProjectKanban.tsx` composition into
+     `src/features/kanban/ui/ProjectKanban.tsx`.
+  2. Keep `src/pages/projects/ProjectKanban.tsx` as a thin wrapper and
+     preserve route imports.
