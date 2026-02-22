@@ -7429,6 +7429,7 @@ dependencies = [
  "db",
  "deployment",
  "dotenv",
+ "ed25519-dalek",
  "executors",
  "futures-util",
  "git",
