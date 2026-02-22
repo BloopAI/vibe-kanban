@@ -41,10 +41,17 @@ compatibility shims.
 - [ ] `T1.4` Consolidate dialog placement:
       feature dialogs -> `src/features/*/ui/dialogs/*`,
       reusable dialogs -> `src/shared/ui/dialogs/*`.
+  - [x] Moved reusable `LoginRequiredPrompt` to
+        `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
 - [ ] `T1.5` Merge duplicate dialog concepts starting with `RebaseDialog.tsx`.
 - [ ] `T1.6` Keep compatibility shims at legacy dialog paths until final
       consolidation.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/shared/LoginRequiredPrompt.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
+  - [x] Updated canonical callsite to
+        `@/shared/ui/dialogs/LoginRequiredPrompt` in
+        `src/features/kanban/ui/ProjectKanban.tsx`.
 
 ## Risk Controls
 
@@ -52,6 +59,10 @@ compatibility shims.
 - Avoid touching app-wide providers, hooks, stores, and shared API modules.
 - If a change requires those layers, log it as a final-consolidation follow-up
   instead of doing it here.
+- New information (2026-02-22): one `LoginRequiredPrompt` callsite lives in
+  `src/features/kanban/ui/ProjectKanban.tsx`, outside the strict Track 1
+  ownership paths. This track updated that single import to the canonical
+  shared-ui path and kept a legacy shim to minimize future cross-branch churn.
 
 ## Validation
 
