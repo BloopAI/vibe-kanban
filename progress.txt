@@ -858,3 +858,40 @@
   `src/features/command-bar/ui/dialogs/*` with a compatibility shim; if
   ownership boundaries are a concern, keep cross-feature callsites on legacy
   shim imports until final consolidation.
+
+## 2026-02-22 12:24:27 UTC
+
+- Read `packages-web-cutover-plan.parallel-1-ui-dialogs.md` and `progress.txt`, then assessed the next component to move into the UI package.
+- Selected `PrCommentsDialog` for command-bar feature-owned placement.
+- Performed full refactor with move-first workflow:
+  - Used `git mv` to move
+    `src/components/dialogs/tasks/PrCommentsDialog.tsx`
+    -> `src/features/command-bar/ui/dialogs/PrCommentsDialog.tsx`.
+  - Added compatibility shim at legacy path:
+    `src/components/dialogs/tasks/PrCommentsDialog.tsx`.
+  - Updated moved dialog to named NiceModal imports (`create`, `useModal`) for
+    feature-path lint compatibility.
+- Callsite updates and new information:
+  - Initial canonical import update in
+    `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx` failed lint
+    (`features/*` cannot import from `@/features/command-bar/*`).
+  - Reverted that callsite to the legacy shim import path and documented this
+    Track 1 boundary constraint in the plan.
+- Updated Track 1 plan (`packages-web-cutover-plan.parallel-1-ui-dialogs.md`):
+  - Marked completed sub-steps under `T1.4` and `T1.6` for
+    `PrCommentsDialog`.
+  - Updated `T1.7` to reflect shim-retained callsite behavior for this dialog.
+  - Added a new risk-controls note about feature-layer import boundaries for
+    command-bar canonical dialogs.
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Track 1 dialog consolidation by moving
+  `src/components/dialogs/git/ForcePushDialog.tsx` into
+  `src/features/command-bar/ui/dialogs/*` with a compatibility shim; keep
+  hook-layer consumers on legacy shim imports when required by boundaries.

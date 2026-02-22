@@ -77,6 +77,8 @@ compatibility shims.
         `src/features/command-bar/ui/dialogs/GitActionsDialog.tsx`.
   - [x] Moved feature dialog `RestoreLogsDialog` to
         `src/features/command-bar/ui/dialogs/RestoreLogsDialog.tsx`.
+  - [x] Moved feature dialog `PrCommentsDialog` to
+        `src/features/command-bar/ui/dialogs/PrCommentsDialog.tsx`.
   - [x] Moved reusable `LoginRequiredPrompt` to
         `src/shared/ui/dialogs/LoginRequiredPrompt.tsx`.
   - [x] Moved reusable `FolderPickerDialog` to
@@ -139,6 +141,8 @@ compatibility shims.
         `src/components/dialogs/tasks/GitActionsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/tasks/RestoreLogsDialog.tsx`.
+  - [x] Added compatibility shim at
+        `src/components/dialogs/tasks/PrCommentsDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/ui-new/dialogs/RebaseDialog.tsx`.
 - [ ] `T1.7` Update only UI-layer imports needed for this dialog/action move.
@@ -229,6 +233,10 @@ compatibility shims.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RestoreLogsDialog` in
         `src/components/dialogs/index.ts`.
+  - [x] Kept `PrCommentsDialog` feature-layer callsite on the legacy shim path
+        (`src/components/dialogs/tasks/PrCommentsDialog.tsx`) because
+        `src/features/workspace-chat/**` cannot import directly from
+        `@/features/command-bar/**` under current lint boundaries.
   - [x] Updated canonical callsite to
         `@/features/command-bar/ui/dialogs/RebaseDialog` in
         `src/components/ui-new/actions/index.ts`.
@@ -316,6 +324,10 @@ compatibility shims.
   `src/hooks/**` can stay untouched during Track 1 by canonicalizing only the
   `src/components/dialogs/index.ts` export (for example
   `RestoreLogsDialog`), preserving ownership boundaries.
+- New information (2026-02-22): non-owned feature-layer consumers (for example
+  `src/features/workspace-chat/ui/SessionChatBoxContainer.tsx`) cannot import
+  command-bar canonical dialog paths directly under current lint boundaries;
+  keep these callsites on legacy shim imports until final consolidation.
 
 ## Validation
 
