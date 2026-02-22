@@ -17,7 +17,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { GitOperationsProvider } from '@/contexts/GitOperationsContext';
 import { useGitOperations } from '@/hooks/useGitOperations';
-import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
+import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';

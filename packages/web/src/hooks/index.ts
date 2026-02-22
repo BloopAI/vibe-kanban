@@ -16,7 +16,7 @@ export { usePush } from '@/features/workspace/model/hooks/usePush';
 export { useAttemptConflicts } from '@/features/workspace/model/hooks/useAttemptConflicts';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useGitOperations } from './useGitOperations';
-export { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
+export { useAttempt } from '@/shared/hooks/useAttempt';
 export { useRepoBranches } from '@/features/workspace/model/hooks/useRepoBranches';
 export { useRepoBranchSelection } from '@/features/workspace/model/hooks/useRepoBranchSelection';
 export type { RepoBranchConfig } from '@/features/workspace/model/hooks/useRepoBranchSelection';

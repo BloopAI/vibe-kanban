@@ -18,7 +18,7 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { CreateModeProvider } from '@/contexts/CreateModeContext';
 import { useWorkspaceSessions } from '@/features/workspace/model/hooks/useWorkspaceSessions';
-import { useAttempt } from '@/features/workspace/model/hooks/useAttempt';
+import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useKanbanNavigation } from '@/features/kanban/model/hooks/useKanbanNavigation';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/components/ui-new/containers/CreateChatBoxContainer';

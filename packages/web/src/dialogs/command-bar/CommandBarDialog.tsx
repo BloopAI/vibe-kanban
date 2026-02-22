@@ -11,7 +11,7 @@ import {
 } from '@vibe/ui/components/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { attemptKeys } from '@/features/workspace/model/hooks/useAttempt';
+import { attemptKeys } from '@/shared/hooks/useAttempt';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import type {
   PageId,
