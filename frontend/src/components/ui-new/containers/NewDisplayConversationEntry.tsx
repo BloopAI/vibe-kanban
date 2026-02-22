@@ -36,7 +36,7 @@ import { ChatUserMessage } from '../primitives/conversation/ChatUserMessage';
 import { ChatAssistantMessage } from '../primitives/conversation/ChatAssistantMessage';
 import { ChatSystemMessage } from '../primitives/conversation/ChatSystemMessage';
 import { ChatThinkingMessage } from '../primitives/conversation/ChatThinkingMessage';
-import { ChatErrorMessage } from '../primitives/conversation/ChatErrorMessage';
+import { ChatErrorMessage } from '@vibe/ui/components/ChatErrorMessage';
 import { ChatScriptEntry } from '../primitives/conversation/ChatScriptEntry';
 import { ChatSubagentEntry } from '../primitives/conversation/ChatSubagentEntry';
 import { ChatAggregatedToolEntries } from '../primitives/conversation/ChatAggregatedToolEntries';

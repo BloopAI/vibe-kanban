@@ -1,5 +1,5 @@
 import { WarningCircleIcon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
+import { cn } from '../lib/cn';
 
 interface ChatErrorMessageProps {
   content: string;
