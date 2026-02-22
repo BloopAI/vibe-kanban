@@ -18,11 +18,11 @@ import { useUserSystem } from '@/app/providers/ConfigProvider';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { OAuthDialog } from '@/features/settings/ui/dialogs/OAuthDialog';
 import { CreateOrganizationDialog } from '@/features/settings/ui/dialogs/CreateOrganizationDialog';
-import { InviteMemberDialog } from '@/components/dialogs/org/InviteMemberDialog';
-import type {
-  InviteMemberResult,
-  CreateOrganizationResult,
-} from '@/components/dialogs';
+import {
+  InviteMemberDialog,
+  type InviteMemberResult,
+} from '@/features/settings/ui/dialogs/InviteMemberDialog';
+import type { CreateOrganizationResult } from '@/components/dialogs';
 import { MemberListItem } from '@/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';

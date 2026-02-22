@@ -45,6 +45,8 @@ compatibility shims.
         `src/features/settings/ui/dialogs/CreateConfigurationDialog.tsx`.
   - [x] Moved feature dialog `CreateOrganizationDialog` to
         `src/features/settings/ui/dialogs/CreateOrganizationDialog.tsx`.
+  - [x] Moved feature dialog `InviteMemberDialog` to
+        `src/features/settings/ui/dialogs/InviteMemberDialog.tsx`.
   - [x] Moved feature dialog `CreateRemoteProjectDialog` to
         `src/features/settings/ui/dialogs/CreateRemoteProjectDialog.tsx`.
   - [x] Moved feature dialog `DeleteRemoteProjectDialog` to
@@ -84,6 +86,8 @@ compatibility shims.
   - [x] Added compatibility shim at
         `src/components/dialogs/org/CreateOrganizationDialog.tsx`.
   - [x] Added compatibility shim at
+        `src/components/dialogs/org/InviteMemberDialog.tsx`.
+  - [x] Added compatibility shim at
         `src/components/dialogs/org/CreateRemoteProjectDialog.tsx`.
   - [x] Added compatibility shim at
         `src/components/dialogs/org/DeleteRemoteProjectDialog.tsx`.
@@ -120,6 +124,10 @@ compatibility shims.
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to
         `@/features/settings/ui/dialogs/CreateOrganizationDialog` in:
+        `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
+        `src/components/dialogs/index.ts`.
+  - [x] Updated canonical callsites to
+        `@/features/settings/ui/dialogs/InviteMemberDialog` in:
         `src/components/ui-new/dialogs/settings/OrganizationsSettingsSection.tsx`,
         `src/components/dialogs/index.ts`.
   - [x] Updated canonical callsites to

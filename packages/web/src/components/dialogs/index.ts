@@ -10,7 +10,7 @@ export {
 export {
   InviteMemberDialog,
   type InviteMemberResult,
-} from './org/InviteMemberDialog';
+} from '@/features/settings/ui/dialogs/InviteMemberDialog';
 export {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectDialogProps,
