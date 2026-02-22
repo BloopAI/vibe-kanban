@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { usePostHog } from 'posthog-js/react';
 import { ThemeMode } from 'shared/types';
 import { useTheme } from '@/app/providers/ThemeProvider';
-import { MigrateLayout } from '@/components/ui-new/containers/MigrateLayout';
+import { MigrateLayout } from '@/features/migration/ui/MigrateLayout';
 
 const REMOTE_ONBOARDING_EVENTS = {
   STAGE_VIEWED: 'remote_onboarding_ui_stage_viewed',

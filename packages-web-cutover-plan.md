@@ -134,7 +134,7 @@ packages/web/src/
 
 - [x] Phase A: foundations and guardrails
 - [x] Phase B: app shell + page relocation
-- [ ] Phase C: vertical feature migrations
+- [ ] Phase C: vertical feature migrations (in progress)
 - [ ] Phase D: dialog/modal consolidation
 - [ ] Phase E: hooks/contexts/stores normalization
 - [ ] Phase F: shared/integration cleanup
@@ -194,6 +194,17 @@ packages/web/src/
    - onboarding + migration flows
    - workspaces + vscode workspace flow
    - project kanban flow
+   - progress:
+     - moved migration flow containers from
+       `src/components/ui-new/containers/Migrate*` to
+       `src/features/migration/ui/*`
+     - updated `src/pages/migrate/MigratePage.tsx` to import
+       `@/features/migration/ui/MigrateLayout`
+     - kept temporary compatibility shims at legacy
+       `src/components/ui-new/containers/Migrate*` paths
+     - onboarding flow currently has no dedicated `ui-new` container files;
+       onboarding screens are still page-local and should be extracted in a
+       later Phase C slice
 2. For each route surface:
    - move relevant containers/hooks/context/store into one feature folder
    - split large files into `model/`, `ui/`, `api/` subfolders

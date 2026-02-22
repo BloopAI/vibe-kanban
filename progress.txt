@@ -156,3 +156,41 @@
 - Start Phase C vertical migrations with the onboarding/migration slice:
   1. Move migrate/onboarding flow containers from `src/components/ui-new/containers/*` into a feature-owned folder (e.g. `src/features/migration/ui/*` and `src/features/onboarding/ui/*`) with compatibility shims.
   2. Update page imports to use the new feature paths.
+
+## 2026-02-22 10:39:36 UTC
+
+- Reviewed `packages-web-cutover-plan.md` and `progress.txt` and selected the first Phase C vertical migration slice.
+- Implemented migration feature relocation:
+  - Moved migration flow containers from legacy paths under
+    `src/components/ui-new/containers/` into canonical feature paths under
+    `src/features/migration/ui/`:
+    - `MigrateLayout.tsx`
+    - `MigrateIntroductionContainer.tsx`
+    - `MigrateChooseProjectsContainer.tsx`
+    - `MigrateMigrateContainer.tsx`
+    - `MigrateFinishContainer.tsx`
+  - Updated `src/pages/migrate/MigratePage.tsx` to import
+    `@/features/migration/ui/MigrateLayout`.
+  - Added temporary compatibility re-export shims at legacy
+    `src/components/ui-new/containers/Migrate*` paths.
+- New information discovered and handled:
+  - ESLint import-boundary rules reject same-layer feature imports via
+    `@/features/*` from inside feature files.
+  - Updated `src/features/migration/ui/MigrateLayout.tsx` to use relative
+    sibling imports for local feature modules.
+- Updated plan (`packages-web-cutover-plan.md`):
+  - Marked Phase C as in progress.
+  - Documented completed migration-slice relocation and onboarding status
+    (onboarding has no dedicated `ui-new` containers yet; still page-local).
+- Quality checks run:
+  - `pnpm run format`
+  - `pnpm run web:check`
+  - `pnpm run web:lint`
+  - All passed.
+
+### Next change
+
+- Continue Phase C onboarding/migration slice:
+  1. Extract onboarding page-local composition into `src/features/onboarding/ui/*` modules.
+  2. Update onboarding pages to import those feature modules.
+  3. Add temporary compatibility re-exports if any legacy imports are needed.
