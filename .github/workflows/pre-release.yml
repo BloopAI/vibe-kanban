@@ -739,11 +739,36 @@ jobs:
             fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
+      - name: Set up Apple code signing and notarization
+        run: |
+          # Extract API key fields from the App Store Connect JSON for Tauri notarization
+          echo '${{ secrets.APP_STORE_API_KEY }}' > app_store_key.json
+          APPLE_API_KEY=$(node -e "console.log(JSON.parse(require('fs').readFileSync('app_store_key.json','utf8')).key_id)")
+          APPLE_API_ISSUER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('app_store_key.json','utf8')).issuerId)")
+
+          # Write the .p8 key file where Tauri expects it
+          mkdir -p ~/.private_keys
+          node -e "
+            const key = JSON.parse(require('fs').readFileSync('app_store_key.json','utf8'));
+            require('fs').writeFileSync(
+              process.env.HOME + '/.private_keys/AuthKey_' + key.key_id + '.p8',
+              key.key.replace(/\\\\n/g, '\n')
+            );
+          "
+
+          echo "APPLE_API_KEY=$APPLE_API_KEY" >> $GITHUB_ENV
+          echo "APPLE_API_ISSUER=$APPLE_API_ISSUER" >> $GITHUB_ENV
+          rm -f app_store_key.json
+
       - name: Build Tauri app
         run: cargo tauri build --target ${{ matrix.target }} --ci
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ env.APPLE_API_ISSUER }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
@@ -763,6 +788,10 @@ jobs:
           done
           echo "Artifacts for ${{ matrix.platform }}:"
           ls -la tauri-artifacts/${{ matrix.platform }}/
+
+      - name: Clean up signing keys
+        if: always()
+        run: rm -rf ~/.private_keys
 
       - name: Upload Tauri artifacts
         uses: actions/upload-artifact@v6
