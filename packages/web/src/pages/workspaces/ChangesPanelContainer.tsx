@@ -7,9 +7,9 @@ import {
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useScrollSyncStateMachine } from '@/hooks/useScrollSyncStateMachine';
+import { useScrollSyncStateMachine } from '@/shared/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
-import { PierreDiffCard } from '@/components/ui-new/containers/PierreDiffCard';
+import { PierreDiffCard } from './PierreDiffCard';
 import type { Diff, DiffChangeKind } from 'shared/types';
 
 // Auto-collapse defaults based on change type (matches DiffsPanel behavior)

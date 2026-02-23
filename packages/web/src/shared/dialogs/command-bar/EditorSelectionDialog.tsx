@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@vibe/ui/components/Select';
 import { EditorType } from 'shared/types';
-import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 

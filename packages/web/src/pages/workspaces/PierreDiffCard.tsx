@@ -29,8 +29,8 @@ import {
 import { useReview, type ReviewDraft } from '@/shared/hooks/useReview';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
-import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
-import { useOpenInEditor } from '@/hooks/useOpenInEditor';
+import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
+import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import { CommentWidgetLine } from './CommentWidgetLine';
