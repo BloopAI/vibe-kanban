@@ -44,9 +44,9 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "UPDATER_PUBKEY_PLACEHOLDER",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyN0ZCNDVCMDhFMDdEQjAKUldTd2ZlQUlXN1IvTWt1Z0ZmaWpsUUVGOHl3QUExRVVWL0crWkROSjViRUZSTXdUODN4WkFlQ1AK",
       "endpoints": [
-        "https://releases.example.com/vibe-kanban/{{target}}/{{arch}}/{{current_version}}"
+        "__TAURI_UPDATE_ENDPOINT__"
       ]
     }
   }
