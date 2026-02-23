@@ -23,12 +23,12 @@ import { IssueWorkspacesSectionContainer } from './IssueWorkspacesSectionContain
 import {
   KanbanIssuePanel,
   type IssueFormData,
-} from '@vibe/ui/components/KanbanIssuePanel';
-import { useActions } from '@/shared/hooks/useActions';
-import { useUserContext } from '@/shared/hooks/useUserContext';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
-import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
+} from '@/components/ui-new/views/KanbanIssuePanel';
+import { useActions } from '@/contexts/ActionsContext';
+import { useUserContext } from '@/contexts/remote/UserContext';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
+import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
   buildWorkspaceCreateInitialState,
@@ -490,9 +490,8 @@ export function KanbanIssuePanelContainer({
       if (kanbanCreateMode) {
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
-          const { ProjectSelectionDialog } = await import(
-            '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-          );
+          const { ProjectSelectionDialog } =
+            await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
           const result = await ProjectSelectionDialog.show({
             projectId,
             selection: { type: 'status', issueIds: [], isCreateMode: true },
@@ -511,9 +510,8 @@ export function KanbanIssuePanelContainer({
 
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
-          const { ProjectSelectionDialog } = await import(
-            '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-          );
+          const { ProjectSelectionDialog } =
+            await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
           const result = await ProjectSelectionDialog.show({
             projectId,
             selection: { type: 'priority', issueIds: [], isCreateMode: true },
@@ -533,9 +531,8 @@ export function KanbanIssuePanelContainer({
 
         // For assigneeIds, open the assignee selection dialog with callback
         if (field === 'assigneeIds') {
-          const { AssigneeSelectionDialog } = await import(
-            '@/shared/dialogs/kanban/AssigneeSelectionDialog'
-          );
+          const { AssigneeSelectionDialog } =
+            await import('@/components/ui-new/dialogs/AssigneeSelectionDialog');
           await AssigneeSelectionDialog.show({
             projectId,
             issueIds: [],
@@ -867,26 +864,8 @@ export function KanbanIssuePanelContainer({
       onSubmit={handleSubmit}
       onCmdEnterSubmit={handleCmdEnterSubmit}
       onCreateTag={handleCreateTag}
-      renderAddTagControl={({
-        tags,
-        selectedTagIds,
-        onTagToggle,
-        onCreateTag,
-        disabled,
-        trigger,
-      }) => (
-        <SearchableTagDropdownContainer
-          tags={tags}
-          selectedTagIds={selectedTagIds}
-          onTagToggle={onTagToggle}
-          onCreateTag={onCreateTag}
-          disabled={disabled}
-          contentClassName=""
-          trigger={trigger}
-        />
-      )}
-      renderDescriptionEditor={(props) => <WYSIWYGEditor {...props} />}
       isSubmitting={isSubmitting}
+      isLoading={isLoading}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
@@ -902,18 +881,6 @@ export function KanbanIssuePanelContainer({
       isUploading={isUploading}
       attachmentError={uploadError}
       onDismissAttachmentError={clearUploadError}
-      renderWorkspacesSection={(issueId) => (
-        <IssueWorkspacesSectionContainer issueId={issueId} />
-      )}
-      renderRelationshipsSection={(issueId) => (
-        <IssueRelationshipsSectionContainer issueId={issueId} />
-      )}
-      renderSubIssuesSection={(issueId) => (
-        <IssueSubIssuesSectionContainer issueId={issueId} />
-      )}
-      renderCommentsSection={(issueId) => (
-        <IssueCommentsSectionContainer issueId={issueId} />
-      )}
     />
   );
 }
