@@ -13,7 +13,7 @@ import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LogsPanelContent } from '../containers/LogsContentContainer';
 import type { LogEntry } from '../containers/VirtualizedProcessLogs';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
-import type { IssueCreateRouteOptions } from '@/lib/routes/projectSidebarRoutes';
+import type { IssueCreateRouteOptions } from '@/shared/lib/routes/projectSidebarRoutes';
 import {
   CopyIcon,
   XIcon,

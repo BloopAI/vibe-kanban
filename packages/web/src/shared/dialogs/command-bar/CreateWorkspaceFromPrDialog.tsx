@@ -27,7 +27,7 @@ import { attemptsApi, repoApi } from '@/shared/lib/api';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
 import type { OpenPrInfo, GitRemote } from 'shared/types';
-import { toWorkspace } from '@/lib/routes/navigation';
+import { toWorkspace } from '@/shared/lib/routes/navigation';
 
 export interface CreateWorkspaceFromPrDialogProps {}
 

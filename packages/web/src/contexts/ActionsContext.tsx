@@ -11,7 +11,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { buildIssueCreatePath } from '@/lib/routes/projectSidebarRoutes';
+import { buildIssueCreatePath } from '@/shared/lib/routes/projectSidebarRoutes';
 import {
   type ActionDefinition,
   type ActionExecutorContext,

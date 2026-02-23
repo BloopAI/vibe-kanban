@@ -10,7 +10,7 @@ import { useGitHubComments } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
-import { toWorkspace, toWorkspacesCreate } from '@/lib/routes/navigation';
+import { toWorkspace, toWorkspacesCreate } from '@/shared/lib/routes/navigation';
 import type { DiffStats } from 'shared/types';
 
 export type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
