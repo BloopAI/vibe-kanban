@@ -34,7 +34,7 @@ import type {
 import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { defineModal } from '@/lib/modals';
-import { splitMessageToTitleDescription } from '@/utils/string';
+import { splitMessageToTitleDescription } from '@/shared/lib/string';
 
 interface CreatePRDialogProps {
   attempt: Workspace;

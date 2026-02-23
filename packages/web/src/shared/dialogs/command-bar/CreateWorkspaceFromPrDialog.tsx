@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@vibe/ui/components/Select';
-import { useNavigateWithSearch } from '@/hooks';
+import { useNavigateWithSearch } from '@/hooks/useNavigateWithSearch';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { attemptsApi, repoApi } from '@/shared/lib/api';

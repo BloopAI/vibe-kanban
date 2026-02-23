@@ -20,7 +20,7 @@ import {
 } from 'shared/types';
 import { getModifierKey } from '@/shared/lib/platform';
 import { getLanguageOptions } from '@/i18n/languages';
-import { toPrettyCase } from '@/utils/string';
+import { toPrettyCase } from '@/shared/lib/string';
 import {
   getExecutorVariantKeys,
   getSortedExecutorVariantKeys,

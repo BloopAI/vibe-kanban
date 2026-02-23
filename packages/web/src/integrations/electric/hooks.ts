@@ -4,7 +4,6 @@ import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { useSyncErrorContext } from '@/shared/hooks/useSyncErrorContext';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from '@/shared/lib/electric/types';
-export type { MutationResult, InsertResult } from '@/shared/lib/electric/types';
 import type { MutationResult, InsertResult } from '@/shared/lib/electric/types';
 
 // Type helpers for extracting types from MutationDefinition

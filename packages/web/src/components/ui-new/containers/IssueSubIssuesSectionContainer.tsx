@@ -1,11 +1,11 @@
 import { useMemo, useCallback, useState } from 'react';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { PlusIcon, LinkIcon } from '@phosphor-icons/react';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
-import { useActions } from '@/contexts/ActionsContext';
-import { Actions } from '@/components/ui-new/actions';
+import { useActions } from '@/shared/hooks/useActions';
+import { Actions } from '@/shared/actions';
 import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import {

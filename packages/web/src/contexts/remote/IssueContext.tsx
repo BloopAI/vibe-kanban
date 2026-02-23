@@ -1,10 +1,7 @@
 import { useContext, useMemo, useCallback, type ReactNode } from 'react';
 import { createHmrContext } from '@/shared/lib/hmrContext';
-import {
-  useShape,
-  type InsertResult,
-  type MutationResult,
-} from '@/integrations/electric/hooks';
+import type { InsertResult, MutationResult } from '@/shared/lib/electric/types';
+import { useShape } from '@/integrations/electric/hooks';
 import {
   ISSUE_COMMENTS_SHAPE,
   ISSUE_REACTIONS_SHAPE,

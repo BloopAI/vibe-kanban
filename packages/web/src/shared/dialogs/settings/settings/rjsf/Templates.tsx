@@ -7,7 +7,7 @@ import type {
 import { PlusIcon, XIcon } from '@phosphor-icons/react';
 import { cn } from '@/shared/lib/utils';
 import { useTranslation } from 'react-i18next';
-import { toPrettyCase } from '@/utils/string';
+import { toPrettyCase } from '@/shared/lib/string';
 
 // FieldTemplate - Two-column layout matching settings dialog styling
 export const FieldTemplate = (props: FieldTemplateProps) => {

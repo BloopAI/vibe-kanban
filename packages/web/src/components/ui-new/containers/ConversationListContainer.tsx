@@ -25,14 +25,14 @@ import {
   type UseResetProcessResult,
 } from '@/components/ui-new/hooks/useResetProcess';
 import {
-  AddEntryType,
-  PatchTypeWithKey,
-  DisplayEntry,
+  type AddEntryType,
+  type PatchTypeWithKey,
+  type DisplayEntry,
   isAggregatedGroup,
   isAggregatedDiffGroup,
   isAggregatedThinkingGroup,
-  useConversationHistory,
-} from '@/components/ui-new/hooks/useConversationHistory';
+} from '@/shared/hooks/useConversationHistory/types';
+import { useConversationHistory } from '@/components/ui-new/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';

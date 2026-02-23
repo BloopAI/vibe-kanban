@@ -50,7 +50,7 @@ import {
   PROJECT_ISSUES_SHAPE,
   type Project,
 } from 'shared/remote-types';
-import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
+import { getRandomPresetColor, PRESET_COLORS } from '@/shared/lib/colors';
 import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 import { cn } from '@/shared/lib/utils';
 import {

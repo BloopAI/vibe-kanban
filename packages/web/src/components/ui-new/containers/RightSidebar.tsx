@@ -5,10 +5,10 @@ import { PreviewControlsContainer } from '@/components/ui-new/containers/Preview
 import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
 import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
 import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
-import { useChangesView } from '@/contexts/ChangesViewContext';
+import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import type { RepoWithTargetBranch, Workspace } from 'shared/types';
 import {
   PERSIST_KEYS,

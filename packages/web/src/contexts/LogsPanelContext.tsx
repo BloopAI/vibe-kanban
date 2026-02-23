@@ -13,8 +13,6 @@ import {
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { LogsPanelContext } from '@/shared/hooks/useLogsPanel';
 
-export { useLogsPanel } from '@/shared/hooks/useLogsPanel';
-
 interface LogsPanelProviderProps {
   children: ReactNode;
 }

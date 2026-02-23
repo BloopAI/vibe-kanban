@@ -8,7 +8,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { VirtualizedProcessLogs } from './VirtualizedProcessLogs';
 import { getDevServerWorkingDir } from '@/shared/lib/devServerUtils';
 

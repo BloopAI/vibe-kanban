@@ -1,8 +1,6 @@
 import type { Workspace } from 'shared/types';
-import type {
-  ConfirmDialogProps,
-  EditorSelectionDialogProps,
-} from '@/shared/dialogs';
+import type { ConfirmDialogProps } from '@/shared/dialogs/shared/ConfirmDialog';
+import type { EditorSelectionDialogProps } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
 
 // Type definitions for nice-modal-react modal arguments
 declare module '@ebay/nice-modal-react' {

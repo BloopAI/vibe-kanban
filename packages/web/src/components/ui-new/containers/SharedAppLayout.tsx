@@ -19,9 +19,11 @@ import {
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
+} from '@/shared/dialogs/org/CreateOrganizationDialog';
+import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
-} from '@/shared/dialogs';
+} from '@/shared/dialogs/org/CreateRemoteProjectDialog';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';

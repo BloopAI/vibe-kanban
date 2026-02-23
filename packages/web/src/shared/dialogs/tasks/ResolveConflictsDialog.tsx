@@ -19,7 +19,7 @@ import { sessionsApi } from '@/shared/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { buildResolveConflictsInstructions } from '@/lib/conflicts';
+import { buildResolveConflictsInstructions } from '@/shared/lib/conflicts';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 import type {

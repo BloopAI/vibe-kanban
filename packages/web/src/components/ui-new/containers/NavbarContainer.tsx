@@ -1,14 +1,14 @@
 import { useMemo, useCallback } from 'react';
 import { useLocation } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useUserContext } from '@/contexts/remote/UserContext';
-import { useActions } from '@/contexts/ActionsContext';
-import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
+import { useUserContext } from '@/shared/hooks/useUserContext';
+import { useActions } from '@/shared/hooks/useActions';
+import { useSyncErrorContext } from '@/shared/hooks/useSyncErrorContext';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { Navbar, type NavbarSectionItem } from '@vibe/ui/components/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
-import { NavbarActionGroups } from '../actions';
+import { NavbarActionGroups } from '@/shared/actions';
 import {
   NavbarDivider,
   type ActionDefinition,

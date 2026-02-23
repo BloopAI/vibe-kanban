@@ -2,8 +2,8 @@ import { useMemo, useCallback, useState, useRef, type Ref } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { IssueProvider, useIssueContext } from '@/contexts/remote/IssueContext';
-import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useCurrentUser } from '@/shared/hooks/auth/useCurrentUser';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
 import {

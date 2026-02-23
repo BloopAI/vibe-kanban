@@ -9,7 +9,7 @@ import {
 } from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useChangesView } from '@/contexts/ChangesViewContext';
+import { useChangesView } from '@/shared/hooks/useChangesView';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { getActualTheme } from '@/shared/lib/theme';

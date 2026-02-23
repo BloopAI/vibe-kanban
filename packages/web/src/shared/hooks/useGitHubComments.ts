@@ -7,7 +7,6 @@ import {
 import type { UnifiedPrComment } from 'shared/types';
 import { DiffSide } from '@/shared/types/diff';
 
-export type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
 import type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
 
 interface UseGitHubCommentsOptions {

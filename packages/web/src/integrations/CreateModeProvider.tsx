@@ -1,8 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
-import {
-  useCreateModeState,
-  type CreateModeInitialState,
-} from '@/integrations/useCreateModeState';
+import type { CreateModeInitialState } from '@/shared/types/createMode';
+import { useCreateModeState } from '@/integrations/useCreateModeState';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import {

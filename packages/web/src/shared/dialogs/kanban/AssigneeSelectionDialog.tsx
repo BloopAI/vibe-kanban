@@ -11,9 +11,9 @@ import {
   type MultiSelectOption,
 } from '@vibe/ui/components/MultiSelectCommandBar';
 import { UserAvatar } from '@vibe/ui/components/UserAvatar';
-import { OrgProvider } from '@/contexts/remote/OrgContext';
+import { OrgProvider } from '@/integrations/remote/OrgProvider';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
-import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import { ProjectProvider } from '@/integrations/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/integrations/useOrganizationProjects';

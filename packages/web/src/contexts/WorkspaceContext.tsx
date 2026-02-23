@@ -16,11 +16,6 @@ import {
 } from '@/shared/lib/routes/navigation';
 import type { DiffStats } from 'shared/types';
 
-export type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
-export {
-  WorkspaceContext,
-  useWorkspaceContext,
-} from '@/shared/hooks/useWorkspaceContext';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
 interface WorkspaceProviderProps {

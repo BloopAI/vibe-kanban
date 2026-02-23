@@ -6,7 +6,7 @@ import {
   VirtualizedProcessLogs,
 } from './VirtualizedProcessLogs';
 import { useLogStream } from '@/shared/hooks/useLogStream';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { TerminalPanelContainer } from './TerminalPanelContainer';
 import { ArrowsInSimpleIcon } from '@phosphor-icons/react';
 

@@ -12,13 +12,6 @@ import {
   type SyncErrorContextValue,
 } from '@/shared/hooks/useSyncErrorContext';
 
-export {
-  useSyncErrorContext,
-  useSyncErrorContextRequired,
-  type StreamError,
-  type SyncErrorContextValue,
-} from '@/shared/hooks/useSyncErrorContext';
-
 interface SyncErrorProviderProps {
   children: ReactNode;
 }

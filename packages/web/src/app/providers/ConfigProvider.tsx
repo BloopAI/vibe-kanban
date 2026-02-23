@@ -15,8 +15,6 @@ import {
   type UserSystemContextType,
 } from '@/shared/hooks/useUserSystem';
 
-export { useUserSystem } from '@/shared/hooks/useUserSystem';
-
 interface UserSystemProviderProps {
   children: ReactNode;
 }

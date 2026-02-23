@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { UserProvider } from '@/contexts/remote/UserContext';
+import { UserProvider } from '@/integrations/remote/UserProvider';
 import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';

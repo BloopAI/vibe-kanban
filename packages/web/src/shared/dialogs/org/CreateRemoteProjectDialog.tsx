@@ -20,7 +20,7 @@ import {
   PROJECT_MUTATION,
   type Project,
 } from 'shared/remote-types';
-import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
+import { getRandomPresetColor, PRESET_COLORS } from '@/shared/lib/colors';
 import { ColorPicker } from '@/components/ui-new/containers/ColorPickerContainer';
 
 export type CreateRemoteProjectDialogProps = {

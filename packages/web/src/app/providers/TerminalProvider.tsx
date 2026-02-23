@@ -7,12 +7,6 @@ import {
   type TerminalInstance,
 } from '@/shared/hooks/useTerminal';
 
-export {
-  useTerminal,
-  type TerminalTab,
-  type TerminalInstance,
-} from '@/shared/hooks/useTerminal';
-
 interface TerminalConnection {
   ws: WebSocket;
   send: (data: string) => void;

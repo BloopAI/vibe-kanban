@@ -6,8 +6,8 @@ import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { useActions } from '@/contexts/ActionsContext';
-import { Actions } from '@/components/ui-new/actions';
+import { useActions } from '@/shared/hooks/useActions';
+import { Actions } from '@/shared/actions';
 import { toMigrate } from '@/shared/lib/routes/navigation';
 
 interface AppBarUserPopoverContainerProps {

@@ -37,22 +37,6 @@ import {
   REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
 
-export type {
-  AddEntryType,
-  OnEntriesUpdated,
-  PatchTypeWithKey,
-  DisplayEntry,
-  AggregatedPatchGroup,
-  AggregatedDiffGroup,
-  AggregatedThinkingGroup,
-} from '@/shared/hooks/useConversationHistory/types';
-
-export {
-  isAggregatedGroup,
-  isAggregatedDiffGroup,
-  isAggregatedThinkingGroup,
-} from '@/shared/hooks/useConversationHistory/types';
-
 export const useConversationHistory = ({
   attempt,
   onEntriesUpdated,

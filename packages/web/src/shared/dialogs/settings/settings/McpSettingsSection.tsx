@@ -7,7 +7,7 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { mcpServersApi } from '@/shared/lib/api';
 import { McpConfigStrategyGeneral } from '@/shared/lib/mcpStrategies';
 import { cn } from '@/shared/lib/utils';
-import { toPrettyCase } from '@/utils/string';
+import { toPrettyCase } from '@/shared/lib/string';
 import {
   DropdownMenu,
   DropdownMenuContent,

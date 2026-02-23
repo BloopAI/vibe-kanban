@@ -2,8 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { ThemeMode } from 'shared/types';
 import { ThemeProviderContext } from '@/shared/hooks/useTheme';
 
-export { useTheme, getResolvedTheme } from '@/shared/hooks/useTheme';
-
 type ThemeProviderProps = {
   children: React.ReactNode;
   initialTheme?: ThemeMode;

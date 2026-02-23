@@ -4,8 +4,6 @@
  * a single source of truth for supported languages.
  */
 
-export type { UiLanguage } from 'shared/types';
-
 export const UI_TO_I18N = {
   EN: 'en',
   FR: 'fr',

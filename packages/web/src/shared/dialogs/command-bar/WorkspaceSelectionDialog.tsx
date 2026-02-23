@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
 import { ApiError, attemptsApi } from '@/shared/lib/api';
-import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
 import {
@@ -13,7 +13,7 @@ import {
   buildLocalWorkspaceIdSet,
   buildWorkspaceCreateInitialState,
   buildWorkspaceCreatePrompt,
-} from '@/lib/workspaceCreateState';
+} from '@/shared/lib/workspaceCreateState';
 import {
   Command,
   CommandDialog,
@@ -24,9 +24,10 @@ import {
   CommandItem,
 } from '@vibe/ui/components/Command';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import { ProjectProvider } from '@/integrations/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
-import { UserProvider, useUserContext } from '@/contexts/remote/UserContext';
+import { UserProvider } from '@/integrations/remote/UserProvider';
+import { useUserContext } from '@/shared/hooks/useUserContext';
 
 export interface WorkspaceSelectionDialogProps {
   projectId: string;

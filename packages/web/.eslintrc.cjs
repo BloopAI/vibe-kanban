@@ -150,6 +150,11 @@ module.exports = {
         selector: 'CallExpression[callee.name="removeModal"]',
         message: 'Do not use removeModal(). Use DialogName.remove() instead.',
       },
+      {
+        selector: 'ExportNamedDeclaration[source]',
+        message:
+          'Re-exports are not allowed. Import directly from the owning module instead.',
+      },
     ],
     // i18n rule - only active when LINT_I18N=true
     'i18next/no-literal-string': i18nCheck
@@ -434,6 +439,13 @@ module.exports = {
       },
       rules: {
         '@typescript-eslint/switch-exhaustiveness-check': 'off',
+      },
+    },
+    {
+      // i18n index re-exports the default export from config for `import i18n from '@/i18n'`
+      files: ['src/i18n/index.ts'],
+      rules: {
+        'no-restricted-syntax': 'off',
       },
     },
     {

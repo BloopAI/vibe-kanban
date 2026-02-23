@@ -21,15 +21,11 @@ import {
   getActionLabel,
 } from '@/shared/types/actions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { UserContext } from '@/contexts/remote/UserContext';
+import { UserContext } from '@/shared/hooks/useUserContext';
 import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
-export {
-  useActions,
-  type ActionsContextValue,
-} from '@/shared/hooks/useActions';
 
 interface ActionsProviderProps {
   children: ReactNode;

@@ -6,8 +6,8 @@ import {
   ArrowsLeftRightIcon,
   CopyIcon,
 } from '@phosphor-icons/react';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useActions } from '@/contexts/ActionsContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships';
 import { IssueRelationshipsSection } from '@vibe/ui/components/IssueRelationshipsSection';

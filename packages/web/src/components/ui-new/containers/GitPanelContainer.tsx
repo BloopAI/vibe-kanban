@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useActions } from '@/contexts/ActionsContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { usePush } from '@/shared/hooks/usePush';
 import { useRenameBranch } from '@/shared/hooks/useRenameBranch';
@@ -9,7 +9,7 @@ import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { ForcePushDialog } from '@/shared/dialogs/command-bar/ForcePushDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { GitPanel, type RepoInfo } from '@vibe/ui/components/GitPanel';
-import { Actions } from '@/components/ui-new/actions';
+import { Actions } from '@/shared/actions';
 import type { RepoAction } from '@vibe/ui/components/RepoCard';
 import type { Workspace, RepoWithTargetBranch, Merge } from 'shared/types';
 

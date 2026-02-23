@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import type {
   NavigationState,
   PreviewDevToolsMessage,
-} from '../types/previewDevTools';
+} from '@/shared/types/previewDevTools';
 
 export interface UsePreviewNavigationReturn {
   navigation: NavigationState | null;

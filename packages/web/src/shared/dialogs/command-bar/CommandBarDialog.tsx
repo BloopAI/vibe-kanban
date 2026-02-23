@@ -12,7 +12,7 @@ import {
 import { useActions } from '@/shared/hooks/useActions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { attemptKeys } from '@/shared/hooks/useAttempt';
-import { IdeIcon } from '@/components/ide/IdeIcon';
+import { IdeIcon } from '@/shared/components/IdeIcon';
 import type { PageId, ResolvedGroupItem } from '@/shared/types/commandBar';
 import {
   ActionTargetType,

@@ -20,7 +20,7 @@ import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
 import type { BaseCodingAgent, ExecutorConfigs } from 'shared/types';
 import { cn } from '@/shared/lib/utils';
-import { toPrettyCase } from '@/utils/string';
+import { toPrettyCase } from '@/shared/lib/string';
 import {
   SettingsSaveBar,
   TwoColumnPicker,
@@ -30,7 +30,7 @@ import {
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { AgentIcon } from '@/components/agents/AgentIcon';
+import { AgentIcon } from '@/shared/components/AgentIcon';
 import { getExecutorVariantKeys } from '@/shared/lib/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;

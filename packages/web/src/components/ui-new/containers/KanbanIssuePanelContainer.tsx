@@ -11,12 +11,12 @@ import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
 import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
@@ -25,11 +25,11 @@ import {
   KanbanIssuePanel,
   type IssueFormData,
 } from '@vibe/ui/components/KanbanIssuePanel';
-import { useActions } from '@/contexts/ActionsContext';
-import { useUserContext } from '@/contexts/remote/UserContext';
+import { useActions } from '@/shared/hooks/useActions';
+import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
-import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
   buildWorkspaceCreateInitialState,

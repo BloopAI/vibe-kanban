@@ -9,14 +9,14 @@ import {
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useUserContext } from '@/contexts/remote/UserContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
-import { CreateModeProvider } from '@/contexts/CreateModeContext';
+import { CreateModeProvider } from '@/integrations/CreateModeProvider';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
