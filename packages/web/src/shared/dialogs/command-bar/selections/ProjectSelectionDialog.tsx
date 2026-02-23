@@ -10,10 +10,7 @@ import {
   CommandBar,
   type CommandBarGroupItem,
 } from '@vibe/ui/components/CommandBar';
-import type {
-  PageId,
-  ResolvedGroupItem,
-} from '@/features/command-bar/ui/actions/pages';
+import type { PageId, ResolvedGroupItem } from '@/shared/types/commandBar';
 import type { StatusItem } from '@/shared/types/selectionItems';
 import type { Issue } from 'shared/remote-types';
 import { buildStatusSelectionPages } from './statusSelection';

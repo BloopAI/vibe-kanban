@@ -7,14 +7,14 @@ import {
   KanbanIcon,
 } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
-import {
-  Pages,
-  type PageId,
-  type StaticPageId,
-  type CommandBarGroupItem,
-  type ResolvedGroup,
-  type ResolvedGroupItem,
-} from '@/features/command-bar/ui/actions/pages';
+import { Pages } from '@/features/command-bar/ui/actions/pages';
+import type {
+  PageId,
+  StaticPageId,
+  CommandBarGroupItem,
+  ResolvedGroup,
+  ResolvedGroupItem,
+} from '@/shared/types/commandBar';
 import {
   isActionVisible,
   type ActionVisibilityContext,

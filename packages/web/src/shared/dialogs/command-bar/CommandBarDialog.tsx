@@ -13,10 +13,7 @@ import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { attemptKeys } from '@/shared/hooks/useAttempt';
 import { IdeIcon } from '@/components/ide/IdeIcon';
-import type {
-  PageId,
-  ResolvedGroupItem,
-} from '@/features/command-bar/ui/actions/pages';
+import type { PageId, ResolvedGroupItem } from '@/shared/types/commandBar';
 import {
   ActionTargetType,
   type ActionDefinition,

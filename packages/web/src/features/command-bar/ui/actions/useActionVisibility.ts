@@ -1,5 +1,5 @@
 import type { ActionVisibilityContext } from '@/shared/types/actions';
-import type { CommandBarPage } from './pages';
+import type { CommandBarPage } from '@/shared/types/commandBar';
 
 /**
  * Helper to check if a page is visible given the current context.

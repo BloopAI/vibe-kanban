@@ -10,7 +10,7 @@ import type {
   PageId,
   ResolvedGroup,
   ResolvedGroupItem,
-} from '@/features/command-bar/ui/actions/pages';
+} from '@/shared/types/commandBar';
 import type { StatusItem } from '@/shared/types/selectionItems';
 import { resolveLabel, type ActionDefinition } from '@/shared/types/actions';
 

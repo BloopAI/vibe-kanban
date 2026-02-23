@@ -1,8 +1,5 @@
 import { useReducer, useCallback, useRef } from 'react';
-import type {
-  PageId,
-  ResolvedGroupItem,
-} from '@/features/command-bar/ui/actions/pages';
+import type { PageId, ResolvedGroupItem } from '@/shared/types/commandBar';
 import type { ActionDefinition } from '@/shared/types/actions';
 
 export interface CommandBarState {

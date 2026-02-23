@@ -1,10 +1,6 @@
 import type { Workspace } from 'shared/types';
-import {
-  Pages,
-  getPageActions,
-  type StaticPageId,
-  type ResolvedGroup,
-} from '@/features/command-bar/ui/actions/pages';
+import { Pages, getPageActions } from '@/features/command-bar/ui/actions/pages';
+import type { StaticPageId, ResolvedGroup } from '@/shared/types/commandBar';
 import {
   resolveLabel,
   isActionVisible,
