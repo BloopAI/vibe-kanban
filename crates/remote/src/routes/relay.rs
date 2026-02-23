@@ -28,6 +28,7 @@ use crate::{
     db::{
         hosts::HostRepository,
         identity_errors::IdentityError,
+        relay_auth_codes::RelayAuthCodeRepository,
         relay_browser_sessions::RelayBrowserSessionRepository,
     },
     relay::{ActiveRelay, RelayRegistry},
@@ -154,9 +155,9 @@ pub async fn relay_subdomain_proxy(
         && let Some(code) = form_urlencoded::parse(query.as_bytes())
             .find_map(|(k, v)| (k == "code").then(|| v.into_owned()))
     {
-        let registry = state.relay_registry();
-        match registry.redeem_auth_code(&code).await {
-            Some((code_host_id, relay_cookie_value)) if code_host_id == host_id => {
+        let auth_code_repo = RelayAuthCodeRepository::new(state.pool());
+        match auth_code_repo.redeem_for_host(&code, host_id).await {
+            Ok(Some(relay_cookie_value)) => {
                 return Response::builder()
                     .status(StatusCode::FOUND)
                     .header("location", "/")
@@ -169,8 +170,12 @@ pub async fn relay_subdomain_proxy(
                     .body(Body::empty())
                     .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
             }
-            _ => {
+            Ok(None) => {
                 return (StatusCode::UNAUTHORIZED, "Invalid or expired code").into_response();
+            }
+            Err(error) => {
+                tracing::warn!(?error, "failed to redeem relay auth code");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
             }
         }
     }
@@ -312,9 +317,18 @@ async fn relay_session_auth_code(
             }
         };
     let relay_cookie_value = relay_browser_session.id.to_string();
-    let code = registry
-        .store_auth_code(session.host_id, relay_cookie_value)
-        .await;
+    let auth_code_repo = RelayAuthCodeRepository::new(state.pool());
+    let code = match auth_code_repo
+        .create(session.host_id, &relay_cookie_value)
+        .await
+    {
+        Ok(code) => code,
+        Err(error) => {
+            tracing::warn!(?error, "failed to create relay auth code");
+            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
+                .into_response();
+        }
+    };
 
     Json(RelaySessionAuthCodeResponse {
         session_id: session.id,
