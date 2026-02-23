@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { NewDesignScope } from '@/app/providers/NewDesignScope';
-import { TerminalProvider } from '@/contexts/TerminalContext';
+import { TerminalProvider } from '@/app/providers/TerminalProvider';
 import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 
 function AppLayoutRouteComponent() {

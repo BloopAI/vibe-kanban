@@ -8,7 +8,7 @@ import {
   type ToolStatus,
   type BaseCodingAgent,
 } from 'shared/types';
-import { AgentIcon } from '@/components/agents/AgentIcon';
+import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
