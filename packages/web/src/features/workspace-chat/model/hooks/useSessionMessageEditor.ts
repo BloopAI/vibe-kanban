@@ -4,8 +4,8 @@ import {
   type DraftFollowUpData,
   type ExecutorConfig,
 } from 'shared/types';
-import { useScratch } from '@/hooks/useScratch';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { useScratch } from '@/shared/hooks/useScratch';
+import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 
 interface UseSessionMessageEditorOptions {
   /** Scratch ID (workspaceId for new session, sessionId for existing) */

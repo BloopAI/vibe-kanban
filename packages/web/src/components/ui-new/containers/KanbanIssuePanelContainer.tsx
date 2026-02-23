@@ -10,7 +10,7 @@ import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { IssuePriority } from 'shared/remote-types';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
@@ -36,7 +36,7 @@ import {
   buildWorkspaceCreatePrompt,
 } from '@/shared/lib/workspaceCreateState';
 import { ScratchType, type DraftIssueData } from 'shared/types';
-import { useScratch } from '@/hooks/useScratch';
+import { useScratch } from '@/shared/hooks/useScratch';
 import {
   createBlankCreateFormData,
   createInitialKanbanIssuePanelFormState,

@@ -1,7 +1,7 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { ScratchType, type WorkspaceNotesData } from 'shared/types';
-import { useScratch } from '@/hooks/useScratch';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { useScratch } from '@/shared/hooks/useScratch';
+import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 
 export interface UseWorkspaceNotesResult {
   content: string;

@@ -11,8 +11,8 @@ import {
   PROJECT_ISSUES_SHAPE,
   type Workspace as RemoteWorkspace,
 } from 'shared/remote-types';
-import { useScratch } from '@/hooks/useScratch';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
+import { useScratch } from '@/shared/hooks/useScratch';
+import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/integrations/electric/hooks';
 import { repoApi } from '@/shared/lib/api';

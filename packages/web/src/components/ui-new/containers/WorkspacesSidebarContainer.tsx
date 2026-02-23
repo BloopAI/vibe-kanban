@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
-import { useScratch } from '@/hooks/useScratch';
+import { useScratch } from '@/shared/hooks/useScratch';
 import { useAllOrganizationProjects } from '@/hooks/useAllOrganizationProjects';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';

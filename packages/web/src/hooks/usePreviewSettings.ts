@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
-import { useScratch } from './useScratch';
-import { useDebouncedCallback } from './useDebouncedCallback';
+import { useScratch } from '@/shared/hooks/useScratch';
+import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import {
   ScratchType,
   type PreviewSettingsData,
