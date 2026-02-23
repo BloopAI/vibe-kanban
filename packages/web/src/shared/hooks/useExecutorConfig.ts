@@ -6,7 +6,7 @@ import type {
   ExecutorProfileId,
 } from 'shared/types';
 import { getVariantOptions } from '@/shared/lib/executor';
-import { usePresetOptions } from '@/hooks/usePresetOptions';
+import { usePresetOptions } from '@/shared/hooks/usePresetOptions';
 
 function getProfileKey(
   executor: BaseCodingAgent | null,

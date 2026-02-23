@@ -7,7 +7,7 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import { useCreateWorkspace } from '@/features/workspace/model/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
-import { useExecutorConfig } from '@/hooks/useExecutorConfig';
+import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
 import { getSortedExecutorVariantKeys } from '@/shared/lib/executor';
 import {
   toPrettyCase,

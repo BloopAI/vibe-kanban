@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profilesApi } from '@/shared/lib/api';
 import type { JsonValue } from 'shared/types';
-import { presetOptionsKeys } from '@/hooks/usePresetOptions';
+import { presetOptionsKeys } from '@/shared/hooks/usePresetOptions';
 
 export type UseProfilesReturn = {
   // data

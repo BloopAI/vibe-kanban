@@ -21,7 +21,7 @@ import { useReviewOptional } from '@/contexts/ReviewProvider';
 import { useActions } from '@/shared/hooks/useActions';
 import { useTodos } from '../model/hooks/useTodos';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
-import { useExecutorConfig } from '@/hooks/useExecutorConfig';
+import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';
 import { useSessionMessageEditor } from '../model/hooks/useSessionMessageEditor';
 import { useSessionQueueInteraction } from '../model/hooks/useSessionQueueInteraction';
 import { useSessionSend } from '../model/hooks/useSessionSend';
