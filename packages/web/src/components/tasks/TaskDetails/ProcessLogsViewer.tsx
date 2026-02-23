@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
 import { AlertCircle } from 'lucide-react';
 import { useLogStream } from '@/shared/hooks/useLogStream';
-import RawLogText from '@/components/common/RawLogText';
+import RawLogText from '@/shared/components/RawLogText';
 import type { PatchType } from 'shared/types';
 
 type LogEntry = Extract<PatchType, { type: 'STDOUT' } | { type: 'STDERR' }>;
