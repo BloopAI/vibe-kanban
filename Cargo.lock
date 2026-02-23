@@ -6541,6 +6541,7 @@ dependencies = [
  "futures",
  "futures-util",
  "http",
+ "http-body-util",
  "hyper",
  "hyper-util",
  "jsonwebtoken",

@@ -5,7 +5,7 @@
 
 use anyhow::Context as _;
 use deployment::Deployment as _;
-use relay_tunnel::client::{RelayClientConfig, start_relay_client};
+use relay_tunnel::client::{RelayClientConfig, TcpForwardConfig, start_relay_client};
 use services::services::remote_client::RemoteClient;
 use tokio_util::sync::CancellationToken;
 use utils::browser::open_browser;
@@ -180,12 +180,18 @@ pub async fn start_relay(
 
     tracing::info!(%ws_url, "connecting relay control channel");
 
+    let tcp_forward = std::env::var("VK_SSH_RELAY").ok().map(|_| TcpForwardConfig {
+        ssh_target_addr: std::env::var("VK_SSH_TARGET")
+            .unwrap_or_else(|_| "127.0.0.1:22".to_string()),
+    });
+
     start_relay_client(RelayClientConfig {
         ws_url,
         bearer_token: access_token,
         accept_invalid_certs: cfg!(debug_assertions),
         local_addr: format!("127.0.0.1:{local_port}"),
         shutdown,
+        tcp_forward,
     })
     .await
 }

@@ -2,105 +2,22 @@ use std::convert::Infallible;
 
 use anyhow::Context as _;
 use axum::body::Body;
-use futures_util::StreamExt;
 use http::StatusCode;
 use hyper::{
-    Request, Response, body::Incoming, client::conn::http1 as client_http1,
+    Method, Request, Response, body::Incoming, client::conn::http1 as client_http1,
     server::conn::http1 as server_http1, service::service_fn, upgrade,
 };
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
-use tokio_tungstenite::{
-    Connector,
-    tungstenite::{self, client::IntoClientRequest},
-};
-use tokio_util::sync::CancellationToken;
-use tokio_yamux::{Config as YamuxConfig, Session};
+use tokio_tungstenite::tungstenite;
 
-use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
+use super::TcpForwardConfig;
+use crate::ws_io::WsIoReadMessage;
 
-pub struct RelayClientConfig {
-    pub ws_url: String,
-    pub bearer_token: String,
-    pub accept_invalid_certs: bool,
-    pub local_addr: String,
-    pub shutdown: CancellationToken,
-}
-
-/// Connects the relay client control channel and starts handling inbound streams.
-///
-/// Returns when shutdown is requested or when the control channel disconnects/errors.
-pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()> {
-    let mut request = config
-        .ws_url
-        .clone()
-        .into_client_request()
-        .context("Failed to build WS request")?;
-
-    request.headers_mut().insert(
-        "Authorization",
-        format!("Bearer {}", config.bearer_token)
-            .parse()
-            .context("Invalid auth header")?,
-    );
-
-    let mut tls_builder = native_tls::TlsConnector::builder();
-    if config.accept_invalid_certs {
-        tls_builder.danger_accept_invalid_certs(true);
-    }
-    let tls_connector = tls_builder
-        .build()
-        .context("Failed to build TLS connector")?;
-
-    let (ws_stream, _response) = tokio_tungstenite::connect_async_tls_with_config(
-        request,
-        None,
-        false,
-        Some(Connector::NativeTls(tls_connector)),
-    )
-    .await
-    .context("Failed to connect relay control channel")?;
-
-    let ws_io = WsMessageStreamIo::new(ws_stream, read_client_message, write_client_message);
-    let mut session = Session::new_client(ws_io, YamuxConfig::default());
-    let mut control = session.control();
-
-    tracing::info!("relay control channel connected");
-
-    let shutdown = config.shutdown;
-    let local_addr = config.local_addr;
-
-    loop {
-        tokio::select! {
-            _ = shutdown.cancelled() => {
-                control.close().await;
-                return Ok(());
-            }
-            inbound = session.next() => {
-                match inbound {
-                    Some(Ok(stream)) => {
-                        let local_addr = local_addr.clone();
-                        tokio::spawn(async move {
-                            if let Err(error) = handle_inbound_stream(stream, local_addr).await {
-                                tracing::warn!(?error, "relay stream handling failed");
-                            }
-                        });
-                    }
-                    Some(Err(error)) => {
-                        return Err(anyhow::anyhow!("relay yamux session error: {error}"));
-                    }
-                    None => {
-                        return Err(anyhow::anyhow!("relay control channel closed"));
-                    }
-                }
-            }
-        }
-    }
-}
-
-async fn handle_inbound_stream(
+pub async fn handle_inbound_stream(
     stream: tokio_yamux::StreamHandle,
     local_addr: String,
+    tcp_forward: Option<TcpForwardConfig>,
 ) -> anyhow::Result<()> {
     let io = TokioIo::new(stream);
 
@@ -108,7 +25,19 @@ async fn handle_inbound_stream(
         .serve_connection(
             io,
             service_fn(move |request: Request<Incoming>| {
-                proxy_to_local(request, local_addr.clone())
+                let local_addr = local_addr.clone();
+                let tcp_forward = tcp_forward.clone();
+                async move {
+                    if request.method() == Method::CONNECT {
+                        return match &tcp_forward {
+                            Some(config) => {
+                                super::tcp::handle_connect_tunnel(request, config).await
+                            }
+                            None => Ok(super::tcp::simple_forbidden()),
+                        };
+                    }
+                    proxy_to_local(request, local_addr).await
+                }
             }),
         )
         .with_upgrades()
@@ -193,7 +122,7 @@ fn simple_response(status: StatusCode, body: &'static str) -> Response<Body> {
         .unwrap_or_else(|_| Response::new(Body::from(body)))
 }
 
-fn read_client_message(message: tungstenite::Message) -> WsIoReadMessage {
+pub fn read_client_message(message: tungstenite::Message) -> WsIoReadMessage {
     match message {
         tungstenite::Message::Binary(data) => WsIoReadMessage::Data(data.to_vec()),
         tungstenite::Message::Text(text) => WsIoReadMessage::Data(text.as_bytes().to_vec()),
@@ -202,6 +131,6 @@ fn read_client_message(message: tungstenite::Message) -> WsIoReadMessage {
     }
 }
 
-fn write_client_message(bytes: Vec<u8>) -> tungstenite::Message {
+pub fn write_client_message(bytes: Vec<u8>) -> tungstenite::Message {
     tungstenite::Message::Binary(bytes.into())
 }
