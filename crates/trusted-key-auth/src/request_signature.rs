@@ -12,7 +12,7 @@ use crate::trusted_keys::load_trusted_public_keys;
 
 pub const SIGNATURE_HEADER: &str = "x-vk-signature";
 pub const TIMESTAMP_HEADER: &str = "x-vk-timestamp";
-pub const MAX_TIMESTAMP_DRIFT_SECONDS: i64 = 5 * 60;
+pub const MAX_TIMESTAMP_DRIFT_SECONDS: i64 = 30;
 
 #[derive(Debug, Clone, Copy)]
 pub struct VerifiedRequestSignature {
