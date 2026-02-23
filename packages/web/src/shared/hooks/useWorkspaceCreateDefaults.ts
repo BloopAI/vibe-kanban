@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { ExecutorConfig, RepoWithTargetBranch } from 'shared/types';
 import { attemptsApi } from '@/shared/lib/api';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
-import { getLatestConfigFromProcesses } from '@/utils/executor';
+import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 
 interface UseWorkspaceCreateDefaultsOptions {
   sourceWorkspaceId: string | null;

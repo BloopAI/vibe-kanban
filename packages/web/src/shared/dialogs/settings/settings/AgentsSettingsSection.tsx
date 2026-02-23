@@ -31,7 +31,7 @@ import {
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { AgentIcon } from '@/components/agents/AgentIcon';
-import { getExecutorVariantKeys } from '@/utils/executor';
+import { getExecutorVariantKeys } from '@/shared/lib/executor';
 
 type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 

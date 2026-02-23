@@ -6,7 +6,7 @@ import {
   filterRunningDevServers,
   filterDevServerProcesses,
   deduplicateDevServersByWorkingDir,
-} from '@/lib/devServerUtils';
+} from '@/shared/lib/devServerUtils';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 
 interface UseDevServerOptions {

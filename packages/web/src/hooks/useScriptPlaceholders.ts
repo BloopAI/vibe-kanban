@@ -3,7 +3,7 @@ import {
   createScriptPlaceholderStrategy,
   ScriptPlaceholderContext,
   type ScriptPlaceholders,
-} from '@/utils/scriptPlaceholders';
+} from '@/shared/lib/scriptPlaceholders';
 
 export function useScriptPlaceholders(): ScriptPlaceholders {
   const { system } = useUserSystem();

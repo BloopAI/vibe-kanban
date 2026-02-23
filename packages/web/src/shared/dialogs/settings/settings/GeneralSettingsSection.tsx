@@ -24,7 +24,7 @@ import { toPrettyCase } from '@/utils/string';
 import {
   getExecutorVariantKeys,
   getSortedExecutorVariantKeys,
-} from '@/utils/executor';
+} from '@/shared/lib/executor';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { TagManager } from '@/components/TagManager';

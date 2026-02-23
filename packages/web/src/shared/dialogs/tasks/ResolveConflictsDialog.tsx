@@ -21,7 +21,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { buildResolveConflictsInstructions } from '@/lib/conflicts';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
-import { getLatestConfigFromProcesses } from '@/utils/executor';
+import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 import type {
   BaseCodingAgent,
   ExecutorProfileId,

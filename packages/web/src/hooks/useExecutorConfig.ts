@@ -5,7 +5,7 @@ import type {
   ExecutorProfile,
   ExecutorProfileId,
 } from 'shared/types';
-import { getVariantOptions } from '@/utils/executor';
+import { getVariantOptions } from '@/shared/lib/executor';
 import { usePresetOptions } from '@/hooks/usePresetOptions';
 
 function getProfileKey(
