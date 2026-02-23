@@ -5,7 +5,7 @@ import {
   type LogEntry,
   VirtualizedProcessLogs,
 } from './VirtualizedProcessLogs';
-import { useLogStream } from '@/hooks/useLogStream';
+import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import { TerminalPanelContainer } from './TerminalPanelContainer';
 import { ArrowsInSimpleIcon } from '@phosphor-icons/react';

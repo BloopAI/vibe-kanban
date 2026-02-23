@@ -25,7 +25,7 @@ import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { UserContext } from '@/contexts/remote/UserContext';
 import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
-import { useLogStream } from '@/hooks/useLogStream';
+import { useLogStream } from '@/shared/hooks/useLogStream';
 
 interface ActionsContextValue {
   // Execute an action with optional workspaceId and repoId/projectId

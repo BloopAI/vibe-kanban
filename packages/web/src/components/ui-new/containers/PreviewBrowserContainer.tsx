@@ -20,7 +20,7 @@ import {
   usePreviewSettings,
   type ScreenSize,
 } from '@/hooks/usePreviewSettings';
-import { useLogStream } from '@/hooks/useLogStream';
+import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';

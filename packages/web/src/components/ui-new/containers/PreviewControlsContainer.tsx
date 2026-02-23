@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PreviewControls } from '@vibe/ui/components/PreviewControls';
 import { usePreviewDevServer } from '@/features/workspace/model/hooks/usePreviewDevServer';
-import { useLogStream } from '@/hooks/useLogStream';
+import { useLogStream } from '@/shared/hooks/useLogStream';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
