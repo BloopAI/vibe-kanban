@@ -1,4 +1,4 @@
-import { Actions } from '@/components/ui-new/actions';
+import { Actions } from '@/shared/actions';
 import type { ActionDefinition } from '@/shared/types/actions';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
 import type { StaticPageId, CommandBarPage } from '@/shared/types/commandBar';

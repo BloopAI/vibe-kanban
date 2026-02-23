@@ -24,7 +24,7 @@ import {
 } from '@/shared/lib/remoteApi';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
-import { Actions } from '@/components/ui-new/actions';
+import { Actions } from '@/shared/actions';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   KanbanProvider,

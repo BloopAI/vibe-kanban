@@ -47,7 +47,7 @@ import {
 } from '@/shared/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/shared/lib/routes/navigation';
 import { useInspectModeStore } from '../model/store/useInspectModeStore';
-import { Actions } from '@/components/ui-new/actions';
+import { Actions } from '@/shared/actions';
 import {
   isSpecialIcon,
   getActionTooltip,

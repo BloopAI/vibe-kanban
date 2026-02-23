@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from '@tanstack/react-router';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/contexts/ActionsContext';
-import { Actions } from '@/components/ui-new/actions';
+import { Actions } from '@/shared/actions';
 import {
   type ActionDefinition,
   ActionTargetType,

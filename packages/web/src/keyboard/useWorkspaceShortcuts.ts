@@ -2,7 +2,7 @@ import { useCallback, useRef, useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/contexts/ActionsContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { Actions } from '@/components/ui-new/actions';
+import { Actions } from '@/shared/actions';
 import {
   type ActionDefinition,
   ActionTargetType,
