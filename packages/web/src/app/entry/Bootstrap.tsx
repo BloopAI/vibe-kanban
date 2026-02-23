@@ -12,7 +12,7 @@ import { PostHogProvider } from 'posthog-js/react';
 import App from '@/app/entry/App';
 import i18n from '@/i18n';
 import { router } from '@/app/router';
-import '@/types/modals';
+import '@/shared/types/modals';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
