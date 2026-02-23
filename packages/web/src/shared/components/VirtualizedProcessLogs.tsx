@@ -10,6 +10,11 @@ import {
 } from '@virtuoso.dev/message-list';
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/ssr';
 import RawLogText from '@/shared/components/RawLogText';
+import {
+  INITIAL_TOP_ITEM,
+  InitialDataScrollModifier,
+  ScrollToBottomModifier as ScrollToLastItem,
+} from '@/shared/lib/virtuoso-modifiers';
 import type { PatchType } from 'shared/types';
 
 export type LogEntry = Extract<
@@ -32,19 +37,6 @@ interface SearchContext {
   matchIndices: number[];
   currentMatchIndex: number;
 }
-
-const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
-
-const InitialDataScrollModifier: ScrollModifier = {
-  type: 'item-location',
-  location: INITIAL_TOP_ITEM,
-  purgeItemSizes: true,
-};
-
-const ScrollToLastItem: ScrollModifier = {
-  type: 'item-location',
-  location: INITIAL_TOP_ITEM,
-};
 
 const computeItemKey: VirtuosoMessageListProps<
   LogEntryWithKey,

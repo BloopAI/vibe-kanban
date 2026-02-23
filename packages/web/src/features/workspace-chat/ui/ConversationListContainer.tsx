@@ -17,6 +17,11 @@ import {
 } from 'react';
 
 import { cn } from '@/shared/lib/utils';
+import {
+  INITIAL_TOP_ITEM,
+  InitialDataScrollModifier,
+  ScrollToBottomModifier,
+} from '@/shared/lib/virtuoso-modifiers';
 import NewDisplayConversationEntry from './NewDisplayConversationEntry';
 import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
 import { useEntries } from '../model/contexts/EntriesContext';
@@ -59,21 +64,6 @@ interface MessageListContext {
   showCleanupPlaceholder: boolean;
   resetAction: UseResetProcessResult;
 }
-
-const INITIAL_TOP_ITEM = { index: 'LAST' as const, align: 'end' as const };
-
-const InitialDataScrollModifier: ScrollModifier = {
-  type: 'item-location',
-  location: INITIAL_TOP_ITEM,
-  purgeItemSizes: true,
-};
-
-// Used when data updates after initial load (e.g., historic batch loading).
-// Scrolls to bottom like InitialDataScrollModifier but preserves measured sizes.
-const ScrollToBottomModifier: ScrollModifier = {
-  type: 'item-location',
-  location: INITIAL_TOP_ITEM,
-};
 
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
