@@ -746,18 +746,20 @@ jobs:
           APPLE_API_KEY=$(node -e "console.log(JSON.parse(require('fs').readFileSync('app_store_key.json','utf8')).key_id)")
           APPLE_API_ISSUER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('app_store_key.json','utf8')).issuerId)")
 
-          # Write the .p8 key file where Tauri expects it
+          # Write the .p8 key file where Tauri/notarytool can find it
           mkdir -p ~/.private_keys
+          KEY_PATH="$HOME/.private_keys/AuthKey_${APPLE_API_KEY}.p8"
           node -e "
             const key = JSON.parse(require('fs').readFileSync('app_store_key.json','utf8'));
             require('fs').writeFileSync(
-              process.env.HOME + '/.private_keys/AuthKey_' + key.key_id + '.p8',
+              '$KEY_PATH',
               key.key.replace(/\\\\n/g, '\n')
             );
           "
 
           echo "APPLE_API_KEY=$APPLE_API_KEY" >> $GITHUB_ENV
           echo "APPLE_API_ISSUER=$APPLE_API_ISSUER" >> $GITHUB_ENV
+          echo "APPLE_API_KEY_PATH=$KEY_PATH" >> $GITHUB_ENV
           rm -f app_store_key.json
 
       - name: Build Tauri app
@@ -767,26 +769,33 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_API_KEY: ${{ env.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ env.APPLE_API_ISSUER }}
+          APPLE_API_KEY_PATH: ${{ env.APPLE_API_KEY_PATH }}
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-      - name: Collect updater artifacts
+      - name: Collect updater artifacts and DMGs
         run: |
           mkdir -p tauri-artifacts/${{ matrix.platform }}
-          # Find the .sig files and their corresponding artifacts in the bundle output
+          # Collect updater artifacts (.sig files and their corresponding bundles)
           find target/${{ matrix.target }}/release/bundle -name "*.sig" | while read sig; do
             artifact="${sig%.sig}"
             if [ -f "$artifact" ]; then
               cp "$artifact" "tauri-artifacts/${{ matrix.platform }}/"
               cp "$sig" "tauri-artifacts/${{ matrix.platform }}/"
-              echo "Collected: $(basename $artifact)"
+              echo "Collected updater artifact: $(basename $artifact)"
             fi
           done
-          echo "Artifacts for ${{ matrix.platform }}:"
+          # Collect DMG files for GitHub Release distribution
+          find target/${{ matrix.target }}/release/bundle -name "*.dmg" | while read dmg; do
+            cp "$dmg" "tauri-artifacts/${{ matrix.platform }}/"
+            echo "Collected DMG: $(basename $dmg)"
+          done
+          echo "All artifacts for ${{ matrix.platform }}:"
           ls -la tauri-artifacts/${{ matrix.platform }}/
 
       - name: Clean up signing keys
