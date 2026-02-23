@@ -18,7 +18,7 @@ import {
   isCodingAgent,
   PROCESS_RUN_REASONS,
   shouldShowInLogs,
-} from '@/constants/processes';
+} from '@/shared/constants/processes';
 import type {
   ExecutionProcess,
   ExecutionProcessRepoState,

@@ -10,7 +10,7 @@ import {
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { streamJsonPatchEntries } from '@/utils/streamJsonPatchEntries';
+import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
   AddEntryType,
   ExecutionProcessStateStore,

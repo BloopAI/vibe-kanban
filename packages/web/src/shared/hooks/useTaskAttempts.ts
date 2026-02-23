@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { attemptsApi, sessionsApi } from '@/shared/lib/api';
 import type { Workspace } from 'shared/types';
-import type { WorkspaceWithSession } from '@/types/attempt';
-import { createWorkspaceWithSession } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
+import { createWorkspaceWithSession } from '@/shared/types/attempt';
 
 export const taskAttemptKeys = {
   all: ['taskAttempts'] as const,

@@ -17,7 +17,7 @@ import {
   useGitOperationsError,
 } from '@/shared/hooks/GitOperationsContext';
 import type { Merge } from 'shared/types';
-import type { WorkspaceWithSession } from '@/types/attempt';
+import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 
