@@ -36,9 +36,9 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Switch } from '@vibe/ui/components/Switch';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { OAuthDialog } from '@/dialogs/global/OAuthDialog';
-import { CreateRemoteProjectDialog } from '@/dialogs/org/CreateRemoteProjectDialog';
-import { DeleteRemoteProjectDialog } from '@/dialogs/org/DeleteRemoteProjectDialog';
+import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
+import { CreateRemoteProjectDialog } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
+import { DeleteRemoteProjectDialog } from '@/shared/dialogs/org/DeleteRemoteProjectDialog';
 import { useShape } from '@/integrations/electric/hooks';
 import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
 

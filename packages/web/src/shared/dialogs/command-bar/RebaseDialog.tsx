@@ -24,7 +24,7 @@ import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { attemptsApi, type Result } from '@/lib/api';
-import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
+import { ResolveConflictsDialog } from '@/shared/dialogs/tasks/ResolveConflictsDialog';
 import { RebaseInProgressDialog } from '@vibe/ui/components/RebaseInProgressDialog';
 
 export interface RebaseDialogProps {

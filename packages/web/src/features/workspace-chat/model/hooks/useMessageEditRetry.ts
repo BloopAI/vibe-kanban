@@ -3,7 +3,7 @@ import { sessionsApi } from '@/lib/api';
 import {
   RestoreLogsDialog,
   type RestoreLogsDialogResult,
-} from '@/dialogs/tasks/RestoreLogsDialog';
+} from '@/shared/dialogs/tasks/RestoreLogsDialog';
 import type {
   RepoBranchStatus,
   ExecutionProcess,

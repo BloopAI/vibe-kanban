@@ -30,7 +30,7 @@ import { useMessageEditRetry } from '../model/hooks/useMessageEditRetry';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useAttemptBranch } from '../model/hooks/useAttemptBranch';
 import { useApprovalMutation } from '../model/hooks/useApprovalMutation';
-import { ResolveConflictsDialog } from '@/dialogs/tasks/ResolveConflictsDialog';
+import { ResolveConflictsDialog } from '@/shared/dialogs/tasks/ResolveConflictsDialog';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { buildAgentPrompt } from '@/shared/lib/promptMessage';
 import { formatDateShortWithTime } from '@/shared/lib/date';
@@ -55,9 +55,9 @@ import {
   isActionVisible,
   type ActionDefinition,
 } from '@/components/ui-new/actions';
-import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
-import { PrCommentsDialog } from '@/dialogs/tasks/PrCommentsDialog';
+import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 
 /** Compute execution status from boolean flags */

@@ -1,4 +1,4 @@
 export {
   GeneralSettingsSection,
   GeneralSettingsSectionContent,
-} from '@/dialogs/settings/settings/GeneralSettingsSection';
+} from '@/shared/dialogs/settings/settings/GeneralSettingsSection';

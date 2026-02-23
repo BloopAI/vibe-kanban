@@ -11,7 +11,7 @@ import { useActions } from '@/contexts/ActionsContext';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { KanbanContainer } from './KanbanContainer';
 import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
-import { LoginRequiredPrompt } from '@/dialogs/shared/LoginRequiredPrompt';
+import { LoginRequiredPrompt } from '@/shared/dialogs/shared/LoginRequiredPrompt';
 import {
   PERSIST_KEYS,
   usePaneSize,

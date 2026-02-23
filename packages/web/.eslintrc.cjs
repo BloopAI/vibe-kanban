@@ -41,7 +41,6 @@ const legacyBanGroup = {
     '@/constants/**',
     '@/types/**',
     '@/keyboard/**',
-    '@/dialogs/**',
   ],
   message:
     'Do not import from legacy directories. Use the equivalent shared/ module, or migrate the code first.',
@@ -196,7 +195,6 @@ module.exports = {
         'src/constants/**/*.{ts,tsx}',
         'src/types/**/*.{ts,tsx}',
         'src/keyboard/**/*.{ts,tsx}',
-        'src/dialogs/**/*.{ts,tsx}',
       ],
       rules: {
         'no-restricted-imports': withLayerBoundaries([
@@ -222,7 +220,6 @@ module.exports = {
               '@/constants/**',
               '@/types/**',
               '@/keyboard/**',
-              '@/dialogs/**',
             ],
             message:
               'Legacy directories must not import from other legacy directories. Migrate the dependency to shared/ first.',
@@ -401,7 +398,7 @@ module.exports = {
         'src/app/providers/VSCodeScope.tsx',
         'src/components/legacy-design/LegacyDesignScope.tsx',
         'src/components/ui-new/scope/NewDesignScope.tsx',
-        'src/components/dialogs/**/*.{ts,tsx}',
+        'src/shared/dialogs/**/*.{ts,tsx}',
       ],
       rules: {
         'no-restricted-imports': [

@@ -1,4 +1,4 @@
 export {
   RebaseDialog,
   type RebaseDialogProps,
-} from '@/dialogs/command-bar/RebaseDialog';
+} from '@/shared/dialogs/command-bar/RebaseDialog';

@@ -26,11 +26,11 @@ import {
   GhCliHelpInstructions,
   GhCliSetupDialog,
   mapGhCliErrorToUi,
-} from '@/dialogs/auth/GhCliSetupDialog';
+} from '@/shared/dialogs/auth/GhCliSetupDialog';
 import type {
   GhCliSupportContent,
   GhCliSupportVariant,
-} from '@/dialogs/auth/GhCliSetupDialog';
+} from '@/shared/dialogs/auth/GhCliSetupDialog';
 import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { defineModal } from '@/lib/modals';

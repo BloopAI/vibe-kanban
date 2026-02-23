@@ -41,9 +41,9 @@ import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships'
 import { KanbanFilterBar } from '@vibe/ui/components/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
-import { CommandBarDialog } from '@/dialogs/command-bar/CommandBarDialog';
+import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
-import { KanbanFiltersDialog } from '@/dialogs/kanban/KanbanFiltersDialog';
+import { KanbanFiltersDialog } from '@/shared/dialogs/kanban/KanbanFiltersDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,

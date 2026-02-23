@@ -1,4 +1,4 @@
 export {
   ReposSettingsSection,
   ReposSettingsSectionContent,
-} from '@/dialogs/settings/settings/ReposSettingsSection';
+} from '@/shared/dialogs/settings/settings/ReposSettingsSection';

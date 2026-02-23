@@ -1,7 +1,7 @@
 import { useCallback, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LogIn, type LucideIcon } from 'lucide-react';
-import { OAuthDialog } from '@/dialogs/global/OAuthDialog';
+import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 
 import { Alert } from '@vibe/ui/components/Alert';
 import { Button } from '@vibe/ui/components/Button';

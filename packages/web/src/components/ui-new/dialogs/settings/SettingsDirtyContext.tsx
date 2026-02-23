@@ -1,4 +1,4 @@
 export {
   SettingsDirtyProvider,
   useSettingsDirty,
-} from '@/dialogs/settings/settings/SettingsDirtyContext';
+} from '@/shared/dialogs/settings/settings/SettingsDirtyContext';

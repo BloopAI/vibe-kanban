@@ -25,7 +25,7 @@ import {
   DialogTitle,
 } from '@vibe/ui/components/Dialog';
 import { Switch } from '@vibe/ui/components/Switch';
-import { AssigneeSelectionDialog } from '@/dialogs/kanban/AssigneeSelectionDialog';
+import { AssigneeSelectionDialog } from '@/shared/dialogs/kanban/AssigneeSelectionDialog';
 import { PriorityFilterDropdown } from '@vibe/ui/components/PriorityFilterDropdown';
 import {
   MultiSelectDropdown,

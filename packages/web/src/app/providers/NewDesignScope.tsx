@@ -15,7 +15,7 @@ import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/cont
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
 import NiceModal from '@ebay/nice-modal-react';
 import { useKeyShowHelp, Scope } from '@/keyboard';
-import { KeyboardShortcutsDialog } from '@/dialogs/shared/KeyboardShortcutsDialog';
+import { KeyboardShortcutsDialog } from '@/shared/dialogs/shared/KeyboardShortcutsDialog';
 import '@/app/styles/new/index.css';
 
 interface NewDesignScopeProps {

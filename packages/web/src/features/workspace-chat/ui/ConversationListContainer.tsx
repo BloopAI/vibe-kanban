@@ -40,7 +40,7 @@ import type { WorkspaceWithSession } from '@/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
-import { ScriptFixerDialog } from '@/dialogs/scripts/ScriptFixerDialog';
+import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;

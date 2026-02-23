@@ -25,7 +25,6 @@
       "@/shared/*": ["./src/shared/*"],
       "@/integrations/*": ["./src/integrations/*"],
       "@/*": ["./src/*"],
-      "@dialogs/*": ["./src/components/dialogs/*"],
       "shared/*": ["../../shared/*"]
     }
   },

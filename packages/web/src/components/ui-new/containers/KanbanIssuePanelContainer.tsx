@@ -28,7 +28,7 @@ import {
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { CommandBarDialog } from '@/dialogs/command-bar/CommandBarDialog';
+import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
@@ -614,7 +614,7 @@ export function KanbanIssuePanelContainer({
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
           const { ProjectSelectionDialog } = await import(
-            '@/dialogs/command-bar/selections/ProjectSelectionDialog'
+            '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
           );
           const result = await ProjectSelectionDialog.show({
             projectId,
@@ -635,7 +635,7 @@ export function KanbanIssuePanelContainer({
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
           const { ProjectSelectionDialog } = await import(
-            '@/dialogs/command-bar/selections/ProjectSelectionDialog'
+            '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
           );
           const result = await ProjectSelectionDialog.show({
             projectId,
@@ -659,7 +659,7 @@ export function KanbanIssuePanelContainer({
         // For assigneeIds, open the assignee selection dialog with callback
         if (field === 'assigneeIds') {
           const { AssigneeSelectionDialog } = await import(
-            '@/dialogs/kanban/AssigneeSelectionDialog'
+            '@/shared/dialogs/kanban/AssigneeSelectionDialog'
           );
           await AssigneeSelectionDialog.show({
             projectId,

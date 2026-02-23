@@ -1,4 +1,4 @@
 export {
   RemoteProjectsSettingsSection,
   RemoteProjectsSettingsSectionContent,
-} from '@/dialogs/settings/settings/RemoteProjectsSettingsSection';
+} from '@/shared/dialogs/settings/settings/RemoteProjectsSettingsSection';

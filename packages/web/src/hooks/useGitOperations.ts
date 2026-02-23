@@ -6,7 +6,7 @@ import { useChangeTargetBranch } from '@/shared/hooks/useChangeTargetBranch';
 import { useGitOperationsError } from '@/contexts/GitOperationsContext';
 import { Result } from '@/lib/api';
 import type { GitOperationError, PushTaskAttemptRequest } from 'shared/types';
-import { ForcePushDialog } from '@/dialogs/command-bar/ForcePushDialog';
+import { ForcePushDialog } from '@/shared/dialogs/command-bar/ForcePushDialog';
 
 export function useGitOperations(
   attemptId: string | undefined,

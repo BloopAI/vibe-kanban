@@ -13,21 +13,21 @@ import type { BranchItem, RepoItem } from '@/shared/types/selectionItems';
 import { repoApi } from '@/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/contexts/CreateModeContext';
-import { FolderPickerDialog } from '@/dialogs/shared/FolderPickerDialog';
+import { FolderPickerDialog } from '@/shared/dialogs/shared/FolderPickerDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {
   SelectionDialog,
   type SelectionPage,
-} from '@/dialogs/command-bar/SelectionDialog';
+} from '@/shared/dialogs/command-bar/SelectionDialog';
 import {
   buildRepoSelectionPages,
   type RepoSelectionResult,
-} from '@/dialogs/command-bar/selections/repoSelection';
+} from '@/shared/dialogs/command-bar/selections/repoSelection';
 import {
   buildBranchSelectionPages,
   type BranchSelectionResult,
-} from '@/dialogs/command-bar/selections/branchSelection';
+} from '@/shared/dialogs/command-bar/selections/branchSelection';
 
 function toRepoItem(repo: Repo): RepoItem {
   return {

@@ -15,7 +15,7 @@ import {
 } from '@/shared/lib/string';
 import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
-import { SettingsDialog } from '@/dialogs/settings/SettingsDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
 import { ModelSelectorContainer } from './ModelSelectorContainer';
 
