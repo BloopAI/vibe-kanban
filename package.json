@@ -1,7 +1,10 @@
 {
-  "name": "vibe-kanban",
-  "version": "0.1.11",
-  "private": true,
+  "name": "@holagence/vibe-kanban",
+  "version": "0.1.18",
+  "private": false,
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
   },

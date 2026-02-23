@@ -1,0 +1,122 @@
+name: Build and Publish Vibe Kanban
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags like v0.1.18, v0.1.19-20260223
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 0.1.18 or 0.1.18-20260223)'
+        required: true
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  PNPM_VERSION: '10.13.1'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@holagence'
+
+      - name: Install pnpm
+        run: npm install -g pnpm@${{ env.PNPM_VERSION }}
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            # Extract version from tag (remove 'v' prefix)
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Version: $VERSION"
+
+      - name: Update package.json version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          npm version $VERSION --no-git-tag-version
+          echo "Updated package.json to version $VERSION"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run linters
+        run: pnpm run lint
+
+      - name: Run type checks
+        run: pnpm run check
+
+      - name: Build npx package
+        run: pnpm run build:npx
+
+      - name: Create tarball with npm pack
+        run: |
+          TARBALL=$(npm pack)
+          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
+          echo "Created tarball: $TARBALL"
+          ls -lh $TARBALL
+        id: pack
+
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Vibe Kanban v${{ steps.version.outputs.version }}
+          body: |
+            ## Vibe Kanban v${{ steps.version.outputs.version }}
+
+            ### Installation
+
+            **From GitHub Packages:**
+            ```bash
+            echo "//npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN" > ~/.npmrc
+            npm install -g @holagence/vibe-kanban@${{ steps.version.outputs.version }}
+            ```
+
+            **From tarball (attached to this release):**
+            ```bash
+            curl -fsSL -o vibe-kanban.tgz \
+              https://github.com/${{ github.repository }}/releases/download/v${{ steps.version.outputs.version }}/holagence-vibe-kanban-${{ steps.version.outputs.version }}.tgz
+            npm install -g ./vibe-kanban.tgz
+            ```
+
+            ### What's Changed
+            - See commit history for details
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/v0.1.17...v${{ steps.version.outputs.version }}
+          files: |
+            holagence-vibe-kanban-${{ steps.version.outputs.version }}.tgz
+          draft: false
+          prerelease: false
+
+      - name: Trigger Coder Image Build
+        run: |
+          gh api repos/holagence/holicode/dispatches \
+            --method POST \
+            --field event_type='vibe-kanban-release' \
+            --field client_payload[version]="${{ steps.version.outputs.version }}"
+          echo "Triggered Coder image build for vibe-kanban v${{ steps.version.outputs.version }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

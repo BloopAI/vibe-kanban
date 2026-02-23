@@ -58,6 +58,51 @@ We use [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) 
 
 We would prefer that ideas and changes are first raised with the core team via [GitHub Discussions](https://github.com/BloopAI/vibe-kanban/discussions) or [Discord](https://discord.gg/AC4nwVtJM3), where we can discuss implementation details and alignment with the existing roadmap. Please do not open PRs without first discussing your proposal with the team.
 
+## Releasing (for Maintainers)
+
+**Automated Release Process:**
+
+Vibe Kanban uses fully automated releases via GitHub Actions. To create a new release:
+
+1. **Update version in package.json:**
+   ```bash
+   npm version 0.1.19  # or 0.1.19-20260223 for timestamp variant
+   ```
+
+2. **Push version tag:**
+   ```bash
+   git push --tags
+   ```
+
+3. **Automation handles the rest:**
+   - ✅ Builds and tests
+   - ✅ Creates tarball with `npm pack`
+   - ✅ Publishes to GitHub Packages (`@holagence/vibe-kanban`)
+   - ✅ Creates GitHub release with tarball attached
+   - ✅ Triggers downstream Coder image builds (if configured)
+
+**Manual Release (Fallback):**
+
+If automation fails, you can trigger manually:
+
+```bash
+gh workflow run build-and-publish.yml -f version=0.1.19
+```
+
+**Version Formats:**
+- Semantic: `0.1.18` (standard)
+- With timestamp: `0.1.18-20260223` (includes date for rapid iterations)
+
+**Distribution Channels:**
+- **GitHub Packages** (npm): `npm install -g @holagence/vibe-kanban@0.1.18`
+- **GitHub Releases** (tarball): Download from releases page
+- **Local development**: `npm pack` creates tarball for testing
+
+**Requirements:**
+- Node.js >= 18
+- pnpm >= 8
+- GitHub token with `packages:write` permission (automatic in workflows)
+
 ## Development
 
 ### Prerequisites
