@@ -727,9 +727,17 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
-      - name: Inject updater endpoint
+      - name: Patch tauri.conf.json for CI
         run: |
+          # Inject the real updater endpoint
           sed -i '' "s|__TAURI_UPDATE_ENDPOINT__|${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/tauri-update/latest.json|g" crates/tauri-app/tauri.conf.json
+          # Remove beforeBuildCommand — frontend is already pre-built and downloaded as an artifact
+          node -e "
+            const fs = require('fs');
+            const conf = JSON.parse(fs.readFileSync('crates/tauri-app/tauri.conf.json', 'utf8'));
+            delete conf.build.beforeBuildCommand;
+            fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          "
 
       - name: Build Tauri app
         run: cargo tauri build --target ${{ matrix.target }} --ci
