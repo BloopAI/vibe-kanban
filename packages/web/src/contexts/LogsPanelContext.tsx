@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createHmrContext } from '@/shared/lib/hmrContext';
-import type { LogsPanelContent } from '@/components/ui-new/containers/LogsContentContainer';
+import type { LogsPanelContent } from '@/shared/types/actions';
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
