@@ -1,8 +1,4 @@
-//! In-memory relay registry for active tunnel connections.
-//!
-//! Each connected local server gets an `ActiveRelay` entry. The remote
-//! relay proxy looks up relays by host ID and opens yamux streams over
-//! the existing control connection. One-time auth codes are DB-backed.
+//! In-memory relay registry for active tunnel connections on the remote server.
 
 use std::{
     collections::HashMap,
@@ -12,10 +8,9 @@ use std::{
     },
 };
 
+use relay_tunnel::server::SharedControl;
 use tokio::sync::Mutex;
 use uuid::Uuid;
-
-use crate::server::SharedControl;
 
 const MAX_TCP_STREAMS_PER_HOST: usize = 10;
 

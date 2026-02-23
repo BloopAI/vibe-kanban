@@ -11,6 +11,7 @@ use crate::{
     github_app::GitHubAppService,
     mail::Mailer,
     r2::R2Service,
+    relay::RelayRegistry,
 };
 
 #[derive(Clone)]
@@ -28,6 +29,7 @@ pub struct AppState {
     github_app: Option<Arc<GitHubAppService>>,
     billing: BillingService,
     analytics: Option<AnalyticsService>,
+    relay_registry: RelayRegistry,
 }
 
 impl AppState {
@@ -61,6 +63,7 @@ impl AppState {
             github_app,
             billing,
             analytics,
+            relay_registry: RelayRegistry::default(),
         }
     }
 
@@ -106,5 +109,9 @@ impl AppState {
 
     pub fn analytics(&self) -> Option<&AnalyticsService> {
         self.analytics.as_ref()
+    }
+
+    pub fn relay_registry(&self) -> &RelayRegistry {
+        &self.relay_registry
     }
 }

@@ -11,6 +11,7 @@ pub mod github_app;
 pub mod mail;
 mod middleware;
 pub mod r2;
+pub mod relay;
 pub mod routes;
 pub mod shape_definition;
 pub mod shape_route;
