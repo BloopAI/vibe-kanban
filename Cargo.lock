@@ -6541,6 +6541,7 @@ dependencies = [
  "futures",
  "futures-util",
  "http",
+ "http-body-util",
  "hyper",
  "hyper-util",
  "jsonwebtoken",
@@ -9320,6 +9321,28 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vibe-kanban-ssh-proxy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "directories",
+ "futures-util",
+ "native-tls",
+ "open",
+ "rand 0.9.2",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-tungstenite 0.24.0",
+ "tracing",
+ "tracing-subscriber",
+ "urlencoding",
+]
 
 [[package]]
 name = "vte"
