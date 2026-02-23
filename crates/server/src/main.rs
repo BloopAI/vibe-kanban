@@ -131,8 +131,6 @@ async fn main() -> Result<(), VibeKanbanError> {
         actual_proxy_port
     );
 
-    tunnel::start_relay_if_requested(&deployment, actual_main_port, shutdown_token.clone()).await;
-
     // Production only: open browser
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
@@ -169,6 +167,13 @@ async fn main() -> Result<(), VibeKanbanError> {
         if let Err(e) = proxy_server.await {
             tracing::error!("Preview proxy error: {}", e);
         }
+    });
+
+    let tunnel_deployment = deployment.clone();
+    let tunnel_shutdown = shutdown_token.clone();
+    tokio::spawn(async move {
+        tunnel::start_relay_if_requested(&tunnel_deployment, actual_main_port, tunnel_shutdown)
+            .await;
     });
 
     tokio::select! {

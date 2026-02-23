@@ -114,6 +114,7 @@ export default function RelayPage() {
 
       // Exchange one-time code for relay cookie on the relay subdomain.
       const url = new URL(relay_url);
+      url.pathname = "/__relay/exchange";
       url.searchParams.set("code", code);
       window.location.href = url.toString();
       return;

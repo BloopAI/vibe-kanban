@@ -42,6 +42,20 @@ impl RelayRegistry {
         self.inner.lock().await.remove(host_id);
     }
 
+    /// Remove the relay for a host only when it still matches the provided relay.
+    pub async fn remove_if_same(&self, host_id: &Uuid, relay: &Arc<ActiveRelay>) -> bool {
+        let mut relays = self.inner.lock().await;
+        if relays
+            .get(host_id)
+            .is_some_and(|current| Arc::ptr_eq(current, relay))
+        {
+            relays.remove(host_id);
+            true
+        } else {
+            false
+        }
+    }
+
     /// Look up the active relay for a host.
     pub async fn get(&self, host_id: &Uuid) -> Option<Arc<ActiveRelay>> {
         self.inner.lock().await.get(host_id).cloned()

@@ -3,14 +3,16 @@
 //! - `GET /relay/connect/{host_id}` — Protected. Local host connects via WebSocket.
 //! - `POST /relay/sessions/{session_id}/auth-code` — Protected. Issues one-time code.
 //! - Subdomain routing: `{host_id}.{RELAY_BASE_DOMAIN}` — Serves the full local
-//!   frontend+API through the relay. Auth via opaque `relay_token` cookie.
+//!   frontend+API through the relay.
+//!   - `GET /__relay/exchange?code=...` exchanges one-time auth code for cookie.
+//!   - All other paths proxy with opaque `relay_token` cookie auth.
 
 use std::sync::Arc;
 
 use axum::{
     Extension, Json, Router,
     body::Body,
-    extract::{Path, Request, State, ws::WebSocketUpgrade},
+    extract::{Path, Query, Request, State, ws::WebSocketUpgrade},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -18,7 +20,7 @@ use axum::{
 use axum_extra::headers::{Cookie, HeaderMapExt};
 use chrono::Utc;
 use relay_tunnel::server::{proxy_request_over_control, run_control_channel};
-use url::form_urlencoded;
+use serde::Deserialize;
 use uuid::Uuid;
 use api_types::RelaySessionAuthCodeResponse;
 
@@ -42,6 +44,8 @@ pub fn router() -> Router<AppState> {
             post(relay_session_auth_code),
         )
 }
+
+const RELAY_EXCHANGE_PATH: &str = "/__relay/exchange";
 
 async fn validate_relay_token_for_host(
     state: &AppState,
@@ -124,55 +128,57 @@ async fn validate_relay_token_for_host(
     Ok(())
 }
 
-/// Extract the relay subdomain from a `Host` value using URL parsing.
-pub fn extract_relay_subdomain(host: &str, relay_base_domain: &str) -> Option<String> {
-    relay_tunnel::server::extract_relay_subdomain(host, relay_base_domain)
+/// Entry point for relay-subdomain traffic. Dispatches exchange vs proxy.
+pub async fn relay_subdomain_request(
+    state: State<AppState>,
+    request: Request,
+    host_id: Uuid,
+) -> Response {
+    if request.uri().path() == RELAY_EXCHANGE_PATH {
+        return relay_subdomain_exchange(state, request, host_id).await;
+    }
+
+    relay_subdomain_proxy(state, request, host_id).await
 }
 
-pub fn extract_relay_host_id(host: &str, relay_base_domain: &str) -> Option<Uuid> {
-    let subdomain = extract_relay_subdomain(host, relay_base_domain)?;
-    Uuid::parse_str(&subdomain).ok()
+/// Handle `GET /__relay/exchange?code=...` on a relay subdomain.
+pub async fn relay_subdomain_exchange(
+    State(state): State<AppState>,
+    request: Request,
+    host_id: Uuid,
+) -> Response {
+    let code = match Query::<RelayExchangeQuery>::try_from_uri(request.uri()) {
+        Ok(Query(params)) => params.code,
+        Err(_) => {
+            return (StatusCode::BAD_REQUEST, "Missing code query parameter").into_response();
+        }
+    };
+
+    let auth_code_repo = RelayAuthCodeRepository::new(state.pool());
+    match auth_code_repo.redeem_for_host(&code, host_id).await {
+        Ok(Some(relay_cookie_value)) => Response::builder()
+            .status(StatusCode::FOUND)
+            .header("location", "/")
+            .header(
+                "set-cookie",
+                format!("relay_token={relay_cookie_value}; Path=/; HttpOnly; Secure; SameSite=Lax"),
+            )
+            .body(Body::empty())
+            .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response()),
+        Ok(None) => (StatusCode::UNAUTHORIZED, "Invalid or expired code").into_response(),
+        Err(error) => {
+            tracing::warn!(?error, "failed to redeem relay auth code");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }
 
-/// Handle requests arriving on a relay subdomain.
-///
-/// Two modes:
-/// 1. `?code=<one-time-code>` — exchange the code for a `relay_token` cookie, redirect to `/`.
-/// 2. Normal request with `relay_token` cookie — proxy to local server.
+/// Handle non-exchange relay subdomain requests using relay cookie auth.
 pub async fn relay_subdomain_proxy(
     State(state): State<AppState>,
     request: Request,
     host_id: Uuid,
 ) -> Response {
-    if let Some(query) = request.uri().query()
-        && let Some(code) = form_urlencoded::parse(query.as_bytes())
-            .find_map(|(k, v)| (k == "code").then(|| v.into_owned()))
-    {
-        let auth_code_repo = RelayAuthCodeRepository::new(state.pool());
-        match auth_code_repo.redeem_for_host(&code, host_id).await {
-            Ok(Some(relay_cookie_value)) => {
-                return Response::builder()
-                    .status(StatusCode::FOUND)
-                    .header("location", "/")
-                    .header(
-                        "set-cookie",
-                        format!(
-                            "relay_token={relay_cookie_value}; Path=/; HttpOnly; Secure; SameSite=Lax"
-                        ),
-                    )
-                    .body(Body::empty())
-                    .unwrap_or_else(|_| StatusCode::INTERNAL_SERVER_ERROR.into_response());
-            }
-            Ok(None) => {
-                return (StatusCode::UNAUTHORIZED, "Invalid or expired code").into_response();
-            }
-            Err(error) => {
-                tracing::warn!(?error, "failed to redeem relay auth code");
-                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-            }
-        }
-    }
-
     let relay_token = request
         .headers()
         .typed_get::<Cookie>()
@@ -188,6 +194,11 @@ pub async fn relay_subdomain_proxy(
     }
 
     do_relay_proxy_for_host(state, host_id, request, "").await
+}
+
+#[derive(Debug, Deserialize)]
+struct RelayExchangeQuery {
+    code: String,
 }
 
 // ── Control Channel ────────────────────────────────────────────────────
@@ -232,11 +243,15 @@ async fn handle_control_channel(
     host_id: Uuid,
 ) {
     let registry_for_connect = registry.clone();
+    let connected_relay = Arc::new(tokio::sync::Mutex::new(None::<Arc<ActiveRelay>>));
+    let connected_relay_for_connect = connected_relay.clone();
     let run_result = run_control_channel(socket, move |control| {
         let registry_for_connect = registry_for_connect.clone();
+        let connected_relay_for_connect = connected_relay_for_connect.clone();
         async move {
             let relay = Arc::new(ActiveRelay::new(control));
-            registry_for_connect.insert(host_id, relay).await;
+            registry_for_connect.insert(host_id, relay.clone()).await;
+            *connected_relay_for_connect.lock().await = Some(relay);
             tracing::info!(%host_id, "Relay control channel connected");
         }
     })
@@ -246,10 +261,22 @@ async fn handle_control_channel(
         tracing::warn!(?error, %host_id, "relay session error");
     }
 
-    registry.remove(&host_id).await;
+    let should_mark_offline = if let Some(relay) = connected_relay.lock().await.clone() {
+        registry.remove_if_same(&host_id, &relay).await
+    } else {
+        registry.get(&host_id).await.is_none()
+    };
+
     let repo = HostRepository::new(state.pool());
-    if let Err(error) = repo.mark_host_offline(host_id).await {
-        tracing::warn!(?error, "failed to mark host offline");
+    if should_mark_offline {
+        if let Err(error) = repo.mark_host_offline(host_id).await {
+            tracing::warn!(?error, "failed to mark host offline");
+        }
+    } else {
+        tracing::info!(
+            %host_id,
+            "Relay control channel disconnected; keeping host online because a newer channel is active"
+        );
     }
     tracing::info!(%host_id, "Relay control channel disconnected");
 }

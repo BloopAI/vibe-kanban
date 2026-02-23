@@ -235,7 +235,10 @@ impl RemoteServerConfig {
 
         let github_app = GitHubAppConfig::from_env()?;
 
-        let relay_base_domain = env::var("RELAY_BASE_DOMAIN").ok();
+        let relay_base_domain = env::var("RELAY_BASE_DOMAIN")
+            .ok()
+            .map(|domain| domain.trim().to_string())
+            .filter(|domain| !domain.is_empty());
 
         Ok(Self {
             database_url,

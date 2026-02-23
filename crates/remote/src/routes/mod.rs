@@ -15,12 +15,9 @@ use tower_http::{
     trace::{DefaultOnFailure, TraceLayer},
 };
 use tracing::{Level, Span, field};
+use uuid::Uuid;
 
-use crate::{
-    AppState,
-    auth::require_session,
-    routes::relay::extract_relay_host_id,
-};
+use crate::{AppState, auth::require_session};
 
 #[cfg(feature = "vk-billing")]
 mod billing;
@@ -198,11 +195,16 @@ async fn relay_subdomain_middleware(
             .unwrap_or_default();
 
         if let Some(host_id) = extract_relay_host_id(&host, relay_base_domain) {
-            return relay::relay_subdomain_proxy(state, request, host_id).await;
+            return relay::relay_subdomain_request(state, request, host_id).await;
         }
     }
 
     next.run(request).await
+}
+
+fn extract_relay_host_id(host: &str, relay_base_domain: &str) -> Option<Uuid> {
+    let subdomain = relay_tunnel::server::extract_relay_subdomain(host, relay_base_domain)?;
+    Uuid::parse_str(&subdomain).ok()
 }
 
 #[derive(Serialize)]
