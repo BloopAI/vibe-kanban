@@ -53,18 +53,6 @@ pub async fn initialize_deployment() -> Result<DeploymentImpl, DeploymentError> 
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
 
-    // Pre-warm file search cache for most active projects
-    let deployment_for_cache = deployment.clone();
-    tokio::spawn(async move {
-        if let Err(e) = deployment_for_cache
-            .file_search_cache()
-            .warm_most_active(&deployment_for_cache.db().pool, 3)
-            .await
-        {
-            tracing::warn!("Failed to warm file search cache: {}", e);
-        }
-    });
-
     Ok(deployment)
 }
 
