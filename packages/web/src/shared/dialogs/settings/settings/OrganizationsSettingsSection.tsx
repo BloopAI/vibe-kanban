@@ -15,7 +15,7 @@ import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import {
   CreateOrganizationDialog,

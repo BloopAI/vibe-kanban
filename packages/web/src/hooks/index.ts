@@ -6,7 +6,7 @@ export { useImageUpload } from './useImageUpload';
 export { useDevServer } from '@/shared/hooks/useDevServer';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
 export { useAttempt } from '@/shared/hooks/useAttempt';
-export { useAuth } from './auth/useAuth';
+export { useAuth } from '@/shared/hooks/auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
 export { useAuthStatus } from './auth/useAuthStatus';
 export { useCurrentUser } from './auth/useCurrentUser';

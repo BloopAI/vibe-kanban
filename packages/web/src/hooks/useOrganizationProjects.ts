@@ -1,6 +1,6 @@
 import { useShape } from '@/integrations/electric/hooks';
 import { PROJECTS_SHAPE } from 'shared/remote-types';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 
 export function useOrganizationProjects(organizationId: string | null) {
   const { isSignedIn } = useAuth();

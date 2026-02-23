@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { oauthApi } from '@/shared/lib/api';
 import { useEffect } from 'react';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 
 export function useCurrentUser() {
   const { isSignedIn } = useAuth();

@@ -3,7 +3,7 @@ import { createHmrContext } from '@/shared/lib/hmrContext';
 import { useShape } from '@/integrations/electric/hooks';
 import { USER_WORKSPACES_SHAPE, type Workspace } from 'shared/remote-types';
 import type { SyncError } from '@/shared/lib/electric/types';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 
 /**
  * UserContext provides user-scoped data.

@@ -1,4 +1,4 @@
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { MigrateIntroduction } from '@vibe/ui/components/MigrateIntroduction';
 

@@ -20,7 +20,7 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 import {
   buildIssueCreatePath,
   buildProjectRootPath,

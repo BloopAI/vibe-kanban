@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { oauthApi } from '@/shared/lib/api';
 import { useEffect } from 'react';
-import { useAuth } from '@/hooks';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 
 interface UseAuthStatusOptions {
   enabled: boolean;

@@ -152,6 +152,7 @@ Use when the caller is in the wrong layer.
 | DONE | `src/contexts/LogsPanelContext.tsx` | `10` | legacy (contexts) | `@/components/ui-new/containers/LogsContentContainer` | `contexts -> components` (cross-legacy) | A1 | Repointed `type LogsPanelContent` import to `@/shared/types/actions` where it was already extracted | claude | A1 repoint: type already existed in shared/types/actions; 1 violation eliminated (79→78) |
 | DONE | `src/contexts/WorkspaceContext.tsx` | `9-10` | legacy (contexts) | `@/hooks/useGitHubComments`, `@/hooks/useDiffStream` | `contexts -> hooks` (cross-legacy) | A2 | Cascading A2: moved `usePrComments` (pure, prerequisite for useGitHubComments), then `useGitHubComments` and `useDiffStream` to `shared/hooks/`; repointed 4 consumers total | claude | All 3 hooks pure; usePrComments was prerequisite; 2 violations eliminated (78→76) |
 | DONE | `src/contexts/remote/OrgContext.tsx` | `23` | legacy (contexts) | `@/hooks/organizationKeys` | `contexts -> hooks` (cross-legacy) | A2 | Moved `organizationKeys.ts` (pure constants, zero deps) to `shared/hooks/`; repointed 7 consumers (2 absolute + 4 relative + 1 dynamic import) | claude | Pure constants file; 1 violation eliminated (76→75) |
+| DONE | `src/contexts/remote/UserContext.tsx` | `6` | legacy (contexts) | `@/hooks/auth/useAuth` | `contexts -> hooks` (cross-legacy) | A2 | Moved `useAuth.ts` (pure, only `@/shared/hooks/useUserSystem` dep) to `shared/hooks/auth/`; repointed 16 consumers (13 direct + 3 barrel) | claude | Pure hook; 4 violations eliminated (75→71) |
 
 ## Example Entry
 

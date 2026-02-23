@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Workspace } from 'shared/types';
 import { Loader2 } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { useAuth } from '@/hooks';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
 import {
   GhCliHelpInstructions,

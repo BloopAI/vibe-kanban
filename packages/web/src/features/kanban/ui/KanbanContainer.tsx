@@ -5,7 +5,7 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { useAuth } from '@/hooks/auth/useAuth';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
