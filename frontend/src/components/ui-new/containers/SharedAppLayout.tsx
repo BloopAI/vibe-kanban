@@ -270,7 +270,9 @@ export function SharedAppLayout() {
       <div
         className={cn(
           'flex bg-primary',
-          isMobile ? 'h-dvh pb-[env(safe-area-inset-bottom)]' : 'h-screen'
+          isMobile
+            ? 'fixed inset-0 pb-[env(safe-area-inset-bottom)]'
+            : 'h-screen'
         )}
       >
         {!isMobile && !isMigrateRoute && (
