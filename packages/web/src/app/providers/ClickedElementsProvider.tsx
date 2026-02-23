@@ -4,7 +4,7 @@ import type {
   OpenInEditorPayload,
   ComponentInfo,
   SelectedComponent,
-} from '@/utils/previewBridge';
+} from '@/shared/lib/previewBridge';
 import type { Workspace } from 'shared/types';
 import { genId } from '@/shared/lib/id';
 
