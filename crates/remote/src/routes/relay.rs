@@ -3,7 +3,7 @@
 //! - `GET /relay/connect/{host_id}` — Protected. Local host connects via WebSocket.
 //! - `POST /relay/sessions/{session_id}/auth-code` — Protected. Issues one-time code.
 //! - Subdomain routing: `{host_id}.{RELAY_BASE_DOMAIN}` — Serves the full local
-//!   frontend+API through the relay. Auth via `relay_token` cookie.
+//!   frontend+API through the relay. Auth via opaque `relay_token` cookie.
 
 use std::sync::Arc;
 
@@ -24,10 +24,11 @@ use uuid::Uuid;
 
 use crate::{
     AppState,
-    auth::{RequestContext, request_context_from_access_token},
+    auth::{RequestContext, request_context_from_auth_session_id},
     db::{
         hosts::HostRepository,
         identity_errors::IdentityError,
+        relay_browser_sessions::RelayBrowserSessionRepository,
     },
     relay::{ActiveRelay, RelayRegistry},
 };
@@ -46,7 +47,56 @@ async fn validate_relay_token_for_host(
     relay_token: &str,
     expected_host_id: Uuid,
 ) -> Result<(), Response> {
-    let ctx = request_context_from_access_token(state, relay_token).await?;
+    let relay_browser_session_id = match Uuid::parse_str(relay_token) {
+        Ok(id) => id,
+        Err(error) => {
+            tracing::warn!(?error, "invalid relay browser session cookie");
+            return Err(StatusCode::UNAUTHORIZED.into_response());
+        }
+    };
+
+    let relay_browser_session_repo = RelayBrowserSessionRepository::new(state.pool());
+    let relay_browser_session = match relay_browser_session_repo
+        .get(relay_browser_session_id)
+        .await
+    {
+        Ok(Some(session)) => session,
+        Ok(None) => return Err(StatusCode::UNAUTHORIZED.into_response()),
+        Err(error) => {
+            tracing::warn!(?error, "failed to load relay browser session");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
+        }
+    };
+
+    if relay_browser_session.revoked_at.is_some() {
+        return Err(StatusCode::UNAUTHORIZED.into_response());
+    }
+
+    if relay_browser_session.host_id != expected_host_id {
+        return Err((StatusCode::FORBIDDEN, "Host access denied").into_response());
+    }
+
+    let ctx = match request_context_from_auth_session_id(state, relay_browser_session.auth_session_id)
+        .await
+    {
+        Ok(ctx) => ctx,
+        Err(response) => {
+            if let Err(error) = relay_browser_session_repo.revoke(relay_browser_session.id).await {
+                tracing::warn!(?error, "failed to revoke relay browser session");
+            }
+            return Err(response);
+        }
+    };
+
+    if ctx.user.id != relay_browser_session.user_id {
+        tracing::warn!(
+            relay_browser_session_user_id = %relay_browser_session.user_id,
+            auth_session_user_id = %ctx.user.id,
+            relay_browser_session_id = %relay_browser_session.id,
+            "relay browser session user mismatch"
+        );
+        return Err(StatusCode::UNAUTHORIZED.into_response());
+    }
 
     let host_repo = HostRepository::new(state.pool());
     if let Err(error) = host_repo.assert_host_access(expected_host_id, ctx.user.id).await {
@@ -60,6 +110,14 @@ async fn validate_relay_token_for_host(
             }
             _ => StatusCode::INTERNAL_SERVER_ERROR.into_response(),
         });
+    }
+
+    if let Err(error) = relay_browser_session_repo.touch(relay_browser_session.id).await {
+        tracing::warn!(
+            ?error,
+            relay_browser_session_id = %relay_browser_session.id,
+            "failed to update relay browser session last-used timestamp"
+        );
     }
 
     Ok(())
@@ -98,14 +156,14 @@ pub async fn relay_subdomain_proxy(
     {
         let registry = state.relay_registry();
         match registry.redeem_auth_code(&code).await {
-            Some((code_host_id, relay_token)) if code_host_id == host_id => {
+            Some((code_host_id, relay_cookie_value)) if code_host_id == host_id => {
                 return Response::builder()
                     .status(StatusCode::FOUND)
                     .header("location", "/")
                     .header(
                         "set-cookie",
                         format!(
-                            "relay_token={relay_token}; Path=/; HttpOnly; Secure; SameSite=Lax"
+                            "relay_token={relay_cookie_value}; Path=/; HttpOnly; Secure; SameSite=Lax"
                         ),
                     )
                     .body(Body::empty())
@@ -242,15 +300,21 @@ async fn relay_session_auth_code(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
-    let relay_token = match state.jwt().generate_access_token(ctx.user.id, ctx.session_id) {
-        Ok(token) => token,
-        Err(error) => {
-            tracing::error!(?error, "failed to generate relay access token");
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
-                .into_response();
-        }
-    };
-    let code = registry.store_auth_code(session.host_id, relay_token).await;
+    let relay_browser_session_repo = RelayBrowserSessionRepository::new(state.pool());
+    let relay_browser_session =
+        match relay_browser_session_repo.create(session.host_id, ctx.user.id, ctx.session_id).await
+        {
+            Ok(session) => session,
+            Err(error) => {
+                tracing::warn!(?error, "failed to create relay browser session");
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
+                    .into_response();
+            }
+        };
+    let relay_cookie_value = relay_browser_session.id.to_string();
+    let code = registry
+        .store_auth_code(session.host_id, relay_cookie_value)
+        .await;
 
     Json(RelaySessionAuthCodeResponse {
         session_id: session.id,

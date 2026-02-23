@@ -60,12 +60,31 @@ pub async fn request_context_from_access_token(
         }
     };
 
+    let mut ctx = request_context_from_auth_session_id(state, identity.session_id).await?;
+    if ctx.user.id != identity.user_id {
+        warn!(
+            token_user_id = %identity.user_id,
+            session_user_id = %ctx.user.id,
+            session_id = %identity.session_id,
+            "access token user does not match session user"
+        );
+        return Err(StatusCode::UNAUTHORIZED.into_response());
+    }
+
+    ctx.access_token_expires_at = identity.expires_at;
+    Ok(ctx)
+}
+
+pub async fn request_context_from_auth_session_id(
+    state: &AppState,
+    session_id: Uuid,
+) -> Result<RequestContext, Response> {
     let pool = state.pool();
     let session_repo = AuthSessionRepository::new(pool);
-    let session = match session_repo.get(identity.session_id).await {
+    let session = match session_repo.get(session_id).await {
         Ok(session) => session,
         Err(AuthSessionError::NotFound) => {
-            warn!("session `{}` not found", identity.session_id);
+            warn!("session `{}` not found", session_id);
             return Err(StatusCode::UNAUTHORIZED.into_response());
         }
         Err(AuthSessionError::Database(error)) => {
@@ -79,15 +98,12 @@ pub async fn request_context_from_access_token(
     };
 
     if session.revoked_at.is_some() {
-        warn!("session `{}` rejected (revoked)", identity.session_id);
+        warn!("session `{}` rejected (revoked)", session.id);
         return Err(StatusCode::UNAUTHORIZED.into_response());
     }
 
     if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
-        warn!(
-            "session `{}` expired due to inactivity; revoking",
-            identity.session_id
-        );
+        warn!("session `{}` expired due to inactivity; revoking", session.id);
         if let Err(error) = session_repo.revoke(session.id).await {
             warn!(?error, "failed to revoke inactive session");
         }
@@ -95,10 +111,10 @@ pub async fn request_context_from_access_token(
     }
 
     let user_repo = UserRepository::new(pool);
-    let user = match user_repo.fetch_user(identity.user_id).await {
+    let user = match user_repo.fetch_user(session.user_id).await {
         Ok(user) => user,
         Err(IdentityError::NotFound) => {
-            warn!("user `{}` missing", identity.user_id);
+            warn!("user `{}` missing", session.user_id);
             return Err(StatusCode::UNAUTHORIZED.into_response());
         }
         Err(IdentityError::Database(error)) => {
@@ -116,7 +132,7 @@ pub async fn request_context_from_access_token(
     let ctx = RequestContext {
         user,
         session_id: session.id,
-        access_token_expires_at: identity.expires_at,
+        access_token_expires_at: Utc::now(),
     };
 
     match session_repo.touch(session.id).await {
