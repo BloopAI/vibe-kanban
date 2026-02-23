@@ -5,9 +5,8 @@ use futures_util::StreamExt;
 use tokio::sync::Mutex;
 use tokio_yamux::{Config as YamuxConfig, Session};
 
-use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
-
 use super::SharedControl;
+use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
 
 /// Runs the server-side control channel over an upgraded WebSocket.
 ///

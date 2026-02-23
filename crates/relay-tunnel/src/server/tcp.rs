@@ -1,5 +1,5 @@
 use http_body_util::Empty;
-use hyper::{client::conn::http1 as client_http1, upgrade, Method, Request};
+use hyper::{Method, Request, client::conn::http1 as client_http1, upgrade};
 use hyper_util::rt::TokioIo;
 use tokio::sync::Mutex;
 use tokio_yamux::Control;
@@ -9,9 +9,7 @@ use tokio_yamux::Control;
 /// Sends `CONNECT ssh-tunnel HTTP/1.1` over the stream, waits for a 200
 /// response, then upgrades the connection and returns the raw bidirectional
 /// stream for the caller to bridge to a WebSocket or other transport.
-pub async fn open_tcp_tunnel(
-    control: &Mutex<Control>,
-) -> anyhow::Result<hyper::upgrade::Upgraded> {
+pub async fn open_tcp_tunnel(control: &Mutex<Control>) -> anyhow::Result<hyper::upgrade::Upgraded> {
     let stream = {
         let mut control = control.lock().await;
         control

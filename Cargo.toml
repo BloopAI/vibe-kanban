@@ -14,6 +14,7 @@ members = [
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",
+    "crates/ssh-proxy",
 ]
 exclude = ["crates/remote"]
 

@@ -43,9 +43,7 @@ pub async fn handle_connect_tunnel(
 
         let mut upgraded = TokioIo::new(upgraded);
 
-        if let Err(error) =
-            tokio::io::copy_bidirectional(&mut upgraded, &mut tcp_stream).await
-        {
+        if let Err(error) = tokio::io::copy_bidirectional(&mut upgraded, &mut tcp_stream).await {
             tracing::debug!(?error, "TCP tunnel copy ended");
         }
     });

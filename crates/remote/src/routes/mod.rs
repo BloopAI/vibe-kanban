@@ -29,9 +29,9 @@ mod billing {
         Router::new()
     }
 }
+pub mod attachments;
 pub(crate) mod electric_proxy;
 pub(crate) mod error;
-pub mod attachments;
 mod github_app;
 pub mod hosts;
 mod identity;
@@ -54,7 +54,6 @@ mod review;
 pub mod tags;
 mod tokens;
 mod workspaces;
-
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()

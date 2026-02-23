@@ -180,10 +180,12 @@ pub async fn start_relay(
 
     tracing::info!(%ws_url, "connecting relay control channel");
 
-    let tcp_forward = std::env::var("VK_SSH_RELAY").ok().map(|_| TcpForwardConfig {
-        ssh_target_addr: std::env::var("VK_SSH_TARGET")
-            .unwrap_or_else(|_| "127.0.0.1:22".to_string()),
-    });
+    let tcp_forward = std::env::var("VK_SSH_RELAY")
+        .ok()
+        .map(|_| TcpForwardConfig {
+            ssh_target_addr: std::env::var("VK_SSH_TARGET")
+                .unwrap_or_else(|_| "127.0.0.1:22".to_string()),
+        });
 
     start_relay_client(RelayClientConfig {
         ws_url,

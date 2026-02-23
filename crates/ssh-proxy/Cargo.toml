@@ -1,0 +1,18 @@
+[package]
+name = "vibe-kanban-ssh-proxy"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "vibe-kanban-ssh-proxy"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = { workspace = true }
+clap = { version = "4", features = ["derive", "env"] }
+futures-util = "0.3"
+native-tls = "0.2"
+tokio = { workspace = true }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
