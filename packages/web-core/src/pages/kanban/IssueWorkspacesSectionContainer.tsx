@@ -16,12 +16,12 @@ import {
   buildLocalWorkspaceIdSet,
   buildWorkspaceCreateInitialState,
   buildWorkspaceCreatePrompt,
-} from '@/shared/lib/workspaceCreateState';
-import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
-import type { WorkspaceWithStats } from '@vibe/ui/components/IssueWorkspaceCard';
-import { IssueWorkspacesSection } from '@vibe/ui/components/IssueWorkspacesSection';
-import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
+} from '@/lib/workspaceCreateState';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
+import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
+import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
+import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
 
 interface IssueWorkspacesSectionContainerProps {
   issueId: string;
@@ -181,9 +181,8 @@ export function IssueWorkspacesSectionContainer({
       return;
     }
 
-    const { WorkspaceSelectionDialog } = await import(
-      '@/shared/dialogs/command-bar/WorkspaceSelectionDialog'
-    );
+    const { WorkspaceSelectionDialog } =
+      await import('@/components/ui-new/dialogs/WorkspaceSelectionDialog');
     await WorkspaceSelectionDialog.show({ projectId, issueId });
   }, [projectId, issueId]);
 
@@ -245,15 +244,10 @@ export function IssueWorkspacesSectionContainer({
       }
 
       const result = await DeleteWorkspaceDialog.show({
+        workspaceId: localWorkspaceId,
         branchName: localWorkspace.branch,
-        hasOpenPR:
-          workspacesWithStats
-            .find(
-              (workspace) => workspace.localWorkspaceId === localWorkspaceId
-            )
-            ?.prs.some((pr) => pr.status === 'open') ?? false,
-        isLinkedToIssue: true,
-        linkedIssueSimpleId: getIssue(issueId)?.simple_id,
+        linkedIssueId: issueId,
+        linkedProjectId: projectId,
       });
 
       if (result.action !== 'confirmed') {
@@ -279,7 +273,7 @@ export function IssueWorkspacesSectionContainer({
         });
       }
     },
-    [localWorkspacesById, workspacesWithStats, t, issueId, getIssue]
+    [localWorkspacesById, t, issueId, projectId]
   );
 
   // Actions for the section header
