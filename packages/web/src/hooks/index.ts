@@ -16,5 +16,4 @@ export { useOrganizationSelection } from './useOrganizationSelection';
 export { useOrganizationMembers } from './useOrganizationMembers';
 export { useOrganizationInvitations } from './useOrganizationInvitations';
 export { useOrganizationMutations } from './useOrganizationMutations';
-export { useVariant } from './useVariant';
 export { useRetryProcess } from '@/shared/hooks/useRetryProcess';

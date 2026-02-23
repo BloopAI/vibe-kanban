@@ -11,7 +11,7 @@ import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
-import { useVariant } from '@/hooks/useVariant';
+import { useVariant } from '@/shared/hooks/useVariant';
 import { useRetryProcess } from '@/shared/hooks/useRetryProcess';
 import { executorConfigFromAction } from '@/shared/lib/executor';
 
