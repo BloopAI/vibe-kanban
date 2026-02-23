@@ -15,7 +15,7 @@ import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/cont
 import {
   GitOperationsProvider,
   useGitOperationsError,
-} from '@/contexts/GitOperationsContext';
+} from '@/shared/hooks/GitOperationsContext';
 import type { Merge } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { create, useModal } from '@ebay/nice-modal-react';

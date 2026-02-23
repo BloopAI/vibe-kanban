@@ -3,7 +3,7 @@ import { useMerge } from '@/shared/hooks/useMerge';
 import { usePush } from '@/shared/hooks/usePush';
 import { useForcePush } from '@/shared/hooks/useForcePush';
 import { useChangeTargetBranch } from '@/shared/hooks/useChangeTargetBranch';
-import { useGitOperationsError } from '@/contexts/GitOperationsContext';
+import { useGitOperationsError } from '@/shared/hooks/GitOperationsContext';
 import { Result } from '@/shared/lib/api';
 import type { GitOperationError, PushTaskAttemptRequest } from 'shared/types';
 import { ForcePushDialog } from '@/shared/dialogs/command-bar/ForcePushDialog';

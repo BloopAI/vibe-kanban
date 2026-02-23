@@ -5,7 +5,6 @@ export { useTaskImages } from './useTaskImages';
 export { useImageUpload } from './useImageUpload';
 export { useDevServer } from '@/shared/hooks/useDevServer';
 export { useNavigateWithSearch } from './useNavigateWithSearch';
-export { useGitOperations } from './useGitOperations';
 export { useAttempt } from '@/shared/hooks/useAttempt';
 export { useAuth } from './auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
