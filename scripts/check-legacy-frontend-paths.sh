@@ -6,8 +6,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ALLOWLIST_FILE="$REPO_ROOT/scripts/legacy-frontend-paths-allowlist.txt"
 
 LEGACY_PATHS=(
-  "packages/web/src/components/ui-new"
-  "packages/web/src/components/dialogs"
+  "packages/local-web/src/components/ui-new"
+  "packages/local-web/src/components/dialogs"
 )
 
 echo "▶️  Checking for net-new files in legacy frontend paths..."

@@ -51,7 +51,7 @@ rm -rf npx-cli/dist
 mkdir -p npx-cli/dist/$PLATFORM
 
 echo "🔨 Building web app..."
-(cd packages/web && npm run build)
+(cd packages/local-web && npm run build)
 
 echo "🔨 Building Rust binaries..."
 cargo build --release --manifest-path Cargo.toml

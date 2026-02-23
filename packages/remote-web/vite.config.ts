@@ -69,7 +69,7 @@ export default defineConfig({
               target: "18",
               sources: [
                 path.resolve(__dirname, "src"),
-                path.resolve(__dirname, "../web/src"),
+                path.resolve(__dirname, "../web-core/src"),
               ],
               environment: {
                 enableResetCacheOnSourceFileChanges: true,
@@ -89,7 +89,7 @@ export default defineConfig({
       },
       {
         find: /^@\//,
-        replacement: `${path.resolve(__dirname, "../web/src")}/`,
+        replacement: `${path.resolve(__dirname, "../web-core/src")}/`,
       },
       {
         find: "shared",

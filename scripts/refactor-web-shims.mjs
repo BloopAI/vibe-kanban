@@ -9,7 +9,7 @@ const APPLY = process.argv.includes('--apply');
 const VERBOSE = process.argv.includes('--verbose');
 
 const repoRoot = process.cwd();
-const webRoot = path.join(repoRoot, 'packages/web');
+const webRoot = path.join(repoRoot, 'packages/local-web');
 const srcRoot = path.join(webRoot, 'src');
 const tsconfigPath = path.join(webRoot, 'tsconfig.json');
 const requireFromWeb = createRequire(path.join(webRoot, 'package.json'));

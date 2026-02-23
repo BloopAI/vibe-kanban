@@ -5,7 +5,7 @@ choose a consistent refactor action.
 
 ## Scope
 
-This checklist is for layer-boundary violations in `packages/web`, especially:
+This checklist is for layer-boundary violations in `packages/local-web`, especially:
 
 - `features -> app`
 - `features -> features`
@@ -192,7 +192,7 @@ Use when the caller is in the wrong layer.
 
 ## Definition Of Done (Per Issue)
 
-- The targeted issue is resolved in `pnpm run web:lint`.
+- The targeted issue is resolved in `pnpm run local-web:lint`.
 - No new boundary violations introduced.
 - Imports point to owning layer (not convenience aliases).
 - Behavior unchanged (run relevant checks/tests).

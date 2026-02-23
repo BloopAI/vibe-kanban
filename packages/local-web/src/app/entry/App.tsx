@@ -1,9 +1,9 @@
 import { RouterProvider } from '@tanstack/react-router';
 import { HotkeysProvider } from 'react-hotkeys-hook';
-import { UserSystemProvider } from '@/app/providers/ConfigProvider';
-import { ClickedElementsProvider } from '@/app/providers/ClickedElementsProvider';
+import { UserSystemProvider } from '@web/app/providers/ConfigProvider';
+import { ClickedElementsProvider } from '@web/app/providers/ClickedElementsProvider';
 import { LocalAuthProvider } from '@/shared/providers/auth/LocalAuthProvider';
-import { router } from '@/app/router';
+import { router } from '@web/app/router';
 
 function App() {
   return (

@@ -95,7 +95,10 @@ export default defineConfig({
             'babel-plugin-react-compiler',
             {
               target: '18',
-              sources: [path.resolve(__dirname, 'src')],
+              sources: [
+                path.resolve(__dirname, 'src'),
+                path.resolve(__dirname, '../web-core/src'),
+              ],
               environment: {
                 enableResetCacheOnSourceFileChanges: true,
               },
@@ -108,17 +111,20 @@ export default defineConfig({
     executorSchemasPlugin(),
   ],
   resolve: {
-    alias: {
-      '@/app': path.resolve(__dirname, './src/app'),
-      '@/pages': path.resolve(__dirname, './src/pages'),
-      '@/widgets': path.resolve(__dirname, './src/widgets'),
-      '@/features': path.resolve(__dirname, './src/features'),
-      '@/entities': path.resolve(__dirname, './src/entities'),
-      '@/shared': path.resolve(__dirname, './src/shared'),
-      '@/integrations': path.resolve(__dirname, './src/integrations'),
-      '@': path.resolve(__dirname, './src'),
-      shared: path.resolve(__dirname, '../../shared'),
-    },
+    alias: [
+      {
+        find: '@web',
+        replacement: path.resolve(__dirname, 'src'),
+      },
+      {
+        find: /^@\//,
+        replacement: `${path.resolve(__dirname, '../web-core/src')}/`,
+      },
+      {
+        find: 'shared',
+        replacement: path.resolve(__dirname, '../../shared'),
+      },
+    ],
   },
   server: {
     port: parseInt(process.env.FRONTEND_PORT || '3000'),

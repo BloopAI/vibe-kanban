@@ -55,8 +55,8 @@ const importRewritePlan = [
   ["./auth", "@/shared/lib/auth"],
   ["./api", "@/shared/lib/api"],
   [
-    "../../web/src/app/styles/new/index.css",
-    "../../../../web/src/app/styles/new/index.css",
+    "../../web-core/src/app/styles/new/index.css",
+    "../../../../web-core/src/app/styles/new/index.css",
   ],
 ];
 

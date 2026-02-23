@@ -446,4 +446,4 @@
   }
 }
 
-@config '../../../../tailwind.new.config.js';
+@config '../../../../../local-web/tailwind.new.config.js';

@@ -6,7 +6,7 @@ import { useWorkspaceShortcuts } from '@/shared/keyboard/useWorkspaceShortcuts';
 import { useIssueShortcuts } from '@/shared/keyboard/useIssueShortcuts';
 import { useKeyShowHelp, Scope } from '@/shared/keyboard';
 import { KeyboardShortcutsDialog } from '@/shared/dialogs/shared/KeyboardShortcutsDialog';
-import { TerminalProvider } from '@/app/providers/TerminalProvider';
+import { TerminalProvider } from '@web/app/providers/TerminalProvider';
 import { SharedAppLayout } from '@/shared/components/ui-new/containers/SharedAppLayout';
 
 function KeyboardShortcutsHandler() {

@@ -17,11 +17,9 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@remote/*": ["./src/*"],
-      "@/*": ["../web-core/src/*"],
+      "@/*": ["./src/*"],
       "shared/*": ["../../shared/*"]
     }
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src"]
 }

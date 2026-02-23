@@ -1,9 +1,9 @@
 <p align="center">
   <a href="https://vibekanban.com">
     <picture>
-      <source srcset="packages/web/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/web/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/web/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
+      <source srcset="packages/local-web/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="packages/local-web/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/local-web/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
     </picture>
   </a>
 </p>
@@ -19,7 +19,7 @@
   <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
 </h1>
 
-![](packages/web/public/vibe-kanban-screenshot-overview.png)
+![](packages/local-web/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
@@ -90,7 +90,7 @@ This will start the backend and web app. A blank DB will be copied from the `dev
 To build just the web app:
 
 ```bash
-cd packages/web
+cd packages/local-web
 pnpm run build
 ```
 

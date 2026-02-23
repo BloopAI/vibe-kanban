@@ -2,9 +2,9 @@
 
 ## Project Structure & Module Organization
 - `crates/`: Rust workspace crates — `server` (API + bins), `db` (SQLx models/migrations), `executors`, `services`, `utils`, `git` (Git operations), `api-types` (shared API types for local + remote), `review` (PR review tool), `deployment`, `local-deployment`, `remote`.
-- `packages/web/`: React + TypeScript app (Vite, Tailwind). Source in `packages/web/src`.
-- `packages/web/src/components/dialogs`: Dialog components for the web app.
-- `packages/remote-web/`: Remote deployment frontend.
+- `packages/local-web/`: Local React + TypeScript app entrypoint (Vite, Tailwind). Shell source in `packages/local-web/src`.
+- `packages/remote-web/`: Remote deployment frontend entrypoint.
+- `packages/web-core/`: Shared React + TypeScript frontend library used by local + remote web (`packages/web-core/src`).
 - `shared/`: Generated TypeScript types (`shared/types.ts`, `shared/remote-types.ts`) and agent tool schemas (`shared/schemas/`). Do not edit generated files directly.
 - `assets/`, `dev_assets_seed/`, `dev_assets/`: Packaged and local dev assets.
 - `npx-cli/`: Files published to the npm CLI package.
@@ -14,7 +14,7 @@
 ### Crate-specific guides
 - [`crates/remote/AGENTS.md`](crates/remote/AGENTS.md) — Remote server architecture, ElectricSQL integration, mutation patterns, environment variables.
 - [`docs/AGENTS.md`](docs/AGENTS.md) — Mintlify documentation writing guidelines and component reference.
-- [`packages/web/AGENTS.md`](packages/web/AGENTS.md) — Web app design system styling guidelines.
+- [`packages/local-web/AGENTS.md`](packages/local-web/AGENTS.md) — Web app design system styling guidelines.
 
 ## Managing Shared Types Between Rust and TypeScript
 
@@ -29,14 +29,14 @@ Do not manually edit shared/remote-types.ts, instead edit crates/remote/src/bin/
 - Install: `pnpm i`
 - Run dev (web app + backend with ports auto-assigned): `pnpm run dev`
 - Backend (watch): `pnpm run backend:dev:watch`
-- Web app (dev): `pnpm run web:dev`
+- Web app (dev): `pnpm run local-web:dev`
 - Type checks: `pnpm run check` (workspace) and `pnpm run backend:check` (Rust cargo check)
 - Rust tests: `cargo test --workspace`
 - Generate TS types from Rust: `pnpm run generate-types` (or `generate-types:check` in CI)
 - Prepare SQLx (offline): `pnpm run prepare-db`
 - Prepare SQLx (remote package, postgres): `pnpm run remote:prepare-db`
 - Local NPX build: `pnpm run build:npx` then `pnpm pack` in `npx-cli/`
-- Format code: `pnpm run format` (runs `cargo fmt` + web Prettier)
+- Format code: `pnpm run format` (runs `cargo fmt` + web-core/web Prettier)
 - Lint: `pnpm run lint` (runs web/ui ESLint + `cargo clippy`)
 
 ## Before Completing a Task

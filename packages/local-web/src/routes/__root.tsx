@@ -6,7 +6,7 @@ import { Provider as NiceModalProvider } from '@ebay/nice-modal-react';
 import { ThemeMode } from 'shared/types';
 import i18n from '@/i18n';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { ThemeProvider } from '@/app/providers/ThemeProvider';
+import { ThemeProvider } from '@web/app/providers/ThemeProvider';
 import { usePreviousPath } from '@/shared/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/shared/hooks/useUiPreferencesScratch';
 import { ReleaseNotesDialog } from '@/shared/dialogs/global/ReleaseNotesDialog';
