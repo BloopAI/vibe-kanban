@@ -9,7 +9,7 @@ export { useAttempt } from '@/shared/hooks/useAttempt';
 export { useAuth } from '@/shared/hooks/auth/useAuth';
 export { useAuthMutations } from './auth/useAuthMutations';
 export { useAuthStatus } from './auth/useAuthStatus';
-export { useCurrentUser } from './auth/useCurrentUser';
+export { useCurrentUser } from '@/shared/hooks/auth/useCurrentUser';
 export { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 export { useOrganizationSelection } from './useOrganizationSelection';
 export { useOrganizationMembers } from './useOrganizationMembers';

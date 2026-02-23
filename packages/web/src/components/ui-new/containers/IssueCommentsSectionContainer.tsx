@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { IssueProvider, useIssueContext } from '@/contexts/remote/IssueContext';
 import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
+import { useCurrentUser } from '@/shared/hooks/auth/useCurrentUser';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
 import {
   commitCommentAttachments,

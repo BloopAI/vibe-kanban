@@ -1,5 +1,5 @@
 import type { Diff } from 'shared/types';
-import type { TreeNode } from '@/components/ui-new/types/fileTree';
+import type { TreeNode } from '@/shared/types/fileTree';
 
 /**
  * Transforms flat Diff[] into hierarchical TreeNode[]

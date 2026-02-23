@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import { useUserOrganizations, useCurrentUser } from '@/hooks';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
+import { useCurrentUser } from '@/shared/hooks/auth/useCurrentUser';
 import { useShape } from '@/integrations/electric/hooks';
 import type { SyncError } from '@/shared/lib/electric/types';
 import {
