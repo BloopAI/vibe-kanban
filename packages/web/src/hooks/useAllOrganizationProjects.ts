@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 
 /**
  * Hook that fetches remote projects across ALL user organizations.

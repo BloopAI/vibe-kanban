@@ -4,7 +4,7 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
 import { useActions } from '@/contexts/ActionsContext';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { Navbar, type NavbarSectionItem } from '@vibe/ui/components/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';

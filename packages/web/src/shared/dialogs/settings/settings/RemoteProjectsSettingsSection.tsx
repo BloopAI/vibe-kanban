@@ -34,7 +34,7 @@ import {
 } from '@vibe/ui/components/Popover';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { Switch } from '@vibe/ui/components/Switch';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CreateRemoteProjectDialog } from '@/shared/dialogs/org/CreateRemoteProjectDialog';

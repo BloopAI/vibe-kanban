@@ -9,7 +9,7 @@ import {
   ArrowSquareOutIcon,
   InfoIcon,
 } from '@phosphor-icons/react';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
 import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';

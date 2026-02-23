@@ -7,7 +7,7 @@ import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
-import { useUserOrganizations } from '@/hooks/useUserOrganizations';
+import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
