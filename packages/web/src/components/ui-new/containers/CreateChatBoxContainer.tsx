@@ -17,7 +17,7 @@ import type { BaseCodingAgent, Repo } from 'shared/types';
 import { CreateChatBox } from '@vibe/ui/components/CreateChatBox';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateModeRepoPickerBar } from './CreateModeRepoPickerBar';
-import { ModelSelectorContainer } from './ModelSelectorContainer';
+import { ModelSelectorContainer } from '@/shared/components/ModelSelectorContainer';
 
 function getRepoDisplayName(repo: Repo) {
   return repo.display_name || repo.name;

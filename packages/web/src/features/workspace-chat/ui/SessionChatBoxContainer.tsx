@@ -40,7 +40,7 @@ import {
   type ExecutionStatus,
   type SessionChatBoxEditorRenderProps,
 } from '@vibe/ui/components/SessionChatBox';
-import { ModelSelectorContainer } from '@/components/ui-new/containers/ModelSelectorContainer';
+import { ModelSelectorContainer } from '@/shared/components/ModelSelectorContainer';
 import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
