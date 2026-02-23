@@ -53,7 +53,6 @@ import {
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
 import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 import { cn } from '@/shared/lib/utils';
-import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import {
   SettingsCard,
   SettingsField,
@@ -91,10 +90,6 @@ interface StatusRowCloneProps {
 }
 
 function StatusRowClone({ status, provided }: StatusRowCloneProps) {
-  const container = usePortalContainer();
-
-  if (!container) return null;
-
   return createPortal(
     <div
       ref={provided.innerRef}
@@ -119,7 +114,7 @@ function StatusRowClone({ status, provided }: StatusRowCloneProps) {
       />
       <span className="text-sm text-high">{status.name}</span>
     </div>,
-    container
+    document.body
   );
 }
 

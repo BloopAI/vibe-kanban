@@ -1,15 +1,37 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { NewDesignScope } from '@/app/providers/NewDesignScope';
+import { UserProvider } from '@/contexts/remote/UserContext';
+import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
+import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
+import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
+import { useIssueShortcuts } from '@/keyboard/useIssueShortcuts';
+import { useKeyShowHelp, Scope } from '@/keyboard';
+import { KeyboardShortcutsDialog } from '@/shared/dialogs/shared/KeyboardShortcutsDialog';
 import { TerminalProvider } from '@/app/providers/TerminalProvider';
 import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
 
+function KeyboardShortcutsHandler() {
+  useKeyShowHelp(
+    () => {
+      KeyboardShortcutsDialog.show();
+    },
+    { scope: Scope.GLOBAL }
+  );
+  useWorkspaceShortcuts();
+  useIssueShortcuts();
+  return null;
+}
+
 function AppLayoutRouteComponent() {
   return (
-    <NewDesignScope>
-      <TerminalProvider>
-        <SharedAppLayout />
-      </TerminalProvider>
-    </NewDesignScope>
+    <UserProvider>
+      <SequenceTrackerProvider>
+        <SequenceIndicator />
+        <KeyboardShortcutsHandler />
+        <TerminalProvider>
+          <SharedAppLayout />
+        </TerminalProvider>
+      </SequenceTrackerProvider>
+    </UserProvider>
   );
 }
 

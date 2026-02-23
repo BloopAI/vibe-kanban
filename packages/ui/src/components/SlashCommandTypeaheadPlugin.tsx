@@ -44,13 +44,11 @@ export function SlashCommandTypeaheadPlugin({
   commands,
   isInitialized,
   isDiscovering,
-  portalContainer,
 }: {
   enabled: boolean;
   commands: SlashCommandDescriptionLike[];
   isInitialized: boolean;
   isDiscovering: boolean;
-  portalContainer?: HTMLElement | null;
 }) {
   const [editor] = useLexicalComposerContext();
   const { t } = useTranslation('common');
@@ -186,7 +184,7 @@ export function SlashCommandTypeaheadPlugin({
               </TypeaheadMenu.ScrollArea>
             )}
           </TypeaheadMenu>,
-          portalContainer ?? document.body
+          document.body
         );
       }}
     />

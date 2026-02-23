@@ -46,11 +46,7 @@ function ToolbarButton({
   );
 }
 
-type ToolbarPluginProps = {
-  portalContainer?: HTMLElement | null;
-};
-
-export function ToolbarPlugin({ portalContainer }: ToolbarPluginProps = {}) {
+export function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
 
   // Visibility and position state
@@ -249,6 +245,6 @@ export function ToolbarPlugin({ portalContainer }: ToolbarPluginProps = {}) {
         <Code size={iconSize} />
       </ToolbarButton>
     </div>,
-    portalContainer ?? document.body
+    document.body
   );
 }

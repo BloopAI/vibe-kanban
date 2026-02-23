@@ -1,13 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { NewDesignScope } from '@/app/providers/NewDesignScope';
 import { LandingPage } from '@/features/onboarding/ui/LandingPage';
 
 function OnboardingLandingRouteComponent() {
-  return (
-    <NewDesignScope>
-      <LandingPage />
-    </NewDesignScope>
-  );
+  return <LandingPage />;
 }
 
 export const Route = createFileRoute('/onboarding')({

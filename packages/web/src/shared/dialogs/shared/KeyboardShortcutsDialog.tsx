@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { XIcon, GearIcon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
-import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
+
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { cn } from '@/shared/lib/utils';
 import {
@@ -198,7 +198,6 @@ function ShortcutSection({ group }: { group: ShortcutGroup }) {
 const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
   const { t } = useTranslation('common');
   const modal = useModal();
-  const container = usePortalContainer();
   const groups = useShortcutGroups();
 
   const handleClose = useCallback(() => {
@@ -217,8 +216,6 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClose]);
-
-  if (!container) return null;
 
   return createPortal(
     <>
@@ -267,7 +264,7 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
         </div>
       </div>
     </>,
-    container
+    document.body
   );
 });
 

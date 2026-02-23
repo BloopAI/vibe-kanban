@@ -294,6 +294,14 @@ module.exports = {
       },
     },
     {
+      // Root and app routes compose providers from legacy directories —
+      // this is intentional wiring, not feature code.
+      files: ['src/routes/__root.tsx', 'src/routes/_app.tsx'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([]),
+      },
+    },
+    {
       files: ['src/routes/**/*.{ts,tsx}', 'src/routeTree.gen.ts'],
       rules: {
         'check-file/filename-naming-convention': 'off',
@@ -429,13 +437,10 @@ module.exports = {
       },
     },
     {
-      // Allow NiceModal usage in lib/modals.ts, design scope files (for Provider), and dialog component files
+      // Allow NiceModal usage in lib/modals.ts, root route (Provider), and dialog component files
       files: [
         'src/lib/modals.ts',
-        'src/app/providers/NewDesignScope.tsx',
-        'src/app/providers/VSCodeScope.tsx',
-        'src/components/legacy-design/LegacyDesignScope.tsx',
-        'src/components/ui-new/scope/NewDesignScope.tsx',
+        'src/routes/__root.tsx',
         'src/shared/dialogs/**/*.{ts,tsx}',
       ],
       rules: {

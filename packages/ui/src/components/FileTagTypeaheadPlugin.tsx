@@ -73,7 +73,6 @@ type SearchArgs = {
 type FileTagTypeaheadPluginProps = {
   repoIds?: string[];
   diffPaths?: Set<string>;
-  portalContainer?: HTMLElement | null;
   preferredRepoId?: string | null;
   setPreferredRepoId?: (repoId: string | null) => void;
   listRecentRepos?: () => Promise<RepoLike[]>;
@@ -132,7 +131,6 @@ function getRepoDisplayName(repo: RepoLike): string {
 export function FileTagTypeaheadPlugin({
   repoIds,
   diffPaths,
-  portalContainer,
   preferredRepoId,
   setPreferredRepoId,
   listRecentRepos,
@@ -573,7 +571,7 @@ export function FileTagTypeaheadPlugin({
               </TypeaheadMenu.ScrollArea>
             )}
           </TypeaheadMenu>,
-          portalContainer ?? document.body
+          document.body
         );
       }}
     />

@@ -44,7 +44,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
   const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
     useWorkspaceContext();
-  // Get remote workspaces (optional — not available in VSCodeScope)
+  // Get remote workspaces (optional — not available on all routes)
   const userCtx = useContext(UserContext);
 
   // Get dev server state

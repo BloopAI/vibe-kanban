@@ -4,10 +4,10 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 1) THEME TOKENS scoped to .new-design */
+/* 1) THEME TOKENS */
 @layer base {
-  /* Light defaults - New Design */
-  .new-design {
+  /* Light defaults */
+  :root {
     color-scheme: light;
     --_background: 0 0% 95%;
     --_foreground: 0 0% 5%;
@@ -81,9 +81,8 @@
     --text-on-brand: 0 0% 100%;
   }
 
-  /* Dark mode - handles both .new-design.dark and .dark .new-design */
-  .new-design.dark,
-  .dark .new-design {
+  /* Dark mode */
+  .dark {
     color-scheme: dark;
 
     /* Internal variables (dark) - needed for public tokens */
@@ -158,9 +157,9 @@
   }
 }
 
-/* 2) PUBLIC TOKENS scoped to .new-design */
+/* 2) PUBLIC TOKENS */
 @layer base {
-  .new-design {
+  :root {
     --background: var(--vscode-editor-background, var(--_background));
     --foreground: var(--vscode-editor-foreground, var(--_foreground));
 
@@ -254,11 +253,11 @@
   }
 }
 
-/* 3) Base styles scoped to .new-design */
+/* 3) Base styles */
 @layer base {
-  .new-design *,
-  .new-design *::before,
-  .new-design *::after {
+  *,
+  *::before,
+  *::after {
     @apply border-border;
   }
 
@@ -267,23 +266,20 @@
   #root {
     @apply min-h-screen;
     @apply font-normal;
-  }
-
-  .new-design {
     @apply bg-background text-foreground font-ibm-plex-sans;
   }
 
-  .new-design *:focus {
+  *:focus {
     @apply ring-inset;
   }
 
-  .new-design .logo {
+  .logo {
     @apply fill-foreground;
   }
 
-  .new-design a,
-  .new-design button,
-  .new-design button * {
+  a,
+  button,
+  button * {
     @apply transition-colors duration-200;
     cursor: pointer;
   }
@@ -292,79 +288,79 @@
 /* ANSI color classes for fancy-ansi - optimized for both light and dark modes */
 @layer components {
   /* Light mode: use darker shades for contrast on light backgrounds */
-  .new-design .ansi-red {
+  .ansi-red {
     @apply text-red-700 dark:text-red-400;
   }
 
-  .new-design .ansi-green {
+  .ansi-green {
     @apply text-green-700 dark:text-green-400;
   }
 
-  .new-design .ansi-yellow {
+  .ansi-yellow {
     @apply text-yellow-700 dark:text-yellow-400;
   }
 
-  .new-design .ansi-blue {
+  .ansi-blue {
     @apply text-blue-700 dark:text-blue-400;
   }
 
-  .new-design .ansi-magenta {
+  .ansi-magenta {
     @apply text-purple-700 dark:text-purple-400;
   }
 
-  .new-design .ansi-cyan {
+  .ansi-cyan {
     @apply text-cyan-700 dark:text-cyan-400;
   }
 
-  .new-design .ansi-white {
+  .ansi-white {
     @apply text-gray-600 dark:text-gray-200;
   }
 
-  .new-design .ansi-black {
+  .ansi-black {
     @apply text-black dark:text-gray-900;
   }
 
-  .new-design .ansi-bright-red {
+  .ansi-bright-red {
     @apply text-red-600 dark:text-red-300;
   }
 
-  .new-design .ansi-bright-green {
+  .ansi-bright-green {
     @apply text-green-600 dark:text-green-300;
   }
 
-  .new-design .ansi-bright-yellow {
+  .ansi-bright-yellow {
     @apply text-amber-600 dark:text-yellow-300;
   }
 
-  .new-design .ansi-bright-blue {
+  .ansi-bright-blue {
     @apply text-blue-600 dark:text-blue-300;
   }
 
-  .new-design .ansi-bright-magenta {
+  .ansi-bright-magenta {
     @apply text-purple-600 dark:text-purple-300;
   }
 
-  .new-design .ansi-bright-cyan {
+  .ansi-bright-cyan {
     @apply text-cyan-600 dark:text-cyan-300;
   }
 
-  .new-design .ansi-bright-white {
+  .ansi-bright-white {
     @apply text-gray-500 dark:text-gray-100;
   }
 
-  .new-design .ansi-bright-black {
+  .ansi-bright-black {
     @apply text-gray-600 dark:text-gray-500;
   }
 
-  .new-design .ansi-bold {
+  .ansi-bold {
     @apply font-bold;
   }
 
-  .new-design .ansi-italic {
+  .ansi-italic {
     @apply italic;
   }
 
-  .new-design .ansi-underline {
+  .ansi-underline {
     @apply underline;
   }
 }
@@ -381,11 +377,11 @@
 }
 
 @layer components {
-  .new-design .chat-box-running {
+  .chat-box-running {
     @apply relative;
   }
 
-  .new-design .chat-box-running::before {
+  .chat-box-running::before {
     content: '';
     @apply absolute inset-0 pointer-events-none rounded-t-md;
     padding: 1px;
@@ -408,11 +404,11 @@
     mask-composite: exclude;
   }
 
-  .new-design .create-issue-attention {
+  .create-issue-attention {
     @apply relative;
   }
 
-  .new-design .create-issue-attention::before {
+  .create-issue-attention::before {
     content: '';
     @apply absolute inset-0 pointer-events-none rounded-sm;
     padding: 1px;
@@ -435,7 +431,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .new-design .create-issue-attention::before {
+    .create-issue-attention::before {
       animation: none;
     }
   }
@@ -443,7 +439,7 @@
 
 /* Color emoji utility - uses system color emoji fonts for reactions */
 @layer utilities {
-  .new-design .color-emoji {
+  .color-emoji {
     font-family:
       'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
       'Android Emoji', 'EmojiSymbols', sans-serif;

@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
-import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import {
   GuideDialogShell,
   type GuideDialogTopic,
@@ -33,7 +32,6 @@ const TOPIC_IMAGES: Record<(typeof TOPIC_IDS)[number], string> = {
 
 const WorkspacesGuideDialogImpl = create<NoProps>(() => {
   const modal = useModal();
-  const container = usePortalContainer();
   const { t } = useTranslation('common');
   const topics: GuideDialogTopic[] = TOPIC_IDS.map((topicId) => ({
     id: topicId,
@@ -59,15 +57,13 @@ const WorkspacesGuideDialogImpl = create<NoProps>(() => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleClose]);
 
-  if (!container) return null;
-
   return createPortal(
     <GuideDialogShell
       topics={topics}
       closeLabel={t('buttons.close')}
       onClose={handleClose}
     />,
-    container
+    document.body
   );
 });
 

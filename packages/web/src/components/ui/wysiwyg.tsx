@@ -64,7 +64,6 @@ import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
@@ -281,7 +280,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     // Copy button state
     const [copied, setCopied] = useState(false);
-    const portalContainer = usePortalContainer();
     const workspaceContext = useContext(WorkspaceContext);
     const diffPaths = useMemo(
       () => workspaceContext?.diffPaths ?? new Set<string>(),
@@ -500,7 +498,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 editable={!disabled}
                 transformers={extendedTransformers}
               />
-              {!disabled && <ToolbarPlugin portalContainer={portalContainer} />}
+              {!disabled && <ToolbarPlugin />}
               <div className="relative">
                 <RichTextPlugin
                   contentEditable={
@@ -538,7 +536,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     <FileTagTypeaheadPlugin
                       repoIds={repoIds}
                       diffPaths={diffPaths}
-                      portalContainer={portalContainer}
                       preferredRepoId={preferredRepoId}
                       setPreferredRepoId={setFileSearchRepo}
                       listRecentRepos={listRecentRepos}
@@ -553,7 +550,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                         commands={slashCommandsQuery.commands}
                         isInitialized={slashCommandsQuery.isInitialized}
                         isDiscovering={slashCommandsQuery.discovering}
-                        portalContainer={portalContainer}
                       />
                     )}
                     <KeyboardCommandsPlugin

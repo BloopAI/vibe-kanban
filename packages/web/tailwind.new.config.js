@@ -21,7 +21,7 @@ function getSize(sizeLabel, multiplier = 1) {
 
 module.exports = {
   darkMode: ["class"],
-  important: '.new-design',
+  important: false,
   content: [
     './pages/**/*.{ts,tsx}',
     './components/**/*.{ts,tsx}',

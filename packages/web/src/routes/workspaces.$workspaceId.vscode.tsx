@@ -1,15 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { VSCodeScope } from '@/app/providers/VSCodeScope';
 import { TerminalProvider } from '@/app/providers/TerminalProvider';
 import { VSCodeWorkspacePage } from '@/pages/workspaces/VSCodeWorkspacePage';
 
 function VSCodeWorkspaceRouteComponent() {
   return (
-    <VSCodeScope>
-      <TerminalProvider>
-        <VSCodeWorkspacePage />
-      </TerminalProvider>
-    </VSCodeScope>
+    <TerminalProvider>
+      <VSCodeWorkspacePage />
+    </TerminalProvider>
   );
 }
 

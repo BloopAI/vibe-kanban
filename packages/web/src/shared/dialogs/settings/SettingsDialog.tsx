@@ -14,7 +14,7 @@ import {
 import type { Icon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
+
 import { cn } from '@/shared/lib/utils';
 import { SettingsSection } from './settings/SettingsSection';
 import type {
@@ -234,15 +234,11 @@ function SettingsDialogContent({
 const SettingsDialogImpl = create<SettingsDialogProps>(
   ({ initialSection, initialState }) => {
     const modal = useModal();
-    const container = usePortalContainer();
-
     const handleClose = useCallback(() => {
       modal.hide();
       modal.resolve();
       modal.remove();
     }, [modal]);
-
-    if (!container) return null;
 
     return createPortal(
       <SettingsDirtyProvider>
@@ -252,7 +248,7 @@ const SettingsDialogImpl = create<SettingsDialogProps>(
           onClose={handleClose}
         />
       </SettingsDirtyProvider>,
-      container
+      document.body
     );
   }
 );

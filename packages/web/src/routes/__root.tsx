@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { Outlet, createRootRoute, useLocation } from '@tanstack/react-router';
 import { I18nextProvider } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
+import NiceModal from '@ebay/nice-modal-react';
 import { ThemeMode } from 'shared/types';
 import i18n from '@/i18n';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -9,6 +10,28 @@ import { ThemeProvider } from '@/app/providers/ThemeProvider';
 import { usePreviousPath } from '@/shared/hooks/usePreviousPath';
 import { useUiPreferencesScratch } from '@/shared/hooks/useUiPreferencesScratch';
 import { ReleaseNotesDialog } from '@/shared/dialogs/global/ReleaseNotesDialog';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
+import { LogsPanelProvider } from '@/contexts/LogsPanelContext';
+import { ActionsProvider } from '@/contexts/ActionsContext';
+import '@/app/styles/new/index.css';
+
+function ExecutionProcessesProviderWrapper({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  const { workspaceId, selectedSessionId } = useWorkspaceContext();
+  return (
+    <ExecutionProcessesProvider
+      attemptId={workspaceId}
+      sessionId={selectedSessionId}
+    >
+      {children}
+    </ExecutionProcessesProvider>
+  );
+}
 
 function RootRouteComponent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
@@ -61,7 +84,17 @@ function RootRouteComponent() {
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-        <Outlet />
+        <WorkspaceProvider>
+          <ExecutionProcessesProviderWrapper>
+            <LogsPanelProvider>
+              <ActionsProvider>
+                <NiceModal.Provider>
+                  <Outlet />
+                </NiceModal.Provider>
+              </ActionsProvider>
+            </LogsPanelProvider>
+          </ExecutionProcessesProviderWrapper>
+        </WorkspaceProvider>
       </ThemeProvider>
     </I18nextProvider>
   );

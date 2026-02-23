@@ -47,16 +47,8 @@ function hslToHex(hslValue: string): string {
 
 /**
  * Get the CSS variable value from the computed styles.
- * Looks for the variable on .new-design element first, then falls back to :root.
  */
 function getCssVariable(name: string): string {
-  // Try to get from .new-design element first (where theme variables are scoped)
-  const newDesignEl = document.querySelector('.new-design');
-  if (newDesignEl) {
-    const value = getComputedStyle(newDesignEl).getPropertyValue(name).trim();
-    if (value) return value;
-  }
-  // Fall back to document element
   return getComputedStyle(document.documentElement)
     .getPropertyValue(name)
     .trim();
