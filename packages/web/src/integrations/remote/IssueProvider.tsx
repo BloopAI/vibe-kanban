@@ -1,6 +1,4 @@
-import { useContext, useMemo, useCallback, type ReactNode } from 'react';
-import { createHmrContext } from '@/shared/lib/hmrContext';
-import type { InsertResult, MutationResult } from '@/shared/lib/electric/types';
+import { useMemo, useCallback, type ReactNode } from 'react';
 import { useShape } from '@/integrations/electric/hooks';
 import {
   ISSUE_COMMENTS_SHAPE,
@@ -9,79 +7,11 @@ import {
   ISSUE_COMMENT_REACTION_MUTATION,
   type IssueComment,
   type IssueCommentReaction,
-  type CreateIssueCommentRequest,
-  type UpdateIssueCommentRequest,
-  type CreateIssueCommentReactionRequest,
 } from 'shared/remote-types';
-import type { SyncError } from '@/shared/lib/electric/types';
-
-/**
- * IssueContext provides issue-scoped data and mutations.
- *
- * This context is used when viewing issue details. Wrap with
- * `<IssueProvider issueId={...}>` to load comments/reactions for that issue.
- *
- * Entities synced at issue scope:
- * - IssueComments (data + mutations)
- * - IssueCommentReactions (data + mutations)
- *
- * @example
- * // In an issue detail panel
- * <IssueProvider issueId={selectedIssueId}>
- *   <IssueCommentsSection />
- * </IssueProvider>
- *
- * // Inside IssueCommentsSection:
- * const { comments, insertComment, getReactionsForComment } = useIssueContext();
- * // `comments` already contains only comments for this issue
- */
-export interface IssueContextValue {
-  issueId: string;
-
-  // Normalized data arrays (Electric syncs only this issue's data)
-  comments: IssueComment[];
-  reactions: IssueCommentReaction[];
-
-  // Loading/error state
-  isLoading: boolean;
-  error: SyncError | null;
-  retry: () => void;
-
-  // Comment mutations
-  insertComment: (
-    data: CreateIssueCommentRequest
-  ) => InsertResult<IssueComment>;
-  updateComment: (
-    id: string,
-    changes: Partial<UpdateIssueCommentRequest>
-  ) => MutationResult;
-  removeComment: (id: string) => MutationResult;
-
-  // Reaction mutations
-  insertReaction: (
-    data: CreateIssueCommentReactionRequest
-  ) => InsertResult<IssueCommentReaction>;
-  removeReaction: (id: string) => MutationResult;
-
-  // Lookup helpers (within this issue's data)
-  getComment: (commentId: string) => IssueComment | undefined;
-  getReactionsForComment: (commentId: string) => IssueCommentReaction[];
-  getReactionCountForComment: (commentId: string) => number;
-  hasUserReactedToComment: (
-    commentId: string,
-    userId: string,
-    emoji: string
-  ) => boolean;
-
-  // Computed aggregations
-  commentsById: Map<string, IssueComment>;
-  reactionsByComment: Map<string, IssueCommentReaction[]>;
-}
-
-const IssueContext = createHmrContext<IssueContextValue | null>(
-  'IssueContext',
-  null
-);
+import {
+  IssueContext,
+  type IssueContextValue,
+} from '@/shared/hooks/useIssueContext';
 
 interface IssueProviderProps {
   issueId: string;
@@ -208,25 +138,4 @@ export function IssueProvider({ issueId, children }: IssueProviderProps) {
   return (
     <IssueContext.Provider value={value}>{children}</IssueContext.Provider>
   );
-}
-
-/**
- * Hook to access issue context.
- * Must be used within an IssueProvider.
- */
-export function useIssueContext(): IssueContextValue {
-  const context = useContext(IssueContext);
-  if (!context) {
-    throw new Error('useIssueContext must be used within an IssueProvider');
-  }
-  return context;
-}
-
-/**
- * Hook to optionally access issue context.
- * Returns null if not within an IssueProvider.
- * Useful for components that may or may not be rendered within issue detail views.
- */
-export function useIssueContextOptional(): IssueContextValue | null {
-  return useContext(IssueContext);
 }

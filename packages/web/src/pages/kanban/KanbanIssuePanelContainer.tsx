@@ -14,13 +14,13 @@ import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
-import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
+import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
-import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
-import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';
-import { IssueRelationshipsSectionContainer } from '@/components/ui-new/containers/IssueRelationshipsSectionContainer';
-import { IssueWorkspacesSectionContainer } from '@/components/ui-new/containers/IssueWorkspacesSectionContainer';
+import { IssueCommentsSectionContainer } from './IssueCommentsSectionContainer';
+import { IssueSubIssuesSectionContainer } from './IssueSubIssuesSectionContainer';
+import { IssueRelationshipsSectionContainer } from './IssueRelationshipsSectionContainer';
+import { IssueWorkspacesSectionContainer } from './IssueWorkspacesSectionContainer';
 import {
   KanbanIssuePanel,
   type IssueFormData,
@@ -44,7 +44,7 @@ import {
   selectDisplayData,
   selectIsCreateDraftDirty,
 } from './kanban-issue-panel-state';
-import { useAzureAttachments } from '@/hooks/useAzureAttachments';
+import { useAzureAttachments } from '@/shared/hooks/useAzureAttachments';
 import {
   commitIssueAttachments,
   deleteAttachment,

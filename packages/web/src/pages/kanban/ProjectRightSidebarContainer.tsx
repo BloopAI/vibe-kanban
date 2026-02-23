@@ -22,7 +22,7 @@ import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
-import { KanbanIssuePanelContainer } from '@/components/ui-new/containers/KanbanIssuePanelContainer';
+import { KanbanIssuePanelContainer } from './KanbanIssuePanelContainer';
 import {
   ConversationList,
   type ConversationListHandle,
