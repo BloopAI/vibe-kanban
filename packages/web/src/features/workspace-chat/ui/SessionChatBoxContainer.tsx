@@ -47,14 +47,14 @@ import {
 } from '@/shared/stores/useUiPreferencesStore';
 import { toWorkspace } from '@/shared/lib/routes/navigation';
 import { useInspectModeStore } from '../model/store/useInspectModeStore';
+import { Actions } from '@/components/ui-new/actions';
 import {
-  Actions,
   isSpecialIcon,
   getActionTooltip,
   isActionEnabled,
   isActionVisible,
   type ActionDefinition,
-} from '@/components/ui-new/actions';
+} from '@/shared/types/actions';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';

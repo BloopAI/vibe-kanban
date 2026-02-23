@@ -18,7 +18,7 @@ import {
 import {
   isActionVisible,
   type ActionVisibilityContext,
-} from '@/components/ui-new/actions';
+} from '@/shared/types/actions';
 import { isPageVisible } from '@/features/command-bar/ui/actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 

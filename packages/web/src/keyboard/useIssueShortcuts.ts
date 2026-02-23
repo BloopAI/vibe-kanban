@@ -2,11 +2,11 @@ import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from '@tanstack/react-router';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/contexts/ActionsContext';
+import { Actions } from '@/components/ui-new/actions';
 import {
-  Actions,
   type ActionDefinition,
   ActionTargetType,
-} from '@/components/ui-new/actions';
+} from '@/shared/types/actions';
 import { Scope } from '@/shared/keyboard/registry';
 
 const SEQUENCE_TIMEOUT_MS = 1500;

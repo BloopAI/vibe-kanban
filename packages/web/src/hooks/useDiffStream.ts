@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import type { Diff, PatchType } from 'shared/types';
-import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 
 interface DiffEntries {
   [filePath: string]: PatchType;

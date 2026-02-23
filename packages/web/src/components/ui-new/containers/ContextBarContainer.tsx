@@ -9,8 +9,8 @@ import { useActions } from '@/contexts/ActionsContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import { useContextBarPosition } from '@/hooks/useContextBarPosition';
+import { ContextBarActionGroups } from '../actions';
 import {
-  ContextBarActionGroups,
   type ActionDefinition,
   type ActionVisibilityContext,
   type ContextBarItem,
@@ -21,7 +21,7 @@ import {
   isActionEnabled,
   getActionIcon,
   getActionTooltip,
-} from '../actions';
+} from '@/shared/types/actions';
 import type { EditorType } from 'shared/types';
 import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 import { CopyButton } from './CopyButton';

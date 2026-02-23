@@ -1,4 +1,4 @@
-import type { ActionVisibilityContext } from '@/components/ui-new/actions';
+import type { ActionVisibilityContext } from '@/shared/types/actions';
 import type { CommandBarPage } from './pages';
 
 /**

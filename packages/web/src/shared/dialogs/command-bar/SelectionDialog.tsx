@@ -12,10 +12,7 @@ import type {
   ResolvedGroupItem,
 } from '@/features/command-bar/ui/actions/pages';
 import type { StatusItem } from '@/shared/types/selectionItems';
-import {
-  resolveLabel,
-  type ActionDefinition,
-} from '@/components/ui-new/actions';
+import { resolveLabel, type ActionDefinition } from '@/shared/types/actions';
 
 export interface SelectionPage<TResult = unknown> {
   id: string;

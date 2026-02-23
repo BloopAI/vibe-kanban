@@ -22,7 +22,7 @@ import type { Merge } from 'shared/types';
 import type {
   ActionVisibilityContext,
   DevServerState,
-} from '@/components/ui-new/actions';
+} from '@/shared/types/actions';
 
 interface ActionVisibilityOptions {
   projectId?: string;

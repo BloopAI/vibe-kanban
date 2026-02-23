@@ -20,7 +20,7 @@ import {
   ActionTargetType,
   resolveLabel,
   getActionLabel,
-} from '@/components/ui-new/actions';
+} from '@/shared/types/actions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { UserContext } from '@/contexts/remote/UserContext';
 import { useDevServer } from '@/shared/hooks/useDevServer';

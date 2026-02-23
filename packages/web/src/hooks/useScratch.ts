@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useJsonPatchWsStream } from './useJsonPatchWsStream';
+import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { scratchApi } from '@/shared/lib/api';
 import { ScratchType, type Scratch, type UpdateScratch } from 'shared/types';
 

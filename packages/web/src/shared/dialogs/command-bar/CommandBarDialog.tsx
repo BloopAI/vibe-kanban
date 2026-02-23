@@ -20,7 +20,7 @@ import type {
 import {
   ActionTargetType,
   type ActionDefinition,
-} from '@/components/ui-new/actions';
+} from '@/shared/types/actions';
 import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';

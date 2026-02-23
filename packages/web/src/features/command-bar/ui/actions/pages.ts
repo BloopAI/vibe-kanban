@@ -1,10 +1,10 @@
 import type { Icon } from '@phosphor-icons/react';
 import type { Issue } from 'shared/remote-types';
-import {
-  type ActionDefinition,
-  type ActionVisibilityContext,
-  Actions,
-} from '@/components/ui-new/actions';
+import { Actions } from '@/components/ui-new/actions';
+import type {
+  ActionDefinition,
+  ActionVisibilityContext,
+} from '@/shared/types/actions';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
 
 import type {

@@ -45,7 +45,10 @@ import {
   selectIsCreateDraftDirty,
 } from './kanban-issue-panel-state';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
-import { commitIssueAttachments, deleteAttachment } from '@/shared/lib/remoteApi';
+import {
+  commitIssueAttachments,
+  deleteAttachment,
+} from '@/shared/lib/remoteApi';
 import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';

@@ -8,8 +8,8 @@ import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { Navbar, type NavbarSectionItem } from '@vibe/ui/components/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
+import { NavbarActionGroups } from '../actions';
 import {
-  NavbarActionGroups,
   NavbarDivider,
   type ActionDefinition,
   type NavbarItem as ActionNavbarItem,
@@ -20,7 +20,7 @@ import {
   isActionActive,
   isActionEnabled,
   isActionVisible,
-} from '../actions';
+} from '@/shared/types/actions';
 import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
 
 /**

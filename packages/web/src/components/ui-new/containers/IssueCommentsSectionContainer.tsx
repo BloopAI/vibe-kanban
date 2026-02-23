@@ -6,7 +6,10 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useProjectContext } from '@/contexts/remote/ProjectContext';
 import { useCurrentUser } from '@/hooks/auth/useCurrentUser';
 import { useAzureAttachments } from '@/hooks/useAzureAttachments';
-import { commitCommentAttachments, deleteAttachment } from '@/shared/lib/remoteApi';
+import {
+  commitCommentAttachments,
+  deleteAttachment,
+} from '@/shared/lib/remoteApi';
 import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 import {
   IssueCommentsSection,

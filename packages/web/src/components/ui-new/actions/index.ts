@@ -1,19 +1,7 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { NavigateFn } from '@tanstack/react-router';
+import type { Merge, Workspace } from 'shared/types';
 import type { QueryClient } from '@tanstack/react-query';
-import type {
-  EditorType,
-  ExecutionProcess,
-  Merge,
-  Workspace,
-} from 'shared/types';
-import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
-import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
-import type { LogsPanelContent } from '../containers/LogsContentContainer';
-import type { LogEntry } from '../containers/VirtualizedProcessLogs';
-import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
-import type { IssueCreateRouteOptions } from '@/shared/lib/routes/projectSidebarRoutes';
 import {
   CopyIcon,
   XIcon,
@@ -95,196 +83,15 @@ const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
 );
 RightSidebarIcon.displayName = 'RightSidebarIcon';
 
-// Special icon types for ContextBar
-export type SpecialIconType = 'ide-icon' | 'copy-icon';
-export type ActionIcon = Icon | SpecialIconType;
-
-// Workspace type for sidebar (minimal subset needed for workspace selection)
-interface SidebarWorkspace {
-  id: string;
-  isRunning?: boolean;
-}
-
-// Dev server state type for visibility context
-export type DevServerState = 'stopped' | 'starting' | 'running' | 'stopping';
-
-// Project mutations interface (registered by ProjectProvider consumers)
-export interface ProjectMutations {
-  removeIssue: (id: string) => void;
-  duplicateIssue: (issueId: string) => void;
-  getIssue: (issueId: string) => { simple_id: string } | undefined;
-  getAssigneesForIssue: (issueId: string) => { user_id: string }[];
-}
-
-// Context provided to action executors (from React hooks)
-export interface ActionExecutorContext {
-  navigate: NavigateFn;
-  queryClient: QueryClient;
-  selectWorkspace: (workspaceId: string) => void;
-  activeWorkspaces: SidebarWorkspace[];
-  currentWorkspaceId: string | null;
-  containerRef: string | null;
-  runningDevServers: ExecutionProcess[];
-  startDevServer: () => void;
-  stopDevServer: () => void;
-  // Logs panel state
-  currentLogs: LogEntry[] | null;
-  logsPanelContent: LogsPanelContent | null;
-  // Command bar navigation
-  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
-  openPrioritySelection: (
-    projectId: string,
-    issueIds: string[]
-  ) => Promise<void>;
-  openAssigneeSelection: (
-    projectId: string,
-    issueIds: string[],
-    isCreateMode?: boolean
-  ) => Promise<void>;
-  openSubIssueSelection: (
-    projectId: string,
-    issueId: string,
-    mode?: 'addChild' | 'setParent'
-  ) => Promise<{ type: string } | undefined>;
-  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
-  openRelationshipSelection: (
-    projectId: string,
-    issueId: string,
-    relationshipType: 'blocking' | 'related' | 'has_duplicate',
-    direction: 'forward' | 'reverse'
-  ) => Promise<void>;
-  // Kanban navigation (URL-based)
-  navigateToCreateIssue: (options?: IssueCreateRouteOptions) => void;
-  // Default status for issue creation based on current kanban tab
-  defaultCreateStatusId?: string;
-  // Current kanban context (for project settings action)
-  kanbanOrgId?: string;
-  kanbanProjectId?: string;
-  // Project mutations (registered when inside ProjectProvider)
-  projectMutations?: ProjectMutations;
-  // Remote workspaces (from Electric sync via UserContext)
-  remoteWorkspaces: RemoteWorkspace[];
-}
-
-// Context for evaluating action visibility and state conditions
-export interface ActionVisibilityContext {
-  // Layout state
-  layoutMode: LayoutMode;
-  rightMainPanelMode:
-    | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
-    | null;
-  isLeftSidebarVisible: boolean;
-  isLeftMainPanelVisible: boolean;
-  isRightSidebarVisible: boolean;
-  isCreateMode: boolean;
-
-  // Workspace state
-  hasWorkspace: boolean;
-  workspaceArchived: boolean;
-
-  // Diff state
-  hasDiffs: boolean;
-  diffViewMode: DiffViewMode;
-  isAllDiffsExpanded: boolean;
-
-  // Dev server state
-  editorType: EditorType | null;
-  devServerState: DevServerState;
-  runningDevServers: ExecutionProcess[];
-
-  // Git panel state
-  hasGitRepos: boolean;
-  hasMultipleRepos: boolean;
-  hasOpenPR: boolean;
-  hasUnpushedCommits: boolean;
-
-  // Execution state
-  isAttemptRunning: boolean;
-
-  // Logs panel state
-  logsPanelContent: LogsPanelContent | null;
-
-  // Kanban state
-  hasSelectedKanbanIssue: boolean;
-  hasSelectedKanbanIssueParent: boolean;
-  isCreatingIssue: boolean;
-
-  // Auth state
-  isSignedIn: boolean;
-}
-
-// Base properties shared by all actions
-interface ActionBase {
-  id: string;
-  label: string | ((workspace?: Workspace) => string);
-  icon: ActionIcon;
-  shortcut?: string;
-  variant?: 'default' | 'destructive';
-  // Optional search keywords - included in command bar search but not displayed
-  keywords?: string[];
-  // Optional visibility condition - if omitted, action is always visible
-  isVisible?: (ctx: ActionVisibilityContext) => boolean;
-  // Optional active state - if omitted, action is not active
-  isActive?: (ctx: ActionVisibilityContext) => boolean;
-  // Optional enabled state - if omitted, action is enabled
-  isEnabled?: (ctx: ActionVisibilityContext) => boolean;
-  // Optional dynamic icon - if omitted, uses static icon property
-  getIcon?: (ctx: ActionVisibilityContext) => ActionIcon;
-  // Optional dynamic tooltip - if omitted, uses label
-  getTooltip?: (ctx: ActionVisibilityContext) => string;
-  // Optional dynamic label - if omitted, uses static label property
-  getLabel?: (ctx: ActionVisibilityContext) => string;
-}
-
-// Enum discriminant for action target types
-export enum ActionTargetType {
-  NONE = 'none',
-  WORKSPACE = 'workspace',
-  GIT = 'git',
-  ISSUE = 'issue',
-}
-
-// Global action (no target needed)
-export interface GlobalActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.NONE;
-  execute: (ctx: ActionExecutorContext) => Promise<void> | void;
-}
-
-// Workspace action (target required - validated by ActionsContext)
-export interface WorkspaceActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.WORKSPACE;
-  execute: (
-    ctx: ActionExecutorContext,
-    workspaceId: string
-  ) => Promise<void> | void;
-}
-
-// Git action (requires workspace + repoId)
-export interface GitActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.GIT;
-  execute: (
-    ctx: ActionExecutorContext,
-    workspaceId: string,
-    repoId: string
-  ) => Promise<void> | void;
-}
-
-// Issue action (requires projectId + issueIds)
-export interface IssueActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.ISSUE;
-  execute: (
-    ctx: ActionExecutorContext,
-    projectId: string,
-    issueIds: string[]
-  ) => Promise<void> | void;
-}
-
-// Discriminated union
-export type ActionDefinition =
-  | GlobalActionDefinition
-  | WorkspaceActionDefinition
-  | GitActionDefinition
-  | IssueActionDefinition;
+import type {
+  ActionExecutorContext,
+  ActionDefinition,
+  GlobalActionDefinition,
+  WorkspaceActionDefinition,
+  IssueActionDefinition,
+  NavbarItem,
+} from '@/shared/types/actions';
+import { ActionTargetType, NavbarDivider } from '@/shared/types/actions';
 
 // Helper to get workspace from query cache or fetch from API
 async function getWorkspace(
@@ -312,7 +119,7 @@ function invalidateWorkspaceQueries(
 
 // Helper to find the next workspace to navigate to when removing current workspace
 function getNextWorkspaceId(
-  activeWorkspaces: SidebarWorkspace[],
+  activeWorkspaces: { id: string; isRunning?: boolean }[],
   removingWorkspaceId: string
 ): string | null {
   const currentIndex = activeWorkspaces.findIndex(
@@ -1693,20 +1500,6 @@ export const Actions = {
   } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
 
-// Helper to resolve dynamic label
-export function resolveLabel(
-  action: ActionDefinition,
-  workspace?: Workspace
-): string {
-  return typeof action.label === 'function'
-    ? action.label(workspace)
-    : action.label;
-}
-
-// Divider marker for navbar action groups
-export const NavbarDivider = { type: 'divider' } as const;
-export type NavbarItem = ActionDefinition | typeof NavbarDivider;
-
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
   left: [Actions.ArchiveWorkspace] as NavbarItem[],
@@ -1729,10 +1522,6 @@ export const NavbarActionGroups = {
   ] as NavbarItem[],
 };
 
-// Divider marker for context bar action groups
-export const ContextBarDivider = { type: 'divider' } as const;
-export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
-
 // ContextBar action groups define which actions appear in each section
 export const ContextBarActionGroups = {
   primary: [Actions.OpenInIDE, Actions.CopyWorkspacePath] as ActionDefinition[],
@@ -1742,55 +1531,3 @@ export const ContextBarActionGroups = {
     Actions.ToggleChangesMode,
   ] as ActionDefinition[],
 };
-
-// Helper to check if an icon is a special type
-export function isSpecialIcon(icon: ActionIcon): icon is SpecialIconType {
-  return icon === 'ide-icon' || icon === 'copy-icon';
-}
-
-// Pure action helper functions (operate on ActionDefinition + ActionVisibilityContext)
-
-export function isActionVisible(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): boolean {
-  return action.isVisible ? action.isVisible(ctx) : true;
-}
-
-export function isActionActive(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): boolean {
-  return action.isActive ? action.isActive(ctx) : false;
-}
-
-export function isActionEnabled(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): boolean {
-  return action.isEnabled ? action.isEnabled(ctx) : true;
-}
-
-export function getActionIcon(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): ActionIcon {
-  return action.getIcon ? action.getIcon(ctx) : action.icon;
-}
-
-export function getActionTooltip(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext
-): string {
-  return action.getTooltip ? action.getTooltip(ctx) : resolveLabel(action);
-}
-
-export function getActionLabel(
-  action: ActionDefinition,
-  ctx: ActionVisibilityContext,
-  workspace?: Workspace
-): string {
-  return action.getLabel
-    ? action.getLabel(ctx)
-    : resolveLabel(action, workspace);
-}
