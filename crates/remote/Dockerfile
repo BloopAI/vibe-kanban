@@ -16,6 +16,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --filter ./packages/remote-web --frozen-lockfile
 
 COPY packages/remote-web/ packages/remote-web/
+COPY packages/web/ packages/web/
 COPY shared/ shared/
 
 RUN pnpm -C packages/remote-web build
