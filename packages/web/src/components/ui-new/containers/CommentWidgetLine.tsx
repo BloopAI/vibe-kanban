@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CommentCard } from '@vibe/ui/components/CommentCard';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
-import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+import { useReview, type ReviewDraft } from '@/shared/hooks/useReview';
 
 interface CommentWidgetLineProps {
   draft: ReviewDraft;

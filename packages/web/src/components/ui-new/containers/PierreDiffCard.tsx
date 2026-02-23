@@ -26,7 +26,7 @@ import {
   useWrapTextDiff,
   useIgnoreWhitespaceDiff,
 } from '@/shared/stores/useDiffViewStore';
-import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
+import { useReview, type ReviewDraft } from '@/shared/hooks/useReview';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';

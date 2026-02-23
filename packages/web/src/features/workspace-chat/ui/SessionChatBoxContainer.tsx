@@ -17,7 +17,7 @@ import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackC
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import { useEntries, useTokenUsage } from '../model/contexts/EntriesContext';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
-import { useReviewOptional } from '@/contexts/ReviewProvider';
+import { useReviewOptional } from '@/shared/hooks/useReview';
 import { useActions } from '@/shared/hooks/useActions';
 import { useTodos } from '../model/hooks/useTodos';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';

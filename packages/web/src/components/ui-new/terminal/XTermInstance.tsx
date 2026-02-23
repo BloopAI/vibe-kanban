@@ -6,7 +6,7 @@ import '@xterm/xterm/css/xterm.css';
 
 import { useTheme } from '@/shared/hooks/useTheme';
 import { getTerminalTheme } from '@/shared/lib/terminalTheme';
-import { useTerminal } from '@/contexts/TerminalContext';
+import { useTerminal } from '@/shared/hooks/useTerminal';
 
 interface XTermInstanceProps {
   tabId: string;

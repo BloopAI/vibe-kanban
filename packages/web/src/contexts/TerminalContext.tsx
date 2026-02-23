@@ -1,26 +1,17 @@
-import {
-  useContext,
-  useReducer,
-  useMemo,
-  useCallback,
-  useRef,
-  ReactNode,
-} from 'react';
-import { createHmrContext } from '@/shared/lib/hmrContext';
+import { useReducer, useMemo, useCallback, useRef, ReactNode } from 'react';
 import type { Terminal } from '@xterm/xterm';
 import type { FitAddon } from '@xterm/addon-fit';
+import {
+  TerminalContext,
+  type TerminalTab,
+  type TerminalInstance,
+} from '@/shared/hooks/useTerminal';
 
-export interface TerminalInstance {
-  terminal: Terminal;
-  fitAddon: FitAddon;
-}
-
-export interface TerminalTab {
-  id: string;
-  title: string;
-  workspaceId: string;
-  cwd: string;
-}
+export {
+  useTerminal,
+  type TerminalTab,
+  type TerminalInstance,
+} from '@/shared/hooks/useTerminal';
 
 interface TerminalConnection {
   ws: WebSocket;
@@ -163,40 +154,6 @@ function terminalReducer(
       return state;
   }
 }
-
-interface TerminalContextType {
-  getTabsForWorkspace: (workspaceId: string) => TerminalTab[];
-  getActiveTab: (workspaceId: string) => TerminalTab | null;
-  createTab: (workspaceId: string, cwd: string) => void;
-  closeTab: (workspaceId: string, tabId: string) => void;
-  setActiveTab: (workspaceId: string, tabId: string) => void;
-  updateTabTitle: (workspaceId: string, tabId: string, title: string) => void;
-  clearWorkspaceTabs: (workspaceId: string) => void;
-  // Terminal instance management
-  registerTerminalInstance: (
-    tabId: string,
-    terminal: Terminal,
-    fitAddon: FitAddon
-  ) => void;
-  getTerminalInstance: (tabId: string) => TerminalInstance | null;
-  unregisterTerminalInstance: (tabId: string) => void;
-  // Terminal connection management
-  createTerminalConnection: (
-    tabId: string,
-    endpoint: string,
-    onData: (data: string) => void,
-    onExit?: () => void
-  ) => {
-    send: (data: string) => void;
-    resize: (cols: number, rows: number) => void;
-  };
-  getTerminalConnection: (tabId: string) => TerminalConnection | null;
-}
-
-const TerminalContext = createHmrContext<TerminalContextType | null>(
-  'TerminalContext',
-  null
-);
 
 interface TerminalProviderProps {
   children: ReactNode;
@@ -502,12 +459,4 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
       {children}
     </TerminalContext.Provider>
   );
-}
-
-export function useTerminal() {
-  const context = useContext(TerminalContext);
-  if (!context) {
-    throw new Error('useTerminal must be used within TerminalProvider');
-  }
-  return context;
 }

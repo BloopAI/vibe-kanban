@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { ThemeMode } from 'shared/types';
+import { useTheme } from '@/shared/hooks/useTheme';
 
 interface VibeStyleOverrideMessage {
   type: 'VIBE_STYLE_OVERRIDE';
@@ -78,4 +79,9 @@ export function AppWithStyleOverride({
   }, []);
 
   return <>{children}</>;
+}
+
+export function useStyleOverrideThemeSetter() {
+  const { setTheme } = useTheme();
+  return setTheme;
 }
