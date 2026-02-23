@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import {
   GuideDialogShell,
   type GuideDialogTopic,

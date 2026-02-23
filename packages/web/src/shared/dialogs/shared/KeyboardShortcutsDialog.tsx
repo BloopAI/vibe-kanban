@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { XIcon, GearIcon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, type NoProps } from '@/lib/modals';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { cn } from '@/shared/lib/utils';
 import {

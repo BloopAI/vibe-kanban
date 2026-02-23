@@ -53,7 +53,7 @@ import {
 import { getRandomPresetColor, PRESET_COLORS } from '@/lib/colors';
 import { InlineColorPicker } from '@vibe/ui/components/ColorPicker';
 import { cn } from '@/shared/lib/utils';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import {
   SettingsCard,
   SettingsField,

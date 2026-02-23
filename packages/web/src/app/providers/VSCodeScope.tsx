@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { PortalContainerContext } from '@/contexts/PortalContainerContext';
+import { PortalContainerContext } from '@/shared/hooks/PortalContainerContext';
 import {
   WorkspaceProvider,
   useWorkspaceContext,

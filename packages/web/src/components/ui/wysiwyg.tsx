@@ -64,7 +64,7 @@ import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { usePortalContainer } from '@/contexts/PortalContainerContext';
+import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import { WorkspaceContext } from '@/contexts/WorkspaceContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';

@@ -1,6 +1,6 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
 import { usePostHog } from 'posthog-js/react';
-import { PortalContainerContext } from '@/contexts/PortalContainerContext';
+import { PortalContainerContext } from '@/shared/hooks/PortalContainerContext';
 import {
   WorkspaceProvider,
   useWorkspaceContext,
