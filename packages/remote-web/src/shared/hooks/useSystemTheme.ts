@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 /**
  * Applies 'dark' or 'light' class to <html> based on the browser's
@@ -6,12 +6,12 @@ import { useEffect } from 'react';
  */
 export function useSystemTheme() {
   useEffect(() => {
-    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const query = window.matchMedia("(prefers-color-scheme: dark)");
 
     function apply(dark: boolean) {
       const root = document.documentElement;
-      root.classList.toggle('dark', dark);
-      root.classList.toggle('light', !dark);
+      root.classList.toggle("dark", dark);
+      root.classList.toggle("light", !dark);
     }
 
     apply(query.matches);
@@ -20,7 +20,7 @@ export function useSystemTheme() {
       apply(e.matches);
     }
 
-    query.addEventListener('change', onChange);
-    return () => query.removeEventListener('change', onChange);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
   }, []);
 }

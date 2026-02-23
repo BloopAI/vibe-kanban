@@ -1,9 +1,9 @@
-import { getToken, triggerRefresh } from './tokenManager';
-import { clearTokens } from './auth';
+import { getToken, triggerRefresh } from "@/shared/lib/auth/tokenManager";
+import { clearTokens } from "@/shared/lib/auth";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
-export type OAuthProvider = 'github' | 'google';
+export type OAuthProvider = "github" | "google";
 
 type HandoffInitResponse = {
   handoff_id: string;
@@ -18,11 +18,11 @@ type HandoffRedeemResponse = {
 export async function initOAuth(
   provider: OAuthProvider,
   returnTo: string,
-  appChallenge: string
+  appChallenge: string,
 ): Promise<HandoffInitResponse> {
   const res = await fetch(`${API_BASE}/v1/oauth/web/init`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       provider,
       return_to: returnTo,
@@ -38,11 +38,11 @@ export async function initOAuth(
 export async function redeemOAuth(
   handoffId: string,
   appCode: string,
-  appVerifier: string
+  appVerifier: string,
 ): Promise<HandoffRedeemResponse> {
   const res = await fetch(`${API_BASE}/v1/oauth/web/redeem`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       handoff_id: handoffId,
       app_code: appCode,
@@ -56,11 +56,11 @@ export async function redeemOAuth(
 }
 
 export async function refreshTokens(
-  refreshToken: string
+  refreshToken: string,
 ): Promise<{ access_token: string; refresh_token: string }> {
   const res = await fetch(`${API_BASE}/v1/tokens/refresh`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ refresh_token: refreshToken }),
   });
   if (!res.ok) {
@@ -73,7 +73,7 @@ export async function refreshTokens(
 
 export async function authenticatedFetch(
   url: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
 ): Promise<Response> {
   const accessToken = await getToken();
 
@@ -102,7 +102,7 @@ export async function authenticatedFetch(
 export async function logout(): Promise<void> {
   try {
     await authenticatedFetch(`${API_BASE}/v1/oauth/logout`, {
-      method: 'POST',
+      method: "POST",
     });
   } finally {
     await clearTokens();

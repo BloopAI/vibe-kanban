@@ -1,12 +1,12 @@
 function base64UrlEncode(array: Uint8Array): string {
   const base64 = btoa(String.fromCharCode(...array));
-  return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+  return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 function bytesToHex(bytes: Uint8Array): string {
-  let out = '';
+  let out = "";
   for (let i = 0; i < bytes.length; i++) {
-    out += bytes[i].toString(16).padStart(2, '0');
+    out += bytes[i].toString(16).padStart(2, "0");
   }
   return out;
 }
@@ -19,11 +19,11 @@ export function generateVerifier(): string {
 
 export async function generateChallenge(verifier: string): Promise<string> {
   const data = new TextEncoder().encode(verifier);
-  const hash = await crypto.subtle.digest('SHA-256', data);
+  const hash = await crypto.subtle.digest("SHA-256", data);
   return bytesToHex(new Uint8Array(hash));
 }
 
-const VERIFIER_KEY = 'oauth_verifier';
+const VERIFIER_KEY = "oauth_verifier";
 
 export function storeVerifier(verifier: string): void {
   sessionStorage.setItem(VERIFIER_KEY, verifier);

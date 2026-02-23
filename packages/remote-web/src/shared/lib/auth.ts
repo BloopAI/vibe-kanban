@@ -1,7 +1,7 @@
-const DB_NAME = 'rf-auth';
-const STORE_NAME = 'tokens';
-const ACCESS_TOKEN_KEY = 'access_token';
-const REFRESH_TOKEN_KEY = 'refresh_token';
+const DB_NAME = "rf-auth";
+const STORE_NAME = "tokens";
+const ACCESS_TOKEN_KEY = "access_token";
+const REFRESH_TOKEN_KEY = "refresh_token";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -18,11 +18,11 @@ function get(key: string): Promise<string | null> {
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
+        const tx = db.transaction(STORE_NAME, "readonly");
         const req = tx.objectStore(STORE_NAME).get(key);
         req.onsuccess = () => resolve((req.result as string) ?? null);
         req.onerror = () => reject(req.error);
-      })
+      }),
   );
 }
 
@@ -30,11 +30,11 @@ function put(key: string, value: string): Promise<void> {
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const tx = db.transaction(STORE_NAME, "readwrite");
         const req = tx.objectStore(STORE_NAME).put(value, key);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
-      })
+      }),
   );
 }
 
@@ -42,17 +42,17 @@ function del(key: string): Promise<void> {
   return openDB().then(
     (db) =>
       new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const tx = db.transaction(STORE_NAME, "readwrite");
         const req = tx.objectStore(STORE_NAME).delete(key);
         req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
-      })
+      }),
   );
 }
 
 export async function storeTokens(
   accessToken: string,
-  refreshToken: string
+  refreshToken: string,
 ): Promise<void> {
   await put(ACCESS_TOKEN_KEY, accessToken);
   await put(REFRESH_TOKEN_KEY, refreshToken);

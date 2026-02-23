@@ -4,9 +4,9 @@ import {
   storeTokens,
   clearAccessToken,
   clearTokens,
-} from './auth';
-import { shouldRefreshAccessToken } from 'shared/jwt';
-import { refreshTokens } from './api';
+} from "@/shared/lib/auth";
+import { shouldRefreshAccessToken } from "shared/jwt";
+import { refreshTokens } from "@/shared/lib/api";
 
 const TOKEN_REFRESH_TIMEOUT_MS = 80_000;
 const TOKEN_REFRESH_MAX_ATTEMPTS = 3;
@@ -20,14 +20,14 @@ async function refreshWithRetry(refreshToken: string) {
         refreshTokens(refreshToken),
         new Promise<never>((_, reject) => {
           timeoutId = setTimeout(
-            () => reject(new Error('Token refresh timed out')),
-            TOKEN_REFRESH_TIMEOUT_MS
+            () => reject(new Error("Token refresh timed out")),
+            TOKEN_REFRESH_TIMEOUT_MS,
           );
         }),
       ]);
     } catch (error) {
       const isTimeout =
-        error instanceof Error && error.message === 'Token refresh timed out';
+        error instanceof Error && error.message === "Token refresh timed out";
       if (isTimeout) throw error;
 
       const status = (error as { status?: number }).status;
@@ -42,7 +42,7 @@ async function refreshWithRetry(refreshToken: string) {
       clearTimeout(timeoutId!);
     }
   }
-  throw new Error('Token refresh failed after retries');
+  throw new Error("Token refresh failed after retries");
 }
 
 let refreshPromise: Promise<string> | null = null;
@@ -54,7 +54,7 @@ async function doTokenRefresh(): Promise<string> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) {
     await clearTokens();
-    throw new Error('No refresh token available');
+    throw new Error("No refresh token available");
   }
 
   const tokens = await refreshWithRetry(refreshToken);
@@ -66,9 +66,9 @@ function handleTokenRefresh(): Promise<string> {
   if (refreshPromise) return refreshPromise;
 
   const innerPromise =
-    typeof navigator.locks?.request === 'function'
+    typeof navigator.locks?.request === "function"
       ? navigator.locks
-          .request('rf-token-refresh', doTokenRefresh)
+          .request("rf-token-refresh", doTokenRefresh)
           .then((t) => t)
       : doTokenRefresh();
 
@@ -77,7 +77,7 @@ function handleTokenRefresh(): Promise<string> {
       const status = (error as { status?: number }).status;
       if (status === 401) {
         await clearTokens();
-        throw new Error('Session expired');
+        throw new Error("Session expired");
       }
       throw error;
     })
@@ -92,7 +92,7 @@ function handleTokenRefresh(): Promise<string> {
 export async function getToken(): Promise<string> {
   const accessToken = await getAccessToken();
   if (!accessToken) {
-    if (!(await getRefreshToken())) throw new Error('Not authenticated');
+    if (!(await getRefreshToken())) throw new Error("Not authenticated");
     return handleTokenRefresh();
   }
   if (shouldRefreshAccessToken(accessToken)) return handleTokenRefresh();

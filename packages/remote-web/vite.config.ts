@@ -1,22 +1,22 @@
-import path from 'path'
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import path from "path";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 
 export default defineConfig({
   plugins: [
     tanstackRouter({
-      target: 'react',
+      target: "react",
       autoCodeSplitting: false,
     }),
     react({
       babel: {
         plugins: [
           [
-            'babel-plugin-react-compiler',
+            "babel-plugin-react-compiler",
             {
-              target: '18',
-              sources: [path.resolve(__dirname, 'src')],
+              target: "18",
+              sources: [path.resolve(__dirname, "src")],
               environment: {
                 enableResetCacheOnSourceFileChanges: true,
               },
@@ -28,7 +28,8 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      shared: path.resolve(__dirname, '../../shared'),
+      "@": path.resolve(__dirname, "src"),
+      shared: path.resolve(__dirname, "../../shared"),
     },
   },
   server: {
@@ -37,7 +38,7 @@ export default defineConfig({
       ".trycloudflare.com", // allow all cloudflared tunnels
     ],
     fs: {
-      allow: [path.resolve(__dirname, '.'), path.resolve(__dirname, '../..')],
+      allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "../..")],
     },
-  }
-})
+  },
+});

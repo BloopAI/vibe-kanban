@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { initOAuth, type OAuthProvider } from '../lib/api';
+import { useState } from "react";
+import { initOAuth, type OAuthProvider } from "@/shared/lib/api";
 import {
   generateVerifier,
   generateChallenge,
   storeVerifier,
-} from '../lib/pkce';
+} from "@/shared/lib/pkce";
 
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
@@ -23,14 +23,10 @@ export default function LoginPage() {
         import.meta.env.VITE_APP_BASE_URL || window.location.origin;
       const returnTo = `${appBase}/login/complete`;
 
-      const { authorize_url } = await initOAuth(
-        provider,
-        returnTo,
-        challenge
-      );
+      const { authorize_url } = await initOAuth(provider, returnTo, challenge);
       window.location.assign(authorize_url);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'OAuth init failed');
+      setError(e instanceof Error ? e.message : "OAuth init failed");
       setPending(null);
     }
   };
@@ -47,9 +43,7 @@ export default function LoginPage() {
                 className="h-8 w-auto"
               />
             </div>
-            <p className="text-sm text-low">
-              Sign in to continue
-            </p>
+            <p className="text-sm text-low">Sign in to continue</p>
           </header>
 
           {error && (
@@ -62,16 +56,16 @@ export default function LoginPage() {
             <OAuthButton
               provider="github"
               label="Continue with GitHub"
-              onClick={() => void handleLogin('github')}
+              onClick={() => void handleLogin("github")}
               disabled={pending !== null}
-              loading={pending === 'github'}
+              loading={pending === "github"}
             />
             <OAuthButton
               provider="google"
               label="Continue with Google"
-              onClick={() => void handleLogin('google')}
+              onClick={() => void handleLogin("google")}
               disabled={pending !== null}
-              loading={pending === 'google'}
+              loading={pending === "google"}
             />
           </section>
         </div>
@@ -101,7 +95,9 @@ function OAuthButton({
       onClick={onClick}
       disabled={disabled || loading}
     >
-      {loading ? `Opening ${provider === 'github' ? 'GitHub' : 'Google'}...` : label}
+      {loading
+        ? `Opening ${provider === "github" ? "GitHub" : "Google"}...`
+        : label}
     </button>
   );
 }
