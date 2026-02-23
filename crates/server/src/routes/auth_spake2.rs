@@ -22,9 +22,7 @@ use crate::{DeploymentImpl, error::ApiError};
 
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
-const GENERATE_CODE_PER_IP_LIMIT: usize = 3;
 const SPAKE2_START_GLOBAL_LIMIT: usize = 30;
-const SPAKE2_START_PER_IP_LIMIT: usize = 10;
 
 #[derive(Debug, Deserialize)]
 struct StartSpake2EnrollmentRequest {
@@ -90,14 +88,6 @@ async fn generate_enrollment_code(
         RATE_LIMIT_WINDOW,
     )
     .await?;
-    let ip_bucket = format!("trusted-keys:code-generation:ip:{}", client_addr.ip());
-    enforce_rate_limit(
-        &deployment,
-        &ip_bucket,
-        GENERATE_CODE_PER_IP_LIMIT,
-        RATE_LIMIT_WINDOW,
-    )
-    .await?;
 
     let enrollment_code = deployment
         .get_or_set_enrollment_code(generate_one_time_code())
@@ -122,14 +112,6 @@ async fn start_spake2_enrollment_route(
         &deployment,
         "trusted-keys:spake2-start:global",
         SPAKE2_START_GLOBAL_LIMIT,
-        RATE_LIMIT_WINDOW,
-    )
-    .await?;
-    let ip_bucket = format!("trusted-keys:spake2-start:ip:{}", client_addr.ip());
-    enforce_rate_limit(
-        &deployment,
-        &ip_bucket,
-        SPAKE2_START_PER_IP_LIMIT,
         RATE_LIMIT_WINDOW,
     )
     .await?;
