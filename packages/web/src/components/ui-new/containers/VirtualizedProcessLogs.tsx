@@ -9,7 +9,7 @@ import {
   VirtuosoMessageListProps,
 } from '@virtuoso.dev/message-list';
 import { WarningCircleIcon } from '@phosphor-icons/react/dist/ssr';
-import RawLogText from '@/components/common/RawLogText';
+import RawLogText from '@/shared/components/RawLogText';
 import type { PatchType } from 'shared/types';
 
 export type LogEntry = Extract<

@@ -21,7 +21,7 @@ import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
-import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
+import DisplayConversationEntry from '@/shared/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
 import { useChangesView } from '@/shared/hooks/useChangesView';

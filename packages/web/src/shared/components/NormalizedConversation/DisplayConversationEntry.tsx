@@ -29,7 +29,7 @@ import {
   User,
   Wrench,
 } from 'lucide-react';
-import RawLogText from '../common/RawLogText';
+import RawLogText from '@/shared/components/RawLogText';
 import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
 import { cn } from '@/shared/lib/utils';
