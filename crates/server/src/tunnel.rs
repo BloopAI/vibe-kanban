@@ -13,6 +13,9 @@ use uuid::Uuid;
 
 use crate::DeploymentImpl;
 
+const RELAY_RECONNECT_INITIAL_DELAY_SECS: u64 = 1;
+const RELAY_RECONNECT_MAX_DELAY_SECS: u64 = 30;
+
 /// Start relay mode if `VK_TUNNEL` is enabled.
 pub async fn start_relay_if_requested(
     deployment: &DeploymentImpl,
@@ -82,15 +85,61 @@ pub async fn start_relay_if_requested(
         }
     };
 
-    match start_relay(local_port, &remote_client, host_id, shutdown).await {
-        Ok(()) => {
-            tracing::info!("Relay connected to remote server");
-            println!("\n  Relay active — access from remote frontend\n");
+    let supervisor_shutdown = shutdown.clone();
+    tokio::spawn(async move {
+        tracing::info!("Relay auto-reconnect loop started");
+
+        let mut reconnect_delay =
+            std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
+        let max_reconnect_delay = std::time::Duration::from_secs(RELAY_RECONNECT_MAX_DELAY_SECS);
+
+        loop {
+            if supervisor_shutdown.is_cancelled() {
+                break;
+            }
+
+            let run_result = start_relay(
+                local_port,
+                &remote_client,
+                host_id,
+                supervisor_shutdown.clone(),
+            )
+            .await;
+
+            let mut should_backoff = false;
+
+            match run_result {
+                Ok(()) => {
+                    if !supervisor_shutdown.is_cancelled() {
+                        tracing::warn!("Relay disconnected; reconnecting");
+                    }
+                    reconnect_delay =
+                        std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
+                }
+                Err(error) => {
+                    if supervisor_shutdown.is_cancelled() {
+                        break;
+                    }
+                    tracing::warn!(
+                        ?error,
+                        retry_in_secs = reconnect_delay.as_secs(),
+                        "Relay connection failed; retrying"
+                    );
+                    should_backoff = true;
+                }
+            }
+
+            tokio::select! {
+                _ = supervisor_shutdown.cancelled() => break,
+                _ = tokio::time::sleep(reconnect_delay) => {}
+            }
+
+            if should_backoff {
+                reconnect_delay =
+                    std::cmp::min(reconnect_delay.saturating_mul(2), max_reconnect_delay);
+            }
         }
-        Err(error) => {
-            tracing::error!(?error, "Failed to start relay");
-        }
-    }
+    });
 }
 
 /// Start the relay client transport.

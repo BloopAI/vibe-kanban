@@ -30,7 +30,7 @@ pub struct RelayClientConfig {
 
 /// Connects the relay client control channel and starts handling inbound streams.
 ///
-/// Returns once the control channel is established and background tasks are spawned.
+/// Returns when shutdown is requested or when the control channel disconnects/errors.
 pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()> {
     let mut request = config
         .ws_url
@@ -66,42 +66,39 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
     let mut session = Session::new_client(ws_io, YamuxConfig::default());
     let mut control = session.control();
 
+    tracing::info!("relay control channel connected");
+
     let shutdown = config.shutdown;
     let local_addr = config.local_addr;
     let local_host_header = config.local_host_header;
 
-    tokio::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = shutdown.cancelled() => {
-                    control.close().await;
-                    break;
-                }
-                inbound = session.next() => {
-                    match inbound {
-                        Some(Ok(stream)) => {
-                            let local_addr = local_addr.clone();
-                            let local_host_header = local_host_header.clone();
-                            tokio::spawn(async move {
-                                if let Err(error) = handle_inbound_stream(stream, local_addr, local_host_header).await {
-                                    tracing::warn!(?error, "relay stream handling failed");
-                                }
-                            });
-                        }
-                        Some(Err(error)) => {
-                            tracing::warn!(?error, "relay yamux session error");
-                            break;
-                        }
-                        None => {
-                            break;
-                        }
+    loop {
+        tokio::select! {
+            _ = shutdown.cancelled() => {
+                control.close().await;
+                return Ok(());
+            }
+            inbound = session.next() => {
+                match inbound {
+                    Some(Ok(stream)) => {
+                        let local_addr = local_addr.clone();
+                        let local_host_header = local_host_header.clone();
+                        tokio::spawn(async move {
+                            if let Err(error) = handle_inbound_stream(stream, local_addr, local_host_header).await {
+                                tracing::warn!(?error, "relay stream handling failed");
+                            }
+                        });
+                    }
+                    Some(Err(error)) => {
+                        return Err(anyhow::anyhow!("relay yamux session error: {error}"));
+                    }
+                    None => {
+                        return Err(anyhow::anyhow!("relay control channel closed"));
                     }
                 }
             }
         }
-    });
-
-    Ok(())
+    }
 }
 
 async fn handle_inbound_stream(
