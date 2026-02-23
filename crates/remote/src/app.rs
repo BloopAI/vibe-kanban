@@ -75,6 +75,7 @@ impl Server {
             registry.clone(),
             jwt.clone(),
             auth_config.public_base_url().to_string(),
+            config.allowed_users.clone(),
         ));
 
         let oauth_token_validator =

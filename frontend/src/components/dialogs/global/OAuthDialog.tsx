@@ -54,7 +54,7 @@ const OAuthDialogImpl = NiceModal.create<OAuthDialogProps>(
         popupRef.current = window.open(
           data.authorize_url,
           'oauth-popup',
-          `width=${width},height=${height},left=${left},top=${top},popup=yes,noopener=yes`
+          `width=${width},height=${height},left=${left},top=${top},popup=yes`
         );
 
         // Start polling
@@ -157,6 +157,25 @@ const OAuthDialogImpl = NiceModal.create<OAuthDialogProps>(
       }
       setState({ type: 'select' });
     };
+
+    // Listen for OAuth error messages from the popup
+    useEffect(() => {
+      const handleMessage = (event: MessageEvent) => {
+        if (event.data?.type === 'oauth-error') {
+          setIsPolling(false);
+          if (popupRef.current && !popupRef.current.closed) {
+            popupRef.current.close();
+          }
+          setState({
+            type: 'error',
+            message: event.data.message || 'OAuth authorization failed',
+          });
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     // Cleanup polling when dialog closes
     useEffect(() => {
