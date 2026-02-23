@@ -5,12 +5,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { createHmrContext } from '@/lib/hmrContext.ts';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
-import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { buildIssueCreatePath } from '@/shared/lib/routes/projectSidebarRoutes';
+import { useOrganizationStore } from '@/stores/useOrganizationStore';
+import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
+import { buildIssueCreatePath } from '@/lib/routes/projectSidebarRoutes';
 import {
   type ActionDefinition,
   type ActionExecutorContext,
@@ -18,14 +19,80 @@ import {
   type ProjectMutations,
   ActionTargetType,
   resolveLabel,
-  getActionLabel,
-} from '@/shared/types/actions';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { UserContext } from '@/shared/hooks/useUserContext';
-import { useDevServer } from '@/shared/hooks/useDevServer';
-import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
-import { useLogStream } from '@/shared/hooks/useLogStream';
-import { ActionsContext } from '@/shared/hooks/useActions';
+} from '@/components/ui-new/actions';
+import { getActionLabel } from '@/components/ui-new/actions/useActionVisibility';
+import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { UserContext } from '@/contexts/remote/UserContext';
+import { useDevServer } from '@/hooks/useDevServer';
+import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogStream } from '@/hooks/useLogStream';
+
+interface ActionsContextValue {
+  // Execute an action with optional workspaceId and repoId/projectId
+  // For git actions: repoIdOrProjectId is repoId
+  // For issue actions: repoIdOrProjectId is projectId, issueIds are required
+  executeAction: (
+    action: ActionDefinition,
+    workspaceId?: string,
+    repoIdOrProjectId?: string,
+    issueIds?: string[]
+  ) => Promise<void>;
+
+  // Get resolved label for an action (supports dynamic labels via visibility context)
+  getLabel: (
+    action: ActionDefinition,
+    workspace?: Workspace,
+    ctx?: ActionVisibilityContext
+  ) => string;
+
+  // Open command bar in status selection mode
+  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
+
+  // Open command bar in priority selection mode
+  openPrioritySelection: (
+    projectId: string,
+    issueIds: string[]
+  ) => Promise<void>;
+
+  // Open assignee selection dialog
+  openAssigneeSelection: (
+    projectId: string,
+    issueIds: string[],
+    isCreateMode?: boolean
+  ) => Promise<void>;
+
+  // Open sub-issue selection in command bar
+  openSubIssueSelection: (
+    projectId: string,
+    parentIssueId: string,
+    mode?: 'addChild' | 'setParent'
+  ) => Promise<{ type: string } | undefined>;
+
+  // Open workspace selection dialog to link a workspace to an issue
+  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
+
+  // Open relationship selection in command bar
+  openRelationshipSelection: (
+    projectId: string,
+    issueId: string,
+    relationshipType: 'blocking' | 'related' | 'has_duplicate',
+    direction: 'forward' | 'reverse'
+  ) => Promise<void>;
+
+  // Set default status for issue creation based on current kanban tab
+  setDefaultCreateStatusId: (statusId: string | undefined) => void;
+
+  // Register project mutations (called by components inside ProjectProvider)
+  registerProjectMutations: (mutations: ProjectMutations | null) => void;
+
+  // The executor context (for components that need direct access)
+  executorContext: ActionExecutorContext;
+}
+
+const ActionsContext = createHmrContext<ActionsContextValue | null>(
+  'ActionsContext',
+  null
+);
 
 interface ActionsProviderProps {
   children: ReactNode;
@@ -40,7 +107,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Get workspace context (ActionsProvider is nested inside WorkspaceProvider)
   const { selectWorkspace, activeWorkspaces, workspaceId, workspace } =
     useWorkspaceContext();
-  // Get remote workspaces (optional — not available on all routes)
+  // Get remote workspaces (optional — not available in VSCodeScope)
   const userCtx = useContext(UserContext);
 
   // Get dev server state
@@ -93,9 +160,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open status selection dialog (uses dynamic import to avoid circular deps)
   const openStatusSelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
       await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'status', issueIds },
@@ -107,9 +173,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open priority selection dialog (uses dynamic import to avoid circular deps)
   const openPrioritySelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
       await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'priority', issueIds },
@@ -121,9 +186,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open assignee selection dialog (uses dynamic import to avoid circular deps)
   const openAssigneeSelection = useCallback(
     async (projectId: string, issueIds: string[], isCreateMode = false) => {
-      const { AssigneeSelectionDialog } = await import(
-        '@/shared/dialogs/kanban/AssigneeSelectionDialog'
-      );
+      const { AssigneeSelectionDialog } =
+        await import('@/components/ui-new/dialogs/AssigneeSelectionDialog');
       await AssigneeSelectionDialog.show({ projectId, issueIds, isCreateMode });
     },
     []
@@ -136,9 +200,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       parentIssueId: string,
       mode: 'addChild' | 'setParent' = 'addChild'
     ) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
       return (await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'subIssue', parentIssueId, mode },
@@ -150,9 +213,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open workspace selection dialog (uses dynamic import to avoid circular deps)
   const openWorkspaceSelection = useCallback(
     async (projectId: string, issueId: string) => {
-      const { WorkspaceSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/WorkspaceSelectionDialog'
-      );
+      const { WorkspaceSelectionDialog } =
+        await import('@/components/ui-new/dialogs/WorkspaceSelectionDialog');
       await WorkspaceSelectionDialog.show({ projectId, issueId });
     },
     []
@@ -166,9 +228,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       relationshipType: 'blocking' | 'related' | 'has_duplicate',
       direction: 'forward' | 'reverse'
     ) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
       await ProjectSelectionDialog.show({
         projectId,
         selection: {
@@ -340,4 +401,12 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   return (
     <ActionsContext.Provider value={value}>{children}</ActionsContext.Provider>
   );
+}
+
+export function useActions(): ActionsContextValue {
+  const context = useContext(ActionsContext);
+  if (!context) {
+    throw new Error('useActions must be used within an ActionsProvider');
+  }
+  return context;
 }
