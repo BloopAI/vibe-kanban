@@ -210,6 +210,7 @@ pub enum SoundFile {
     AbstractSound3,
     AbstractSound4,
     CowMooing,
+    Fahhhhh,
     PhoneVibration,
     Rooster,
 }
@@ -222,6 +223,7 @@ impl SoundFile {
             SoundFile::AbstractSound3 => "abstract-sound3.wav",
             SoundFile::AbstractSound4 => "abstract-sound4.wav",
             SoundFile::CowMooing => "cow-mooing.wav",
+            SoundFile::Fahhhhh => "fahhhhh.wav",
             SoundFile::PhoneVibration => "phone-vibration.wav",
             SoundFile::Rooster => "rooster.wav",
         }
