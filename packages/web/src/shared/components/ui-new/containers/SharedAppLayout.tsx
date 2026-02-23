@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
-import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
+import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
@@ -10,8 +10,8 @@ import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import { useDiscordOnlineCount } from '@/hooks/useDiscordOnlineCount';
-import { useGitHubStars } from '@/hooks/useGitHubStars';
+import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
+import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import {
   buildProjectRootPath,
   parseProjectSidebarRoute,
@@ -26,8 +26,8 @@ import {
 } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
-import { useCommandBarShortcut } from '@/hooks/useCommandBarShortcut';
-import { useShape } from '@/integrations/electric/hooks';
+import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
+import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
 import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
 import {

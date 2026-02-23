@@ -1,5 +1,5 @@
 import { useMemo, useCallback, type ReactNode } from 'react';
-import { useShape } from '@/integrations/electric/hooks';
+import { useShape } from '@/shared/integrations/electric/hooks';
 import {
   PROJECT_ISSUES_SHAPE,
   PROJECT_PROJECT_STATUSES_SHAPE,

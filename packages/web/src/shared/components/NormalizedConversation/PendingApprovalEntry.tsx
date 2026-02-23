@@ -21,7 +21,11 @@ import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/shared/hooks/TabNavigationContext';
-import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
+import {
+  useKeyApproveRequest,
+  useKeyDenyApproval,
+  Scope,
+} from '@/shared/keyboard';
 import { useApprovalForm } from '@/shared/hooks/ApprovalForm';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';

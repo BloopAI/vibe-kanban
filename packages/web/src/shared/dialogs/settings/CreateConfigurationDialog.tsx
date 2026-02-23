@@ -19,7 +19,7 @@ import {
 } from '@vibe/ui/components/Select';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export interface CreateConfigurationDialogProps {
   executorType: string;

@@ -18,7 +18,7 @@ import {
 import { EditorType } from 'shared/types';
 import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export interface EditorSelectionDialogProps {
   selectedAttemptId?: string;

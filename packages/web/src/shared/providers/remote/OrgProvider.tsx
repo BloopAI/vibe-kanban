@@ -1,6 +1,6 @@
 import { useMemo, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useShape } from '@/integrations/electric/hooks';
+import { useShape } from '@/shared/integrations/electric/hooks';
 import {
   PROJECTS_SHAPE,
   NOTIFICATIONS_SHAPE,

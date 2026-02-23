@@ -11,10 +11,10 @@ import {
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
 import { Button } from '@vibe/ui/components/Button';
-import BranchSelector from '@/components/tasks/BranchSelector';
+import BranchSelector from '@/shared/components/tasks/BranchSelector';
 import type { GitOperationError } from 'shared/types';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { GitOperationsProvider } from '@/shared/hooks/GitOperationsContext';
 import { useGitOperations } from '@/shared/hooks/useGitOperations';
 import { useAttempt } from '@/shared/hooks/useAttempt';

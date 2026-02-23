@@ -3,7 +3,7 @@ import { useNavigate } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { ApiError, attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
@@ -24,9 +24,9 @@ import {
   CommandItem,
 } from '@vibe/ui/components/Command';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { ProjectProvider } from '@/integrations/remote/ProjectProvider';
+import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
-import { UserProvider } from '@/integrations/remote/UserProvider';
+import { UserProvider } from '@/shared/providers/remote/UserProvider';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 
 export interface WorkspaceSelectionDialogProps {

@@ -12,7 +12,7 @@ import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@vibe/ui/components/Alert';
-import BranchSelector from '@/components/tasks/BranchSelector';
+import BranchSelector from '@/shared/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { attemptsApi } from '@/shared/lib/api';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ import type {
 } from '@/shared/dialogs/auth/GhCliSetupDialog';
 import type { GhCliSetupError } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { splitMessageToTitleDescription } from '@/shared/lib/string';
 
 interface CreatePRDialogProps {

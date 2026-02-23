@@ -4,19 +4,19 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { CommandDialog } from '@vibe/ui/components/Command';
 import {
   MultiSelectCommandBar,
   type MultiSelectOption,
 } from '@vibe/ui/components/MultiSelectCommandBar';
 import { UserAvatar } from '@vibe/ui/components/UserAvatar';
-import { OrgProvider } from '@/integrations/remote/OrgProvider';
+import { OrgProvider } from '@/shared/providers/remote/OrgProvider';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
-import { ProjectProvider } from '@/integrations/remote/ProjectProvider';
+import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { useOrganizationProjects } from '@/integrations/useOrganizationProjects';
+import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
 
 export interface AssigneeSelectionDialogProps {
   projectId: string;

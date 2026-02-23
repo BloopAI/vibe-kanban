@@ -13,14 +13,14 @@ import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useCallback, useState, useRef, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuthMutations } from '@/hooks/auth/useAuthMutations';
-import { useAuthStatus } from '@/hooks/auth/useAuthStatus';
+import { useAuthMutations } from '@/shared/hooks/auth/useAuthMutations';
+import { useAuthStatus } from '@/shared/hooks/auth/useAuthStatus';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { organizationKeys } from '@/shared/hooks/organizationKeys';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export type OAuthProvider = 'github' | 'google';
 type OAuthDialogProps = { initialProvider?: OAuthProvider };

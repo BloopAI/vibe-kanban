@@ -1,5 +1,5 @@
-import NiceModal from '@ebay/nice-modal-react';
 import type React from 'react';
+import { hide, remove, show } from '@ebay/nice-modal-react';
 import type { NiceModalHocProps } from '@ebay/nice-modal-react';
 
 // Use this instead of {} to avoid ban-types
@@ -24,12 +24,14 @@ export function defineModal<P, R>(
 ): Modalized<P, R> {
   const c = component as unknown as Modalized<P, R>;
   c.show = ((...args: ShowArgs<P>) =>
-    NiceModal.show(
+    show(
       component as React.FC<ComponentProps<P>>,
       args[0] as ComponentProps<P>
     ) as Promise<R>) as Modalized<P, R>['show'];
-  c.hide = () => NiceModal.hide(component as React.FC<ComponentProps<P>>);
-  c.remove = () => NiceModal.remove(component as React.FC<ComponentProps<P>>);
+  c.hide = () => {
+    void hide(component as React.FC<ComponentProps<P>>);
+  };
+  c.remove = () => remove(component as React.FC<ComponentProps<P>>);
   return c;
 }
 

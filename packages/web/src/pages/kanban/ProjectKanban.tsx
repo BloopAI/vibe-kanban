@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
-import { OrgProvider } from '@/integrations/remote/OrgProvider';
+import { OrgProvider } from '@/shared/providers/remote/OrgProvider';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
-import { ProjectProvider } from '@/integrations/remote/ProjectProvider';
+import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
@@ -16,7 +16,7 @@ import {
   usePaneSize,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
-import { useOrganizationProjects } from '@/integrations/useOrganizationProjects';
+import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useAuth } from '@/shared/hooks/auth/useAuth';

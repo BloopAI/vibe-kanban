@@ -8,7 +8,7 @@ import {
 } from '@vibe/ui/components/KeyboardDialog';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { Loader2 } from 'lucide-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { formatFileSize } from '@/shared/lib/utils';
 
 export interface ImagePreviewDialogProps {

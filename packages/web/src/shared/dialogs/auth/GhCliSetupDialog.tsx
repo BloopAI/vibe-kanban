@@ -7,7 +7,7 @@ import {
 } from '@vibe/ui/components/KeyboardDialog';
 import { Button } from '@vibe/ui/components/Button';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal, getErrorMessage } from '@/lib/modals';
+import { defineModal, getErrorMessage } from '@/shared/lib/modals';
 import { attemptsApi } from '@/shared/lib/api';
 import type { GhCliSetupError } from 'shared/types';
 import { useRef, useState } from 'react';

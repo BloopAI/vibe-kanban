@@ -13,15 +13,15 @@ import {
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
-import { defineModal } from '@/lib/modals';
-import { useShape } from '@/integrations/electric/hooks';
+import { defineModal } from '@/shared/lib/modals';
+import { useShape } from '@/shared/integrations/electric/hooks';
 import {
   PROJECTS_SHAPE,
   PROJECT_MUTATION,
   type Project,
 } from 'shared/remote-types';
 import { getRandomPresetColor, PRESET_COLORS } from '@/shared/lib/colors';
-import { ColorPicker } from '@/components/ui-new/containers/ColorPickerContainer';
+import { ColorPicker } from '@/shared/components/ui-new/containers/ColorPickerContainer';
 
 export type CreateRemoteProjectDialogProps = {
   organizationId: string;

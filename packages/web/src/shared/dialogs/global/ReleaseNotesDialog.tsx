@@ -11,7 +11,7 @@ import { AlertCircle, ExternalLink } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { getActualTheme } from '@/shared/lib/theme';
-import { defineModal, type NoProps } from '@/lib/modals';
+import { defineModal, type NoProps } from '@/shared/lib/modals';
 
 const RELEASE_NOTES_BASE_URL = 'https://vibekanban.com/release-notes';
 

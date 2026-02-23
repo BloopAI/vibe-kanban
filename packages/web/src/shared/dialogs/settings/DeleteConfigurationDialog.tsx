@@ -12,7 +12,7 @@ import {
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { Loader2 } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export interface DeleteConfigurationDialogProps {
   configName: string;

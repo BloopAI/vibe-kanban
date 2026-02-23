@@ -9,7 +9,7 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { AlertTriangle, Info, CheckCircle, XCircle } from 'lucide-react';
-import { defineModal, type ConfirmResult } from '@/lib/modals';
+import { defineModal, type ConfirmResult } from '@/shared/lib/modals';
 
 export interface ConfirmDialogProps {
   title: string;

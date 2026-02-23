@@ -10,7 +10,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { executionProcessesApi } from '@/shared/lib/api';
-import { ProfileVariantBadge } from '@/components/common/ProfileVariantBadge.tsx';
+import { ProfileVariantBadge } from '@/shared/components/common/ProfileVariantBadge.tsx';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ProcessLogsViewerContent } from './ProcessLogsViewer';

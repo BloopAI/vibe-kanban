@@ -10,10 +10,10 @@ import {
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
 import { Button } from '@vibe/ui/components/Button';
-import BranchSelector from '@/components/tasks/BranchSelector';
+import BranchSelector from '@/shared/components/tasks/BranchSelector';
 import type { GitBranch } from 'shared/types';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export interface BranchRebaseDialogProps {
   branches: GitBranch[];

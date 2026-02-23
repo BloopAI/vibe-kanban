@@ -7,12 +7,12 @@ import {
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
 import { Loader } from '@vibe/ui/components/Loader';
-import GitOperations from '@/components/tasks/Toolbar/GitOperations';
+import GitOperations from '@/shared/components/tasks/Toolbar/GitOperations';
 import { useTaskAttemptWithSession } from '@/shared/hooks/useTaskAttempt';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
-import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
+import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcessesProvider';
 import {
   GitOperationsProvider,
   useGitOperationsError,
@@ -20,7 +20,7 @@ import {
 import type { Merge } from 'shared/types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export interface GitActionsDialogProps {
   attemptId: string;

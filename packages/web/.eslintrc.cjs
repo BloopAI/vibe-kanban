@@ -13,7 +13,7 @@ const baseRestrictedImportPaths = [
     name: '@ebay/nice-modal-react',
     importNames: ['default'],
     message:
-      'Import NiceModal only in lib/modals.ts or dialog component files. Use DialogName.show(props) instead.',
+      'Do not import NiceModal directly. Use typed dialog APIs from migrated shared modules.',
   },
   {
     name: '@/lib/modals',
@@ -30,15 +30,33 @@ const baseRestrictedImportPaths = [
 
 // All legacy directory import patterns.
 const allLegacyPatterns = [
+  '@/components',
+  '@/components/**',
+  '@/constants',
+  '@/constants/**',
+  '@/contexts',
+  '@/contexts/**',
   '@/hooks',
   '@/hooks/**',
-  '@/contexts/**',
-  '@/lib/**',
-  '@/components/**',
-  '@/utils/**',
-  '@/constants/**',
-  '@/types/**',
+  '@/keyboard',
   '@/keyboard/**',
+  '@/lib',
+  '@/lib/**',
+  '@/types',
+  '@/types/**',
+  '@/utils',
+  '@/utils/**',
+];
+
+const legacyDirectoryFilePatterns = [
+  'src/components/**/*.{ts,tsx}',
+  'src/constants/**/*.{ts,tsx}',
+  'src/contexts/**/*.{ts,tsx}',
+  'src/hooks/**/*.{ts,tsx}',
+  'src/keyboard/**/*.{ts,tsx}',
+  'src/lib/**/*.{ts,tsx}',
+  'src/types/**/*.{ts,tsx}',
+  'src/utils/**/*.{ts,tsx}',
 ];
 
 // Legacy directories that should not be imported from proper FSD layers.
@@ -225,7 +243,7 @@ module.exports = {
             group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
             message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
           },
-          legacyCrossBanGroup(['@/contexts/**']),
+          legacyCrossBanGroup(['@/contexts', '@/contexts/**']),
         ]),
       },
     },
@@ -237,7 +255,7 @@ module.exports = {
             group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
             message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
           },
-          legacyCrossBanGroup(['@/lib/**']),
+          legacyCrossBanGroup(['@/lib', '@/lib/**']),
         ]),
       },
     },
@@ -249,7 +267,7 @@ module.exports = {
             group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
             message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
           },
-          legacyCrossBanGroup(['@/components/**']),
+          legacyCrossBanGroup(['@/components', '@/components/**']),
         ]),
       },
     },
@@ -266,7 +284,16 @@ module.exports = {
             group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
             message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
           },
-          legacyCrossBanGroup(['@/utils/**', '@/constants/**', '@/types/**', '@/keyboard/**']),
+          legacyCrossBanGroup([
+            '@/utils',
+            '@/utils/**',
+            '@/constants',
+            '@/constants/**',
+            '@/types',
+            '@/types/**',
+            '@/keyboard',
+            '@/keyboard/**',
+          ]),
         ]),
       },
     },
@@ -296,14 +323,6 @@ module.exports = {
       files: ['src/routes/**/*.{ts,tsx}'],
       rules: {
         'no-restricted-imports': withLayerBoundariesAndLegacyBan([]),
-      },
-    },
-    {
-      // Root and app routes compose providers from legacy directories —
-      // this is intentional wiring, not feature code.
-      files: ['src/routes/__root.tsx', 'src/routes/_app.tsx'],
-      rules: {
-        'no-restricted-imports': withLayerBoundaries([]),
       },
     },
     {
@@ -445,29 +464,6 @@ module.exports = {
       // i18n index re-exports the default export from config for `import i18n from '@/i18n'`
       files: ['src/i18n/index.ts'],
       rules: {
-        'no-restricted-syntax': 'off',
-      },
-    },
-    {
-      // Allow NiceModal usage in lib/modals.ts, root route (Provider), and dialog component files
-      files: [
-        'src/lib/modals.ts',
-        'src/routes/__root.tsx',
-        'src/shared/dialogs/**/*.{ts,tsx}',
-      ],
-      rules: {
-        'no-restricted-imports': [
-          'error',
-          {
-            paths: [
-              {
-                name: '@vibe/ui',
-                message:
-                  'Do not import from @vibe/ui root. Use @vibe/ui/components/* subpaths.',
-              },
-            ],
-          },
-        ],
         'no-restricted-syntax': 'off',
       },
     },
@@ -629,6 +625,20 @@ module.exports = {
           {
             selector: 'CallExpression[callee.name="useNavigate"]',
             message: 'Presentational components should not handle navigation. Pass callbacks via props.',
+          },
+        ],
+      },
+    },
+    {
+      // Hard-enforce the new folder structure: legacy directories are disallowed.
+      files: legacyDirectoryFilePatterns,
+      rules: {
+        'no-restricted-syntax': [
+          'error',
+          {
+            selector: 'Program',
+            message:
+              'Legacy directories are not allowed. Move this file to app/pages/widgets/features/entities/shared/integrations.',
           },
         ],
       },

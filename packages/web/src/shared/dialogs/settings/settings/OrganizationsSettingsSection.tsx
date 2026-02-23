@@ -10,10 +10,10 @@ import {
   InfoIcon,
 } from '@phosphor-icons/react';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
-import { useOrganizationSelection } from '@/hooks/useOrganizationSelection';
-import { useOrganizationMembers } from '@/hooks/useOrganizationMembers';
-import { useOrganizationInvitations } from '@/hooks/useOrganizationInvitations';
-import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
+import { useOrganizationSelection } from '@/shared/hooks/useOrganizationSelection';
+import { useOrganizationMembers } from '@/shared/hooks/useOrganizationMembers';
+import { useOrganizationInvitations } from '@/shared/hooks/useOrganizationInvitations';
+import { useOrganizationMutations } from '@/shared/hooks/useOrganizationMutations';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
@@ -25,8 +25,8 @@ import {
   InviteMemberDialog,
   type InviteMemberResult,
 } from '@/shared/dialogs/org/InviteMemberDialog';
-import { MemberListItem } from '@/components/org/MemberListItem';
-import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
+import { MemberListItem } from '@/shared/components/org/MemberListItem';
+import { PendingInvitationItem } from '@/shared/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { cn } from '@/shared/lib/utils';

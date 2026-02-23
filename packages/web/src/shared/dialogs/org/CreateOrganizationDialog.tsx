@@ -12,9 +12,9 @@ import {
 } from '@vibe/ui/components/KeyboardDialog';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
+import { useOrganizationMutations } from '@/shared/hooks/useOrganizationMutations';
 import { useTranslation } from 'react-i18next';
-import { defineModal, type NoProps } from '@/lib/modals';
+import { defineModal, type NoProps } from '@/shared/lib/modals';
 
 export type CreateOrganizationResult = {
   action: 'created' | 'canceled';

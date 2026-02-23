@@ -7,7 +7,7 @@ import {
   KanbanIcon,
 } from '@phosphor-icons/react';
 import type { Workspace } from 'shared/types';
-import { Pages } from '@/features/command-bar/ui/actions/pages';
+import { Pages } from '@/shared/command-bar/actions/pages';
 import type {
   PageId,
   StaticPageId,
@@ -19,7 +19,7 @@ import {
   isActionVisible,
   type ActionVisibilityContext,
 } from '@/shared/types/actions';
-import { isPageVisible } from '@/features/command-bar/ui/actions/useActionVisibility';
+import { isPageVisible } from '@/shared/command-bar/actions/useActionVisibility';
 import { injectSearchMatches } from './injectSearchMatches';
 
 export interface ResolvedCommandBarPage {

@@ -2,7 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal, type NoProps } from '@/lib/modals';
+import { defineModal, type NoProps } from '@/shared/lib/modals';
 import {
   GuideDialogShell,
   type GuideDialogTopic,

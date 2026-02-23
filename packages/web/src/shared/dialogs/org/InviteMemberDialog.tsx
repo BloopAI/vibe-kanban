@@ -20,10 +20,10 @@ import {
 } from '@vibe/ui/components/Select';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
+import { useOrganizationMutations } from '@/shared/hooks/useOrganizationMutations';
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { ApiError } from '@/shared/lib/api';
 import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
 import { ArrowSquareOut } from '@phosphor-icons/react';

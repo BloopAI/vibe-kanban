@@ -13,7 +13,7 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
-import { useShape } from '@/integrations/electric/hooks';
+import { useShape } from '@/shared/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';

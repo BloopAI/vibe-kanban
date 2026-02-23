@@ -11,14 +11,14 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { Label } from '@vibe/ui/components/Label';
 import { Switch } from '@vibe/ui/components/Switch';
-import { AgentSelector } from '@/components/tasks/AgentSelector';
-import { ConfigSelector } from '@/components/tasks/ConfigSelector';
+import { AgentSelector } from '@/shared/components/tasks/AgentSelector';
+import { ConfigSelector } from '@/shared/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { sessionsApi } from '@/shared/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { buildResolveConflictsInstructions } from '@/shared/lib/conflicts';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';

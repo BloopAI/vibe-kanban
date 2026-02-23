@@ -1,5 +1,5 @@
 import type { Workspace } from 'shared/types';
-import { Pages, getPageActions } from '@/features/command-bar/ui/actions/pages';
+import { Pages, getPageActions } from '@/shared/command-bar/actions/pages';
 import type { StaticPageId, ResolvedGroup } from '@/shared/types/commandBar';
 import {
   resolveLabel,

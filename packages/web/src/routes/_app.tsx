@@ -1,13 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { UserProvider } from '@/integrations/remote/UserProvider';
-import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';
-import { SequenceIndicator } from '@/keyboard/SequenceIndicator';
-import { useWorkspaceShortcuts } from '@/keyboard/useWorkspaceShortcuts';
-import { useIssueShortcuts } from '@/keyboard/useIssueShortcuts';
-import { useKeyShowHelp, Scope } from '@/keyboard';
+import { UserProvider } from '@/shared/providers/remote/UserProvider';
+import { SequenceTrackerProvider } from '@/shared/keyboard/SequenceTracker';
+import { SequenceIndicator } from '@/shared/keyboard/SequenceIndicator';
+import { useWorkspaceShortcuts } from '@/shared/keyboard/useWorkspaceShortcuts';
+import { useIssueShortcuts } from '@/shared/keyboard/useIssueShortcuts';
+import { useKeyShowHelp, Scope } from '@/shared/keyboard';
 import { KeyboardShortcutsDialog } from '@/shared/dialogs/shared/KeyboardShortcutsDialog';
 import { TerminalProvider } from '@/app/providers/TerminalProvider';
-import { SharedAppLayout } from '@/components/ui-new/containers/SharedAppLayout';
+import { SharedAppLayout } from '@/shared/components/ui-new/containers/SharedAppLayout';
 
 function KeyboardShortcutsHandler() {
   useKeyShowHelp(

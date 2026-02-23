@@ -23,7 +23,7 @@ import {
 import { fileSystemApi } from '@/shared/lib/api';
 import { DirectoryEntry, DirectoryListResponse } from 'shared/types';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 export interface FolderPickerDialogProps {
   value?: string;

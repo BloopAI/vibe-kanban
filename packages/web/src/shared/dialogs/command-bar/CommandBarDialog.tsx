@@ -3,7 +3,7 @@ import { useParams } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { CommandDialog } from '@vibe/ui/components/Command';
 import {
   CommandBar,
@@ -18,7 +18,7 @@ import {
   ActionTargetType,
   type ActionDefinition,
 } from '@/shared/types/actions';
-import { useActionVisibilityContext } from '@/integrations/useActionVisibilityContext';
+import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityContext';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';

@@ -11,7 +11,7 @@ import { Trash2 } from 'lucide-react';
 import type { OrganizationMemberWithProfile, MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { useTranslation } from 'react-i18next';
-import { UserAvatar } from '@/components/tasks/UserAvatar';
+import { UserAvatar } from '@/shared/components/tasks/UserAvatar';
 
 interface MemberListItemProps {
   member: OrganizationMemberWithProfile;

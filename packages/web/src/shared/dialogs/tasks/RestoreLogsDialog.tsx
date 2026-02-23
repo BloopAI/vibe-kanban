@@ -10,8 +10,8 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { AlertTriangle, GitCommit, Loader2 } from 'lucide-react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
-import { useKeySubmitTask } from '@/keyboard/hooks';
+import { defineModal } from '@/shared/lib/modals';
+import { useKeySubmitTask } from '@/shared/keyboard/hooks';
 import { Scope } from '@/shared/keyboard/registry';
 import { executionProcessesApi } from '@/shared/lib/api';
 import {

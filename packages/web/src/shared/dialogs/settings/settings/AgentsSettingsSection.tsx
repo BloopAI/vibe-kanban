@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
-import { useProfiles } from '@/hooks/useProfiles';
+import { useProfiles } from '@/shared/hooks/useProfiles';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';

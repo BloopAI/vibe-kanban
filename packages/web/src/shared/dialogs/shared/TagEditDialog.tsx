@@ -16,7 +16,7 @@ import { Loader2 } from 'lucide-react';
 import { tagsApi } from '@/shared/lib/api';
 import type { Tag, CreateTag, UpdateTag } from 'shared/types';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal, getErrorMessage } from '@/lib/modals';
+import { defineModal, getErrorMessage } from '@/shared/lib/modals';
 
 export interface TagEditDialogProps {
   tag?: Tag | null; // null for create mode

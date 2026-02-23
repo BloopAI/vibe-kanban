@@ -11,7 +11,7 @@ import {
 import { Button } from '@vibe/ui/components/Button';
 import { Input } from '@vibe/ui/components/Input';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal, getErrorMessage } from '@/lib/modals';
+import { defineModal, getErrorMessage } from '@/shared/lib/modals';
 import { useRenameBranch } from '@/shared/hooks/useRenameBranch';
 
 export interface EditBranchNameDialogProps {

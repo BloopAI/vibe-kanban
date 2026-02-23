@@ -1,5 +1,5 @@
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -7,7 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@vibe/ui/components/KeyboardDialog';
-import ProcessesTab from '@/components/tasks/TaskDetails/ProcessesTab';
+import ProcessesTab from '@/shared/components/tasks/TaskDetails/ProcessesTab';
 import { ProcessSelectionProvider } from '@/shared/hooks/ProcessSelectionContext';
 
 export interface ViewProcessesDialogProps {

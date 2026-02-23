@@ -27,7 +27,7 @@ import {
 } from '@/shared/lib/executor';
 import { useTheme } from '@/shared/hooks/useTheme';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { TagManager } from '@/components/TagManager';
+import { TagManager } from '@/shared/components/TagManager';
 import { cn } from '@/shared/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';

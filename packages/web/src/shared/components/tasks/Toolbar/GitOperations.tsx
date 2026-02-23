@@ -18,7 +18,7 @@ import {
 import { useCallback, useMemo, useState } from 'react';
 import type { RepoBranchStatus, Merge, Workspace } from 'shared/types';
 import { ChangeTargetBranchDialog } from '@/shared/dialogs/command-bar/ChangeTargetBranchDialog';
-import RepoSelector from '@/components/tasks/RepoSelector';
+import RepoSelector from '@/shared/components/tasks/RepoSelector';
 import { BranchRebaseDialog } from '@/shared/dialogs/command-bar/BranchRebaseDialog';
 import { CreatePRDialog } from '@/shared/dialogs/command-bar/CreatePRDialog';
 

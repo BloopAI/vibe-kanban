@@ -4,10 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { isEqual } from 'lodash';
 import { GitBranchIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
-import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
+import { useScriptPlaceholders } from '@/shared/hooks/useScriptPlaceholders';
 import { repoApi } from '@/shared/lib/api';
 import type { Repo, UpdateRepo } from 'shared/types';
-import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
+import { SearchableDropdownContainer } from '@/shared/components/ui-new/containers/SearchableDropdownContainer';
 import {
   DropdownMenu,
   DropdownMenuContent,

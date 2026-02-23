@@ -23,7 +23,7 @@ import {
   getActionTooltip,
 } from '@/shared/types/actions';
 import type { EditorType } from 'shared/types';
-import { useActionVisibilityContext } from '@/integrations/useActionVisibilityContext';
+import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityContext';
 import { CopyButton } from '@/shared/components/CopyButton';
 
 /**

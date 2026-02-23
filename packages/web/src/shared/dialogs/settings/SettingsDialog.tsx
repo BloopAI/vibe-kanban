@@ -13,7 +13,7 @@ import {
 } from '@phosphor-icons/react';
 import type { Icon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '@/lib/modals';
+import { defineModal } from '@/shared/lib/modals';
 
 import { cn } from '@/shared/lib/utils';
 import { SettingsSection } from './settings/SettingsSection';
