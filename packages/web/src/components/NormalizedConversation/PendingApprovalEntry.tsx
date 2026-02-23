@@ -20,7 +20,7 @@ import { Check, X } from 'lucide-react';
 import WYSIWYGEditor from '@/components/ui/wysiwyg';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
-import { TabNavContext } from '@/contexts/TabNavigationContext';
+import { TabNavContext } from '@/shared/hooks/TabNavigationContext';
 import { useKeyApproveRequest, useKeyDenyApproval, Scope } from '@/keyboard';
 import { useApprovalForm } from '@/shared/hooks/ApprovalForm';
 

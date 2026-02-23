@@ -28,23 +28,37 @@ const baseRestrictedImportPaths = [
   },
 ];
 
+// All legacy directory import patterns.
+const allLegacyPatterns = [
+  '@/hooks',
+  '@/hooks/**',
+  '@/contexts/**',
+  '@/lib/**',
+  '@/components/**',
+  '@/utils/**',
+  '@/constants/**',
+  '@/types/**',
+  '@/keyboard/**',
+];
+
 // Legacy directories that should not be imported from proper FSD layers.
 // These are pending migration into shared/, features/, widgets/, or pages/.
 const legacyBanGroup = {
-  group: [
-    '@/hooks',
-    '@/hooks/**',
-    '@/contexts/**',
-    '@/lib/**',
-    '@/components/**',
-    '@/utils/**',
-    '@/constants/**',
-    '@/types/**',
-    '@/keyboard/**',
-  ],
+  group: allLegacyPatterns,
   message:
     'Do not import from legacy directories. Use the equivalent shared/ module, or migrate the code first.',
 };
+
+// Build a ban group for a specific legacy directory that bans all OTHER legacy
+// directories but allows same-directory imports (intra-legacy is OK).
+function legacyCrossBanGroup(ownPatterns) {
+  const ownSet = new Set(ownPatterns);
+  return {
+    group: allLegacyPatterns.filter((p) => !ownSet.has(p)),
+    message:
+      'Legacy directories must not import from other legacy directories. Migrate the dependency to shared/ first.',
+  };
+}
 
 function withLayerBoundaries(patterns) {
   return [
@@ -185,12 +199,57 @@ module.exports = {
     {
       // Legacy directories sit outside the enforced layer hierarchy.
       // They cannot import from higher layers (app/pages/widgets/features/entities)
-      // and cannot import from each other — forcing migration into proper layers.
+      // and cannot import from other legacy directories — but CAN import from
+      // themselves (intra-directory imports are fine).
+      files: ['src/hooks/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
+            message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
+          },
+          legacyCrossBanGroup(['@/hooks', '@/hooks/**']),
+        ]),
+      },
+    },
+    {
+      files: ['src/contexts/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
+            message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
+          },
+          legacyCrossBanGroup(['@/contexts/**']),
+        ]),
+      },
+    },
+    {
+      files: ['src/lib/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
+            message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
+          },
+          legacyCrossBanGroup(['@/lib/**']),
+        ]),
+      },
+    },
+    {
+      files: ['src/components/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundaries([
+          {
+            group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
+            message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
+          },
+          legacyCrossBanGroup(['@/components/**']),
+        ]),
+      },
+    },
+    {
       files: [
-        'src/hooks/**/*.{ts,tsx}',
-        'src/contexts/**/*.{ts,tsx}',
-        'src/lib/**/*.{ts,tsx}',
-        'src/components/**/*.{ts,tsx}',
         'src/utils/**/*.{ts,tsx}',
         'src/constants/**/*.{ts,tsx}',
         'src/types/**/*.{ts,tsx}',
@@ -199,31 +258,10 @@ module.exports = {
       rules: {
         'no-restricted-imports': withLayerBoundaries([
           {
-            group: [
-              '@/app/**',
-              '@/pages/**',
-              '@/widgets/**',
-              '@/features/**',
-              '@/entities/**',
-            ],
-            message:
-              'Legacy directories are treated as shared-level. They may only import from shared and integrations. Move this module into the appropriate layer.',
+            group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**', '@/entities/**'],
+            message: 'Legacy directories are treated as shared-level. They may only import from shared and integrations.',
           },
-          {
-            group: [
-              '@/hooks',
-              '@/hooks/**',
-              '@/contexts/**',
-              '@/lib/**',
-              '@/components/**',
-              '@/utils/**',
-              '@/constants/**',
-              '@/types/**',
-              '@/keyboard/**',
-            ],
-            message:
-              'Legacy directories must not import from other legacy directories. Migrate the dependency to shared/ first.',
-          },
+          legacyCrossBanGroup(['@/utils/**', '@/constants/**', '@/types/**', '@/keyboard/**']),
         ]),
       },
     },
