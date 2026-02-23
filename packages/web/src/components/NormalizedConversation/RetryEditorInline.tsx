@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { cn } from '@/shared/lib/utils';
 import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@vibe/ui/components/Button';

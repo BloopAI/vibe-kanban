@@ -12,7 +12,7 @@ import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useApprovalFeedbackOptional } from '../model/contexts/ApprovalFeedbackContext';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import { useEntries, useTokenUsage } from '../model/contexts/EntriesContext';

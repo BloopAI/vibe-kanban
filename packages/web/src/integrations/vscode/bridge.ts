@@ -267,17 +267,7 @@ function enqueueInsert(text: string) {
 /** Request map to resolve clipboard paste requests from the extension. */
 const pasteResolvers: Record<string, (text: string) => void> = {};
 
-/** Ask the extension to copy text to the OS clipboard (fallback path). */
-export function parentClipboardWrite(text: string) {
-  try {
-    window.parent.postMessage(
-      { type: 'vscode-iframe-clipboard-copy', text },
-      '*'
-    );
-  } catch (_err) {
-    void 0;
-  }
-}
+import { parentClipboardWrite } from '@/shared/lib/clipboard';
 
 /** Ask the extension to read text from the OS clipboard (fallback path). */
 export function parentClipboardRead(): Promise<string> {
@@ -429,17 +419,6 @@ export function installVSCodeIframeKeyboardBridge() {
   document.addEventListener('keydown', onKeyDown, true);
   document.addEventListener('keyup', onKeyUp, true);
   document.addEventListener('keypress', onKeyPress, true);
-}
-
-/** Copy helper that prefers navigator.clipboard and falls back to the bridge. */
-export async function writeClipboardViaBridge(text: string): Promise<boolean> {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    parentClipboardWrite(text);
-    return false;
-  }
 }
 
 /** Paste helper that prefers navigator.clipboard and falls back to the bridge. */

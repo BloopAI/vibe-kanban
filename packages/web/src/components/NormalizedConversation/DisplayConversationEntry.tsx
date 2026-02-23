@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import {
   ActionType,
   NormalizedEntry,

@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  readClipboardViaBridge,
-  writeClipboardViaBridge,
-} from '@/integrations/vscode/bridge';
+import { readClipboardViaBridge } from '@/integrations/vscode/bridge';
+import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
 
 type Point = { x: number; y: number };
 

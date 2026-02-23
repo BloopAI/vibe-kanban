@@ -15,7 +15,7 @@ import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import { IssueCommentsSectionContainer } from '@/components/ui-new/containers/IssueCommentsSectionContainer';
 import { IssueSubIssuesSectionContainer } from '@/components/ui-new/containers/IssueSubIssuesSectionContainer';

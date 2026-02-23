@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useWorkspaceNotes } from '@/features/workspace/model/hooks/useWorkspaceNotes';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { SpinnerIcon } from '@phosphor-icons/react';
 
 export function WorkspaceNotesContainer() {

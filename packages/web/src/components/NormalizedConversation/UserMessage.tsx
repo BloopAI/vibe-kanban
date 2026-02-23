@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { BaseAgentCapability } from 'shared/types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';

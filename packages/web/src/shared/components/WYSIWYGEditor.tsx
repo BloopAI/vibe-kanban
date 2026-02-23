@@ -84,7 +84,7 @@ import {
   type RepoSelectionResult,
 } from '@/shared/dialogs/command-bar/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/shared/lib/remoteApi';
-import { writeClipboardViaBridge } from '@/integrations/vscode/bridge';
+import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
 import type { SendMessageShortcut } from 'shared/types';
 import type { BaseCodingAgent } from 'shared/types';
 

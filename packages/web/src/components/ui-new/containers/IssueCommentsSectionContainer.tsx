@@ -17,7 +17,9 @@ import {
   type IssueCommentData,
   type ReactionGroup,
 } from '@vibe/ui/components/IssueCommentsSection';
-import WYSIWYGEditor, { type WYSIWYGEditorRef } from '@/components/ui/wysiwyg';
+import WYSIWYGEditor, {
+  type WYSIWYGEditorRef,
+} from '@/shared/components/WYSIWYGEditor';
 import { MemberRole } from 'shared/remote-types';
 
 interface IssueCommentsSectionContainerProps {

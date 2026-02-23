@@ -20,7 +20,7 @@ import { getActualTheme } from '@/shared/lib/theme';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/shared/hooks/useTheme';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';

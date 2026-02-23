@@ -4,7 +4,7 @@ import { useDropzone } from 'react-dropzone';
 import { useCreateMode } from '@/shared/hooks/useCreateMode';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useCreateWorkspace } from '@/features/workspace/model/hooks/useCreateWorkspace';
 import { useCreateAttachments } from '@/hooks/useCreateAttachments';
 import { useExecutorConfig } from '@/shared/hooks/useExecutorConfig';

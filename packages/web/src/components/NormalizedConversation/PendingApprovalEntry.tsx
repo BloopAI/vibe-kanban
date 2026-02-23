@@ -17,7 +17,7 @@ import {
 } from '@vibe/ui/components/RadixTooltip';
 import { approvalsApi } from '@/shared/lib/api';
 import { Check, X } from 'lucide-react';
-import WYSIWYGEditor from '@/components/ui/wysiwyg';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 
 import { useHotkeysContext } from 'react-hotkeys-hook';
 import { TabNavContext } from '@/shared/hooks/TabNavigationContext';
