@@ -9,25 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UpgradeRouteImport } from './routes/upgrade'
-import { Route as AccountRouteImport } from './routes/account'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UpgradeSuccessRouteImport } from './routes/upgrade_.success'
-import { Route as UpgradeCompleteRouteImport } from './routes/upgrade_.complete'
-import { Route as ReviewIdRouteImport } from './routes/review.$id'
-import { Route as AccountCompleteRouteImport } from './routes/account_.complete'
-import { Route as InvitationsTokenCompleteRouteImport } from './routes/invitations.$token.complete'
-import { Route as InvitationsTokenAcceptRouteImport } from './routes/invitations.$token.accept'
-import { Route as AccountOrganizationsOrgIdRouteImport } from './routes/account_.organizations.$orgId'
+import { Route as LoginCompleteRouteImport } from './routes/login_.complete'
 
-const UpgradeRoute = UpgradeRouteImport.update({
-  id: '/upgrade',
-  path: '/upgrade',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountRoute = AccountRouteImport.update({
-  id: '/account',
-  path: '/account',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -35,147 +23,49 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UpgradeSuccessRoute = UpgradeSuccessRouteImport.update({
-  id: '/upgrade_/success',
-  path: '/upgrade/success',
+const LoginCompleteRoute = LoginCompleteRouteImport.update({
+  id: '/login_/complete',
+  path: '/login/complete',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UpgradeCompleteRoute = UpgradeCompleteRouteImport.update({
-  id: '/upgrade_/complete',
-  path: '/upgrade/complete',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ReviewIdRoute = ReviewIdRouteImport.update({
-  id: '/review/$id',
-  path: '/review/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountCompleteRoute = AccountCompleteRouteImport.update({
-  id: '/account_/complete',
-  path: '/account/complete',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InvitationsTokenCompleteRoute =
-  InvitationsTokenCompleteRouteImport.update({
-    id: '/invitations/$token/complete',
-    path: '/invitations/$token/complete',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const InvitationsTokenAcceptRoute = InvitationsTokenAcceptRouteImport.update({
-  id: '/invitations/$token/accept',
-  path: '/invitations/$token/accept',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AccountOrganizationsOrgIdRoute =
-  AccountOrganizationsOrgIdRouteImport.update({
-    id: '/account_/organizations/$orgId',
-    path: '/account/organizations/$orgId',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
-  '/upgrade': typeof UpgradeRoute
-  '/account/complete': typeof AccountCompleteRoute
-  '/review/$id': typeof ReviewIdRoute
-  '/upgrade/complete': typeof UpgradeCompleteRoute
-  '/upgrade/success': typeof UpgradeSuccessRoute
-  '/account/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
-  '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
-  '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
+  '/login': typeof LoginRoute
+  '/login/complete': typeof LoginCompleteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
-  '/upgrade': typeof UpgradeRoute
-  '/account/complete': typeof AccountCompleteRoute
-  '/review/$id': typeof ReviewIdRoute
-  '/upgrade/complete': typeof UpgradeCompleteRoute
-  '/upgrade/success': typeof UpgradeSuccessRoute
-  '/account/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
-  '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
-  '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
+  '/login': typeof LoginRoute
+  '/login/complete': typeof LoginCompleteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/account': typeof AccountRoute
-  '/upgrade': typeof UpgradeRoute
-  '/account_/complete': typeof AccountCompleteRoute
-  '/review/$id': typeof ReviewIdRoute
-  '/upgrade_/complete': typeof UpgradeCompleteRoute
-  '/upgrade_/success': typeof UpgradeSuccessRoute
-  '/account_/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
-  '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
-  '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
+  '/login': typeof LoginRoute
+  '/login_/complete': typeof LoginCompleteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/account'
-    | '/upgrade'
-    | '/account/complete'
-    | '/review/$id'
-    | '/upgrade/complete'
-    | '/upgrade/success'
-    | '/account/organizations/$orgId'
-    | '/invitations/$token/accept'
-    | '/invitations/$token/complete'
+  fullPaths: '/' | '/login' | '/login/complete'
   fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/account'
-    | '/upgrade'
-    | '/account/complete'
-    | '/review/$id'
-    | '/upgrade/complete'
-    | '/upgrade/success'
-    | '/account/organizations/$orgId'
-    | '/invitations/$token/accept'
-    | '/invitations/$token/complete'
-  id:
-    | '__root__'
-    | '/'
-    | '/account'
-    | '/upgrade'
-    | '/account_/complete'
-    | '/review/$id'
-    | '/upgrade_/complete'
-    | '/upgrade_/success'
-    | '/account_/organizations/$orgId'
-    | '/invitations/$token/accept'
-    | '/invitations/$token/complete'
+  to: '/' | '/login' | '/login/complete'
+  id: '__root__' | '/' | '/login' | '/login_/complete'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AccountRoute: typeof AccountRoute
-  UpgradeRoute: typeof UpgradeRoute
-  AccountCompleteRoute: typeof AccountCompleteRoute
-  ReviewIdRoute: typeof ReviewIdRoute
-  UpgradeCompleteRoute: typeof UpgradeCompleteRoute
-  UpgradeSuccessRoute: typeof UpgradeSuccessRoute
-  AccountOrganizationsOrgIdRoute: typeof AccountOrganizationsOrgIdRoute
-  InvitationsTokenAcceptRoute: typeof InvitationsTokenAcceptRoute
-  InvitationsTokenCompleteRoute: typeof InvitationsTokenCompleteRoute
+  LoginRoute: typeof LoginRoute
+  LoginCompleteRoute: typeof LoginCompleteRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/upgrade': {
-      id: '/upgrade'
-      path: '/upgrade'
-      fullPath: '/upgrade'
-      preLoaderRoute: typeof UpgradeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account': {
-      id: '/account'
-      path: '/account'
-      fullPath: '/account'
-      preLoaderRoute: typeof AccountRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -185,53 +75,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/upgrade_/success': {
-      id: '/upgrade_/success'
-      path: '/upgrade/success'
-      fullPath: '/upgrade/success'
-      preLoaderRoute: typeof UpgradeSuccessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/upgrade_/complete': {
-      id: '/upgrade_/complete'
-      path: '/upgrade/complete'
-      fullPath: '/upgrade/complete'
-      preLoaderRoute: typeof UpgradeCompleteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/review/$id': {
-      id: '/review/$id'
-      path: '/review/$id'
-      fullPath: '/review/$id'
-      preLoaderRoute: typeof ReviewIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account_/complete': {
-      id: '/account_/complete'
-      path: '/account/complete'
-      fullPath: '/account/complete'
-      preLoaderRoute: typeof AccountCompleteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invitations/$token/complete': {
-      id: '/invitations/$token/complete'
-      path: '/invitations/$token/complete'
-      fullPath: '/invitations/$token/complete'
-      preLoaderRoute: typeof InvitationsTokenCompleteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/invitations/$token/accept': {
-      id: '/invitations/$token/accept'
-      path: '/invitations/$token/accept'
-      fullPath: '/invitations/$token/accept'
-      preLoaderRoute: typeof InvitationsTokenAcceptRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/account_/organizations/$orgId': {
-      id: '/account_/organizations/$orgId'
-      path: '/account/organizations/$orgId'
-      fullPath: '/account/organizations/$orgId'
-      preLoaderRoute: typeof AccountOrganizationsOrgIdRouteImport
+    '/login_/complete': {
+      id: '/login_/complete'
+      path: '/login/complete'
+      fullPath: '/login/complete'
+      preLoaderRoute: typeof LoginCompleteRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -239,15 +87,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AccountRoute: AccountRoute,
-  UpgradeRoute: UpgradeRoute,
-  AccountCompleteRoute: AccountCompleteRoute,
-  ReviewIdRoute: ReviewIdRoute,
-  UpgradeCompleteRoute: UpgradeCompleteRoute,
-  UpgradeSuccessRoute: UpgradeSuccessRoute,
-  AccountOrganizationsOrgIdRoute: AccountOrganizationsOrgIdRoute,
-  InvitationsTokenAcceptRoute: InvitationsTokenAcceptRoute,
-  InvitationsTokenCompleteRoute: InvitationsTokenCompleteRoute,
+  LoginRoute: LoginRoute,
+  LoginCompleteRoute: LoginCompleteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

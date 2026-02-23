@@ -1,0 +1,107 @@
+import { useState } from 'react';
+import { initOAuth, type OAuthProvider } from '../lib/api';
+import {
+  generateVerifier,
+  generateChallenge,
+  storeVerifier,
+} from '../lib/pkce';
+
+export default function LoginPage() {
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<OAuthProvider | null>(null);
+
+  const handleLogin = async (provider: OAuthProvider) => {
+    setPending(provider);
+    setError(null);
+
+    try {
+      const verifier = generateVerifier();
+      const challenge = await generateChallenge(verifier);
+      storeVerifier(verifier);
+
+      const appBase =
+        import.meta.env.VITE_APP_BASE_URL || window.location.origin;
+      const returnTo = `${appBase}/login/complete`;
+
+      const { authorize_url } = await initOAuth(
+        provider,
+        returnTo,
+        challenge
+      );
+      window.location.assign(authorize_url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'OAuth init failed');
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="h-screen overflow-auto bg-primary">
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-base py-double">
+        <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
+          <header className="space-y-double text-center">
+            <div className="flex justify-center">
+              <img
+                src="/vibe-kanban-logo.svg"
+                alt="Vibe Kanban"
+                className="h-8 w-auto"
+              />
+            </div>
+            <p className="text-sm text-low">
+              Sign in to continue
+            </p>
+          </header>
+
+          {error && (
+            <div className="rounded-sm border border-error/30 bg-error/10 p-base">
+              <p className="text-sm text-high">{error}</p>
+            </div>
+          )}
+
+          <section className="flex flex-col items-center gap-2">
+            <OAuthButton
+              provider="github"
+              label="Continue with GitHub"
+              onClick={() => void handleLogin('github')}
+              disabled={pending !== null}
+              loading={pending === 'github'}
+            />
+            <OAuthButton
+              provider="google"
+              label="Continue with Google"
+              onClick={() => void handleLogin('google')}
+              disabled={pending !== null}
+              loading={pending === 'google'}
+            />
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OAuthButton({
+  provider,
+  label,
+  onClick,
+  disabled,
+  loading,
+}: {
+  provider: OAuthProvider;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  loading?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      className="flex h-10 min-w-[280px] items-center justify-center rounded-[4px] border border-[#dadce0] bg-[#f2f2f2] px-3 text-[14px] font-medium text-[#1f1f1f] transition-colors hover:bg-[#e8eaed] active:bg-[#e2e3e5] disabled:cursor-not-allowed disabled:opacity-50"
+      style={{ fontFamily: "'Roboto', Arial, sans-serif" }}
+      onClick={onClick}
+      disabled={disabled || loading}
+    >
+      {loading ? `Opening ${provider === 'github' ? 'GitHub' : 'Google'}...` : label}
+    </button>
+  );
+}
