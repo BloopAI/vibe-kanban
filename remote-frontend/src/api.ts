@@ -1,5 +1,5 @@
 import type { ReviewResult } from "./types/review";
-import { clearTokens } from "./auth";
+import { clearTokens, currentRelativePath, redirectToLogin } from "./auth";
 import { getToken, triggerRefresh } from "./tokenManager";
 import type { RelayHost, RelaySession } from "shared/remote-types";
 
@@ -238,9 +238,15 @@ export async function authenticatedFetch(
   url: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const accessToken = await getToken();
+  let accessToken: string;
+  try {
+    accessToken = await getToken();
+  } catch (error) {
+    redirectToLogin(currentRelativePath());
+    throw error;
+  }
 
-  const res = await fetch(url, {
+  let res = await fetch(url, {
     ...options,
     headers: {
       ...options.headers,
@@ -249,14 +255,27 @@ export async function authenticatedFetch(
   });
 
   if (res.status === 401) {
-    const newAccessToken = await triggerRefresh();
-    return fetch(url, {
+    let newAccessToken: string;
+    try {
+      newAccessToken = await triggerRefresh();
+    } catch (error) {
+      redirectToLogin(currentRelativePath());
+      throw error;
+    }
+
+    res = await fetch(url, {
       ...options,
       headers: {
         ...options.headers,
         Authorization: `Bearer ${newAccessToken}`,
       },
     });
+
+    if (res.status === 401) {
+      clearTokens();
+      redirectToLogin(currentRelativePath());
+      throw new ApiError("Session expired", 401);
+    }
   }
 
   return res;

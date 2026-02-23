@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { redeemOAuth } from "../api";
-import { storeTokens } from "../auth";
+import { sanitizeNextPath, storeTokens } from "../auth";
 import { retrieveVerifier, clearVerifier } from "../pkce";
 
 export default function AccountCompletePage() {
@@ -14,6 +14,7 @@ export default function AccountCompletePage() {
   const handoffId = qp.get("handoff_id");
   const appCode = qp.get("app_code");
   const oauthError = qp.get("error");
+  const nextPath = sanitizeNextPath(qp.get("next")) ?? "/account";
 
   useEffect(() => {
     const completeLogin = async () => {
@@ -44,9 +45,9 @@ export default function AccountCompletePage() {
 
         setSuccess(true);
 
-        // Redirect to account page after brief delay
+        // Redirect back to caller after brief delay.
         setTimeout(() => {
-          navigate("/account", { replace: true });
+          navigate(nextPath, { replace: true });
         }, 1000);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to complete login");
@@ -55,7 +56,7 @@ export default function AccountCompletePage() {
     };
 
     completeLogin();
-  }, [handoffId, appCode, oauthError, navigate]);
+  }, [handoffId, appCode, oauthError, navigate, nextPath]);
 
   if (error) {
     return (
@@ -64,7 +65,7 @@ export default function AccountCompletePage() {
         body={error}
         isError
         showRetry
-        onRetry={() => navigate("/account", { replace: true })}
+        onRetry={() => navigate(nextPath, { replace: true })}
       />
     );
   }

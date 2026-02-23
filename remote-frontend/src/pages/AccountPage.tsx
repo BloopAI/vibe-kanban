@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { isLoggedIn } from "../auth";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { currentRelativePath, isLoggedIn, sanitizeNextPath } from "../auth";
 import {
   initOAuth,
   getProfile,
@@ -15,6 +15,7 @@ import { generateVerifier, generateChallenge, storeVerifier } from "../pkce";
 
 export default function AccountPage() {
   const navigate = useNavigate();
+  const { search } = useLocation();
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
@@ -56,6 +57,10 @@ export default function AccountPage() {
     }
   }
 
+  const requestedNextPath = sanitizeNextPath(
+    new URLSearchParams(search).get("next"),
+  );
+
   const handleOAuthLogin = async (provider: OAuthProvider) => {
     setOauthLoading(true);
     try {
@@ -65,9 +70,13 @@ export default function AccountPage() {
 
       const appBase =
         import.meta.env.VITE_APP_BASE_URL || window.location.origin;
-      const returnTo = `${appBase}/account/complete`;
+      const returnTo = new URL("/account/complete", appBase);
+      returnTo.searchParams.set(
+        "next",
+        requestedNextPath ?? currentRelativePath(),
+      );
 
-      const result = await initOAuth(provider, returnTo, challenge);
+      const result = await initOAuth(provider, returnTo.toString(), challenge);
       window.location.assign(result.authorize_url);
     } catch (e) {
       setError(e instanceof Error ? e.message : "OAuth init failed");

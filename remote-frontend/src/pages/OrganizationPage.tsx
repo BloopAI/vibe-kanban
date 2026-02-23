@@ -5,7 +5,7 @@ import {
   useNavigate,
   useSearchParams,
 } from "react-router-dom";
-import { isLoggedIn } from "../auth";
+import { buildLoginUrl, currentRelativePath, isLoggedIn } from "../auth";
 import {
   getOrganization,
   updateOrganization,
@@ -93,7 +93,7 @@ export default function OrganizationPage() {
 
   useEffect(() => {
     if (!isLoggedIn()) {
-      navigate("/account", { replace: true });
+      navigate(buildLoginUrl(currentRelativePath()), { replace: true });
       return;
     }
 

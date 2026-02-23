@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { isLoggedIn } from "../auth";
+import { currentRelativePath, isLoggedIn } from "../auth";
 import {
   createRelaySession,
   createRelaySessionAuthCode,
@@ -134,9 +134,10 @@ export default function RelayPage() {
 
       const appBase =
         import.meta.env.VITE_APP_BASE_URL || window.location.origin;
-      const returnTo = `${appBase}/account/complete`;
+      const returnTo = new URL("/account/complete", appBase);
+      returnTo.searchParams.set("next", currentRelativePath());
 
-      const result = await initOAuth(provider, returnTo, challenge);
+      const result = await initOAuth(provider, returnTo.toString(), challenge);
       window.location.assign(result.authorize_url);
     } catch (e) {
       setError(e instanceof Error ? e.message : "OAuth init failed");

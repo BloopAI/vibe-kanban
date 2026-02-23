@@ -77,7 +77,11 @@ pub async fn refresh_token(
         Err(_) => return Err(TokenRefreshError::InvalidToken),
     };
 
-    let session = session_repo.get(token_details.session_id).await?;
+    let session = match session_repo.get(token_details.session_id).await {
+        Ok(session) => session,
+        Err(AuthSessionError::NotFound) => return Err(TokenRefreshError::SessionRevoked),
+        Err(error) => return Err(TokenRefreshError::SessionError(error)),
+    };
 
     if session.revoked_at.is_some() {
         return Err(TokenRefreshError::SessionRevoked);
