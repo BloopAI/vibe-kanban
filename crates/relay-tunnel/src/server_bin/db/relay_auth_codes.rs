@@ -15,7 +15,11 @@ impl<'a> RelayAuthCodeRepository<'a> {
     }
 
     /// Create a one-time relay auth code and return its plaintext value.
-    pub async fn create(&self, host_id: Uuid, relay_cookie_value: &str) -> Result<String, sqlx::Error> {
+    pub async fn create(
+        &self,
+        host_id: Uuid,
+        relay_cookie_value: &str,
+    ) -> Result<String, sqlx::Error> {
         let code = Uuid::new_v4().to_string();
         let code_hash = hash_code(&code);
         let expires_at = Utc::now() + Duration::seconds(RELAY_AUTH_CODE_TTL_SECS);

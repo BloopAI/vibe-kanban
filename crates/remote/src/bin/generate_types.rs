@@ -8,13 +8,13 @@ use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
     IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationType,
     ListRelayHostsResponse, OrganizationMember, Project, ProjectStatus, PullRequest,
-    PullRequestStatus, RelayHost, RelaySessionAuthCodeResponse, Tag,
+    PullRequestStatus, RelayHost, RelaySession, RelaySessionAuthCodeResponse, Tag,
     UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
     UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
     UpdateTagRequest, User, UserData, Workspace,
 };
 use remote::{
-    db::hosts::{Host, RelaySession},
+    db::hosts::Host,
     routes::{
         all_mutation_definitions,
         attachments::{

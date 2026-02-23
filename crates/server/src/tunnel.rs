@@ -16,6 +16,12 @@ use crate::DeploymentImpl;
 const RELAY_RECONNECT_INITIAL_DELAY_SECS: u64 = 1;
 const RELAY_RECONNECT_MAX_DELAY_SECS: u64 = 30;
 
+fn relay_api_base() -> Option<String> {
+    std::env::var("VK_SHARED_RELAY_API_BASE")
+        .ok()
+        .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()))
+}
+
 /// Start relay mode if `VK_TUNNEL` is enabled.
 pub async fn start_relay_if_requested(
     deployment: &DeploymentImpl,
@@ -29,6 +35,12 @@ pub async fn start_relay_if_requested(
     let Ok(remote_client) = deployment.remote_client() else {
         tracing::error!(
             "VK_TUNNEL requires VK_SHARED_API_BASE to be set. Continuing without relay."
+        );
+        return;
+    };
+    let Some(relay_base) = relay_api_base() else {
+        tracing::error!(
+            "VK_TUNNEL requires VK_SHARED_RELAY_API_BASE to be set. Continuing without relay."
         );
         return;
     };
@@ -100,6 +112,7 @@ pub async fn start_relay_if_requested(
 
             let run_result = start_relay(
                 local_port,
+                &relay_base,
                 &remote_client,
                 host_id,
                 supervisor_shutdown.clone(),
@@ -145,11 +158,12 @@ pub async fn start_relay_if_requested(
 /// Start the relay client transport.
 pub async fn start_relay(
     local_port: u16,
+    relay_api_base: &str,
     remote_client: &RemoteClient,
     host_id: Uuid,
     shutdown: CancellationToken,
 ) -> anyhow::Result<()> {
-    let base_url = remote_client.base_url().trim_end_matches('/');
+    let base_url = relay_api_base.trim_end_matches('/');
 
     let ws_url = if let Some(rest) = base_url.strip_prefix("https://") {
         format!("wss://{rest}/v1/relay/connect/{host_id}")

@@ -77,6 +77,7 @@ services:
         POSTHOG_API_KEY: ${POSTHOG_API_KEY:-}
         POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
         SENTRY_DSN_REMOTE: ${SENTRY_DSN_REMOTE:-}
+        VITE_RELAY_API_BASE_URL: ${VITE_RELAY_API_BASE_URL:-http://localhost:8082}
       ssh:
         - default
     depends_on:
@@ -121,14 +122,34 @@ services:
       AZURE_STORAGE_ENDPOINT_URL: ${AZURE_STORAGE_ENDPOINT_URL:-http://azurite:10000/devstoreaccount1}
       AZURE_STORAGE_PUBLIC_ENDPOINT_URL: ${AZURE_STORAGE_PUBLIC_ENDPOINT_URL:-http://localhost:10000/devstoreaccount1}
 
-      # Relay subdomain routing (e.g. "relay.localhost:3001" for dev, "relay.vibekanban.com" for prod)
-      RELAY_BASE_DOMAIN: ${RELAY_BASE_DOMAIN:-}
-
     ports:
       - "${REMOTE_SERVER_PORTS:-127.0.0.1:3000:8081}"
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8081/v1/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  relay-server:
+    build:
+      context: ../..
+      dockerfile: crates/relay-tunnel/Dockerfile
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      RUST_LOG: info
+      SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
+      RELAY_LISTEN_ADDR: 0.0.0.0:8082
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
+      RELAY_BASE_DOMAIN: ${RELAY_BASE_DOMAIN:?set in .env.remote}
+    ports:
+      - "127.0.0.1:8082:8082"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8082/health"]
       interval: 5s
       timeout: 5s
       retries: 10

@@ -18,9 +18,6 @@ pub struct RemoteServerConfig {
     pub review_worker_base_url: Option<String>,
     pub review_disabled: bool,
     pub github_app: Option<GitHubAppConfig>,
-    /// Base domain for relay subdomains (e.g. "relay.localhost:3001" or "relay.vibekanban.com").
-    /// When set, relay traffic is routed via `{user_id}.{relay_base_domain}`.
-    pub relay_base_domain: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -235,11 +232,6 @@ impl RemoteServerConfig {
 
         let github_app = GitHubAppConfig::from_env()?;
 
-        let relay_base_domain = env::var("RELAY_BASE_DOMAIN")
-            .ok()
-            .map(|domain| domain.trim().to_string())
-            .filter(|domain| !domain.is_empty());
-
         Ok(Self {
             database_url,
             listen_addr,
@@ -253,7 +245,6 @@ impl RemoteServerConfig {
             review_worker_base_url,
             review_disabled,
             github_app,
-            relay_base_domain,
         })
     }
 }

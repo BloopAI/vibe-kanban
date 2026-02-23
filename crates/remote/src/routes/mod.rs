@@ -1,12 +1,9 @@
 use axum::{
     Json, Router,
-    body::Body,
-    http::{Request, header::HeaderName},
-    middleware::{self, Next},
-    response::Response,
+    http::header::HeaderName,
+    middleware,
     routing::get,
 };
-use axum_extra::headers::{HeaderMapExt, Host};
 use serde::Serialize;
 use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
@@ -15,7 +12,6 @@ use tower_http::{
     trace::{DefaultOnFailure, TraceLayer},
 };
 use tracing::{Level, Span, field};
-use uuid::Uuid;
 
 use crate::{AppState, auth::require_session};
 
@@ -54,7 +50,6 @@ mod organizations;
 pub mod project_statuses;
 pub mod projects;
 mod pull_requests;
-mod relay;
 mod review;
 pub mod tags;
 mod tokens;
@@ -63,7 +58,7 @@ mod workspaces;
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(|request: &Request<_>| {
+        .make_span_with(|request: &axum::http::Request<_>| {
             let request_id = request
                 .extensions()
                 .get::<RequestId>()
@@ -140,7 +135,6 @@ pub fn router(state: AppState) -> Router {
         .merge(workspaces::router())
         .merge(billing::protected_router())
         .merge(migration::router())
-        .merge(relay::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             require_session,
@@ -154,10 +148,6 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            relay_subdomain_middleware,
-        ))
         .layer(middleware::from_fn(
             crate::middleware::version::add_version_headers,
         ))
@@ -177,34 +167,6 @@ pub fn router(state: AppState) -> Router {
             MakeRequestUuid {},
         ))
         .with_state(state)
-}
-
-/// Middleware that intercepts requests on relay subdomains.
-/// If the Host header matches `{host_id}.{relay_base_domain}`, the request
-/// is handled by the relay proxy. Otherwise it passes through normally.
-async fn relay_subdomain_middleware(
-    state: axum::extract::State<AppState>,
-    request: Request<Body>,
-    next: Next,
-) -> Response {
-    if let Some(relay_base_domain) = &state.config.relay_base_domain {
-        let host = request
-            .headers()
-            .typed_get::<Host>()
-            .map(|h| h.hostname().to_owned())
-            .unwrap_or_default();
-
-        if let Some(host_id) = extract_relay_host_id(&host, relay_base_domain) {
-            return relay::relay_subdomain_request(state, request, host_id).await;
-        }
-    }
-
-    next.run(request).await
-}
-
-fn extract_relay_host_id(host: &str, relay_base_domain: &str) -> Option<Uuid> {
-    let subdomain = relay_tunnel::server::extract_relay_subdomain(host, relay_base_domain)?;
-    Uuid::parse_str(&subdomain).ok()
 }
 
 #[derive(Serialize)]

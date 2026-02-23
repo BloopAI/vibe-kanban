@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM hosts h\n                LEFT JOIN host_memberships hm ON hm.host_id = h.id\n                WHERE h.id = $1\n                  AND (h.owner_user_id = $2 OR hm.user_id = $2)\n            ) AS \"allowed!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "allowed!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "152aecdffb11c85815b8024d1f34593fe84c8d362fab872919983990b874466b"
+}

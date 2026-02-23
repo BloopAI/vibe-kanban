@@ -8,6 +8,15 @@ import type {
 } from "shared/remote-types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+const RELAY_API_BASE = import.meta.env.VITE_RELAY_API_BASE_URL || "";
+
+function requireRelayApiBase(): string {
+  const base = RELAY_API_BASE.trim();
+  if (!base) {
+    throw new Error("Relay API base URL is not configured");
+  }
+  return base.replace(/\/$/, "");
+}
 
 export class ApiError extends Error {
   constructor(
@@ -619,8 +628,9 @@ export async function createRelaySession(
 export async function createRelaySessionAuthCode(
   sessionId: string,
 ): Promise<RelaySessionAuthCodeResponse> {
+  const relayApiBase = requireRelayApiBase();
   const res = await authenticatedFetch(
-    `${API_BASE}/v1/relay/sessions/${sessionId}/auth-code`,
+    `${relayApiBase}/v1/relay/sessions/${sessionId}/auth-code`,
     {
       method: "POST",
     },

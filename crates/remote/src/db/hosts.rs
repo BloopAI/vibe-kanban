@@ -1,4 +1,4 @@
-use api_types::RelayHost;
+use api_types::{RelayHost, RelaySession};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -17,18 +17,6 @@ pub struct Host {
     pub agent_version: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-pub struct RelaySession {
-    pub id: Uuid,
-    pub host_id: Uuid,
-    pub request_user_id: Uuid,
-    pub state: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub claimed_at: Option<DateTime<Utc>>,
-    pub ended_at: Option<DateTime<Utc>>,
 }
 
 pub struct HostRepository<'a> {
@@ -86,7 +74,10 @@ impl<'a> HostRepository<'a> {
         Ok(host)
     }
 
-    pub async fn list_accessible_hosts(&self, user_id: Uuid) -> Result<Vec<RelayHost>, sqlx::Error> {
+    pub async fn list_accessible_hosts(
+        &self,
+        user_id: Uuid,
+    ) -> Result<Vec<RelayHost>, sqlx::Error> {
         sqlx::query_as!(
             RelayHost,
             r#"
@@ -111,7 +102,11 @@ impl<'a> HostRepository<'a> {
         .await
     }
 
-    pub async fn assert_host_access(&self, host_id: Uuid, user_id: Uuid) -> Result<(), IdentityError> {
+    pub async fn assert_host_access(
+        &self,
+        host_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), IdentityError> {
         let row = sqlx::query!(
             r#"
             SELECT EXISTS (
@@ -162,108 +157,5 @@ impl<'a> HostRepository<'a> {
         )
         .fetch_one(self.pool)
         .await
-    }
-
-    pub async fn get_session_for_requester(
-        &self,
-        session_id: Uuid,
-        request_user_id: Uuid,
-    ) -> Result<Option<RelaySession>, sqlx::Error> {
-        sqlx::query_as!(
-            RelaySession,
-            r#"
-            SELECT
-                id              AS "id!: Uuid",
-                host_id         AS "host_id!: Uuid",
-                request_user_id AS "request_user_id!: Uuid",
-                state,
-                created_at,
-                expires_at,
-                claimed_at,
-                ended_at
-            FROM relay_sessions
-            WHERE id = $1 AND request_user_id = $2
-            "#,
-            session_id,
-            request_user_id
-        )
-        .fetch_optional(self.pool)
-        .await
-    }
-
-    pub async fn mark_session_active(&self, session_id: Uuid) -> Result<RelaySession, sqlx::Error> {
-        sqlx::query_as!(
-            RelaySession,
-            r#"
-            UPDATE relay_sessions
-            SET state = 'active',
-                claimed_at = COALESCE(claimed_at, NOW())
-            WHERE id = $1
-            RETURNING
-                id              AS "id!: Uuid",
-                host_id         AS "host_id!: Uuid",
-                request_user_id AS "request_user_id!: Uuid",
-                state,
-                created_at,
-                expires_at,
-                claimed_at,
-                ended_at
-            "#,
-            session_id
-        )
-        .fetch_one(self.pool)
-        .await
-    }
-
-    pub async fn mark_session_expired(&self, session_id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"
-            UPDATE relay_sessions
-            SET state = 'expired',
-                ended_at = COALESCE(ended_at, NOW())
-            WHERE id = $1
-            "#,
-            session_id
-        )
-        .execute(self.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn mark_host_online(
-        &self,
-        host_id: Uuid,
-        agent_version: Option<&str>,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"
-            UPDATE hosts
-            SET status = 'online',
-                last_seen_at = NOW(),
-                agent_version = COALESCE($2, agent_version),
-                updated_at = NOW()
-            WHERE id = $1
-            "#,
-            host_id,
-            agent_version
-        )
-        .execute(self.pool)
-        .await?;
-        Ok(())
-    }
-
-    pub async fn mark_host_offline(&self, host_id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"
-            UPDATE hosts
-            SET status = 'offline',
-                updated_at = NOW()
-            WHERE id = $1
-            "#,
-            host_id
-        )
-        .execute(self.pool)
-        .await?;
-        Ok(())
     }
 }

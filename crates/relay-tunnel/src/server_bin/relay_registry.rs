@@ -4,14 +4,12 @@
 //! relay proxy looks up relays by host ID and opens yamux streams over
 //! the existing control connection. One-time auth codes are DB-backed.
 
-use std::{
-    collections::HashMap,
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use relay_tunnel::server::SharedControl;
 use tokio::sync::Mutex;
 use uuid::Uuid;
+
+use crate::server::SharedControl;
 
 /// An active relay connection from a local server.
 pub struct ActiveRelay {

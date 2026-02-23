@@ -4,7 +4,7 @@ use axum::{
     http::StatusCode,
     routing::{get, post},
 };
-use api_types::{CreateRelayHostRequest, ListRelayHostsResponse, RelayHost};
+use api_types::{CreateRelayHostRequest, ListRelayHostsResponse, RelayHost, RelaySession};
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -15,7 +15,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        hosts::{HostRepository, RelaySession},
+        hosts::HostRepository,
         identity_errors::IdentityError,
     },
 };
@@ -63,7 +63,9 @@ async fn create_host(
     let host = repo
         .create_host(ctx.user.id, name, payload.agent_version.as_deref())
         .await
-        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create host"))?;
+        .map_err(|_| {
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create host")
+        })?;
 
     Ok((
         StatusCode::CREATED,
@@ -104,7 +106,9 @@ async fn create_relay_session(
     let session = repo
         .create_session(host_id, ctx.user.id, expires_at)
         .await
-        .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create session"))?;
+        .map_err(|_| {
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create session")
+        })?;
 
     Ok(Json(CreateRelaySessionResponse { session }))
 }
