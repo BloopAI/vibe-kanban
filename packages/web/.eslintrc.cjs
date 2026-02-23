@@ -28,12 +28,41 @@ const baseRestrictedImportPaths = [
   },
 ];
 
+// Legacy directories that should not be imported from proper FSD layers.
+// These are pending migration into shared/, features/, widgets/, or pages/.
+const legacyBanGroup = {
+  group: [
+    '@/hooks',
+    '@/hooks/**',
+    '@/contexts/**',
+    '@/lib/**',
+    '@/components/**',
+    '@/utils/**',
+    '@/constants/**',
+    '@/types/**',
+    '@/keyboard/**',
+    '@/dialogs/**',
+  ],
+  message:
+    'Do not import from legacy directories. Use the equivalent shared/ module, or migrate the code first.',
+};
+
 function withLayerBoundaries(patterns) {
   return [
     'error',
     {
       paths: baseRestrictedImportPaths,
       patterns,
+    },
+  ];
+}
+
+function withLayerBoundariesAndLegacyBan(patterns) {
+  return [
+    'error',
+    {
+      paths: baseRestrictedImportPaths,
+      patterns: [...patterns, legacyBanGroup],
     },
   ];
 }
@@ -155,10 +184,9 @@ module.exports = {
   },
   overrides: [
     {
-      // Legacy directories (hooks/, contexts/, lib/, components/, utils/,
-      // constants/, types/, keyboard/) sit outside the enforced layer
-      // hierarchy. Treat them as shared-level so they cannot silently
-      // depend on higher layers and launder cross-feature imports.
+      // Legacy directories sit outside the enforced layer hierarchy.
+      // They cannot import from higher layers (app/pages/widgets/features/entities)
+      // and cannot import from each other — forcing migration into proper layers.
       files: [
         'src/hooks/**/*.{ts,tsx}',
         'src/contexts/**/*.{ts,tsx}',
@@ -168,6 +196,7 @@ module.exports = {
         'src/constants/**/*.{ts,tsx}',
         'src/types/**/*.{ts,tsx}',
         'src/keyboard/**/*.{ts,tsx}',
+        'src/dialogs/**/*.{ts,tsx}',
       ],
       rules: {
         'no-restricted-imports': withLayerBoundaries([
@@ -182,7 +211,51 @@ module.exports = {
             message:
               'Legacy directories are treated as shared-level. They may only import from shared and integrations. Move this module into the appropriate layer.',
           },
+          {
+            group: [
+              '@/hooks',
+              '@/hooks/**',
+              '@/contexts/**',
+              '@/lib/**',
+              '@/components/**',
+              '@/utils/**',
+              '@/constants/**',
+              '@/types/**',
+              '@/keyboard/**',
+              '@/dialogs/**',
+            ],
+            message:
+              'Legacy directories must not import from other legacy directories. Migrate the dependency to shared/ first.',
+          },
         ]),
+      },
+    },
+    {
+      // Pages may import from widgets, features, entities, shared, integrations
+      // but not from legacy directories.
+      files: ['src/pages/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([
+          {
+            group: ['@/app/**'],
+            message:
+              'Pages may not import from app. Only app imports pages.',
+          },
+        ]),
+      },
+    },
+    {
+      // App layer may import from any proper layer but not legacy directories.
+      files: ['src/app/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([]),
+      },
+    },
+    {
+      // Route definitions may import from pages and shared but not legacy.
+      files: ['src/routes/**/*.{ts,tsx}'],
+      rules: {
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([]),
       },
     },
     {
@@ -194,7 +267,7 @@ module.exports = {
     {
       files: ['src/widgets/**/*.{ts,tsx}'],
       rules: {
-        'no-restricted-imports': withLayerBoundaries([
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([
           {
             group: ['@/app/**', '@/pages/**', '@/widgets/**'],
             message:
@@ -206,7 +279,7 @@ module.exports = {
     {
       files: ['src/features/**/*.{ts,tsx}'],
       rules: {
-        'no-restricted-imports': withLayerBoundaries([
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([
           {
             group: ['@/app/**', '@/pages/**', '@/widgets/**', '@/features/**'],
             message:
@@ -231,7 +304,7 @@ module.exports = {
     {
       files: ['src/entities/**/*.{ts,tsx}'],
       rules: {
-        'no-restricted-imports': withLayerBoundaries([
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([
           {
             group: [
               '@/app/**',
@@ -248,7 +321,7 @@ module.exports = {
     {
       files: ['src/shared/**/*.{ts,tsx}'],
       rules: {
-        'no-restricted-imports': withLayerBoundaries([
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([
           {
             group: [
               '@/app/**',
@@ -266,7 +339,7 @@ module.exports = {
     {
       files: ['src/integrations/**/*.{ts,tsx}'],
       rules: {
-        'no-restricted-imports': withLayerBoundaries([
+        'no-restricted-imports': withLayerBoundariesAndLegacyBan([
           {
             group: ['@/app/**', '@/pages/**', '@/widgets/**'],
             message:
