@@ -24,6 +24,7 @@ use services::services::{
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
+use trusted_key_auth::TrustedKeyAuthError;
 use utils::response::ApiResponse;
 
 #[derive(Debug, Error, ts_rs::TS)]
@@ -98,6 +99,18 @@ impl From<Git2Error> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<TrustedKeyAuthError> for ApiError {
+    fn from(error: TrustedKeyAuthError) -> Self {
+        match error {
+            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
+            TrustedKeyAuthError::BadRequest(message) => ApiError::BadRequest(message),
+            TrustedKeyAuthError::Forbidden(message) => ApiError::Forbidden(message),
+            TrustedKeyAuthError::TooManyRequests(message) => ApiError::TooManyRequests(message),
+            TrustedKeyAuthError::Io(error) => ApiError::Io(error),
+        }
     }
 }
 

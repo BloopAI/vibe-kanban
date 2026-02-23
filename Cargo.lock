@@ -4466,6 +4466,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
+ "trusted-key-auth",
  "utils",
  "uuid",
 ]
@@ -7560,6 +7561,7 @@ dependencies = [
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
+ "trusted-key-auth",
  "ts-rs 11.0.1",
  "url",
  "utils",
@@ -9029,6 +9031,24 @@ name = "tree-sitter-language"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "009994f150cc0cd50ff54917d5bc8bffe8cad10ca10d81c34da2ec421ae61782"
+
+[[package]]
+name = "trusted-key-auth"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "ed25519-dalek",
+ "hmac 0.12.1",
+ "http",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "spake2",
+ "thiserror 2.0.18",
+ "tokio",
+ "uuid",
+]
 
 [[package]]
 name = "try-lock"

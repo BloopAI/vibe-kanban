@@ -7,32 +7,24 @@ use axum::{
     routing::{get, post},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use ed25519_dalek::VerifyingKey;
-use hmac::{Hmac, Mac};
-use rand::Rng;
 use serde::{Deserialize, Serialize};
-use sha2::Sha256;
-use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
-use tokio::fs;
+use trusted_key_auth::{
+    TRUSTED_KEYS_FILE_NAME, TrustedKeyAuthError, add_trusted_public_key, parse_public_key_base64,
+    spake2::{
+        build_server_proof_base64, generate_one_time_code, start_spake2_enrollment,
+        verify_client_proof,
+    },
+};
 use utils::{assets::asset_dir, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-const TRUSTED_KEYS_FILE_NAME: &str = "trusted_ed25519_public_keys.json";
-const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
-const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
-const CLIENT_PROOF_CONTEXT: &[u8] = b"vk-spake2-client-proof-v1";
-const SERVER_PROOF_CONTEXT: &[u8] = b"vk-spake2-server-proof-v1";
-const ENROLLMENT_CODE_LENGTH: usize = 6;
-const ENROLLMENT_CODE_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
 const GENERATE_CODE_PER_IP_LIMIT: usize = 3;
 const SPAKE2_START_GLOBAL_LIMIT: usize = 30;
 const SPAKE2_START_PER_IP_LIMIT: usize = 10;
-
-type HmacSha256 = Hmac<Sha256>;
 
 #[derive(Debug, Deserialize)]
 struct StartSpake2EnrollmentRequest {
@@ -64,11 +56,6 @@ struct GenerateEnrollmentCodeResponse {
     enrollment_code: String,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
-struct TrustedPublicKeysFile {
-    keys: Vec<String>,
-}
-
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/auth/trusted-keys/spake2/test-page", get(spake2_test_page))
@@ -78,7 +65,7 @@ pub fn router() -> Router<DeploymentImpl> {
         )
         .route(
             "/auth/trusted-keys/spake2/start",
-            post(start_spake2_enrollment),
+            post(start_spake2_enrollment_route),
         )
         .route(
             "/auth/trusted-keys/spake2/finish",
@@ -126,7 +113,7 @@ async fn generate_enrollment_code(
     )))
 }
 
-async fn start_spake2_enrollment(
+async fn start_spake2_enrollment_route(
     State(deployment): State<DeploymentImpl>,
     ConnectInfo(client_addr): ConnectInfo<SocketAddr>,
     ExtractJson(payload): ExtractJson<StartSpake2EnrollmentRequest>,
@@ -147,26 +134,23 @@ async fn start_spake2_enrollment(
     )
     .await?;
 
-    let enrollment_code = normalize_enrollment_code(&payload.enrollment_code)?;
-
-    let client_message = decode_base64(&payload.client_message_b64)
-        .map_err(|_| ApiError::BadRequest("Invalid client_message_b64".to_string()))?;
-
-    let password = Password::new(enrollment_code.as_bytes());
-    let id_a = Identity::new(SPAKE2_CLIENT_ID);
-    let id_b = Identity::new(SPAKE2_SERVER_ID);
-    let (server_state, server_message) =
-        Spake2::<Ed25519Group>::start_b_with_rng(&password, &id_a, &id_b, UnwrapErr(SysRng));
-
-    let shared_key = server_state.finish(&client_message).map_err(|error| {
-        tracing::info!(
-            ?error,
-            "Rejecting SPAKE2 enrollment start: client SPAKE2 message failed verification"
-        );
-        ApiError::Unauthorized
+    let spake2_start = start_spake2_enrollment(
+        &payload.enrollment_code,
+        &payload.client_message_b64,
+    )
+    .map_err(|error| {
+        if matches!(error, TrustedKeyAuthError::Unauthorized) {
+            tracing::info!(
+                "Rejecting SPAKE2 enrollment start: client SPAKE2 message failed verification"
+            );
+        }
+        ApiError::from(error)
     })?;
 
-    if !deployment.consume_enrollment_code(&enrollment_code).await {
+    if !deployment
+        .consume_enrollment_code(&spake2_start.enrollment_code)
+        .await
+    {
         tracing::info!(
             client_ip = %client_addr.ip(),
             "Rejecting SPAKE2 enrollment start: missing or invalid enrollment code"
@@ -176,7 +160,7 @@ async fn start_spake2_enrollment(
 
     let enrollment_id = Uuid::new_v4();
     deployment
-        .store_pake_enrollment(enrollment_id, shared_key)
+        .store_pake_enrollment(enrollment_id, spake2_start.shared_key)
         .await;
     tracing::info!(
         enrollment_id = %enrollment_id,
@@ -186,7 +170,7 @@ async fn start_spake2_enrollment(
     Ok(ResponseJson(ApiResponse::success(
         StartSpake2EnrollmentResponse {
             enrollment_id,
-            server_message_b64: BASE64_STANDARD.encode(server_message),
+            server_message_b64: spake2_start.server_message_b64,
         },
     )))
 }
@@ -213,16 +197,22 @@ async fn finish_spake2_enrollment(
         &payload.enrollment_id,
         &public_key,
         &payload.client_proof_b64,
-    )?;
+    )
+    .map_err(|error| {
+        if matches!(error, TrustedKeyAuthError::Unauthorized) {
+            tracing::info!(
+                enrollment_id = %payload.enrollment_id,
+                "Rejecting SPAKE2 enrollment finish: invalid client proof"
+            );
+        }
+        ApiError::from(error)
+    })?;
 
     let canonical_public_key_b64 = BASE64_STANDARD.encode(public_key.as_bytes());
-    let added = add_trusted_public_key(&canonical_public_key_b64).await?;
-    let server_proof_b64 = build_proof_base64(
-        &shared_key,
-        SERVER_PROOF_CONTEXT,
-        &payload.enrollment_id,
-        &public_key,
-    )?;
+    let trusted_keys_path = asset_dir().join(TRUSTED_KEYS_FILE_NAME);
+    let added = add_trusted_public_key(&trusted_keys_path, &canonical_public_key_b64).await?;
+    let server_proof_b64 =
+        build_server_proof_base64(&shared_key, &payload.enrollment_id, &public_key)?;
 
     tracing::info!(
         enrollment_id = %payload.enrollment_id,
@@ -270,201 +260,4 @@ async fn enforce_rate_limit(
     Err(ApiError::TooManyRequests(
         "Too many requests. Please wait and try again.".to_string(),
     ))
-}
-
-fn normalize_enrollment_code(raw_code: &str) -> Result<String, ApiError> {
-    let code = raw_code.trim().to_ascii_uppercase();
-    if code.len() != ENROLLMENT_CODE_LENGTH {
-        return Err(ApiError::BadRequest(format!(
-            "Invalid enrollment code length. Expected {ENROLLMENT_CODE_LENGTH} characters."
-        )));
-    }
-
-    if !code
-        .bytes()
-        .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
-    {
-        return Err(ApiError::BadRequest(
-            "Enrollment code must contain only A-Z and 0-9.".to_string(),
-        ));
-    }
-
-    Ok(code)
-}
-
-fn generate_one_time_code() -> String {
-    let mut rng = rand::thread_rng();
-    let mut code = String::with_capacity(ENROLLMENT_CODE_LENGTH);
-    for _ in 0..ENROLLMENT_CODE_LENGTH {
-        let idx = rng.gen_range(0..ENROLLMENT_CODE_CHARSET.len());
-        code.push(ENROLLMENT_CODE_CHARSET[idx] as char);
-    }
-    code
-}
-
-fn decode_base64(input: &str) -> Result<Vec<u8>, ApiError> {
-    BASE64_STANDARD
-        .decode(input)
-        .map_err(|_| ApiError::Unauthorized)
-}
-
-fn parse_public_key_base64(raw_public_key: &str) -> Result<VerifyingKey, ApiError> {
-    let public_key_bytes = decode_base64(raw_public_key)?;
-    let public_key_bytes: [u8; 32] = public_key_bytes
-        .try_into()
-        .map_err(|_| ApiError::Unauthorized)?;
-    VerifyingKey::from_bytes(&public_key_bytes).map_err(|_| ApiError::Unauthorized)
-}
-
-fn build_proof_base64(
-    shared_key: &[u8],
-    context: &[u8],
-    enrollment_id: &Uuid,
-    public_key: &VerifyingKey,
-) -> Result<String, ApiError> {
-    let mut mac = HmacSha256::new_from_slice(shared_key).map_err(|_| ApiError::Unauthorized)?;
-    mac.update(context);
-    mac.update(enrollment_id.as_bytes());
-    mac.update(public_key.as_bytes());
-    Ok(BASE64_STANDARD.encode(mac.finalize().into_bytes()))
-}
-
-fn verify_client_proof(
-    shared_key: &[u8],
-    enrollment_id: &Uuid,
-    public_key: &VerifyingKey,
-    provided_proof_b64: &str,
-) -> Result<(), ApiError> {
-    let provided_proof = decode_base64(provided_proof_b64)?;
-    let mut mac = HmacSha256::new_from_slice(shared_key).map_err(|_| ApiError::Unauthorized)?;
-    mac.update(CLIENT_PROOF_CONTEXT);
-    mac.update(enrollment_id.as_bytes());
-    mac.update(public_key.as_bytes());
-    mac.verify_slice(&provided_proof).map_err(|_| {
-        tracing::info!(
-            enrollment_id = %enrollment_id,
-            "Rejecting SPAKE2 enrollment finish: invalid client proof"
-        );
-        ApiError::Unauthorized
-    })
-}
-
-async fn add_trusted_public_key(public_key_b64: &str) -> Result<bool, ApiError> {
-    let trusted_keys_path = asset_dir().join(TRUSTED_KEYS_FILE_NAME);
-    let mut trusted_keys_file = read_trusted_keys_file(&trusted_keys_path).await?;
-
-    if trusted_keys_file
-        .keys
-        .iter()
-        .any(|key| key == public_key_b64)
-    {
-        return Ok(false);
-    }
-
-    trusted_keys_file.keys.push(public_key_b64.to_string());
-    let serialized = serde_json::to_string_pretty(&trusted_keys_file).map_err(|error| {
-        ApiError::BadRequest(format!("Failed to serialize trusted keys: {error}"))
-    })?;
-    fs::write(&trusted_keys_path, format!("{serialized}\n"))
-        .await
-        .map_err(ApiError::Io)?;
-
-    Ok(true)
-}
-
-async fn read_trusted_keys_file(
-    trusted_keys_path: &std::path::Path,
-) -> Result<TrustedPublicKeysFile, ApiError> {
-    if !trusted_keys_path.exists() {
-        return Ok(TrustedPublicKeysFile::default());
-    }
-
-    let file_contents = fs::read_to_string(trusted_keys_path)
-        .await
-        .map_err(ApiError::Io)?;
-    if file_contents.trim().is_empty() {
-        return Ok(TrustedPublicKeysFile::default());
-    }
-
-    let trusted_keys_file: TrustedPublicKeysFile =
-        serde_json::from_str(&file_contents).map_err(|error| {
-            ApiError::BadRequest(format!("Trusted key file is invalid JSON: {error}"))
-        })?;
-
-    for key in &trusted_keys_file.keys {
-        parse_public_key_base64(key).map_err(|_| {
-            ApiError::BadRequest("Trusted key file contains invalid keys".to_string())
-        })?;
-    }
-
-    Ok(trusted_keys_file)
-}
-
-#[cfg(test)]
-mod tests {
-    use ed25519_dalek::SigningKey;
-
-    use super::*;
-
-    fn test_public_key() -> VerifyingKey {
-        SigningKey::from_bytes(&[7; 32]).verifying_key()
-    }
-
-    #[test]
-    fn build_and_verify_client_proof_roundtrip() {
-        let public_key = test_public_key();
-        let enrollment_id = Uuid::new_v4();
-        let shared_key = [9_u8; 32];
-        let client_proof_b64 = build_proof_base64(
-            &shared_key,
-            CLIENT_PROOF_CONTEXT,
-            &enrollment_id,
-            &public_key,
-        )
-        .unwrap();
-
-        verify_client_proof(&shared_key, &enrollment_id, &public_key, &client_proof_b64).unwrap();
-    }
-
-    #[test]
-    fn reject_invalid_client_proof() {
-        let public_key = test_public_key();
-        let enrollment_id = Uuid::new_v4();
-        let shared_key = [11_u8; 32];
-        let bad_proof_b64 = BASE64_STANDARD.encode([0_u8; 32]);
-
-        assert!(
-            verify_client_proof(&shared_key, &enrollment_id, &public_key, &bad_proof_b64).is_err()
-        );
-    }
-
-    #[test]
-    fn parse_public_key_base64_accepts_valid_key() {
-        let public_key = test_public_key();
-        let key_b64 = BASE64_STANDARD.encode(public_key.as_bytes());
-
-        let parsed = parse_public_key_base64(&key_b64).unwrap();
-        assert_eq!(parsed.as_bytes(), public_key.as_bytes());
-    }
-
-    #[test]
-    fn normalize_enrollment_code_accepts_valid_input() {
-        let normalized = normalize_enrollment_code("ab12z9").unwrap();
-        assert_eq!(normalized, "AB12Z9");
-    }
-
-    #[test]
-    fn normalize_enrollment_code_rejects_invalid_characters() {
-        assert!(normalize_enrollment_code("AB!2Z9").is_err());
-    }
-
-    #[test]
-    fn generate_one_time_code_uses_expected_charset_and_length() {
-        let code = generate_one_time_code();
-        assert_eq!(code.len(), ENROLLMENT_CODE_LENGTH);
-        assert!(
-            code.bytes()
-                .all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit())
-        );
-    }
 }
