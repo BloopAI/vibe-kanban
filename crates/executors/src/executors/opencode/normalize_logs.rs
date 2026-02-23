@@ -106,6 +106,21 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                         },
                     );
                 }
+                OpencodeExecutorEvent::ApprovalRequested {
+                    tool_call_id,
+                    approval_id,
+                }
+                | OpencodeExecutorEvent::QuestionAsked {
+                    tool_call_id,
+                    approval_id,
+                } => {
+                    state.handle_approval_requested(
+                        &tool_call_id,
+                        approval_id,
+                        &worktree_path,
+                        &msg_store,
+                    );
+                }
                 OpencodeExecutorEvent::ApprovalResponse {
                     tool_call_id,
                     status,
@@ -455,6 +470,31 @@ impl LogState {
         }
     }
 
+    fn handle_approval_requested(
+        &mut self,
+        tool_call_id: &str,
+        approval_id: String,
+        worktree_path: &Path,
+        msg_store: &Arc<MsgStore>,
+    ) {
+        let Some(tool_state) = self.tool_states.get_mut(tool_call_id) else {
+            return;
+        };
+
+        tool_state.approval = Some(ApprovalStatus::Pending);
+        tool_state.approval_id = Some(approval_id);
+
+        let Some(index) = tool_state.index else {
+            return;
+        };
+
+        replace_normalized_entry(
+            msg_store,
+            index,
+            tool_state.to_normalized_entry(worktree_path),
+        );
+    }
+
     fn handle_approval_response(
         &mut self,
         tool_call_id: &str,
@@ -511,9 +551,21 @@ impl LogState {
         &mut self,
         tool_call_id: &str,
         status: QuestionStatus,
-        _worktree_path: &Path,
-        _msg_store: &Arc<MsgStore>,
+        worktree_path: &Path,
+        msg_store: &Arc<MsgStore>,
     ) {
+        if let Some(tool_state) = self.tool_states.get_mut(tool_call_id) {
+            tool_state.set_question_status(status.clone());
+
+            if let Some(index) = tool_state.index {
+                replace_normalized_entry(
+                    msg_store,
+                    index,
+                    tool_state.to_normalized_entry(worktree_path),
+                );
+            }
+        }
+
         if let QuestionStatus::Answered { answers } = &status {
             let qa_pairs: Vec<AnsweredQuestion> = answers
                 .iter()
@@ -532,15 +584,6 @@ impl LogState {
                 ),
                 metadata: None,
             });
-        }
-
-        // Mark question tool as resolved
-        if let Some(tool_state) = self.tool_states.get_mut(tool_call_id) {
-            let approval = match &status {
-                QuestionStatus::Answered { .. } => ApprovalStatus::Approved,
-                QuestionStatus::TimedOut => ApprovalStatus::TimedOut,
-            };
-            tool_state.set_approval(approval);
         }
     }
 
@@ -712,6 +755,8 @@ struct ToolCallState {
     state: ToolStateStatus,
     title: Option<String>,
     approval: Option<ApprovalStatus>,
+    question: Option<QuestionStatus>,
+    approval_id: Option<String>,
     data: ToolData,
 }
 
@@ -784,6 +829,8 @@ impl ToolCallState {
             state: ToolStateStatus::Unknown,
             title: None,
             approval: None,
+            question: None,
+            approval_id: None,
             data: ToolData::Other {
                 input: None,
                 metadata: None,
@@ -815,7 +862,14 @@ impl ToolCallState {
         self.approval = Some(approval);
     }
 
+    fn set_question_status(&mut self, question: QuestionStatus) {
+        self.question = Some(question);
+    }
+
     fn tool_status(&self) -> ToolStatus {
+        if let Some(status) = self.question.as_ref().map(ToolStatus::from_question_status) {
+            return status;
+        }
         if let Some(ApprovalStatus::Denied { reason }) = &self.approval {
             return ToolStatus::Denied {
                 reason: reason.clone(),
@@ -823,6 +877,13 @@ impl ToolCallState {
         }
         if matches!(self.approval, Some(ApprovalStatus::TimedOut)) {
             return ToolStatus::TimedOut;
+        }
+        if matches!(self.approval, Some(ApprovalStatus::Pending))
+            && let Some(ref id) = self.approval_id
+        {
+            return ToolStatus::PendingApproval {
+                approval_id: id.clone(),
+            };
         }
         match self.state {
             ToolStateStatus::Completed => ToolStatus::Success,

@@ -68,28 +68,39 @@ impl ClaudeAgentClient {
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
 
-        let status = approval_service
-            .request_tool_approval(
-                &tool_name,
-                tool_input.clone(),
-                &tool_use_id,
-                self.cancel.clone(),
-            )
+        let approval_id = match approval_service.create_tool_approval(&tool_name).await {
+            Ok(id) => id,
+            Err(err) => {
+                self.handle_approval_error(&tool_name, &tool_use_id, &err)
+                    .await?;
+                return Err(err.into());
+            }
+        };
+
+        let _ = self
+            .log_writer
+            .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalRequested {
+                tool_call_id: tool_use_id.clone(),
+                tool_name: tool_name.clone(),
+                approval_id: approval_id.clone(),
+            })?)
+            .await;
+
+        let status = match approval_service
+            .wait_tool_approval(&approval_id, self.cancel.clone())
             .await
-            .map_err(|err| {
-                if !matches!(err, ExecutorApprovalError::Cancelled) {
-                    tracing::error!(
-                        "Claude approval failed for tool={} call_id={}: {err}",
-                        tool_name,
-                        tool_use_id
-                    );
-                };
-                err
-            })?;
+        {
+            Ok(s) => s,
+            Err(err) => {
+                self.handle_approval_error(&tool_name, &tool_use_id, &err)
+                    .await?;
+                return Err(err.into());
+            }
+        };
 
         self.log_writer
             .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalResponse {
-                call_id: tool_use_id.clone(),
+                tool_call_id: tool_use_id.clone(),
                 tool_name: tool_name.clone(),
                 approval_status: status.clone(),
             })?)
@@ -142,28 +153,48 @@ impl ClaudeAgentClient {
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
 
-        let status = approval_service
-            .request_question_answer(
-                &tool_name,
-                tool_input.clone(),
-                &tool_use_id,
-                self.cancel.clone(),
-            )
+        let question_count = tool_input
+            .get("questions")
+            .and_then(|q| q.as_array())
+            .map(|a| a.len())
+            .unwrap_or(1);
+
+        let approval_id = match approval_service
+            .create_question_approval(&tool_name, question_count)
             .await
-            .map_err(|err| {
-                if !matches!(err, ExecutorApprovalError::Cancelled) {
-                    tracing::error!(
-                        "Claude question failed for tool={} call_id={}: {err}",
-                        tool_name,
-                        tool_use_id
-                    );
-                };
-                err
-            })?;
+        {
+            Ok(id) => id,
+            Err(err) => {
+                self.handle_question_error(&tool_use_id, &tool_name, &err)
+                    .await?;
+                return Err(err.into());
+            }
+        };
+
+        let _ = self
+            .log_writer
+            .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalRequested {
+                tool_call_id: tool_use_id.clone(),
+                tool_name: tool_name.clone(),
+                approval_id: approval_id.clone(),
+            })?)
+            .await;
+
+        let status = match approval_service
+            .wait_question_answer(&approval_id, self.cancel.clone())
+            .await
+        {
+            Ok(s) => s,
+            Err(err) => {
+                self.handle_question_error(&tool_use_id, &tool_name, &err)
+                    .await?;
+                return Err(err.into());
+            }
+        };
 
         self.log_writer
             .log_raw(&serde_json::to_string(&ClaudeJson::QuestionResponse {
-                call_id: tool_use_id.clone(),
+                tool_call_id: tool_use_id.clone(),
                 tool_name: tool_name.clone(),
                 question_status: status.clone(),
             })?)
@@ -171,7 +202,6 @@ impl ClaudeAgentClient {
 
         match status {
             QuestionStatus::Answered { answers } => {
-                // Build the updatedInput for AskUserQuestion: { questions, answers }
                 let answers_map: serde_json::Map<String, serde_json::Value> = answers
                     .iter()
                     .map(|qa| {
@@ -198,6 +228,52 @@ impl ClaudeAgentClient {
                 interrupt: Some(true),
             }),
         }
+    }
+
+    async fn handle_approval_error(
+        &self,
+        tool_name: &str,
+        tool_use_id: &str,
+        err: &ExecutorApprovalError,
+    ) -> Result<(), ExecutorError> {
+        if !matches!(err, ExecutorApprovalError::Cancelled) {
+            tracing::error!(
+                "Claude approval failed for tool={} call_id={}: {err}",
+                tool_name,
+                tool_use_id
+            );
+        }
+        let _ = self
+            .log_writer
+            .log_raw(&serde_json::to_string(&ClaudeJson::ApprovalResponse {
+                tool_call_id: tool_use_id.to_string(),
+                tool_name: tool_name.to_string(),
+                approval_status: ApprovalStatus::Denied {
+                    reason: Some(format!("Approval service error: {err}")),
+                },
+            })?)
+            .await;
+        Ok(())
+    }
+
+    async fn handle_question_error(
+        &self,
+        tool_use_id: &str,
+        tool_name: &str,
+        err: &ExecutorApprovalError,
+    ) -> Result<(), ExecutorError> {
+        if !matches!(err, ExecutorApprovalError::Cancelled) {
+            tracing::error!("Claude question failed {err}",);
+        }
+        let _ = self
+            .log_writer
+            .log_raw(&serde_json::to_string(&ClaudeJson::QuestionResponse {
+                tool_call_id: tool_use_id.to_string(),
+                tool_name: tool_name.to_string(),
+                question_status: QuestionStatus::TimedOut,
+            })?)
+            .await;
+        Ok(())
     }
 
     pub async fn on_can_use_tool(

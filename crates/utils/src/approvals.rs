@@ -9,33 +9,22 @@ pub const APPROVAL_TIMEOUT_SECONDS: i64 = 36000; // 10 hours
 pub struct ApprovalRequest {
     pub id: String,
     pub tool_name: String,
-    pub tool_input: serde_json::Value,
-    pub tool_call_id: String,
     pub execution_process_id: Uuid,
     pub created_at: DateTime<Utc>,
     pub timeout_at: DateTime<Utc>,
 }
 
 impl ApprovalRequest {
-    pub fn from_create(request: CreateApprovalRequest, execution_process_id: Uuid) -> Self {
+    pub fn new(tool_name: String, execution_process_id: Uuid) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
-            tool_name: request.tool_name,
-            tool_input: request.tool_input,
-            tool_call_id: request.tool_call_id,
+            tool_name,
             execution_process_id,
             created_at: now,
             timeout_at: now + Duration::seconds(APPROVAL_TIMEOUT_SECONDS),
         }
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct CreateApprovalRequest {
-    pub tool_name: String,
-    pub tool_input: serde_json::Value,
-    pub tool_call_id: String,
 }
 
 /// Status of a tool permission request (approve/deny for tool execution).

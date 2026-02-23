@@ -376,6 +376,39 @@ impl LogState {
     fn thinking(&mut self, content: String) -> (NormalizedEntry, usize, bool) {
         self.streaming_text_set(content, StreamingTextKind::Thinking)
     }
+
+    fn update_tool_status(
+        &mut self,
+        call_id: &str,
+        status: ToolStatus,
+        clear_awaiting: bool,
+        msg_store: &Arc<MsgStore>,
+    ) {
+        if let Some(cmd) = self.commands.get_mut(call_id) {
+            cmd.status = status.clone();
+            if clear_awaiting {
+                cmd.awaiting_approval = false;
+            }
+            if let Some(index) = cmd.index {
+                replace_normalized_entry(msg_store, index, cmd.to_normalized_entry());
+            }
+        } else if let Some(mcp) = self.mcp_tools.get_mut(call_id) {
+            mcp.status = status.clone();
+            if let Some(index) = mcp.index {
+                replace_normalized_entry(msg_store, index, mcp.to_normalized_entry());
+            }
+        } else if let Some(patch_state) = self.patches.get_mut(call_id) {
+            for entry in &mut patch_state.entries {
+                entry.status = status.clone();
+                if clear_awaiting {
+                    entry.awaiting_approval = false;
+                }
+                if let Some(index) = entry.index {
+                    replace_normalized_entry(msg_store, index, entry.to_normalized_entry());
+                }
+            }
+        }
+    }
 }
 
 enum UpdateMode {
@@ -485,8 +518,30 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
 
             if let Ok(approval) = serde_json::from_str::<Approval>(&line) {
-                if let Some(entry) = approval.to_normalized_entry_opt() {
-                    add_normalized_entry(&msg_store, &entry_index, entry);
+                match &approval {
+                    Approval::ApprovalRequested {
+                        call_id,
+                        approval_id,
+                        ..
+                    } => {
+                        let pending_status = ToolStatus::PendingApproval {
+                            approval_id: approval_id.clone(),
+                        };
+                        state.update_tool_status(call_id, pending_status, false, &msg_store);
+                    }
+                    Approval::ApprovalResponse {
+                        call_id,
+                        approval_status,
+                        ..
+                    } => {
+                        if let Some(status) = ToolStatus::from_approval_status(approval_status) {
+                            state.update_tool_status(call_id, status, true, &msg_store);
+                        }
+
+                        if let Some(entry) = approval.to_normalized_entry_opt() {
+                            add_normalized_entry(&msg_store, &entry_index, entry);
+                        }
+                    }
                 }
                 continue;
             }
@@ -1340,6 +1395,11 @@ impl ToNormalizedEntry for Error {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Approval {
+    ApprovalRequested {
+        call_id: String,
+        tool_name: String,
+        approval_id: String,
+    },
     ApprovalResponse {
         call_id: String,
         tool_name: String,
@@ -1348,6 +1408,14 @@ pub enum Approval {
 }
 
 impl Approval {
+    pub fn approval_requested(call_id: String, tool_name: String, approval_id: String) -> Self {
+        Self::ApprovalRequested {
+            call_id,
+            tool_name,
+            approval_id,
+        }
+    }
+
     pub fn approval_response(
         call_id: String,
         tool_name: String,
@@ -1365,22 +1433,25 @@ impl Approval {
     }
 
     pub fn display_tool_name(&self) -> String {
-        let Self::ApprovalResponse { tool_name, .. } = self;
-        match tool_name.as_str() {
-            "codex.exec_command" => "Exec Command".to_string(),
-            "codex.apply_patch" => "Edit".to_string(),
-            other => other.to_string(),
+        match self {
+            Self::ApprovalRequested { tool_name, .. }
+            | Self::ApprovalResponse { tool_name, .. } => match tool_name.as_str() {
+                "codex.exec_command" => "Exec Command".to_string(),
+                "codex.apply_patch" => "Edit".to_string(),
+                other => other.to_string(),
+            },
         }
     }
 }
 
 impl ToNormalizedEntryOpt for Approval {
     fn to_normalized_entry_opt(&self) -> Option<NormalizedEntry> {
-        let Self::ApprovalResponse {
-            call_id: _,
-            tool_name: _,
-            approval_status,
-        } = self;
+        let approval_status = match self {
+            Self::ApprovalResponse {
+                approval_status, ..
+            } => approval_status,
+            Self::ApprovalRequested { .. } => return None,
+        };
         let tool_name = self.display_tool_name();
 
         match approval_status {

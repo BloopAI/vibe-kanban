@@ -854,6 +854,7 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolResult { session_id, .. } => session_id.clone(),
             ClaudeJson::Result { session_id, .. } => session_id.clone(),
             ClaudeJson::StreamEvent { .. } => None, // session might not have been initialized yet
+            ClaudeJson::ApprovalRequested { .. } => None,
             ClaudeJson::ApprovalResponse { .. } => None,
             ClaudeJson::QuestionResponse { .. } => None,
             ClaudeJson::ControlRequest { .. } => None,
@@ -921,6 +922,55 @@ impl ClaudeLogProcessor {
         (crate::logs::ToolResultValueType::Json, content.clone())
     }
 
+    fn build_tool_use_entry(
+        tool_data: &ClaudeToolData,
+        worktree_path: &str,
+        status: ToolStatus,
+    ) -> (NormalizedEntry, String, String) {
+        let tool_name = tool_data.get_name().to_string();
+        let action_type = Self::extract_action_type(tool_data, worktree_path);
+        let content = Self::generate_concise_content(tool_data, &action_type, worktree_path);
+        let entry = Self::tool_use_entry(tool_name.clone(), action_type, status, content.clone());
+        (entry, tool_name, content)
+    }
+
+    fn tool_use_entry(
+        tool_name: String,
+        action_type: ActionType,
+        status: ToolStatus,
+        content: String,
+    ) -> NormalizedEntry {
+        NormalizedEntry {
+            timestamp: None,
+            entry_type: NormalizedEntryType::ToolUse {
+                tool_name,
+                action_type,
+                status,
+            },
+            content,
+            metadata: None,
+        }
+    }
+
+    fn replace_tool_entry_status(
+        &mut self,
+        tool_call_id: &str,
+        status: ToolStatus,
+        worktree_path: &str,
+        patches: &mut Vec<json_patch::Patch>,
+    ) {
+        if let Some(info) = self.tool_map.get(tool_call_id).cloned() {
+            let action_type = Self::extract_action_type(&info.tool_data, worktree_path);
+            let entry = Self::tool_use_entry(
+                info.tool_name.clone(),
+                action_type,
+                status,
+                info.content.clone(),
+            );
+            patches.push(ConversationPatch::replace(info.entry_index, entry));
+        }
+    }
+
     /// Convert Claude content item to normalized entry
     fn content_item_to_normalized_entry(
         content_item: &ClaudeContentItem,
@@ -952,32 +1002,10 @@ impl ClaudeLogProcessor {
                     serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null),
                 ),
             }),
-            ClaudeContentItem::ToolUse { tool_data, id } => {
-                let name = tool_data.get_name();
-                let action_type = Self::extract_action_type(tool_data, worktree_path);
-                let content =
-                    Self::generate_concise_content(tool_data, &action_type, worktree_path);
-
-                // Create metadata with tool_call_id for approval matching
-                let mut metadata =
-                    serde_json::to_value(content_item).unwrap_or(serde_json::Value::Null);
-                if let Some(obj) = metadata.as_object_mut() {
-                    obj.insert(
-                        "tool_call_id".to_string(),
-                        serde_json::Value::String(id.clone()),
-                    );
-                }
-
-                Some(NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::ToolUse {
-                        tool_name: name.to_string(),
-                        action_type,
-                        status: ToolStatus::Created,
-                    },
-                    content,
-                    metadata: Some(metadata),
-                })
+            ClaudeContentItem::ToolUse { tool_data, id: _ } => {
+                let (entry, _, _) =
+                    Self::build_tool_use_entry(tool_data, worktree_path, ToolStatus::Created);
+                Some(entry)
             }
             ClaudeContentItem::ToolResult { .. } => {
                 // TODO: Add proper ToolResult support to NormalizedEntry when the type system supports it
@@ -1241,34 +1269,11 @@ impl ClaudeLogProcessor {
 
                     match item {
                         ClaudeContentItem::ToolUse { id, tool_data } => {
-                            let tool_name = tool_data.get_name().to_string();
-                            let action_type = Self::extract_action_type(tool_data, worktree_path);
-                            let content_text = Self::generate_concise_content(
+                            let (entry, tool_name, content_text) = Self::build_tool_use_entry(
                                 tool_data,
-                                &action_type,
                                 worktree_path,
+                                ToolStatus::Created,
                             );
-
-                            // Create metadata with tool_call_id for approval matching
-                            let mut metadata =
-                                serde_json::to_value(item).unwrap_or(serde_json::Value::Null);
-                            if let Some(obj) = metadata.as_object_mut() {
-                                obj.insert(
-                                    "tool_call_id".to_string(),
-                                    serde_json::Value::String(id.clone()),
-                                );
-                            }
-
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
-                                    tool_name: tool_name.clone(),
-                                    action_type,
-                                    status: ToolStatus::Created,
-                                },
-                                content: content_text.clone(),
-                                metadata: Some(metadata),
-                            };
                             let is_new = entry_index.is_none();
                             let id_num = entry_index.unwrap_or_else(|| entry_index_provider.next());
                             self.tool_map.insert(
@@ -1437,20 +1442,16 @@ impl ClaudeLogProcessor {
                                 ToolStatus::Success
                             };
 
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
-                                    tool_name: info.tool_name.clone(),
-                                    action_type: ActionType::CommandRun {
-                                        command: info.content.clone(),
-                                        result,
-                                        category: CommandCategory::from_command(&info.content),
-                                    },
-                                    status,
+                            let entry = Self::tool_use_entry(
+                                info.tool_name.clone(),
+                                ActionType::CommandRun {
+                                    command: info.content.clone(),
+                                    result,
+                                    category: CommandCategory::from_command(&info.content),
                                 },
-                                content: info.content.clone(),
-                                metadata: None,
-                            };
+                                status,
+                                info.content.clone(),
+                            );
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         } else if matches!(info.tool_data, ClaudeToolData::Task { .. }) {
                             // Handle Task tool results - capture subagent output
@@ -1472,23 +1473,19 @@ impl ClaudeLogProcessor {
                                     None
                                 };
 
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
-                                    tool_name: info.tool_name.clone(),
-                                    action_type: ActionType::TaskCreate {
-                                        description: info.content.clone(),
-                                        subagent_type,
-                                        result: Some(crate::logs::ToolResult {
-                                            r#type: res_type,
-                                            value: res_value,
-                                        }),
-                                    },
-                                    status,
+                            let entry = Self::tool_use_entry(
+                                info.tool_name.clone(),
+                                ActionType::TaskCreate {
+                                    description: info.content.clone(),
+                                    subagent_type,
+                                    result: Some(crate::logs::ToolResult {
+                                        r#type: res_type,
+                                        value: res_value,
+                                    }),
                                 },
-                                content: info.content.clone(),
-                                metadata: None,
-                            };
+                                status,
+                                info.content.clone(),
+                            );
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         } else if matches!(
                             info.tool_data,
@@ -1526,23 +1523,19 @@ impl ClaudeLogProcessor {
                                 ToolStatus::Success
                             };
 
-                            let entry = NormalizedEntry {
-                                timestamp: None,
-                                entry_type: NormalizedEntryType::ToolUse {
-                                    tool_name: label.clone(),
-                                    action_type: ActionType::Tool {
-                                        tool_name: label,
-                                        arguments: Some(args_to_show),
-                                        result: Some(crate::logs::ToolResult {
-                                            r#type: res_type,
-                                            value: res_value,
-                                        }),
-                                    },
-                                    status,
+                            let entry = Self::tool_use_entry(
+                                label.clone(),
+                                ActionType::Tool {
+                                    tool_name: label,
+                                    arguments: Some(args_to_show),
+                                    result: Some(crate::logs::ToolResult {
+                                        r#type: res_type,
+                                        value: res_value,
+                                    }),
                                 },
-                                content: info.content.clone(),
-                                metadata: None,
-                            };
+                                status,
+                                info.content.clone(),
+                            );
                             patches.push(ConversationPatch::replace(info.entry_index, entry));
                         }
                         // Note: With control protocol, denials are handled via protocol messages
@@ -1550,26 +1543,21 @@ impl ClaudeLogProcessor {
                     }
                 }
             }
-            ClaudeJson::ToolUse { tool_data, .. } => {
-                let tool_name = tool_data.get_name();
-                let action_type = Self::extract_action_type(tool_data, worktree_path);
-                let content =
-                    Self::generate_concise_content(tool_data, &action_type, worktree_path);
-
-                let entry = NormalizedEntry {
-                    timestamp: None,
-                    entry_type: NormalizedEntryType::ToolUse {
-                        tool_name: tool_name.to_string(),
-                        action_type,
-                        status: ToolStatus::Created,
-                    },
-                    content,
-                    metadata: Some(
-                        serde_json::to_value(claude_json).unwrap_or(serde_json::Value::Null),
-                    ),
-                };
+            ClaudeJson::ToolUse { tool_data, id, .. } => {
+                let (entry, tool_name_value, content_text) =
+                    Self::build_tool_use_entry(tool_data, worktree_path, ToolStatus::Created);
                 let idx = entry_index_provider.next();
                 patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+
+                self.tool_map.insert(
+                    id.clone(),
+                    ClaudeToolCallInfo {
+                        entry_index: idx,
+                        tool_name: tool_name_value,
+                        tool_data: tool_data.clone(),
+                        content: content_text,
+                    },
+                );
             }
             ClaudeJson::ToolResult { .. } => {
                 // Add proper ToolResult support to NormalizedEntry when the type system supports it
@@ -1700,11 +1688,34 @@ impl ClaudeLogProcessor {
                     patches.push(ConversationPatch::add_normalized_entry(idx, entry));
                 }
             }
+            ClaudeJson::ApprovalRequested {
+                tool_call_id,
+                tool_name: _,
+                approval_id,
+            } => {
+                self.replace_tool_entry_status(
+                    tool_call_id,
+                    ToolStatus::PendingApproval {
+                        approval_id: approval_id.clone(),
+                    },
+                    worktree_path,
+                    &mut patches,
+                );
+            }
             ClaudeJson::ApprovalResponse {
-                call_id: _,
+                tool_call_id,
                 tool_name,
                 approval_status,
             } => {
+                if let Some(status) = ToolStatus::from_approval_status(approval_status) {
+                    self.replace_tool_entry_status(
+                        tool_call_id,
+                        status,
+                        worktree_path,
+                        &mut patches,
+                    );
+                }
+
                 let entry_opt = match approval_status {
                     ApprovalStatus::Pending | ApprovalStatus::Approved => None,
                     ApprovalStatus::Denied { reason } => Some(NormalizedEntry {
@@ -1735,10 +1746,12 @@ impl ClaudeLogProcessor {
                 }
             }
             ClaudeJson::QuestionResponse {
-                call_id: _,
+                tool_call_id,
                 tool_name: _,
                 question_status,
             } => {
+                let status = ToolStatus::from_question_status(question_status);
+                self.replace_tool_entry_status(tool_call_id, status, worktree_path, &mut patches);
                 let entry_opt = match question_status {
                     QuestionStatus::Answered { answers } => {
                         let qa_pairs: Vec<AnsweredQuestion> = answers
@@ -2123,6 +2136,7 @@ pub enum ClaudeJson {
         is_replay: bool,
     },
     ToolUse {
+        id: String,
         tool_name: String,
         #[serde(flatten)]
         tool_data: ClaudeToolData,
@@ -2162,13 +2176,18 @@ pub enum ClaudeJson {
         #[serde(default)]
         usage: Option<ClaudeUsage>,
     },
+    ApprovalRequested {
+        tool_call_id: String,
+        tool_name: String,
+        approval_id: String,
+    },
     ApprovalResponse {
-        call_id: String,
+        tool_call_id: String,
         tool_name: String,
         approval_status: ApprovalStatus,
     },
     QuestionResponse {
-        call_id: String,
+        tool_call_id: String,
         tool_name: String,
         question_status: QuestionStatus,
     },
@@ -2804,8 +2823,7 @@ mod tests {
         // System messages no longer extract session_id
         assert_eq!(ClaudeLogProcessor::extract_session_id(&parsed), None);
 
-        let tool_use_json =
-            r#"{"type":"tool_use","tool_name":"read","input":{},"session_id":"another-session"}"#;
+        let tool_use_json = r#"{"id":"t1","type":"tool_use","tool_name":"read","input":{},"session_id":"another-session"}"#;
         let parsed_tool: ClaudeJson = serde_json::from_str(tool_use_json).unwrap();
 
         assert_eq!(

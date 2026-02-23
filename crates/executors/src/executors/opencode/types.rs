@@ -24,9 +24,17 @@ pub enum OpencodeExecutorEvent {
         total_tokens: u32,
         model_context_window: u32,
     },
+    ApprovalRequested {
+        tool_call_id: String,
+        approval_id: String,
+    },
     ApprovalResponse {
         tool_call_id: String,
         status: ApprovalStatus,
+    },
+    QuestionAsked {
+        tool_call_id: String,
+        approval_id: String,
     },
     QuestionResponse {
         tool_call_id: String,

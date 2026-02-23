@@ -244,8 +244,51 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                             tracing::debug!("Failed to convert tool call update to ToolCall");
                         }
                     }
+                    AcpEvent::ApprovalRequested {
+                        tool_call_id,
+                        approval_id,
+                    } => {
+                        if let Some(tool_data) = tool_states.get(&tool_call_id) {
+                            let action = map_to_action_type(tool_data);
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: tool_data.title.clone(),
+                                    action_type: action,
+                                    status: LogToolStatus::PendingApproval { approval_id },
+                                },
+                                content: get_tool_content(tool_data),
+                                metadata: None,
+                            };
+                            msg_store
+                                .push_patch(ConversationPatch::replace(tool_data.index, entry));
+                        }
+                    }
                     AcpEvent::ApprovalResponse(resp) => {
                         tracing::trace!("Received approval response: {:?}", resp);
+
+                        if let Some(tool_data) = tool_states.get(&resp.tool_call_id) {
+                            let new_status = LogToolStatus::from_approval_status(&resp.status);
+                            if let Some(status) = new_status {
+                                let action = map_to_action_type(tool_data);
+                                let entry = NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::ToolUse {
+                                        tool_name: tool_data.title.clone(),
+                                        action_type: action,
+                                        status,
+                                    },
+                                    content: get_tool_content(tool_data),
+                                    metadata: serde_json::to_value(ToolCallMetadata {
+                                        tool_call_id: tool_data.id.0.to_string(),
+                                    })
+                                    .ok(),
+                                };
+                                msg_store
+                                    .push_patch(ConversationPatch::replace(tool_data.index, entry));
+                            }
+                        }
+
                         if let ApprovalStatus::Denied { reason } = resp.status {
                             let tool_name = tool_states
                                 .get(&resp.tool_call_id)

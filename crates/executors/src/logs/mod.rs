@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
@@ -156,8 +155,6 @@ pub enum ToolStatus {
     },
     PendingApproval {
         approval_id: String,
-        requested_at: DateTime<Utc>,
-        timeout_at: DateTime<Utc>,
     },
     TimedOut,
 }
@@ -176,7 +173,7 @@ impl ToolStatus {
 
     pub fn from_question_status(status: &QuestionStatus) -> Self {
         match status {
-            QuestionStatus::Answered { .. } => ToolStatus::Created,
+            QuestionStatus::Answered { .. } => ToolStatus::Success,
             QuestionStatus::TimedOut => ToolStatus::TimedOut,
         }
     }

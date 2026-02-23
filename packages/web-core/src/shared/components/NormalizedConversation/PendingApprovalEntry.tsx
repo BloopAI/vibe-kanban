@@ -27,6 +27,7 @@ import {
   Scope,
 } from '@/shared/keyboard';
 import { useApprovalForm } from '@/shared/hooks/ApprovalForm';
+import { useApprovals } from '@/shared/hooks/useApprovals';
 
 const DEFAULT_DENIAL_REASON = 'User denied this tool use request.';
 
@@ -197,9 +198,12 @@ const PendingApprovalEntry = ({
     dialogScopeActiveRef.current = dialogScopeActive;
   }, [dialogScopeActive]);
 
+  const { getPendingById } = useApprovals();
+  const approvalInfo = getPendingById(pendingStatus.approval_id);
+
   const { timeLeft } = useApprovalCountdown(
-    pendingStatus.requested_at,
-    pendingStatus.timeout_at,
+    approvalInfo?.created_at ?? new Date().toISOString(),
+    approvalInfo?.timeout_at ?? new Date().toISOString(),
     hasResponded
   );
 

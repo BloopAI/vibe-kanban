@@ -2,7 +2,6 @@ use std::fmt;
 
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
 use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
@@ -29,24 +28,27 @@ impl ExecutorApprovalError {
 /// Abstraction for executor approval backends.
 #[async_trait]
 pub trait ExecutorApprovalService: Send + Sync {
-    /// Requests approval for a tool invocation and waits for the final decision.
-    ///
-    /// The `cancel` token allows the caller to cancel the approval request early.
-    /// When cancelled, implementations should return `ExecutorApprovalError::Cancelled`.
-    async fn request_tool_approval(
+    /// Creates a tool approval request. Returns the approval_id immediately.
+    async fn create_tool_approval(&self, tool_name: &str) -> Result<String, ExecutorApprovalError>;
+
+    /// Creates a question approval request. Returns the approval_id immediately.
+    async fn create_question_approval(
         &self,
         tool_name: &str,
-        tool_input: Value,
-        tool_call_id: &str,
+        question_count: usize,
+    ) -> Result<String, ExecutorApprovalError>;
+
+    /// Waits for a tool approval to be resolved. Blocks until approved/denied/timed out.
+    async fn wait_tool_approval(
+        &self,
+        approval_id: &str,
         cancel: CancellationToken,
     ) -> Result<ApprovalStatus, ExecutorApprovalError>;
 
-    /// Requests answers to questions and waits for the user response.
-    async fn request_question_answer(
+    /// Waits for a question to be answered. Blocks until answered/timed out.
+    async fn wait_question_answer(
         &self,
-        tool_name: &str,
-        tool_input: Value,
-        tool_call_id: &str,
+        approval_id: &str,
         cancel: CancellationToken,
     ) -> Result<QuestionStatus, ExecutorApprovalError>;
 }
@@ -56,21 +58,32 @@ pub struct NoopExecutorApprovalService;
 
 #[async_trait]
 impl ExecutorApprovalService for NoopExecutorApprovalService {
-    async fn request_tool_approval(
+    async fn create_tool_approval(
         &self,
         _tool_name: &str,
-        _tool_input: Value,
-        _tool_call_id: &str,
+    ) -> Result<String, ExecutorApprovalError> {
+        Ok("noop".to_string())
+    }
+
+    async fn create_question_approval(
+        &self,
+        _tool_name: &str,
+        _question_count: usize,
+    ) -> Result<String, ExecutorApprovalError> {
+        Ok("noop".to_string())
+    }
+
+    async fn wait_tool_approval(
+        &self,
+        _approval_id: &str,
         _cancel: CancellationToken,
     ) -> Result<ApprovalStatus, ExecutorApprovalError> {
         Ok(ApprovalStatus::Approved)
     }
 
-    async fn request_question_answer(
+    async fn wait_question_answer(
         &self,
-        _tool_name: &str,
-        _tool_input: Value,
-        _tool_call_id: &str,
+        _approval_id: &str,
         _cancel: CancellationToken,
     ) -> Result<QuestionStatus, ExecutorApprovalError> {
         Err(ExecutorApprovalError::ServiceUnavailable)

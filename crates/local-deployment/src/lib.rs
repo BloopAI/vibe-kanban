@@ -134,7 +134,7 @@ impl Deployment for LocalDeployment {
             });
         }
 
-        let approvals = Approvals::new(msg_stores.clone());
+        let approvals = Approvals::new();
         let queued_message_service = QueuedMessageService::new();
 
         let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));

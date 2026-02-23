@@ -134,3 +134,51 @@ pub mod scratch_patch {
         })])
     }
 }
+
+/// Helper functions for creating approval-specific patches.
+pub mod approvals_patch {
+    use super::*;
+
+    const PENDING_PATH: &str = "/pending";
+
+    fn pending_path(approval_id: &str) -> String {
+        format!("{}/{}", PENDING_PATH, escape_pointer_segment(approval_id))
+    }
+
+    pub fn snapshot(pending: &[crate::services::approvals::ApprovalInfo]) -> Patch {
+        let pending: serde_json::Map<String, serde_json::Value> = pending
+            .iter()
+            .map(|info| {
+                (
+                    info.approval_id.clone(),
+                    serde_json::to_value(info).unwrap_or(serde_json::Value::Null),
+                )
+            })
+            .collect();
+
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: PENDING_PATH
+                .try_into()
+                .expect("Pending approvals path should be valid"),
+            value: serde_json::Value::Object(pending),
+        })])
+    }
+
+    pub fn created(info: &crate::services::approvals::ApprovalInfo) -> Patch {
+        let value = serde_json::to_value(info).unwrap_or(serde_json::Value::Null);
+        Patch(vec![PatchOperation::Replace(ReplaceOperation {
+            path: pending_path(&info.approval_id)
+                .try_into()
+                .expect("Approval path should be valid"),
+            value,
+        })])
+    }
+
+    pub fn resolved(approval_id: &str) -> Patch {
+        Patch(vec![PatchOperation::Remove(RemoveOperation {
+            path: pending_path(approval_id)
+                .try_into()
+                .expect("Approval path should be valid"),
+        })])
+    }
+}

@@ -1,41 +1,33 @@
 pub mod executor_approvals;
 
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-    time::Duration as StdDuration,
-};
+use std::{collections::HashSet, sync::Arc, time::Duration as StdDuration};
 
+use chrono::{DateTime, Utc};
 use dashmap::DashMap;
-use executors::{
-    approvals::ToolCallMetadata,
-    logs::{
-        NormalizedEntry, NormalizedEntryType, ToolStatus,
-        utils::patch::{ConversationPatch, extract_normalized_entry_from_patch},
-    },
+use futures::{
+    StreamExt,
+    future::{BoxFuture, FutureExt, Shared},
 };
-use futures::future::{BoxFuture, FutureExt, Shared};
-use sqlx::{Error as SqlxError, SqlitePool};
+use json_patch::Patch;
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tokio::sync::{RwLock, oneshot};
-use utils::{
-    approvals::{ApprovalOutcome, ApprovalRequest, ApprovalResponse},
-    log_msg::LogMsg,
-    msg_store::MsgStore,
-};
+use tokio::sync::{broadcast, oneshot};
+use tokio_stream::wrappers::BroadcastStream;
+use ts_rs::TS;
+use utils::approvals::{ApprovalOutcome, ApprovalRequest, ApprovalResponse};
 use uuid::Uuid;
 
 #[derive(Debug)]
 struct PendingApproval {
-    entry_index: usize,
-    entry: NormalizedEntry,
     execution_process_id: Uuid,
     tool_name: String,
     is_question: bool,
+    created_at: DateTime<Utc>,
+    timeout_at: DateTime<Utc>,
     response_tx: oneshot::Sender<ApprovalOutcome>,
 }
 
-type ApprovalWaiter = Shared<BoxFuture<'static, ApprovalOutcome>>;
+pub(crate) type ApprovalWaiter = Shared<BoxFuture<'static, ApprovalOutcome>>;
 
 #[derive(Debug)]
 pub struct ToolContext {
@@ -43,11 +35,22 @@ pub struct ToolContext {
     pub execution_process_id: Uuid,
 }
 
+/// Info about a currently pending approval, sent to the frontend via WebSocket.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+pub struct ApprovalInfo {
+    pub approval_id: String,
+    pub tool_name: String,
+    pub execution_process_id: Uuid,
+    pub is_question: bool,
+    pub created_at: DateTime<Utc>,
+    pub timeout_at: DateTime<Utc>,
+}
+
 #[derive(Clone)]
 pub struct Approvals {
     pending: Arc<DashMap<String, PendingApproval>>,
     completed: Arc<DashMap<String, ApprovalOutcome>>,
-    msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
+    patches_tx: broadcast::Sender<Patch>,
 }
 
 #[derive(Debug, Error)]
@@ -58,22 +61,25 @@ pub enum ApprovalError {
     AlreadyCompleted,
     #[error("no executor session found for session_id: {0}")]
     NoExecutorSession(String),
-    #[error("corresponding tool use entry not found for approval request")]
-    NoToolUseEntry,
     #[error("invalid approval status for this tool type")]
     InvalidStatus,
     #[error(transparent)]
     Custom(#[from] anyhow::Error),
-    #[error(transparent)]
-    Sqlx(#[from] SqlxError),
+}
+
+impl Default for Approvals {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Approvals {
-    pub fn new(msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>) -> Self {
+    pub fn new() -> Self {
+        let (patches_tx, _) = broadcast::channel(64);
         Self {
             pending: Arc::new(DashMap::new()),
             completed: Arc::new(DashMap::new()),
-            msg_stores,
+            patches_tx,
         }
     }
 
@@ -90,50 +96,31 @@ impl Approvals {
             .shared();
         let req_id = request.id.clone();
 
-        if let Some(store) = self.msg_store_by_id(&request.execution_process_id).await {
-            // Find the matching tool use entry by name and input
-            let matching_tool = find_matching_tool_use(store.clone(), &request.tool_call_id);
+        let info = ApprovalInfo {
+            approval_id: req_id.clone(),
+            tool_name: request.tool_name.clone(),
+            execution_process_id: request.execution_process_id,
+            is_question,
+            created_at: request.created_at,
+            timeout_at: request.timeout_at,
+        };
 
-            if let Some((idx, matching_tool)) = matching_tool {
-                let approval_entry = matching_tool
-                    .with_tool_status(ToolStatus::PendingApproval {
-                        approval_id: req_id.clone(),
-                        requested_at: request.created_at,
-                        timeout_at: request.timeout_at,
-                    })
-                    .ok_or(ApprovalError::NoToolUseEntry)?;
-                store.push_patch(ConversationPatch::replace(idx, approval_entry));
+        let pending_approval = PendingApproval {
+            execution_process_id: request.execution_process_id,
+            tool_name: request.tool_name.clone(),
+            is_question,
+            created_at: request.created_at,
+            timeout_at: request.timeout_at,
+            response_tx: tx,
+        };
 
-                self.pending.insert(
-                    req_id.clone(),
-                    PendingApproval {
-                        entry_index: idx,
-                        entry: matching_tool,
-                        execution_process_id: request.execution_process_id,
-                        tool_name: request.tool_name.clone(),
-                        is_question,
-                        response_tx: tx,
-                    },
-                );
-                tracing::debug!(
-                    "Created approval {} for tool '{}' at entry index {}",
-                    req_id,
-                    request.tool_name,
-                    idx
-                );
-            } else {
-                tracing::warn!(
-                    "No matching tool use entry found for approval request: tool='{}', execution_process_id={}",
-                    request.tool_name,
-                    request.execution_process_id
-                );
-            }
-        } else {
-            tracing::warn!(
-                "No msg_store found for execution_process_id: {}",
-                request.execution_process_id
-            );
-        }
+        self.pending.insert(req_id.clone(), pending_approval);
+
+        let _ = self
+            .patches_tx
+            .send(crate::services::events::patches::approvals_patch::created(
+                &info,
+            ));
 
         self.spawn_timeout_watcher(req_id.clone(), request.timeout_at, waiter.clone());
         Ok((request, waiter))
@@ -155,7 +142,6 @@ impl Approvals {
     #[tracing::instrument(skip(self, id, req))]
     pub async fn respond(
         &self,
-        pool: &SqlitePool,
         id: &str,
         req: ApprovalResponse,
     ) -> Result<(ApprovalOutcome, ToolContext), ApprovalError> {
@@ -169,28 +155,11 @@ impl Approvals {
             self.completed.insert(id.to_string(), outcome.clone());
             let _ = p.response_tx.send(outcome.clone());
 
-            if let Some(store) = self.msg_store_by_id(&p.execution_process_id).await {
-                let status = match &outcome {
-                    ApprovalOutcome::Approved | ApprovalOutcome::Answered { .. } => {
-                        ToolStatus::Created
-                    }
-                    ApprovalOutcome::Denied { reason } => ToolStatus::Denied {
-                        reason: reason.clone(),
-                    },
-                    ApprovalOutcome::TimedOut => ToolStatus::TimedOut,
-                };
-                let updated_entry = p
-                    .entry
-                    .with_tool_status(status)
-                    .ok_or(ApprovalError::NoToolUseEntry)?;
-
-                store.push_patch(ConversationPatch::replace(p.entry_index, updated_entry));
-            } else {
-                tracing::warn!(
-                    "No msg_store found for execution_process_id: {}",
-                    p.execution_process_id
-                );
-            }
+            let _ =
+                self.patches_tx
+                    .send(crate::services::events::patches::approvals_patch::resolved(
+                        id,
+                    ));
 
             let tool_ctx = ToolContext {
                 tool_name: p.tool_name,
@@ -214,7 +183,7 @@ impl Approvals {
     ) {
         let pending = self.pending.clone();
         let completed = self.completed.clone();
-        let msg_stores = self.msg_stores.clone();
+        let patches_tx = self.patches_tx.clone();
 
         let timeout_outcome = ApprovalOutcome::TimedOut;
 
@@ -236,67 +205,51 @@ impl Approvals {
             completed.insert(id.clone(), outcome.clone());
 
             if is_timeout && let Some((_, pending_approval)) = pending.remove(&id) {
+                let _ = patches_tx.send(
+                    crate::services::events::patches::approvals_patch::resolved(&id),
+                );
                 if pending_approval.response_tx.send(outcome).is_err() {
                     tracing::debug!("approval '{}' timeout notification receiver dropped", id);
-                }
-
-                let store = {
-                    let map = msg_stores.read().await;
-                    map.get(&pending_approval.execution_process_id).cloned()
-                };
-
-                if let Some(store) = store {
-                    if let Some(updated_entry) = pending_approval
-                        .entry
-                        .with_tool_status(ToolStatus::TimedOut)
-                    {
-                        store.push_patch(ConversationPatch::replace(
-                            pending_approval.entry_index,
-                            updated_entry,
-                        ));
-                    } else {
-                        tracing::warn!(
-                            "Timed out approval '{}' but couldn't update tool status (no tool-use entry).",
-                            id
-                        );
-                    }
-                } else {
-                    tracing::warn!(
-                        "No msg_store found for execution_process_id: {}",
-                        pending_approval.execution_process_id
-                    );
                 }
             }
         });
     }
 
-    async fn msg_store_by_id(&self, execution_process_id: &Uuid) -> Option<Arc<MsgStore>> {
-        let map = self.msg_stores.read().await;
-        map.get(execution_process_id).cloned()
-    }
-
     pub(crate) async fn cancel(&self, id: &str) {
-        if let Some((_, pending_approval)) = self.pending.remove(id) {
+        if let Some((_, _pending_approval)) = self.pending.remove(id) {
             let outcome = ApprovalOutcome::Denied {
                 reason: Some("Cancelled".to_string()),
             };
             self.completed.insert(id.to_string(), outcome);
-
-            if let Some(store) = self
-                .msg_store_by_id(&pending_approval.execution_process_id)
-                .await
-                && let Some(entry) = pending_approval.entry.with_tool_status(ToolStatus::Denied {
-                    reason: Some("Cancelled".to_string()),
-                })
-            {
-                store.push_patch(ConversationPatch::replace(
-                    pending_approval.entry_index,
-                    entry,
-                ));
-            }
-
+            let _ =
+                self.patches_tx
+                    .send(crate::services::events::patches::approvals_patch::resolved(
+                        id,
+                    ));
             tracing::debug!("Cancelled approval '{}'", id);
         }
+    }
+
+    pub fn patch_stream(&self) -> futures::stream::BoxStream<'static, Patch> {
+        let approvals = self.clone();
+        let snapshot =
+            crate::services::events::patches::approvals_patch::snapshot(&approvals.pending_infos());
+
+        let live = BroadcastStream::new(self.patches_tx.subscribe()).filter_map(move |result| {
+            let approvals = approvals.clone();
+            async move {
+                match result {
+                    Ok(patch) => Some(patch),
+                    Err(tokio_stream::wrappers::errors::BroadcastStreamRecvError::Lagged(_)) => {
+                        Some(crate::services::events::patches::approvals_patch::snapshot(
+                            &approvals.pending_infos(),
+                        ))
+                    }
+                }
+            }
+        });
+
+        futures::stream::iter([snapshot]).chain(live).boxed()
     }
 
     /// Check which execution processes have pending approvals.
@@ -318,134 +271,21 @@ impl Approvals {
             })
             .collect()
     }
-}
 
-/// Find a matching tool use entry that hasn't been assigned to an approval yet
-/// Matches by tool call id from tool metadata
-fn find_matching_tool_use(
-    store: Arc<MsgStore>,
-    tool_call_id: &str,
-) -> Option<(usize, NormalizedEntry)> {
-    let history = store.get_history();
-
-    // Single loop through history
-    for msg in history.iter().rev() {
-        if let LogMsg::JsonPatch(patch) = msg
-            && let Some((idx, entry)) = extract_normalized_entry_from_patch(patch)
-            && let NormalizedEntryType::ToolUse { status, .. } = &entry.entry_type
-        {
-            // Only match tools that are in Created state
-            if !matches!(status, ToolStatus::Created) {
-                continue;
-            }
-
-            // Match by tool call id from metadata
-            if let Some(metadata) = &entry.metadata
-                && let Ok(ToolCallMetadata {
-                    tool_call_id: entry_call_id,
-                    ..
-                }) = serde_json::from_value::<ToolCallMetadata>(metadata.clone())
-                && entry_call_id == tool_call_id
-            {
-                tracing::debug!(
-                    "Matched tool use entry at index {idx} for tool call id '{tool_call_id}'"
-                );
-                return Some((idx, entry));
-            }
-        }
-    }
-
-    None
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::Arc;
-
-    use executors::logs::{ActionType, NormalizedEntry, NormalizedEntryType, ToolStatus};
-    use utils::msg_store::MsgStore;
-
-    use super::*;
-
-    fn create_tool_use_entry(
-        tool_name: &str,
-        file_path: &str,
-        id: &str,
-        status: ToolStatus,
-    ) -> NormalizedEntry {
-        NormalizedEntry {
-            timestamp: None,
-            entry_type: NormalizedEntryType::ToolUse {
-                tool_name: tool_name.to_string(),
-                action_type: ActionType::FileRead {
-                    path: file_path.to_string(),
-                },
-                status,
-            },
-            content: format!("Reading {file_path}"),
-            metadata: Some(
-                serde_json::to_value(ToolCallMetadata {
-                    tool_call_id: id.to_string(),
-                })
-                .unwrap(),
-            ),
-        }
-    }
-
-    #[test]
-    fn test_parallel_tool_call_approval_matching() {
-        let store = Arc::new(MsgStore::new());
-
-        // Setup: Simulate 3 parallel Read tool calls with different files
-        let read_foo = create_tool_use_entry("Read", "foo.rs", "foo-id", ToolStatus::Created);
-        let read_bar = create_tool_use_entry("Read", "bar.rs", "bar-id", ToolStatus::Created);
-        let read_baz = create_tool_use_entry("Read", "baz.rs", "baz-id", ToolStatus::Created);
-
-        store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(0, read_foo),
-        );
-        store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(1, read_bar),
-        );
-        store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(2, read_baz),
-        );
-
-        let (idx_foo, _) =
-            find_matching_tool_use(store.clone(), "foo-id").expect("Should match foo.rs");
-        let (idx_bar, _) =
-            find_matching_tool_use(store.clone(), "bar-id").expect("Should match bar.rs");
-        let (idx_baz, _) =
-            find_matching_tool_use(store.clone(), "baz-id").expect("Should match baz.rs");
-
-        assert_eq!(idx_foo, 0, "foo.rs should match first entry");
-        assert_eq!(idx_bar, 1, "bar.rs should match second entry");
-        assert_eq!(idx_baz, 2, "baz.rs should match third entry");
-
-        // Test 2: Already pending tools are skipped
-        let read_pending = create_tool_use_entry(
-            "Read",
-            "pending.rs",
-            "pending-id",
-            ToolStatus::PendingApproval {
-                approval_id: "test-id".to_string(),
-                requested_at: chrono::Utc::now(),
-                timeout_at: chrono::Utc::now(),
-            },
-        );
-        store.push_patch(
-            executors::logs::utils::patch::ConversationPatch::add_normalized_entry(3, read_pending),
-        );
-
-        assert!(
-            find_matching_tool_use(store.clone(), "pending-id").is_none(),
-            "Should not match tools in PendingApproval state"
-        );
-
-        // Test 3: Wrong tool id returns None
-        assert!(
-            find_matching_tool_use(store.clone(), "wrong-id").is_none(),
-            "Should not match different tool ids"
-        );
+    fn pending_infos(&self) -> Vec<ApprovalInfo> {
+        self.pending
+            .iter()
+            .map(|entry| {
+                let p = entry.value();
+                ApprovalInfo {
+                    approval_id: entry.key().clone(),
+                    tool_name: p.tool_name.clone(),
+                    execution_process_id: p.execution_process_id,
+                    is_question: p.is_question,
+                    created_at: p.created_at,
+                    timeout_at: p.timeout_at,
+                }
+            })
+            .collect()
     }
 }

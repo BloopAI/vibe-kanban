@@ -213,10 +213,8 @@ impl AppServerClient {
     ) -> Result<(), ExecutorError> {
         match request {
             ServerRequest::ApplyPatchApproval { request_id, params } => {
-                let input = serde_json::to_value(&params)
-                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
                 let status = self
-                    .request_tool_approval("edit", input, &params.call_id)
+                    .request_tool_approval("edit", "codex.apply_patch", &params.call_id)
                     .await
                     .map_err(|err| {
                         if !matches!(
@@ -250,10 +248,8 @@ impl AppServerClient {
                 Ok(())
             }
             ServerRequest::ExecCommandApproval { request_id, params } => {
-                let input = serde_json::to_value(&params)
-                    .map_err(|err| ExecutorError::Io(io::Error::other(err.to_string())))?;
                 let status = self
-                    .request_tool_approval("bash", input, &params.call_id)
+                    .request_tool_approval("bash", "codex.exec_command", &params.call_id)
                     .await
                     .map_err(|err| {
                         tracing::error!(
@@ -301,7 +297,7 @@ impl AppServerClient {
     async fn request_tool_approval(
         &self,
         tool_name: &str,
-        tool_input: Value,
+        display_tool_name: &str,
         tool_call_id: &str,
     ) -> Result<ApprovalStatus, ExecutorError> {
         if self.auto_approve {
@@ -312,9 +308,52 @@ impl AppServerClient {
             .as_ref()
             .ok_or(ExecutorApprovalError::ServiceUnavailable)?;
 
-        Ok(approval_service
-            .request_tool_approval(tool_name, tool_input, tool_call_id, self.cancel.clone())
-            .await?)
+        let approval_id = match approval_service.create_tool_approval(tool_name).await {
+            Ok(id) => id,
+            Err(err) => {
+                self.handle_approval_error(display_tool_name, tool_call_id)
+                    .await;
+                return Err(err.into());
+            }
+        };
+
+        let _ = self
+            .log_writer
+            .log_raw(
+                &Approval::approval_requested(
+                    tool_call_id.to_string(),
+                    display_tool_name.to_string(),
+                    approval_id.clone(),
+                )
+                .raw(),
+            )
+            .await;
+
+        match approval_service
+            .wait_tool_approval(&approval_id, self.cancel.clone())
+            .await
+        {
+            Ok(status) => Ok(status),
+            Err(err) => {
+                self.handle_approval_error(display_tool_name, tool_call_id)
+                    .await;
+                Err(err.into())
+            }
+        }
+    }
+
+    async fn handle_approval_error(&self, display_tool_name: &str, tool_call_id: &str) {
+        let _ = self
+            .log_writer
+            .log_raw(
+                &Approval::approval_response(
+                    tool_call_id.to_string(),
+                    display_tool_name.to_string(),
+                    ApprovalStatus::TimedOut,
+                )
+                .raw(),
+            )
+            .await;
     }
 
     pub async fn register_session(&self, conversation_id: &ThreadId) -> Result<(), ExecutorError> {
