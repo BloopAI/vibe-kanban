@@ -2,7 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::sync::Arc;
-use tauri::{Manager, Emitter};
+
+use tauri::{Emitter, Manager};
 use tauri_plugin_updater::UpdaterExt;
 use tokio::sync::oneshot;
 use tracing_subscriber::EnvFilter;
@@ -19,9 +20,7 @@ fn main() {
         level = log_level
     );
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
-    tracing_subscriber::fmt()
-        .with_env_filter(env_filter)
-        .init();
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
     // Channel to signal the server to shut down when the window closes
     let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
