@@ -33,7 +33,7 @@ import {
 import { profilesApi } from '@/shared/lib/api';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getResolvedTheme, useTheme } from '@/shared/hooks/useTheme';
-import { useModelSelectorConfig } from '@/hooks/useExecutorDiscovery';
+import { useModelSelectorConfig } from '@/shared/hooks/useExecutorDiscovery';
 import { ModelSelectorPopover } from '@vibe/ui/components/ModelSelectorPopover';
 import {
   DropdownMenu,

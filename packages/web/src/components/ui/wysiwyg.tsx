@@ -66,7 +66,7 @@ import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
+import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 import { repoApi } from '@/shared/lib/api';

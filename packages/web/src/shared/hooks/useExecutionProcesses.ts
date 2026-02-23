@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
+import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import type { ExecutionProcess } from 'shared/types';
 
 type ExecutionProcessState = {

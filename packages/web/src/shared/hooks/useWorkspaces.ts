@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
+import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import type {
   WorkspaceWithStatus,
