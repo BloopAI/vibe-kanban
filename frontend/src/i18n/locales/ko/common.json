@@ -165,6 +165,10 @@
     "pin": "고정",
     "unpin": "고정 해제",
     "archive": "보관",
+    "unarchive": "보관 해제",
+    "archiveConfirmMessage": "이 워크스페이스를 보관하시겠습니까? 보관 섹션으로 이동됩니다.",
+    "unarchiveConfirmMessage": "이 워크스페이스의 보관을 해제하시겠습니까? 활성 섹션으로 다시 이동됩니다.",
+    "archiveError": "워크스페이스 보관 실패",
     "more": "더 많은 작업",
     "rename": {
       "title": "워크스페이스 이름 변경",
@@ -175,6 +179,8 @@
       "renaming": "이름 변경 중..."
     },
     "unlinkFromIssue": "이슈에서 연결 해제",
+    "archiveWorkspace": "워크스페이스 보관",
+    "unarchiveWorkspace": "워크스페이스 보관 해제",
     "deleteWorkspace": "워크스페이스 삭제",
     "unlink": "연결 해제",
     "delete": "삭제",
@@ -386,6 +392,7 @@
       "rename-workspace": "워크스페이스 이름 변경",
       "pin-workspace": "워크스페이스 고정/해제",
       "archive-workspace": "워크스페이스 보관",
+      "unarchive-workspace": "워크스페이스 보관 해제",
       "delete-workspace": "워크스페이스 삭제",
       "toggle-changes-mode": "변경사항 패널 전환",
       "toggle-logs-mode": "로그 패널 전환",

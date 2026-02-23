@@ -165,6 +165,10 @@
     "pin": "釘選",
     "unpin": "取消釘選",
     "archive": "封存",
+    "unarchive": "取消封存",
+    "archiveConfirmMessage": "確定要封存此工作區嗎？它將被移至封存區。",
+    "unarchiveConfirmMessage": "確定要取消封存此工作區嗎？它將被移回使用中區域。",
+    "archiveError": "封存工作區失敗",
     "more": "更多操作",
     "rename": {
       "title": "重新命名工作區",
@@ -175,6 +179,8 @@
       "renaming": "正在重新命名..."
     },
     "unlinkFromIssue": "從問題取消關聯",
+    "archiveWorkspace": "封存工作區",
+    "unarchiveWorkspace": "取消封存工作區",
     "deleteWorkspace": "刪除工作區",
     "unlink": "取消關聯",
     "delete": "刪除",
@@ -386,6 +392,7 @@
       "rename-workspace": "重新命名工作區",
       "pin-workspace": "釘選/取消釘選工作區",
       "archive-workspace": "封存工作區",
+      "unarchive-workspace": "取消封存工作區",
       "delete-workspace": "刪除工作區",
       "toggle-changes-mode": "切換變更面板",
       "toggle-logs-mode": "切換日誌面板",

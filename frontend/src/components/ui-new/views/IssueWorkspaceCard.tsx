@@ -9,6 +9,7 @@ import {
   HandIcon,
   TriangleIcon,
   CircleIcon,
+  ArchiveIcon,
 } from '@phosphor-icons/react';
 import { UserAvatar } from '@/components/ui-new/primitives/UserAvatar';
 import { RunningDots } from '@/components/ui-new/primitives/RunningDots';
@@ -51,6 +52,7 @@ export interface IssueWorkspaceCardProps {
   onClick?: () => void;
   onUnlink?: () => void;
   onDelete?: () => void;
+  onArchive?: () => void;
   showOwner?: boolean;
   showStatusBadge?: boolean;
   showNoPrText?: boolean;
@@ -113,6 +115,7 @@ export function IssueWorkspaceCard({
   onClick,
   onUnlink,
   onDelete,
+  onArchive,
   showOwner = true,
   showStatusBadge = true,
   showNoPrText = true,
@@ -166,7 +169,7 @@ export function IssueWorkspaceCard({
               className="h-5 w-5 text-[10px] border-2 border-panel"
             />
           )}
-          {(onUnlink || onDelete) && (
+          {(onUnlink || onDelete || onArchive) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -190,6 +193,19 @@ export function IssueWorkspaceCard({
                   >
                     <LinkBreakIcon className="size-icon-xs" />
                     {t('workspaces.unlinkFromIssue')}
+                  </DropdownMenuItem>
+                )}
+                {onArchive && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArchive();
+                    }}
+                  >
+                    <ArchiveIcon className="size-icon-xs" />
+                    {workspace.archived
+                      ? t('workspaces.unarchiveWorkspace')
+                      : t('workspaces.archiveWorkspace')}
                   </DropdownMenuItem>
                 )}
                 {onDelete && (

@@ -272,6 +272,46 @@ export function IssueWorkspacesSectionContainer({
     [localWorkspacesById, t, issueId, projectId]
   );
 
+  const handleArchiveWorkspace = useCallback(
+    async (localWorkspaceId: string) => {
+      const localWorkspace = localWorkspacesById.get(localWorkspaceId);
+      if (!localWorkspace) {
+        return;
+      }
+
+      const wasArchived = localWorkspace.isArchived;
+      const action = wasArchived
+        ? t('workspaces.unarchive')
+        : t('workspaces.archive');
+      const result = await ConfirmDialog.show({
+        title: action,
+        message: wasArchived
+          ? t('workspaces.unarchiveConfirmMessage')
+          : t('workspaces.archiveConfirmMessage'),
+        confirmText: action,
+      });
+
+      if (result === 'confirmed') {
+        try {
+          await attemptsApi.update(localWorkspaceId, {
+            archived: !wasArchived,
+          });
+        } catch (error) {
+          ConfirmDialog.show({
+            title: t('common:error'),
+            message:
+              error instanceof Error
+                ? error.message
+                : t('workspaces.archiveError'),
+            confirmText: t('common:ok'),
+            showCancelButton: false,
+          });
+        }
+      }
+    },
+    [localWorkspacesById, t]
+  );
+
   // Actions for the section header
   const actions: SectionAction[] = useMemo(
     () => [
@@ -296,6 +336,7 @@ export function IssueWorkspacesSectionContainer({
       onCreateWorkspace={handleAddWorkspace}
       onUnlinkWorkspace={handleUnlinkWorkspace}
       onDeleteWorkspace={handleDeleteWorkspace}
+      onArchiveWorkspace={handleArchiveWorkspace}
       shouldAnimateCreateButton={shouldAnimateCreateButton}
     />
   );
