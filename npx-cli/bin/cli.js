@@ -167,6 +167,7 @@ async function main() {
   const args = process.argv.slice(2);
   const isMcpMode = args.includes("--mcp");
   const isReviewMode = args[0] === "review";
+  const isSshProxyMode = args[0] === "ssh-proxy";
 
   // Non-blocking update check (skip in MCP mode, local dev mode, and when R2 URL not configured)
   const hasValidR2Url = !R2_BASE_URL.startsWith("__");
@@ -194,6 +195,27 @@ async function main() {
       process.on("SIGINT", () => {
         proc.kill("SIGINT");
       });
+      process.on("SIGTERM", () => proc.kill("SIGTERM"));
+    });
+  } else if (isSshProxyMode) {
+    await extractAndRun("vibe-kanban-ssh-proxy", (bin) => {
+      const proxyArgs = args.slice(1);
+      // For 'connect' subcommand, pipe stdin/stdout so SSH ProxyCommand works.
+      // For other subcommands (e.g. 'login'), inherit all stdio.
+      const isConnect = proxyArgs[0] === "connect";
+      const proc = spawn(bin, proxyArgs, {
+        stdio: isConnect ? ["pipe", "pipe", "inherit"] : "inherit",
+      });
+      if (isConnect) {
+        process.stdin.pipe(proc.stdin);
+        proc.stdout.pipe(process.stdout);
+      }
+      proc.on("exit", (c) => process.exit(c || 0));
+      proc.on("error", (e) => {
+        console.error("SSH proxy error:", e.message);
+        process.exit(1);
+      });
+      process.on("SIGINT", () => proc.kill("SIGINT"));
       process.on("SIGTERM", () => proc.kill("SIGTERM"));
     });
   } else if (isReviewMode) {

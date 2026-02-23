@@ -57,7 +57,9 @@ pub struct TcpStreamGuard {
 
 impl Drop for TcpStreamGuard {
     fn drop(&mut self) {
-        self.relay.active_tcp_streams.fetch_sub(1, Ordering::Relaxed);
+        self.relay
+            .active_tcp_streams
+            .fetch_sub(1, Ordering::Relaxed);
     }
 }
 
