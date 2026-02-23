@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { usePrComments } from './usePrComments';
+import { usePrComments } from '@/shared/hooks/usePrComments';
 import {
   usePersistedExpanded,
   PERSIST_KEYS,

@@ -1,4 +1,4 @@
-import { useDiffStream } from '@/hooks/useDiffStream';
+import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { useMemo } from 'react';
 
 export function useDiffSummary(attemptId: string | null) {

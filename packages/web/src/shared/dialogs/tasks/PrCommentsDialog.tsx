@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { Button } from '@vibe/ui/components/Button';
 import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { MessageSquare, AlertCircle, Loader2 } from 'lucide-react';
-import { usePrComments } from '@/hooks/usePrComments';
+import { usePrComments } from '@/shared/hooks/usePrComments';
 import { PrCommentCard } from '@vibe/ui/components/pr-comment-card';
 import type { UnifiedPrComment } from 'shared/types';
 

@@ -6,8 +6,8 @@ import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
-import { useGitHubComments } from '@/hooks/useGitHubComments';
-import { useDiffStream } from '@/hooks/useDiffStream';
+import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
+import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import {
