@@ -20,7 +20,7 @@ export function useApprovals(): UseApprovalsResult {
     () => ({ pending: {} })
   );
 
-  const pendingById = data?.pending ?? {};
+  const pendingById = useMemo(() => data?.pending ?? {}, [data?.pending]);
   const pendingApprovals = useMemo(
     () => Object.values(pendingById),
     [pendingById]

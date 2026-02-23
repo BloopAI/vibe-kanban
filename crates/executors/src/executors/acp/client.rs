@@ -263,9 +263,9 @@ impl AcpClient {
     ) -> Result<acp::RequestPermissionResponse, acp::Error> {
         if let ExecutorApprovalError::Cancelled = err {
             debug!("ACP approval cancelled for tool_call_id={}", tool_call_id);
-            return Ok(acp::RequestPermissionResponse::new(
+            Ok(acp::RequestPermissionResponse::new(
                 acp::RequestPermissionOutcome::Cancelled,
-            ));
+            ))
         } else {
             tracing::error!(
                 "ACP approval wait failed for tool_call_id={}: {err}",
@@ -275,7 +275,7 @@ impl AcpClient {
                 tool_call_id: tool_call_id.to_string(),
                 status: ApprovalStatus::TimedOut,
             }));
-            return Err(acp::Error::internal_error());
+            Err(acp::Error::internal_error())
         }
     }
 }
