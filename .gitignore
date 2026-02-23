@@ -66,9 +66,7 @@ coverage/
 .storybook-out
 
 .env
-packages/local-web/dist
-packages/remote-web/dist
-remote-frontend/dist
+packages/**/dist
 
 build-npm-package-codesign.sh
 
