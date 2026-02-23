@@ -53,7 +53,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
-import { SearchableTagDropdownContainer } from '@/components/ui-new/containers/SearchableTagDropdownContainer';
+import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import type { IssuePriority } from 'shared/remote-types';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
