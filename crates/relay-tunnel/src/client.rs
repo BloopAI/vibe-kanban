@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use anyhow::Context as _;
 use axum::body::Body;
 use futures_util::StreamExt;
-use http::{HeaderValue, StatusCode, header::HOST};
+use http::StatusCode;
 use hyper::{
     Request, Response, body::Incoming, client::conn::http1 as client_http1,
     server::conn::http1 as server_http1, service::service_fn, upgrade,
@@ -24,7 +24,6 @@ pub struct RelayClientConfig {
     pub bearer_token: String,
     pub accept_invalid_certs: bool,
     pub local_addr: String,
-    pub local_host_header: String,
     pub shutdown: CancellationToken,
 }
 
@@ -70,7 +69,6 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
 
     let shutdown = config.shutdown;
     let local_addr = config.local_addr;
-    let local_host_header = config.local_host_header;
 
     loop {
         tokio::select! {
@@ -82,9 +80,8 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
                 match inbound {
                     Some(Ok(stream)) => {
                         let local_addr = local_addr.clone();
-                        let local_host_header = local_host_header.clone();
                         tokio::spawn(async move {
-                            if let Err(error) = handle_inbound_stream(stream, local_addr, local_host_header).await {
+                            if let Err(error) = handle_inbound_stream(stream, local_addr).await {
                                 tracing::warn!(?error, "relay stream handling failed");
                             }
                         });
@@ -104,7 +101,6 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
 async fn handle_inbound_stream(
     stream: tokio_yamux::StreamHandle,
     local_addr: String,
-    local_host_header: String,
 ) -> anyhow::Result<()> {
     let io = TokioIo::new(stream);
 
@@ -112,7 +108,7 @@ async fn handle_inbound_stream(
         .serve_connection(
             io,
             service_fn(move |request: Request<Incoming>| {
-                proxy_to_local(request, local_addr.clone(), local_host_header.clone())
+                proxy_to_local(request, local_addr.clone())
             }),
         )
         .with_upgrades()
@@ -123,14 +119,7 @@ async fn handle_inbound_stream(
 async fn proxy_to_local(
     mut request: Request<Incoming>,
     local_addr: String,
-    local_host_header: String,
 ) -> Result<Response<Body>, Infallible> {
-    request.headers_mut().insert(
-        HOST,
-        HeaderValue::from_str(&local_host_header)
-            .unwrap_or_else(|_| HeaderValue::from_static("127.0.0.1")),
-    );
-
     let local_stream = match TcpStream::connect(local_addr.as_str()).await {
         Ok(stream) => stream,
         Err(error) => {

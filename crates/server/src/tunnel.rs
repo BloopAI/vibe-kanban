@@ -171,7 +171,6 @@ pub async fn start_relay(
         bearer_token: access_token,
         accept_invalid_certs: cfg!(debug_assertions),
         local_addr: format!("127.0.0.1:{local_port}"),
-        local_host_header: format!("127.0.0.1:{local_port}"),
         shutdown,
     })
     .await
