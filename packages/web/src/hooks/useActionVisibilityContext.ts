@@ -15,7 +15,7 @@ import { useDevServer } from '@/hooks';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useShape } from '@/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';

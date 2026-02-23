@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useLiveQuery } from '@tanstack/react-db';
 import { createShapeCollection } from '@/shared/lib/electric/collections';
-import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
+import { useSyncErrorContext } from '@/shared/hooks/useSyncErrorContext';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from '@/shared/lib/electric/types';
 export type { MutationResult, InsertResult } from '@/shared/lib/electric/types';

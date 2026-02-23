@@ -24,8 +24,8 @@ import WYSIWYGEditor from '@/components/ui/wysiwyg';
 import DisplayConversationEntry from '@/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
-import { useChangesView } from '@/contexts/ChangesViewContext';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useChangesView } from '@/shared/hooks/useChangesView';
+import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { cn } from '@/shared/lib/utils';
 import {

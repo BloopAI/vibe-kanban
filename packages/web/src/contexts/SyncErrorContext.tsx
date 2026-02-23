@@ -1,49 +1,23 @@
 import {
-  useContext,
   useState,
   useCallback,
   useMemo,
   useEffect,
   type ReactNode,
 } from 'react';
-import { createHmrContext } from '@/shared/lib/hmrContext';
 import type { SyncError } from '@/shared/lib/electric/types';
+import {
+  SyncErrorContext,
+  type StreamError,
+  type SyncErrorContextValue,
+} from '@/shared/hooks/useSyncErrorContext';
 
-/**
- * Represents an error from a specific shape stream.
- */
-export interface StreamError {
-  streamId: string;
-  tableName: string;
-  error: SyncError;
-  retry: () => void;
-}
-
-/**
- * Context value for managing sync errors across the application.
- */
-export interface SyncErrorContextValue {
-  /** Array of all current stream errors */
-  errors: StreamError[];
-  /** Quick check if any errors exist */
-  hasErrors: boolean;
-  /** Register an error for a specific stream */
-  registerError: (
-    streamId: string,
-    tableName: string,
-    error: SyncError,
-    retry: () => void
-  ) => void;
-  /** Clear error for a specific stream */
-  clearError: (streamId: string) => void;
-  /** Retry all failed streams */
-  retryAll: () => void;
-}
-
-const SyncErrorContext = createHmrContext<SyncErrorContextValue | null>(
-  'SyncErrorContext',
-  null
-);
+export {
+  useSyncErrorContext,
+  useSyncErrorContextRequired,
+  type StreamError,
+  type SyncErrorContextValue,
+} from '@/shared/hooks/useSyncErrorContext';
 
 interface SyncErrorProviderProps {
   children: ReactNode;
@@ -121,26 +95,4 @@ export function SyncErrorProvider({ children }: SyncErrorProviderProps) {
       {children}
     </SyncErrorContext.Provider>
   );
-}
-
-/**
- * Hook to access sync error context.
- * Returns null if used outside of SyncErrorProvider (graceful fallback).
- */
-export function useSyncErrorContext(): SyncErrorContextValue | null {
-  return useContext(SyncErrorContext);
-}
-
-/**
- * Hook to access sync error context with required provider.
- * Throws if used outside of SyncErrorProvider.
- */
-export function useSyncErrorContextRequired(): SyncErrorContextValue {
-  const context = useContext(SyncErrorContext);
-  if (!context) {
-    throw new Error(
-      'useSyncErrorContextRequired must be used within a SyncErrorProvider'
-    );
-  }
-  return context;
 }

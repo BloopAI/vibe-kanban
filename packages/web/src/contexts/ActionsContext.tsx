@@ -23,7 +23,7 @@ import {
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { UserContext } from '@/contexts/remote/UserContext';
 import { useDevServer } from '@/shared/hooks/useDevServer';
-import { useLogsPanel } from '@/contexts/LogsPanelContext';
+import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
 export {
