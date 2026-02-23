@@ -39,6 +39,15 @@
     ],
     "category": "DeveloperTool",
     "shortDescription": "AI-powered development workspace",
-    "longDescription": "vibe-kanban: Collaborative AI workspace for software development"
+    "longDescription": "vibe-kanban: Collaborative AI workspace for software development",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "UPDATER_PUBKEY_PLACEHOLDER",
+      "endpoints": [
+        "https://releases.example.com/vibe-kanban/{{target}}/{{arch}}/{{current_version}}"
+      ]
+    }
   }
 }
