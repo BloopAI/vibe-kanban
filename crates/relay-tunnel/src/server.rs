@@ -107,15 +107,15 @@ pub async fn proxy_request_over_control(
     if response.status() == StatusCode::SWITCHING_PROTOCOLS {
         let response_upgrade = upgrade::on(&mut response);
         tokio::spawn(async move {
-            let Ok(from_phone) = request_upgrade.await else {
+            let Ok(from_client) = request_upgrade.await else {
                 return;
             };
             let Ok(to_local) = response_upgrade.await else {
                 return;
             };
-            let mut from_phone = TokioIo::new(from_phone);
+            let mut from_client = TokioIo::new(from_client);
             let mut to_local = TokioIo::new(to_local);
-            let _ = tokio::io::copy_bidirectional(&mut from_phone, &mut to_local).await;
+            let _ = tokio::io::copy_bidirectional(&mut from_client, &mut to_local).await;
         });
     }
 
