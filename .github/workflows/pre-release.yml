@@ -679,8 +679,160 @@ jobs:
             --endpoint-url "$ENDPOINT" \
             --recursive
 
+  build-tauri:
+    needs: [bump-version, build-frontend]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-15-xlarge
+            platform: darwin-aarch64
+          - target: x86_64-apple-darwin
+            os: macos-15-xlarge
+            platform: darwin-x86_64
+    env:
+      CARGO_INCREMENTAL: "0"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      SCCACHE_CACHE_SIZE: "10G"
+      CARGO_HOME: ${{ github.workspace }}/.cargo
+      RUSTUP_HOME: ${{ github.workspace }}/.rustup
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup sccache
+        uses: BloopAI/sccache-action@main
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          targets: ${{ matrix.target }}
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2" --locked
+
+      - name: Download frontend artifact
+        uses: actions/download-artifact@v7
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Inject updater endpoint
+        run: |
+          sed -i '' "s|__TAURI_UPDATE_ENDPOINT__|${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/tauri-update/latest.json|g" crates/tauri-app/tauri.conf.json
+
+      - name: Build Tauri app
+        run: cargo tauri build --target ${{ matrix.target }} --ci
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+          POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Collect updater artifacts
+        run: |
+          mkdir -p tauri-artifacts/${{ matrix.platform }}
+          # Find the .sig files and their corresponding artifacts in the bundle output
+          find target/${{ matrix.target }}/release/bundle -name "*.sig" | while read sig; do
+            artifact="${sig%.sig}"
+            if [ -f "$artifact" ]; then
+              cp "$artifact" "tauri-artifacts/${{ matrix.platform }}/"
+              cp "$sig" "tauri-artifacts/${{ matrix.platform }}/"
+              echo "Collected: $(basename $artifact)"
+            fi
+          done
+          echo "Artifacts for ${{ matrix.platform }}:"
+          ls -la tauri-artifacts/${{ matrix.platform }}/
+
+      - name: Upload Tauri artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: tauri-artifacts-${{ matrix.platform }}
+          path: tauri-artifacts/
+          retention-days: 1
+
+  upload-tauri-update:
+    needs: [bump-version, build-tauri]
+    runs-on: ubuntu-latest-m
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.bump-version.outputs.new_tag }}
+
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+
+      - name: Download all Tauri artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: tauri-artifacts-*
+          path: tauri-artifacts/
+          merge-multiple: true
+
+      - name: List Tauri artifacts
+        run: find tauri-artifacts/
+
+      - name: Generate updater manifest
+        run: |
+          node scripts/generate-tauri-update-json.js \
+            --version "${{ needs.bump-version.outputs.new_version }}" \
+            --notes "Release ${{ needs.bump-version.outputs.new_tag }}" \
+            --artifacts-dir ./tauri-artifacts \
+            --download-base "${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/${{ needs.bump-version.outputs.new_tag }}/tauri" \
+            --output latest.json
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Upload Tauri artifacts and update manifest to R2
+        run: |
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          # Upload individual platform artifacts
+          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 windows-x86_64; do
+            if [ -d "tauri-artifacts/$platform" ]; then
+              for file in tauri-artifacts/$platform/*; do
+                [ -f "$file" ] || continue
+                # Skip .sig files from artifact upload (signatures are in latest.json)
+                [[ "$file" == *.sig ]] && continue
+                filename=$(basename "$file")
+                echo "Uploading $filename for $platform..."
+                aws s3 cp "$file" \
+                  "s3://$BUCKET/binaries/$TAG/tauri/$filename" \
+                  --endpoint-url "$ENDPOINT"
+              done
+            fi
+          done
+
+          # Upload latest.json to the fixed update endpoint path
+          echo "Uploading updater manifest..."
+          aws s3 cp latest.json \
+            "s3://$BUCKET/binaries/tauri-update/latest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          echo "Update manifest uploaded to: binaries/tauri-update/latest.json"
+
   create-prerelease:
-    needs: [bump-version, build-frontend, upload-to-r2]
+    needs: [bump-version, build-frontend, upload-to-r2, upload-tauri-update]
     runs-on: ubuntu-latest-m
     steps:
       - uses: actions/checkout@v6
@@ -692,6 +844,20 @@ jobs:
         with:
           name: frontend-dist
           path: packages/local-web/dist/
+
+      - name: Download Tauri artifacts for release
+        uses: actions/download-artifact@v7
+        with:
+          pattern: tauri-artifacts-*
+          path: tauri-release/
+          merge-multiple: true
+
+      - name: Collect Tauri DMGs for release
+        run: |
+          mkdir -p tauri-dmgs
+          find tauri-release -name "*.dmg" -exec cp {} tauri-dmgs/ \;
+          echo "Tauri DMGs for release:"
+          ls -la tauri-dmgs/ 2>/dev/null || echo "No DMGs found"
 
       - name: List downloaded artifacts
         run: |
@@ -725,3 +891,4 @@ jobs:
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
             npx-cli/vibe-kanban-*.tgz
+            tauri-dmgs/*
