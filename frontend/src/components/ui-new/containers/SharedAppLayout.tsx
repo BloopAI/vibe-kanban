@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { Navigate, Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { SyncErrorProvider } from '@/contexts/SyncErrorContext';
 
 import { NavbarContainer } from './NavbarContainer';
@@ -8,6 +8,7 @@ import { AppBar } from '../primitives/AppBar';
 import { useUserOrganizations } from '@/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/stores/useOrganizationStore';
 import { useAuth } from '@/hooks/auth/useAuth';
+import { useUserSystem } from '@/components/ConfigProvider';
 import {
   buildProjectRootPath,
   parseProjectSidebarRoute,
@@ -36,6 +37,12 @@ export function SharedAppLayout() {
   const location = useLocation();
   const isMigrateRoute = location.pathname.startsWith('/migrate');
   const { isSignedIn } = useAuth();
+  const { enforceLogin, loading } = useUserSystem();
+
+  // If enforce_login is enabled and user is not signed in, redirect to onboarding
+  if (enforceLogin && !isSignedIn && !loading) {
+    return <Navigate to="/onboarding" />;
+  }
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());

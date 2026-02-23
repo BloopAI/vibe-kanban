@@ -30,14 +30,19 @@ pub mod terminal;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     // Create routers with different middleware layers
-    let base_routes = Router::new()
+    // Routes that should NOT require authentication even when VK_ENFORCE_LOGIN is enabled
+    let public_routes = Router::new()
         .route("/health", get(health::health_check))
-        .merge(config::router())
+        .merge(config::router())  // /config/info and other config endpoints
+        .merge(oauth::router())   // /auth/* endpoints for login/logout
+        .with_state(deployment.clone());
+
+    // Routes that require authentication when VK_ENFORCE_LOGIN is enabled
+    let protected_routes = Router::new()
         .merge(containers::router(&deployment))
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
-        .merge(oauth::router())
         .merge(organizations::router())
         .merge(filesystem::router())
         .merge(repo::router())
@@ -50,6 +55,16 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .nest("/remote", remote::router())
         .nest("/images", images::routes())
+        .layer(axum::middleware::from_fn_with_state(
+            deployment.clone(),
+            middleware::enforce_login_middleware,
+        ))
+        .with_state(deployment.clone());
+
+    // Combine public and protected routes
+    let base_routes = Router::new()
+        .merge(public_routes)
+        .merge(protected_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))

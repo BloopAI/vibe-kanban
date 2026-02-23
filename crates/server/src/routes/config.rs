@@ -94,6 +94,8 @@ pub struct UserSystemInfo {
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
     pub shared_api_base: Option<String>,
     pub preview_proxy_port: Option<u16>,
+    /// Whether login is enforced (based on VK_ENFORCE_LOGIN env var)
+    pub enforce_login: bool,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -127,6 +129,10 @@ async fn get_user_system_info(
         },
         shared_api_base: deployment.shared_api_base(),
         preview_proxy_port: crate::preview_proxy::get_proxy_port(),
+        enforce_login: std::env::var("VK_ENFORCE_LOGIN")
+            .ok()
+            .and_then(|v| v.parse::<bool>().ok())
+            .unwrap_or(false),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))

@@ -69,7 +69,7 @@ export function OnboardingSignInPage() {
   const { t } = useTranslation('common');
   const { theme } = useTheme();
   const posthog = usePostHog();
-  const { config, loginStatus, loading, updateAndSaveConfig } = useUserSystem();
+  const { config, loginStatus, loading, updateAndSaveConfig, enforceLogin } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
 
   const [showComparison, setShowComparison] = useState(false);
@@ -260,30 +260,32 @@ export function OnboardingSignInPage() {
                 />
               </section>
 
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  className="text-sm text-low hover:text-normal underline underline-offset-2"
-                  onClick={() => {
-                    if (!showComparison) {
-                      trackRemoteOnboardingEvent(
-                        REMOTE_ONBOARDING_EVENTS.MORE_OPTIONS_OPENED,
-                        {
-                          stage: 'sign_in',
-                        }
-                      );
-                    }
-                    setShowComparison(true);
-                  }}
-                  disabled={saving || pendingProvider !== null}
-                >
-                  {t('onboardingSignIn.moreOptions')}
-                </button>
-              </div>
+              {!enforceLogin && (
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="text-sm text-low hover:text-normal underline underline-offset-2"
+                    onClick={() => {
+                      if (!showComparison) {
+                        trackRemoteOnboardingEvent(
+                          REMOTE_ONBOARDING_EVENTS.MORE_OPTIONS_OPENED,
+                          {
+                            stage: 'sign_in',
+                          }
+                        );
+                      }
+                      setShowComparison(true);
+                    }}
+                    disabled={saving || pendingProvider !== null}
+                  >
+                    {t('onboardingSignIn.moreOptions')}
+                  </button>
+                </div>
+              )}
             </>
           )}
 
-          {showComparison && !isLoggedIn && (
+          {!enforceLogin && showComparison && !isLoggedIn && (
             <section className="space-y-base rounded-sm border border-border bg-panel p-base">
               <div className="overflow-x-auto rounded-sm border border-border">
                 <table className="w-full border-collapse">
