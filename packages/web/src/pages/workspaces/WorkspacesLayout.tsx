@@ -5,9 +5,9 @@ import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
-import { CreateModeProvider } from '@/contexts/CreateModeContext';
-import { ReviewProvider } from '@/contexts/ReviewProvider';
-import { ChangesViewProvider } from '@/contexts/ChangesViewContext';
+import { CreateModeProvider } from '@/integrations/CreateModeProvider';
+import { ReviewProvider } from '@/shared/hooks/ReviewProvider';
+import { ChangesViewProvider } from '@/shared/hooks/ChangesViewProvider';
 import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import {
