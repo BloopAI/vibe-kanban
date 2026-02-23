@@ -4,31 +4,14 @@ import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { useSyncErrorContext } from '@/contexts/SyncErrorContext';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { SyncError } from '@/shared/lib/electric/types';
+export type { MutationResult, InsertResult } from '@/shared/lib/electric/types';
+import type { MutationResult, InsertResult } from '@/shared/lib/electric/types';
 
 // Type helpers for extracting types from MutationDefinition
 type MutationCreateType<M> =
   M extends MutationDefinition<unknown, infer C, unknown> ? C : never;
 type MutationUpdateType<M> =
   M extends MutationDefinition<unknown, unknown, infer U> ? U : never;
-
-/**
- * Result of an optimistic mutation operation.
- * Contains a promise that resolves when the backend confirms the change.
- */
-export interface MutationResult {
-  /** Promise that resolves when the mutation is confirmed by the backend */
-  persisted: Promise<void>;
-}
-
-/**
- * Result of an insert operation, including the created row data.
- */
-export interface InsertResult<TRow> {
-  /** The optimistically created row with generated ID */
-  data: TRow;
-  /** Promise that resolves with the synced row (including server-generated fields) when confirmed by backend */
-  persisted: Promise<TRow>;
-}
 
 /**
  * Base result type returned by useShape (read-only).

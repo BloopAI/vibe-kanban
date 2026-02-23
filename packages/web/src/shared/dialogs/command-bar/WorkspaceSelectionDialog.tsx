@@ -24,10 +24,8 @@ import {
   CommandItem,
 } from '@vibe/ui/components/Command';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import {
-  ProjectProvider,
-  useProjectContext,
-} from '@/contexts/remote/ProjectContext';
+import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { UserProvider, useUserContext } from '@/contexts/remote/UserContext';
 
 export interface WorkspaceSelectionDialogProps {

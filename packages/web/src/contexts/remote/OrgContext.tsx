@@ -1,71 +1,21 @@
-import { useContext, useMemo, useCallback, type ReactNode } from 'react';
-import { createHmrContext } from '@/shared/lib/hmrContext';
+import { useMemo, useCallback, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  useShape,
-  type InsertResult,
-  type MutationResult,
-} from '@/integrations/electric/hooks';
+import { useShape } from '@/integrations/electric/hooks';
 import {
   PROJECTS_SHAPE,
   NOTIFICATIONS_SHAPE,
   PROJECT_MUTATION,
   NOTIFICATION_MUTATION,
   type Project,
-  type Notification,
-  type CreateProjectRequest,
-  type UpdateProjectRequest,
-  type UpdateNotificationRequest,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import type { SyncError } from '@/shared/lib/electric/types';
 import { organizationsApi } from '@/shared/lib/api';
 import { organizationKeys } from '@/shared/hooks/organizationKeys';
-
-/**
- * OrgContext provides organization-scoped data and mutations.
- *
- * Entities synced at organization scope:
- * - Projects (data + mutations via Electric)
- * - Notifications (data + mutations via Electric)
- * - Members (data via API, as OrganizationMemberWithProfile)
- */
-export interface OrgContextValue {
-  organizationId: string;
-
-  // Data
-  projects: Project[];
-  notifications: Notification[];
-
-  // Loading/error state
-  isLoading: boolean;
-  error: SyncError | null;
-  retry: () => void;
-
-  // Project mutations
-  insertProject: (data: CreateProjectRequest) => InsertResult<Project>;
-  updateProject: (
-    id: string,
-    changes: Partial<UpdateProjectRequest>
-  ) => MutationResult;
-  removeProject: (id: string) => MutationResult;
-
-  // Notification mutations
-  updateNotification: (
-    id: string,
-    changes: Partial<UpdateNotificationRequest>
-  ) => MutationResult;
-
-  // Lookup helpers
-  getProject: (projectId: string) => Project | undefined;
-  getUnseenNotifications: () => Notification[];
-
-  // Computed aggregations
-  projectsById: Map<string, Project>;
-  membersWithProfilesById: Map<string, OrganizationMemberWithProfile>;
-}
-
-const OrgContext = createHmrContext<OrgContextValue | null>('OrgContext', null);
+import { OrgContext, type OrgContextValue } from '@/shared/hooks/useOrgContext';
+export {
+  useOrgContext,
+  type OrgContextValue,
+} from '@/shared/hooks/useOrgContext';
 
 interface OrgProviderProps {
   organizationId: string;
@@ -186,16 +136,4 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
   );
 
   return <OrgContext.Provider value={value}>{children}</OrgContext.Provider>;
-}
-
-/**
- * Hook to access organization context.
- * Must be used within an OrgProvider.
- */
-export function useOrgContext(): OrgContextValue {
-  const context = useContext(OrgContext);
-  if (!context) {
-    throw new Error('useOrgContext must be used within an OrgProvider');
-  }
-  return context;
 }

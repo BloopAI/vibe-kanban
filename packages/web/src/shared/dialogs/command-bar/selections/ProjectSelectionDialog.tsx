@@ -1,10 +1,8 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
-import {
-  ProjectProvider,
-  useProjectContext,
-} from '@/contexts/remote/ProjectContext';
+import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { CommandDialog } from '@vibe/ui/components/Command';
 import {
   CommandBar,

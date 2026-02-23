@@ -2,12 +2,11 @@ import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
-import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
-import {
-  ProjectProvider,
-  useProjectContext,
-} from '@/contexts/remote/ProjectContext';
-import { useActions } from '@/contexts/ActionsContext';
+import { OrgProvider } from '@/contexts/remote/OrgContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
+import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { usePageTitle } from '@/hooks/usePageTitle';
 import { KanbanContainer } from './KanbanContainer';
 import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';

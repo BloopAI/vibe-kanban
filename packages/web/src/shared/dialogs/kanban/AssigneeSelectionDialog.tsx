@@ -11,11 +11,10 @@ import {
   type MultiSelectOption,
 } from '@vibe/ui/components/MultiSelectCommandBar';
 import { UserAvatar } from '@vibe/ui/components/UserAvatar';
-import { OrgProvider, useOrgContext } from '@/contexts/remote/OrgContext';
-import {
-  ProjectProvider,
-  useProjectContext,
-} from '@/contexts/remote/ProjectContext';
+import { OrgProvider } from '@/contexts/remote/OrgContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
+import { ProjectProvider } from '@/contexts/remote/ProjectContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
 

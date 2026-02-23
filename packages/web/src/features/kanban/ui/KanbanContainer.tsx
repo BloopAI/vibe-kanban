@@ -1,9 +1,9 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useOrgContext } from '@/contexts/remote/OrgContext';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useActions } from '@/contexts/ActionsContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import {

@@ -18,7 +18,7 @@ import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import { useEntries, useTokenUsage } from '../model/contexts/EntriesContext';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { useReviewOptional } from '@/contexts/ReviewProvider';
-import { useActions } from '@/contexts/ActionsContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { useTodos } from '../model/hooks/useTodos';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 import { useExecutorConfig } from '@/hooks/useExecutorConfig';
