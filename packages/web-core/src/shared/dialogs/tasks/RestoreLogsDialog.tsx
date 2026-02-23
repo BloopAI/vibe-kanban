@@ -126,19 +126,24 @@ const RestoreLogsDialogImpl = create<RestoreLogsDialogProps>(
       });
     }, [repoStates, branchStatus]);
 
-    // Aggregate values across all repos
-    const anyDirty = repoInfo.some((r) => r.hasUncommitted);
-    const totalUncommitted = repoInfo.reduce(
-      (sum, r) => sum + r.uncommittedCount,
-      0
-    );
-    const totalUntracked = repoInfo.reduce(
-      (sum, r) => sum + r.untrackedCount,
-      0
-    );
-    const anyNeedsReset = repoInfo.some(
-      (r) => r.targetSha && (r.targetSha !== r.headOid || r.hasUncommitted)
-    );
+        // Aggregate values across all repos
+        const anyDirty = repoInfo.some(
+          (r) => r.hasUncommitted || r.untrackedCount > 0
+        );
+    
+        const totalUncommitted = repoInfo.reduce(
+          (sum, r) => sum + r.uncommittedCount,
+          0
+        );
+        const totalUntracked = repoInfo.reduce(
+          (sum, r) => sum + r.untrackedCount,
+          0
+        );
+        const anyNeedsReset = repoInfo.some(
+          (r) =>
+            r.targetSha &&
+            (r.targetSha !== r.headOid || r.hasUncommitted || r.untrackedCount > 0)
+        );
     const needGitReset = anyNeedsReset;
     const canGitReset = needGitReset && !anyDirty;
     const hasRisk = anyDirty;

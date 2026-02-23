@@ -1206,6 +1206,11 @@ impl GitService {
             .map_err(|e| {
                 GitServiceError::InvalidRepository(format!("git reset --hard failed: {e}"))
             })?;
+        if force {
+            cli.git(worktree_path, ["clean", "-fd"]).map_err(|e| {
+                GitServiceError::InvalidRepository(format!("git clean -fd failed: {e}"))
+            })?;
+        }
         // Reapply sparse-checkout if configured (non-fatal)
         let _ = cli.git(worktree_path, ["sparse-checkout", "reapply"]);
         Ok(())
