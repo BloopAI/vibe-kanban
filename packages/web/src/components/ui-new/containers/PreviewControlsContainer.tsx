@@ -9,7 +9,7 @@ import {
 } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
-import { VirtualizedProcessLogs } from './VirtualizedProcessLogs';
+import { VirtualizedProcessLogs } from '@/shared/components/VirtualizedProcessLogs';
 import { getDevServerWorkingDir } from '@/shared/lib/devServerUtils';
 
 interface PreviewControlsContainerProps {

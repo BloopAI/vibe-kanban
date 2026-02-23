@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from '@vibe/ui/components/Select';
 import { AutoExpandingTextarea } from '@vibe/ui/components/AutoExpandingTextarea';
-import { VirtualizedProcessLogs } from '@/components/ui-new/containers/VirtualizedProcessLogs';
+import { VirtualizedProcessLogs } from '@/shared/components/VirtualizedProcessLogs';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { defineModal } from '@/lib/modals';
 import { repoApi, attemptsApi } from '@/shared/lib/api';

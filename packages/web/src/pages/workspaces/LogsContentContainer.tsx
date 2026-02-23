@@ -4,10 +4,10 @@ import { cn } from '@/shared/lib/utils';
 import {
   type LogEntry,
   VirtualizedProcessLogs,
-} from './VirtualizedProcessLogs';
+} from '@/shared/components/VirtualizedProcessLogs';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
-import { TerminalPanelContainer } from './TerminalPanelContainer';
+import { TerminalPanelContainer } from '@/shared/components/TerminalPanelContainer';
 import { ArrowsInSimpleIcon } from '@phosphor-icons/react';
 
 export type LogsPanelContent =

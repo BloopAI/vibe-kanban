@@ -9,7 +9,7 @@ import { CreateModeProvider } from '@/integrations/CreateModeProvider';
 import { ReviewProvider } from '@/shared/hooks/ReviewProvider';
 import { ChangesViewProvider } from '@/shared/hooks/ChangesViewProvider';
 import { WorkspacesSidebarContainer } from './WorkspacesSidebarContainer';
-import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
+import { LogsContentContainer } from './LogsContentContainer';
 import {
   WorkspacesMainContainer,
   type WorkspacesMainContainerHandle,
