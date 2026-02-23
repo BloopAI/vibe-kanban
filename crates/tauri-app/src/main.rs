@@ -3,7 +3,8 @@
 
 use std::sync::Arc;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tauri_plugin_updater::UpdaterExt;
 use tokio::sync::oneshot;
 use tracing_subscriber::EnvFilter;
 
@@ -28,6 +29,7 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let window = app
                 .get_webview_window("main")
@@ -38,6 +40,12 @@ fn main() {
                 if let Err(e) = run_server(window, shutdown_rx).await {
                     tracing::error!("Server failed to start: {}", e);
                 }
+            });
+
+            // Check for updates in the background
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                check_for_updates(handle).await;
             });
 
             Ok(())
@@ -79,4 +87,51 @@ async fn run_server(
     handle.serve().await?;
 
     Ok(())
+}
+
+async fn check_for_updates(app: tauri::AppHandle) {
+    let updater = match app.updater() {
+        Ok(updater) => updater,
+        Err(e) => {
+            tracing::warn!("Failed to initialize updater: {}", e);
+            return;
+        }
+    };
+
+    match updater.check().await {
+        Ok(Some(update)) => {
+            tracing::info!(
+                "Update available: {} -> {}",
+                update.current_version,
+                update.version
+            );
+
+            // Emit event to frontend so it can show an update notification
+            let _ = app.emit(
+                "update-available",
+                serde_json::json!({
+                    "currentVersion": update.current_version.to_string(),
+                    "newVersion": update.version.to_string(),
+                    "body": update.body
+                }),
+            );
+
+            // Download and install the update
+            match update.download_and_install(|_, _| {}, || {}).await {
+                Ok(_) => {
+                    tracing::info!("Update installed successfully, restart required");
+                    let _ = app.emit("update-installed", ());
+                }
+                Err(e) => {
+                    tracing::error!("Failed to install update: {}", e);
+                }
+            }
+        }
+        Ok(None) => {
+            tracing::info!("No updates available");
+        }
+        Err(e) => {
+            tracing::warn!("Failed to check for updates: {}", e);
+        }
+    }
 }
