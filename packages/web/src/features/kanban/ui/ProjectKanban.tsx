@@ -7,7 +7,7 @@ import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { ProjectProvider } from '@/contexts/remote/ProjectContext';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useActions } from '@/shared/hooks/useActions';
-import { usePageTitle } from '@/hooks/usePageTitle';
+import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { KanbanContainer } from './KanbanContainer';
 import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/shared/dialogs/shared/LoginRequiredPrompt';

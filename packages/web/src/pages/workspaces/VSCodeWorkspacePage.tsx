@@ -7,7 +7,7 @@ import { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
 import { useStyleOverrideThemeSetter } from '@/utils/StyleOverride';
 import { WebviewContextMenu } from '@/integrations/vscode/ContextMenu';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { usePageTitle } from '@/hooks/usePageTitle';
+import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import {
   ConversationList,
