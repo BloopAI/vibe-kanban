@@ -8,8 +8,8 @@ import { ProjectProvider } from '@/integrations/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
-import { KanbanContainer } from './KanbanContainer';
-import { ProjectRightSidebarContainer } from '@/components/ui-new/containers/ProjectRightSidebarContainer';
+import { KanbanContainer } from '@/features/kanban/ui/KanbanContainer';
+import { ProjectRightSidebarContainer } from './ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/shared/dialogs/shared/LoginRequiredPrompt';
 import {
   PERSIST_KEYS,

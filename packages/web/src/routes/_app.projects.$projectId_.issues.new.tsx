@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ProjectKanban } from '@/features/kanban/ui/ProjectKanban';
+import { ProjectKanban } from '@/pages/kanban/ProjectKanban';
 import { projectSearchValidator } from './-project-search';
 
 export const Route = createFileRoute('/_app/projects/$projectId_/issues/new')({
