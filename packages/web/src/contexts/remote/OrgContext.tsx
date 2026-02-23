@@ -20,7 +20,7 @@ import {
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { SyncError } from '@/shared/lib/electric/types';
 import { organizationsApi } from '@/shared/lib/api';
-import { organizationKeys } from '@/hooks/organizationKeys';
+import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
 /**
  * OrgContext provides organization-scoped data and mutations.

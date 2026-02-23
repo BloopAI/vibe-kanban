@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/shared/lib/api';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import type { ListOrganizationsResponse } from 'shared/types';
-import { organizationKeys } from './organizationKeys';
+import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
 /**
  * Hook to fetch all organizations that the current user is a member of

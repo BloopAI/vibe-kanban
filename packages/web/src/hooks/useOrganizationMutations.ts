@@ -9,7 +9,7 @@ import type {
   CreateInvitationResponse,
   ListOrganizationsResponse,
 } from 'shared/types';
-import { organizationKeys } from './organizationKeys';
+import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
 interface UseOrganizationMutationsOptions {
   onCreateSuccess?: (result: CreateOrganizationResponse) => void;

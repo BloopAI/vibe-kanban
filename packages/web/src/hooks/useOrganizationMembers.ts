@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/shared/lib/api';
 import type { OrganizationMemberWithProfile } from 'shared/types';
-import { organizationKeys } from './organizationKeys';
+import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
 export function useOrganizationMembers(organizationId?: string) {
   return useQuery<OrganizationMemberWithProfile[]>({

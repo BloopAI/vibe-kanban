@@ -443,7 +443,9 @@ export const Actions = {
       const { useOrganizationStore } = await import(
         '@/shared/stores/useOrganizationStore'
       );
-      const { organizationKeys } = await import('@/hooks/organizationKeys');
+      const { organizationKeys } = await import(
+        '@/shared/hooks/organizationKeys'
+      );
 
       await oauthApi.logout();
       useOrganizationStore.getState().clearSelectedOrgId();

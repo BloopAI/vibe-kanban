@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { organizationsApi } from '@/shared/lib/api';
 import { InvitationStatus, type Invitation } from 'shared/types';
-import { organizationKeys } from './organizationKeys';
+import { organizationKeys } from '@/shared/hooks/organizationKeys';
 
 interface UseOrganizationInvitationsOptions {
   organizationId: string | null;
