@@ -1,4 +1,3 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 import {
   type Icon,
   SortAscendingIcon,
@@ -8,18 +7,18 @@ import {
   TagIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { cn } from '../lib/cn';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
+  DropdownMenuTriggerButton,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTriggerButton,
+  DropdownMenuLabel,
 } from './Dropdown';
 
-interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
-  children: ReactNode;
+interface ToolbarProps extends React.HTMLAttributes<HTMLDivElement> {
+  children: React.ReactNode;
 }
 
 function Toolbar({ children, className, ...props }: ToolbarProps) {
@@ -30,8 +29,7 @@ function Toolbar({ children, className, ...props }: ToolbarProps) {
   );
 }
 
-interface ToolbarIconButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ToolbarIconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
 }
 
@@ -59,7 +57,7 @@ function ToolbarIconButton({
 interface ToolbarDropdownProps {
   label: string;
   icon?: Icon;
-  children?: ReactNode;
+  children?: React.ReactNode;
   className?: string;
   disabled?: boolean;
 }

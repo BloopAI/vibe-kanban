@@ -2,8 +2,7 @@ import * as React from 'react';
 import { cn } from '../lib/cn';
 import { twMerge } from 'tailwind-merge';
 
-export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   onCommandEnter?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   onCommandShiftEnter?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
 }
