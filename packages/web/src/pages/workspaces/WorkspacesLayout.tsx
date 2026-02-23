@@ -14,7 +14,7 @@ import {
   WorkspacesMainContainer,
   type WorkspacesMainContainerHandle,
 } from './WorkspacesMainContainer';
-import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
+import { RightSidebar } from './RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
 import { PreviewBrowserContainer } from '@/components/ui-new/containers/PreviewBrowserContainer';

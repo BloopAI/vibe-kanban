@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
-import { FileTreeContainer } from '@/components/ui-new/containers/FileTreeContainer';
-import { ProcessListContainer } from '@/components/ui-new/containers/ProcessListContainer';
-import { PreviewControlsContainer } from '@/components/ui-new/containers/PreviewControlsContainer';
-import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContainer';
+import { FileTreeContainer } from './FileTreeContainer';
+import { ProcessListContainer } from './ProcessListContainer';
+import { PreviewControlsContainer } from './PreviewControlsContainer';
+import { GitPanelContainer } from './GitPanelContainer';
 import { TerminalPanelContainer } from '@/shared/components/TerminalPanelContainer';
-import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
+import { WorkspaceNotesContainer } from './WorkspaceNotesContainer';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
