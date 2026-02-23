@@ -15,16 +15,16 @@ import {
   PHONE_FRAME_PADDING,
 } from '@vibe/ui/components/PreviewBrowser';
 import { usePreviewDevServer } from '@/features/workspace/model/hooks/usePreviewDevServer';
-import { usePreviewUrl } from '@/hooks/usePreviewUrl';
+import { usePreviewUrl } from '@/shared/hooks/usePreviewUrl';
 import {
   usePreviewSettings,
   type ScreenSize,
-} from '@/hooks/usePreviewSettings';
+} from '@/shared/hooks/usePreviewSettings';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
-import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
+import { usePreviewNavigation } from '@/shared/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/shared/lib/previewDevToolsBridge';
 import { useInspectModeStore } from '@/features/workspace-chat/model/store/useInspectModeStore';
 
