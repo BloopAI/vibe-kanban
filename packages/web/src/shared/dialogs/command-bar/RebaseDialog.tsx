@@ -21,7 +21,7 @@ import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { attemptsApi, type Result } from '@/shared/lib/api';
 import { ResolveConflictsDialog } from '@/shared/dialogs/tasks/ResolveConflictsDialog';

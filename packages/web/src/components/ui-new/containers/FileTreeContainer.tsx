@@ -8,7 +8,7 @@ import {
   sortDiffs,
 } from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useTheme } from '@/shared/hooks/useTheme';

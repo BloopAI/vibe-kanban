@@ -7,20 +7,8 @@ import {
 import type { UnifiedPrComment } from 'shared/types';
 import { DiffSide } from '@/shared/types/diff';
 
-/**
- * Normalized GitHub comment for diff view display
- */
-export interface NormalizedGitHubComment {
-  id: string;
-  author: string;
-  body: string;
-  createdAt: string;
-  url: string | null;
-  filePath: string;
-  lineNumber: number;
-  side: DiffSide;
-  diffHunk: string | null;
-}
+export type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
+import type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
 
 interface UseGitHubCommentsOptions {
   workspaceId?: string;

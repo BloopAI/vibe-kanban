@@ -26,7 +26,7 @@ import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
 import { useChangesView } from '@/contexts/ChangesViewContext';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { cn } from '@/shared/lib/utils';
 import {
   ScriptFixerDialog,

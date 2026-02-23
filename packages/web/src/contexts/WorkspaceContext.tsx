@@ -1,82 +1,21 @@
-import { useContext, ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { createHmrContext } from '@/shared/lib/hmrContext';
+import { ReactNode, useMemo, useCallback, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import {
-  useWorkspaces,
-  type SidebarWorkspace,
-} from '@/shared/hooks/useWorkspaces';
+import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { useAttempt } from '@/shared/hooks/useAttempt';
 import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
-import {
-  useGitHubComments,
-  type NormalizedGitHubComment,
-} from '@/hooks/useGitHubComments';
+import { useGitHubComments } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
 import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import { toWorkspace, toWorkspacesCreate } from '@/lib/routes/navigation';
-import type {
-  Workspace as ApiWorkspace,
-  Session,
-  RepoWithTargetBranch,
-  UnifiedPrComment,
-  Diff,
-  DiffStats,
-} from 'shared/types';
+import type { DiffStats } from 'shared/types';
 
-export type { NormalizedGitHubComment } from '@/hooks/useGitHubComments';
-
-interface WorkspaceContextValue {
-  workspaceId: string | undefined;
-  /** Real workspace data from API */
-  workspace: ApiWorkspace | undefined;
-  /** Active workspaces for sidebar display */
-  activeWorkspaces: SidebarWorkspace[];
-  /** Archived workspaces for sidebar display */
-  archivedWorkspaces: SidebarWorkspace[];
-  isLoading: boolean;
-  isCreateMode: boolean;
-  selectWorkspace: (id: string) => void;
-  navigateToCreate: () => void;
-  /** Sessions for the current workspace */
-  sessions: Session[];
-  selectedSession: Session | undefined;
-  selectedSessionId: string | undefined;
-  selectSession: (sessionId: string) => void;
-  selectLatestSession: () => void;
-  isSessionsLoading: boolean;
-  /** Whether user is creating a new session */
-  isNewSessionMode: boolean;
-  /** Enter new session mode */
-  startNewSession: () => void;
-  /** Repos for the current workspace */
-  repos: RepoWithTargetBranch[];
-  isReposLoading: boolean;
-  /** GitHub PR Comments */
-  gitHubComments: UnifiedPrComment[];
-  isGitHubCommentsLoading: boolean;
-  showGitHubComments: boolean;
-  setShowGitHubComments: (show: boolean) => void;
-  getGitHubCommentsForFile: (filePath: string) => NormalizedGitHubComment[];
-  getGitHubCommentCountForFile: (filePath: string) => number;
-  getFilesWithGitHubComments: () => string[];
-  getFirstCommentLineForFile: (filePath: string) => number | null;
-  /** Diffs for the current workspace */
-  diffs: Diff[];
-  /** Set of file paths in the diffs */
-  diffPaths: Set<string>;
-  /** Aggregate diff statistics */
-  diffStats: DiffStats;
-}
-
-// Exported for optional usage outside WorkspaceProvider (e.g., old UI)
-export const WorkspaceContext = createHmrContext<WorkspaceContextValue | null>(
-  'WorkspaceContext',
-  null
-);
+export type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
+export { WorkspaceContext, useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
 interface WorkspaceProviderProps {
   children: ReactNode;
@@ -270,12 +209,3 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   );
 }
 
-export function useWorkspaceContext(): WorkspaceContextValue {
-  const context = useContext(WorkspaceContext);
-  if (!context) {
-    throw new Error(
-      'useWorkspaceContext must be used within a WorkspaceProvider'
-    );
-  }
-  return context;
-}

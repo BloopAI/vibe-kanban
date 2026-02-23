@@ -1,9 +1,7 @@
 import { ReactNode, useState } from 'react';
 import { PortalContainerContext } from '@/shared/hooks/PortalContainerContext';
-import {
-  WorkspaceProvider,
-  useWorkspaceContext,
-} from '@/contexts/WorkspaceContext';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
 import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/contexts/ExecutionProcessesContext';
 import { LogsPanelProvider } from '@/contexts/LogsPanelContext';

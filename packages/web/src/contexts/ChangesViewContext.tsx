@@ -10,7 +10,7 @@ import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
 /** Callback type for scroll-to-file implementation (provided by ChangesPanelContainer) */
 export type ScrollToFileCallback = (path: string, lineNumber?: number) => void;

@@ -23,7 +23,7 @@ import {
   CommandGroup,
   CommandItem,
 } from '@vibe/ui/components/Command';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import {
   ProjectProvider,
   useProjectContext,

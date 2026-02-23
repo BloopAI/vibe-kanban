@@ -1,10 +1,8 @@
 import { ReactNode, useState, useRef, useEffect } from 'react';
 import { usePostHog } from 'posthog-js/react';
 import { PortalContainerContext } from '@/shared/hooks/PortalContainerContext';
-import {
-  WorkspaceProvider,
-  useWorkspaceContext,
-} from '@/contexts/WorkspaceContext';
+import { WorkspaceProvider } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ActionsProvider } from '@/contexts/ActionsContext';
 import { UserProvider } from '@/contexts/remote/UserContext';
 import { SequenceTrackerProvider } from '@/keyboard/SequenceTracker';

@@ -27,7 +27,7 @@ import {
   useIgnoreWhitespaceDiff,
 } from '@/shared/stores/useDiffViewStore';
 import { useReview, type ReviewDraft } from '@/contexts/ReviewProvider';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { OpenInIdeButton } from '@/components/ide/OpenInIdeButton';
 import { useOpenInEditor } from '@/hooks/useOpenInEditor';

@@ -27,7 +27,7 @@ import {
 } from '@vibe/ui/components/KanbanIssuePanel';
 import { useActions } from '@/contexts/ActionsContext';
 import { useUserContext } from '@/contexts/remote/UserContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import {

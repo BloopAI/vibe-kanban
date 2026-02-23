@@ -10,7 +10,7 @@ import {
   type CommandBarGroupItem,
 } from '@vibe/ui/components/CommandBar';
 import { useActions } from '@/contexts/ActionsContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { attemptKeys } from '@/shared/hooks/useAttempt';
 import { IdeIcon } from '@/components/ide/IdeIcon';
 import type {

@@ -6,7 +6,7 @@ import {
 } from '@vibe/ui/components/ChangesPanel';
 import { sortDiffs } from '@/shared/lib/fileTreeUtils';
 import { useChangesView } from '@/contexts/ChangesViewContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useScrollSyncStateMachine } from '@/hooks/useScrollSyncStateMachine';
 import { usePersistedExpanded } from '@/shared/stores/useUiPreferencesStore';
 import { PierreDiffCard } from '@/components/ui-new/containers/PierreDiffCard';

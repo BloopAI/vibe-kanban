@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useTerminal } from '@/contexts/TerminalContext';
 import { TerminalPanel } from '@vibe/ui/components/TerminalPanel';
 import { XTermInstance } from '../terminal/XTermInstance';

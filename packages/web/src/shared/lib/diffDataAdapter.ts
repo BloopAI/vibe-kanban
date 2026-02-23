@@ -8,7 +8,7 @@ import {
 } from '@pierre/diffs';
 import type { Diff, DiffChangeKind } from 'shared/types';
 import type { ReviewComment } from '@/contexts/ReviewProvider';
-import type { NormalizedGitHubComment } from '@/hooks/useGitHubComments';
+import type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
 import { DiffSide } from '@/shared/types/diff';
 
 /**

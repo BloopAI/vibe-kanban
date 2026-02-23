@@ -6,7 +6,7 @@ import { GitPanelContainer } from '@/components/ui-new/containers/GitPanelContai
 import { TerminalPanelContainer } from '@/components/ui-new/containers/TerminalPanelContainer';
 import { WorkspaceNotesContainer } from '@/components/ui-new/containers/WorkspaceNotesContainer';
 import { useChangesView } from '@/contexts/ChangesViewContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
 import { useLogsPanel } from '@/contexts/LogsPanelContext';
 import type { RepoWithTargetBranch, Workspace } from 'shared/types';

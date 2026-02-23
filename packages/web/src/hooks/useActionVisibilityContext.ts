@@ -9,7 +9,7 @@ import {
   useDiffViewStore,
   useDiffViewMode,
 } from '@/shared/stores/useDiffViewStore';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useDevServer } from '@/hooks';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';

@@ -65,7 +65,7 @@ import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { usePortalContainer } from '@/shared/hooks/PortalContainerContext';
-import { WorkspaceContext } from '@/contexts/WorkspaceContext';
+import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useSlashCommands } from '@/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';

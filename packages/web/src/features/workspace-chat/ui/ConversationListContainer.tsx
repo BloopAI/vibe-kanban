@@ -38,7 +38,7 @@ import { useConversationHistory } from '../model/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 

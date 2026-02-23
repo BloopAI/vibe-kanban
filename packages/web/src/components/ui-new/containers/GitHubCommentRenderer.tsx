@@ -7,7 +7,7 @@ import {
 } from '@phosphor-icons/react';
 import { CommentCard } from '@vibe/ui/components/CommentCard';
 import { formatRelativeTime } from '@/shared/lib/date';
-import type { NormalizedGitHubComment } from '@/contexts/WorkspaceContext';
+import type { NormalizedGitHubComment } from '@/shared/hooks/useWorkspaceContext';
 
 interface GitHubCommentRendererProps {
   comment: NormalizedGitHubComment;
