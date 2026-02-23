@@ -7,10 +7,11 @@ use api_types::{
     CreateNotificationRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
     IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationType,
-    OrganizationMember, Project, ProjectStatus, PullRequest, PullRequestStatus, RelayHost, Tag,
+    ListRelayHostsResponse, OrganizationMember, Project, ProjectStatus, PullRequest,
+    PullRequestStatus, RelayHost, RelaySessionAuthCodeResponse, Tag,
     UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
-    User, UserData, Workspace,
+    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
+    UpdateTagRequest, User, UserData, Workspace,
 };
 use remote::{
     db::hosts::{Host, RelaySession},
@@ -20,6 +21,7 @@ use remote::{
             CommitAttachmentsRequest, CommitAttachmentsResponse, ConfirmUploadRequest,
             InitUploadRequest, InitUploadResponse,
         },
+        hosts::CreateRelaySessionResponse,
     },
     shape_routes::all_shape_routes,
 };
@@ -95,7 +97,10 @@ fn export_shapes() -> String {
         User::decl(),
         Host::decl(),
         RelayHost::decl(),
+        ListRelayHostsResponse::decl(),
         RelaySession::decl(),
+        CreateRelaySessionResponse::decl(),
+        RelaySessionAuthCodeResponse::decl(),
         MemberRole::decl(),
         OrganizationMember::decl(),
         // Mutation request types

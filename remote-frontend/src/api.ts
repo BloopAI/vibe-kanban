@@ -1,7 +1,11 @@
 import type { ReviewResult } from "./types/review";
 import { clearTokens, currentRelativePath, redirectToLogin } from "./auth";
 import { getToken, triggerRefresh } from "./tokenManager";
-import type { RelayHost, RelaySession } from "shared/remote-types";
+import type {
+  CreateRelaySessionResponse,
+  ListRelayHostsResponse,
+  RelaySessionAuthCodeResponse,
+} from "shared/remote-types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -589,7 +593,7 @@ export async function fetchGitHubAppRepositories(
 }
 
 // Relay APIs
-export async function listRelayHosts(): Promise<{ hosts: RelayHost[] }> {
+export async function listRelayHosts(): Promise<ListRelayHostsResponse> {
   const res = await authenticatedFetch(`${API_BASE}/v1/hosts`);
   if (!res.ok) {
     throw new Error(`Failed to list relay hosts (${res.status})`);
@@ -599,7 +603,7 @@ export async function listRelayHosts(): Promise<{ hosts: RelayHost[] }> {
 
 export async function createRelaySession(
   hostId: string,
-): Promise<{ session: RelaySession }> {
+): Promise<CreateRelaySessionResponse> {
   const res = await authenticatedFetch(
     `${API_BASE}/v1/hosts/${hostId}/sessions`,
     {
@@ -614,7 +618,7 @@ export async function createRelaySession(
 
 export async function createRelaySessionAuthCode(
   sessionId: string,
-): Promise<{ session_id: string; relay_url: string; code: string }> {
+): Promise<RelaySessionAuthCodeResponse> {
   const res = await authenticatedFetch(
     `${API_BASE}/v1/relay/sessions/${sessionId}/auth-code`,
     {

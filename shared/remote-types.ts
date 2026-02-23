@@ -52,7 +52,13 @@ export type Host = { id: string, owner_user_id: string, name: string, status: st
 
 export type RelayHost = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
 
+export type ListRelayHostsResponse = { hosts: Array<RelayHost>, };
+
 export type RelaySession = { id: string, host_id: string, request_user_id: string, state: string, created_at: string, expires_at: string, claimed_at: string | null, ended_at: string | null, };
+
+export type CreateRelaySessionResponse = { session: RelaySession, };
+
+export type RelaySessionAuthCodeResponse = { session_id: string, relay_url: string, code: string, };
 
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 

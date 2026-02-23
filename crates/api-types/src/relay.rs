@@ -27,3 +27,10 @@ pub struct RelayHost {
 pub struct ListRelayHostsResponse {
     pub hosts: Vec<RelayHost>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct RelaySessionAuthCodeResponse {
+    pub session_id: Uuid,
+    pub relay_url: String,
+    pub code: String,
+}

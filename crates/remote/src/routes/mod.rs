@@ -40,7 +40,7 @@ pub(crate) mod electric_proxy;
 pub(crate) mod error;
 pub mod attachments;
 mod github_app;
-mod hosts;
+pub mod hosts;
 mod identity;
 pub mod issue_assignees;
 pub mod issue_comment_reactions;
@@ -62,6 +62,7 @@ mod review;
 pub mod tags;
 mod tokens;
 mod workspaces;
+
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()

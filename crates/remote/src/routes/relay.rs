@@ -18,9 +18,9 @@ use axum::{
 use axum_extra::headers::{Cookie, HeaderMapExt};
 use chrono::Utc;
 use relay_tunnel::server::{proxy_request_over_control, run_control_channel};
-use serde::Serialize;
 use url::form_urlencoded;
 use uuid::Uuid;
+use api_types::RelaySessionAuthCodeResponse;
 
 use crate::{
     AppState,
@@ -122,13 +122,6 @@ async fn validate_relay_token_for_host(
     }
 
     Ok(())
-}
-
-#[derive(Debug, Serialize)]
-struct RelaySessionAuthCodeResponse {
-    session_id: Uuid,
-    relay_url: String,
-    code: String,
 }
 
 /// Extract the relay subdomain from a `Host` value using URL parsing.
@@ -268,41 +261,43 @@ async fn relay_session_auth_code(
     State(state): State<AppState>,
     Path(session_id): Path<Uuid>,
     Extension(ctx): Extension<RequestContext>,
-) -> Response {
+) -> Result<Json<RelaySessionAuthCodeResponse>, Response> {
     let relay_base_domain = match &state.config.relay_base_domain {
         Some(base) => base,
-        None => return (StatusCode::NOT_FOUND, "Relay subdomains not configured").into_response(),
+        None => {
+            return Err((StatusCode::NOT_FOUND, "Relay subdomains not configured").into_response());
+        }
     };
 
     let repo = HostRepository::new(state.pool());
     let session = match repo.get_session_for_requester(session_id, ctx.user.id).await {
         Ok(Some(session)) => session,
-        Ok(None) => return (StatusCode::NOT_FOUND, "Relay session not found").into_response(),
+        Ok(None) => return Err((StatusCode::NOT_FOUND, "Relay session not found").into_response()),
         Err(error) => {
             tracing::warn!(?error, "failed to load relay session");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
         }
     };
 
     if session.ended_at.is_some() || session.state == "expired" {
-        return (StatusCode::GONE, "Relay session expired").into_response();
+        return Err((StatusCode::GONE, "Relay session expired").into_response());
     }
 
     if session.expires_at <= Utc::now() {
         if let Err(error) = repo.mark_session_expired(session.id).await {
             tracing::warn!(?error, "failed to mark relay session expired");
         }
-        return (StatusCode::GONE, "Relay session expired").into_response();
+        return Err((StatusCode::GONE, "Relay session expired").into_response());
     }
 
     let registry = state.relay_registry();
     if registry.get(&session.host_id).await.is_none() {
-        return (StatusCode::NOT_FOUND, "Host is not connected").into_response();
+        return Err((StatusCode::NOT_FOUND, "Host is not connected").into_response());
     }
 
     if let Err(error) = repo.mark_session_active(session.id).await {
         tracing::warn!(?error, "failed to mark relay session active");
-        return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        return Err(StatusCode::INTERNAL_SERVER_ERROR.into_response());
     }
 
     let relay_browser_session_repo = RelayBrowserSessionRepository::new(state.pool());
@@ -312,8 +307,10 @@ async fn relay_session_auth_code(
             Ok(session) => session,
             Err(error) => {
                 tracing::warn!(?error, "failed to create relay browser session");
-                return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
-                    .into_response();
+                return Err(
+                    (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
+                        .into_response(),
+                );
             }
         };
     let relay_cookie_value = relay_browser_session.id.to_string();
@@ -325,17 +322,18 @@ async fn relay_session_auth_code(
         Ok(code) => code,
         Err(error) => {
             tracing::warn!(?error, "failed to create relay auth code");
-            return (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
-                .into_response();
+            return Err(
+                (StatusCode::INTERNAL_SERVER_ERROR, "Failed to generate auth code")
+                    .into_response(),
+            );
         }
     };
 
-    Json(RelaySessionAuthCodeResponse {
+    Ok(Json(RelaySessionAuthCodeResponse {
         session_id: session.id,
         relay_url: format!("https://{}.{relay_base_domain}/", session.host_id),
         code,
-    })
-    .into_response()
+    }))
 }
 
 // ── Proxy ──────────────────────────────────────────────────────────────

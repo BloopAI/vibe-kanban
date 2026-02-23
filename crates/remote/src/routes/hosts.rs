@@ -6,7 +6,8 @@ use axum::{
 };
 use api_types::{CreateRelayHostRequest, ListRelayHostsResponse, RelayHost};
 use chrono::{Duration, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 use uuid::Uuid;
 
 use super::error::ErrorResponse;
@@ -21,9 +22,9 @@ use crate::{
 
 const RELAY_SESSION_TTL_SECS: i64 = 120;
 
-#[derive(Debug, Serialize)]
-struct CreateRelaySessionResponse {
-    session: RelaySession,
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct CreateRelaySessionResponse {
+    pub session: RelaySession,
 }
 
 pub fn router() -> Router<AppState> {
