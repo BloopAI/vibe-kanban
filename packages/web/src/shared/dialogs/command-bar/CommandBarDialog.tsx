@@ -18,7 +18,7 @@ import {
   ActionTargetType,
   type ActionDefinition,
 } from '@/shared/types/actions';
-import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
+import { useActionVisibilityContext } from '@/integrations/useActionVisibilityContext';
 import type { SelectionPage } from './SelectionDialog';
 import type { RepoSelectionResult } from './selections/repoSelection';
 import { useCommandBarState } from './commandBar/useCommandBarState';

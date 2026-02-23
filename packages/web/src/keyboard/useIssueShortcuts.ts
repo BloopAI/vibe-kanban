@@ -1,7 +1,7 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from '@tanstack/react-router';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useActions } from '@/contexts/ActionsContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { Actions } from '@/shared/actions';
 import {
   type ActionDefinition,

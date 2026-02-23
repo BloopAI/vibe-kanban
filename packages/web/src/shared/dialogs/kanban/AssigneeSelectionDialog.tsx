@@ -16,7 +16,7 @@ import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { ProjectProvider } from '@/contexts/remote/ProjectContext';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useOrganizationProjects } from '@/integrations/useOrganizationProjects';
 
 export interface AssigneeSelectionDialogProps {
   projectId: string;

@@ -21,7 +21,7 @@ import {
   isActionEnabled,
   isActionVisible,
 } from '@/shared/types/actions';
-import { useActionVisibilityContext } from '@/hooks/useActionVisibilityContext';
+import { useActionVisibilityContext } from '@/integrations/useActionVisibilityContext';
 
 /**
  * Check if a NavbarItem is a divider

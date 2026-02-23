@@ -1,6 +1,6 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { useHotkeys } from 'react-hotkeys-hook';
-import { useActions } from '@/contexts/ActionsContext';
+import { useActions } from '@/shared/hooks/useActions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { Actions } from '@/shared/actions';
 import {

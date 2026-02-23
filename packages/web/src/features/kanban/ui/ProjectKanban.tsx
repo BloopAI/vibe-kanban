@@ -16,7 +16,7 @@ import {
   usePaneSize,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
-import { useOrganizationProjects } from '@/hooks/useOrganizationProjects';
+import { useOrganizationProjects } from '@/integrations/useOrganizationProjects';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
