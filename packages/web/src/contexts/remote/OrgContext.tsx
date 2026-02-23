@@ -19,7 +19,7 @@ import {
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { SyncError } from '@/shared/lib/electric/types';
-import { organizationsApi } from '@/lib/api';
+import { organizationsApi } from '@/shared/lib/api';
 import { organizationKeys } from '@/hooks/organizationKeys';
 
 /**

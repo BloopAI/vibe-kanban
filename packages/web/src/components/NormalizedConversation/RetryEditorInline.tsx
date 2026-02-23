@@ -6,7 +6,7 @@ import { VariantSelector } from '@/components/tasks/VariantSelector';
 import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
-import { imagesApi } from '@/lib/api';
+import { imagesApi } from '@/shared/lib/api';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';

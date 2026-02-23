@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { imagesApi } from '@/lib/api';
+import { imagesApi } from '@/shared/lib/api';
 import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
 import type { ImageResponse } from 'shared/types';
 

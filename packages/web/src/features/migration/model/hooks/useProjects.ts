@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { migrationApi } from '@/lib/api';
+import { migrationApi } from '@/shared/lib/api';
 import type { Project } from 'shared/types';
 
 interface UseProjectsResult {

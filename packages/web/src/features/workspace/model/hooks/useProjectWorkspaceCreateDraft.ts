@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
-import { scratchApi } from '@/lib/api';
+import { scratchApi } from '@/shared/lib/api';
 import type { CreateModeInitialState } from '@/shared/types/createMode';
 
 export function useProjectWorkspaceCreateDraft() {

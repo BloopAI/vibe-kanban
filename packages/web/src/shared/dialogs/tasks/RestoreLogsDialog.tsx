@@ -13,7 +13,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';
 import { useKeySubmitTask } from '@/keyboard/hooks';
 import { Scope } from '@/shared/keyboard/registry';
-import { executionProcessesApi } from '@/lib/api';
+import { executionProcessesApi } from '@/shared/lib/api';
 import {
   isCodingAgent,
   PROCESS_RUN_REASONS,

@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { approvalsApi } from '@/lib/api';
+import { approvalsApi } from '@/shared/lib/api';
 
 interface ApproveParams {
   approvalId: string;

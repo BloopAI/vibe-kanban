@@ -24,8 +24,8 @@ import { useOrganizationMutations } from '@/hooks/useOrganizationMutations';
 import { MemberRole } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/lib/modals';
-import { ApiError } from '@/lib/api';
-import { getRemoteApiUrl } from '@/lib/remoteApi';
+import { ApiError } from '@/shared/lib/api';
+import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 
 export type InviteMemberResult = {

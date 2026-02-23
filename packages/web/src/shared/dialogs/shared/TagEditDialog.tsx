@@ -13,7 +13,7 @@ import {
   DialogFooter,
 } from '@vibe/ui/components/KeyboardDialog';
 import { Loader2 } from 'lucide-react';
-import { tagsApi } from '@/lib/api';
+import { tagsApi } from '@/shared/lib/api';
 import type { Tag, CreateTag, UpdateTag } from 'shared/types';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal, getErrorMessage } from '@/lib/modals';

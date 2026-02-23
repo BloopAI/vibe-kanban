@@ -2,7 +2,7 @@ import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
-import { getRemoteApiUrl, makeRequest } from '@/lib/remoteApi';
+import { getRemoteApiUrl, makeRequest } from '@/shared/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from '@/shared/lib/electric/types';
 

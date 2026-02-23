@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { oauthApi } from '@/lib/api';
+import { oauthApi } from '@/shared/lib/api';
 
 interface UseAuthMutationsOptions {
   onInitSuccess?: (data: { handoff_id: string; authorize_url: string }) => void;

@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/shared/lib/api';
 import { EditorSelectionDialog } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
 import type { EditorType } from 'shared/types';
 

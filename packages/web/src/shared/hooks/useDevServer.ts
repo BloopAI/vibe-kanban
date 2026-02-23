@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi, executionProcessesApi } from '@/lib/api';
+import { attemptsApi, executionProcessesApi } from '@/shared/lib/api';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
 import {
   filterRunningDevServers,

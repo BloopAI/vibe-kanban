@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import type { ExecutorConfig } from 'shared/types';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi } from '@/shared/lib/api';
 import { useCreateSession } from './useCreateSession';
 
 interface UseSessionSendOptions {

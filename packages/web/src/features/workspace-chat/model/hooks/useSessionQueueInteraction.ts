@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { queueApi } from '@/lib/api';
+import { queueApi } from '@/shared/lib/api';
 import type { ExecutorConfig, QueueStatus } from 'shared/types';
 
 interface UseSessionQueueInteractionOptions {

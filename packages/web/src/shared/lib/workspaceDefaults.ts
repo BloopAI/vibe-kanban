@@ -1,4 +1,4 @@
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/shared/lib/api';
 import type { Workspace } from 'shared/remote-types';
 
 export interface WorkspaceDefaults {

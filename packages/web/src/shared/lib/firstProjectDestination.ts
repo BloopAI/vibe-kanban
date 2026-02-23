@@ -1,6 +1,6 @@
 import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { type OrganizationWithRole } from 'shared/types';
-import { organizationsApi } from '@/lib/api';
+import { organizationsApi } from '@/shared/lib/api';
 import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { getFirstProjectByOrder } from '@/shared/lib/projectOrder';
 

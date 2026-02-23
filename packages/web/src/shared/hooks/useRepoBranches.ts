@@ -1,6 +1,6 @@
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { repoApi } from '@/lib/api';
+import { repoApi } from '@/shared/lib/api';
 import type { GitBranch } from 'shared/types';
 
 export const repoBranchKeys = {

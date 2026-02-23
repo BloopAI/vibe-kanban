@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/shared/lib/api';
 import type { PushError, PushTaskAttemptRequest } from 'shared/types';
 
 class ForcePushErrorWithData extends Error {

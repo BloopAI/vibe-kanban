@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo } from 'react';
 import type { BaseCodingAgent, ExecutorDiscoveredOptions } from 'shared/types';
 import { useJsonPatchWsStream } from '@/hooks/useJsonPatchWsStream';
-import { agentsApi } from '@/lib/api';
+import { agentsApi } from '@/shared/lib/api';
 
 type ExecutorDiscoveryStreamState = {
   options: ExecutorDiscoveredOptions | null;

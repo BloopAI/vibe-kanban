@@ -5,7 +5,7 @@ import { isEqual } from 'lodash';
 import { GitBranchIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
 import { useScriptPlaceholders } from '@/hooks/useScriptPlaceholders';
-import { repoApi } from '@/lib/api';
+import { repoApi } from '@/shared/lib/api';
 import type { Repo, UpdateRepo } from 'shared/types';
 import { SearchableDropdownContainer } from '@/components/ui-new/containers/SearchableDropdownContainer';
 import {

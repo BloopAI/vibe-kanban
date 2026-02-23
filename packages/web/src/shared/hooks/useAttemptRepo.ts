@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/shared/lib/api';
 import type { RepoWithTargetBranch } from 'shared/types';
 
 interface UseAttemptRepoOptions {

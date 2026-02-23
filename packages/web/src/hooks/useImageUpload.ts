@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { imagesApi } from '@/lib/api';
+import { imagesApi } from '@/shared/lib/api';
 import type { ImageResponse } from 'shared/types';
 
 export function useImageUpload() {

@@ -4,7 +4,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/lib/modals';
-import { ApiError, attemptsApi } from '@/lib/api';
+import { ApiError, attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/features/workspace/model/hooks/useProjectWorkspaceCreateDraft';

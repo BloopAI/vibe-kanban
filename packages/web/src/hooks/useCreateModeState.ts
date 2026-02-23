@@ -15,7 +15,7 @@ import { useScratch } from '@/hooks/useScratch';
 import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/integrations/electric/hooks';
-import { repoApi } from '@/lib/api';
+import { repoApi } from '@/shared/lib/api';
 import { useWorkspaceCreateDefaults } from '@/shared/hooks/useWorkspaceCreateDefaults';
 export type { CreateModeInitialState } from '@/shared/types/createMode';
 import type {

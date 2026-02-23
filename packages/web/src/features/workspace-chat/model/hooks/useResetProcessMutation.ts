@@ -1,5 +1,5 @@
 import { useMutation } from '@tanstack/react-query';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi } from '@/shared/lib/api';
 import {
   RestoreLogsDialog,
   type RestoreLogsDialogResult,

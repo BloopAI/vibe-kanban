@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi } from '@/shared/lib/api';
 import type { Session } from 'shared/types';
 
 interface UseWorkspaceSessionsOptions {

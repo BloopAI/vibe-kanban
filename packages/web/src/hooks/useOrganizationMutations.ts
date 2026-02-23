@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { organizationsApi } from '@/lib/api';
+import { organizationsApi } from '@/shared/lib/api';
 import type {
   MemberRole,
   UpdateMemberRoleResponse,

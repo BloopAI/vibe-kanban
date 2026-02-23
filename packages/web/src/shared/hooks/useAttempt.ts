@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/shared/lib/api';
 import type { Workspace } from 'shared/types';
 
 export const attemptKeys = {

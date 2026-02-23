@@ -7,7 +7,7 @@ import {
   useMemo,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { configApi } from '@/lib/api';
+import { configApi } from '@/shared/lib/api';
 import {
   PreviewBrowser,
   MOBILE_WIDTH,

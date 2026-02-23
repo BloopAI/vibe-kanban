@@ -4,7 +4,7 @@ import { PlusIcon } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
 import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { mcpServersApi } from '@/lib/api';
+import { mcpServersApi } from '@/shared/lib/api';
 import { McpConfigStrategyGeneral } from '@/shared/lib/mcpStrategies';
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/utils/string';

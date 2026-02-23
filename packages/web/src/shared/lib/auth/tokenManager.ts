@@ -1,4 +1,4 @@
-import { ApiError, oauthApi } from '@/lib/api';
+import { ApiError, oauthApi } from '@/shared/lib/api';
 import { shouldRefreshAccessToken } from 'shared/jwt';
 
 const TOKEN_QUERY_KEY = ['auth', 'token'] as const;

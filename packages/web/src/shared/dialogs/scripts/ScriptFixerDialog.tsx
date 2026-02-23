@@ -23,7 +23,7 @@ import { AutoExpandingTextarea } from '@vibe/ui/components/AutoExpandingTextarea
 import { VirtualizedProcessLogs } from '@/components/ui-new/containers/VirtualizedProcessLogs';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { defineModal } from '@/lib/modals';
-import { repoApi, attemptsApi } from '@/lib/api';
+import { repoApi, attemptsApi } from '@/shared/lib/api';
 import { useLogStream } from '@/hooks/useLogStream';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { RepoWithTargetBranch, PatchType, UpdateRepo } from 'shared/types';

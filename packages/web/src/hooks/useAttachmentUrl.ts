@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAttachmentSasUrl } from '@/lib/remoteApi';
+import { fetchAttachmentSasUrl } from '@/shared/lib/remoteApi';
 
 const SAS_URL_STALE_TIME = 4 * 60 * 1000; // 4 minutes, matches SAS URL TTL
 

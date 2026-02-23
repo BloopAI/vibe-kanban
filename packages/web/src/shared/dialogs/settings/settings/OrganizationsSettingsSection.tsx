@@ -30,7 +30,7 @@ import { PendingInvitationItem } from '@/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { cn } from '@/shared/lib/utils';
-import { getRemoteApiUrl } from '@/lib/remoteApi';
+import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   DropdownMenu,

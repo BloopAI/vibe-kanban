@@ -40,7 +40,7 @@ import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CreateRemoteProjectDialog } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
 import { DeleteRemoteProjectDialog } from '@/shared/dialogs/org/DeleteRemoteProjectDialog';
 import { useShape } from '@/integrations/electric/hooks';
-import { bulkUpdateProjectStatuses } from '@/lib/remoteApi';
+import { bulkUpdateProjectStatuses } from '@/shared/lib/remoteApi';
 
 import {
   PROJECTS_SHAPE,

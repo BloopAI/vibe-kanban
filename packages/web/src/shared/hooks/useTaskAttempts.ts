@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { attemptsApi, sessionsApi } from '@/lib/api';
+import { attemptsApi, sessionsApi } from '@/shared/lib/api';
 import type { Workspace } from 'shared/types';
 import type { WorkspaceWithSession } from '@/types/attempt';
 import { createWorkspaceWithSession } from '@/types/attempt';

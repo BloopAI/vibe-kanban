@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi, Result } from '@/lib/api';
+import { attemptsApi, Result } from '@/shared/lib/api';
 import type { RebaseTaskAttemptRequest } from 'shared/types';
 import type { GitOperationError } from 'shared/types';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';

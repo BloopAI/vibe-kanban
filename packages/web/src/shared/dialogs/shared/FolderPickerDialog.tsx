@@ -20,7 +20,7 @@ import {
   Home,
   Search,
 } from 'lucide-react';
-import { fileSystemApi } from '@/lib/api';
+import { fileSystemApi } from '@/shared/lib/api';
 import { DirectoryEntry, DirectoryListResponse } from 'shared/types';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';

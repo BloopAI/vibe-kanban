@@ -30,7 +30,7 @@ import {
   isModelAvailable,
   resolveDefaultReasoningId,
 } from '@/shared/lib/modelSelector';
-import { profilesApi } from '@/lib/api';
+import { profilesApi } from '@/shared/lib/api';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getResolvedTheme, useTheme } from '@/shared/hooks/useTheme';
 import { useModelSelectorConfig } from '@/hooks/useExecutorDiscovery';

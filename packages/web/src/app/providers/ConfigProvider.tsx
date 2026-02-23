@@ -7,9 +7,9 @@ import {
   type BaseAgentCapability,
 } from 'shared/types';
 import type { ExecutorProfile } from 'shared/types';
-import { configApi } from '@/lib/api';
+import { configApi } from '@/shared/lib/api';
 import { updateLanguageFromConfig } from '@/i18n/config';
-import { setRemoteApiBase } from '@/lib/remoteApi';
+import { setRemoteApiBase } from '@/shared/lib/remoteApi';
 import {
   UserSystemContext,
   type UserSystemContextType,

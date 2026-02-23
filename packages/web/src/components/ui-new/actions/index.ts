@@ -63,8 +63,8 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 
-import { attemptsApi, repoApi } from '@/lib/api';
-import { bulkUpdateIssues } from '@/lib/remoteApi';
+import { attemptsApi, repoApi } from '@/shared/lib/api';
+import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
 import { attemptKeys } from '@/shared/hooks/useAttempt';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
@@ -632,7 +632,7 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.isSignedIn,
     execute: async (ctx) => {
-      const { oauthApi } = await import('@/lib/api');
+      const { oauthApi } = await import('@/shared/lib/api');
       const { useOrganizationStore } = await import(
         '@/shared/stores/useOrganizationStore'
       );

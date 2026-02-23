@@ -1,4 +1,4 @@
-import { searchApi, tagsApi } from '@/lib/api';
+import { searchApi, tagsApi } from '@/shared/lib/api';
 import type { SearchResult, Tag } from 'shared/types';
 
 interface FileSearchResult extends SearchResult {

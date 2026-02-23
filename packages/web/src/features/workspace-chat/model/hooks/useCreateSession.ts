@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi } from '@/shared/lib/api';
 import type {
   Session,
   CreateFollowUpAttempt,

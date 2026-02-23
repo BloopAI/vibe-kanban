@@ -4,7 +4,7 @@ import { usePush } from '@/shared/hooks/usePush';
 import { useForcePush } from '@/shared/hooks/useForcePush';
 import { useChangeTargetBranch } from '@/shared/hooks/useChangeTargetBranch';
 import { useGitOperationsError } from '@/contexts/GitOperationsContext';
-import { Result } from '@/lib/api';
+import { Result } from '@/shared/lib/api';
 import type { GitOperationError, PushTaskAttemptRequest } from 'shared/types';
 import { ForcePushDialog } from '@/shared/dialogs/command-bar/ForcePushDialog';
 

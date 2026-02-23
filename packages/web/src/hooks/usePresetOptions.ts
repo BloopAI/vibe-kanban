@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { BaseCodingAgent, ExecutorConfig } from 'shared/types';
-import { agentsApi } from '@/lib/api';
+import { agentsApi } from '@/shared/lib/api';
 
 export const presetOptionsKeys = {
   all: ['preset-options'] as const,

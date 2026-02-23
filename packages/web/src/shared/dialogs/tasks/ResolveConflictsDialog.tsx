@@ -15,7 +15,7 @@ import { AgentSelector } from '@/components/tasks/AgentSelector';
 import { ConfigSelector } from '@/components/tasks/ConfigSelector';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { sessionsApi } from '@/lib/api';
+import { sessionsApi } from '@/shared/lib/api';
 import { useQueryClient } from '@tanstack/react-query';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/lib/modals';

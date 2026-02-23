@@ -6,7 +6,7 @@ import { useOrgContext } from '@/contexts/remote/OrgContext';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useActions } from '@/contexts/ActionsContext';
 import { Actions } from '@/components/ui-new/actions';
-import { bulkUpdateIssues } from '@/lib/remoteApi';
+import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import {
   IssueSubIssuesSection,

@@ -15,7 +15,7 @@ import {
   type NormalizedGitHubComment,
 } from '@/hooks/useGitHubComments';
 import { useDiffStream } from '@/hooks/useDiffStream';
-import { attemptsApi } from '@/lib/api';
+import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import { toWorkspace, toWorkspacesCreate } from '@/lib/routes/navigation';
 import type {

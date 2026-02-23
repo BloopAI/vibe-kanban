@@ -5,7 +5,7 @@ import {
   confirmAttachmentUpload,
   initAttachmentUpload,
   uploadToAzure,
-} from '@/lib/remoteApi';
+} from '@/shared/lib/remoteApi';
 
 // ---------------------------------------------------------------------------
 // Types

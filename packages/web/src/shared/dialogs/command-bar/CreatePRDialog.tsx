@@ -14,7 +14,7 @@ import { Checkbox } from '@vibe/ui/components/Checkbox';
 import { Alert, AlertDescription, AlertTitle } from '@vibe/ui/components/Alert';
 import BranchSelector from '@/components/tasks/BranchSelector';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { attemptsApi } from '@/lib/api.ts';
+import { attemptsApi } from '@/shared/lib/api';
 import { useTranslation } from 'react-i18next';
 
 import { Workspace } from 'shared/types';
