@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useScratch } from '@/shared/hooks/useScratch';
-import { useAllOrganizationProjects } from '@/hooks/useAllOrganizationProjects';
+import { useAllOrganizationProjects } from '@/shared/hooks/useAllOrganizationProjects';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
 import type { Project } from 'shared/remote-types';

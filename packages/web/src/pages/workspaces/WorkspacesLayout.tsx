@@ -8,7 +8,7 @@ import { ExecutionProcessesProvider } from '@/features/workspace-chat/model/cont
 import { CreateModeProvider } from '@/integrations/CreateModeProvider';
 import { ReviewProvider } from '@/shared/hooks/ReviewProvider';
 import { ChangesViewProvider } from '@/shared/hooks/ChangesViewProvider';
-import { WorkspacesSidebarContainer } from '@/components/ui-new/containers/WorkspacesSidebarContainer';
+import { WorkspacesSidebarContainer } from './WorkspacesSidebarContainer';
 import { LogsContentContainer } from '@/components/ui-new/containers/LogsContentContainer';
 import {
   WorkspacesMainContainer,
