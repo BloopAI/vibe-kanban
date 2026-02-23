@@ -1,4 +1,5 @@
 import { ApiError, oauthApi } from '@/shared/lib/api';
+import { queryClient } from '@/shared/lib/queryClient';
 import { shouldRefreshAccessToken } from 'shared/jwt';
 
 const TOKEN_QUERY_KEY = ['auth', 'token'] as const;
@@ -25,8 +26,6 @@ class TokenManager {
     if (this.refreshPromise) {
       return this.refreshPromise;
     }
-
-    const { queryClient } = await import('@/app/entry/Bootstrap');
 
     // Skip token fetch if user is not logged in — avoids unnecessary 401s
     // from Electric shapes or other background requests after logout.
@@ -105,8 +104,6 @@ class TokenManager {
   }
 
   private async doRefresh(): Promise<string | null> {
-    const { queryClient } = await import('@/app/entry/Bootstrap');
-
     // Skip refresh if user is already logged out — avoids unnecessary 401s
     // from Electric shapes or other background requests after logout.
     const cachedSystem = queryClient.getQueryData<{
@@ -149,8 +146,6 @@ class TokenManager {
   }
 
   private async handleUnauthorized(): Promise<void> {
-    const { queryClient } = await import('@/app/entry/Bootstrap');
-
     // Check if the user was previously logged in before we invalidate.
     // If they're already logged out, 401s are expected — don't show the dialog.
     const cachedSystem = queryClient.getQueryData<{

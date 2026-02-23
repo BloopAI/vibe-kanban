@@ -1,8 +1,20 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
-import { redeemOAuth } from "@/shared/lib/api";
-import { storeTokens } from "@/shared/lib/auth";
-import { retrieveVerifier, clearVerifier } from "@/shared/lib/pkce";
+import { redeemOAuth } from "@remote/shared/lib/api";
+import { storeTokens } from "@remote/shared/lib/auth";
+import { retrieveVerifier, clearVerifier } from "@remote/shared/lib/pkce";
+
+function getSafeNextPath(nextPath: string | undefined): string {
+  if (!nextPath) {
+    return "/";
+  }
+
+  if (!nextPath.startsWith("/") || nextPath.startsWith("//")) {
+    return "/";
+  }
+
+  return nextPath;
+}
 
 export default function LoginCompletePage() {
   const navigate = useNavigate();
@@ -12,6 +24,7 @@ export default function LoginCompletePage() {
   const handoffId = search.handoff_id;
   const appCode = search.app_code;
   const oauthError = search.error;
+  const nextPath = getSafeNextPath(search.next);
 
   useEffect(() => {
     const complete = async () => {
@@ -40,7 +53,7 @@ export default function LoginCompletePage() {
         await storeTokens(access_token, refresh_token);
         clearVerifier();
 
-        navigate({ to: "/", replace: true });
+        window.location.replace(nextPath);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to complete login");
         clearVerifier();
@@ -48,7 +61,7 @@ export default function LoginCompletePage() {
     };
 
     void complete();
-  }, [handoffId, appCode, oauthError, navigate]);
+  }, [handoffId, appCode, oauthError, nextPath]);
 
   if (error) {
     return (
@@ -57,7 +70,13 @@ export default function LoginCompletePage() {
         <button
           type="button"
           className="mt-double w-full rounded-sm bg-brand px-base py-half text-sm font-medium text-on-brand transition-colors hover:bg-brand-hover"
-          onClick={() => navigate({ to: "/login", replace: true })}
+          onClick={() =>
+            navigate({
+              to: "/login",
+              search: nextPath !== "/" ? { next: nextPath } : undefined,
+              replace: true,
+            })
+          }
         >
           Try again
         </button>

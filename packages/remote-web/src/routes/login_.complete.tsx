@@ -7,6 +7,7 @@ const searchSchema = z.object({
   handoff_id: z.string().optional(),
   app_code: z.string().optional(),
   error: z.string().optional(),
+  next: z.string().optional(),
 });
 
 export const Route = createFileRoute("/login_/complete")({

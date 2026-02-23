@@ -1,5 +1,5 @@
-import { z } from 'zod';
-import { zodValidator } from '@tanstack/zod-adapter';
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 
 export const projectSearchSchema = z.object({
   statusId: z.string().optional(),

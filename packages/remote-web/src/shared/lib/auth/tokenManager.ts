@@ -4,9 +4,9 @@ import {
   storeTokens,
   clearAccessToken,
   clearTokens,
-} from "@/shared/lib/auth";
+} from "@remote/shared/lib/auth";
 import { shouldRefreshAccessToken } from "shared/jwt";
-import { refreshTokens } from "@/shared/lib/api";
+import { refreshTokens } from "@remote/shared/lib/api";
 
 const TOKEN_REFRESH_TIMEOUT_MS = 80_000;
 const TOKEN_REFRESH_MAX_ATTEMPTS = 3;
@@ -74,12 +74,14 @@ function handleTokenRefresh(): Promise<string> {
 
   const promise = innerPromise
     .catch(async (error: unknown) => {
+      await clearTokens();
+
       const status = (error as { status?: number }).status;
       if (status === 401) {
-        await clearTokens();
-        throw new Error("Session expired");
+        throw new Error("Session expired. Please sign in again.");
       }
-      throw error;
+
+      throw new Error("Session refresh failed. Please sign in again.");
     })
     .finally(() => {
       refreshPromise = null;

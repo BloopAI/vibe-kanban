@@ -14,14 +14,18 @@
     "migrate:structure:dry-run": "node ../../scripts/migrate-remote-web-structure.mjs"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-router": "^1.161.1",
     "@tanstack/zod-adapter": "^1.161.1",
+    "@vibe/ui": "workspace:*",
+    "@vibe/web-core": "workspace:*",
     "clsx": "^2.1.1",
     "posthog-js": "^1.283.0",
     "prettier": "^3.6.1",
     "react": "^18.2.0",
     "react-compiler-runtime": "^1.0.0",
     "react-dom": "^18.2.0",
+    "simple-icons": "^15.16.0",
     "tailwind-merge": "^2.6.0",
     "zod": "^3.25.76"
   },

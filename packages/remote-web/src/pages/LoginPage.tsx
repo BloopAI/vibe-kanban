@@ -1,12 +1,14 @@
 import { useState } from "react";
-import { initOAuth, type OAuthProvider } from "@/shared/lib/api";
+import { useSearch } from "@tanstack/react-router";
+import { initOAuth, type OAuthProvider } from "@remote/shared/lib/api";
 import {
   generateVerifier,
   generateChallenge,
   storeVerifier,
-} from "@/shared/lib/pkce";
+} from "@remote/shared/lib/pkce";
 
 export default function LoginPage() {
+  const { next } = useSearch({ from: "/login" });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<OAuthProvider | null>(null);
 
@@ -21,7 +23,11 @@ export default function LoginPage() {
 
       const appBase =
         import.meta.env.VITE_APP_BASE_URL || window.location.origin;
-      const returnTo = `${appBase}/login/complete`;
+      const callbackUrl = new URL("/login/complete", appBase);
+      if (next) {
+        callbackUrl.searchParams.set("next", next);
+      }
+      const returnTo = callbackUrl.toString();
 
       const { authorize_url } = await initOAuth(provider, returnTo, challenge);
       window.location.assign(authorize_url);

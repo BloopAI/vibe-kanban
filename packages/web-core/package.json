@@ -1,0 +1,17 @@
+{
+  "name": "@vibe/web-core",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./project-fallback-page": "./src/project-routes/ProjectFallbackPage.tsx",
+    "./project-search": "./src/project-routes/project-search.ts"
+  },
+  "dependencies": {
+    "@types/react": "^18.2.43",
+    "@tanstack/react-router": "^1.161.1",
+    "@tanstack/zod-adapter": "^1.161.1",
+    "react": "^18.2.0",
+    "zod": "^3.25.76"
+  }
+}

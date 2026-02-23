@@ -9,15 +9,11 @@ WORKDIR /repo
 RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/web/package.json packages/web/package.json
-COPY packages/remote-web/package.json packages/remote-web/package.json
+COPY packages/ packages/
+COPY shared/ shared/
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --filter ./packages/remote-web --frozen-lockfile
-
-COPY packages/remote-web/ packages/remote-web/
-COPY packages/web/ packages/web/
-COPY shared/ shared/
+    pnpm install --frozen-lockfile
 
 RUN pnpm -C packages/remote-web build
 

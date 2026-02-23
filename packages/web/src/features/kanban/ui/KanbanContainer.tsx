@@ -4,7 +4,6 @@ import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
-import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import {
   useUiPreferencesStore,
@@ -45,7 +44,6 @@ import { KanbanFilterBar } from '@vibe/ui/components/KanbanFilterBar';
 import { ViewNavTabs } from '@vibe/ui/components/ViewNavTabs';
 import { IssueListView } from '@vibe/ui/components/IssueListView';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
-import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
 import { KanbanFiltersDialog } from '@/shared/dialogs/kanban/KanbanFiltersDialog';
 import {
   DropdownMenu,
@@ -91,8 +89,6 @@ const areKanbanFiltersEqual = (
   );
 };
 
-const PROJECTS_GUIDE_ID = 'projects-guide';
-
 function LoadingState() {
   const { t } = useTranslation('common');
   return (
@@ -137,12 +133,6 @@ export function KanbanContainer() {
   } = useOrgContext();
   const { activeWorkspaces } = useWorkspaceContext();
   const { userId } = useAuth();
-  const {
-    config,
-    updateAndSaveConfig,
-    loading: configLoading,
-  } = useUserSystem();
-  const hasAutoShownProjectsGuide = useRef(false);
 
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
@@ -164,8 +154,8 @@ export function KanbanContainer() {
     openAssigneeSelection,
   } = useActions();
   const openProjectsGuide = useCallback(() => {
-    ProjectsGuideDialog.show().finally(() => ProjectsGuideDialog.hide());
-  }, []);
+    executeAction(Actions.ProjectsGuide);
+  }, [executeAction]);
 
   const projectViewSelection = useUiPreferencesStore(
     (s) => s.kanbanProjectViewSelections[projectId]
@@ -318,28 +308,6 @@ export function KanbanContainer() {
 
   // Track when drag-drop sync is in progress to prevent flicker
   const isSyncingRef = useRef(false);
-
-  useEffect(() => {
-    if (hasAutoShownProjectsGuide.current) return;
-    if (configLoading || !config || projectLoading || orgLoading) return;
-
-    const seenFeatures = config.showcases?.seen_features ?? [];
-    if (seenFeatures.includes(PROJECTS_GUIDE_ID)) return;
-
-    hasAutoShownProjectsGuide.current = true;
-
-    void updateAndSaveConfig({
-      showcases: { seen_features: [...seenFeatures, PROJECTS_GUIDE_ID] },
-    });
-    openProjectsGuide();
-  }, [
-    config,
-    configLoading,
-    openProjectsGuide,
-    orgLoading,
-    projectLoading,
-    updateAndSaveConfig,
-  ]);
 
   useEffect(() => {
     if (

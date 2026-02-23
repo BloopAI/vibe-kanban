@@ -2,6 +2,13 @@ const DB_NAME = "rf-auth";
 const STORE_NAME = "tokens";
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
+export const AUTH_CHANGED_EVENT = "remote-auth-changed";
+
+function emitAuthChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+  }
+}
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -56,6 +63,7 @@ export async function storeTokens(
 ): Promise<void> {
   await put(ACCESS_TOKEN_KEY, accessToken);
   await put(REFRESH_TOKEN_KEY, refreshToken);
+  emitAuthChanged();
 }
 
 export function getAccessToken(): Promise<string | null> {
@@ -73,6 +81,7 @@ export async function clearAccessToken(): Promise<void> {
 export async function clearTokens(): Promise<void> {
   await del(ACCESS_TOKEN_KEY);
   await del(REFRESH_TOKEN_KEY);
+  emitAuthChanged();
 }
 
 export async function isLoggedIn(): Promise<boolean> {

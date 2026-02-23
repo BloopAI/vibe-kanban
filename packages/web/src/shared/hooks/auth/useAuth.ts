@@ -1,12 +1,21 @@
-import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useContext } from 'react';
+import { createHmrContext } from '@/shared/lib/hmrContext';
 
-export function useAuth() {
-  const { loginStatus } = useUserSystem();
+export interface AuthContextValue {
+  isSignedIn: boolean;
+  isLoaded: boolean;
+  userId: string | null;
+}
 
-  return {
-    isSignedIn: loginStatus?.status === 'loggedin',
-    isLoaded: loginStatus !== null,
-    userId:
-      loginStatus?.status === 'loggedin' ? loginStatus.profile.user_id : null,
-  };
+export const AuthContext = createHmrContext<AuthContextValue | undefined>(
+  'AuthContext',
+  undefined
+);
+
+export function useAuth(): AuthContextValue {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }

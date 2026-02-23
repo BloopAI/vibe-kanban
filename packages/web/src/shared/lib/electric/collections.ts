@@ -1,7 +1,7 @@
 import { electricCollectionOptions } from '@tanstack/electric-db-collection';
 import { createCollection } from '@tanstack/react-db';
 
-import { tokenManager } from '@/shared/lib/auth/tokenManager';
+import { getAuthRuntime } from '@/shared/lib/auth/runtime';
 import { getRemoteApiUrl, makeRequest } from '@/shared/lib/remoteApi';
 import type { MutationDefinition, ShapeDefinition } from 'shared/remote-types';
 import type { CollectionConfig, SyncError } from '@/shared/lib/electric/types';
@@ -330,9 +330,10 @@ function createElectricShapeOptions(args: {
   reportError: (error: SyncError) => void;
   onElectricUnavailable: () => void;
 }) {
+  const authRuntime = getAuthRuntime();
   let isPaused = false;
 
-  tokenManager.registerShape({
+  authRuntime.registerShape({
     pause: () => {
       isPaused = true;
     },
@@ -348,7 +349,7 @@ function createElectricShapeOptions(args: {
     params: args.params,
     headers: {
       Authorization: async () => {
-        const token = await tokenManager.getToken();
+        const token = await authRuntime.getToken();
         if (!token) {
           isPaused = true;
           return '';
@@ -372,7 +373,7 @@ function createElectricShapeOptions(args: {
       const message = error.message || String(error);
 
       if (status === 401) {
-        tokenManager.triggerRefresh().catch(() => {
+        authRuntime.triggerRefresh().catch(() => {
           args.reportError({ status, message });
         });
         return;

@@ -2,17 +2,17 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as Sentry from '@sentry/react';
 import { ClickToComponent } from 'click-to-react-component';
-import {
-  QueryCache,
-  QueryClient,
-  QueryClientProvider,
-} from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import App from '@/app/entry/App';
 import i18n from '@/i18n';
 import { router } from '@/app/router';
+import { oauthApi } from '@/shared/lib/api';
+import { tokenManager } from '@/shared/lib/auth/tokenManager';
+import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
 import '@/shared/types/modals';
+import { queryClient } from '@/shared/lib/queryClient';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
@@ -42,23 +42,11 @@ if (
   );
 }
 
-export const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (error, query) => {
-      console.error('[React Query Error]', {
-        queryKey: query.queryKey,
-        error: error,
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
-    },
-  }),
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5,
-      refetchOnWindowFocus: false,
-    },
-  },
+configureAuthRuntime({
+  getToken: () => tokenManager.getToken(),
+  triggerRefresh: () => tokenManager.triggerRefresh(),
+  registerShape: (shape) => tokenManager.registerShape(shape),
+  getCurrentUser: () => oauthApi.getCurrentUser(),
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

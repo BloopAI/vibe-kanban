@@ -95,6 +95,7 @@ import {
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
+import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -1117,55 +1118,81 @@ export async function getCachedToken(): Promise<string | null> {
   return tokenManager.getToken();
 }
 
+const handleRemoteResponse = async <T>(response: Response): Promise<T> => {
+  if (!response.ok) {
+    let errorMessage = `Request failed with status ${response.status}`;
+
+    try {
+      const body = (await response.json()) as {
+        error?: string;
+        message?: string;
+      };
+      errorMessage = body.error || body.message || errorMessage;
+    } catch {
+      errorMessage = response.statusText || errorMessage;
+    }
+
+    throw new ApiError(errorMessage, response.status, response);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return response.json() as Promise<T>;
+};
+
 // Organizations API
 export const organizationsApi = {
   getMembers: async (
     orgId: string
   ): Promise<OrganizationMemberWithProfile[]> => {
-    const response = await makeRequest(`/api/organizations/${orgId}/members`);
-    const result = await handleApiResponse<ListMembersResponse>(response);
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/members`
+    );
+    const result = await handleRemoteResponse<ListMembersResponse>(response);
     return result.members;
   },
 
   getUserOrganizations: async (): Promise<ListOrganizationsResponse> => {
-    const response = await makeRequest('/api/organizations');
-    return handleApiResponse<ListOrganizationsResponse>(response);
+    const response = await makeRemoteRequest('/v1/organizations');
+    return handleRemoteResponse<ListOrganizationsResponse>(response);
   },
 
   createOrganization: async (
     data: CreateOrganizationRequest
   ): Promise<CreateOrganizationResponse> => {
-    const response = await makeRequest('/api/organizations', {
+    const response = await makeRemoteRequest('/v1/organizations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    return handleApiResponse<CreateOrganizationResponse>(response);
+    return handleRemoteResponse<CreateOrganizationResponse>(response);
   },
 
   createInvitation: async (
     orgId: string,
     data: CreateInvitationRequest
   ): Promise<CreateInvitationResponse> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations`,
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/invitations`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<CreateInvitationResponse>(response);
+    return handleRemoteResponse<CreateInvitationResponse>(response);
   },
 
   removeMember: async (orgId: string, userId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/members/${userId}`,
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/members/${userId}`,
       {
         method: 'DELETE',
       }
     );
-    return handleApiResponse<void>(response);
+    return handleRemoteResponse<void>(response);
   },
 
   updateMemberRole: async (
@@ -1173,22 +1200,23 @@ export const organizationsApi = {
     userId: string,
     data: UpdateMemberRoleRequest
   ): Promise<UpdateMemberRoleResponse> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/members/${userId}/role`,
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/members/${userId}/role`,
       {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       }
     );
-    return handleApiResponse<UpdateMemberRoleResponse>(response);
+    return handleRemoteResponse<UpdateMemberRoleResponse>(response);
   },
 
   listInvitations: async (orgId: string): Promise<Invitation[]> => {
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations`
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/invitations`
     );
-    const result = await handleApiResponse<ListInvitationsResponse>(response);
+    const result =
+      await handleRemoteResponse<ListInvitationsResponse>(response);
     return result.invitations;
   },
 
@@ -1197,22 +1225,22 @@ export const organizationsApi = {
     invitationId: string
   ): Promise<void> => {
     const body: RevokeInvitationRequest = { invitation_id: invitationId };
-    const response = await makeRequest(
-      `/api/organizations/${orgId}/invitations/revoke`,
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/invitations/revoke`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       }
     );
-    return handleApiResponse<void>(response);
+    return handleRemoteResponse<void>(response);
   },
 
   deleteOrganization: async (orgId: string): Promise<void> => {
-    const response = await makeRequest(`/api/organizations/${orgId}`, {
+    const response = await makeRemoteRequest(`/v1/organizations/${orgId}`, {
       method: 'DELETE',
     });
-    return handleApiResponse<void>(response);
+    return handleRemoteResponse<void>(response);
   },
 };
 

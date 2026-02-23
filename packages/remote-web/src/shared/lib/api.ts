@@ -1,5 +1,7 @@
-import { getToken, triggerRefresh } from "@/shared/lib/auth/tokenManager";
-import { clearTokens } from "@/shared/lib/auth";
+import { getToken, triggerRefresh } from "@remote/shared/lib/auth/tokenManager";
+import { clearTokens } from "@remote/shared/lib/auth";
+import type { Project } from "shared/remote-types";
+import type { ListOrganizationsResponse } from "shared/types";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
@@ -13,6 +15,12 @@ type HandoffInitResponse = {
 type HandoffRedeemResponse = {
   access_token: string;
   refresh_token: string;
+};
+
+type IdentityResponse = {
+  user_id: string;
+  username: string | null;
+  email: string;
 };
 
 export async function initOAuth(
@@ -107,4 +115,36 @@ export async function logout(): Promise<void> {
   } finally {
     await clearTokens();
   }
+}
+
+export async function listOrganizations(): Promise<ListOrganizationsResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/v1/organizations`);
+  if (!res.ok) {
+    throw new Error(`Failed to list organizations (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function getIdentity(): Promise<IdentityResponse> {
+  const res = await authenticatedFetch(`${API_BASE}/v1/identity`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch identity (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function listOrganizationProjects(
+  organizationId: string,
+): Promise<Project[]> {
+  const params = new URLSearchParams({
+    organization_id: organizationId,
+  });
+
+  const res = await authenticatedFetch(`${API_BASE}/v1/projects?${params}`);
+  if (!res.ok) {
+    throw new Error(`Failed to list projects (${res.status})`);
+  }
+
+  const body = (await res.json()) as { projects: Project[] };
+  return body.projects;
 }

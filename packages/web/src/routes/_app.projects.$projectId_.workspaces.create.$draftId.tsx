@@ -1,10 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { ProjectKanban } from '@/pages/kanban/ProjectKanban';
-import { projectSearchValidator } from './-project-search';
+import { LocalProjectKanban } from '@/pages/kanban/LocalProjectKanban';
+import { projectSearchValidator } from '@vibe/web-core/project-search';
 
 export const Route = createFileRoute(
   '/_app/projects/$projectId_/workspaces/create/$draftId'
 )({
   validateSearch: projectSearchValidator,
-  component: ProjectKanban,
+  component: LocalProjectKanban,
 });

@@ -10,7 +10,7 @@ import type {
   UpdateProjectRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
-import { tokenManager } from '@/shared/lib/auth/tokenManager';
+import { getAuthRuntime } from '@/shared/lib/auth/runtime';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 
@@ -45,7 +45,8 @@ export const makeRequest = async (
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
-  const token = await tokenManager.getToken();
+  const authRuntime = getAuthRuntime();
+  const token = await authRuntime.getToken();
   if (!token) {
     throw new Error('Not authenticated');
   }
@@ -66,7 +67,7 @@ export const makeRequest = async (
 
   // Handle 401 - token may have expired
   if (response.status === 401 && retryOn401) {
-    const newToken = await tokenManager.triggerRefresh();
+    const newToken = await authRuntime.triggerRefresh();
     if (newToken) {
       // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
