@@ -13,7 +13,7 @@ import { LogsContentContainer } from './LogsContentContainer';
 import {
   WorkspacesMainContainer,
   type WorkspacesMainContainerHandle,
-} from '@/components/ui-new/containers/WorkspacesMainContainer';
+} from './WorkspacesMainContainer';
 import { RightSidebar } from '@/components/ui-new/containers/RightSidebar';
 import { ChangesPanelContainer } from '@/components/ui-new/containers/ChangesPanelContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';

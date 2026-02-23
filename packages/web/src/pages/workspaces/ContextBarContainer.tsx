@@ -8,7 +8,7 @@ import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { useActions } from '@/shared/hooks/useActions';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { IdeIcon } from '@/shared/components/IdeIcon';
-import { useContextBarPosition } from '@/hooks/useContextBarPosition';
+import { useContextBarPosition } from '@/shared/hooks/useContextBarPosition';
 import { ContextBarActionGroups } from '@/shared/actions';
 import {
   type ActionDefinition,
@@ -24,7 +24,7 @@ import {
 } from '@/shared/types/actions';
 import type { EditorType } from 'shared/types';
 import { useActionVisibilityContext } from '@/integrations/useActionVisibilityContext';
-import { CopyButton } from './CopyButton';
+import { CopyButton } from '@/shared/components/CopyButton';
 
 /**
  * Check if a ContextBarItem is a divider

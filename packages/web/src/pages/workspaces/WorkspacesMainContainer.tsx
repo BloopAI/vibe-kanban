@@ -13,7 +13,7 @@ import {
   type ConversationListHandle,
 } from '@/features/workspace-chat/ui/ConversationListContainer';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
-import { ContextBarContainer } from '@/components/ui-new/containers/ContextBarContainer';
+import { ContextBarContainer } from './ContextBarContainer';
 import { EntriesProvider } from '@/features/workspace-chat/model/contexts/EntriesContext';
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
