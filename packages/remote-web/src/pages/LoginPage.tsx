@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { initOAuth, type OAuthProvider } from "@remote/shared/lib/api";
+import { BrandLogo } from "@remote/shared/components/BrandLogo";
 import {
   generateVerifier,
   generateChallenge,
@@ -43,11 +44,7 @@ export default function LoginPage() {
         <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
           <header className="space-y-double text-center">
             <div className="flex justify-center">
-              <img
-                src="/vibe-kanban-logo.svg"
-                alt="Vibe Kanban"
-                className="h-8 w-auto"
-              />
+              <BrandLogo className="h-8 w-auto" />
             </div>
             <p className="text-sm text-low">Sign in to continue</p>
           </header>

@@ -14,7 +14,9 @@ export const Route = createRootRoute({
 function RootLayout() {
   useSystemTheme();
   const location = useLocation();
-  const isAuthRoute = location.pathname.startsWith("/login");
+  const isStandaloneRoute =
+    location.pathname.startsWith("/login") ||
+    location.pathname.startsWith("/upgrade");
 
   const content = <Outlet />;
 
@@ -22,7 +24,11 @@ function RootLayout() {
     <UserProvider>
       <RemoteWorkspaceProvider>
         <RemoteActionsProvider>
-          {isAuthRoute ? content : <RemoteAppShell>{content}</RemoteAppShell>}
+          {isStandaloneRoute ? (
+            content
+          ) : (
+            <RemoteAppShell>{content}</RemoteAppShell>
+          )}
         </RemoteActionsProvider>
       </RemoteWorkspaceProvider>
     </UserProvider>

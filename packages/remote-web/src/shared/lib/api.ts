@@ -148,3 +148,27 @@ export async function listOrganizationProjects(
   const body = (await res.json()) as { projects: Project[] };
   return body.projects;
 }
+
+export async function createCheckoutSession(
+  organizationId: string,
+  successUrl: string,
+  cancelUrl: string,
+): Promise<{ url: string }> {
+  const res = await authenticatedFetch(
+    `${API_BASE}/v1/organizations/${organizationId}/billing/checkout`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    throw new Error(`Failed to create checkout session (${res.status})`);
+  }
+
+  return res.json();
+}

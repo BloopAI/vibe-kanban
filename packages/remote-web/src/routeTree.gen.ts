@@ -10,10 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
+import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspacesCreateRouteImport } from './routes/workspaces_.create'
 import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces_.$workspaceId'
+import { Route as UpgradeSuccessRouteImport } from './routes/upgrade_.success'
+import { Route as UpgradeCompleteRouteImport } from './routes/upgrade_.complete'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as LoginCompleteRouteImport } from './routes/login_.complete'
 import { Route as WorkspacesWorkspaceIdVscodeRouteImport } from './routes/workspaces.$workspaceId.vscode'
@@ -26,6 +29,11 @@ import { Route as ProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRouteImpo
 const WorkspacesRoute = WorkspacesRouteImport.update({
   id: '/workspaces',
   path: '/workspaces',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpgradeRoute = UpgradeRouteImport.update({
+  id: '/upgrade',
+  path: '/upgrade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -46,6 +54,16 @@ const WorkspacesCreateRoute = WorkspacesCreateRouteImport.update({
 const WorkspacesWorkspaceIdRoute = WorkspacesWorkspaceIdRouteImport.update({
   id: '/workspaces_/$workspaceId',
   path: '/workspaces/$workspaceId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpgradeSuccessRoute = UpgradeSuccessRouteImport.update({
+  id: '/upgrade_/success',
+  path: '/upgrade/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpgradeCompleteRoute = UpgradeCompleteRouteImport.update({
+  id: '/upgrade_/complete',
+  path: '/upgrade/complete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -98,9 +116,12 @@ const ProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/upgrade': typeof UpgradeRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/login/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/upgrade/complete': typeof UpgradeCompleteRoute
+  '/upgrade/success': typeof UpgradeSuccessRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces/create': typeof WorkspacesCreateRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
@@ -113,9 +134,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/upgrade': typeof UpgradeRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/login/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/upgrade/complete': typeof UpgradeCompleteRoute
+  '/upgrade/success': typeof UpgradeSuccessRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces/create': typeof WorkspacesCreateRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
@@ -129,9 +153,12 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/upgrade': typeof UpgradeRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/login_/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
+  '/upgrade_/complete': typeof UpgradeCompleteRoute
+  '/upgrade_/success': typeof UpgradeSuccessRoute
   '/workspaces_/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces_/create': typeof WorkspacesCreateRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
@@ -146,9 +173,12 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/upgrade'
     | '/workspaces'
     | '/login/complete'
     | '/projects/$projectId'
+    | '/upgrade/complete'
+    | '/upgrade/success'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
     | '/workspaces/$workspaceId/vscode'
@@ -161,9 +191,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/upgrade'
     | '/workspaces'
     | '/login/complete'
     | '/projects/$projectId'
+    | '/upgrade/complete'
+    | '/upgrade/success'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
     | '/workspaces/$workspaceId/vscode'
@@ -176,9 +209,12 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/login'
+    | '/upgrade'
     | '/workspaces'
     | '/login_/complete'
     | '/projects/$projectId'
+    | '/upgrade_/complete'
+    | '/upgrade_/success'
     | '/workspaces_/$workspaceId'
     | '/workspaces_/create'
     | '/workspaces/$workspaceId/vscode'
@@ -192,9 +228,12 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  UpgradeRoute: typeof UpgradeRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
   LoginCompleteRoute: typeof LoginCompleteRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
+  UpgradeCompleteRoute: typeof UpgradeCompleteRoute
+  UpgradeSuccessRoute: typeof UpgradeSuccessRoute
   WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRoute
   WorkspacesCreateRoute: typeof WorkspacesCreateRoute
   ProjectsProjectIdIssuesIssueIdRoute: typeof ProjectsProjectIdIssuesIssueIdRoute
@@ -211,6 +250,13 @@ declare module '@tanstack/react-router' {
       path: '/workspaces'
       fullPath: '/workspaces'
       preLoaderRoute: typeof WorkspacesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upgrade': {
+      id: '/upgrade'
+      path: '/upgrade'
+      fullPath: '/upgrade'
+      preLoaderRoute: typeof UpgradeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -239,6 +285,20 @@ declare module '@tanstack/react-router' {
       path: '/workspaces/$workspaceId'
       fullPath: '/workspaces/$workspaceId'
       preLoaderRoute: typeof WorkspacesWorkspaceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upgrade_/success': {
+      id: '/upgrade_/success'
+      path: '/upgrade/success'
+      fullPath: '/upgrade/success'
+      preLoaderRoute: typeof UpgradeSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upgrade_/complete': {
+      id: '/upgrade_/complete'
+      path: '/upgrade/complete'
+      fullPath: '/upgrade/complete'
+      preLoaderRoute: typeof UpgradeCompleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -315,9 +375,12 @@ const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  UpgradeRoute: UpgradeRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
   LoginCompleteRoute: LoginCompleteRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
+  UpgradeCompleteRoute: UpgradeCompleteRoute,
+  UpgradeSuccessRoute: UpgradeSuccessRoute,
   WorkspacesWorkspaceIdRoute: WorkspacesWorkspaceIdRoute,
   WorkspacesCreateRoute: WorkspacesCreateRoute,
   ProjectsProjectIdIssuesIssueIdRoute: ProjectsProjectIdIssuesIssueIdRoute,
