@@ -109,6 +109,16 @@ const OAuthDialogImpl = NiceModal.create<OAuthDialogProps>(
           popupRef.current.close();
         }
 
+        // Bring the app window to the front (useful when OAuth completed in
+        // an external browser, e.g. in the Tauri desktop app)
+        window.focus();
+        // Also try Tauri's native focus API for desktop app
+        if ('__TAURI_INTERNALS__' in window) {
+          (window as any).__TAURI_INTERNALS__
+            ?.invoke('plugin:window|set_focus', { label: 'main' })
+            ?.catch(() => {});
+        }
+
         // Reload user system, then refresh token so paused Electric shapes
         // resume after re-authentication without requiring a full page reload.
         void (async () => {
