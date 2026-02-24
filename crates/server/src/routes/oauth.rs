@@ -361,8 +361,13 @@ fn close_window_response(message: String) -> Response<String> {
              <title>Authentication Complete</title>\
              <script>\
                window.addEventListener('load', () => {{\
-                 try {{ window.close(); }} catch (err) {{}}\
-                 setTimeout(() => {{ window.close(); }}, 150);\
+                 // Only auto-close if this page was opened as a popup (has an opener).\
+                 // When opened as a regular tab (e.g. from a desktop app), leave it\
+                 // open so the user sees the success message.\
+                 if (window.opener) {{\
+                   try {{ window.close(); }} catch (err) {{}}\
+                   setTimeout(() => {{ window.close(); }}, 150);\
+                 }}\
                }});\
              </script>\
              <style>\
@@ -371,7 +376,7 @@ fn close_window_response(message: String) -> Response<String> {
            </head>\
            <body>\
              <h1>{}</h1>\
-             <p>If this window does not close automatically, you may close it manually.</p>\
+             <p>You can close this tab and return to the app.</p>\
            </body>\
          </html>",
         message
