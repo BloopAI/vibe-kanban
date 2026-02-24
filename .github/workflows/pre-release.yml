@@ -682,6 +682,9 @@ jobs:
   build-tauri:
     needs: [bump-version, build-frontend]
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
         include:
@@ -694,6 +697,9 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest-m
             platform: linux-x86_64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            platform: windows-x86_64
     env:
       CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
@@ -797,9 +803,9 @@ jobs:
               echo "Collected updater artifact: $(basename $artifact)"
             fi
           done
-          # Collect installer files for GitHub Release (DMG, AppImage, deb)
+          # Collect installer files for GitHub Release (DMG, AppImage, deb, msi, NSIS exe)
           find target/${{ matrix.target }}/release/bundle \
-            \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) | while read f; do
+            \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) | while read f; do
             cp "$f" "tauri-artifacts/${{ matrix.platform }}/"
             echo "Collected installer: $(basename $f)"
           done
@@ -909,7 +915,7 @@ jobs:
       - name: Collect Tauri installers for release
         run: |
           mkdir -p tauri-installers
-          find tauri-release \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) \
+          find tauri-release \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) \
             -exec cp {} tauri-installers/ \;
           echo "Tauri installers for release:"
           ls -la tauri-installers/ 2>/dev/null || echo "No installers found"
