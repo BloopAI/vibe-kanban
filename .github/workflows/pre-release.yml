@@ -739,28 +739,20 @@ jobs:
             fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
-      - name: Set up Apple code signing and notarization
+      - name: Set up Apple notarization key
+        env:
+          API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          API_PRIVATE_KEY: ${{ secrets.APPLE_API_PRIVATE_KEY }}
         run: |
-          # Extract API key fields from the App Store Connect JSON for Tauri notarization
-          echo '${{ secrets.APP_STORE_API_KEY }}' > app_store_key.json
-          APPLE_API_KEY=$(node -e "console.log(JSON.parse(require('fs').readFileSync('app_store_key.json','utf8')).key_id)")
-          APPLE_API_ISSUER=$(node -e "console.log(JSON.parse(require('fs').readFileSync('app_store_key.json','utf8')).issuerId)")
-
           # Write the .p8 key file where Tauri/notarytool can find it
           mkdir -p ~/.private_keys
-          KEY_PATH="$HOME/.private_keys/AuthKey_${APPLE_API_KEY}.p8"
-          node -e "
-            const key = JSON.parse(require('fs').readFileSync('app_store_key.json','utf8'));
-            require('fs').writeFileSync(
-              '$KEY_PATH',
-              key.key.replace(/\\\\n/g, '\n')
-            );
-          "
+          KEY_PATH="$HOME/.private_keys/AuthKey_${API_KEY_ID}.p8"
+          printf '%s' "$API_PRIVATE_KEY" > "$KEY_PATH"
 
-          echo "APPLE_API_KEY=$APPLE_API_KEY" >> $GITHUB_ENV
-          echo "APPLE_API_ISSUER=$APPLE_API_ISSUER" >> $GITHUB_ENV
+          echo "APPLE_API_KEY=$API_KEY_ID" >> $GITHUB_ENV
+          echo "APPLE_API_ISSUER=$API_ISSUER" >> $GITHUB_ENV
           echo "APPLE_API_KEY_PATH=$KEY_PATH" >> $GITHUB_ENV
-          rm -f app_store_key.json
 
       - name: Build Tauri app
         run: cargo tauri build --target ${{ matrix.target }} --ci
