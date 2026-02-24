@@ -54,7 +54,12 @@ export const useDiffStream = (
   const diffs = useMemo(() => {
     return Object.values(data?.entries ?? {})
       .filter((entry) => entry?.type === 'DIFF')
-      .map((entry) => entry.content);
+      .map((entry) => entry.content)
+      .sort((a, b) => {
+        const pathA = a.newPath || a.oldPath || '';
+        const pathB = b.newPath || b.oldPath || '';
+        return pathA.localeCompare(pathB);
+      });
   }, [data?.entries]);
 
   return { diffs, error, isInitialized };
