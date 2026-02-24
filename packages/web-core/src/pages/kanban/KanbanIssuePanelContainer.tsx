@@ -607,8 +607,9 @@ export function KanbanIssuePanelContainer({
 
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
-          const { ProjectSelectionDialog } =
-            await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
+          const { ProjectSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+          );
           const result = await ProjectSelectionDialog.show({
             projectId,
             selection: { type: 'status', issueIds: [], isCreateMode: true },
@@ -627,8 +628,9 @@ export function KanbanIssuePanelContainer({
 
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
-          const { ProjectSelectionDialog } =
-            await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
+          const { ProjectSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+          );
           const result = await ProjectSelectionDialog.show({
             projectId,
             selection: { type: 'priority', issueIds: [], isCreateMode: true },
@@ -650,8 +652,9 @@ export function KanbanIssuePanelContainer({
 
         // For assigneeIds, open the assignee selection dialog with callback
         if (field === 'assigneeIds') {
-          const { AssigneeSelectionDialog } =
-            await import('@/components/ui-new/dialogs/AssigneeSelectionDialog');
+          const { AssigneeSelectionDialog } = await import(
+            '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+          );
           await AssigneeSelectionDialog.show({
             projectId,
             issueIds: [],

@@ -29,7 +29,8 @@ function Toolbar({ children, className, ...props }: ToolbarProps) {
   );
 }
 
-interface ToolbarIconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ToolbarIconButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
 }
 
