@@ -2,11 +2,10 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { Project } from "shared/remote-types";
 import type { OrganizationWithRole } from "shared/types";
-import {
-  listOrganizationProjects,
-  listOrganizations,
-} from "@remote/shared/lib/api";
+import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { clearTokens } from "@remote/shared/lib/auth";
+import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
+import { useUserOrganizations } from "@/shared/hooks/useUserOrganizations";
 
 type OrganizationWithProjects = {
   organization: OrganizationWithRole;
@@ -15,8 +14,11 @@ type OrganizationWithProjects = {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const { data: orgsResponse, isLoading: orgsLoading, error: orgsError } =
+    useUserOrganizations();
+  const organizations = orgsResponse?.organizations;
   const [items, setItems] = useState<OrganizationWithProjects[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignInAgain = async () => {
@@ -28,15 +30,17 @@ export default function HomePage() {
   };
 
   useEffect(() => {
+    if (!organizations) {
+      return;
+    }
+
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
+      setIsLoadingProjects(true);
       setError(null);
 
       try {
-        const { organizations } = await listOrganizations();
-
         const organizationsWithProjects = await Promise.all(
           organizations.map(async (organization) => {
             const projects = await listOrganizationProjects(organization.id);
@@ -58,7 +62,7 @@ export default function HomePage() {
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setIsLoadingProjects(false);
         }
       }
     };
@@ -68,7 +72,16 @@ export default function HomePage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [organizations]);
+
+  const loading = orgsLoading || isLoadingProjects;
+  const displayError =
+    error ??
+    (orgsError
+      ? orgsError instanceof Error
+        ? orgsError.message
+        : "Failed to load organizations"
+      : null);
 
   if (loading) {
     return (
@@ -81,11 +94,11 @@ export default function HomePage() {
     );
   }
 
-  if (error) {
+  if (displayError) {
     return (
       <CenteredCard>
         <h1 className="text-lg font-semibold text-high">Failed to load</h1>
-        <p className="mt-base text-sm text-normal">{error}</p>
+        <p className="mt-base text-sm text-normal">{displayError}</p>
         <button
           type="button"
           className="mt-double rounded-sm bg-brand px-base py-half text-sm font-medium text-on-brand transition-colors hover:bg-brand-hover"
@@ -191,10 +204,15 @@ function OrganizationSection({
 }
 
 function ProjectCard({ project }: { project: Project }) {
+  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+
   return (
     <Link
       to="/projects/$projectId"
       params={{ projectId: project.id }}
+      onClick={() => {
+        setSelectedOrgId(project.organization_id);
+      }}
       className="group flex h-[61px] flex-col justify-center rounded-sm border border-border bg-primary px-base py-base hover:border-high/20 hover:bg-panel focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
     >
       <p className="text-sm font-medium text-high">{project.name}</p>
