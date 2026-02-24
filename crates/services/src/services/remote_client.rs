@@ -6,16 +6,16 @@ use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
     CreateIssueAssigneeRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
     CreateIssueTagRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
-    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
+    CreateRelayHostRequest, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
+    GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
+    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
     ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    ListPullRequestsResponse, ListRelayHostsResponse, ListTagsResponse, MutationResponse,
+    Organization, ProfileResponse, RelayHost, RevokeInvitationRequest, Tag, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -504,6 +504,20 @@ impl RemoteClient {
     /// Fetches user profile.
     pub async fn profile(&self) -> Result<ProfileResponse, RemoteClientError> {
         self.get_authed("/v1/profile").await
+    }
+
+    /// Lists relay hosts available to the current user.
+    pub async fn list_relay_hosts(&self) -> Result<Vec<RelayHost>, RemoteClientError> {
+        let response: ListRelayHostsResponse = self.get_authed("/v1/hosts").await?;
+        Ok(response.hosts)
+    }
+
+    /// Creates a relay host.
+    pub async fn create_relay_host(
+        &self,
+        request: &CreateRelayHostRequest,
+    ) -> Result<RelayHost, RemoteClientError> {
+        self.post_authed("/v1/hosts", Some(request)).await
     }
 
     /// Revokes the session associated with the token.

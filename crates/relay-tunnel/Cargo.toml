@@ -1,0 +1,61 @@
+[package]
+name = "relay-tunnel"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = []
+server = [
+    "dep:sqlx",
+    "dep:jsonwebtoken",
+    "dep:secrecy",
+    "dep:sha2",
+    "dep:base64",
+    "dep:chrono",
+    "dep:axum-extra",
+    "dep:api-types",
+    "dep:uuid",
+    "dep:tower-http",
+    "dep:tracing-subscriber",
+    "dep:serde",
+    "dep:thiserror",
+    "dep:rustls",
+]
+
+[[bin]]
+name = "relay-server"
+path = "src/bin/relay_server.rs"
+required-features = ["server"]
+
+[dependencies]
+anyhow = { workspace = true }
+axum = { workspace = true }
+bytes = "1"
+futures = "0.3"
+futures-util = "0.3"
+http = "1"
+hyper = { version = "1", features = ["client", "server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+native-tls = "0.2"
+tokio = { workspace = true }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tokio-util = { version = "0.7", features = ["io"] }
+tokio-yamux = "0.3.17"
+tracing = { workspace = true }
+url = "2.5"
+
+# Optional deps for the relay-server binary
+api-types = { path = "../api-types", optional = true }
+axum-extra = { version = "0.10.3", features = ["typed-header"], optional = true }
+base64 = { version = "0.22", optional = true }
+chrono = { version = "0.4", features = ["serde"], optional = true }
+jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"], optional = true }
+rustls = { workspace = true, optional = true }
+secrecy = { version = "0.10.3", optional = true }
+serde = { workspace = true, optional = true }
+sha2 = { version = "0.10", optional = true }
+sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres", "uuid", "chrono", "macros"], optional = true }
+thiserror = { workspace = true, optional = true }
+tower-http = { workspace = true, optional = true }
+tracing-subscriber = { workspace = true, optional = true }
+uuid = { version = "1", features = ["serde", "v4"], optional = true }
