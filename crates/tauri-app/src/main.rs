@@ -28,10 +28,17 @@ fn main() {
     let shutdown_tx = Arc::new(std::sync::Mutex::new(Some(shutdown_tx)));
     let shutdown_tx_clone = shutdown_tx.clone();
 
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_opener::init());
+
+    // Only register the updater plugin in release builds — dev builds have a
+    // placeholder endpoint that fails config deserialization.
+    if !cfg!(debug_assertions) {
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+
+    builder
         .setup(|app| {
             let handle = app.handle().clone();
 
