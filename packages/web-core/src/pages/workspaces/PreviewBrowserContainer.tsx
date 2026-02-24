@@ -27,9 +27,54 @@ import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import { usePreviewNavigation } from '@/shared/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/shared/lib/previewDevToolsBridge';
 import { useInspectModeStore } from '@/features/workspace-chat/model/store/useInspectModeStore';
+import type { PreviewDevToolsMessage } from '@/shared/types/previewDevTools';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
+
+function parsePreviewUrl(rawUrl: string, baseUrl?: string): URL | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      parsed.hostname
+    ) {
+      return parsed;
+    }
+  } catch {
+    // Keep going.
+  }
+
+  if (
+    (trimmed.startsWith('/') ||
+      trimmed.startsWith('?') ||
+      trimmed.startsWith('#')) &&
+    baseUrl
+  ) {
+    try {
+      return new URL(trimmed, baseUrl);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!trimmed.includes('://')) {
+    try {
+      return new URL(`http://${trimmed}`);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function normalizePreviewUrl(rawUrl: string, baseUrl?: string): string | null {
+  return parsePreviewUrl(rawUrl, baseUrl)?.toString() ?? null;
+}
 
 /**
  * Transform a proxy URL back to the dev server URL.
@@ -86,6 +131,10 @@ export function PreviewBrowserContainer({
   attemptId,
   className,
 }: PreviewBrowserContainerProps) {
+  // ─── Data Sources ───────────────────────────────────────────────────────────
+  // Workspace context, preview proxy config, dev server state, log streams,
+  // URL auto-detection, and preview settings (override URL, screen size).
+
   const previewRefreshKey = useUiPreferencesStore((s) => s.previewRefreshKey);
   const triggerPreviewRefresh = useUiPreferencesStore(
     (s) => s.triggerPreviewRefresh
@@ -109,9 +158,18 @@ export function PreviewBrowserContainer({
     devServerProcesses,
   } = usePreviewDevServer(attemptId);
 
-  const primaryDevServer = runningDevServers[0];
+  const primaryDevServer = useMemo(() => {
+    if (runningDevServers.length === 0) return undefined;
+
+    return runningDevServers.reduce((latest, current) =>
+      new Date(current.started_at).getTime() >
+      new Date(latest.started_at).getTime()
+        ? current
+        : latest
+    );
+  }, [runningDevServers]);
   const { logs } = useLogStream(primaryDevServer?.id ?? '');
-  const urlInfo = usePreviewUrl(logs);
+  const urlInfo = usePreviewUrl(logs, previewProxyPort ?? undefined);
 
   // Detect failed dev server process (failed status or completed with non-zero exit code)
   const failedDevServerProcess = devServerProcesses.find(
@@ -133,14 +191,20 @@ export function PreviewBrowserContainer({
     setResponsiveDimensions,
   } = usePreviewSettings(workspaceId);
 
+  // ─── URL Bar State ──────────────────────────────────────────────────────────
+  // effectiveUrl:       The override URL (if set) or the auto-detected dev server URL.
+  // urlInputValue:      Local state for the URL bar text. Decoupled from effectiveUrl
+  //                     so that external URL changes don't disrupt the user while typing.
+  // prevEffectiveUrlRef: Tracks the previous effectiveUrl so the sync effect can detect
+  //                     when it changes (new URL detected or override toggled).
   // Use override URL if set, otherwise fall back to auto-detected
   const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
-
-  // Local state for URL input to prevent updates from disrupting typing
   const urlInputRef = useRef<HTMLInputElement>(null);
   const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
   const prevEffectiveUrlRef = useRef(effectiveUrl);
 
+  // ─── Iframe Display Timing ──────────────────────────────────────────────────
+  // Controls when the iframe becomes visible after URL detection.
   // Iframe display timing state
   const [showIframe, setShowIframe] = useState(false);
   const [allowManualUrl, setAllowManualUrl] = useState(false);
@@ -153,19 +217,61 @@ export function PreviewBrowserContainer({
     (s) => s.setPendingComponentMarkdown
   );
 
+  // ─── Navigation Bridge ────────────────────────────────────────────────────
+  // The Rust proxy injects devtools_script.js into every iframe response.
+  // That script reports navigation events (URL changes, page ready) via postMessage.
+  // PreviewDevToolsBridge wraps the postMessage protocol for type-safe communication.
+  //
+  // navigationDevUrl transforms proxy URLs back to dev URLs:
+  //   proxy:  http://4000.localhost:{proxyPort}/path
+  //   dev:    http://localhost:4000/path
+  //
+  // currentPreviewUrl = best-known current URL (navigation > effectiveUrl).
   // Eruda DevTools state
   const [isErudaVisible, setIsErudaVisible] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const {
     navigation,
-    handleMessage,
+    isReady,
+    handleMessage: handleNavigationMessage,
     reset: resetNavigation,
   } = usePreviewNavigation();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
+  const navigationDevUrl = useMemo(() => {
+    if (!navigation?.url || !previewProxyPort) {
+      return null;
+    }
+    return transformProxyUrlToDevUrl(navigation.url);
+  }, [navigation?.url, previewProxyPort]);
+  const currentPreviewUrl = navigationDevUrl ?? effectiveUrl ?? null;
 
+  const handleBridgeMessage = useCallback(
+    (message: PreviewDevToolsMessage) => {
+      handleNavigationMessage(message);
+    },
+    [handleNavigationMessage]
+  );
+
+  // ─── URL Sync Effect ──────────────────────────────────────────────────────
+  // Keeps urlInputValue in sync with navigation/effectiveUrl. Priority:
+  //   1. Skip if input is focused (user is typing)
+  //   2. Prefer navigationDevUrl (iframe reported this URL via postMessage)
+  //   3. Use effectiveUrl if it changed (new URL detected or override set)
+  //   4. Fallback: set to effectiveUrl (catch-all for initial render, etc.)
+  //
+  // NOTE: After resetNavigation() in handleUrlSubmit, there's a brief flash
+  // where the URL bar shows the old URL before the iframe reports the new URL.
+  // This is a known cosmetic limitation.
   // Sync URL bar from effectiveUrl changes OR iframe navigation
   useEffect(() => {
-    if (document.activeElement === urlInputRef.current) return;
+    if (document.activeElement === urlInputRef.current) {
+      return;
+    }
+
+    if (navigationDevUrl) {
+      setUrlInputValue(navigationDevUrl);
+      return;
+    }
 
     if (prevEffectiveUrlRef.current !== effectiveUrl) {
       prevEffectiveUrlRef.current = effectiveUrl;
@@ -173,26 +279,20 @@ export function PreviewBrowserContainer({
       return;
     }
 
-    const navUrl = navigation?.url;
-    if (navUrl && previewProxyPort) {
-      const devUrl = transformProxyUrlToDevUrl(navUrl);
-      if (devUrl) {
-        setUrlInputValue(devUrl);
-        return;
-      }
-    }
-
     setUrlInputValue(effectiveUrl ?? '');
-  }, [effectiveUrl, navigation?.url, previewProxyPort]);
+  }, [effectiveUrl, navigation?.url, navigationDevUrl]);
 
   useEffect(() => {
-    bridgeRef.current = new PreviewDevToolsBridge(handleMessage, iframeRef);
+    bridgeRef.current = new PreviewDevToolsBridge(
+      handleBridgeMessage,
+      iframeRef
+    );
     bridgeRef.current.start();
 
     return () => {
       bridgeRef.current?.stop();
     };
-  }, [handleMessage]);
+  }, [handleBridgeMessage]);
 
   // Send inspect mode toggle to iframe
   useEffect(() => {
@@ -259,7 +359,9 @@ export function PreviewBrowserContainer({
     // If user has triggered immediate load (refresh/submit), show immediately after delay
     // OR if no override (normal flow), show after delay once effectiveUrl is set
     // OR if we have both override and auto-detected URL (server is ready), show after delay
-    const shouldShow = immediateLoad || !hasOverride || urlInfo?.url;
+    // OR after timeout fallback when URL auto-detection never resolves.
+    const shouldShow =
+      immediateLoad || !hasOverride || Boolean(urlInfo?.url) || allowManualUrl;
 
     if (!shouldShow) {
       setShowIframe(false);
@@ -275,6 +377,7 @@ export function PreviewBrowserContainer({
     immediateLoad,
     hasOverride,
     urlInfo?.url,
+    allowManualUrl,
   ]);
 
   // Responsive resize state - use refs for values that shouldn't trigger re-renders
@@ -433,24 +536,60 @@ export function PreviewBrowserContainer({
     []
   );
 
+  // ─── URL Bar Handlers ─────────────────────────────────────────────────────
+  // handleUrlSubmit flow:
+  //   1. Empty input → clear override, blur
+  //   2. Invalid URL → reject (stay focused so user can fix)
+  //   3. Same URL as current → noop, blur
+  //   4. New URL → resetNavigation() to force sync effect to fire when iframe
+  //      reports new URL
+  //   5. Same port as current → bridge goto (postMessage to iframe, SPA navigation)
+  //   6. Different port → set override URL (full iframe src change)
+  //
+  // WHY resetNavigation is needed: after blur + navigateTo, no React state changes
+  // occur, so the sync effect wouldn't fire without it. resetNavigation nullifies
+  // navigation.url → sync effect dependency changes → effect will fire when iframe
+  // reports new URL.
   const handleUrlInputChange = useCallback((value: string) => {
     setUrlInputValue(value);
   }, []);
 
   const handleUrlSubmit = useCallback(() => {
     const trimmed = urlInputValue.trim();
-    if (!trimmed || trimmed === urlInfo?.url) {
+    if (!trimmed) {
       clearOverride();
+      urlInputRef.current?.blur();
       return;
     }
 
+    const baseUrl = currentPreviewUrl ?? urlInfo?.url ?? undefined;
+    const normalizedInput = normalizePreviewUrl(trimmed, baseUrl);
+    if (!normalizedInput) {
+      return;
+    }
+
+    urlInputRef.current?.blur();
+    const normalizedCurrentUrl = currentPreviewUrl
+      ? normalizePreviewUrl(currentPreviewUrl, urlInfo?.url ?? undefined)
+      : null;
+    if (normalizedCurrentUrl && normalizedInput === normalizedCurrentUrl) {
+      if (hasOverride) {
+        clearOverride();
+      }
+      return;
+    }
+
+    resetNavigation();
+
     if (showIframe && iframeRef.current?.contentWindow && previewProxyPort) {
       try {
-        const parsed = new URL(trimmed);
+        const parsed = new URL(normalizedInput);
         const devPort =
           parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
 
-        const currentUrl = effectiveUrl ? new URL(effectiveUrl) : null;
+        const currentUrl = currentPreviewUrl
+          ? parsePreviewUrl(currentPreviewUrl, urlInfo?.url ?? undefined)
+          : null;
         const currentPort =
           currentUrl?.port ||
           (currentUrl?.protocol === 'https:' ? '443' : '80');
@@ -466,17 +605,26 @@ export function PreviewBrowserContainer({
       }
     }
 
-    setOverrideUrl(trimmed);
+    setOverrideUrl(normalizedInput);
     setImmediateLoad(true);
   }, [
     urlInputValue,
     urlInfo?.url,
-    effectiveUrl,
+    currentPreviewUrl,
+    hasOverride,
     showIframe,
     previewProxyPort,
     clearOverride,
+    resetNavigation,
     setOverrideUrl,
   ]);
+
+  // handleUrlEscape: reverts URL bar to the current page URL and blurs,
+  // discarding whatever the user typed.
+  const handleUrlEscape = useCallback(() => {
+    setUrlInputValue(navigationDevUrl ?? effectiveUrl ?? '');
+    urlInputRef.current?.blur();
+  }, [navigationDevUrl, effectiveUrl]);
 
   const handleStart = useCallback(() => {
     start();
@@ -487,9 +635,20 @@ export function PreviewBrowserContainer({
   }, [stop]);
 
   const handleRefresh = useCallback(() => {
+    const canUseBridgeRefresh = Boolean(
+      showIframe &&
+        isReady &&
+        iframeRef.current?.contentWindow &&
+        bridgeRef.current
+    );
+
+    if (canUseBridgeRefresh) {
+      bridgeRef.current?.refresh();
+      return;
+    }
     setImmediateLoad(true);
     triggerPreviewRefresh();
-  }, [triggerPreviewRefresh]);
+  }, [triggerPreviewRefresh, showIframe, isReady]);
 
   const handleClearOverride = useCallback(async () => {
     await clearOverride();
@@ -504,33 +663,61 @@ export function PreviewBrowserContainer({
     bridgeRef.current?.navigateForward();
   }, []);
 
-  const handleToggleEruda = useCallback(() => {
+  const sendErudaCommand = useCallback((visible: boolean) => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow) return;
-
-    const newState = !isErudaVisible;
-    setIsErudaVisible(newState);
 
     iframe.contentWindow.postMessage(
       {
         source: 'vibe-kanban',
-        command: newState ? 'show-eruda' : 'hide-eruda',
+        command: visible ? 'show-eruda' : 'hide-eruda',
       },
       '*'
     );
-  }, [isErudaVisible]);
+  }, []);
+
+  const handleToggleEruda = useCallback(() => {
+    const newState = !isErudaVisible;
+    setIsErudaVisible(newState);
+    sendErudaCommand(newState);
+  }, [isErudaVisible, sendErudaCommand]);
+
+  // Re-send the current Eruda state when the iframe devtools bridge becomes ready.
+  useEffect(() => {
+    if (!isReady) return;
+    sendErudaCommand(isErudaVisible);
+  }, [isReady, isErudaVisible, sendErudaCommand]);
+
+  const handleIframeLoad = useCallback(() => {
+    // Initial postMessage can race with injected script startup on fresh loads.
+    window.setTimeout(() => {
+      sendErudaCommand(isErudaVisible);
+    }, 150);
+  }, [isErudaVisible, sendErudaCommand]);
 
   const handleCopyUrl = useCallback(async () => {
-    if (effectiveUrl) {
-      await navigator.clipboard.writeText(effectiveUrl);
+    if (!currentPreviewUrl) return;
+
+    const normalizedUrl = normalizePreviewUrl(
+      currentPreviewUrl,
+      urlInfo?.url ?? undefined
+    );
+    if (normalizedUrl) {
+      await navigator.clipboard.writeText(normalizedUrl);
     }
-  }, [effectiveUrl]);
+  }, [currentPreviewUrl, urlInfo?.url]);
 
   const handleOpenInNewTab = useCallback(() => {
-    if (effectiveUrl) {
-      window.open(effectiveUrl, '_blank');
+    if (!currentPreviewUrl) return;
+
+    const normalizedUrl = normalizePreviewUrl(
+      currentPreviewUrl,
+      urlInfo?.url ?? undefined
+    );
+    if (normalizedUrl) {
+      window.open(normalizedUrl, '_blank');
     }
-  }, [effectiveUrl]);
+  }, [currentPreviewUrl, urlInfo?.url]);
 
   const handleScreenSizeChange = useCallback(
     (size: ScreenSize) => {
@@ -539,13 +726,20 @@ export function PreviewBrowserContainer({
     [setScreenSize]
   );
 
+  // ─── Iframe URL Construction ────────────────────────────────────────────────
+  // Builds the subdomain-based proxy URL loaded by the iframe.
+  //   Dev server at localhost:4000 → iframe loads http://4000.localhost:{proxyPort}/path
+  //   The proxy extracts the target port from the subdomain and forwards to the dev server.
+  //   _refresh query param forces iframe reload on refresh button click.
   // Construct proxy URL for iframe to enable security isolation via separate origin
   // Uses subdomain-based routing: http://{devPort}.localhost:{proxyPort}{path}
   const iframeUrl = useMemo(() => {
     if (!effectiveUrl || !previewProxyPort) return undefined;
 
+    const parsed = parsePreviewUrl(effectiveUrl, urlInfo?.url ?? undefined);
+    if (!parsed) return undefined;
+
     try {
-      const parsed = new URL(effectiveUrl);
       const devServerPort =
         parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
 
@@ -586,7 +780,12 @@ export function PreviewBrowserContainer({
     } catch {
       return undefined;
     }
-  }, [effectiveUrl, previewProxyPort, previewRefreshKey]);
+  }, [effectiveUrl, previewProxyPort, previewRefreshKey, urlInfo?.url]);
+
+  // ─── Navigation Reset on URL Change ────────────────────────────────────────
+  // Resets navigation state when the iframe URL changes (e.g., new dev server
+  // detected, user switched override). Prevents stale navigation data from the
+  // previous page.
 
   const prevIframeUrlRef = useRef(iframeUrl);
   useEffect(() => {
@@ -596,6 +795,9 @@ export function PreviewBrowserContainer({
     }
   }, [iframeUrl, resetNavigation]);
 
+  // NOTE: handleEditDevScript and handleFixDevScript have identical bodies.
+  // This duplication is intentional — they may diverge in the future to support
+  // different dialog configurations (e.g., edit vs. auto-fix modes).
   const handleEditDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
 
@@ -634,6 +836,7 @@ export function PreviewBrowserContainer({
       isUsingOverride={hasOverride}
       onUrlInputChange={handleUrlInputChange}
       onUrlSubmit={handleUrlSubmit}
+      onUrlEscape={handleUrlEscape}
       onClearOverride={handleClearOverride}
       onCopyUrl={handleCopyUrl}
       onOpenInNewTab={handleOpenInNewTab}
@@ -667,6 +870,7 @@ export function PreviewBrowserContainer({
       onToggleInspectMode={toggleInspectMode}
       isErudaVisible={isErudaVisible}
       onToggleEruda={handleToggleEruda}
+      onIframeLoad={handleIframeLoad}
     />
   );
 }

@@ -28,6 +28,7 @@ pub(crate) struct ShapeQuery {
 }
 
 const ELECTRIC_PARAMS: &[&str] = &["offset", "handle", "live", "cursor", "columns"];
+const ELECTRIC_STICKY_HEADER: &str = "x-vk-electric-sticky";
 
 pub fn router() -> Router<AppState> {
     let mut router = Router::new();
@@ -46,6 +47,7 @@ pub(crate) async fn proxy_table(
     shape: &dyn ShapeExport,
     client_params: &HashMap<String, String>,
     electric_params: &[String],
+    session_id: Uuid,
 ) -> Result<Response, ProxyError> {
     // Build the Electric URL
     let mut origin_url = url::Url::parse(&state.config.electric_url)
@@ -86,6 +88,7 @@ pub(crate) async fn proxy_table(
     let response = state
         .http_client
         .get(origin_url.as_str())
+        .header(ELECTRIC_STICKY_HEADER, session_id.to_string())
         .send()
         .await
         .map_err(ProxyError::Connection)?;

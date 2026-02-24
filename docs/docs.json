@@ -25,6 +25,7 @@
         "pages": [
           "index",
           "getting-started",
+          "browser-testing",
           {
             "group": "Supported Coding Agents",
             "expanded": true,
@@ -57,7 +58,6 @@
           "workspaces/interface",
           "workspaces/command-bar",
           "workspaces/multi-repo-sessions",
-          "workspaces/preview",
           "workspaces/changes",
           "workspaces/git-operations"
         ]
@@ -158,6 +158,12 @@
       "apiHost": "https://eu.i.posthog.com"
     }
   },
+  "redirects": [
+    {
+      "source": "/workspaces/preview",
+      "destination": "/browser-testing"
+    }
+  ],
   "footer": {
     "socials": {
       "github": "https://github.com/BloopAI/vibe-kanban",

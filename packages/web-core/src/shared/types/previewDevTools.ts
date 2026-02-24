@@ -16,13 +16,19 @@ export interface NavigationState {
 export interface NavigationMessage {
   source: PreviewDevToolsSource;
   type: 'navigation';
-  payload: NavigationState & { timestamp: number };
+  payload: NavigationState & {
+    timestamp: number;
+    docId?: string;
+    seq?: number;
+  };
 }
 
 export interface ReadyMessage {
   source: PreviewDevToolsSource;
   type: 'ready';
-  payload?: Record<string, never>;
+  payload?: {
+    docId?: string;
+  };
 }
 
 // === Command Types (from parent to iframe) ===
