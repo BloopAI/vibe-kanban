@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { Project } from "shared/remote-types";
 import type { OrganizationWithRole } from "shared/types";
@@ -72,65 +72,141 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <p className="text-normal">Loading organizations and projects...</p>
-      </div>
+      <CenteredCard>
+        <h1 className="text-lg font-semibold text-high">Organizations</h1>
+        <p className="mt-base text-sm text-normal">
+          Loading organizations and projects...
+        </p>
+      </CenteredCard>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-xl font-semibold text-high">Failed to load</h1>
-          <p className="mt-base text-normal">{error}</p>
-          <button
-            type="button"
-            className="mt-double rounded-sm bg-brand px-base py-half text-sm font-medium text-on-brand transition-colors hover:bg-brand-hover"
-            onClick={() => {
-              void handleSignInAgain();
-            }}
-          >
-            Sign in again
-          </button>
-        </div>
-      </div>
+      <CenteredCard>
+        <h1 className="text-lg font-semibold text-high">Failed to load</h1>
+        <p className="mt-base text-sm text-normal">{error}</p>
+        <button
+          type="button"
+          className="mt-double rounded-sm bg-brand px-base py-half text-sm font-medium text-on-brand transition-colors hover:bg-brand-hover"
+          onClick={() => {
+            void handleSignInAgain();
+          }}
+        >
+          Sign in again
+        </button>
+      </CenteredCard>
     );
   }
 
-  return (
-    <div className="mx-auto h-full w-full max-w-5xl overflow-auto px-double py-double">
-      <h1 className="text-2xl font-semibold text-high">Organizations</h1>
+  const organizationCount = items.length;
+  const totalProjectCount = items.reduce(
+    (count, item) => count + item.projects.length,
+    0,
+  );
 
-      <div className="mt-double space-y-double">
-        {items.map(({ organization, projects }) => (
-          <section
-            key={organization.id}
-            className="rounded-sm border border-border bg-secondary p-double"
-          >
-            <h2 className="text-lg font-medium text-high">
-              {organization.name}
+  return (
+    <div className="h-full overflow-auto">
+      <div className="mx-auto w-full max-w-6xl px-double py-double">
+        <header className="space-y-half">
+          <h1 className="text-2xl font-semibold text-high">Organizations</h1>
+          <p className="text-sm text-low">
+            {organizationCount}{" "}
+            {organizationCount === 1 ? "organization" : "organizations"} •{" "}
+            {totalProjectCount}{" "}
+            {totalProjectCount === 1 ? "project" : "projects"}
+          </p>
+        </header>
+
+        {organizationCount === 0 ? (
+          <section className="mt-double rounded-sm border border-border bg-secondary p-double">
+            <h2 className="text-base font-medium text-high">
+              No organizations found
             </h2>
-            {projects.length === 0 ? (
-              <p className="mt-base text-sm text-low">No projects yet</p>
-            ) : (
-              <ul className="mt-base space-y-half">
-                {projects.map((project) => (
-                  <li key={project.id}>
-                    <Link
-                      to="/projects/$projectId"
-                      params={{ projectId: project.id }}
-                      className="block rounded-sm border border-border px-base py-half text-normal hover:bg-panel hover:text-high"
-                    >
-                      {project.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p className="mt-half text-sm text-low">
+              Create or join an organization to start working on projects.
+            </p>
           </section>
-        ))}
+        ) : (
+          <div className="mt-double space-y-double">
+            {items.map(({ organization, projects }) => (
+              <OrganizationSection
+                key={organization.id}
+                organization={organization}
+                projects={projects}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function CenteredCard({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex h-full items-center justify-center px-base">
+      <section className="w-full max-w-md rounded-sm border border-border bg-secondary p-double text-center">
+        {children}
+      </section>
+    </div>
+  );
+}
+
+function OrganizationSection({
+  organization,
+  projects,
+}: OrganizationWithProjects) {
+  return (
+    <section className="space-y-base">
+      <header className="flex items-center justify-between gap-base">
+        <h2 className="truncate text-lg font-medium text-high">
+          {organization.name}
+        </h2>
+        <p className="shrink-0 text-xs text-low">
+          {projects.length} {projects.length === 1 ? "project" : "projects"}
+        </p>
+      </header>
+
+      {projects.length === 0 ? (
+        <div className="rounded-sm border border-border bg-primary px-base py-base text-sm text-low">
+          No projects yet
+        </div>
+      ) : (
+        <ul className="grid gap-base sm:grid-cols-2">
+          {projects.map((project) => (
+            <li key={project.id}>
+              <ProjectCard project={project} />
+            </li>
+          ))}
+          {projects.length % 2 === 1 ? (
+            <li className="hidden sm:block" aria-hidden="true">
+              <ProjectCardSkeleton />
+            </li>
+          ) : null}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function ProjectCard({ project }: { project: Project }) {
+  return (
+    <Link
+      to="/projects/$projectId"
+      params={{ projectId: project.id }}
+      className="group flex h-[61px] flex-col justify-center rounded-sm border border-border bg-primary px-base py-base hover:border-high/20 hover:bg-panel focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand"
+    >
+      <p className="text-sm font-medium text-high">{project.name}</p>
+      <p className="mt-half text-xs text-low group-hover:text-normal">
+        Open project
+      </p>
+    </Link>
+  );
+}
+
+function ProjectCardSkeleton() {
+  return (
+    <div className="h-[61px] rounded-sm border border-border bg-primary animate-pulse" />
   );
 }
