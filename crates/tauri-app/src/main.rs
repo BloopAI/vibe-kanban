@@ -53,6 +53,7 @@ fn main() {
             .inner_size(1280.0, 800.0)
             .min_inner_size(800.0, 600.0)
             .resizable(true)
+            .zoom_hotkeys_enabled(true)
             .on_new_window(move |url, _features| {
                 // Open external URLs (OAuth, etc.) in the system browser
                 tracing::info!("New window requested for URL: {}", url);
