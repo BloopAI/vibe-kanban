@@ -12,6 +12,10 @@ import { useGitHubStars } from "@/shared/hooks/useGitHubStars";
 import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { RemoteAppBarUserPopoverContainer } from "@remote/app/layout/RemoteAppBarUserPopoverContainer";
 import { RemoteNavbarContainer } from "@remote/app/layout/RemoteNavbarContainer";
+import {
+  CreateOrganizationDialog,
+  type CreateOrganizationResult,
+} from "@/shared/dialogs/org/CreateOrganizationDialog";
 
 interface RemoteAppShellProps {
   children: ReactNode;
@@ -108,6 +112,19 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     navigate({ to: "/" });
   }, [navigate]);
 
+  const handleCreateOrg = useCallback(async () => {
+    try {
+      const result: CreateOrganizationResult =
+        await CreateOrganizationDialog.show();
+
+      if (result.action === "created" && result.organizationId) {
+        setSelectedOrgId(result.organizationId);
+      }
+    } catch {
+      // Dialog cancelled
+    }
+  }, [setSelectedOrgId]);
+
   return (
     <div className="flex h-screen bg-primary">
       <AppBar
@@ -129,6 +146,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
             organizations={organizations}
             selectedOrgId={selectedOrgId ?? ""}
             onOrgSelect={setSelectedOrgId}
+            onCreateOrg={handleCreateOrg}
           />
         }
         starCount={starCount}
