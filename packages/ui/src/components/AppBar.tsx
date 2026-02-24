@@ -45,6 +45,7 @@ interface AppBarProps {
   projects: AppBarProject[];
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
+  showWorkspacesButton?: boolean;
   onProjectClick: (projectId: string) => void;
   onProjectsDragEnd: (result: DropResult) => void;
   isSavingProjectOrder?: boolean;
@@ -71,6 +72,7 @@ export function AppBar({
   projects,
   onCreateProject,
   onWorkspacesClick,
+  showWorkspacesButton = true,
   onProjectClick,
   onProjectsDragEnd,
   isSavingProjectOrder,
@@ -95,15 +97,16 @@ export function AppBar({
         'bg-secondary border-r border-border'
       )}
     >
-      {/* Top section: Workspaces button */}
-      <div className="flex flex-col items-center gap-1">
-        <AppBarButton
-          icon={LayoutIcon}
-          label="Workspaces"
-          isActive={isWorkspacesActive}
-          onClick={onWorkspacesClick}
-        />
-      </div>
+      {showWorkspacesButton && (
+        <div className="flex flex-col items-center gap-1">
+          <AppBarButton
+            icon={LayoutIcon}
+            label="Workspaces"
+            isActive={isWorkspacesActive}
+            onClick={onWorkspacesClick}
+          />
+        </div>
+      )}
 
       {/* Project management popover for unsigned users */}
       {!isSignedIn && (

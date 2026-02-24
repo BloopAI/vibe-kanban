@@ -131,6 +131,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         projects={projects}
         onCreateProject={handleCreateProject}
         onWorkspacesClick={handleWorkspacesClick}
+        showWorkspacesButton={false}
         onProjectClick={handleProjectClick}
         onProjectsDragEnd={() => {}}
         isSavingProjectOrder={true}
