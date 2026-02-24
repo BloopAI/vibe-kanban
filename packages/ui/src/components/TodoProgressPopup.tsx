@@ -3,11 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ListChecksIcon } from '@phosphor-icons/react';
 import { Circle, Check, CircleDot } from 'lucide-react';
 import { cn } from '../lib/cn';
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from './Popover';
+import { Popover, PopoverTrigger, PopoverContent } from './Popover';
 import { Tooltip } from './Tooltip';
 
 export interface TodoProgressItem {

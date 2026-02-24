@@ -143,7 +143,7 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
       ))}
 
       {/* Add Tag Dropdown */}
-      {onCreateTag && (
+      {onCreateTag &&
         (renderAddTagControl?.({
           tags: availableTags,
           selectedTagIds,
@@ -151,8 +151,8 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
           onCreateTag: handleCreateTag,
           disabled: disabled ?? false,
           trigger: addTagTrigger,
-        }) ?? addTagTrigger)
-      )}
+        }) ??
+          addTagTrigger)}
     </div>
   );
 }

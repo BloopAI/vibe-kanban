@@ -5,10 +5,7 @@ import { cn } from '../lib/cn';
 import type { PriorityLevel } from './PriorityIcon';
 import { InputField } from './InputField';
 import { PrimaryButton } from './PrimaryButton';
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-} from './IconButtonGroup';
+import { ButtonGroup, ButtonGroupItem } from './IconButtonGroup';
 
 export interface KanbanFilterTag {
   id: string;

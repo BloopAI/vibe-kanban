@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@vibe/ui/components/Select';
-import { useNavigateWithSearch } from '@/shared/hooks/useNavigateWithSearch';
+import { useNavigate } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/shared/lib/modals';
 import { attemptsApi, repoApi } from '@/shared/lib/api';
@@ -34,7 +34,7 @@ export interface CreateWorkspaceFromPrDialogProps {}
 const CreateWorkspaceFromPrDialogImpl =
   create<CreateWorkspaceFromPrDialogProps>(() => {
     const modal = useModal();
-    const navigate = useNavigateWithSearch();
+    const navigate = useNavigate();
     const { t } = useTranslation('tasks');
     const queryClient = useQueryClient();
 

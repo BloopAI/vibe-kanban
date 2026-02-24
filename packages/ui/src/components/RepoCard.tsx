@@ -21,10 +21,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from './Dropdown';
-import {
-  SplitButton,
-  type SplitButtonOption,
-} from './SplitButton';
+import { SplitButton, type SplitButtonOption } from './SplitButton';
 
 export type RepoAction =
   | 'pull-request'
@@ -255,9 +252,7 @@ export function RepoCard({
           <SplitButton
             options={availableActionOptions}
             selectedValue={effectiveSelectedAction}
-            onSelectionChange={(action) =>
-              onSelectedActionChange?.(action)
-            }
+            onSelectionChange={(action) => onSelectedActionChange?.(action)}
             onAction={(action) => onActionsClick?.(action)}
           />
         </div>

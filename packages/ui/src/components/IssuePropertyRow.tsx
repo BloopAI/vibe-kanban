@@ -6,10 +6,7 @@ import { IconButton } from './IconButton';
 import { StatusDot } from './StatusDot';
 import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
 import { UserAvatar, type UserAvatarUser } from './UserAvatar';
-import {
-  KanbanAssignee,
-  type KanbanAssigneeUser,
-} from './KanbanAssignee';
+import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
 
 export interface IssuePropertyStatus {
   id: string;

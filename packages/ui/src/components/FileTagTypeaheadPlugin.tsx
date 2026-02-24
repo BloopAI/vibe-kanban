@@ -154,7 +154,10 @@ export function FileTagTypeaheadPlugin({
   const searchRequestRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
 
-  const effectiveDiffPaths = useMemo(() => diffPaths ?? new Set<string>(), [diffPaths]);
+  const effectiveDiffPaths = useMemo(
+    () => diffPaths ?? new Set<string>(),
+    [diffPaths]
+  );
   const usePreferenceRepoSelection = repoIds === undefined;
   const canManageRepoPreference =
     usePreferenceRepoSelection &&
@@ -454,14 +457,16 @@ export function FileTagTypeaheadPlugin({
 
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
-        const showChooseRepoControl = canManageRepoPreference && !canSearchFiles;
+        const showChooseRepoControl =
+          canManageRepoPreference && !canSearchFiles;
         const showSelectedRepoState = canManageRepoPreference && canSearchFiles;
         const showFilesSection =
           fileResults.length > 0 ||
           showChooseRepoControl ||
           showSelectedRepoState ||
           showMissingRepoState;
-        const hasSearchResults = tagResults.length > 0 || fileResults.length > 0;
+        const hasSearchResults =
+          tagResults.length > 0 || fileResults.length > 0;
         const showGlobalEmptyState = !hasSearchResults && !showFilesSection;
         const selectedRepoLabel = preferredRepoName ?? preferredRepoId;
         const repoCtaLabel = showSelectedRepoState
@@ -506,7 +511,10 @@ export function FileTagTypeaheadPlugin({
                       onClick={() => selectOptionAndCleanUp(option)}
                     >
                       <div className="flex items-center gap-half font-medium">
-                        <TagIcon className="size-icon-xs shrink-0" weight="bold" />
+                        <TagIcon
+                          className="size-icon-xs shrink-0"
+                          weight="bold"
+                        />
                         <span>@{tag.tag_name}</span>
                       </div>
                       {tag.content && (
@@ -562,7 +570,9 @@ export function FileTagTypeaheadPlugin({
                             />
                             <span>{file.name}</span>
                           </div>
-                          <div className="text-xs text-low truncate">{file.path}</div>
+                          <div className="text-xs text-low truncate">
+                            {file.path}
+                          </div>
                         </TypeaheadMenu.Item>
                       );
                     })}

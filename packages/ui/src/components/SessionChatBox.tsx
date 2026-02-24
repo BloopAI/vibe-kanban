@@ -16,10 +16,7 @@ import {
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
-import {
-  type EditorProps,
-  type ExecutorProps,
-} from './CreateChatBox';
+import { type EditorProps, type ExecutorProps } from './CreateChatBox';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -28,10 +25,7 @@ import {
 import { PrimaryButton } from './PrimaryButton';
 import type { LocalImageMetadata } from './TaskAttemptContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
-import {
-  ContextUsageGauge,
-  type ContextUsageInfo,
-} from './ContextUsageGauge';
+import { ContextUsageGauge, type ContextUsageInfo } from './ContextUsageGauge';
 import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';
 
 // Status enum - single source of truth for execution state
@@ -739,7 +733,10 @@ export function SessionChatBox<TExecutor extends string = string>({
                     onClick={() => onSelectSession(s.id)}
                   >
                     <span className="flex items-center gap-1.5">
-                      {renderAgentIcon?.(s.executor ?? null, 'size-icon shrink-0')}
+                      {renderAgentIcon?.(
+                        s.executor ?? null,
+                        'size-icon shrink-0'
+                      )}
                       {index === 0
                         ? t('conversation.sessions.latest')
                         : formatSessionDate(s.created_at)}

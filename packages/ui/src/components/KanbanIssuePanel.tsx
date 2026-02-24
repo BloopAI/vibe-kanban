@@ -34,7 +34,9 @@ import { ErrorAlert } from './ErrorAlert';
 export type IssuePanelMode = 'create' | 'edit';
 type IssuePriority = IssuePropertyRowProps['priority'];
 type IssueStatus = IssuePropertyRowProps['statuses'][number];
-type IssueAssignee = NonNullable<IssuePropertyRowProps['assigneeUsers']>[number];
+type IssueAssignee = NonNullable<
+  IssuePropertyRowProps['assigneeUsers']
+>[number];
 type IssueCreator = Exclude<IssuePropertyRowProps['creatorUser'], undefined>;
 export interface KanbanIssueTag extends IssueTagBase {
   project_id: string;
@@ -362,7 +364,9 @@ export function KanbanIssuePanel({
                         <PaperclipIcon className="size-icon-sm" />
                       </button>
                     </TooltipTrigger>
-                    <TooltipContent>{t('kanban.attachFileHint')}</TooltipContent>
+                    <TooltipContent>
+                      {t('kanban.attachFileHint')}
+                    </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               ) : null,
@@ -435,30 +439,22 @@ export function KanbanIssuePanel({
 
         {/* Workspaces Section (Edit mode only) */}
         {!isCreateMode && issueId && renderWorkspacesSection && (
-          <div className="border-t">
-            {renderWorkspacesSection(issueId)}
-          </div>
+          <div className="border-t">{renderWorkspacesSection(issueId)}</div>
         )}
 
         {/* Relationships Section (Edit mode only) */}
         {!isCreateMode && issueId && renderRelationshipsSection && (
-          <div className="border-t">
-            {renderRelationshipsSection(issueId)}
-          </div>
+          <div className="border-t">{renderRelationshipsSection(issueId)}</div>
         )}
 
         {/* Sub-Issues Section (Edit mode only) */}
         {!isCreateMode && issueId && renderSubIssuesSection && (
-          <div className="border-t">
-            {renderSubIssuesSection(issueId)}
-          </div>
+          <div className="border-t">{renderSubIssuesSection(issueId)}</div>
         )}
 
         {/* Comments Section (Edit mode only) */}
         {!isCreateMode && issueId && renderCommentsSection && (
-          <div className="border-t">
-            {renderCommentsSection(issueId)}
-          </div>
+          <div className="border-t">{renderCommentsSection(issueId)}</div>
         )}
       </div>
     </div>

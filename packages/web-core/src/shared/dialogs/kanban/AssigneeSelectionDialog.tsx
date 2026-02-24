@@ -18,6 +18,7 @@ import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
 
+import type { ProjectSearch } from '@/project-routes/project-search';
 export interface AssigneeSelectionDialogProps {
   projectId: string;
   issueIds: string[];
@@ -92,7 +93,7 @@ function AssigneeSelectionContent({
     (assigneeIds: string[]) => {
       navigate({
         to: '.',
-        search: (prev) => ({
+        search: (prev: ProjectSearch) => ({
           ...prev,
           assignees: assigneeIds.length > 0 ? assigneeIds.join(',') : undefined,
         }),

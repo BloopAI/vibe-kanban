@@ -36,4 +36,3 @@ export function defineModal<P, R>(
 export type ConfirmResult = 'confirmed' | 'canceled';
 export type DeleteResult = 'deleted' | 'canceled';
 export type SaveResult = 'saved' | 'canceled';
-

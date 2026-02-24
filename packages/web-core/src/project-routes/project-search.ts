@@ -10,4 +10,6 @@ export const projectSearchSchema = z.object({
   orgId: z.string().optional(),
 });
 
+export type ProjectSearch = z.infer<typeof projectSearchSchema>;
+
 export const projectSearchValidator = zodValidator(projectSearchSchema);

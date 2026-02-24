@@ -118,7 +118,10 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
             >
               {t('buttons.cancel')}
             </Button>
-            <Button onClick={() => void handleConfirm()} disabled={isSubmitting}>
+            <Button
+              onClick={() => void handleConfirm()}
+              disabled={isSubmitting}
+            >
               {isSubmitting
                 ? t('workspaces.rename.renaming')
                 : t('workspaces.rename.action')}

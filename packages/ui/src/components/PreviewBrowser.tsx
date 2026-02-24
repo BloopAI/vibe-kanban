@@ -1,9 +1,4 @@
-import type {
-  CSSProperties,
-  MouseEvent,
-  RefObject,
-  TouchEvent,
-} from 'react';
+import type { CSSProperties, MouseEvent, RefObject, TouchEvent } from 'react';
 import {
   PlayIcon,
   SpinnerIcon,
@@ -23,10 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
 import { PrimaryButton } from './PrimaryButton';
-import {
-  IconButtonGroup,
-  IconButtonGroupItem,
-} from './IconButtonGroup';
+import { IconButtonGroup, IconButtonGroupItem } from './IconButtonGroup';
 import {
   PreviewNavigation,
   type PreviewNavigationState,
