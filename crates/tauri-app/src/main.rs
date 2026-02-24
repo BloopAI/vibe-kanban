@@ -49,7 +49,7 @@ fn main() {
                 "main",
                 tauri::WebviewUrl::App("index.html".into()),
             )
-            .title("vibe-kanban")
+            .title("Vibe Kanban")
             .inner_size(1280.0, 800.0)
             .min_inner_size(800.0, 600.0)
             .resizable(true)
