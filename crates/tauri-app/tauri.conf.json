@@ -4,6 +4,10 @@
   "version": "0.1.13",
   "identifier": "ai.bloop.vibe-kanban",
   "build": {
+    "beforeDevCommand": {
+      "script": "concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev\"",
+      "cwd": "../.."
+    },
     "beforeBuildCommand": {
       "script": "pnpm run build",
       "cwd": "../../frontend"
