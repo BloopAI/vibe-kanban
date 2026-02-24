@@ -279,6 +279,16 @@
         }
       }
 
+      function extractWorkspaces(payload) {
+        if (Array.isArray(payload)) {
+          return payload;
+        }
+        if (payload && Array.isArray(payload.data)) {
+          return payload.data;
+        }
+        return [];
+      }
+
       function bytesToHex(bytes) {
         let out = "";
         for (let i = 0; i < bytes.length; i++) {
@@ -522,13 +532,17 @@
             method: "GET",
             redirect: "follow",
           });
-          if (!exchangeRes.ok) {
-            throw new Error(`Exchange failed (${exchangeRes.status})`);
-          }
 
           const sessionPrefix = relaySessionPrefixFromUrl(exchangeRes.url);
           if (!sessionPrefix) {
-            throw new Error("Could not derive relay browser session path.");
+            throw new Error(
+              `Exchange failed (${exchangeRes.status}): could not derive relay browser session path.`,
+            );
+          }
+          if (!exchangeRes.ok) {
+            log(
+              `Exchange landing returned ${exchangeRes.status}; continuing with derived session path`,
+            );
           }
           log(`Browser session path: ${sessionPrefix}`);
 
@@ -541,6 +555,7 @@
             );
           }
           const workspacesPayload = await workspacesRes.json();
+          const workspaces = extractWorkspaces(workspacesPayload);
 
           setResultStatus("Relay test succeeded.", "ok");
           renderJson({
@@ -548,9 +563,13 @@
             session_id: sessionId,
             relay_exchange_url: exchangeUrl.toString(),
             relay_session_prefix: sessionPrefix,
+            workspace_count: workspaces.length,
+            workspaces,
             local_workspaces_response: workspacesPayload,
           });
-          log("Local /api/task-attempts fetch succeeded");
+          log(
+            `Local /api/task-attempts fetch succeeded (${workspaces.length} workspace(s))`,
+          );
         } catch (error) {
           setResultStatus(
             error instanceof Error ? error.message : "Relay test failed",
