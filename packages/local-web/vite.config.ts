@@ -73,7 +73,7 @@ ${entries.join(',\n')}
 
 export default schemas;
 `;
-      return code;
+      return { code, moduleType: 'js' };
     },
   };
 }

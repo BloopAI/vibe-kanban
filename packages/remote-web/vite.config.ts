@@ -38,7 +38,8 @@ function executorSchemasPlugin(): Plugin {
         entries.push(`  "${key}": ${varName}`);
       });
 
-      return `
+      return {
+        code: `
 ${imports.join("\n")}
 
 export const schemas = {
@@ -46,7 +47,9 @@ ${entries.join(",\n")}
 };
 
 export default schemas;
-`;
+`,
+        moduleType: 'js',
+      };
     },
   };
 }
