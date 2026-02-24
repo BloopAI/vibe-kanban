@@ -24,6 +24,7 @@ export async function generateChallenge(verifier: string): Promise<string> {
 }
 
 const VERIFIER_KEY = "oauth_verifier";
+const INVITATION_TOKEN_KEY = "invitation_token";
 
 export function storeVerifier(verifier: string): void {
   sessionStorage.setItem(VERIFIER_KEY, verifier);
@@ -35,4 +36,16 @@ export function retrieveVerifier(): string | null {
 
 export function clearVerifier(): void {
   sessionStorage.removeItem(VERIFIER_KEY);
+}
+
+export function storeInvitationToken(token: string): void {
+  sessionStorage.setItem(INVITATION_TOKEN_KEY, token);
+}
+
+export function retrieveInvitationToken(): string | null {
+  return sessionStorage.getItem(INVITATION_TOKEN_KEY);
+}
+
+export function clearInvitationToken(): void {
+  sessionStorage.removeItem(INVITATION_TOKEN_KEY);
 }

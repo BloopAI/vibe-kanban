@@ -16,7 +16,8 @@ function RootLayout() {
   const location = useLocation();
   const isStandaloneRoute =
     location.pathname.startsWith("/login") ||
-    location.pathname.startsWith("/upgrade");
+    location.pathname.startsWith("/upgrade") ||
+    location.pathname.startsWith("/invitations");
 
   const content = <Outlet />;
 

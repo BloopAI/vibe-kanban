@@ -20,6 +20,8 @@ import { Route as UpgradeCompleteRouteImport } from './routes/upgrade_.complete'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as LoginCompleteRouteImport } from './routes/login_.complete'
 import { Route as WorkspacesWorkspaceIdVscodeRouteImport } from './routes/workspaces.$workspaceId.vscode'
+import { Route as InvitationsTokenCompleteRouteImport } from './routes/invitations.$token.complete'
+import { Route as InvitationsTokenAcceptRouteImport } from './routes/invitations.$token.accept'
 import { Route as ProjectsProjectIdIssuesNewRouteImport } from './routes/projects.$projectId_.issues.new'
 import { Route as ProjectsProjectIdIssuesIssueIdRouteImport } from './routes/projects.$projectId_.issues.$issueId'
 import { Route as ProjectsProjectIdWorkspacesCreateDraftIdRouteImport } from './routes/projects.$projectId_.workspaces.create.$draftId'
@@ -82,6 +84,17 @@ const WorkspacesWorkspaceIdVscodeRoute =
     path: '/$workspaceId/vscode',
     getParentRoute: () => WorkspacesRoute,
   } as any)
+const InvitationsTokenCompleteRoute =
+  InvitationsTokenCompleteRouteImport.update({
+    id: '/invitations/$token/complete',
+    path: '/invitations/$token/complete',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const InvitationsTokenAcceptRoute = InvitationsTokenAcceptRouteImport.update({
+  id: '/invitations/$token/accept',
+  path: '/invitations/$token/accept',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsProjectIdIssuesNewRoute =
   ProjectsProjectIdIssuesNewRouteImport.update({
     id: '/projects/$projectId_/issues/new',
@@ -124,6 +137,8 @@ export interface FileRoutesByFullPath {
   '/upgrade/success': typeof UpgradeSuccessRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces/create': typeof WorkspacesCreateRoute
+  '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
+  '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
   '/projects/$projectId/issues/$issueId': typeof ProjectsProjectIdIssuesIssueIdRoute
   '/projects/$projectId/issues/new': typeof ProjectsProjectIdIssuesNewRoute
@@ -142,6 +157,8 @@ export interface FileRoutesByTo {
   '/upgrade/success': typeof UpgradeSuccessRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces/create': typeof WorkspacesCreateRoute
+  '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
+  '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
   '/projects/$projectId/issues/$issueId': typeof ProjectsProjectIdIssuesIssueIdRoute
   '/projects/$projectId/issues/new': typeof ProjectsProjectIdIssuesNewRoute
@@ -161,6 +178,8 @@ export interface FileRoutesById {
   '/upgrade_/success': typeof UpgradeSuccessRoute
   '/workspaces_/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces_/create': typeof WorkspacesCreateRoute
+  '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
+  '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
   '/projects/$projectId_/issues/$issueId': typeof ProjectsProjectIdIssuesIssueIdRoute
   '/projects/$projectId_/issues/new': typeof ProjectsProjectIdIssuesNewRoute
@@ -181,6 +200,8 @@ export interface FileRouteTypes {
     | '/upgrade/success'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
+    | '/invitations/$token/accept'
+    | '/invitations/$token/complete'
     | '/workspaces/$workspaceId/vscode'
     | '/projects/$projectId/issues/$issueId'
     | '/projects/$projectId/issues/new'
@@ -199,6 +220,8 @@ export interface FileRouteTypes {
     | '/upgrade/success'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
+    | '/invitations/$token/accept'
+    | '/invitations/$token/complete'
     | '/workspaces/$workspaceId/vscode'
     | '/projects/$projectId/issues/$issueId'
     | '/projects/$projectId/issues/new'
@@ -217,6 +240,8 @@ export interface FileRouteTypes {
     | '/upgrade_/success'
     | '/workspaces_/$workspaceId'
     | '/workspaces_/create'
+    | '/invitations/$token/accept'
+    | '/invitations/$token/complete'
     | '/workspaces/$workspaceId/vscode'
     | '/projects/$projectId_/issues/$issueId'
     | '/projects/$projectId_/issues/new'
@@ -236,6 +261,8 @@ export interface RootRouteChildren {
   UpgradeSuccessRoute: typeof UpgradeSuccessRoute
   WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRoute
   WorkspacesCreateRoute: typeof WorkspacesCreateRoute
+  InvitationsTokenAcceptRoute: typeof InvitationsTokenAcceptRoute
+  InvitationsTokenCompleteRoute: typeof InvitationsTokenCompleteRoute
   ProjectsProjectIdIssuesIssueIdRoute: typeof ProjectsProjectIdIssuesIssueIdRoute
   ProjectsProjectIdIssuesNewRoute: typeof ProjectsProjectIdIssuesNewRoute
   ProjectsProjectIdWorkspacesCreateDraftIdRoute: typeof ProjectsProjectIdWorkspacesCreateDraftIdRoute
@@ -322,6 +349,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdVscodeRouteImport
       parentRoute: typeof WorkspacesRoute
     }
+    '/invitations/$token/complete': {
+      id: '/invitations/$token/complete'
+      path: '/invitations/$token/complete'
+      fullPath: '/invitations/$token/complete'
+      preLoaderRoute: typeof InvitationsTokenCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invitations/$token/accept': {
+      id: '/invitations/$token/accept'
+      path: '/invitations/$token/accept'
+      fullPath: '/invitations/$token/accept'
+      preLoaderRoute: typeof InvitationsTokenAcceptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId_/issues/new': {
       id: '/projects/$projectId_/issues/new'
       path: '/projects/$projectId/issues/new'
@@ -383,6 +424,8 @@ const rootRouteChildren: RootRouteChildren = {
   UpgradeSuccessRoute: UpgradeSuccessRoute,
   WorkspacesWorkspaceIdRoute: WorkspacesWorkspaceIdRoute,
   WorkspacesCreateRoute: WorkspacesCreateRoute,
+  InvitationsTokenAcceptRoute: InvitationsTokenAcceptRoute,
+  InvitationsTokenCompleteRoute: InvitationsTokenCompleteRoute,
   ProjectsProjectIdIssuesIssueIdRoute: ProjectsProjectIdIssuesIssueIdRoute,
   ProjectsProjectIdIssuesNewRoute: ProjectsProjectIdIssuesNewRoute,
   ProjectsProjectIdWorkspacesCreateDraftIdRoute:
