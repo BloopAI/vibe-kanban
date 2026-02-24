@@ -21,8 +21,10 @@ import {
   resolveLabel,
   type ProjectMutations,
 } from "@/shared/types/actions";
+import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { buildIssueCreatePath } from "@/shared/lib/routes/projectSidebarRoutes";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
+import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteActionsProviderProps {
   children: ReactNode;
@@ -135,11 +137,31 @@ export function RemoteActionsProvider({
 
   const executeAction = useCallback(
     async (action: ActionDefinition): Promise<void> => {
+      if (action.id === "settings") {
+        await SettingsDialog.show({
+          initialSection: "organizations",
+          sections: REMOTE_SETTINGS_SECTIONS,
+        });
+        return;
+      }
+
+      if (action.id === "project-settings") {
+        await SettingsDialog.show({
+          initialSection: "remote-projects",
+          initialState: {
+            organizationId: selectedOrgId ?? undefined,
+            projectId: projectId ?? undefined,
+          },
+          sections: REMOTE_SETTINGS_SECTIONS,
+        });
+        return;
+      }
+
       console.warn(
         `[RemoteActionsProvider] Action "${action.id}" is unavailable in remote web.`,
       );
     },
-    [],
+    [projectId, selectedOrgId],
   );
 
   const getLabel = useCallback(

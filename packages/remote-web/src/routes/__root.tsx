@@ -1,4 +1,5 @@
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
+import { Provider as NiceModalProvider } from "@ebay/nice-modal-react";
 import { useSystemTheme } from "@remote/shared/hooks/useSystemTheme";
 import { RemoteActionsProvider } from "@remote/app/providers/RemoteActionsProvider";
 import { RemoteWorkspaceProvider } from "@remote/app/providers/RemoteWorkspaceProvider";
@@ -26,11 +27,13 @@ function RootLayout() {
     <UserProvider>
       <RemoteWorkspaceProvider>
         <RemoteActionsProvider>
-          {isStandaloneRoute ? (
-            content
-          ) : (
-            <RemoteAppShell>{content}</RemoteAppShell>
-          )}
+          <NiceModalProvider>
+            {isStandaloneRoute ? (
+              content
+            ) : (
+              <RemoteAppShell>{content}</RemoteAppShell>
+            )}
+          </NiceModalProvider>
         </RemoteActionsProvider>
       </RemoteWorkspaceProvider>
     </UserProvider>

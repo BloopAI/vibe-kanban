@@ -14,7 +14,6 @@ import { useOrganizationSelection } from '@/shared/hooks/useOrganizationSelectio
 import { useOrganizationMembers } from '@/shared/hooks/useOrganizationMembers';
 import { useOrganizationInvitations } from '@/shared/hooks/useOrganizationInvitations';
 import { useOrganizationMutations } from '@/shared/hooks/useOrganizationMutations';
-import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import {
@@ -43,8 +42,7 @@ import { SettingsCard, SettingsField } from './SettingsComponents';
 
 export function OrganizationsSettingsSection() {
   const { t } = useTranslation('organization');
-  const { loginStatus } = useUserSystem();
-  const { isSignedIn, isLoaded } = useAuth();
+  const { isSignedIn, isLoaded, userId } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -70,8 +68,7 @@ export function OrganizationsSettingsSection() {
   const currentUserRole = selectedOrg?.user_role;
   const isAdmin = currentUserRole === MemberRoleEnum.ADMIN;
   const isPersonalOrg = selectedOrg?.is_personal ?? false;
-  const currentUserId =
-    loginStatus?.status === 'loggedin' ? loginStatus.profile.user_id : null;
+  const currentUserId = userId;
 
   // Fetch members
   const { data: members = [], isLoading: loadingMembers } =

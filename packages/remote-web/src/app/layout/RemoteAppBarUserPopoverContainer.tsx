@@ -3,7 +3,9 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 import type { OrganizationWithRole } from "shared/types";
 import { AppBarUserPopover } from "@vibe/ui/components/AppBarUserPopover";
 import { logout } from "@remote/shared/lib/api";
+import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
+import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteAppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -52,6 +54,18 @@ export function RemoteAppBarUserPopoverContainer({
     });
   }, [navigate]);
 
+  const handleOrgSettings = useCallback(
+    async (orgId: string) => {
+      onOrgSelect(orgId);
+      await SettingsDialog.show({
+        initialSection: "organizations",
+        initialState: { organizationId: orgId },
+        sections: REMOTE_SETTINGS_SECTIONS,
+      });
+    },
+    [onOrgSelect],
+  );
+
   return (
     <AppBarUserPopover
       isSignedIn={isSignedIn}
@@ -62,6 +76,9 @@ export function RemoteAppBarUserPopoverContainer({
       open={open}
       onOpenChange={setOpen}
       onOrgSelect={onOrgSelect}
+      onOrgSettings={(orgId) => {
+        void handleOrgSettings(orgId);
+      }}
       onSignIn={handleSignIn}
       onLogout={() => {
         void handleLogout();

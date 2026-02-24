@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -42,27 +42,53 @@ const SETTINGS_SECTIONS: {
 export interface SettingsDialogProps {
   initialSection?: SettingsSectionType;
   initialState?: SettingsSectionInitialState[SettingsSectionType];
+  sections?: SettingsSectionType[];
 }
 
 interface SettingsDialogContentProps {
   initialSection?: SettingsSectionType;
   initialState?: SettingsSectionInitialState[SettingsSectionType];
+  sections?: SettingsSectionType[];
   onClose: () => void;
 }
 
 function SettingsDialogContent({
   initialSection,
   initialState,
+  sections,
   onClose,
 }: SettingsDialogContentProps) {
   const { t } = useTranslation('settings');
   const { isDirty } = useSettingsDirty();
+  const availableSections = useMemo(() => {
+    if (!sections || sections.length === 0) {
+      return SETTINGS_SECTIONS;
+    }
+
+    const allowed = new Set(sections);
+    const filtered = SETTINGS_SECTIONS.filter((section) =>
+      allowed.has(section.id)
+    );
+    return filtered.length > 0 ? filtered : SETTINGS_SECTIONS;
+  }, [sections]);
+
+  const resolvedInitialSection = useMemo<SettingsSectionType>(() => {
+    if (
+      initialSection &&
+      availableSections.some((section) => section.id === initialSection)
+    ) {
+      return initialSection;
+    }
+
+    return availableSections[0]?.id ?? 'general';
+  }, [availableSections, initialSection]);
+
   const [activeSection, setActiveSection] = useState<SettingsSectionType>(
-    initialSection || 'general'
+    resolvedInitialSection
   );
   // On mobile, null means show the nav menu, a section means show that section
-  const [mobileShowContent, setMobileShowContent] = useState(
-    initialSection ? true : false
+  const [mobileShowContent, setMobileShowContent] = useState<boolean>(
+    initialSection === resolvedInitialSection
   );
   const isConfirmingRef = useRef(false);
 
@@ -165,7 +191,7 @@ function SettingsDialogContent({
             </div>
             {/* Navigation */}
             <nav className="flex-1 p-2 flex flex-col gap-1 overflow-y-auto">
-              {SETTINGS_SECTIONS.map((section) => {
+              {availableSections.map((section) => {
                 const Icon = section.icon;
                 const isActive = activeSection === section.id;
                 return (
@@ -232,7 +258,7 @@ function SettingsDialogContent({
 }
 
 const SettingsDialogImpl = create<SettingsDialogProps>(
-  ({ initialSection, initialState }) => {
+  ({ initialSection, initialState, sections }) => {
     const modal = useModal();
     const handleClose = useCallback(() => {
       modal.hide();
@@ -245,6 +271,7 @@ const SettingsDialogImpl = create<SettingsDialogProps>(
         <SettingsDialogContent
           initialSection={initialSection}
           initialState={initialState}
+          sections={sections}
           onClose={handleClose}
         />
       </SettingsDirtyProvider>,

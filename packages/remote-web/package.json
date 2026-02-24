@@ -14,6 +14,7 @@
     "migrate:structure:dry-run": "node ../../scripts/migrate-remote-web-structure.mjs"
   },
   "dependencies": {
+    "@ebay/nice-modal-react": "^1.2.13",
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-router": "^1.161.1",
     "@tanstack/zod-adapter": "^1.161.1",
