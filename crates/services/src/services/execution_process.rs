@@ -1,4 +1,8 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    io::{IsTerminal, Write},
+    sync::Arc,
+};
 
 use anyhow::{Context, Result};
 use db::{
@@ -8,9 +12,10 @@ use db::{
         execution_process_logs::ExecutionProcessLogs,
     },
 };
-use futures::StreamExt;
+use futures::{StreamExt, TryStreamExt};
+use indicatif::{ProgressBar, ProgressStyle};
 use sqlx::SqlitePool;
-use tokio::{sync::RwLock, task::JoinHandle};
+use tokio::{io::AsyncWriteExt, sync::RwLock, task::JoinHandle};
 use utils::{
     assets::prod_asset_dir_path,
     execution_logs::{
@@ -21,6 +26,160 @@ use utils::{
     msg_store::MsgStore,
 };
 use uuid::Uuid;
+
+pub async fn migrate_execution_logs_to_files() -> Result<()> {
+    let pool = DBService::new_migration_pool()
+        .await
+        .map_err(|e| anyhow::anyhow!("Migration DB pool error: {}", e))?;
+
+    if !ExecutionProcessLogs::has_any(&pool).await? {
+        return Ok(());
+    }
+
+    let is_tty = std::io::stderr().is_terminal();
+    if is_tty {
+        let _ = writeln!(
+            std::io::stderr(),
+            "Performing one time database migration, may take a few minutes..."
+        );
+    }
+
+    let pb = if is_tty {
+        Some(new_spinner("Migrating"))
+    } else {
+        None
+    };
+
+    let total_processes = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+    let count_task = {
+        let pool = pool.clone();
+        let pb = pb.clone();
+        let total_processes = total_processes.clone();
+        tokio::spawn(async move {
+            if let Ok(count) = ExecutionProcessLogs::count_distinct_processes(&pool).await {
+                total_processes.store(count as usize, std::sync::atomic::Ordering::Relaxed);
+                if let Some(pb) = pb {
+                    pb.set_length(count as u64);
+                    pb.set_style(
+                        ProgressStyle::default_bar()
+                            .template("{bar:36.yellow} {percent:>3}% {msg:<12.dim}")
+                            .unwrap_or_else(|_| ProgressStyle::default_bar())
+                            .progress_chars("■⬝"),
+                    );
+                }
+            }
+        })
+    };
+
+    let completed = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+
+    ExecutionProcessLogs::stream_distinct_processes(&pool)
+        .map_err(anyhow::Error::from)
+        .map(|res| {
+            let pool = pool.clone();
+            let pb = pb.clone();
+            let completed = completed.clone();
+            let total_processes = total_processes.clone();
+            async move {
+                let p = res?;
+
+                let path = process_log_file_path(p.session_id, p.execution_id);
+                if path.exists() {
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+                    return Ok::<(), anyhow::Error>(());
+                }
+
+                if let Some(parent) = path.parent() {
+                    tokio::fs::create_dir_all(parent).await?;
+                }
+
+                let temp_path = path.with_extension("jsonl.tmp");
+                let mut file = tokio::fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .truncate(true)
+                    .open(&temp_path)
+                    .await?;
+
+                let mut logs_stream =
+                    ExecutionProcessLogs::stream_log_lines_by_execution_id(&pool, &p.execution_id);
+                let mut has_logs = false;
+                while let Some(log_res) = logs_stream.next().await {
+                    let log = log_res?;
+                    has_logs = true;
+                    let mut line = log;
+                    if !line.ends_with('\n') {
+                        line.push('\n');
+                    }
+                    file.write_all(line.as_bytes()).await?;
+                }
+
+                if !has_logs {
+                    let _ = tokio::fs::remove_file(&temp_path).await;
+                    if let Some(pb) = &pb {
+                        pb.inc(1);
+                    }
+                    return Ok::<(), anyhow::Error>(());
+                }
+
+                file.sync_all().await?;
+                tokio::fs::rename(temp_path, path).await?;
+
+                let c = completed.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+
+                if let Some(pb) = &pb {
+                    pb.inc(1);
+                } else if c.is_multiple_of(100) {
+                    let t = total_processes.load(std::sync::atomic::Ordering::Relaxed);
+                    let _ = writeln!(
+                        std::io::stderr(),
+                        "sqlite-migration:{}",
+                        if t > 0 {
+                            (c * 100 / t).to_string()
+                        } else {
+                            "?".to_string()
+                        }
+                    );
+                }
+
+                Ok::<(), anyhow::Error>(())
+            }
+        })
+        .buffer_unordered(64)
+        .try_collect::<Vec<_>>()
+        .await?;
+
+    let _ = count_task.await;
+
+    if let Some(pb) = pb {
+        pb.finish_and_clear();
+    } else {
+        let _ = writeln!(std::io::stderr(), "sqlite-migration:done");
+    }
+
+    let vacuum_pb = if is_tty {
+        Some(new_spinner("Compacting"))
+    } else {
+        let _ = writeln!(std::io::stderr(), "Compacting database...");
+        None
+    };
+
+    ExecutionProcessLogs::delete_all(&pool).await?;
+    sqlx::query("VACUUM").execute(&pool).await?;
+
+    if let Some(pb) = vacuum_pb {
+        pb.finish_and_clear();
+    }
+
+    let _ = writeln!(std::io::stderr(), "Database migration complete.");
+
+    pool.close().await;
+
+    Ok(())
+}
 
 pub async fn remove_session_process_logs(session_id: Uuid) -> Result<()> {
     let dir = utils::execution_logs::process_logs_session_dir(session_id);
@@ -232,4 +391,17 @@ async fn read_execution_logs_for_execution(
             )
         }),
     }
+}
+
+fn new_spinner(message: &'static str) -> ProgressBar {
+    let pb = ProgressBar::new_spinner();
+    pb.set_style(
+        ProgressStyle::default_spinner()
+            .template("{spinner:.yellow} {msg:<12.dim}")
+            .unwrap_or_else(|_| ProgressStyle::default_spinner())
+            .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ "),
+    );
+    pb.set_message(message);
+    pb.enable_steady_tick(std::time::Duration::from_millis(100));
+    pb
 }

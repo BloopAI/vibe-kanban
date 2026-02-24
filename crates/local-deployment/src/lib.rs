@@ -67,6 +67,11 @@ struct PendingHandoff {
 #[async_trait]
 impl Deployment for LocalDeployment {
     async fn new() -> Result<Self, DeploymentError> {
+        // Run one-time process logs migration from DB to filesystem
+        services::services::execution_process::migrate_execution_logs_to_files()
+            .await
+            .map_err(|e| DeploymentError::Other(anyhow::anyhow!("Migration failed: {}", e)))?;
+
         let mut raw_config = load_config_from_file(&config_path()).await;
 
         let profiles = ExecutorConfigs::get_cached();
