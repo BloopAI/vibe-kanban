@@ -144,6 +144,10 @@ export function PreviewBrowserContainer({
   attemptId,
   className,
 }: PreviewBrowserContainerProps) {
+  // ─── Data Sources ───────────────────────────────────────────────────────────
+  // Workspace context, preview proxy config, dev server state, log streams,
+  // URL auto-detection, and preview settings (override URL, screen size).
+
   const previewRefreshKey = useUiPreferencesStore((s) => s.previewRefreshKey);
   const triggerPreviewRefresh = useUiPreferencesStore(
     (s) => s.triggerPreviewRefresh
@@ -200,14 +204,20 @@ export function PreviewBrowserContainer({
     setResponsiveDimensions,
   } = usePreviewSettings(workspaceId);
 
+  // ─── URL Bar State ──────────────────────────────────────────────────────────
+  // effectiveUrl:       The override URL (if set) or the auto-detected dev server URL.
+  // urlInputValue:      Local state for the URL bar text. Decoupled from effectiveUrl
+  //                     so that external URL changes don't disrupt the user while typing.
+  // prevEffectiveUrlRef: Tracks the previous effectiveUrl so the sync effect can detect
+  //                     when it changes (new URL detected or override toggled).
   // Use override URL if set, otherwise fall back to auto-detected
   const effectiveUrl = hasOverride ? overrideUrl : urlInfo?.url;
-
-  // Local state for URL input to prevent updates from disrupting typing
   const urlInputRef = useRef<HTMLInputElement>(null);
   const [urlInputValue, setUrlInputValue] = useState(effectiveUrl ?? '');
   const prevEffectiveUrlRef = useRef(effectiveUrl);
 
+  // ─── Iframe Display Timing ──────────────────────────────────────────────────
+  // Controls when the iframe becomes visible after URL detection.
   // Iframe display timing state
   const [showIframe, setShowIframe] = useState(false);
   const [allowManualUrl, setAllowManualUrl] = useState(false);
@@ -220,6 +230,16 @@ export function PreviewBrowserContainer({
     (s) => s.setPendingComponentMarkdown
   );
 
+  // ─── Navigation Bridge ────────────────────────────────────────────────────
+  // The Rust proxy injects devtools_script.js into every iframe response.
+  // That script reports navigation events (URL changes, page ready) via postMessage.
+  // PreviewDevToolsBridge wraps the postMessage protocol for type-safe communication.
+  //
+  // navigationDevUrl transforms proxy URLs back to dev URLs:
+  //   proxy:  http://4000.localhost:{proxyPort}/path
+  //   dev:    http://localhost:4000/path
+  //
+  // currentPreviewUrl = best-known current URL (navigation > effectiveUrl).
   // Eruda DevTools state
   const [isErudaVisible, setIsErudaVisible] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -246,7 +266,6 @@ export function PreviewBrowserContainer({
           payload: message.payload,
         });
       }
-
       if (message.type === 'debug') {
         if (isPreviewNavDebugLoggingEnabled()) {
           console.log(
@@ -262,6 +281,16 @@ export function PreviewBrowserContainer({
     [handleNavigationMessage]
   );
 
+  // ─── URL Sync Effect ──────────────────────────────────────────────────────
+  // Keeps urlInputValue in sync with navigation/effectiveUrl. Priority:
+  //   1. Skip if input is focused (user is typing)
+  //   2. Prefer navigationDevUrl (iframe reported this URL via postMessage)
+  //   3. Use effectiveUrl if it changed (new URL detected or override set)
+  //   4. Fallback: set to effectiveUrl (catch-all for initial render, etc.)
+  //
+  // NOTE: After resetNavigation() in handleUrlSubmit, there's a brief flash
+  // where the URL bar shows the old URL before the iframe reports the new URL.
+  // This is a known cosmetic limitation.
   // Sync URL bar from effectiveUrl changes OR iframe navigation
   useEffect(() => {
     if (document.activeElement === urlInputRef.current) {
@@ -552,6 +581,20 @@ export function PreviewBrowserContainer({
     []
   );
 
+  // ─── URL Bar Handlers ─────────────────────────────────────────────────────
+  // handleUrlSubmit flow:
+  //   1. Empty input → clear override, blur
+  //   2. Invalid URL → reject (stay focused so user can fix)
+  //   3. Same URL as current → noop, blur
+  //   4. New URL → resetNavigation() to force sync effect to fire when iframe
+  //      reports new URL
+  //   5. Same port as current → bridge goto (postMessage to iframe, SPA navigation)
+  //   6. Different port → set override URL (full iframe src change)
+  //
+  // WHY resetNavigation is needed: after blur + navigateTo, no React state changes
+  // occur, so the sync effect wouldn't fire without it. resetNavigation nullifies
+  // navigation.url → sync effect dependency changes → effect will fire when iframe
+  // reports new URL.
   const handleUrlInputChange = useCallback((value: string) => {
     setUrlInputValue(value);
   }, []);
@@ -652,6 +695,8 @@ export function PreviewBrowserContainer({
     navigation?.url,
   ]);
 
+  // handleUrlEscape: reverts URL bar to the current page URL and blurs,
+  // discarding whatever the user typed.
   const handleUrlEscape = useCallback(() => {
     setUrlInputValue(navigationDevUrl ?? effectiveUrl ?? '');
     urlInputRef.current?.blur();
@@ -788,6 +833,11 @@ export function PreviewBrowserContainer({
     [setScreenSize]
   );
 
+  // ─── Iframe URL Construction ────────────────────────────────────────────────
+  // Builds the subdomain-based proxy URL loaded by the iframe.
+  //   Dev server at localhost:4000 → iframe loads http://4000.localhost:{proxyPort}/path
+  //   The proxy extracts the target port from the subdomain and forwards to the dev server.
+  //   _refresh query param forces iframe reload on refresh button click.
   // Construct proxy URL for iframe to enable security isolation via separate origin
   // Uses subdomain-based routing: http://{devPort}.localhost:{proxyPort}{path}
   const iframeUrl = useMemo(() => {
@@ -839,6 +889,10 @@ export function PreviewBrowserContainer({
     }
   }, [effectiveUrl, previewProxyPort, previewRefreshKey, urlInfo?.url]);
 
+  // ─── Debug: State Snapshot ──────────────────────────────────────────────────
+  // Logs all preview state on every change, only in dev mode (guarded by
+  // logPreviewNavDebug / isPreviewNavDebugLoggingEnabled).
+
   useEffect(() => {
     logPreviewNavDebug('preview_state_snapshot', {
       autoDetectedUrl: urlInfo?.url ?? null,
@@ -869,6 +923,11 @@ export function PreviewBrowserContainer({
     previewProxyPort,
   ]);
 
+  // ─── Navigation Reset on URL Change ────────────────────────────────────────
+  // Resets navigation state when the iframe URL changes (e.g., new dev server
+  // detected, user switched override). Prevents stale navigation data from the
+  // previous page.
+
   const prevIframeUrlRef = useRef(iframeUrl);
   useEffect(() => {
     if (prevIframeUrlRef.current !== iframeUrl) {
@@ -877,6 +936,9 @@ export function PreviewBrowserContainer({
     }
   }, [iframeUrl, resetNavigation]);
 
+  // NOTE: handleEditDevScript and handleFixDevScript have identical bodies.
+  // This duplication is intentional — they may diverge in the future to support
+  // different dialog configurations (e.g., edit vs. auto-fix modes).
   const handleEditDevScript = useCallback(() => {
     if (!attemptId || repos.length === 0) return;
 
