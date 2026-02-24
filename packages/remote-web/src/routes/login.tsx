@@ -1,8 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { redirectAuthenticatedToHome } from "@remote/shared/lib/route-auth";
-import LoginPage from "../pages/LoginPage";
 
 const searchSchema = z.object({
   next: z.string().optional(),
@@ -10,8 +8,10 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/login")({
   validateSearch: zodValidator(searchSchema),
-  beforeLoad: async () => {
-    await redirectAuthenticatedToHome();
+  beforeLoad: ({ search }) => {
+    throw redirect({
+      to: "/account",
+      search: search.next ? { next: search.next } : undefined,
+    });
   },
-  component: LoginPage,
 });

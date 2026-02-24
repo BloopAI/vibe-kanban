@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WorkspacesRouteImport } from './routes/workspaces'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as WorkspacesCreateRouteImport } from './routes/workspaces_.create'
 import { Route as WorkspacesWorkspaceIdRouteImport } from './routes/workspaces_.$workspaceId'
@@ -19,6 +20,7 @@ import { Route as UpgradeSuccessRouteImport } from './routes/upgrade_.success'
 import { Route as UpgradeCompleteRouteImport } from './routes/upgrade_.complete'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as LoginCompleteRouteImport } from './routes/login_.complete'
+import { Route as AccountCompleteRouteImport } from './routes/account_.complete'
 import { Route as WorkspacesWorkspaceIdVscodeRouteImport } from './routes/workspaces.$workspaceId.vscode'
 import { Route as InvitationsTokenCompleteRouteImport } from './routes/invitations.$token.complete'
 import { Route as InvitationsTokenAcceptRouteImport } from './routes/invitations.$token.accept'
@@ -41,6 +43,11 @@ const UpgradeRoute = UpgradeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountRoute = AccountRouteImport.update({
+  id: '/account',
+  path: '/account',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -76,6 +83,11 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
 const LoginCompleteRoute = LoginCompleteRouteImport.update({
   id: '/login_/complete',
   path: '/login/complete',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccountCompleteRoute = AccountCompleteRouteImport.update({
+  id: '/account_/complete',
+  path: '/account/complete',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WorkspacesWorkspaceIdVscodeRoute =
@@ -128,9 +140,11 @@ const ProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/login': typeof LoginRoute
   '/upgrade': typeof UpgradeRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
+  '/account/complete': typeof AccountCompleteRoute
   '/login/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/upgrade/complete': typeof UpgradeCompleteRoute
@@ -148,9 +162,11 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/login': typeof LoginRoute
   '/upgrade': typeof UpgradeRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
+  '/account/complete': typeof AccountCompleteRoute
   '/login/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/upgrade/complete': typeof UpgradeCompleteRoute
@@ -169,9 +185,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/account': typeof AccountRoute
   '/login': typeof LoginRoute
   '/upgrade': typeof UpgradeRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
+  '/account_/complete': typeof AccountCompleteRoute
   '/login_/complete': typeof LoginCompleteRoute
   '/projects/$projectId': typeof ProjectsProjectIdRoute
   '/upgrade_/complete': typeof UpgradeCompleteRoute
@@ -191,9 +209,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/account'
     | '/login'
     | '/upgrade'
     | '/workspaces'
+    | '/account/complete'
     | '/login/complete'
     | '/projects/$projectId'
     | '/upgrade/complete'
@@ -211,9 +231,11 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/account'
     | '/login'
     | '/upgrade'
     | '/workspaces'
+    | '/account/complete'
     | '/login/complete'
     | '/projects/$projectId'
     | '/upgrade/complete'
@@ -231,9 +253,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/account'
     | '/login'
     | '/upgrade'
     | '/workspaces'
+    | '/account_/complete'
     | '/login_/complete'
     | '/projects/$projectId'
     | '/upgrade_/complete'
@@ -252,9 +276,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccountRoute: typeof AccountRoute
   LoginRoute: typeof LoginRoute
   UpgradeRoute: typeof UpgradeRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
+  AccountCompleteRoute: typeof AccountCompleteRoute
   LoginCompleteRoute: typeof LoginCompleteRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
   UpgradeCompleteRoute: typeof UpgradeCompleteRoute
@@ -291,6 +317,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account': {
+      id: '/account'
+      path: '/account'
+      fullPath: '/account'
+      preLoaderRoute: typeof AccountRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -340,6 +373,13 @@ declare module '@tanstack/react-router' {
       path: '/login/complete'
       fullPath: '/login/complete'
       preLoaderRoute: typeof LoginCompleteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/account_/complete': {
+      id: '/account_/complete'
+      path: '/account/complete'
+      fullPath: '/account/complete'
+      preLoaderRoute: typeof AccountCompleteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/workspaces/$workspaceId/vscode': {
@@ -415,9 +455,11 @@ const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccountRoute: AccountRoute,
   LoginRoute: LoginRoute,
   UpgradeRoute: UpgradeRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
+  AccountCompleteRoute: AccountCompleteRoute,
   LoginCompleteRoute: LoginCompleteRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRoute,
   UpgradeCompleteRoute: UpgradeCompleteRoute,

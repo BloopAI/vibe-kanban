@@ -9,7 +9,7 @@ import {
 } from "@remote/shared/lib/pkce";
 
 export default function LoginPage() {
-  const { next } = useSearch({ from: "/login" });
+  const { next } = useSearch({ from: "/account" });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<OAuthProvider | null>(null);
 
@@ -24,7 +24,7 @@ export default function LoginPage() {
 
       const appBase =
         import.meta.env.VITE_APP_BASE_URL || window.location.origin;
-      const callbackUrl = new URL("/login/complete", appBase);
+      const callbackUrl = new URL("/account/complete", appBase);
       if (next) {
         callbackUrl.searchParams.set("next", next);
       }
@@ -40,8 +40,8 @@ export default function LoginPage() {
 
   return (
     <div className="h-screen overflow-auto bg-primary">
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-base py-double">
-        <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
+      <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center px-base py-double">
+        <div className="space-y-double rounded-sm border border-border bg-secondary p-double">
           <header className="space-y-double text-center">
             <div className="flex justify-center">
               <BrandLogo className="h-8 w-auto" />
@@ -71,6 +71,18 @@ export default function LoginPage() {
               loading={pending === "google"}
             />
           </section>
+
+          <p className="text-center text-sm text-low">
+            Need help getting started?{" "}
+            <a
+              href="https://www.vibekanban.com/docs"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-normal underline decoration-border underline-offset-4 transition-colors hover:text-high"
+            >
+              Read the docs
+            </a>
+          </p>
         </div>
       </div>
     </div>

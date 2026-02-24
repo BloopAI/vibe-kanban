@@ -18,7 +18,7 @@ function getSafeNextPath(nextPath: string | undefined): string {
 
 export default function LoginCompletePage() {
   const navigate = useNavigate();
-  const search = useSearch({ from: "/login_/complete" });
+  const search = useSearch({ from: "/account_/complete" });
   const [error, setError] = useState<string | null>(null);
 
   const handoffId = search.handoff_id;
@@ -72,7 +72,7 @@ export default function LoginCompletePage() {
           className="mt-double w-full rounded-sm bg-brand px-base py-half text-sm font-medium text-on-brand transition-colors hover:bg-brand-hover"
           onClick={() =>
             navigate({
-              to: "/login",
+              to: "/account",
               search: nextPath !== "/" ? { next: nextPath } : undefined,
               replace: true,
             })

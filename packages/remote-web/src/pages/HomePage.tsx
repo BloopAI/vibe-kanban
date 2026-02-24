@@ -22,7 +22,7 @@ export default function HomePage() {
   const handleSignInAgain = async () => {
     await clearTokens();
     navigate({
-      to: "/login",
+      to: "/account",
       replace: true,
     });
   };

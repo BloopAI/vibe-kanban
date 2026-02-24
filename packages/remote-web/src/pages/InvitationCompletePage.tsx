@@ -71,7 +71,7 @@ export default function InvitationCompletePage() {
   }, [handoffId, appCode, oauthError, urlToken]);
 
   if (error) {
-    const retryPath = urlToken ? `/invitations/${urlToken}/accept` : "/login";
+    const retryPath = urlToken ? `/invitations/${urlToken}/accept` : "/account";
 
     return (
       <StatusCard title="Could not accept invitation" variant="error">

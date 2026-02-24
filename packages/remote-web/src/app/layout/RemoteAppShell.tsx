@@ -122,7 +122,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         isSignedIn={isSignedIn}
         isLoadingProjects={isLoadingProjects}
         onSignIn={() => {
-          navigate({ to: "/login" });
+          navigate({ to: "/account" });
         }}
         userPopover={
           <RemoteAppBarUserPopoverContainer

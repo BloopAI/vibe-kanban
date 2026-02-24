@@ -34,7 +34,7 @@ export function RemoteAppBarUserPopoverContainer({
     const next = toNextPath(location);
 
     navigate({
-      to: "/login",
+      to: "/account",
       search: next !== "/" ? { next } : undefined,
     });
   }, [location, navigate]);
@@ -47,7 +47,7 @@ export function RemoteAppBarUserPopoverContainer({
     }
 
     navigate({
-      to: "/login",
+      to: "/account",
       replace: true,
     });
   }, [navigate]);

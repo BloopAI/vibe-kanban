@@ -13,7 +13,7 @@ export async function requireAuthenticated(location: RouteLocation) {
   }
 
   throw redirect({
-    to: "/login",
+    to: "/account",
     search: {
       next: toNextPath(location),
     },
