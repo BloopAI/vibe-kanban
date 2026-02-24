@@ -7863,8 +7863,8 @@ dependencies = [
  "tauri-plugin",
  "thiserror 2.0.18",
  "url",
- "windows 0.61.3",
- "zbus 5.14.0",
+ "windows",
+ "zbus",
 ]
 
 [[package]]
