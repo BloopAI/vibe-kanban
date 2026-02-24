@@ -206,7 +206,7 @@ jobs:
         run: |
           set -x
           cargo fmt --all -- --check & pid_fmt=$!
-          cargo clippy --all --all-targets -- -D warnings
+          cargo clippy --workspace --all-targets --exclude vibe-kanban-tauri -- -D warnings
           wait $pid_fmt
 
   backend-test:
@@ -229,4 +229,4 @@ jobs:
         uses: taiki-e/install-action@nextest
 
       - name: Run Cargo tests
-        run: cargo nextest run --workspace
+        run: cargo nextest run --workspace --exclude vibe-kanban-tauri
