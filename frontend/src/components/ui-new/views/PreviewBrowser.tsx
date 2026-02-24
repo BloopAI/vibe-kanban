@@ -34,6 +34,8 @@ export const MOBILE_WIDTH = 390;
 export const MOBILE_HEIGHT = 844;
 // Phone frame adds padding (p-3 = 12px * 2) and rounded corners
 export const PHONE_FRAME_PADDING = 24;
+const PREVIEW_IFRAME_SANDBOX =
+  'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals';
 
 interface PreviewBrowserProps {
   url?: string;
@@ -43,6 +45,7 @@ interface PreviewBrowserProps {
   isUsingOverride?: boolean;
   onUrlInputChange: (value: string) => void;
   onUrlSubmit: () => void;
+  onUrlEscape?: () => void;
   onClearOverride?: () => void;
   onCopyUrl: () => void;
   onOpenInNewTab: () => void;
@@ -76,6 +79,7 @@ interface PreviewBrowserProps {
   onToggleInspectMode: () => void;
   isErudaVisible: boolean;
   onToggleEruda: () => void;
+  onIframeLoad?: () => void;
 }
 
 export function PreviewBrowser({
@@ -86,6 +90,7 @@ export function PreviewBrowser({
   isUsingOverride,
   onUrlInputChange,
   onUrlSubmit,
+  onUrlEscape,
   onClearOverride,
   onCopyUrl,
   onOpenInNewTab,
@@ -117,6 +122,7 @@ export function PreviewBrowser({
   onToggleInspectMode,
   isErudaVisible,
   onToggleEruda,
+  onIframeLoad,
 }: PreviewBrowserProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const isLoading = isStarting || (isServerRunning && !url);
@@ -200,7 +206,13 @@ export function PreviewBrowser({
               type="text"
               value={urlInputValue}
               onChange={(e) => onUrlInputChange(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onUrlSubmit()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') onUrlSubmit();
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  onUrlEscape?.();
+                }
+              }}
               placeholder={autoDetectedUrl ?? 'Enter URL...'}
               disabled={!isServerRunning}
               className={cn(
@@ -360,8 +372,9 @@ export function PreviewBrowser({
                     src={url}
                     title={t('preview.browser.title')}
                     className="w-full h-full border-0"
-                    sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                    sandbox={PREVIEW_IFRAME_SANDBOX}
                     referrerPolicy="no-referrer"
+                    onLoad={onIframeLoad}
                   />
                 </div>
               </div>
@@ -382,8 +395,9 @@ export function PreviewBrowser({
                     'w-full h-full border-0',
                     isResizing && 'pointer-events-none'
                   )}
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                  sandbox={PREVIEW_IFRAME_SANDBOX}
                   referrerPolicy="no-referrer"
+                  onLoad={onIframeLoad}
                 />
 
                 {/* Resize handles for responsive mode */}

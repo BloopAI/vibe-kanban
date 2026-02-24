@@ -27,9 +27,67 @@ import { ScriptFixerDialog } from '@/components/dialogs/scripts/ScriptFixerDialo
 import { usePreviewNavigation } from '@/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/utils/previewDevToolsBridge';
 import { useInspectModeStore } from '@/stores/useInspectModeStore';
+import type { PreviewDevToolsMessage } from '@/types/previewDevTools';
 
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
+
+function isPreviewNavDebugLoggingEnabled(): boolean {
+  return import.meta.env.DEV;
+}
+
+function logPreviewNavDebug(
+  event: string,
+  details?: Record<string, unknown> | null
+): void {
+  if (!isPreviewNavDebugLoggingEnabled()) return;
+  const timestamp = new Date().toISOString();
+  console.log(`[PreviewNavUI ${timestamp}] ${event}`, details ?? {});
+}
+
+function parsePreviewUrl(rawUrl: string, baseUrl?: string): URL | null {
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return null;
+
+  try {
+    const parsed = new URL(trimmed);
+    if (
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      parsed.hostname
+    ) {
+      return parsed;
+    }
+  } catch {
+    // Keep going.
+  }
+
+  if (
+    (trimmed.startsWith('/') ||
+      trimmed.startsWith('?') ||
+      trimmed.startsWith('#')) &&
+    baseUrl
+  ) {
+    try {
+      return new URL(trimmed, baseUrl);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!trimmed.includes('://')) {
+    try {
+      return new URL(`http://${trimmed}`);
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function normalizePreviewUrl(rawUrl: string, baseUrl?: string): string | null {
+  return parsePreviewUrl(rawUrl, baseUrl)?.toString() ?? null;
+}
 
 /**
  * Transform a proxy URL back to the dev server URL.
@@ -109,9 +167,18 @@ export function PreviewBrowserContainer({
     devServerProcesses,
   } = usePreviewDevServer(attemptId);
 
-  const primaryDevServer = runningDevServers[0];
+  const primaryDevServer = useMemo(() => {
+    if (runningDevServers.length === 0) return undefined;
+
+    return runningDevServers.reduce((latest, current) =>
+      new Date(current.started_at).getTime() >
+      new Date(latest.started_at).getTime()
+        ? current
+        : latest
+    );
+  }, [runningDevServers]);
   const { logs } = useLogStream(primaryDevServer?.id ?? '');
-  const urlInfo = usePreviewUrl(logs);
+  const urlInfo = usePreviewUrl(logs, previewProxyPort ?? undefined);
 
   // Detect failed dev server process (failed status or completed with non-zero exit code)
   const failedDevServerProcess = devServerProcesses.find(
@@ -158,41 +225,90 @@ export function PreviewBrowserContainer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const {
     navigation,
-    handleMessage,
+    isReady,
+    handleMessage: handleNavigationMessage,
     reset: resetNavigation,
   } = usePreviewNavigation();
   const bridgeRef = useRef<PreviewDevToolsBridge | null>(null);
+  const navigationDevUrl = useMemo(() => {
+    if (!navigation?.url || !previewProxyPort) {
+      return null;
+    }
+    return transformProxyUrlToDevUrl(navigation.url);
+  }, [navigation?.url, previewProxyPort]);
+  const currentPreviewUrl = navigationDevUrl ?? effectiveUrl ?? null;
+
+  const handleBridgeMessage = useCallback(
+    (message: PreviewDevToolsMessage) => {
+      if (message.type !== 'debug') {
+        logPreviewNavDebug('bridge_message', {
+          type: message.type,
+          payload: message.payload,
+        });
+      }
+
+      if (message.type === 'debug') {
+        if (isPreviewNavDebugLoggingEnabled()) {
+          console.log(
+            '[PreviewNavDebug]',
+            message.payload.event,
+            message.payload
+          );
+        }
+        return;
+      }
+      handleNavigationMessage(message);
+    },
+    [handleNavigationMessage]
+  );
 
   // Sync URL bar from effectiveUrl changes OR iframe navigation
   useEffect(() => {
-    if (document.activeElement === urlInputRef.current) return;
+    if (document.activeElement === urlInputRef.current) {
+      logPreviewNavDebug('url_input_sync_skipped', {
+        reason: 'input_focused',
+        effectiveUrl: effectiveUrl ?? null,
+        navigationUrl: navigation?.url ?? null,
+      });
+      return;
+    }
+
+    if (navigationDevUrl) {
+      setUrlInputValue(navigationDevUrl);
+      logPreviewNavDebug('url_input_synced_from_navigation', {
+        navUrl: navigation?.url ?? null,
+        devUrl: navigationDevUrl,
+        previewProxyPort,
+      });
+      return;
+    }
 
     if (prevEffectiveUrlRef.current !== effectiveUrl) {
       prevEffectiveUrlRef.current = effectiveUrl;
       setUrlInputValue(effectiveUrl ?? '');
+      logPreviewNavDebug('url_input_synced_from_effective_url_change', {
+        effectiveUrl: effectiveUrl ?? null,
+      });
       return;
     }
 
-    const navUrl = navigation?.url;
-    if (navUrl && previewProxyPort) {
-      const devUrl = transformProxyUrlToDevUrl(navUrl);
-      if (devUrl) {
-        setUrlInputValue(devUrl);
-        return;
-      }
-    }
-
     setUrlInputValue(effectiveUrl ?? '');
-  }, [effectiveUrl, navigation?.url, previewProxyPort]);
+    logPreviewNavDebug('url_input_synced_fallback', {
+      effectiveUrl: effectiveUrl ?? null,
+    });
+  }, [effectiveUrl, navigation?.url, navigationDevUrl, previewProxyPort]);
 
   useEffect(() => {
-    bridgeRef.current = new PreviewDevToolsBridge(handleMessage, iframeRef);
+    bridgeRef.current = new PreviewDevToolsBridge(
+      handleBridgeMessage,
+      iframeRef
+    );
     bridgeRef.current.start();
 
     return () => {
       bridgeRef.current?.stop();
     };
-  }, [handleMessage]);
+  }, [handleBridgeMessage]);
 
   // Send inspect mode toggle to iframe
   useEffect(() => {
@@ -259,7 +375,9 @@ export function PreviewBrowserContainer({
     // If user has triggered immediate load (refresh/submit), show immediately after delay
     // OR if no override (normal flow), show after delay once effectiveUrl is set
     // OR if we have both override and auto-detected URL (server is ready), show after delay
-    const shouldShow = immediateLoad || !hasOverride || urlInfo?.url;
+    // OR after timeout fallback when URL auto-detection never resolves.
+    const shouldShow =
+      immediateLoad || !hasOverride || Boolean(urlInfo?.url) || allowManualUrl;
 
     if (!shouldShow) {
       setShowIframe(false);
@@ -275,6 +393,7 @@ export function PreviewBrowserContainer({
     immediateLoad,
     hasOverride,
     urlInfo?.url,
+    allowManualUrl,
   ]);
 
   // Responsive resize state - use refs for values that shouldn't trigger re-renders
@@ -439,18 +558,56 @@ export function PreviewBrowserContainer({
 
   const handleUrlSubmit = useCallback(() => {
     const trimmed = urlInputValue.trim();
-    if (!trimmed || trimmed === urlInfo?.url) {
+    if (!trimmed) {
       clearOverride();
+      logPreviewNavDebug('url_submit_clear_override_empty_input', {
+        urlInputValue,
+      });
+      urlInputRef.current?.blur();
       return;
     }
 
+    const baseUrl = currentPreviewUrl ?? urlInfo?.url ?? undefined;
+    const normalizedInput = normalizePreviewUrl(trimmed, baseUrl);
+    if (!normalizedInput) {
+      logPreviewNavDebug('url_submit_rejected_invalid', {
+        urlInputValue,
+        baseUrl: baseUrl ?? null,
+      });
+      return;
+    }
+
+    urlInputRef.current?.blur();
+    const normalizedCurrentUrl = currentPreviewUrl
+      ? normalizePreviewUrl(currentPreviewUrl, urlInfo?.url ?? undefined)
+      : null;
+    if (normalizedCurrentUrl && normalizedInput === normalizedCurrentUrl) {
+      if (hasOverride) {
+        clearOverride();
+      }
+      logPreviewNavDebug('url_submit_noop_matches_current_url', {
+        normalizedInput,
+        normalizedCurrentUrl,
+        hasOverride,
+      });
+      return;
+    }
+
+    resetNavigation();
+    logPreviewNavDebug('url_submit_reset_navigation', {
+      normalizedInput,
+      previousNavigationUrl: navigation?.url ?? null,
+    });
+
     if (showIframe && iframeRef.current?.contentWindow && previewProxyPort) {
       try {
-        const parsed = new URL(trimmed);
+        const parsed = new URL(normalizedInput);
         const devPort =
           parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
 
-        const currentUrl = effectiveUrl ? new URL(effectiveUrl) : null;
+        const currentUrl = currentPreviewUrl
+          ? parsePreviewUrl(currentPreviewUrl, urlInfo?.url ?? undefined)
+          : null;
         const currentPort =
           currentUrl?.port ||
           (currentUrl?.protocol === 'https:' ? '443' : '80');
@@ -458,25 +615,47 @@ export function PreviewBrowserContainer({
         if (currentPort != null && devPort === currentPort) {
           const proxyPath = parsed.pathname + parsed.search + parsed.hash;
           const proxyUrl = `http://${devPort}.localhost:${previewProxyPort}${proxyPath}`;
+          logPreviewNavDebug('url_submit_bridge_goto', {
+            normalizedInput,
+            proxyUrl,
+            currentPort,
+            devPort,
+          });
           bridgeRef.current?.navigateTo(proxyUrl);
           return;
         }
       } catch {
+        logPreviewNavDebug('url_submit_bridge_goto_parse_error', {
+          normalizedInput,
+        });
         // fall through to iframe src change
       }
     }
 
-    setOverrideUrl(trimmed);
+    logPreviewNavDebug('url_submit_override_set', {
+      normalizedInput,
+      previousOverride: overrideUrl ?? null,
+    });
+    setOverrideUrl(normalizedInput);
     setImmediateLoad(true);
   }, [
     urlInputValue,
     urlInfo?.url,
-    effectiveUrl,
+    currentPreviewUrl,
+    hasOverride,
     showIframe,
     previewProxyPort,
+    overrideUrl,
     clearOverride,
+    resetNavigation,
     setOverrideUrl,
+    navigation?.url,
   ]);
+
+  const handleUrlEscape = useCallback(() => {
+    setUrlInputValue(navigationDevUrl ?? effectiveUrl ?? '');
+    urlInputRef.current?.blur();
+  }, [navigationDevUrl, effectiveUrl]);
 
   const handleStart = useCallback(() => {
     start();
@@ -487,9 +666,39 @@ export function PreviewBrowserContainer({
   }, [stop]);
 
   const handleRefresh = useCallback(() => {
+    const canUseBridgeRefresh = Boolean(
+      showIframe &&
+        isReady &&
+        iframeRef.current?.contentWindow &&
+        bridgeRef.current
+    );
+
+    if (canUseBridgeRefresh) {
+      logPreviewNavDebug('toolbar_refresh_bridge', {
+        currentPreviewUrl,
+        navigationUrl: navigation?.url ?? null,
+      });
+      bridgeRef.current?.refresh();
+      return;
+    }
+
+    logPreviewNavDebug('toolbar_refresh_clicked', {
+      previousRefreshKey: previewRefreshKey,
+      effectiveUrl: effectiveUrl ?? null,
+      currentPreviewUrl,
+      mode: 'src_reload_fallback',
+    });
     setImmediateLoad(true);
     triggerPreviewRefresh();
-  }, [triggerPreviewRefresh]);
+  }, [
+    triggerPreviewRefresh,
+    previewRefreshKey,
+    effectiveUrl,
+    currentPreviewUrl,
+    navigation?.url,
+    showIframe,
+    isReady,
+  ]);
 
   const handleClearOverride = useCallback(async () => {
     await clearOverride();
@@ -497,40 +706,80 @@ export function PreviewBrowserContainer({
   }, [clearOverride]);
 
   const handleNavigateBack = useCallback(() => {
+    logPreviewNavDebug('toolbar_back_clicked', {
+      navigationUrl: navigation?.url ?? null,
+      canGoBack: navigation?.canGoBack ?? null,
+    });
     bridgeRef.current?.navigateBack();
-  }, []);
+  }, [navigation?.url, navigation?.canGoBack]);
 
   const handleNavigateForward = useCallback(() => {
+    logPreviewNavDebug('toolbar_forward_clicked', {
+      navigationUrl: navigation?.url ?? null,
+      canGoForward: navigation?.canGoForward ?? null,
+    });
     bridgeRef.current?.navigateForward();
-  }, []);
+  }, [navigation?.url, navigation?.canGoForward]);
 
-  const handleToggleEruda = useCallback(() => {
+  const sendErudaCommand = useCallback((visible: boolean) => {
     const iframe = iframeRef.current;
     if (!iframe?.contentWindow) return;
-
-    const newState = !isErudaVisible;
-    setIsErudaVisible(newState);
 
     iframe.contentWindow.postMessage(
       {
         source: 'vibe-kanban',
-        command: newState ? 'show-eruda' : 'hide-eruda',
+        command: visible ? 'show-eruda' : 'hide-eruda',
       },
       '*'
     );
-  }, [isErudaVisible]);
+  }, []);
+
+  const handleToggleEruda = useCallback(() => {
+    const newState = !isErudaVisible;
+    setIsErudaVisible(newState);
+    sendErudaCommand(newState);
+  }, [isErudaVisible, sendErudaCommand]);
+
+  // Re-send the current Eruda state when the iframe devtools bridge becomes ready.
+  useEffect(() => {
+    if (!isReady) return;
+    sendErudaCommand(isErudaVisible);
+  }, [isReady, isErudaVisible, sendErudaCommand]);
+
+  const handleIframeLoad = useCallback(() => {
+    logPreviewNavDebug('iframe_load', {
+      iframeUrl: iframeRef.current?.src ?? null,
+      erudaVisible: isErudaVisible,
+    });
+    // Initial postMessage can race with injected script startup on fresh loads.
+    window.setTimeout(() => {
+      sendErudaCommand(isErudaVisible);
+    }, 150);
+  }, [isErudaVisible, sendErudaCommand]);
 
   const handleCopyUrl = useCallback(async () => {
-    if (effectiveUrl) {
-      await navigator.clipboard.writeText(effectiveUrl);
+    if (!currentPreviewUrl) return;
+
+    const normalizedUrl = normalizePreviewUrl(
+      currentPreviewUrl,
+      urlInfo?.url ?? undefined
+    );
+    if (normalizedUrl) {
+      await navigator.clipboard.writeText(normalizedUrl);
     }
-  }, [effectiveUrl]);
+  }, [currentPreviewUrl, urlInfo?.url]);
 
   const handleOpenInNewTab = useCallback(() => {
-    if (effectiveUrl) {
-      window.open(effectiveUrl, '_blank');
+    if (!currentPreviewUrl) return;
+
+    const normalizedUrl = normalizePreviewUrl(
+      currentPreviewUrl,
+      urlInfo?.url ?? undefined
+    );
+    if (normalizedUrl) {
+      window.open(normalizedUrl, '_blank');
     }
-  }, [effectiveUrl]);
+  }, [currentPreviewUrl, urlInfo?.url]);
 
   const handleScreenSizeChange = useCallback(
     (size: ScreenSize) => {
@@ -544,8 +793,10 @@ export function PreviewBrowserContainer({
   const iframeUrl = useMemo(() => {
     if (!effectiveUrl || !previewProxyPort) return undefined;
 
+    const parsed = parsePreviewUrl(effectiveUrl, urlInfo?.url ?? undefined);
+    if (!parsed) return undefined;
+
     try {
-      const parsed = new URL(effectiveUrl);
       const devServerPort =
         parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
 
@@ -586,7 +837,37 @@ export function PreviewBrowserContainer({
     } catch {
       return undefined;
     }
-  }, [effectiveUrl, previewProxyPort, previewRefreshKey]);
+  }, [effectiveUrl, previewProxyPort, previewRefreshKey, urlInfo?.url]);
+
+  useEffect(() => {
+    logPreviewNavDebug('preview_state_snapshot', {
+      autoDetectedUrl: urlInfo?.url ?? null,
+      effectiveUrl: effectiveUrl ?? null,
+      navigationDevUrl,
+      currentPreviewUrl,
+      hasOverride,
+      navigationUrl: navigation?.url ?? null,
+      iframeUrl: iframeUrl ?? null,
+      showIframe,
+      allowManualUrl,
+      immediateLoad,
+      bridgeReady: isReady,
+      previewProxyPort: previewProxyPort ?? null,
+    });
+  }, [
+    urlInfo?.url,
+    effectiveUrl,
+    navigationDevUrl,
+    currentPreviewUrl,
+    hasOverride,
+    navigation?.url,
+    iframeUrl,
+    showIframe,
+    allowManualUrl,
+    immediateLoad,
+    isReady,
+    previewProxyPort,
+  ]);
 
   const prevIframeUrlRef = useRef(iframeUrl);
   useEffect(() => {
@@ -634,6 +915,7 @@ export function PreviewBrowserContainer({
       isUsingOverride={hasOverride}
       onUrlInputChange={handleUrlInputChange}
       onUrlSubmit={handleUrlSubmit}
+      onUrlEscape={handleUrlEscape}
       onClearOverride={handleClearOverride}
       onCopyUrl={handleCopyUrl}
       onOpenInNewTab={handleOpenInNewTab}
@@ -667,6 +949,7 @@ export function PreviewBrowserContainer({
       onToggleInspectMode={toggleInspectMode}
       isErudaVisible={isErudaVisible}
       onToggleEruda={handleToggleEruda}
+      onIframeLoad={handleIframeLoad}
     />
   );
 }
