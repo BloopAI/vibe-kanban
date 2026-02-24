@@ -155,6 +155,21 @@ impl JwtService {
         })
     }
 
+    pub fn generate_access_token(&self, user_id: Uuid, session_id: Uuid) -> Result<String, JwtError> {
+        let now = Utc::now();
+        let access_exp = now + ChronoDuration::seconds(ACCESS_TOKEN_TTL_SECONDS);
+        let claims = AccessTokenClaims {
+            sub: user_id,
+            session_id,
+            iat: now.timestamp(),
+            exp: access_exp.timestamp(),
+            aud: "access".to_string(),
+        };
+
+        let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
+        Ok(encode(&Header::new(Algorithm::HS256), &claims, &encoding_key)?)
+    }
+
     pub fn decode_access_token(&self, token: &str) -> Result<AccessTokenDetails, JwtError> {
         self.decode_access_token_with_leeway(token, DEFAULT_JWT_LEEWAY_SECONDS)
     }

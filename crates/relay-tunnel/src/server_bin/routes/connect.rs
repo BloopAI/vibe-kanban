@@ -1,0 +1,99 @@
+//! WebSocket control channel handler for local server connections.
+
+use std::sync::Arc;
+
+use axum::{
+    Extension,
+    extract::{Path, State, ws::WebSocketUpgrade},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
+use uuid::Uuid;
+
+use super::super::{
+    auth::RequestContext,
+    db::{hosts::HostRepository, identity_errors::IdentityError},
+    relay_registry::{ActiveRelay, RelayRegistry},
+    state::RelayAppState,
+};
+use crate::server::run_control_channel;
+
+/// Local server connects here to establish a relay control channel.
+pub async fn relay_connect(
+    State(state): State<RelayAppState>,
+    Path(host_id): Path<Uuid>,
+    Extension(ctx): Extension<RequestContext>,
+    ws: WebSocketUpgrade,
+) -> Response {
+    let repo = HostRepository::new(&state.pool);
+    if let Err(error) = repo.assert_host_access(host_id, ctx.user.id).await {
+        return match error {
+            IdentityError::PermissionDenied | IdentityError::NotFound => {
+                (StatusCode::FORBIDDEN, "Host access denied").into_response()
+            }
+            IdentityError::Database(db_error) => {
+                tracing::warn!(
+                    ?db_error,
+                    "failed to validate host access for relay connect"
+                );
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        };
+    }
+
+    if let Err(error) = repo.mark_host_online(host_id, None).await {
+        tracing::warn!(?error, "failed to mark host online");
+    }
+
+    let registry = state.relay_registry.clone();
+    let pool = state.pool.clone();
+
+    ws.on_upgrade(move |socket| async move {
+        handle_control_channel(socket, pool, registry, host_id).await;
+    })
+}
+
+async fn handle_control_channel(
+    socket: axum::extract::ws::WebSocket,
+    pool: sqlx::PgPool,
+    registry: RelayRegistry,
+    host_id: Uuid,
+) {
+    let registry_for_connect = registry.clone();
+    let connected_relay = Arc::new(tokio::sync::Mutex::new(None::<Arc<ActiveRelay>>));
+    let connected_relay_for_connect = connected_relay.clone();
+    let run_result = run_control_channel(socket, move |control| {
+        let registry_for_connect = registry_for_connect.clone();
+        let connected_relay_for_connect = connected_relay_for_connect.clone();
+        async move {
+            let relay = Arc::new(ActiveRelay::new(control));
+            registry_for_connect.insert(host_id, relay.clone()).await;
+            *connected_relay_for_connect.lock().await = Some(relay);
+            tracing::info!(%host_id, "Relay control channel connected");
+        }
+    })
+    .await;
+
+    if let Err(error) = run_result {
+        tracing::warn!(?error, %host_id, "relay session error");
+    }
+
+    let should_mark_offline = if let Some(relay) = connected_relay.lock().await.clone() {
+        registry.remove_if_same(&host_id, &relay).await
+    } else {
+        registry.get(&host_id).await.is_none()
+    };
+
+    let repo = HostRepository::new(&pool);
+    if should_mark_offline {
+        if let Err(error) = repo.mark_host_offline(host_id).await {
+            tracing::warn!(?error, "failed to mark host offline");
+        }
+    } else {
+        tracing::info!(
+            %host_id,
+            "Relay control channel disconnected; keeping host online because a newer channel is active"
+        );
+    }
+    tracing::info!(%host_id, "Relay control channel disconnected");
+}

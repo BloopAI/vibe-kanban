@@ -1,6 +1,6 @@
 use axum::{
     Json, Router,
-    http::{Request, header::HeaderName},
+    http::header::HeaderName,
     middleware,
     routing::get,
 };
@@ -33,6 +33,7 @@ pub(crate) mod electric_proxy;
 pub(crate) mod error;
 pub mod attachments;
 mod github_app;
+pub mod hosts;
 mod identity;
 pub mod issue_assignees;
 pub mod issue_comment_reactions;
@@ -54,9 +55,10 @@ pub mod tags;
 mod tokens;
 mod workspaces;
 
+
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(|request: &Request<_>| {
+        .make_span_with(|request: &axum::http::Request<_>| {
             let request_id = request
                 .extensions()
                 .get::<RequestId>()
@@ -111,6 +113,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
+        .merge(hosts::router())
         .merge(projects::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())

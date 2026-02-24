@@ -11,3 +11,4 @@ serde_json = { workspace = true }
 sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "uuid", "chrono", "derive"] }
 ts-rs = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
+base64 = "0.22"

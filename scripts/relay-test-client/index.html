@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Relay Test Client</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        margin: 0;
+        background: #f5f7fb;
+        color: #111827;
+      }
+      main {
+        max-width: 980px;
+        margin: 24px auto;
+        padding: 0 16px 24px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 24px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: #374151;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #dbe2ea;
+        border-radius: 10px;
+        padding: 14px;
+        margin-top: 12px;
+      }
+      .grid {
+        display: grid;
+        gap: 10px;
+      }
+      .grid-2 {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      input,
+      textarea,
+      select,
+      button {
+        font: inherit;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #c7d1dc;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #fff;
+      }
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        background: #111827;
+        color: #fff;
+        font-weight: 600;
+      }
+      button.secondary {
+        background: #e5e7eb;
+        color: #111827;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+      .muted {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      pre {
+        background: #0b1220;
+        color: #cde0ff;
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+        margin: 0;
+        font-size: 12px;
+      }
+      .ok {
+        color: #166534;
+      }
+      .err {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Relay Test Client</h1>
+      <p>
+        Standalone test client for relay path routing and proxied local backend
+        API calls.
+      </p>
+
+      <div class="card grid grid-2">
+        <div class="grid">
+          <label for="remoteApiBase">Remote API Base</label>
+          <input
+            id="remoteApiBase"
+            value="https://localhost:3001"
+            autocomplete="off"
+          />
+        </div>
+        <div class="grid">
+          <label for="relayApiBase">Relay API Base</label>
+          <input
+            id="relayApiBase"
+            value="https://relay.localhost:3001"
+            autocomplete="off"
+          />
+        </div>
+        <div class="row" style="grid-column: 1 / -1">
+          <button id="loginGithubBtn">Sign In (GitHub)</button>
+          <button id="loginGoogleBtn">Sign In (Google)</button>
+          <button id="clearTokensBtn" class="secondary">Clear Tokens</button>
+        </div>
+        <div class="grid" style="grid-column: 1 / -1">
+          <label for="accessToken">Bearer Access Token</label>
+          <textarea
+            id="accessToken"
+            placeholder="Auto-filled after OAuth; manual override allowed"
+          ></textarea>
+          <div class="muted">
+            Stored in localStorage under
+            <code>relay_test_access_token</code>. No auto-refresh in this
+            client.
+          </div>
+        </div>
+      </div>
+
+      <div class="card grid grid-2">
+        <div class="grid">
+          <label for="hostSelect">Relay Host</label>
+          <select id="hostSelect"></select>
+        </div>
+        <div class="grid">
+          <label for="hostIdOverride">Host ID Override (optional)</label>
+          <input id="hostIdOverride" placeholder="UUID" autocomplete="off" />
+        </div>
+        <div class="row">
+          <button id="loadHostsBtn" class="secondary">Load Hosts</button>
+          <button id="runTestBtn">Run Test</button>
+        </div>
+      </div>
+
+      <div class="card grid">
+        <div>
+          <strong>Result</strong>
+          <span id="statusText" class="muted"></span>
+        </div>
+        <pre id="resultOutput">{}</pre>
+      </div>
+
+      <div class="card grid">
+        <div><strong>Log</strong></div>
+        <pre id="logOutput">Ready.</pre>
+      </div>
+    </main>
+
+    <script>
+      const remoteApiBaseEl = document.getElementById("remoteApiBase");
+      const relayApiBaseEl = document.getElementById("relayApiBase");
+      const accessTokenEl = document.getElementById("accessToken");
+      const hostSelectEl = document.getElementById("hostSelect");
+      const hostIdOverrideEl = document.getElementById("hostIdOverride");
+      const loadHostsBtnEl = document.getElementById("loadHostsBtn");
+      const runTestBtnEl = document.getElementById("runTestBtn");
+      const loginGithubBtnEl = document.getElementById("loginGithubBtn");
+      const loginGoogleBtnEl = document.getElementById("loginGoogleBtn");
+      const clearTokensBtnEl = document.getElementById("clearTokensBtn");
+      const resultOutputEl = document.getElementById("resultOutput");
+      const logOutputEl = document.getElementById("logOutput");
+      const statusTextEl = document.getElementById("statusText");
+
+      const ACCESS_TOKEN_KEY = "relay_test_access_token";
+      const REFRESH_TOKEN_KEY = "relay_test_refresh_token";
+      const OAUTH_VERIFIER_KEY = "relay_test_oauth_verifier";
+
+      function trimSlash(url) {
+        return String(url || "").trim().replace(/\/+$/, "");
+      }
+
+      function getAccessToken() {
+        const override = accessTokenEl.value.trim();
+        if (override) return override;
+        return localStorage.getItem(ACCESS_TOKEN_KEY) || "";
+      }
+
+      function setTokens(accessToken, refreshToken) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        accessTokenEl.value = accessToken;
+      }
+
+      function clearTokens() {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        accessTokenEl.value = "";
+      }
+
+      function authHeaders() {
+        const token = getAccessToken();
+        if (!token) {
+          throw new Error("Missing bearer access token.");
+        }
+        return {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+      }
+
+      function setBusy(busy) {
+        loadHostsBtnEl.disabled = busy;
+        runTestBtnEl.disabled = busy;
+        loginGithubBtnEl.disabled = busy;
+        loginGoogleBtnEl.disabled = busy;
+      }
+
+      function log(line) {
+        const ts = new Date().toISOString();
+        logOutputEl.textContent += `\n[${ts}] ${line}`;
+        logOutputEl.scrollTop = logOutputEl.scrollHeight;
+      }
+
+      function setResultStatus(message, kind) {
+        statusTextEl.className = kind || "muted";
+        statusTextEl.textContent = ` ${message}`;
+      }
+
+      function renderJson(value) {
+        resultOutputEl.textContent = JSON.stringify(value, null, 2);
+      }
+
+      function selectedHostId() {
+        const override = hostIdOverrideEl.value.trim();
+        if (override) return override;
+        return hostSelectEl.value;
+      }
+
+      function relaySessionPrefixFromUrl(url) {
+        try {
+          const parsed = new URL(url);
+          const match = parsed.pathname.match(/^\/relay\/h\/[^/]+\/s\/[^/]+/);
+          return match ? `${parsed.origin}${match[0]}` : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function bytesToHex(bytes) {
+        let out = "";
+        for (let i = 0; i < bytes.length; i++) {
+          out += bytes[i].toString(16).padStart(2, "0");
+        }
+        return out;
+      }
+
+      function base64UrlEncode(bytes) {
+        const base64 = btoa(String.fromCharCode(...bytes));
+        return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+      }
+
+      function generateVerifier() {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        return base64UrlEncode(bytes);
+      }
+
+      async function sha256Hex(text) {
+        const data = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest("SHA-256", data);
+        return bytesToHex(new Uint8Array(digest));
+      }
+
+      function clearOAuthCallbackQuery() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("handoff_id");
+        url.searchParams.delete("app_code");
+        url.searchParams.delete("error");
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+
+      async function startOAuth(provider) {
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const verifier = generateVerifier();
+          const challenge = await sha256Hex(verifier);
+          sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
+
+          const returnTo = `${window.location.origin}${window.location.pathname}`;
+          const initRes = await fetch(`${remoteApiBase}/v1/oauth/web/init`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              provider,
+              return_to: returnTo,
+              app_challenge: challenge,
+            }),
+          });
+          if (!initRes.ok) {
+            throw new Error(`OAuth init failed (${initRes.status})`);
+          }
+          const initPayload = await initRes.json();
+          const authorizeUrl = initPayload?.authorize_url;
+          if (!authorizeUrl) {
+            throw new Error("Missing authorize_url from OAuth init response.");
+          }
+
+          log(`OAuth init succeeded for ${provider}; redirecting to provider`);
+          window.location.assign(authorizeUrl);
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "OAuth init failed",
+            "err",
+          );
+          log(`OAuth init failed: ${String(error)}`);
+          setBusy(false);
+        }
+      }
+
+      async function completeOAuthIfNeeded() {
+        const params = new URLSearchParams(window.location.search);
+        const handoffId = params.get("handoff_id");
+        const appCode = params.get("app_code");
+        const oauthError = params.get("error");
+        if (!handoffId && !appCode && !oauthError) {
+          return;
+        }
+
+        if (oauthError) {
+          setResultStatus(`OAuth error: ${oauthError}`, "err");
+          log(`OAuth callback error: ${oauthError}`);
+          clearOAuthCallbackQuery();
+          return;
+        }
+
+        if (!handoffId || !appCode) {
+          setResultStatus("OAuth callback missing required params", "err");
+          clearOAuthCallbackQuery();
+          return;
+        }
+
+        const verifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY);
+        if (!verifier) {
+          setResultStatus("Missing OAuth verifier in sessionStorage", "err");
+          clearOAuthCallbackQuery();
+          return;
+        }
+
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const redeemRes = await fetch(`${remoteApiBase}/v1/oauth/web/redeem`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              handoff_id: handoffId,
+              app_code: appCode,
+              app_verifier: verifier,
+            }),
+          });
+          if (!redeemRes.ok) {
+            throw new Error(`OAuth redeem failed (${redeemRes.status})`);
+          }
+          const redeemPayload = await redeemRes.json();
+          const accessToken = redeemPayload?.access_token;
+          const refreshToken = redeemPayload?.refresh_token;
+          if (!accessToken || !refreshToken) {
+            throw new Error("OAuth redeem response missing tokens.");
+          }
+
+          setTokens(accessToken, refreshToken);
+          sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
+          clearOAuthCallbackQuery();
+          setResultStatus("OAuth login succeeded.", "ok");
+          log("OAuth login succeeded; token auto-filled");
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "OAuth redeem failed",
+            "err",
+          );
+          log(`OAuth redeem failed: ${String(error)}`);
+          clearOAuthCallbackQuery();
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function loadHosts() {
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const res = await fetch(`${remoteApiBase}/v1/hosts`, {
+            method: "GET",
+            headers: authHeaders(),
+          });
+          if (!res.ok) {
+            throw new Error(`Host list failed (${res.status})`);
+          }
+          const payload = await res.json();
+          const hosts = Array.isArray(payload.hosts) ? payload.hosts : [];
+
+          hostSelectEl.innerHTML = "";
+          for (const host of hosts) {
+            const option = document.createElement("option");
+            option.value = host.id;
+            const status = host.status || "unknown";
+            option.textContent = `${host.name || host.id} (${status})`;
+            hostSelectEl.appendChild(option);
+          }
+
+          if (!hosts.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No hosts found";
+            hostSelectEl.appendChild(option);
+          }
+
+          setResultStatus(`Loaded ${hosts.length} host(s).`, "ok");
+          renderJson(payload);
+          log(`Loaded ${hosts.length} host(s) from ${remoteApiBase}/v1/hosts`);
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "Load hosts failed",
+            "err",
+          );
+          log(`Load hosts failed: ${String(error)}`);
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function runTest() {
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const relayApiBase = trimSlash(relayApiBaseEl.value);
+          const hostId = selectedHostId();
+          if (!hostId) {
+            throw new Error("Select a host or provide a host ID override.");
+          }
+
+          log(`Starting test for host ${hostId}`);
+
+          const sessionRes = await fetch(
+            `${remoteApiBase}/v1/hosts/${hostId}/sessions`,
+            {
+              method: "POST",
+              headers: authHeaders(),
+              body: "{}",
+            },
+          );
+          if (!sessionRes.ok) {
+            throw new Error(`Create relay session failed (${sessionRes.status})`);
+          }
+          const sessionPayload = await sessionRes.json();
+          const sessionId = sessionPayload?.session?.id;
+          if (!sessionId) {
+            throw new Error("Missing session ID in create session response.");
+          }
+          log(`Created relay session ${sessionId}`);
+
+          const authCodeRes = await fetch(
+            `${relayApiBase}/v1/relay/sessions/${sessionId}/auth-code`,
+            {
+              method: "POST",
+              headers: authHeaders(),
+              body: "{}",
+            },
+          );
+          if (!authCodeRes.ok) {
+            throw new Error(
+              `Create relay auth code failed (${authCodeRes.status})`,
+            );
+          }
+          const authCodePayload = await authCodeRes.json();
+          const relayUrl = authCodePayload?.relay_url;
+          const code = authCodePayload?.code;
+          if (!relayUrl || !code) {
+            throw new Error("Missing relay_url/code in auth-code response.");
+          }
+          log("Created auth code");
+
+          const exchangeUrl = new URL(relayUrl);
+          exchangeUrl.pathname = `/relay/h/${hostId}/exchange`;
+          exchangeUrl.searchParams.set("code", code);
+
+          const exchangeRes = await fetch(exchangeUrl.toString(), {
+            method: "GET",
+            redirect: "follow",
+          });
+          if (!exchangeRes.ok) {
+            throw new Error(`Exchange failed (${exchangeRes.status})`);
+          }
+
+          const sessionPrefix = relaySessionPrefixFromUrl(exchangeRes.url);
+          if (!sessionPrefix) {
+            throw new Error("Could not derive relay browser session path.");
+          }
+          log(`Browser session path: ${sessionPrefix}`);
+
+          const workspacesRes = await fetch(`${sessionPrefix}/api/task-attempts`, {
+            method: "GET",
+          });
+          if (!workspacesRes.ok) {
+            throw new Error(
+              `Fetch local workspaces failed (${workspacesRes.status})`,
+            );
+          }
+          const workspacesPayload = await workspacesRes.json();
+
+          setResultStatus("Relay test succeeded.", "ok");
+          renderJson({
+            host_id: hostId,
+            session_id: sessionId,
+            relay_exchange_url: exchangeUrl.toString(),
+            relay_session_prefix: sessionPrefix,
+            local_workspaces_response: workspacesPayload,
+          });
+          log("Local /api/task-attempts fetch succeeded");
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "Relay test failed",
+            "err",
+          );
+          log(`Relay test failed: ${String(error)}`);
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      loadHostsBtnEl.addEventListener("click", () => {
+        void loadHosts();
+      });
+      runTestBtnEl.addEventListener("click", () => {
+        void runTest();
+      });
+      loginGithubBtnEl.addEventListener("click", () => {
+        void startOAuth("github");
+      });
+      loginGoogleBtnEl.addEventListener("click", () => {
+        void startOAuth("google");
+      });
+      clearTokensBtnEl.addEventListener("click", () => {
+        clearTokens();
+        setResultStatus("Tokens cleared.", "muted");
+        log("Cleared local auth tokens");
+      });
+      accessTokenEl.addEventListener("change", () => {
+        const token = accessTokenEl.value.trim();
+        if (token) {
+          localStorage.setItem(ACCESS_TOKEN_KEY, token);
+        } else {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+        }
+      });
+
+      const existingToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (existingToken) {
+        accessTokenEl.value = existingToken;
+      }
+      void completeOAuthIfNeeded();
+    </script>
+  </body>
+</html>
