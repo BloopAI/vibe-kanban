@@ -372,6 +372,18 @@ impl IssueRepository {
         Ok(())
     }
 
+    /// Syncs issue status when a workspace is merged locally without a PR.
+    ///
+    /// This reuses the merged-PR behavior:
+    /// - If all linked PRs are merged (or no PRs exist), move issue to "Done"
+    /// - Otherwise leave the issue status unchanged
+    pub async fn sync_status_from_local_workspace_merge(
+        pool: &PgPool,
+        issue_id: Uuid,
+    ) -> Result<(), IssueError> {
+        Self::sync_status_from_pull_request(pool, issue_id, PullRequestStatus::Merged).await
+    }
+
     /// Moves an issue to the given target status if its current status is "Backlog" or "To do".
     async fn move_to_status_if_pending(
         pool: &PgPool,

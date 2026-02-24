@@ -435,6 +435,14 @@ pub async fn merge_task_attempt(
         &merge_commit_id,
     )
     .await?;
+
+    if let Ok(client) = deployment.remote_client() {
+        let workspace_id = workspace.id;
+        tokio::spawn(async move {
+            remote_sync::sync_local_workspace_merge_to_remote(&client, workspace_id).await;
+        });
+    }
+
     if !workspace.pinned
         && let Err(e) = deployment.container().archive_workspace(workspace.id).await
     {
