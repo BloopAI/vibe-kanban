@@ -274,7 +274,7 @@ export function ProjectKanban() {
     if (orgIdFromUrl) {
       navigate({
         to: '.',
-        search: (prev) => ({
+        search: (prev: Record<string, unknown>) => ({
           ...prev,
           orgId: undefined,
         }),

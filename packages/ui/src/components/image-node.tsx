@@ -190,9 +190,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
 
     const isVibeImage = src.startsWith('.vibe-images/');
     const isAttachment = src.startsWith('attachment://');
-    const attachmentId = isAttachment
-      ? src.replace('attachment://', '')
-      : null;
+    const attachmentId = isAttachment ? src.replace('attachment://', '') : null;
 
     const { url: thumbnailUrl, loading: attachmentLoading } = useAttachmentUrl(
       attachmentId,

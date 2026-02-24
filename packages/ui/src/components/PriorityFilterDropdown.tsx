@@ -29,8 +29,7 @@ export function PriorityFilterDropdown({
   const { t } = useTranslation('common');
 
   const options: MultiSelectDropdownOption<PriorityFilterValue>[] =
-    PRIORITIES.map(
-    (p) => ({
+    PRIORITIES.map((p) => ({
       value: p,
       label: priorityLabels[p],
       renderOption: () => (
@@ -39,8 +38,7 @@ export function PriorityFilterDropdown({
           {priorityLabels[p]}
         </div>
       ),
-    })
-  );
+    }));
 
   return (
     <MultiSelectDropdown

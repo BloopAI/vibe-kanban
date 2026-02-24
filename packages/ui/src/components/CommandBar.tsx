@@ -142,15 +142,13 @@ interface CommandBarProps<
 
 const BRANCH_SEARCH_RESULT_LIMIT = 300;
 
-const PRIORITY_CONFIG: Record<
-  PriorityId,
-  { icon: Icon; colorClass: string }
-> = {
-  urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
-  high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
-  medium: { icon: MinusIcon, colorClass: 'text-low' },
-  low: { icon: ArrowDownIcon, colorClass: 'text-success' },
-};
+const PRIORITY_CONFIG: Record<PriorityId, { icon: Icon; colorClass: string }> =
+  {
+    urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
+    high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
+    medium: { icon: MinusIcon, colorClass: 'text-low' },
+    low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+  };
 
 function getPriorityConfig(priorityId: string | null | undefined) {
   if (!priorityId) return null;

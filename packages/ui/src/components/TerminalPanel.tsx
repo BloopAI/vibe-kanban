@@ -11,9 +11,5 @@ export function TerminalPanel({
   activeTabId,
   renderTab,
 }: TerminalPanelProps) {
-  return (
-    <>
-      {tabs.map((tab) => renderTab(tab.id, tab.id === activeTabId))}
-    </>
-  );
+  return <>{tabs.map((tab) => renderTab(tab.id, tab.id === activeTabId))}</>;
 }

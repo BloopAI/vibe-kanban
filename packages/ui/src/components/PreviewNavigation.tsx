@@ -1,8 +1,5 @@
 import { ArrowLeftIcon, ArrowRightIcon } from '@phosphor-icons/react';
-import {
-  IconButtonGroup,
-  IconButtonGroupItem,
-} from './IconButtonGroup';
+import { IconButtonGroup, IconButtonGroupItem } from './IconButtonGroup';
 
 export interface PreviewNavigationState {
   canGoBack: boolean;

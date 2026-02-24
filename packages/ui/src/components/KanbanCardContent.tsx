@@ -11,10 +11,7 @@ import {
 import { cn } from '../lib/cn';
 import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
 import { KanbanBadge } from './KanbanBadge';
-import {
-  KanbanAssignee,
-  type KanbanAssigneeUser,
-} from './KanbanAssignee';
+import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
 import { RunningDots } from './RunningDots';
 import { PrBadge, type PrBadgeStatus } from './PrBadge';
 import {

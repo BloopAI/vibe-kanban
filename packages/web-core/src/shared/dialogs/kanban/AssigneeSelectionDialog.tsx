@@ -92,7 +92,7 @@ function AssigneeSelectionContent({
     (assigneeIds: string[]) => {
       navigate({
         to: '.',
-        search: (prev) => ({
+        search: (prev: Record<string, unknown>) => ({
           ...prev,
           assignees: assigneeIds.length > 0 ? assigneeIds.join(',') : undefined,
         }),

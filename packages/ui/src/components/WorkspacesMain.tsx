@@ -26,7 +26,10 @@ export function WorkspacesMain({
 
   // Always render the main structure to prevent chat box flash during workspace transitions
   return (
-    <main ref={containerRef} className="relative flex flex-1 flex-col bg-primary h-full">
+    <main
+      ref={containerRef}
+      className="relative flex flex-1 flex-col bg-primary h-full"
+    >
       {/* Conversation content - conditional based on loading/workspace state */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
@@ -40,7 +43,9 @@ export function WorkspacesMain({
         conversationContent
       )}
       {/* Chat box - always rendered to prevent flash during workspace switch */}
-      <div className="flex justify-center @container pl-px">{chatBoxContent}</div>
+      <div className="flex justify-center @container pl-px">
+        {chatBoxContent}
+      </div>
       {/* Context Bar - floating toolbar */}
       {workspaceWithSession ? contextBarContent : null}
     </main>

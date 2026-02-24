@@ -18,7 +18,9 @@ export interface ChangesPanelDiff {
   deletions?: number | null;
 }
 
-export interface DiffItemData<TDiff extends ChangesPanelDiff = ChangesPanelDiff> {
+export interface DiffItemData<
+  TDiff extends ChangesPanelDiff = ChangesPanelDiff,
+> {
   diff: TDiff;
   initialExpanded?: boolean;
 }
@@ -55,7 +57,10 @@ function getDiffPath(diff: ChangesPanelDiff): string {
   return diff.newPath || diff.oldPath || '';
 }
 
-function estimateDiffHeight(diff: ChangesPanelDiff, isExpanded: boolean): number {
+function estimateDiffHeight(
+  diff: ChangesPanelDiff,
+  isExpanded: boolean
+): number {
   if (!isExpanded) {
     return HEADER_HEIGHT + SPACING;
   }
@@ -170,4 +175,6 @@ type ChangesPanelComponent = <
   props: ChangesPanelProps<TDiff> & RefAttributes<ChangesPanelHandle>
 ) => JSX.Element;
 
-export const ChangesPanel = forwardRef(ChangesPanelInner) as ChangesPanelComponent;
+export const ChangesPanel = forwardRef(
+  ChangesPanelInner
+) as ChangesPanelComponent;

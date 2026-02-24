@@ -41,7 +41,9 @@ export interface LinkedIssueBadgeProps {
   onRemove: () => void;
 }
 
-export interface CreateChatBoxEditorRenderProps<TExecutor extends string = string> {
+export interface CreateChatBoxEditorRenderProps<
+  TExecutor extends string = string,
+> {
   value: string;
   onChange: (value: string) => void;
   onCmdEnter: () => void;
@@ -55,9 +57,7 @@ export interface CreateChatBoxEditorRenderProps<TExecutor extends string = strin
 
 interface CreateChatBoxProps<TExecutor extends string = string> {
   editor: EditorProps;
-  renderEditor: (
-    props: CreateChatBoxEditorRenderProps<TExecutor>
-  ) => ReactNode;
+  renderEditor: (props: CreateChatBoxEditorRenderProps<TExecutor>) => ReactNode;
   agentIcon?: ReactNode;
   onSend: () => void;
   isSending: boolean;

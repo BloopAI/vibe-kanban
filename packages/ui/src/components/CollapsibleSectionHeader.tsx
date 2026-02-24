@@ -12,7 +12,9 @@ function getInitialExpanded(
 ) {
   if (!persistKey || typeof window === 'undefined') return defaultExpanded;
   try {
-    const stored = window.localStorage.getItem(`${STORAGE_KEY_PREFIX}${persistKey}`);
+    const stored = window.localStorage.getItem(
+      `${STORAGE_KEY_PREFIX}${persistKey}`
+    );
     if (stored == null) return defaultExpanded;
     return stored === 'true';
   } catch {
