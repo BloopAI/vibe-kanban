@@ -91,6 +91,10 @@ struct HandoffCompleteQuery {
     app_code: Option<String>,
     #[serde(default)]
     error: Option<String>,
+    /// When set to "desktop", the callback page will not auto-close so the user
+    /// can see the success message (e.g. when opened from the Tauri desktop app).
+    #[serde(default)]
+    source: Option<String>,
 }
 
 async fn handoff_complete(
@@ -231,9 +235,11 @@ async fn handoff_complete(
         tunnel::spawn_relay(&relay_deployment).await;
     });
 
-    Ok(close_window_response(format!(
-        "Signed in with {provider}. You can return to the app."
-    )))
+    let is_desktop = query.source.as_deref() == Some("desktop");
+    Ok(close_window_response(
+        format!("Signed in with {provider}. You can return to the app."),
+        is_desktop,
+    ))
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
@@ -352,34 +358,33 @@ fn simple_html_response(status: StatusCode, message: String) -> Response<String>
         .unwrap()
 }
 
-fn close_window_response(message: String) -> Response<String> {
+fn close_window_response(message: String, skip_auto_close: bool) -> Response<String> {
+    let script = if skip_auto_close {
+        "" // Desktop app: leave the tab open so the user sees the message
+    } else {
+        "<script>\
+           window.addEventListener('load', () => {\
+             try { window.close(); } catch (err) {}\
+             setTimeout(() => { window.close(); }, 150);\
+           });\
+         </script>"
+    };
     let body = format!(
         "<!doctype html>\
          <html>\
            <head>\
              <meta charset=\"utf-8\">\
              <title>Authentication Complete</title>\
-             <script>\
-               window.addEventListener('load', () => {{\
-                 // Only auto-close if this page was opened as a popup (has an opener).\
-                 // When opened as a regular tab (e.g. from a desktop app), leave it\
-                 // open so the user sees the success message.\
-                 if (window.opener) {{\
-                   try {{ window.close(); }} catch (err) {{}}\
-                   setTimeout(() => {{ window.close(); }}, 150);\
-                 }}\
-               }});\
-             </script>\
+             {script}\
              <style>\
                body {{ font-family: sans-serif; margin: 3rem; color: #1f2933; }}\
              </style>\
            </head>\
            <body>\
-             <h1>{}</h1>\
+             <h1>{message}</h1>\
              <p>You can close this tab and return to the app.</p>\
            </body>\
-         </html>",
-        message
+         </html>"
     );
 
     Response::builder()
