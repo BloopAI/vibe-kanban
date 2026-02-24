@@ -21,6 +21,8 @@ Open:
 - `Relay API Base` (example: `https://relay.localhost:3001`)
 - Use **Sign In (GitHub)** or **Sign In (Google)** to authenticate directly in
   the standalone client.
+- Enter the host enrollment code shown in the local backend logs after relay
+  startup (`Relay PAKE enrollment code ready`).
 - Tokens are stored in browser localStorage:
   - `relay_test_access_token`
   - `relay_test_refresh_token`
@@ -34,7 +36,9 @@ sign in again.
 1. `POST {remote_api}/v1/hosts/{host_id}/sessions`
 2. `POST {relay_api}/v1/relay/sessions/{session_id}/auth-code`
 3. `GET {relay_url}/relay/h/{host_id}/exchange?code=...` (follow redirect)
-4. `GET {relay_session_prefix}/api/task-attempts`
+4. `POST {relay_session_prefix}/api/relay-auth/spake2/start`
+5. `POST {relay_session_prefix}/api/relay-auth/spake2/finish`
+6. Signed `GET {relay_session_prefix}/api/task-attempts`
 
 The output includes the derived relay session prefix and full local backend
 response payload.

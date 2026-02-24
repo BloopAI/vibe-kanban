@@ -19,6 +19,7 @@ pub mod images;
 pub mod migration;
 pub mod oauth;
 pub mod organizations;
+pub mod relay_auth;
 pub mod remote;
 pub mod repo;
 pub mod scratch;
@@ -38,6 +39,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
         .merge(oauth::router())
+        .merge(relay_auth::router())
         .merge(organizations::router())
         .merge(filesystem::router())
         .merge(repo::router())
@@ -50,6 +52,10 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .nest("/remote", remote::router())
         .nest("/images", images::routes())
+        .layer(axum::middleware::from_fn_with_state(
+            deployment.clone(),
+            middleware::require_relay_request_signature,
+        ))
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
