@@ -5,7 +5,6 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "core:window:allow-set-focus",
     "shell:allow-open",
     "opener:default",
     "updater:default"
