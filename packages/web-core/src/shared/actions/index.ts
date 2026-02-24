@@ -632,8 +632,9 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => !ctx.isSignedIn,
     execute: async () => {
-      const { OAuthDialog } =
-        await import('@/components/dialogs/global/OAuthDialog');
+      const { OAuthDialog } = await import(
+        '@/components/dialogs/global/OAuthDialog'
+      );
       await OAuthDialog.show({});
     },
   } satisfies GlobalActionDefinition,
@@ -646,8 +647,9 @@ export const Actions = {
     isVisible: (ctx) => ctx.isSignedIn,
     execute: async (ctx) => {
       const { oauthApi } = await import('@/lib/api');
-      const { useOrganizationStore } =
-        await import('@/stores/useOrganizationStore');
+      const { useOrganizationStore } = await import(
+        '@/stores/useOrganizationStore'
+      );
       const { organizationKeys } = await import('@/hooks/organizationKeys');
 
       await oauthApi.logout();
@@ -699,8 +701,9 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)
-      const { CommandBarDialog } =
-        await import('@/components/ui-new/dialogs/CommandBarDialog');
+      const { CommandBarDialog } = await import(
+        '@/components/ui-new/dialogs/CommandBarDialog'
+      );
       CommandBarDialog.show();
     },
   },
@@ -1404,8 +1407,9 @@ export const Actions = {
     isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
-      const { ProjectSelectionDialog } =
-        await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+      );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,
         selection: { type: 'status', issueIds: [], isCreateMode: true },
@@ -1435,8 +1439,9 @@ export const Actions = {
     isVisible: (ctx) => ctx.layoutMode === 'kanban' && ctx.isCreatingIssue,
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
-      const { ProjectSelectionDialog } =
-        await import('@/components/ui-new/dialogs/selections/ProjectSelectionDialog');
+      const { ProjectSelectionDialog } = await import(
+        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+      );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,
         selection: { type: 'priority', issueIds: [], isCreateMode: true },
