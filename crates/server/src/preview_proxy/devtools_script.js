@@ -6,43 +6,12 @@
   var NAV_SESSION_PREFIX = '__vk_nav_';
   var DOC_ID = Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
 
-  function serializeError(value) {
-    if (!value) return null;
-    try {
-      if (value instanceof Error) {
-        return {
-          name: value.name,
-          message: value.message,
-          stack: value.stack || null
-        };
-      }
-      if (typeof value === 'object') {
-        return JSON.parse(JSON.stringify(value));
-      }
-      return String(value);
-    } catch (e) {
-      return String(value);
-    }
-  }
-
   function send(type, payload) {
     try {
       window.parent.postMessage({ source: SOURCE, type: type, payload: payload }, '*');
     } catch (e) {
       // Ignore if parent is not accessible
     }
-  }
-
-  function sendDebug(event, details) {
-    send('debug', {
-      event: event,
-      docId: DOC_ID,
-      href: location.href,
-      title: document.title,
-      historyLength: history.length,
-      timestamp: Date.now(),
-      details: details || null
-    });
   }
 
   function getNavStorageKey() {
@@ -189,31 +158,13 @@
     }
   }
 
-  function observeLocation(eventName, details, mode) {
-    var previousHref = lastObservedHref;
+  function observeLocation(mode) {
     var currentHref = location.href;
     lastObservedHref = currentHref;
 
     ensureCurrentInStack(currentHref, mode || 'auto');
     saveNavState();
     sendNavigation();
-
-    var payload = {
-      from: previousHref === currentHref ? null : previousHref,
-      to: currentHref,
-      stackSize: navStack.length,
-      navIndex: navIndex
-    };
-
-    if (details && typeof details === 'object') {
-      for (var key in details) {
-        if (Object.prototype.hasOwnProperty.call(details, key)) {
-          payload[key] = details[key];
-        }
-      }
-    }
-
-    sendDebug(eventName, payload);
   }
 
   function initializeNavigation() {
@@ -229,68 +180,36 @@
       saveNavState();
     }
 
-    observeLocation('nav_initialized', {});
+    observeLocation();
   }
 
   window.addEventListener('popstate', function() {
-    var stateKeys = null;
-    try {
-      stateKeys = history.state ? Object.keys(history.state) : null;
-    } catch (e) {
-      stateKeys = null;
-    }
-    observeLocation('popstate', { stateKeys: stateKeys }, 'auto');
+    observeLocation('auto');
   });
 
   window.addEventListener('hashchange', function() {
-    observeLocation('hashchange', {}, 'auto');
+    observeLocation('auto');
   });
 
-  window.addEventListener('pageshow', function(event) {
-    observeLocation('pageshow', { persisted: Boolean(event.persisted) }, 'auto');
+  window.addEventListener('pageshow', function() {
+    observeLocation('auto');
   });
 
   window.addEventListener('load', function() {
-    observeLocation('window_load', {}, 'auto');
+    observeLocation('auto');
   });
 
   history.pushState = function(state, title, url) {
     var result = originalPushState.apply(this, arguments);
-    observeLocation('pushstate', {
-      urlArgument: typeof url === 'string' ? url : null
-    }, 'push');
+    observeLocation('push');
     return result;
   };
 
   history.replaceState = function(state, title, url) {
     var result = originalReplaceState.apply(this, arguments);
-    observeLocation('replacestate', {
-      urlArgument: typeof url === 'string' ? url : null
-    }, 'replace');
+    observeLocation('replace');
     return result;
   };
-
-  document.addEventListener('visibilitychange', function() {
-    sendDebug('visibilitychange', {
-      visibilityState: document.visibilityState
-    });
-  });
-
-  window.addEventListener('error', function(event) {
-    sendDebug('window_error', {
-      message: event.message || null,
-      filename: event.filename || null,
-      lineno: event.lineno || null,
-      colno: event.colno || null,
-      error: serializeError(event.error)
-    });
-  });
-
-  window.addEventListener('unhandledrejection', function(event) {
-    sendDebug('unhandled_rejection', {
-      reason: serializeError(event.reason)
-    });
-  });
 
   window.addEventListener('message', function(event) {
     if (!event.data || event.data.source !== SOURCE || event.data.type !== 'navigate') {
@@ -299,11 +218,6 @@
 
     var payload = event.data.payload;
     if (!payload) return;
-
-    sendDebug('command_received', {
-      action: payload.action,
-      url: payload.url || null
-    });
 
     switch (payload.action) {
       case 'back':
@@ -322,9 +236,6 @@
           navIndex = navStack.length - 1;
           saveNavState();
           sendNavigation();
-          sendDebug('command_goto_navigate', {
-            to: payload.url
-          });
           location.href = payload.url;
         }
         break;
@@ -333,22 +244,18 @@
 
   window.setInterval(function() {
     if (location.href !== lastObservedHref) {
-      observeLocation('href_poll_change', {}, 'auto');
+      observeLocation('auto');
     }
   }, 150);
 
   send('ready', { docId: DOC_ID });
-  sendDebug('ready_sent', {
-    navStorageKey: NAV_STORAGE_KEY,
-    docId: DOC_ID
-  });
 
   initializeNavigation();
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() {
-      observeLocation('dom_content_loaded', {}, 'auto');
+      observeLocation();
     });
   } else {
-    observeLocation('dom_ready_immediate', {}, 'auto');
+    observeLocation();
   }
 })();

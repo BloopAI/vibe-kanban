@@ -31,19 +31,6 @@ export interface ReadyMessage {
   };
 }
 
-export interface DebugMessage {
-  source: PreviewDevToolsSource;
-  type: 'debug';
-  payload: {
-    event: string;
-    docId?: string;
-    href: string;
-    title?: string;
-    historyLength?: number;
-    timestamp: number;
-    details?: unknown;
-  };
-}
 
 // === Command Types (from parent to iframe) ===
 
@@ -60,8 +47,7 @@ export interface NavigationCommand {
 
 export type PreviewDevToolsMessage =
   | NavigationMessage
-  | ReadyMessage
-  | DebugMessage;
+  | ReadyMessage;
 
 export type PreviewDevToolsCommand = NavigationCommand;
 

@@ -65,8 +65,6 @@ export function usePreviewNavigation(): UsePreviewNavigationReturn {
         setIsReady(true);
         break;
       }
-      case 'debug':
-        break;
       default:
         break;
     }
