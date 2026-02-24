@@ -32,19 +32,6 @@ import type { PreviewDevToolsMessage } from '@/types/previewDevTools';
 const MIN_RESPONSIVE_WIDTH = 320;
 const MIN_RESPONSIVE_HEIGHT = 480;
 
-function isPreviewNavDebugLoggingEnabled(): boolean {
-  return import.meta.env.DEV;
-}
-
-function logPreviewNavDebug(
-  event: string,
-  details?: Record<string, unknown> | null
-): void {
-  if (!isPreviewNavDebugLoggingEnabled()) return;
-  const timestamp = new Date().toISOString();
-  console.log(`[PreviewNavUI ${timestamp}] ${event}`, details ?? {});
-}
-
 function parsePreviewUrl(rawUrl: string, baseUrl?: string): URL | null {
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
@@ -260,22 +247,6 @@ export function PreviewBrowserContainer({
 
   const handleBridgeMessage = useCallback(
     (message: PreviewDevToolsMessage) => {
-      if (message.type !== 'debug') {
-        logPreviewNavDebug('bridge_message', {
-          type: message.type,
-          payload: message.payload,
-        });
-      }
-      if (message.type === 'debug') {
-        if (isPreviewNavDebugLoggingEnabled()) {
-          console.log(
-            '[PreviewNavDebug]',
-            message.payload.event,
-            message.payload
-          );
-        }
-        return;
-      }
       handleNavigationMessage(message);
     },
     [handleNavigationMessage]
@@ -294,38 +265,22 @@ export function PreviewBrowserContainer({
   // Sync URL bar from effectiveUrl changes OR iframe navigation
   useEffect(() => {
     if (document.activeElement === urlInputRef.current) {
-      logPreviewNavDebug('url_input_sync_skipped', {
-        reason: 'input_focused',
-        effectiveUrl: effectiveUrl ?? null,
-        navigationUrl: navigation?.url ?? null,
-      });
       return;
     }
 
     if (navigationDevUrl) {
       setUrlInputValue(navigationDevUrl);
-      logPreviewNavDebug('url_input_synced_from_navigation', {
-        navUrl: navigation?.url ?? null,
-        devUrl: navigationDevUrl,
-        previewProxyPort,
-      });
       return;
     }
 
     if (prevEffectiveUrlRef.current !== effectiveUrl) {
       prevEffectiveUrlRef.current = effectiveUrl;
       setUrlInputValue(effectiveUrl ?? '');
-      logPreviewNavDebug('url_input_synced_from_effective_url_change', {
-        effectiveUrl: effectiveUrl ?? null,
-      });
       return;
     }
 
     setUrlInputValue(effectiveUrl ?? '');
-    logPreviewNavDebug('url_input_synced_fallback', {
-      effectiveUrl: effectiveUrl ?? null,
-    });
-  }, [effectiveUrl, navigation?.url, navigationDevUrl, previewProxyPort]);
+  }, [effectiveUrl, navigation?.url, navigationDevUrl]);
 
   useEffect(() => {
     bridgeRef.current = new PreviewDevToolsBridge(
@@ -603,9 +558,6 @@ export function PreviewBrowserContainer({
     const trimmed = urlInputValue.trim();
     if (!trimmed) {
       clearOverride();
-      logPreviewNavDebug('url_submit_clear_override_empty_input', {
-        urlInputValue,
-      });
       urlInputRef.current?.blur();
       return;
     }
@@ -613,10 +565,6 @@ export function PreviewBrowserContainer({
     const baseUrl = currentPreviewUrl ?? urlInfo?.url ?? undefined;
     const normalizedInput = normalizePreviewUrl(trimmed, baseUrl);
     if (!normalizedInput) {
-      logPreviewNavDebug('url_submit_rejected_invalid', {
-        urlInputValue,
-        baseUrl: baseUrl ?? null,
-      });
       return;
     }
 
@@ -628,19 +576,10 @@ export function PreviewBrowserContainer({
       if (hasOverride) {
         clearOverride();
       }
-      logPreviewNavDebug('url_submit_noop_matches_current_url', {
-        normalizedInput,
-        normalizedCurrentUrl,
-        hasOverride,
-      });
       return;
     }
 
     resetNavigation();
-    logPreviewNavDebug('url_submit_reset_navigation', {
-      normalizedInput,
-      previousNavigationUrl: navigation?.url ?? null,
-    });
 
     if (showIframe && iframeRef.current?.contentWindow && previewProxyPort) {
       try {
@@ -658,27 +597,14 @@ export function PreviewBrowserContainer({
         if (currentPort != null && devPort === currentPort) {
           const proxyPath = parsed.pathname + parsed.search + parsed.hash;
           const proxyUrl = `http://${devPort}.localhost:${previewProxyPort}${proxyPath}`;
-          logPreviewNavDebug('url_submit_bridge_goto', {
-            normalizedInput,
-            proxyUrl,
-            currentPort,
-            devPort,
-          });
           bridgeRef.current?.navigateTo(proxyUrl);
           return;
         }
       } catch {
-        logPreviewNavDebug('url_submit_bridge_goto_parse_error', {
-          normalizedInput,
-        });
         // fall through to iframe src change
       }
     }
 
-    logPreviewNavDebug('url_submit_override_set', {
-      normalizedInput,
-      previousOverride: overrideUrl ?? null,
-    });
     setOverrideUrl(normalizedInput);
     setImmediateLoad(true);
   }, [
@@ -688,11 +614,9 @@ export function PreviewBrowserContainer({
     hasOverride,
     showIframe,
     previewProxyPort,
-    overrideUrl,
     clearOverride,
     resetNavigation,
     setOverrideUrl,
-    navigation?.url,
   ]);
 
   // handleUrlEscape: reverts URL bar to the current page URL and blurs,
@@ -719,31 +643,12 @@ export function PreviewBrowserContainer({
     );
 
     if (canUseBridgeRefresh) {
-      logPreviewNavDebug('toolbar_refresh_bridge', {
-        currentPreviewUrl,
-        navigationUrl: navigation?.url ?? null,
-      });
       bridgeRef.current?.refresh();
       return;
     }
-
-    logPreviewNavDebug('toolbar_refresh_clicked', {
-      previousRefreshKey: previewRefreshKey,
-      effectiveUrl: effectiveUrl ?? null,
-      currentPreviewUrl,
-      mode: 'src_reload_fallback',
-    });
     setImmediateLoad(true);
     triggerPreviewRefresh();
-  }, [
-    triggerPreviewRefresh,
-    previewRefreshKey,
-    effectiveUrl,
-    currentPreviewUrl,
-    navigation?.url,
-    showIframe,
-    isReady,
-  ]);
+  }, [triggerPreviewRefresh, showIframe, isReady]);
 
   const handleClearOverride = useCallback(async () => {
     await clearOverride();
@@ -751,20 +656,12 @@ export function PreviewBrowserContainer({
   }, [clearOverride]);
 
   const handleNavigateBack = useCallback(() => {
-    logPreviewNavDebug('toolbar_back_clicked', {
-      navigationUrl: navigation?.url ?? null,
-      canGoBack: navigation?.canGoBack ?? null,
-    });
     bridgeRef.current?.navigateBack();
-  }, [navigation?.url, navigation?.canGoBack]);
+  }, []);
 
   const handleNavigateForward = useCallback(() => {
-    logPreviewNavDebug('toolbar_forward_clicked', {
-      navigationUrl: navigation?.url ?? null,
-      canGoForward: navigation?.canGoForward ?? null,
-    });
     bridgeRef.current?.navigateForward();
-  }, [navigation?.url, navigation?.canGoForward]);
+  }, []);
 
   const sendErudaCommand = useCallback((visible: boolean) => {
     const iframe = iframeRef.current;
@@ -792,10 +689,6 @@ export function PreviewBrowserContainer({
   }, [isReady, isErudaVisible, sendErudaCommand]);
 
   const handleIframeLoad = useCallback(() => {
-    logPreviewNavDebug('iframe_load', {
-      iframeUrl: iframeRef.current?.src ?? null,
-      erudaVisible: isErudaVisible,
-    });
     // Initial postMessage can race with injected script startup on fresh loads.
     window.setTimeout(() => {
       sendErudaCommand(isErudaVisible);
@@ -888,40 +781,6 @@ export function PreviewBrowserContainer({
       return undefined;
     }
   }, [effectiveUrl, previewProxyPort, previewRefreshKey, urlInfo?.url]);
-
-  // ─── Debug: State Snapshot ──────────────────────────────────────────────────
-  // Logs all preview state on every change, only in dev mode (guarded by
-  // logPreviewNavDebug / isPreviewNavDebugLoggingEnabled).
-
-  useEffect(() => {
-    logPreviewNavDebug('preview_state_snapshot', {
-      autoDetectedUrl: urlInfo?.url ?? null,
-      effectiveUrl: effectiveUrl ?? null,
-      navigationDevUrl,
-      currentPreviewUrl,
-      hasOverride,
-      navigationUrl: navigation?.url ?? null,
-      iframeUrl: iframeUrl ?? null,
-      showIframe,
-      allowManualUrl,
-      immediateLoad,
-      bridgeReady: isReady,
-      previewProxyPort: previewProxyPort ?? null,
-    });
-  }, [
-    urlInfo?.url,
-    effectiveUrl,
-    navigationDevUrl,
-    currentPreviewUrl,
-    hasOverride,
-    navigation?.url,
-    iframeUrl,
-    showIframe,
-    allowManualUrl,
-    immediateLoad,
-    isReady,
-    previewProxyPort,
-  ]);
 
   // ─── Navigation Reset on URL Change ────────────────────────────────────────
   // Resets navigation state when the iframe URL changes (e.g., new dev server

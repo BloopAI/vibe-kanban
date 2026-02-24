@@ -7,10 +7,7 @@
 //! Host header subdomain. A request to `{port}.localhost:{proxy_port}/path`
 //! is forwarded to `localhost:{port}/path`.
 
-use std::sync::{
-    OnceLock,
-    atomic::{AtomicU64, Ordering},
-};
+use std::sync::OnceLock;
 
 use axum::{
     Router,
@@ -31,10 +28,6 @@ static PROXY_PORT: OnceLock<u16> = OnceLock::new();
 /// Shared HTTP client for proxying requests.
 /// Reused across all requests to leverage connection pooling per upstream host:port.
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
-
-/// Monotonic id used by preview navigation debug logs.
-static NAV_DEBUG_REQUEST_ID: AtomicU64 = AtomicU64::new(1);
-
 /// Get or initialize the shared HTTP client.
 fn http_client() -> &'static Client {
     HTTP_CLIENT.get_or_init(|| {
@@ -53,179 +46,6 @@ fn env_flag_enabled(name: &str) -> bool {
             || value.eq_ignore_ascii_case("on")
     })
 }
-
-fn nav_debug_enabled() -> bool {
-    cfg!(debug_assertions) || env_flag_enabled("VK_PREVIEW_NAV_DEBUG")
-}
-
-fn nav_debug_println(message: String) {
-    if nav_debug_enabled() {
-        println!("[VK_PREVIEW_PROXY_NAV] {message}");
-    }
-}
-
-fn header_to_string(headers: &HeaderMap, name: header::HeaderName) -> Option<String> {
-    headers
-        .get(name)
-        .and_then(|value| value.to_str().ok())
-        .map(ToOwned::to_owned)
-}
-
-fn reqwest_header_to_string(
-    headers: &reqwest::header::HeaderMap,
-    name: reqwest::header::HeaderName,
-) -> Option<String> {
-    headers
-        .get(name)
-        .and_then(|value| value.to_str().ok())
-        .map(ToOwned::to_owned)
-}
-
-fn collect_redirect_like_header_debug_names(headers: &reqwest::header::HeaderMap) -> String {
-    let mut names = Vec::new();
-
-    for (name, _) in headers {
-        let name_lower = name.as_str().to_ascii_lowercase();
-        if !is_redirect_like_header_name(&name_lower) {
-            continue;
-        }
-
-        names.push(name.as_str().to_string());
-    }
-
-    if names.is_empty() {
-        "-".to_string()
-    } else {
-        names.join(",")
-    }
-}
-
-fn summarize_url_for_nav_debug(value: &str) -> Option<String> {
-    let value = value.trim();
-    if value.is_empty() {
-        return None;
-    }
-
-    if value.starts_with('/') || value.starts_with('?') || value.starts_with('#') {
-        let mut summary = value.split(['?', '#']).next().unwrap_or(value).to_string();
-        if summary.is_empty() {
-            summary = "/".to_string();
-        }
-        if value.contains('?') {
-            summary.push_str("?…");
-        }
-        if value.contains('#') {
-            summary.push_str("#…");
-        }
-        return Some(summary);
-    }
-
-    let parsed = if value.starts_with("//") {
-        reqwest::Url::parse(&format!("http:{value}")).ok()?
-    } else {
-        reqwest::Url::parse(value).ok()?
-    };
-
-    let host = parsed.host_str()?;
-    let mut summary = format!("{}://{host}", parsed.scheme());
-    if let Some(port) = parsed.port_or_known_default() {
-        summary.push(':');
-        summary.push_str(&port.to_string());
-    }
-    summary.push_str(parsed.path());
-    if parsed.query().is_some() {
-        summary.push_str("?…");
-    }
-    if parsed.fragment().is_some() {
-        summary.push_str("#…");
-    }
-    Some(summary)
-}
-
-fn sanitize_redirect_like_value_for_nav_debug(name_lower: &str, value: &str) -> String {
-    let value = value.trim();
-    if value.is_empty() {
-        return "-".to_string();
-    }
-
-    if name_lower == "refresh" {
-        let segments: Vec<&str> = value.split(';').map(|segment| segment.trim()).collect();
-        let delay = segments.first().copied().unwrap_or_default();
-        let refresh_url = segments.iter().skip(1).find_map(|segment| {
-            let lower = segment.to_ascii_lowercase();
-            if !lower.starts_with("url=") {
-                return None;
-            }
-            Some(segment[4..].trim().trim_matches(|c| c == '\'' || c == '"'))
-        });
-
-        if let Some(url) = refresh_url
-            && let Some(summary) = summarize_url_for_nav_debug(url)
-        {
-            return format!("{delay};url={summary}");
-        }
-
-        return delay.to_string();
-    }
-
-    summarize_url_for_nav_debug(value).unwrap_or_else(|| {
-        let without_query = value.split(['?', '#']).next().unwrap_or(value);
-        if without_query.len() > 96 {
-            format!("{}…", &without_query[..96])
-        } else {
-            without_query.to_string()
-        }
-    })
-}
-
-fn collect_redirect_like_header_debug_details_from_reqwest(
-    headers: &reqwest::header::HeaderMap,
-) -> String {
-    let mut details = Vec::new();
-
-    for (name, value) in headers {
-        let name_lower = name.as_str().to_ascii_lowercase();
-        if !is_redirect_like_header_name(&name_lower) {
-            continue;
-        }
-
-        let value = value
-            .to_str()
-            .map(|raw| sanitize_redirect_like_value_for_nav_debug(&name_lower, raw))
-            .unwrap_or_else(|_| "<non-utf8>".to_string());
-        details.push(format!("{}={value}", name.as_str()));
-    }
-
-    if details.is_empty() {
-        "-".to_string()
-    } else {
-        details.join(" | ")
-    }
-}
-
-fn collect_redirect_like_header_debug_details(headers: &[(HeaderName, HeaderValue)]) -> String {
-    let mut details = Vec::new();
-
-    for (name, value) in headers {
-        let name_lower = name.as_str().to_ascii_lowercase();
-        if !is_redirect_like_header_name(&name_lower) {
-            continue;
-        }
-
-        let value = value
-            .to_str()
-            .map(|raw| sanitize_redirect_like_value_for_nav_debug(&name_lower, raw))
-            .unwrap_or_else(|_| "<non-utf8>".to_string());
-        details.push(format!("{}={value}", name.as_str()));
-    }
-
-    if details.is_empty() {
-        "-".to_string()
-    } else {
-        details.join(" | ")
-    }
-}
-
 /// Get the preview proxy port if set.
 pub fn get_proxy_port() -> Option<u16> {
     PROXY_PORT.get().copied()
@@ -579,49 +399,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         )
     };
 
-    let nav_debug = nav_debug_enabled();
-    let nav_debug_request_id = NAV_DEBUG_REQUEST_ID.fetch_add(1, Ordering::Relaxed);
-    if nav_debug {
-        let host = header_to_string(&headers, header::HOST).unwrap_or_else(|| "-".to_string());
-        let referer =
-            header_to_string(&headers, header::REFERER).unwrap_or_else(|| "-".to_string());
-        let sec_fetch_dest =
-            header_to_string(&headers, header::HeaderName::from_static("sec-fetch-dest"))
-                .unwrap_or_else(|| "-".to_string());
-        let sec_fetch_mode =
-            header_to_string(&headers, header::HeaderName::from_static("sec-fetch-mode"))
-                .unwrap_or_else(|| "-".to_string());
-
-        tracing::info!(
-            target: "preview_nav",
-            request_id = nav_debug_request_id,
-            event = "proxy_request",
-            method = method.as_str(),
-            original_uri = %original_uri,
-            path = %path_str,
-            target_url = %target_url,
-            host = host.as_str(),
-            referer = referer.as_str(),
-            sec_fetch_dest = sec_fetch_dest.as_str(),
-            sec_fetch_mode = sec_fetch_mode.as_str(),
-            has_rsc = headers.contains_key(header::HeaderName::from_static("rsc")),
-            refresh = query_string.contains("_refresh")
-        );
-
-        nav_debug_println(format!(
-            "request_id={nav_debug_request_id} event=proxy_request method={} uri={} target={} host={} referer={} sec_fetch_dest={} sec_fetch_mode={} has_rsc={} refresh={}",
-            method.as_str(),
-            original_uri,
-            target_url,
-            host,
-            referer,
-            sec_fetch_dest,
-            sec_fetch_mode,
-            headers.contains_key(header::HeaderName::from_static("rsc")),
-            query_string.contains("_refresh")
-        ));
-    }
-
     let is_rsc_request = headers.contains_key(header::HeaderName::from_static("rsc"));
     let is_get_request = method == axum::http::Method::GET;
 
@@ -685,56 +462,9 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
         .and_then(|v| v.to_str().ok())
         .unwrap_or_default();
     let is_html = content_type.contains("text/html");
-    let redirect_headers_before = if nav_debug {
-        collect_redirect_like_header_debug_details_from_reqwest(response.headers())
-    } else {
-        String::new()
-    };
-
-    if nav_debug {
-        let has_location =
-            reqwest_header_to_string(response.headers(), reqwest::header::LOCATION).is_some();
-        let redirect_like_headers = collect_redirect_like_header_debug_names(response.headers());
-
-        tracing::info!(
-            target: "preview_nav",
-            request_id = nav_debug_request_id,
-            event = "proxy_response",
-            status = response.status().as_u16(),
-            is_html,
-            content_type,
-            has_location,
-            redirect_like_headers = redirect_like_headers.as_str(),
-            redirect_like_values_before = redirect_headers_before.as_str()
-        );
-
-        nav_debug_println(format!(
-            "request_id={nav_debug_request_id} event=proxy_response status={} is_html={} content_type={} has_location={} redirect_like_headers={} redirect_like_values_before={}",
-            response.status().as_u16(),
-            is_html,
-            content_type,
-            has_location,
-            redirect_like_headers,
-            redirect_headers_before
-        ));
-    }
 
     let mut response_headers = collect_response_headers(response.headers(), is_html);
     rewrite_redirect_like_headers(&mut response_headers, target_port, get_proxy_port());
-    if nav_debug {
-        let redirect_like_values_after =
-            collect_redirect_like_header_debug_details(&response_headers);
-        tracing::info!(
-            target: "preview_nav",
-            request_id = nav_debug_request_id,
-            event = "proxy_response_rewrite",
-            redirect_like_values_after = redirect_like_values_after.as_str()
-        );
-
-        nav_debug_println(format!(
-            "request_id={nav_debug_request_id} event=proxy_response_rewrite redirect_like_values_after={redirect_like_values_after}"
-        ));
-    }
 
     let status = StatusCode::from_u16(response.status().as_u16()).unwrap_or(StatusCode::OK);
 
@@ -751,20 +481,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
                 .map(|v| v.to_owned());
 
             if let Some(ref redirect_target) = rsc_redirect_target {
-                if nav_debug {
-                    tracing::info!(
-                        target: "preview_nav",
-                        request_id = nav_debug_request_id,
-                        event = "rsc_200_redirect_intercept",
-                        redirect_target = redirect_target.as_str(),
-                        original_status = status.as_u16(),
-                    );
-                    nav_debug_println(format!(
-                        "request_id={nav_debug_request_id} event=rsc_200_redirect_intercept redirect_target={redirect_target} original_status={}",
-                        status.as_u16()
-                    ));
-                }
-
                 // Consume body before building new response
                 let _ = response.bytes().await;
 
@@ -814,28 +530,6 @@ async fn http_proxy_handler(target_port: u16, path_str: String, request: Request
                         )
                     };
                     html.insert_str(pos, &scripts);
-
-                    if nav_debug {
-                        tracing::info!(
-                            target: "preview_nav",
-                            request_id = nav_debug_request_id,
-                            event = "proxy_html_injection",
-                            nav_script_disabled
-                        );
-                        nav_debug_println(format!(
-                            "request_id={nav_debug_request_id} event=proxy_html_injection nav_script_disabled={nav_script_disabled}"
-                        ));
-                    }
-                } else if nav_debug {
-                    tracing::info!(
-                        target: "preview_nav",
-                        request_id = nav_debug_request_id,
-                        event = "proxy_html_injection_skipped",
-                        reason = "no_body_tag"
-                    );
-                    nav_debug_println(format!(
-                        "request_id={nav_debug_request_id} event=proxy_html_injection_skipped reason=no_body_tag"
-                    ));
                 }
 
                 let mut builder = Response::builder().status(status);
