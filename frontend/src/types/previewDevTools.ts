@@ -16,13 +16,33 @@ export interface NavigationState {
 export interface NavigationMessage {
   source: PreviewDevToolsSource;
   type: 'navigation';
-  payload: NavigationState & { timestamp: number };
+  payload: NavigationState & {
+    timestamp: number;
+    docId?: string;
+    seq?: number;
+  };
 }
 
 export interface ReadyMessage {
   source: PreviewDevToolsSource;
   type: 'ready';
-  payload?: Record<string, never>;
+  payload?: {
+    docId?: string;
+  };
+}
+
+export interface DebugMessage {
+  source: PreviewDevToolsSource;
+  type: 'debug';
+  payload: {
+    event: string;
+    docId?: string;
+    href: string;
+    title?: string;
+    historyLength?: number;
+    timestamp: number;
+    details?: unknown;
+  };
 }
 
 // === Command Types (from parent to iframe) ===
@@ -38,7 +58,10 @@ export interface NavigationCommand {
 
 // === Union Types ===
 
-export type PreviewDevToolsMessage = NavigationMessage | ReadyMessage;
+export type PreviewDevToolsMessage =
+  | NavigationMessage
+  | ReadyMessage
+  | DebugMessage;
 
 export type PreviewDevToolsCommand = NavigationCommand;
 
