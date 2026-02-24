@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Disable macOS elastic overscroll bounce (visible in Tauri desktop app) */
+html {
+  overscroll-behavior: none;
+}
+
 /* 1) THEME TOKENS */
 @layer base {
   /* Light defaults */
