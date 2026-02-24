@@ -1,17 +1,17 @@
 ---
 title: "Reviewing Code"
-description: "Review diffs, add inline comments, send feedback to your agent, and merge when ready"
+description: "Review diffs, add inline comments, and send feedback to your coding agent"
 ---
 
-After a coding agent finishes work, you review its changes, leave inline comments, and send the agent back to address them. This review-feedback-fix loop repeats until you are satisfied — then you create a pull request and merge.
+After a coding agent finishes work, you review its changes, leave inline comments, and send the agent back to address them. This review-feedback-fix loop repeats until you are satisfied.
 
 ## 1. Open the changes panel
 
 There are three ways to open the changes panel:
 
-- Click the **Changes** toggle (code-compare icon) in the navbar
-- Click the changes icon in the floating context bar
-- Use the [command bar](/workspaces/command-bar) (`Cmd/Ctrl + K` → "Show Changes Panel")
+- Click the **Toggle Changes Panel** button in the navbar
+- Click the changes icon in the **app bar**
+- Open the [command bar](/workspaces/command-bar) from its icon in the navbar or with `Cmd/Ctrl + K`, then search for "Show Changes Panel"
 
 <Frame>
   <img src="/images/reviewing-code-agent-idle.png" alt="Workspace showing the Toggle Changes Panel button in the navbar" />
@@ -80,39 +80,13 @@ Comments are not sent individually. They are collected and submitted together wh
 
 ## 5. Send feedback to the agent
 
-After adding all your comments, type a message in the chat (e.g. "Please address this review comments") and send. A badge shows how many review comments will be included. The agent sees all inline comments as context and works through them.
+After adding your comments, send them to the agent. You can include an optional message for extra context, or just send the comments on their own. A badge shows how many review comments will be included.
 
 <Frame>
-  <img style={{maxHeight: "300px"}} src="/images/reviewing-code-agent-response.png" alt="Chat showing the agent responding to review comments and making changes" />
+  <img src="/images/reviewing-code-agent-response.png" alt="Chat showing review comments being sent to the agent" />
 </Frame>
 
-The issue moves back to **In Progress** while the agent addresses your feedback.
-
-## 6. Iterate until satisfied
-
-After the agent finishes addressing your comments, re-open the changes panel and review again. This is a loop: review, comment, send, wait, review.
-
-Each iteration should have fewer comments. If the same issues keep recurring, consider adding a `CLAUDE.md` or coding conventions file to your repository so the agent learns your standards.
-
-## 7. Create a pull request and merge
-
-When the changes look good, create a pull request from the **Git** section in the right sidebar. Click **Open pull request** to open the PR dialog.
-
-<Frame>
-  <img style={{maxHeight: "400px"}} src="/images/reviewing-code-create-pr.png" alt="Create pull request dialog with title, description, base branch, and draft toggle" />
-</Frame>
-
-Fill in the title, description, and base branch. Check **Create as draft** if you want feedback from your team before merging. You can also use **Auto-generate PR description with AI** to fill in the description automatically.
-
-After the PR is created, CI runs and your team can review on GitHub. You can merge from GitHub or from the workspace's Git panel.
-
-<Frame>
-  <img src="/images/reviewing-code-github-pr.png" alt="GitHub pull request page showing the created PR with commits and checks" />
-</Frame>
-
-<Info>
-If your workspace is linked to a GitHub PR, you can view GitHub review comments inline in the changes panel by clicking the GitHub icon. See [Changes Panel](/workspaces/changes) for details.
-</Info>
+The agent sees all inline comments as context and works through them.
 
 ## Troubleshooting
 
@@ -130,15 +104,6 @@ Comments are consumed when you send a message. They become part of the chat hist
 Be more specific. Instead of "this is wrong", explain what is wrong and suggest a fix. Reference exact line numbers or variable names so the agent knows exactly where to look.
 </Accordion>
 
-<Accordion title="I can't create a pull request">
-- Check that GitHub integration is configured in **Settings** → **Integrations**
-- Ensure the branch has committed changes and is pushed to the remote
-- Verify you have write access to the repository
-</Accordion>
-
-<Accordion title="GitHub comments aren't showing in the changes panel">
-Click the GitHub icon in the changes panel toolbar to toggle them on. Only submitted reviews appear — pending GitHub reviews are not shown.
-</Accordion>
 </AccordionGroup>
 
 ## Next steps
@@ -152,11 +117,11 @@ Click the GitHub icon in the changes panel toolbar to toggle them on. Only submi
     Preview your app in the built-in browser
   </Card>
 
-  <Card title="Git Operations" icon="code-branch" href="/workspaces/git-operations">
-    Rebase, merge, and manage branches
-  </Card>
-
   <Card title="Changes Panel" icon="code-compare" href="/workspaces/changes">
     Full reference for diff viewer and comment features
+  </Card>
+
+  <Card title="Git Operations" icon="code-branch" href="/workspaces/git-operations">
+    Create pull requests, rebase, merge, and manage branches
   </Card>
 </CardGroup>
