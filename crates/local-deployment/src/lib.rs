@@ -1,9 +1,15 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::Arc,
+    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
+use ed25519_dalek::{Signature, VerifyingKey};
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use services::services::{
@@ -24,6 +30,7 @@ use services::services::{
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
+use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
     assets::{config_path, credentials_path},
     msg_store::MsgStore,
@@ -55,6 +62,8 @@ pub struct LocalDeployment {
     shared_api_base: Option<String>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    trusted_key_auth: TrustedKeyAuthRuntime,
+    relay_signing_sessions: Arc<RwLock<HashMap<Uuid, RelaySigningSession>>>,
     pty: PtyService,
 }
 
@@ -63,6 +72,41 @@ struct PendingHandoff {
     provider: String,
     app_verifier: String,
 }
+
+struct RelaySigningSession {
+    public_key: [u8; 32],
+    created_at: Instant,
+    last_used_at: Instant,
+    seen_nonces: HashMap<String, Instant>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RelaySignatureValidationError {
+    InvalidTimestamp,
+    TimestampOutOfDrift,
+    MissingSigningSession,
+    InvalidNonce,
+    ReplayNonce,
+    InvalidSignature,
+}
+
+impl RelaySignatureValidationError {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::InvalidTimestamp => "invalid timestamp",
+            Self::TimestampOutOfDrift => "timestamp outside drift window",
+            Self::MissingSigningSession => "missing or expired signing session",
+            Self::InvalidNonce => "invalid nonce",
+            Self::ReplayNonce => "replayed nonce",
+            Self::InvalidSignature => "invalid signature",
+        }
+    }
+}
+
+const RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS: i64 = 30;
+const RELAY_SIGNING_SESSION_TTL: Duration = Duration::from_secs(60 * 60);
+const RELAY_SIGNING_SESSION_IDLE_TTL: Duration = Duration::from_secs(15 * 60);
+const RELAY_NONCE_TTL: Duration = Duration::from_secs(2 * 60);
 
 #[async_trait]
 impl Deployment for LocalDeployment {
@@ -167,6 +211,8 @@ impl Deployment for LocalDeployment {
         };
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+        let trusted_key_auth = TrustedKeyAuthRuntime::new();
+        let relay_signing_sessions = Arc::new(RwLock::new(HashMap::new()));
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -221,6 +267,8 @@ impl Deployment for LocalDeployment {
             shared_api_base: api_base,
             auth_context,
             oauth_handoffs,
+            trusted_key_auth,
+            relay_signing_sessions,
             pty,
         };
 
@@ -344,6 +392,120 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {
+        self.trusted_key_auth
+            .store_pake_enrollment(enrollment_id, shared_key)
+            .await;
+    }
+
+    pub async fn take_pake_enrollment(&self, enrollment_id: &Uuid) -> Option<Vec<u8>> {
+        self.trusted_key_auth
+            .take_pake_enrollment(enrollment_id)
+            .await
+    }
+
+    pub async fn get_or_set_enrollment_code(&self, new_code: String) -> String {
+        self.trusted_key_auth
+            .get_or_set_enrollment_code(new_code)
+            .await
+    }
+
+    pub async fn consume_enrollment_code(&self, enrollment_code: &str) -> bool {
+        self.trusted_key_auth
+            .consume_enrollment_code(enrollment_code)
+            .await
+    }
+
+    pub async fn allow_rate_limited_action(
+        &self,
+        bucket: &str,
+        max_requests: usize,
+        window: Duration,
+    ) -> bool {
+        self.trusted_key_auth
+            .allow_rate_limited_action(bucket, max_requests, window)
+            .await
+    }
+
+    pub async fn create_relay_signing_session(&self, public_key: [u8; 32]) -> Uuid {
+        let signing_session_id = Uuid::new_v4();
+        let now = Instant::now();
+        let mut sessions = self.relay_signing_sessions.write().await;
+        sessions.insert(
+            signing_session_id,
+            RelaySigningSession {
+                public_key,
+                created_at: now,
+                last_used_at: now,
+                seen_nonces: HashMap::new(),
+            },
+        );
+        signing_session_id
+    }
+
+    pub async fn verify_relay_request_signature(
+        &self,
+        signing_session_id: Uuid,
+        timestamp: i64,
+        nonce: &str,
+        message: &str,
+        signature_b64: &str,
+    ) -> Result<(), RelaySignatureValidationError> {
+        if nonce.trim().is_empty() || nonce.len() > 128 {
+            return Err(RelaySignatureValidationError::InvalidNonce);
+        }
+
+        let now_secs = i64::try_from(
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?
+                .as_secs(),
+        )
+        .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?;
+
+        let drift_secs = now_secs.saturating_sub(timestamp).abs();
+        if drift_secs > RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS {
+            return Err(RelaySignatureValidationError::TimestampOutOfDrift);
+        }
+
+        let signature_bytes = BASE64_STANDARD
+            .decode(signature_b64)
+            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
+        let signature_bytes: [u8; 64] = signature_bytes
+            .try_into()
+            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
+        let signature = Signature::from_bytes(&signature_bytes);
+
+        let now = Instant::now();
+        let mut sessions = self.relay_signing_sessions.write().await;
+        sessions.retain(|_, session| {
+            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
+                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
+        });
+
+        let session = sessions
+            .get_mut(&signing_session_id)
+            .ok_or(RelaySignatureValidationError::MissingSigningSession)?;
+
+        session
+            .seen_nonces
+            .retain(|_, seen_at| now.duration_since(*seen_at) <= RELAY_NONCE_TTL);
+        if session.seen_nonces.contains_key(nonce) {
+            return Err(RelaySignatureValidationError::ReplayNonce);
+        }
+
+        let public_key = VerifyingKey::from_bytes(&session.public_key)
+            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
+        public_key
+            .verify_strict(message.as_bytes(), &signature)
+            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
+
+        session.seen_nonces.insert(nonce.to_string(), now);
+        session.last_used_at = now;
+
+        Ok(())
     }
 
     pub fn pty(&self) -> &PtyService {

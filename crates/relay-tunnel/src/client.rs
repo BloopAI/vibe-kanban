@@ -120,6 +120,10 @@ async fn proxy_to_local(
     mut request: Request<Incoming>,
     local_addr: String,
 ) -> Result<Response<Body>, Infallible> {
+    request
+        .headers_mut()
+        .insert("x-vk-relayed", http::HeaderValue::from_static("1"));
+
     let local_stream = match TcpStream::connect(local_addr.as_str()).await {
         Ok(stream) => stream,
         Err(error) => {

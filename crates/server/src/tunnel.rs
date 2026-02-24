@@ -8,6 +8,7 @@ use deployment::Deployment as _;
 use relay_tunnel::client::{RelayClientConfig, start_relay_client};
 use services::services::remote_client::RemoteClient;
 use tokio_util::sync::CancellationToken;
+use trusted_key_auth::spake2::generate_one_time_code;
 use utils::browser::open_browser;
 use uuid::Uuid;
 
@@ -96,6 +97,15 @@ pub async fn start_relay_if_requested(
             }
         }
     };
+
+    let enrollment_code = deployment
+        .get_or_set_enrollment_code(generate_one_time_code())
+        .await;
+    tracing::info!(
+        %host_id,
+        enrollment_code = %enrollment_code,
+        "Relay PAKE enrollment code ready"
+    );
 
     let supervisor_shutdown = shutdown.clone();
     tokio::spawn(async move {

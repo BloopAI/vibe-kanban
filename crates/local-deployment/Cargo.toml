@@ -11,6 +11,7 @@ deployment = { path = "../deployment" }
 services = { path = "../services" }
 utils = { path = "../utils" }
 git = { path = "../git" }
+trusted-key-auth = { path = "../trusted-key-auth" }
 tokio-util = { version = "0.7", features = ["io"] }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
@@ -19,6 +20,8 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs",
 uuid = { version = "1.0", features = ["v4", "serde"] }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
+base64 = "0.22"
+ed25519-dalek = "2.2.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 futures = "0.3"
 tokio = { workspace = true }
