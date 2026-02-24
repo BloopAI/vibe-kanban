@@ -25,6 +25,7 @@ import {
   buildProjectRootPath,
 } from '@/shared/lib/routes/projectSidebarRoutes';
 
+import type { ProjectSearch } from '@/project-routes/project-search';
 /**
  * Component that registers project mutations with ActionsContext.
  * Must be rendered inside both ActionsProvider and ProjectProvider.
@@ -274,7 +275,7 @@ export function ProjectKanban() {
     if (orgIdFromUrl) {
       navigate({
         to: '.',
-        search: (prev: Record<string, unknown>) => ({
+        search: (prev: ProjectSearch) => ({
           ...prev,
           orgId: undefined,
         }),
