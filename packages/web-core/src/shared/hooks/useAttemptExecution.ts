@@ -1,13 +1,35 @@
 import { useMemo, useCallback } from 'react';
-import { useQueries } from '@tanstack/react-query';
+import {
+  useMutation,
+  useMutationState,
+  useQueries,
+} from '@tanstack/react-query';
 import { attemptsApi, executionProcessesApi } from '@/shared/lib/api';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-import { useTaskStopping } from '@/shared/stores/useTaskDetailsUiStore';
 import type { AttemptData } from '@/shared/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 
-export function useAttemptExecution(attemptId?: string, taskId?: string) {
-  const { isStopping, setIsStopping } = useTaskStopping(taskId || '');
+export function useAttemptExecution(workspaceId?: string) {
+  const stopMutationKey = useMemo(
+    () => ['stopWorkspaceExecution', workspaceId] as const,
+    [workspaceId]
+  );
+
+  const stopMutation = useMutation({
+    mutationKey: stopMutationKey,
+    mutationFn: async () => {
+      if (!workspaceId) return;
+      await attemptsApi.stop(workspaceId);
+    },
+  });
+
+  const isStopping =
+    useMutationState({
+      filters: {
+        mutationKey: stopMutationKey,
+        status: 'pending',
+      },
+    }).length > 0;
 
   const {
     executionProcessesVisible: executionProcesses,
@@ -53,18 +75,15 @@ export function useAttemptExecution(attemptId?: string, taskId?: string) {
   }, [executionProcesses, setupProcesses, processDetailQueries]);
 
   const stopExecution = useCallback(async () => {
-    if (!attemptId || isStopping) return;
+    if (!workspaceId || isStopping) return;
 
     try {
-      setIsStopping(true);
-      await attemptsApi.stop(attemptId);
+      await stopMutation.mutateAsync();
     } catch (error) {
       console.error('Failed to stop executions:', error);
       throw error;
-    } finally {
-      setIsStopping(false);
     }
-  }, [attemptId, isStopping, setIsStopping]);
+  }, [workspaceId, isStopping, stopMutation]);
 
   const isLoading =
     streamLoading || processDetailQueries.some((q) => q.isLoading);

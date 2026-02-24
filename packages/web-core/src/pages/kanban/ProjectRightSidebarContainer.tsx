@@ -213,7 +213,6 @@ function WorkspaceSessionPanel({
   return (
     <ExecutionProcessesProvider
       key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
-      attemptId={workspaceId}
       sessionId={selectedSessionId}
     >
       <ApprovalFeedbackProvider>

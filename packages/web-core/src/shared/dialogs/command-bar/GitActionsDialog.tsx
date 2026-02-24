@@ -119,7 +119,6 @@ const GitActionsDialogImpl = create<GitActionsDialogProps>(({ attemptId }) => {
           <GitOperationsProvider attemptId={attempt.id}>
             <ExecutionProcessesProvider
               key={attempt.id}
-              attemptId={attempt.id}
               sessionId={attempt.session?.id}
             >
               <GitActionsDialogContent attempt={attempt} />

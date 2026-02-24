@@ -226,7 +226,6 @@ export function WorkspacesLayout() {
         ) : (
           <ExecutionProcessesProvider
             key={`${selectedWorkspace?.id}-${selectedSessionId}`}
-            attemptId={selectedWorkspace?.id}
             sessionId={selectedSessionId}
           >
             {mainContent}

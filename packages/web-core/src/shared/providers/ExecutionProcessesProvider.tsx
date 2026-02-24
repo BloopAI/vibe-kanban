@@ -7,7 +7,6 @@ import {
 } from '@/shared/hooks/useExecutionProcessesContext';
 
 export const ExecutionProcessesProvider: React.FC<{
-  attemptId: string | undefined;
   sessionId?: string | undefined;
   children: React.ReactNode;
 }> = ({ sessionId, children }) => {

@@ -22,12 +22,9 @@ function ExecutionProcessesProviderWrapper({
 }: {
   children: ReactNode;
 }) {
-  const { workspaceId, selectedSessionId } = useWorkspaceContext();
+  const { selectedSessionId } = useWorkspaceContext();
   return (
-    <ExecutionProcessesProvider
-      attemptId={workspaceId}
-      sessionId={selectedSessionId}
-    >
+    <ExecutionProcessesProvider sessionId={selectedSessionId}>
       {children}
     </ExecutionProcessesProvider>
   );
