@@ -691,6 +691,9 @@ jobs:
           - target: x86_64-apple-darwin
             os: macos-15-xlarge
             platform: darwin-x86_64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest-m
+            platform: linux-x86_64
     env:
       CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
@@ -715,6 +718,14 @@ jobs:
       - name: Setup Node
         uses: ./.github/actions/setup-node
 
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev file pkg-config
+
       - name: Install dependencies
         run: pnpm install
 
@@ -729,17 +740,21 @@ jobs:
 
       - name: Patch tauri.conf.json for CI
         run: |
-          # Inject the real updater endpoint
-          sed -i '' "s|__TAURI_UPDATE_ENDPOINT__|${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/tauri-update/latest.json|g" crates/tauri-app/tauri.conf.json
-          # Remove beforeBuildCommand — frontend is already pre-built and downloaded as an artifact
           node -e "
             const fs = require('fs');
             const conf = JSON.parse(fs.readFileSync('crates/tauri-app/tauri.conf.json', 'utf8'));
+            // Inject the real updater endpoint (replaces __TAURI_UPDATE_ENDPOINT__ placeholder)
+            const endpoint = '${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/tauri-update/latest.json';
+            conf.plugins.updater.endpoints = conf.plugins.updater.endpoints.map(e =>
+              e === '__TAURI_UPDATE_ENDPOINT__' ? endpoint : e
+            );
+            // Remove beforeBuildCommand — frontend is already pre-built and downloaded as an artifact
             delete conf.build.beforeBuildCommand;
             fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
       - name: Set up Apple notarization key
+        if: runner.os == 'macOS'
         env:
           API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
@@ -770,7 +785,7 @@ jobs:
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-      - name: Collect updater artifacts and DMGs
+      - name: Collect updater artifacts and installers
         run: |
           mkdir -p tauri-artifacts/${{ matrix.platform }}
           # Collect updater artifacts (.sig files and their corresponding bundles)
@@ -782,16 +797,17 @@ jobs:
               echo "Collected updater artifact: $(basename $artifact)"
             fi
           done
-          # Collect DMG files for GitHub Release distribution
-          find target/${{ matrix.target }}/release/bundle -name "*.dmg" | while read dmg; do
-            cp "$dmg" "tauri-artifacts/${{ matrix.platform }}/"
-            echo "Collected DMG: $(basename $dmg)"
+          # Collect installer files for GitHub Release (DMG, AppImage, deb)
+          find target/${{ matrix.target }}/release/bundle \
+            \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) | while read f; do
+            cp "$f" "tauri-artifacts/${{ matrix.platform }}/"
+            echo "Collected installer: $(basename $f)"
           done
           echo "All artifacts for ${{ matrix.platform }}:"
           ls -la tauri-artifacts/${{ matrix.platform }}/
 
       - name: Clean up signing keys
-        if: always()
+        if: always() && runner.os == 'macOS'
         run: rm -rf ~/.private_keys
 
       - name: Upload Tauri artifacts
@@ -890,12 +906,13 @@ jobs:
           path: tauri-release/
           merge-multiple: true
 
-      - name: Collect Tauri DMGs for release
+      - name: Collect Tauri installers for release
         run: |
-          mkdir -p tauri-dmgs
-          find tauri-release -name "*.dmg" -exec cp {} tauri-dmgs/ \;
-          echo "Tauri DMGs for release:"
-          ls -la tauri-dmgs/ 2>/dev/null || echo "No DMGs found"
+          mkdir -p tauri-installers
+          find tauri-release \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" \) \
+            -exec cp {} tauri-installers/ \;
+          echo "Tauri installers for release:"
+          ls -la tauri-installers/ 2>/dev/null || echo "No installers found"
 
       - name: List downloaded artifacts
         run: |
@@ -929,4 +946,4 @@ jobs:
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
             npx-cli/vibe-kanban-*.tgz
-            tauri-dmgs/*
+            tauri-installers/*
