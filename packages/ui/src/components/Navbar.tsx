@@ -38,7 +38,8 @@ function isDivider(item: NavbarItem): item is { readonly type: 'divider' } {
 }
 
 // NavbarIconButton - inlined from primitives
-interface NavbarIconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface NavbarIconButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   isActive?: boolean;
   tooltip?: string;

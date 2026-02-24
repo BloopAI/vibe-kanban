@@ -120,8 +120,9 @@ function CommandBarContent({
           repoId = repos[0].id;
         } else if (!repoId && repos.length > 1) {
           const { SelectionDialog } = await import('./SelectionDialog');
-          const { buildRepoSelectionPages } =
-            await import('./selections/repoSelection');
+          const { buildRepoSelectionPages } = await import(
+            './selections/repoSelection'
+          );
           const result = await SelectionDialog.show({
             initialPageId: 'selectRepo',
             pages: buildRepoSelectionPages(repos) as Record<
