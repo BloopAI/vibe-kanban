@@ -28,7 +28,10 @@ import type { LocalImageMetadata } from './TaskAttemptContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { ContextUsageGauge, type ContextUsageInfo } from './ContextUsageGauge';
 import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';
-import { AskUserQuestionBanner, type AskUserQuestionBannerHandle } from './AskUserQuestionBanner';
+import {
+  AskUserQuestionBanner,
+  type AskUserQuestionBannerHandle,
+} from './AskUserQuestionBanner';
 
 // Status enum - single source of truth for execution state
 export type ExecutionStatus =
