@@ -12,6 +12,7 @@ export const UI_TO_I18N = {
   JA: 'ja',
   ES: 'es',
   KO: 'ko',
+  RU: 'ru',
   ZH_HANS: 'zh-Hans',
   ZH_HANT: 'zh-Hant',
 } as const;
@@ -23,6 +24,7 @@ const SUPPORTED_UI_LANGUAGES = [
   'JA',
   'ES',
   'KO',
+  'RU',
   'ZH_HANS',
   'ZH_HANT',
 ] as const;
@@ -34,6 +36,7 @@ const FALLBACK_ENDONYMS = {
   ja: '日本語',
   es: 'Español',
   ko: '한국어',
+  ru: 'Русский',
   'zh-Hans': '简体中文',
   'zh-Hant': '繁體中文',
 } as const;
