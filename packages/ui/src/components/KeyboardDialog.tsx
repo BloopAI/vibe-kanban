@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { useHotkeys, useHotkeysContext } from 'react-hotkeys-hook';
+import { createPortal } from 'react-dom';
 
 import { cn } from '../lib/cn';
 
@@ -132,8 +133,8 @@ const Dialog = React.forwardRef<
 
   if (!open) return null;
 
-  return (
-    <div className="fixed inset-0 z-[9999] flex items-start justify-center p-4 overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-[10000] flex items-start justify-center p-4 overflow-y-auto">
       <div
         className="fixed inset-0 bg-black/50"
         onClick={() => (uncloseable ? {} : onOpenChange?.(false))}
@@ -141,7 +142,7 @@ const Dialog = React.forwardRef<
       <div
         ref={setDialogRef}
         className={cn(
-          'relative z-[9999] flex flex-col w-full max-w-xl gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
+          'relative z-[10000] flex flex-col w-full max-w-xl gap-4 bg-primary p-6 shadow-lg duration-200 sm:rounded-lg my-8',
           className
         )}
         {...props}
@@ -157,7 +158,8 @@ const Dialog = React.forwardRef<
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 });
 Dialog.displayName = 'Dialog';
