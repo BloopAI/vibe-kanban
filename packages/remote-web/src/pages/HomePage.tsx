@@ -14,8 +14,11 @@ type OrganizationWithProjects = {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const { data: orgsResponse, isLoading: orgsLoading, error: orgsError } =
-    useUserOrganizations();
+  const {
+    data: orgsResponse,
+    isLoading: orgsLoading,
+    error: orgsError,
+  } = useUserOrganizations();
   const organizations = orgsResponse?.organizations;
   const [items, setItems] = useState<OrganizationWithProjects[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
