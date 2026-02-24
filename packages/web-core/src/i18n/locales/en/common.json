@@ -474,6 +474,7 @@
     "replyQuotePrefix": "wrote:",
     "moreActions": "More actions",
     "closePanel": "Close panel",
+    "copyLink": "Copy link",
     "issueTitlePlaceholder": "Issue Title...",
     "issueDescriptionPlaceholder": "Enter task description here...",
     "createDraftWorkspaceImmediately": "Create draft workspace immediately",

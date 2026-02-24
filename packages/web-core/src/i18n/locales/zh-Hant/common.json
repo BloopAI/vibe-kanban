@@ -460,6 +460,7 @@
     "replyQuotePrefix": "寫道：",
     "moreActions": "更多操作",
     "closePanel": "關閉面板",
+    "copyLink": "複製連結",
     "issueTitlePlaceholder": "問題標題...",
     "issueDescriptionPlaceholder": "輸入任務描述...",
     "createDraftWorkspaceImmediately": "立即建立草稿工作區",

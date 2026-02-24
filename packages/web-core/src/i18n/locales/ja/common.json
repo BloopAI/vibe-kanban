@@ -460,6 +460,7 @@
     "replyQuotePrefix": "が書きました:",
     "moreActions": "その他の操作",
     "closePanel": "パネルを閉じる",
+    "copyLink": "リンクをコピー",
     "issueTitlePlaceholder": "課題タイトル...",
     "issueDescriptionPlaceholder": "タスクの説明を入力してください...",
     "createDraftWorkspaceImmediately": "下書きワークスペースをすぐに作成",

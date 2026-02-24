@@ -460,6 +460,7 @@
     "replyQuotePrefix": "a écrit :",
     "moreActions": "Plus d'actions",
     "closePanel": "Fermer le panneau",
+    "copyLink": "Copier le lien",
     "issueTitlePlaceholder": "Titre du ticket...",
     "issueDescriptionPlaceholder": "Entrez la description de la tâche...",
     "createDraftWorkspaceImmediately": "Créer immédiatement un espace de travail brouillon",

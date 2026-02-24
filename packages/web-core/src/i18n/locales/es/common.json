@@ -460,6 +460,7 @@
     "replyQuotePrefix": "escribió:",
     "moreActions": "Más acciones",
     "closePanel": "Cerrar panel",
+    "copyLink": "Copiar enlace",
     "issueTitlePlaceholder": "Título del issue...",
     "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
     "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
