@@ -31,7 +31,6 @@ export interface ReadyMessage {
   };
 }
 
-
 // === Command Types (from parent to iframe) ===
 
 export interface NavigationCommand {
@@ -45,9 +44,7 @@ export interface NavigationCommand {
 
 // === Union Types ===
 
-export type PreviewDevToolsMessage =
-  | NavigationMessage
-  | ReadyMessage;
+export type PreviewDevToolsMessage = NavigationMessage | ReadyMessage;
 
 export type PreviewDevToolsCommand = NavigationCommand;
 
