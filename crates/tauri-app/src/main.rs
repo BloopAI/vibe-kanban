@@ -55,18 +55,28 @@ fn main() {
             })
             .build()?;
 
-            // Spawn the Axum server on Tauri's async runtime
-            tauri::async_runtime::spawn(async move {
-                if let Err(e) = run_server(window, shutdown_rx).await {
-                    tracing::error!("Server failed to start: {}", e);
-                }
-            });
+            if cfg!(debug_assertions) {
+                // Dev mode: the frontend dev server (Vite) and backend are started
+                // externally by the tauri:dev script. The Tauri devUrl points to Vite,
+                // which proxies /api calls to the backend. No embedded server needed.
+                tracing::info!("Running in dev mode — using external frontend/backend servers");
+                // Consume the shutdown channel so it doesn't hang
+                drop(shutdown_rx);
+            } else {
+                // Production: run the embedded Axum server
+                tauri::async_runtime::spawn(async move {
+                    if let Err(e) = run_server(window, shutdown_rx).await {
+                        tracing::error!("Server failed to start: {}", e);
+                    }
+                });
 
-            // Check for updates in the background
-            let handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                check_for_updates(handle).await;
-            });
+                // Check for updates in the background (only in production —
+                // dev builds have a placeholder endpoint that would fail)
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    check_for_updates(handle).await;
+                });
+            }
 
             Ok(())
         })
