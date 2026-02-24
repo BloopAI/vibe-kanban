@@ -26,7 +26,8 @@ function isDivider(item: ContextBarItem): item is { readonly type: 'divider' } {
   return 'type' in item && item.type === 'divider';
 }
 
-interface ContextBarButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ContextBarButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   label: string;
   iconClassName?: string;
