@@ -26,9 +26,16 @@ function get(key: string): Promise<string | null> {
     (db) =>
       new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, "readonly");
+        let value: string | null = null;
         const req = tx.objectStore(STORE_NAME).get(key);
-        req.onsuccess = () => resolve((req.result as string) ?? null);
+
+        req.onsuccess = () => {
+          value = (req.result as string) ?? null;
+        };
         req.onerror = () => reject(req.error);
+        tx.oncomplete = () => resolve(value);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
       }),
   );
 }
@@ -39,8 +46,10 @@ function put(key: string, value: string): Promise<void> {
       new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, "readwrite");
         const req = tx.objectStore(STORE_NAME).put(value, key);
-        req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
       }),
   );
 }
@@ -51,8 +60,10 @@ function del(key: string): Promise<void> {
       new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, "readwrite");
         const req = tx.objectStore(STORE_NAME).delete(key);
-        req.onsuccess = () => resolve();
         req.onerror = () => reject(req.error);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
       }),
   );
 }
