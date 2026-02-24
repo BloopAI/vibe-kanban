@@ -12,17 +12,7 @@
     "frontendDist": "../../frontend/dist"
   },
   "app": {
-    "windows": [
-      {
-        "title": "vibe-kanban",
-        "width": 1280,
-        "height": 800,
-        "minWidth": 800,
-        "minHeight": 600,
-        "resizable": true,
-        "fullscreen": false
-      }
-    ],
+    "windows": [],
     "security": {
       "csp": "default-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://localhost:* http://127.0.0.1:*; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*"
     }

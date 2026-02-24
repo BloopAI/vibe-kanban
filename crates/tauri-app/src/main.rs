@@ -3,7 +3,8 @@
 
 use std::sync::Arc;
 
-use tauri::{Emitter, Manager};
+use tauri::Emitter;
+use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio::sync::oneshot;
 use tracing_subscriber::EnvFilter;
@@ -29,11 +30,30 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
-            let window = app
-                .get_webview_window("main")
-                .expect("Failed to get main window");
+            let handle = app.handle().clone();
+
+            // Create the main window programmatically so we can attach on_new_window
+            // to handle OAuth popups (window.open) by opening them in the system browser.
+            let window = tauri::WebviewWindowBuilder::new(
+                app,
+                "main",
+                tauri::WebviewUrl::App("index.html".into()),
+            )
+            .title("vibe-kanban")
+            .inner_size(1280.0, 800.0)
+            .min_inner_size(800.0, 600.0)
+            .resizable(true)
+            .on_new_window(move |url, _features| {
+                // Open external URLs (OAuth, etc.) in the system browser
+                tracing::info!("New window requested for URL: {}", url);
+                let url_str = url.to_string();
+                let _ = handle.opener().open_url(&url_str, None::<&str>);
+                tauri::webview::NewWindowResponse::Deny
+            })
+            .build()?;
 
             // Spawn the Axum server on Tauri's async runtime
             tauri::async_runtime::spawn(async move {
