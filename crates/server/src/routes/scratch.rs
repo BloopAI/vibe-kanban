@@ -1,7 +1,7 @@
 use axum::{
     Json, Router,
     extract::{
-        Path, State,
+        Extension, Path, State,
         ws::{WebSocket, WebSocketUpgrade},
     },
     response::{IntoResponse, Json as ResponseJson},
@@ -9,12 +9,17 @@ use axum::{
 };
 use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use futures_util::{StreamExt, TryStreamExt};
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::RelayRequestSignatureContext,
+    routes::relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+};
 
 /// Path parameters for scratch routes with composite key
 #[derive(Deserialize)]
@@ -104,9 +109,12 @@ pub async fn stream_scratch_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
+    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
+    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_scratch_ws(socket, deployment, id, scratch_type).await {
+        if let Err(e) = handle_scratch_ws(socket, deployment, id, scratch_type, relay_signing).await
+        {
             tracing::warn!("scratch WS closed: {}", e);
         }
     })
@@ -117,6 +125,7 @@ async fn handle_scratch_ws(
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,
+    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     let mut stream = deployment
         .events()
@@ -125,13 +134,24 @@ async fn handle_scratch_ws(
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
     let (mut sender, mut receiver) = socket.split();
+    let mut sender_signing = relay_signing.clone();
+    let mut receiver_signing = relay_signing;
 
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+    let receiver_deployment = deployment.clone();
+    tokio::spawn(async move {
+        while let Ok(Some(_)) =
+            recv_ws_message(&mut receiver, &receiver_deployment, &mut receiver_signing).await
+        {
+        }
+    });
 
     while let Some(item) = stream.next().await {
         match item {
             Ok(msg) => {
-                if sender.send(msg).await.is_err() {
+                if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg)
+                    .await
+                    .is_err()
+                {
                     break;
                 }
             }

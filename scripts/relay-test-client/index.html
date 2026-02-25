@@ -219,6 +219,7 @@
       const REFRESH_TOKEN_KEY = "relay_test_refresh_token";
       const OAUTH_VERIFIER_KEY = "relay_test_oauth_verifier";
       const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
       const ED25519_ORDER = ed25519.CURVE.n;
       const CLIENT_ID = encoder.encode("vibe-kanban-browser");
       const SERVER_ID = encoder.encode("vibe-kanban-server");
@@ -391,6 +392,11 @@
         return new Uint8Array(digest);
       }
 
+      async function sha256Base64(data) {
+        const digest = await sha256Bytes(data);
+        return bytesToBase64(digest);
+      }
+
       async function hkdfSha256(ikm, info, outputLengthBytes) {
         const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, [
           "deriveBits",
@@ -447,6 +453,12 @@
           publicKeyBytes,
         );
         return hmacSha256(sharedKey, proofInput);
+      }
+
+      async function relayTransportMacBase64(sharedKey, purpose, message) {
+        const derivedKey = await hmacSha256(sharedKey, encoder.encode(purpose));
+        const mac = await hmacSha256(derivedKey, encoder.encode(message));
+        return bytesToBase64(mac);
       }
 
       function randomNonce() {
@@ -749,13 +761,22 @@
         return {
           signingSessionId: finishData.signing_session_id,
           privateKey: signingKey.privateKey,
+          sharedKey,
         };
       }
 
-      async function signedGetJson(sessionPrefix, path, signingSessionId, privateKey) {
+      async function signedGetJson(
+        sessionPrefix,
+        path,
+        signingSessionId,
+        privateKey,
+        sharedKey,
+      ) {
         const timestamp = Math.floor(Date.now() / 1000);
         const nonce = randomNonce();
-        const message = `${timestamp}.GET.${path}.${signingSessionId}.${nonce}`;
+        const requestBodyHash = await sha256Base64(new Uint8Array(0));
+        const message =
+          `v1|${timestamp}|GET|${path}|${signingSessionId}|${nonce}|${requestBodyHash}`;
         const signatureBytes = new Uint8Array(
           await crypto.subtle.sign("Ed25519", privateKey, encoder.encode(message)),
         );
@@ -767,10 +788,20 @@
             "x-vk-sig-session": signingSessionId,
             "x-vk-sig-ts": String(timestamp),
             "x-vk-sig-nonce": nonce,
+            "x-vk-sig-body-sha256": requestBodyHash,
             "x-vk-signature": signatureB64,
           },
         });
-        const text = await response.text();
+        const responseBytes = new Uint8Array(await response.arrayBuffer());
+        const text = decoder.decode(responseBytes);
+        await verifySignedRelayResponse(
+          response,
+          responseBytes,
+          path,
+          signingSessionId,
+          nonce,
+          sharedKey,
+        );
         let json = null;
         if (text) {
           try {
@@ -780,6 +811,41 @@
           }
         }
         return { response, text, json };
+      }
+
+      async function verifySignedRelayResponse(
+        response,
+        responseBytes,
+        path,
+        signingSessionId,
+        requestNonce,
+        sharedKey,
+      ) {
+        const responseTs = response.headers.get("x-vk-resp-ts");
+        const responseNonce = response.headers.get("x-vk-resp-nonce");
+        const responseBodyHash = response.headers.get("x-vk-resp-body-sha256");
+        const responseMac = response.headers.get("x-vk-resp-mac");
+
+        if (!responseTs || !responseNonce || !responseBodyHash || !responseMac) {
+          throw new Error("Missing signed relay response headers.");
+        }
+
+        const computedBodyHash = await sha256Base64(responseBytes);
+        if (computedBodyHash !== responseBodyHash) {
+          throw new Error("Relay response body hash mismatch.");
+        }
+
+        const message =
+          `v1|${responseTs}|${response.status}|${path}|${signingSessionId}|` +
+          `${requestNonce}|${responseNonce}|${responseBodyHash}`;
+        const expectedMac = await relayTransportMacBase64(
+          sharedKey,
+          "relay-http-response-v1",
+          message,
+        );
+        if (expectedMac !== responseMac) {
+          throw new Error("Relay response MAC mismatch.");
+        }
       }
 
       async function runTest() {
@@ -864,6 +930,7 @@
             "/api/task-attempts",
             signing.signingSessionId,
             signing.privateKey,
+            signing.sharedKey,
           );
           if (!workspacesResult.response.ok) {
             throw new Error(

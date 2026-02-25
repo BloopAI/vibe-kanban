@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use axum::{
     Router,
     extract::{
-        Query, State,
+        Extension, Query, State,
         ws::{Message, WebSocket, WebSocketUpgrade},
     },
     response::IntoResponse,
@@ -16,7 +16,12 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    middleware::RelayRequestSignatureContext,
+    routes::relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct TerminalQuery {
@@ -53,6 +58,7 @@ pub async fn terminal_ws(
     ws: WebSocketUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TerminalQuery>,
+    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let attempt = Workspace::find_by_id(&deployment.db().pool, query.workspace_id)
         .await?
@@ -87,8 +93,16 @@ pub async fn terminal_ws(
         }
     }
 
+    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     Ok(ws.on_upgrade(move |socket| {
-        handle_terminal_ws(socket, deployment, working_dir, query.cols, query.rows)
+        handle_terminal_ws(
+            socket,
+            deployment,
+            working_dir,
+            query.cols,
+            query.rows,
+            relay_signing,
+        )
     }))
 }
 
@@ -98,6 +112,7 @@ async fn handle_terminal_ws(
     working_dir: PathBuf,
     cols: u16,
     rows: u16,
+    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) {
     let (session_id, mut output_rx) = match deployment
         .pty()
@@ -107,12 +122,15 @@ async fn handle_terminal_ws(
         Ok(result) => result,
         Err(e) => {
             tracing::error!("Failed to create PTY session: {}", e);
-            let _ = send_error(socket, &e.to_string()).await;
+            let _ = send_error(socket, deployment, relay_signing, &e.to_string()).await;
             return;
         }
     };
 
     let (mut ws_sender, mut ws_receiver) = socket.split();
+    let mut sender_signing = relay_signing.clone();
+    let mut receiver_signing = relay_signing;
+    let deployment_for_output = deployment.clone();
 
     let pty_service = deployment.pty().clone();
     let session_id_for_input = session_id;
@@ -126,17 +144,27 @@ async fn handle_terminal_ws(
                 Ok(j) => j,
                 Err(_) => continue,
             };
-            if ws_sender.send(Message::Text(json.into())).await.is_err() {
+            if send_ws_message(
+                &mut ws_sender,
+                &deployment_for_output,
+                &mut sender_signing,
+                Message::Text(json.into()),
+            )
+            .await
+            .is_err()
+            {
                 break;
             }
         }
         ws_sender
     });
 
-    while let Some(Ok(msg)) = ws_receiver.next().await {
+    while let Ok(Some(msg)) =
+        recv_ws_message(&mut ws_receiver, &deployment, &mut receiver_signing).await
+    {
         match msg {
             Message::Text(text) => {
-                if let Ok(cmd) = serde_json::from_str::<TerminalCommand>(&text) {
+                if let Ok(cmd) = serde_json::from_str::<TerminalCommand>(text.as_str()) {
                     match cmd {
                         TerminalCommand::Input { data } => {
                             if let Ok(bytes) = BASE64.decode(&data) {
@@ -158,13 +186,24 @@ async fn handle_terminal_ws(
     output_task.abort();
 }
 
-async fn send_error(mut socket: WebSocket, message: &str) -> Result<(), axum::Error> {
+async fn send_error(
+    mut socket: WebSocket,
+    deployment: DeploymentImpl,
+    mut relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
+    message: &str,
+) -> anyhow::Result<()> {
     let msg = TerminalMessage::Error {
         message: message.to_string(),
     };
     let json = serde_json::to_string(&msg).unwrap_or_default();
-    socket.send(Message::Text(json.into())).await?;
-    socket.close().await?;
+    send_ws_message(
+        &mut socket,
+        &deployment,
+        &mut relay_signing,
+        Message::Text(json.into()),
+    )
+    .await?;
+    socket.close().await.map_err(anyhow::Error::from)?;
     Ok(())
 }
 
