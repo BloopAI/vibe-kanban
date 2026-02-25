@@ -44,6 +44,10 @@ pub fn trusted_keys_path() -> std::path::PathBuf {
     asset_dir().join("trusted_ed25519_public_keys.json")
 }
 
+pub fn server_signing_key_path() -> std::path::PathBuf {
+    asset_dir().join("server_ed25519_signing_key")
+}
+
 #[derive(RustEmbed)]
 #[folder = "../../assets/sounds"]
 pub struct SoundAssets;

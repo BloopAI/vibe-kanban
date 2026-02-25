@@ -28,7 +28,7 @@ use services::services::{
 use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
-    assets::{config_path, credentials_path},
+    assets::{config_path, credentials_path, server_signing_key_path},
     msg_store::MsgStore,
 };
 use uuid::Uuid;
@@ -175,7 +175,8 @@ impl Deployment for LocalDeployment {
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
         let trusted_key_auth = TrustedKeyAuthRuntime::new();
-        let relay_signing = RelaySigningService::new();
+        let relay_signing = RelaySigningService::load_or_generate(&server_signing_key_path())
+            .expect("Failed to load or generate server signing key");
         let relay_control = Arc::new(RelayControl::new());
         let server_info = Arc::new(ServerInfo::new());
 

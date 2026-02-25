@@ -8,7 +8,6 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
-use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
     add_trusted_public_key,
@@ -150,8 +149,7 @@ async fn finish_spake2_enrollment(
     let browser_public_key = parse_public_key_base64(&payload.public_key_b64)
         .map_err(|_| ApiError::BadRequest("Invalid public_key_b64".to_string()))?;
 
-    let server_signing_key = SigningKey::generate(&mut rand::thread_rng());
-    let server_public_key = server_signing_key.verifying_key();
+    let server_public_key = deployment.relay_signing().server_public_key();
     let server_public_key_b64 = BASE64_STANDARD.encode(server_public_key.as_bytes());
 
     verify_client_proof(
@@ -169,7 +167,7 @@ async fn finish_spake2_enrollment(
 
     let signing_session_id = deployment
         .relay_signing()
-        .create_session(browser_public_key, server_signing_key)
+        .create_session(browser_public_key)
         .await;
 
     let server_proof_b64 = build_server_proof(

@@ -1,17 +1,19 @@
 use std::{
     collections::HashMap,
+    fs, io,
+    path::Path,
     sync::Arc,
     time::{Duration, Instant, SystemTime, UNIX_EPOCH},
 };
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use rand::rngs::OsRng;
 use tokio::sync::{RwLock, RwLockMappedWriteGuard, RwLockWriteGuard};
 use uuid::Uuid;
 
 struct RelaySigningSession {
     browser_public_key: VerifyingKey,
-    server_signing_key: SigningKey,
     created_at: Instant,
     last_used_at: Instant,
     seen_nonces: HashMap<String, Instant>,
@@ -46,20 +48,54 @@ const RELAY_NONCE_TTL: Duration = Duration::from_secs(2 * 60);
 #[derive(Clone)]
 pub struct RelaySigningService {
     sessions: Arc<RwLock<HashMap<Uuid, RelaySigningSession>>>,
+    server_signing_key: Arc<SigningKey>,
 }
 
 impl RelaySigningService {
-    pub fn new() -> Self {
+    pub fn new(server_signing_key: SigningKey) -> Self {
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            server_signing_key: Arc::new(server_signing_key),
         }
     }
 
-    pub async fn create_session(
-        &self,
-        browser_public_key: VerifyingKey,
-        server_signing_key: SigningKey,
-    ) -> Uuid {
+    pub fn load_or_generate(key_path: &Path) -> io::Result<Self> {
+        let key = if let Ok(bytes) = fs::read(key_path) {
+            let arr: [u8; 32] = bytes.try_into().map_err(|_| {
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "server signing key file has invalid length (expected 32 bytes)",
+                )
+            })?;
+            SigningKey::from_bytes(&arr)
+        } else {
+            let key = SigningKey::generate(&mut OsRng);
+
+            if let Some(parent) = key_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            let tmp = key_path.with_extension("tmp");
+            fs::write(&tmp, key.to_bytes())?;
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                fs::set_permissions(&tmp, fs::Permissions::from_mode(0o600))?;
+            }
+
+            fs::rename(&tmp, key_path)?;
+            key
+        };
+
+        Ok(Self::new(key))
+    }
+
+    pub fn server_public_key(&self) -> VerifyingKey {
+        self.server_signing_key.verifying_key()
+    }
+
+    pub async fn create_session(&self, browser_public_key: VerifyingKey) -> Uuid {
         let signing_session_id = Uuid::new_v4();
         let now = Instant::now();
         let mut sessions = self.sessions.write().await;
@@ -67,7 +103,6 @@ impl RelaySigningService {
             signing_session_id,
             RelaySigningSession {
                 browser_public_key,
-                server_signing_key,
                 created_at: now,
                 last_used_at: now,
                 seen_nonces: HashMap::new(),
@@ -121,7 +156,7 @@ impl RelaySigningService {
         let mut session = self.get_valid_session(signing_session_id).await?;
         session.last_used_at = Instant::now();
 
-        let signature = session.server_signing_key.sign(message);
+        let signature = self.server_signing_key.sign(message);
         Ok(BASE64_STANDARD.encode(signature.to_bytes()))
     }
 
