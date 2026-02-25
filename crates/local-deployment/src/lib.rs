@@ -30,6 +30,7 @@ use services::services::{
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
     assets::{config_path, credentials_path},
@@ -42,6 +43,56 @@ mod command;
 pub mod container;
 mod copy;
 pub mod pty;
+
+/// Controls the lifecycle of the relay tunnel connection.
+///
+/// Start/stop can be called from login/logout handlers to dynamically
+/// manage the relay without restarting the server.
+pub struct RelayControl {
+    /// Token used to cancel the current relay connection
+    shutdown: RwLock<Option<CancellationToken>>,
+    /// Port the local server is listening on
+    local_port: RwLock<Option<u16>>,
+}
+
+impl RelayControl {
+    fn new() -> Self {
+        Self {
+            shutdown: RwLock::new(None),
+            local_port: RwLock::new(None),
+        }
+    }
+
+    /// Store the local server port (called once at startup).
+    pub async fn set_local_port(&self, port: u16) {
+        *self.local_port.write().await = Some(port);
+    }
+
+    /// Get the stored local server port.
+    pub async fn local_port(&self) -> Option<u16> {
+        *self.local_port.read().await
+    }
+
+    /// Create a new cancellation token for a relay session.
+    /// Cancels any previously running session first.
+    pub async fn start(&self) -> CancellationToken {
+        let mut guard = self.shutdown.write().await;
+        if let Some(old) = guard.take() {
+            old.cancel();
+        }
+        let token = CancellationToken::new();
+        *guard = Some(token.clone());
+        token
+    }
+
+    /// Cancel the current relay session if one is running.
+    pub async fn stop(&self) {
+        let mut guard = self.shutdown.write().await;
+        if let Some(token) = guard.take() {
+            token.cancel();
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -64,6 +115,7 @@ pub struct LocalDeployment {
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     trusted_key_auth: TrustedKeyAuthRuntime,
     relay_signing_sessions: Arc<RwLock<HashMap<Uuid, RelaySigningSession>>>,
+    relay_control: Arc<RelayControl>,
     pty: PtyService,
 }
 
@@ -212,6 +264,7 @@ impl Deployment for LocalDeployment {
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
         let trusted_key_auth = TrustedKeyAuthRuntime::new();
         let relay_signing_sessions = Arc::new(RwLock::new(HashMap::new()));
+        let relay_control = Arc::new(RelayControl::new());
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -268,6 +321,7 @@ impl Deployment for LocalDeployment {
             oauth_handoffs,
             trusted_key_auth,
             relay_signing_sessions,
+            relay_control,
             pty,
         };
 
@@ -517,6 +571,10 @@ impl LocalDeployment {
 
         session.last_used_at = Instant::now();
         Ok(())
+    }
+
+    pub fn relay_control(&self) -> &Arc<RelayControl> {
+        &self.relay_control
     }
 
     pub fn pty(&self) -> &PtyService {

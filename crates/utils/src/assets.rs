@@ -40,6 +40,10 @@ pub fn credentials_path() -> std::path::PathBuf {
     asset_dir().join("credentials.json")
 }
 
+pub fn trusted_keys_path() -> std::path::PathBuf {
+    asset_dir().join("trusted_ed25519_public_keys.json")
+}
+
 #[derive(RustEmbed)]
 #[folder = "../../assets/sounds"]
 pub struct SoundAssets;
