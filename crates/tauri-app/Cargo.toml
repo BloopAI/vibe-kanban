@@ -1,6 +1,6 @@
 [package]
 name = "vibe-kanban-tauri"
-version = "0.1.19-pthis.4"
+version = "0.1.19-pthis.5"
 edition = "2024"
 
 [[bin]]
