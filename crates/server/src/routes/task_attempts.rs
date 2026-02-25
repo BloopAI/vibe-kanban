@@ -60,8 +60,13 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
-    routes::task_attempts::gh_cli_setup::GhCliSetupError,
+    DeploymentImpl,
+    error::ApiError,
+    middleware::{RelayRequestSignatureContext, load_workspace_middleware},
+    routes::{
+        relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+        task_attempts::gh_cli_setup::GhCliSetupError,
+    },
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -228,11 +233,15 @@ pub async fn stream_task_attempt_diff_ws(
     Query(params): Query<DiffStreamQuery>,
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
+    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
     let _ = deployment.container().touch(&workspace).await;
     let stats_only = params.stats_only;
+    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only).await
+        if let Err(e) =
+            handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only, relay_signing)
+                .await
         {
             tracing::warn!("diff WS closed: {}", e);
         }
@@ -244,8 +253,9 @@ async fn handle_task_attempt_diff_ws(
     deployment: DeploymentImpl,
     workspace: Workspace,
     stats_only: bool,
+    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+    use futures_util::{StreamExt, TryStreamExt};
     use utils::log_msg::LogMsg;
 
     let stream = deployment
@@ -256,6 +266,8 @@ async fn handle_task_attempt_diff_ws(
     let mut stream = stream.map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
 
     let (mut sender, mut receiver) = socket.split();
+    let mut sender_signing = relay_signing.clone();
+    let mut receiver_signing = relay_signing;
 
     loop {
         tokio::select! {
@@ -263,7 +275,7 @@ async fn handle_task_attempt_diff_ws(
             item = stream.next() => {
                 match item {
                     Some(Ok(msg)) => {
-                        if sender.send(msg).await.is_err() {
+                        if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg).await.is_err() {
                             break;
                         }
                     }
@@ -275,9 +287,11 @@ async fn handle_task_attempt_diff_ws(
                 }
             }
             // Detect client disconnection
-            msg = receiver.next() => {
-                if msg.is_none() {
-                    break;
+            msg = recv_ws_message(&mut receiver, &deployment, &mut receiver_signing) => {
+                match msg {
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
                 }
             }
         }
@@ -289,9 +303,18 @@ pub async fn stream_workspaces_ws(
     ws: WebSocketUpgrade,
     Query(query): Query<WorkspaceStreamQuery>,
     State(deployment): State<DeploymentImpl>,
+    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
+    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_workspaces_ws(socket, deployment, query.archived, query.limit).await
+        if let Err(e) = handle_workspaces_ws(
+            socket,
+            deployment,
+            query.archived,
+            query.limit,
+            relay_signing,
+        )
+        .await
         {
             tracing::warn!("workspaces WS closed: {}", e);
         }
@@ -303,8 +326,9 @@ async fn handle_workspaces_ws(
     deployment: DeploymentImpl,
     archived: Option<bool>,
     limit: Option<i64>,
+    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+    use futures_util::{StreamExt, TryStreamExt};
 
     let mut stream = deployment
         .events()
@@ -313,13 +337,15 @@ async fn handle_workspaces_ws(
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
     let (mut sender, mut receiver) = socket.split();
+    let mut sender_signing = relay_signing.clone();
+    let mut receiver_signing = relay_signing;
 
     loop {
         tokio::select! {
             item = stream.next() => {
                 match item {
                     Some(Ok(msg)) => {
-                        if sender.send(msg).await.is_err() {
+                        if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg).await.is_err() {
                             break;
                         }
                     }
@@ -330,9 +356,11 @@ async fn handle_workspaces_ws(
                     None => break,
                 }
             }
-            msg = receiver.next() => {
-                if msg.is_none() {
-                    break;
+            msg = recv_ws_message(&mut receiver, &deployment, &mut receiver_signing) => {
+                match msg {
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
                 }
             }
         }

@@ -12,6 +12,7 @@ use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use ed25519_dalek::{Signature, VerifyingKey};
 use executors::profile::ExecutorConfigs;
 use git::GitService;
+use hmac::{Hmac, Mac};
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -29,6 +30,7 @@ use services::services::{
     repo::RepoService,
     worktree_manager::WorktreeManager,
 };
+use sha2::Sha256;
 use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
@@ -75,6 +77,7 @@ struct PendingHandoff {
 
 struct RelaySigningSession {
     public_key: [u8; 32],
+    shared_key: Vec<u8>,
     created_at: Instant,
     last_used_at: Instant,
     seen_nonces: HashMap<String, Instant>,
@@ -87,6 +90,8 @@ pub enum RelaySignatureValidationError {
     MissingSigningSession,
     InvalidNonce,
     ReplayNonce,
+    InvalidBodyHash,
+    InvalidMac,
     InvalidSignature,
 }
 
@@ -98,10 +103,14 @@ impl RelaySignatureValidationError {
             Self::MissingSigningSession => "missing or expired signing session",
             Self::InvalidNonce => "invalid nonce",
             Self::ReplayNonce => "replayed nonce",
+            Self::InvalidBodyHash => "invalid body hash",
+            Self::InvalidMac => "invalid mac",
             Self::InvalidSignature => "invalid signature",
         }
     }
 }
+
+type HmacSha256 = Hmac<Sha256>;
 
 const RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS: i64 = 30;
 const RELAY_SIGNING_SESSION_TTL: Duration = Duration::from_secs(60 * 60);
@@ -429,7 +438,11 @@ impl LocalDeployment {
             .await
     }
 
-    pub async fn create_relay_signing_session(&self, public_key: [u8; 32]) -> Uuid {
+    pub async fn create_relay_signing_session(
+        &self,
+        public_key: [u8; 32],
+        shared_key: Vec<u8>,
+    ) -> Uuid {
         let signing_session_id = Uuid::new_v4();
         let now = Instant::now();
         let mut sessions = self.relay_signing_sessions.write().await;
@@ -437,6 +450,7 @@ impl LocalDeployment {
             signing_session_id,
             RelaySigningSession {
                 public_key,
+                shared_key,
                 created_at: now,
                 last_used_at: now,
                 seen_nonces: HashMap::new(),
@@ -508,7 +522,78 @@ impl LocalDeployment {
         Ok(())
     }
 
+    pub async fn relay_transport_mac(
+        &self,
+        signing_session_id: Uuid,
+        purpose: &str,
+        message: &[u8],
+    ) -> Result<String, RelaySignatureValidationError> {
+        let now = Instant::now();
+        let mut sessions = self.relay_signing_sessions.write().await;
+        sessions.retain(|_, session| {
+            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
+                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
+        });
+
+        let session = sessions
+            .get_mut(&signing_session_id)
+            .ok_or(RelaySignatureValidationError::MissingSigningSession)?;
+        session.last_used_at = now;
+
+        let mac_key = derive_session_mac_key(&session.shared_key, purpose.as_bytes());
+        let mut mac = HmacSha256::new_from_slice(&mac_key)
+            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
+        mac.update(message);
+        Ok(BASE64_STANDARD.encode(mac.finalize().into_bytes()))
+    }
+
+    pub async fn verify_relay_transport_mac(
+        &self,
+        signing_session_id: Uuid,
+        purpose: &str,
+        message: &[u8],
+        mac_b64: &str,
+    ) -> Result<(), RelaySignatureValidationError> {
+        let mac_bytes = BASE64_STANDARD
+            .decode(mac_b64)
+            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
+        if mac_bytes.len() != 32 {
+            return Err(RelaySignatureValidationError::InvalidMac);
+        }
+
+        let now = Instant::now();
+        let mut sessions = self.relay_signing_sessions.write().await;
+        sessions.retain(|_, session| {
+            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
+                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
+        });
+
+        let session = sessions
+            .get_mut(&signing_session_id)
+            .ok_or(RelaySignatureValidationError::MissingSigningSession)?;
+
+        let mac_key = derive_session_mac_key(&session.shared_key, purpose.as_bytes());
+        let mut mac = HmacSha256::new_from_slice(&mac_key)
+            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
+        mac.update(message);
+        mac.verify_slice(&mac_bytes)
+            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
+
+        session.last_used_at = now;
+        Ok(())
+    }
+
     pub fn pty(&self) -> &PtyService {
         &self.pty
     }
+}
+
+fn derive_session_mac_key(shared_key: &[u8], purpose: &[u8]) -> [u8; 32] {
+    let mut mac =
+        HmacSha256::new_from_slice(shared_key).expect("HMAC key creation should not fail");
+    mac.update(purpose);
+    let derived = mac.finalize().into_bytes();
+    let mut output = [0_u8; 32];
+    output.copy_from_slice(&derived);
+    output
 }

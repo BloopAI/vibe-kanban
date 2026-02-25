@@ -20,6 +20,7 @@ pub mod migration;
 pub mod oauth;
 pub mod organizations;
 pub mod relay_auth;
+pub mod relay_ws;
 pub mod remote;
 pub mod repo;
 pub mod scratch;
@@ -52,6 +53,10 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .nest("/remote", remote::router())
         .nest("/images", images::routes())
+        .layer(axum::middleware::from_fn_with_state(
+            deployment.clone(),
+            middleware::sign_relay_response,
+        ))
         .layer(axum::middleware::from_fn_with_state(
             deployment.clone(),
             middleware::require_relay_request_signature,
