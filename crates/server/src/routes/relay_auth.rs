@@ -11,7 +11,7 @@ use deployment::Deployment;
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
-    TrustedKeyAuthError, add_trusted_public_key,
+    add_trusted_public_key,
     key_confirmation::{build_server_proof, verify_client_proof},
     spake2::{generate_one_time_code, start_spake2_enrollment},
     trusted_keys::parse_public_key_base64,
@@ -80,13 +80,14 @@ async fn generate_enrollment_code(
         ));
     }
 
-    enforce_rate_limit(
-        &deployment,
-        "relay-auth:code-generation:global",
-        GENERATE_CODE_GLOBAL_LIMIT,
-        RATE_LIMIT_WINDOW,
-    )
-    .await?;
+    deployment
+        .trusted_key_auth()
+        .enforce_rate_limit(
+            "relay-auth:code-generation:global",
+            GENERATE_CODE_GLOBAL_LIMIT,
+            RATE_LIMIT_WINDOW,
+        )
+        .await?;
 
     let enrollment_code = deployment
         .trusted_key_auth()
@@ -102,21 +103,17 @@ async fn start_spake2_enrollment_route(
     State(deployment): State<DeploymentImpl>,
     ExtractJson(payload): ExtractJson<StartSpake2EnrollmentRequest>,
 ) -> Result<Json<ApiResponse<StartSpake2EnrollmentResponse>>, ApiError> {
-    enforce_rate_limit(
-        &deployment,
-        "relay-auth:spake2-start:global",
-        SPAKE2_START_GLOBAL_LIMIT,
-        RATE_LIMIT_WINDOW,
-    )
-    .await?;
+    deployment
+        .trusted_key_auth()
+        .enforce_rate_limit(
+            "relay-auth:spake2-start:global",
+            SPAKE2_START_GLOBAL_LIMIT,
+            RATE_LIMIT_WINDOW,
+        )
+        .await?;
 
     let spake2_start =
-        start_spake2_enrollment(&payload.enrollment_code, &payload.client_message_b64).map_err(
-            |error| match error {
-                TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
-                other => ApiError::BadRequest(other.to_string()),
-            },
-        )?;
+        start_spake2_enrollment(&payload.enrollment_code, &payload.client_message_b64)?;
 
     if !deployment
         .trusted_key_auth()
@@ -195,25 +192,6 @@ async fn finish_spake2_enrollment(
         server_public_key_b64,
         server_proof_b64,
     })))
-}
-
-async fn enforce_rate_limit(
-    deployment: &DeploymentImpl,
-    bucket: &str,
-    max_requests: usize,
-    window: Duration,
-) -> Result<(), ApiError> {
-    if deployment
-        .trusted_key_auth()
-        .allow_rate_limited_action(bucket, max_requests, window)
-        .await
-    {
-        return Ok(());
-    }
-
-    Err(ApiError::TooManyRequests(
-        "Too many requests. Please wait and try again.".to_string(),
-    ))
 }
 
 fn is_relay_request(headers: &HeaderMap) -> bool {

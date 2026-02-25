@@ -7,6 +7,8 @@ use std::{
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
+use crate::TrustedKeyAuthError;
+
 #[derive(Clone, Default)]
 pub struct TrustedKeyAuthRuntime {
     pake_enrollments: Arc<RwLock<HashMap<Uuid, PendingPakeEnrollment>>>,
@@ -66,22 +68,24 @@ impl TrustedKeyAuthRuntime {
         true
     }
 
-    pub async fn allow_rate_limited_action(
+    pub async fn enforce_rate_limit(
         &self,
         bucket: &str,
         max_requests: usize,
         window: Duration,
-    ) -> bool {
+    ) -> Result<(), TrustedKeyAuthError> {
         let now = Instant::now();
         let mut windows = self.rate_limit_windows.write().await;
         let entry = windows.entry(bucket.to_string()).or_default();
         entry.retain(|timestamp| now.duration_since(*timestamp) <= window);
 
         if entry.len() >= max_requests {
-            return false;
+            return Err(TrustedKeyAuthError::TooManyRequests(
+                "Too many requests. Please wait and try again.".to_string(),
+            ));
         }
 
         entry.push(now);
-        true
+        Ok(())
     }
 }
