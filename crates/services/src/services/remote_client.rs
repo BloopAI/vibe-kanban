@@ -22,7 +22,7 @@ use chrono::Duration as ChronoDuration;
 use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tracing::warn;
+use tracing::{debug, warn};
 use url::Url;
 use utils::jwt::extract_expiration;
 use uuid::Uuid;
@@ -163,37 +163,81 @@ impl RemoteClient {
     > {
         Box::pin(async move {
             let leeway = ChronoDuration::seconds(Self::TOKEN_REFRESH_LEEWAY_SECS);
+            debug!(
+                token_refresh_leeway_secs = Self::TOKEN_REFRESH_LEEWAY_SECS,
+                "remote auth: require_token invoked"
+            );
             let creds = self
                 .auth_context
                 .get_credentials()
                 .await
                 .ok_or(RemoteClientError::Auth)?;
 
+            debug!(
+                access_token_present = creds.access_token.is_some(),
+                access_token = creds.access_token.as_deref(),
+                refresh_token = %creds.refresh_token,
+                expires_at = ?creds.expires_at,
+                "remote auth: loaded credentials from auth context"
+            );
+
             if let Some(token) = creds.access_token.as_ref()
                 && !creds.expires_soon(leeway)
             {
+                debug!(
+                    access_token = %token,
+                    expires_at = ?creds.expires_at,
+                    "remote auth: using cached non-expiring access token"
+                );
                 return Ok(token.clone());
             }
 
             let refreshed = {
+                debug!("remote auth: acquiring refresh lock");
                 let _refresh_guard = self.auth_context.refresh_guard().await;
+                debug!("remote auth: refresh lock acquired");
                 let latest = self
                     .auth_context
                     .get_credentials()
                     .await
                     .ok_or(RemoteClientError::Auth)?;
+                debug!(
+                    latest_access_token_present = latest.access_token.is_some(),
+                    latest_access_token = latest.access_token.as_deref(),
+                    latest_refresh_token = %latest.refresh_token,
+                    latest_expires_at = ?latest.expires_at,
+                    "remote auth: reloaded credentials after acquiring refresh lock"
+                );
                 if let Some(token) = latest.access_token.as_ref()
                     && !latest.expires_soon(leeway)
                 {
+                    debug!(
+                        access_token = %token,
+                        expires_at = ?latest.expires_at,
+                        "remote auth: another caller refreshed token, reusing latest token"
+                    );
                     return Ok(token.clone());
                 }
 
+                debug!(
+                    refresh_token = %latest.refresh_token,
+                    "remote auth: cached access token missing/expiring, refreshing with refresh token"
+                );
                 self.refresh_credentials(&latest).await
             };
 
             match refreshed {
-                Ok(updated) => updated.access_token.ok_or(RemoteClientError::Auth),
+                Ok(updated) => {
+                    debug!(
+                        refreshed_access_token = updated.access_token.as_deref(),
+                        refreshed_refresh_token = %updated.refresh_token,
+                        refreshed_expires_at = ?updated.expires_at,
+                        "remote auth: token refresh completed"
+                    );
+                    updated.access_token.ok_or(RemoteClientError::Auth)
+                }
                 Err(RemoteClientError::Auth) => {
+                    debug!("remote auth: refresh returned auth error; clearing stored credentials");
                     let _ = self.auth_context.clear_credentials().await;
                     Err(RemoteClientError::Auth)
                 }
@@ -202,10 +246,14 @@ impl RemoteClient {
                         "Refresh token request timed out after {} minutes. Discarding the refresh token and forcing re-login.",
                         Self::TOKEN_REFRESH_REQUEST_TIMEOUT.as_secs() / 60
                     );
+                    debug!("remote auth: token refresh timed out; clearing stored credentials");
                     let _ = self.auth_context.clear_credentials().await;
                     Err(RemoteClientError::TokenRefreshTimeout)
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    debug!(error = ?err, "remote auth: token refresh failed");
+                    Err(err)
+                }
             }
         })
     }
@@ -214,11 +262,25 @@ impl RemoteClient {
         &self,
         creds: &Credentials,
     ) -> Result<Credentials, RemoteClientError> {
+        debug!(
+            refresh_token = %creds.refresh_token,
+            previous_access_token = creds.access_token.as_deref(),
+            previous_expires_at = ?creds.expires_at,
+            "remote auth: starting credential refresh"
+        );
         let response = self.refresh_token_request(&creds.refresh_token).await?;
         let access_token = response.access_token;
         let refresh_token = response.refresh_token;
         let expires_at = extract_expiration(&access_token)
             .map_err(|err| RemoteClientError::Token(err.to_string()))?;
+
+        debug!(
+            refreshed_access_token = %access_token,
+            refreshed_refresh_token = %refresh_token,
+            refreshed_expires_at = ?expires_at,
+            "remote auth: parsed refreshed tokens"
+        );
+
         let new_creds = Credentials {
             access_token: Some(access_token),
             refresh_token,
@@ -228,6 +290,7 @@ impl RemoteClient {
             .save_credentials(&new_creds)
             .await
             .map_err(|e| RemoteClientError::Storage(e.to_string()))?;
+        debug!("remote auth: refreshed credentials persisted");
         Ok(new_creds)
     }
 
@@ -239,6 +302,14 @@ impl RemoteClient {
             refresh_token: refresh_token.to_string(),
         };
 
+        debug!(
+            endpoint = "/v1/tokens/refresh",
+            refresh_token = %refresh_token,
+            request_body = ?request,
+            timeout_secs = Self::TOKEN_REFRESH_REQUEST_TIMEOUT.as_secs(),
+            "remote auth: sending refresh token request"
+        );
+
         let timeout_options = RequestTimeoutOptions {
             timeout: Self::TOKEN_REFRESH_REQUEST_TIMEOUT,
             retry_on_timeout: false,
@@ -246,12 +317,28 @@ impl RemoteClient {
 
         self.post_public_with_timeout_options("/v1/tokens/refresh", Some(&request), timeout_options)
             .await
+            .inspect(|response: &TokenRefreshResponse| {
+                debug!(
+                    endpoint = "/v1/tokens/refresh",
+                    response_access_token = %response.access_token,
+                    response_refresh_token = %response.refresh_token,
+                    "remote auth: refresh token request succeeded"
+                );
+            })
             .map_err(|e| {
                 if matches!(e, RemoteClientError::Timeout) {
                     RemoteClientError::TokenRefreshTimeout
                 } else {
                     e
                 }
+            })
+            .inspect_err(|error| {
+                debug!(
+                    endpoint = "/v1/tokens/refresh",
+                    refresh_token = %refresh_token,
+                    error = ?error,
+                    "remote auth: refresh token request failed"
+                );
             })
             .map_err(|e| self.map_api_error(e))
     }
@@ -326,6 +413,19 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
 
         let retry_on_timeout = timeout_options.is_none_or(|o| o.retry_on_timeout);
+        let timeout_ms = timeout_options.map(|o| o.timeout.as_millis() as u64);
+        let request_body_json = body.and_then(|b| serde_json::to_string(b).ok());
+
+        debug!(
+            method = %method,
+            path = %path,
+            url = %url,
+            requires_auth,
+            retry_on_timeout,
+            timeout_ms = timeout_ms,
+            request_body = request_body_json.as_deref(),
+            "remote auth: dispatching outbound request to remote server"
+        );
 
         let operation = || async {
             let mut req = self
@@ -340,6 +440,12 @@ impl RemoteClient {
 
             if requires_auth {
                 let token = self.require_token().await?;
+                debug!(
+                    method = %method,
+                    path = %path,
+                    bearer_access_token = %token,
+                    "remote auth: attaching bearer token to outbound request"
+                );
                 req = req.bearer_auth(token);
             }
 
@@ -348,13 +454,49 @@ impl RemoteClient {
             }
 
             let res = req.send().await.map_err(map_reqwest_error)?;
+            let status = res.status();
+            let response_headers = format!("{:?}", res.headers());
+            debug!(
+                method = %method,
+                path = %path,
+                status = status.as_u16(),
+                response_headers = %response_headers,
+                "remote auth: received outbound response"
+            );
 
-            match res.status() {
-                s if s.is_success() => Ok(res),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
+            match status {
+                s if s.is_success() => {
+                    debug!(
+                        method = %method,
+                        path = %path,
+                        status = s.as_u16(),
+                        "remote auth: outbound request succeeded"
+                    );
+                    Ok(res)
+                }
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => {
+                    let response_body = res.text().await.unwrap_or_default();
+                    debug!(
+                        method = %method,
+                        path = %path,
+                        status = status.as_u16(),
+                        response_headers = %response_headers,
+                        response_body = %response_body,
+                        "remote auth: outbound request returned auth failure"
+                    );
+                    Err(RemoteClientError::Auth)
+                }
                 s => {
                     let status = s.as_u16();
                     let body = res.text().await.unwrap_or_default();
+                    debug!(
+                        method = %method,
+                        path = %path,
+                        status,
+                        response_headers = %response_headers,
+                        response_body = %body,
+                        "remote auth: outbound request returned non-success response"
+                    );
                     Err(RemoteClientError::Http { status, body })
                 }
             }
@@ -493,11 +635,19 @@ impl RemoteClient {
     }
 
     fn map_api_error(&self, err: RemoteClientError) -> RemoteClientError {
+        debug!(error = ?err, "remote auth: mapping API error");
         if let RemoteClientError::Http { body, .. } = &err
             && let Ok(api_err) = serde_json::from_str::<ApiErrorResponse>(body)
         {
-            return RemoteClientError::Api(map_error_code(Some(&api_err.error)));
+            let mapped = map_error_code(Some(&api_err.error));
+            debug!(
+                error_code = %api_err.error,
+                mapped_error = ?mapped,
+                "remote auth: parsed structured remote API error body"
+            );
+            return RemoteClientError::Api(mapped);
         }
+        debug!("remote auth: returning original API error (unstructured or non-http)");
         err
     }
 
@@ -994,6 +1144,7 @@ impl RemoteClient {
 }
 
 fn map_reqwest_error(e: reqwest::Error) -> RemoteClientError {
+    debug!(error = %e, is_timeout = e.is_timeout(), "remote auth: reqwest error");
     if e.is_timeout() {
         RemoteClientError::Timeout
     } else {

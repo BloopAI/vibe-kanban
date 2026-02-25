@@ -97,6 +97,8 @@ import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
 
+const AUTH_DEBUG_PREFIX = '[auth-debug][local-web][oauth-api]';
+
 export class ApiError<E = unknown> extends Error {
   public status?: number;
   public error_data?: E;
@@ -125,6 +127,26 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     headers,
   });
 };
+
+function authDebug(message: string, data?: unknown): void {
+  if (data === undefined) {
+    console.debug(`${AUTH_DEBUG_PREFIX} ${message}`);
+    return;
+  }
+  console.debug(`${AUTH_DEBUG_PREFIX} ${message}`, data);
+}
+
+function headersToObject(headers: Headers): Record<string, string> {
+  return Object.fromEntries(headers.entries());
+}
+
+async function responseBodySnapshot(response: Response): Promise<string> {
+  try {
+    return await response.clone().text();
+  } catch (error) {
+    return `<<failed to read response body: ${String(error)}>>`;
+  }
+}
 
 export type Ok<T> = { success: true; data: T };
 export type Err<E> = { success: false; error: E | undefined; message?: string };
@@ -1062,26 +1084,65 @@ export const oauthApi = {
     provider: string,
     returnTo: string
   ): Promise<{ handoff_id: string; authorize_url: string }> => {
+    authDebug('handoffInit request', { provider, returnTo });
     const response = await makeRequest('/api/auth/handoff/init', {
       method: 'POST',
       body: JSON.stringify({ provider, return_to: returnTo }),
     });
+    authDebug('handoffInit response metadata', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+      url: response.url,
+      headers: headersToObject(response.headers),
+    });
+    if (!response.ok) {
+      authDebug('handoffInit response body', {
+        body: await responseBodySnapshot(response),
+      });
+    }
     return handleApiResponse<{ handoff_id: string; authorize_url: string }>(
       response
     );
   },
 
   status: async (): Promise<StatusResponse> => {
+    authDebug('status request');
     const response = await makeRequest('/api/auth/status', {
       cache: 'no-store',
     });
+    authDebug('status response metadata', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+      url: response.url,
+      headers: headersToObject(response.headers),
+    });
+    if (!response.ok) {
+      authDebug('status response body', {
+        body: await responseBodySnapshot(response),
+      });
+    }
     return handleApiResponse<StatusResponse>(response);
   },
 
   logout: async (): Promise<void> => {
+    authDebug('logout request');
     const response = await makeRequest('/api/auth/logout', {
       method: 'POST',
     });
+    authDebug('logout response metadata', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+      url: response.url,
+      headers: headersToObject(response.headers),
+    });
+    if (!response.ok) {
+      authDebug('logout response body', {
+        body: await responseBodySnapshot(response),
+      });
+    }
     if (!response.ok) {
       throw new ApiError(
         `Logout failed with status ${response.status}`,
@@ -1093,17 +1154,47 @@ export const oauthApi = {
 
   /** Returns the current access token for the remote server (auto-refreshes if needed) */
   getToken: async (): Promise<TokenResponse | null> => {
+    authDebug('getToken request');
     const response = await makeRequest('/api/auth/token');
+    authDebug('getToken response metadata', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+      url: response.url,
+      headers: headersToObject(response.headers),
+    });
+    authDebug('getToken response body', {
+      body: await responseBodySnapshot(response),
+    });
     if (response.status === 401) {
+      authDebug('getToken received 401 Unauthorized');
       throw new ApiError('Unauthorized', 401, response);
     }
-    if (!response.ok) return null;
-    return handleApiResponse<TokenResponse>(response);
+    if (!response.ok) {
+      authDebug('getToken returning null due to non-ok response');
+      return null;
+    }
+    const tokenResponse = await handleApiResponse<TokenResponse>(response);
+    authDebug('getToken parsed token response', tokenResponse);
+    return tokenResponse;
   },
 
   /** Returns the user ID of the currently authenticated user */
   getCurrentUser: async (): Promise<CurrentUserResponse> => {
+    authDebug('getCurrentUser request');
     const response = await makeRequest('/api/auth/user');
+    authDebug('getCurrentUser response metadata', {
+      status: response.status,
+      ok: response.ok,
+      statusText: response.statusText,
+      url: response.url,
+      headers: headersToObject(response.headers),
+    });
+    if (!response.ok) {
+      authDebug('getCurrentUser response body', {
+        body: await responseBodySnapshot(response),
+      });
+    }
     return handleApiResponse<CurrentUserResponse>(response);
   },
 };

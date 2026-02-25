@@ -59,10 +59,21 @@ async fn handoff_init(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<HandoffInitPayload>,
 ) -> Result<ResponseJson<ApiResponse<HandoffInitResponseBody>>, ApiError> {
+    tracing::debug!(
+        provider = %payload.provider,
+        return_to = %payload.return_to,
+        "oauth handoff init requested"
+    );
     let client = deployment.remote_client()?;
 
     let app_verifier = generate_secret();
     let app_challenge = hash_sha256_hex(&app_verifier);
+    tracing::debug!(
+        provider = %payload.provider,
+        app_verifier = %app_verifier,
+        app_challenge = %app_challenge,
+        "oauth handoff init generated PKCE verifier/challenge"
+    );
 
     let request = HandoffInitRequest {
         provider: payload.provider.clone(),
@@ -71,10 +82,20 @@ async fn handoff_init(
     };
 
     let response = client.handoff_init(&request).await?;
+    tracing::debug!(
+        provider = %payload.provider,
+        handoff_id = %response.handoff_id,
+        authorize_url = %response.authorize_url,
+        "oauth handoff init response received from remote"
+    );
 
     deployment
         .store_oauth_handoff(response.handoff_id, payload.provider, app_verifier)
         .await;
+    tracing::debug!(
+        handoff_id = %response.handoff_id,
+        "oauth handoff state stored locally"
+    );
 
     Ok(ResponseJson(ApiResponse::success(
         HandoffInitResponseBody {
@@ -97,7 +118,18 @@ async fn handoff_complete(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<HandoffCompleteQuery>,
 ) -> Result<Response<String>, ApiError> {
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        app_code = query.app_code.as_deref(),
+        callback_error = query.error.as_deref(),
+        "oauth handoff completion callback received"
+    );
     if let Some(error) = query.error {
+        tracing::debug!(
+            handoff_id = %query.handoff_id,
+            callback_error = %error,
+            "oauth handoff callback returned error query parameter"
+        );
         return Ok(simple_html_response(
             StatusCode::BAD_REQUEST,
             format!("OAuth authorization failed: {error}"),
@@ -124,6 +156,12 @@ async fn handoff_complete(
             ));
         }
     };
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        provider = %provider,
+        app_verifier = %app_verifier,
+        "oauth handoff local state loaded for completion"
+    );
 
     let client = deployment.remote_client()?;
 
@@ -132,16 +170,37 @@ async fn handoff_complete(
         app_code,
         app_verifier,
     };
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        request = ?redeem_request,
+        "oauth handoff redeem request prepared"
+    );
 
     let redeem = client.handoff_redeem(&redeem_request).await?;
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        access_token = %redeem.access_token,
+        refresh_token = %redeem.refresh_token,
+        "oauth handoff redeem response received from remote"
+    );
 
     let expires_at = extract_expiration(&redeem.access_token)
         .map_err(|err| ApiError::BadRequest(format!("Invalid access token: {err}")))?;
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        expires_at = ?expires_at,
+        "oauth handoff redeemed access token expiration parsed"
+    );
     let credentials = Credentials {
         access_token: Some(redeem.access_token.clone()),
         refresh_token: redeem.refresh_token.clone(),
         expires_at: Some(expires_at),
     };
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        credentials = ?credentials,
+        "oauth credentials prepared for persistence"
+    );
 
     deployment
         .auth_context()
@@ -151,6 +210,10 @@ async fn handoff_complete(
             tracing::error!(?e, "failed to save credentials");
             ApiError::Io(e)
         })?;
+    tracing::debug!(
+        handoff_id = %query.handoff_id,
+        "oauth credentials persisted"
+    );
 
     // Enable analytics automatically on login if not already enabled
     let config_guard = deployment.config().read().await;
@@ -231,18 +294,23 @@ async fn handoff_complete(
 }
 
 async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, ApiError> {
+    tracing::debug!("auth logout requested");
     let auth_context = deployment.auth_context();
 
     if let Ok(client) = deployment.remote_client() {
+        tracing::debug!("auth logout calling remote /v1/oauth/logout");
         let _ = client.logout().await;
+        tracing::debug!("auth logout remote call finished");
     }
 
     auth_context.clear_credentials().await.map_err(|e| {
         tracing::error!(?e, "failed to clear credentials");
         ApiError::Io(e)
     })?;
+    tracing::debug!("auth logout cleared local credentials");
 
     auth_context.clear_profile().await;
+    tracing::debug!("auth logout cleared cached profile");
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -272,16 +340,20 @@ async fn status(
 async fn get_token(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<TokenResponse>>, ApiError> {
+    tracing::debug!("auth token endpoint called");
     let remote_client = deployment.remote_client()?;
 
     // This will auto-refresh the token if expired
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let access_token = remote_client.access_token().await.map_err(|error| {
+        tracing::debug!(?error, "auth token endpoint failed to get access token");
+        ApiError::Unauthorized
+    })?;
+    tracing::debug!(access_token = %access_token, "auth token endpoint got access token");
 
     let creds = deployment.auth_context().get_credentials().await;
+    tracing::debug!(credentials = ?creds, "auth token endpoint loaded credential metadata");
     let expires_at = creds.and_then(|c| c.expires_at);
+    tracing::debug!(expires_at = ?expires_at, "auth token endpoint returning token response");
 
     Ok(ResponseJson(ApiResponse::success(TokenResponse {
         access_token,
@@ -292,13 +364,18 @@ async fn get_token(
 async fn get_current_user(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<CurrentUserResponse>>, ApiError> {
+    tracing::debug!("auth current-user endpoint called");
     let remote_client = deployment.remote_client()?;
 
     // Get the access token from remote client
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let access_token = remote_client.access_token().await.map_err(|error| {
+        tracing::debug!(?error, "auth current-user failed to get access token");
+        ApiError::Unauthorized
+    })?;
+    tracing::debug!(
+        access_token = %access_token,
+        "auth current-user endpoint obtained access token"
+    );
 
     // Extract user ID from the JWT token's 'sub' claim
     let user_id = utils::jwt::extract_subject(&access_token)
@@ -307,6 +384,7 @@ async fn get_current_user(
             ApiError::Unauthorized
         })?
         .to_string();
+    tracing::debug!(user_id = %user_id, "auth current-user extracted JWT subject");
 
     Ok(ResponseJson(ApiResponse::success(CurrentUserResponse {
         user_id,

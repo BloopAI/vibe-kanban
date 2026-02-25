@@ -13,6 +13,7 @@ import type {
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+const AUTH_DEBUG_PREFIX = '[auth-debug][local-web][remote-api]';
 
 // Mutable module-level variable — overridden at runtime by ConfigProvider
 // when VK_SHARED_API_BASE is set (for self-hosting support)
@@ -40,14 +41,46 @@ export function getRemoteApiUrl(): string {
 // Backward-compatible export — consumers should migrate to getRemoteApiUrl()
 export const REMOTE_API_URL = BUILD_TIME_API_BASE;
 
+function authDebug(message: string, data?: unknown): void {
+  if (data === undefined) {
+    console.debug(`${AUTH_DEBUG_PREFIX} ${message}`);
+    return;
+  }
+  console.debug(`${AUTH_DEBUG_PREFIX} ${message}`, data);
+}
+
+function headersToObject(headers: Headers): Record<string, string> {
+  return Object.fromEntries(headers.entries());
+}
+
+async function responseBodySnapshot(response: Response): Promise<string> {
+  try {
+    return await response.clone().text();
+  } catch (error) {
+    return `<<failed to read response body: ${String(error)}>>`;
+  }
+}
+
 export const makeRequest = async (
   path: string,
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
+  const method = options.method ?? 'GET';
+  const requestUrl = `${getRemoteApiUrl()}${path}`;
+  authDebug('makeRequest called', {
+    path,
+    requestUrl,
+    method,
+    retryOn401,
+    options,
+  });
+
   const authRuntime = getAuthRuntime();
   const token = await authRuntime.getToken();
+  authDebug('authRuntime.getToken resolved', { token });
   if (!token) {
+    authDebug('makeRequest aborting: token missing');
     throw new Error('Not authenticated');
   }
 
@@ -59,25 +92,85 @@ export const makeRequest = async (
   headers.set('X-Client-Version', __APP_VERSION__);
   headers.set('X-Client-Type', 'frontend');
 
-  const response = await fetch(`${getRemoteApiUrl()}${path}`, {
-    ...options,
-    headers,
-    credentials: 'include',
+  authDebug('dispatching request', {
+    requestUrl,
+    method,
+    headers: headersToObject(headers),
+    body: options.body,
   });
+
+  let response: Response;
+  try {
+    response = await fetch(requestUrl, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+  } catch (error) {
+    authDebug('request failed before receiving response', {
+      requestUrl,
+      method,
+      error,
+    });
+    throw error;
+  }
+
+  authDebug('received response', {
+    requestUrl,
+    method,
+    status: response.status,
+    statusText: response.statusText,
+    ok: response.ok,
+    responseUrl: response.url,
+    headers: headersToObject(response.headers),
+  });
+  if (!response.ok) {
+    authDebug('response body snapshot (initial request)', {
+      body: await responseBodySnapshot(response),
+    });
+  }
 
   // Handle 401 - token may have expired
   if (response.status === 401 && retryOn401) {
+    authDebug('received 401, triggering auth refresh and retry', {
+      requestUrl,
+      method,
+      originalResponseBody: await responseBodySnapshot(response),
+    });
     const newToken = await authRuntime.triggerRefresh();
+    authDebug('authRuntime.triggerRefresh resolved', { newToken });
     if (newToken) {
       // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
-      return fetch(`${getRemoteApiUrl()}${path}`, {
+      authDebug('retrying request after refresh', {
+        requestUrl,
+        method,
+        headers: headersToObject(headers),
+      });
+
+      const retryResponse = await fetch(requestUrl, {
         ...options,
         headers,
         credentials: 'include',
       });
+      authDebug('retry response received', {
+        requestUrl,
+        method,
+        status: retryResponse.status,
+        statusText: retryResponse.statusText,
+        ok: retryResponse.ok,
+        responseUrl: retryResponse.url,
+        headers: headersToObject(retryResponse.headers),
+      });
+      if (!retryResponse.ok) {
+        authDebug('response body snapshot (retry request)', {
+          body: await responseBodySnapshot(retryResponse),
+        });
+      }
+      return retryResponse;
     }
     // Refresh failed, throw an auth error
+    authDebug('refresh failed to return token; throwing session expired error');
     throw new Error('Session expired. Please log in again.');
   }
 
