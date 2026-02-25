@@ -31,8 +31,7 @@ pub mod task_attempts;
 pub mod terminal;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
-    // Create routers with different middleware layers
-    let base_routes = Router::new()
+    let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(containers::router(&deployment))
@@ -40,7 +39,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
         .merge(oauth::router())
-        .merge(relay_auth::router())
         .merge(organizations::router())
         .merge(filesystem::router())
         .merge(repo::router())
@@ -61,6 +59,11 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
             deployment.clone(),
             middleware::require_relay_request_signature,
         ))
+        .with_state(deployment.clone());
+
+    let api_routes = Router::new()
+        .merge(relay_auth::router())
+        .merge(relay_signed_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
@@ -69,6 +72,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
-        .nest("/api", base_routes)
+        .nest("/api", api_routes)
         .into_make_service()
 }
