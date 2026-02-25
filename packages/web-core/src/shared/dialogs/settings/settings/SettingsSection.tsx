@@ -7,6 +7,7 @@ import { OrganizationsSettingsSectionContent } from './OrganizationsSettingsSect
 import { RemoteProjectsSettingsSectionContent } from './RemoteProjectsSettingsSection';
 import { AgentsSettingsSectionContent } from './AgentsSettingsSection';
 import { McpSettingsSectionContent } from './McpSettingsSection';
+import { RelaySettingsSectionContent } from './RelaySettingsSection';
 
 export type SettingsSectionType =
   | 'general'
@@ -14,7 +15,8 @@ export type SettingsSectionType =
   | 'organizations'
   | 'remote-projects'
   | 'agents'
-  | 'mcp';
+  | 'mcp'
+  | 'relay';
 
 // Section-specific initial state types
 export type SettingsSectionInitialState = {
@@ -26,6 +28,7 @@ export type SettingsSectionInitialState = {
     | undefined;
   agents: { executor?: string; variant?: string } | undefined;
   mcp: undefined;
+  relay: undefined;
 };
 
 interface SettingsSectionProps {
@@ -65,6 +68,8 @@ export function SettingsSection({
         return <AgentsSettingsSectionContent />;
       case 'mcp':
         return <McpSettingsSectionContent />;
+      case 'relay':
+        return <RelaySettingsSectionContent />;
       default:
         return <GeneralSettingsSectionContent />;
     }
