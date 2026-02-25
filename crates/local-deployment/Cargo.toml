@@ -8,6 +8,8 @@ api-types = { path = "../api-types" }
 db = { path = "../db" }
 executors = { path="../executors" }
 deployment = { path = "../deployment" }
+relay-control = { path = "../relay-control" }
+server-info = { path = "../server-info" }
 services = { path = "../services" }
 utils = { path = "../utils" }
 git = { path = "../git" }

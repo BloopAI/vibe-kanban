@@ -169,7 +169,16 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    tunnel::start_relay_lifecycle(&deployment, actual_main_port).await;
+    deployment.server_info().set_port(actual_main_port).await;
+    deployment
+        .server_info()
+        .set_hostname(format!(
+            "{} local ({})",
+            env!("CARGO_PKG_NAME"),
+            deployment.user_id()
+        ))
+        .await;
+    tunnel::spawn_relay(&deployment).await;
 
     tokio::select! {
         _ = shutdown_signal() => {

@@ -8,7 +8,9 @@ use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
+use relay_control::RelayControl;
 use serde_json::Value;
+use server_info::ServerInfo;
 use services::services::{
     analytics::AnalyticsService,
     approvals::Approvals,
@@ -99,6 +101,10 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn queued_message_service(&self) -> &QueuedMessageService;
 
     fn auth_context(&self) -> &AuthContext;
+
+    fn relay_control(&self) -> &Arc<RelayControl>;
+
+    fn server_info(&self) -> &Arc<ServerInfo>;
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)

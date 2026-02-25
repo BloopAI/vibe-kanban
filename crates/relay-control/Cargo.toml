@@ -1,0 +1,8 @@
+[package]
+name = "relay-control"
+version = "0.1.18"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
