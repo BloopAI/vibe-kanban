@@ -52,10 +52,12 @@ function placementsEqual(a: TypeaheadPlacement, b: TypeaheadPlacement): boolean 
 
 function computePlacement(
   anchorEl: HTMLElement,
-  menuEl: HTMLElement
+  menuEl: HTMLElement,
+  editorEl?: HTMLElement | null
 ): TypeaheadPlacement {
   const anchorRect = anchorEl.getBoundingClientRect();
   const menuRect = menuEl.getBoundingClientRect();
+  const editorRect = editorEl?.getBoundingClientRect();
   const menuStyles = window.getComputedStyle(menuEl);
   const viewportWidth = getViewportWidth();
   const viewportHeight = getViewportHeight();
@@ -69,7 +71,8 @@ function computePlacement(
     menuRect.height || parseLength(menuStyles.height) || parseLength(menuStyles.minHeight)
   );
 
-  const aboveSpace = anchorRect.top - marginBottom;
+  const topBoundary = editorRect ? editorRect.top : anchorRect.top;
+  const aboveSpace = topBoundary - marginBottom;
   const belowSpace = viewportHeight - anchorRect.bottom - marginTop;
   const side: VerticalSide =
     belowSpace >= measuredHeight || belowSpace >= aboveSpace ? 'bottom' : 'top';
@@ -92,7 +95,7 @@ function computePlacement(
   const top =
     side === 'bottom'
       ? round(anchorRect.bottom + marginTop)
-      : round(anchorRect.top - marginBottom);
+      : round(topBoundary - marginBottom);
 
   return {
     side,
@@ -104,12 +107,14 @@ function computePlacement(
 
 interface TypeaheadMenuProps {
   anchorEl: HTMLElement;
+  editorEl?: HTMLElement | null;
   onClickOutside?: () => void;
   children: ReactNode;
 }
 
 function TypeaheadMenuRoot({
   anchorEl,
+  editorEl,
   onClickOutside,
   children,
 }: TypeaheadMenuProps) {
@@ -120,7 +125,7 @@ function TypeaheadMenuRoot({
     const menuEl = menuRef.current;
     if (!menuEl) return;
 
-    const nextPlacement = computePlacement(anchorEl, menuEl);
+    const nextPlacement = computePlacement(anchorEl, menuEl, editorEl);
     setPlacement((previous) => {
       if (previous && placementsEqual(previous, nextPlacement)) {
         return previous;
@@ -128,7 +133,7 @@ function TypeaheadMenuRoot({
 
       return nextPlacement;
     });
-  }, [anchorEl]);
+  }, [anchorEl, editorEl]);
 
   useLayoutEffect(() => {
     syncPlacement();
@@ -169,11 +174,14 @@ function TypeaheadMenuRoot({
 
     observer.observe(anchorEl);
     observer.observe(menuEl);
+    if (editorEl) {
+      observer.observe(editorEl);
+    }
 
     return () => {
       observer.disconnect();
     };
-  }, [anchorEl, syncPlacement]);
+  }, [anchorEl, editorEl, syncPlacement]);
 
   // Click-outside detection
   useEffect(() => {

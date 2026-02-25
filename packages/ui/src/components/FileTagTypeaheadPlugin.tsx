@@ -654,6 +654,7 @@ export function FileTagTypeaheadPlugin({
         return createPortal(
           <TypeaheadMenu
             anchorEl={anchorRef.current}
+            editorEl={editorEl}
             onClickOutside={closeTypeahead}
           >
             <TypeaheadMenu.Header>

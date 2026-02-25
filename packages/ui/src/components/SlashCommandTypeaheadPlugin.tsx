@@ -138,6 +138,7 @@ export function SlashCommandTypeaheadPlugin({
         return createPortal(
           <TypeaheadMenu
             anchorEl={anchorRef.current}
+            editorEl={editor.getRootElement()}
             onClickOutside={closeTypeahead}
           >
             <TypeaheadMenu.Header>
