@@ -160,13 +160,15 @@ export function NavbarContainer() {
     [actionCtx, handleExecuteAction, isMigratePage]
   );
 
-  const navbarTitle = isCreateMode
-    ? 'Create Workspace'
-    : isMigratePage
-      ? 'Migrate'
-      : isOnProjectPage
-        ? orgName
-        : selectedWorkspace?.branch;
+  const navbarTitle = actionCtx.isMobile
+    ? ''
+    : isCreateMode
+      ? 'Create Workspace'
+      : isMigratePage
+        ? 'Migrate'
+        : isOnProjectPage
+          ? orgName
+          : selectedWorkspace?.branch;
 
   return (
     <Navbar

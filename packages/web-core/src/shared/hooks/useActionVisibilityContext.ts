@@ -17,6 +17,8 @@ import { useShape } from '@/shared/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { useMobileLayoutStore } from '@/shared/stores/useMobileLayoutStore';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 import type {
@@ -45,6 +47,8 @@ export function useActionVisibilityContext(
   const diffPaths = useDiffViewStore((s) => s.diffPaths);
   const diffViewMode = useDiffViewMode();
   const expanded = useUiPreferencesStore((s) => s.expanded);
+  const isMobile = useIsMobile();
+  const mobileActivePanel = useMobileLayoutStore((s) => s.mobileActivePanel);
 
   // Derive kanban state from URL (URL is single source of truth)
   const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
@@ -148,6 +152,8 @@ export function useActionVisibilityContext(
       hasSelectedKanbanIssueParent,
       isCreatingIssue: kanbanCreateMode,
       isSignedIn,
+      isMobile,
+      mobileActivePanel,
     };
   }, [
     layoutMode,
@@ -172,5 +178,7 @@ export function useActionVisibilityContext(
     hasSelectedKanbanIssueParent,
     kanbanCreateMode,
     isSignedIn,
+    isMobile,
+    mobileActivePanel,
   ]);
 }

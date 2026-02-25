@@ -9,6 +9,8 @@ import { useChangesView } from '@/shared/hooks/useChangesView';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ArrowsOutSimpleIcon } from '@phosphor-icons/react';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { cn } from '@/shared/lib/utils';
 import type { RepoWithTargetBranch, Workspace } from 'shared/types';
 import {
   PERSIST_KEYS,
@@ -48,6 +50,7 @@ export function RightSidebar({
   const { selectFile } = useChangesView();
   const { diffs } = useWorkspaceContext();
   const { setExpanded } = useExpandedAll();
+  const isMobile = useIsMobile();
   const isTerminalVisible = useUiPreferencesStore((s) => s.isTerminalVisible);
   const { expandTerminal, isTerminalExpanded } = useLogsPanel();
 
@@ -187,7 +190,12 @@ export function RightSidebar({
   }
 
   return (
-    <div className="h-full border-l bg-secondary overflow-y-auto">
+    <div
+      className={cn(
+        'h-full bg-secondary overflow-y-auto',
+        !isMobile && 'border-l'
+      )}
+    >
       <div className="divide-y border-b">
         {sections
           .filter((section) => section.visible)

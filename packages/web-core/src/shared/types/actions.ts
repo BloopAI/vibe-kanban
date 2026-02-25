@@ -11,6 +11,7 @@ import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
+import type { MobileActivePanel } from '@/shared/stores/useMobileLayoutStore';
 import type { IssueCreateRouteOptions } from '@/shared/lib/routes/projectSidebarRoutes';
 
 // Portable type aliases (avoid importing from component containers)
@@ -145,6 +146,10 @@ export interface ActionVisibilityContext {
 
   // Auth state
   isSignedIn: boolean;
+
+  // Mobile state
+  isMobile: boolean;
+  mobileActivePanel: MobileActivePanel;
 }
 
 // Enum discriminant for action target types

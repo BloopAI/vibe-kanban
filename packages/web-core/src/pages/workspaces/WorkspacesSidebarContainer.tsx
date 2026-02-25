@@ -18,6 +18,8 @@ import {
   type WorkspaceSortOrder,
 } from '@/shared/stores/useUiPreferencesStore';
 import type { Workspace } from '@/shared/hooks/useWorkspaces';
+import { useMobileLayoutStore } from '@/shared/stores/useMobileLayoutStore';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import {
   WorkspacesSidebar,
@@ -258,6 +260,11 @@ export function WorkspacesSidebarContainer({
     selectWorkspace,
     navigateToCreate,
   } = useWorkspaceContext();
+
+  const isMobile = useIsMobile();
+  const setMobileActivePanel = useMobileLayoutStore(
+    (s) => s.setMobileActivePanel
+  );
 
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchive, setShowArchive] = usePersistedExpanded(
@@ -567,8 +574,17 @@ export function WorkspacesSidebarContainer({
       } else {
         selectWorkspace(id);
       }
+      if (isMobile) {
+        setMobileActivePanel('chat');
+      }
     },
-    [selectedWorkspaceId, selectWorkspace, onScrollToBottom]
+    [
+      selectedWorkspaceId,
+      selectWorkspace,
+      onScrollToBottom,
+      isMobile,
+      setMobileActivePanel,
+    ]
   );
 
   const handleOpenWorkspaceActions = useCallback((workspaceId: string) => {

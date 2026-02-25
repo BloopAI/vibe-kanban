@@ -3,8 +3,10 @@ import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
+import { cn } from '@/shared/lib/utils';
 
 import { NavbarContainer } from './NavbarContainer';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { AppBar } from '@vibe/ui/components/AppBar';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
@@ -46,6 +48,7 @@ export function SharedAppLayout() {
   const location = useLocation();
   const isMigrateRoute = location.pathname.startsWith('/migrate');
   const { isSignedIn } = useAuth();
+  const isMobile = useIsMobile();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
 
@@ -259,7 +262,12 @@ export function SharedAppLayout() {
 
   return (
     <SyncErrorProvider>
-      <div className="flex h-screen bg-primary">
+      <div
+        className={cn(
+          'flex bg-primary',
+          isMobile ? 'h-dvh overflow-hidden' : 'h-screen'
+        )}
+      >
         {!isMigrateRoute && (
           <AppBar
             projects={orderedProjects}

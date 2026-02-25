@@ -20,6 +20,8 @@ import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContain
 import { PreviewBrowserContainer } from './PreviewBrowserContainer';
 import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { useMobileLayoutStore } from '@/shared/stores/useMobileLayoutStore';
 
 import {
   PERSIST_KEYS,
@@ -75,6 +77,12 @@ export function WorkspacesLayout() {
     setLeftMainPanelVisible,
   } = useWorkspacePanelState(isCreateMode ? undefined : workspaceId);
 
+  const isMobile = useIsMobile();
+  const mobileActivePanel = useMobileLayoutStore((s) => s.mobileActivePanel);
+  const setMobileActivePanel = useMobileLayoutStore(
+    (s) => s.setMobileActivePanel
+  );
+
   const {
     config,
     updateAndSaveConfig,
@@ -98,18 +106,28 @@ export function WorkspacesLayout() {
     WorkspacesGuideDialog.show().finally(() => WorkspacesGuideDialog.hide());
   }, [configLoading, config, updateAndSaveConfig]);
 
-  // Ensure left panels visible when right main panel hidden
+  // Ensure left panels visible when right main panel hidden (desktop only)
   useEffect(() => {
+    if (isMobile) return;
     if (rightMainPanelMode === null) {
       setLeftSidebarVisible(true);
       if (!isLeftMainPanelVisible) setLeftMainPanelVisible(true);
     }
   }, [
+    isMobile,
     isLeftMainPanelVisible,
     rightMainPanelMode,
     setLeftSidebarVisible,
     setLeftMainPanelVisible,
   ]);
+
+  // On mobile, default to sidebar when no workspace is selected
+  useEffect(() => {
+    if (!isMobile) return;
+    if (!workspaceId && !isCreateMode) {
+      setMobileActivePanel('sidebar');
+    }
+  }, [isMobile, workspaceId, isCreateMode, setMobileActivePanel]);
 
   const [rightMainPanelSize, setRightMainPanelSize] = usePaneSize(
     PERSIST_KEYS.rightMainPanel,
@@ -211,6 +229,89 @@ export function WorkspacesLayout() {
       </ChangesViewProvider>
     </ReviewProvider>
   );
+
+  if (isMobile) {
+    const mobilePanels = (
+      <ReviewProvider attemptId={selectedWorkspace?.id}>
+        <ChangesViewProvider>
+          <div
+            className={mobileActivePanel === 'sidebar' ? 'h-full' : 'hidden'}
+          >
+            <WorkspacesSidebarContainer
+              onScrollToBottom={handleScrollToBottom}
+            />
+          </div>
+          <div className={mobileActivePanel === 'chat' ? 'h-full' : 'hidden'}>
+            {isCreateMode ? (
+              <CreateChatBoxContainer
+                onWorkspaceCreated={handleWorkspaceCreated}
+              />
+            ) : (
+              <WorkspacesMainContainer
+                ref={mainContainerRef}
+                selectedWorkspace={selectedWorkspace ?? null}
+                selectedSession={selectedSession}
+                sessions={sessions}
+                onSelectSession={selectSession}
+                isLoading={isLoading}
+                isNewSessionMode={isNewSessionMode}
+                onStartNewSession={startNewSession}
+              />
+            )}
+          </div>
+          <div
+            className={mobileActivePanel === 'changes' ? 'h-full' : 'hidden'}
+          >
+            {selectedWorkspace?.id && (
+              <ChangesPanelContainer
+                className=""
+                attemptId={selectedWorkspace.id}
+              />
+            )}
+          </div>
+          <div className={mobileActivePanel === 'logs' ? 'h-full' : 'hidden'}>
+            <LogsContentContainer className="" />
+          </div>
+          <div
+            className={mobileActivePanel === 'preview' ? 'h-full' : 'hidden'}
+          >
+            {selectedWorkspace?.id && (
+              <PreviewBrowserContainer
+                attemptId={selectedWorkspace.id}
+                className=""
+              />
+            )}
+          </div>
+          <div
+            className={
+              mobileActivePanel === 'right-sidebar' ? 'h-full' : 'hidden'
+            }
+          >
+            <RightSidebar
+              rightMainPanelMode={null}
+              selectedWorkspace={selectedWorkspace}
+              repos={repos}
+            />
+          </div>
+        </ChangesViewProvider>
+      </ReviewProvider>
+    );
+
+    return (
+      <div className="flex-1 min-h-0 h-full overflow-hidden">
+        {isCreateMode ? (
+          <CreateModeProvider>{mobilePanels}</CreateModeProvider>
+        ) : (
+          <ExecutionProcessesProvider
+            key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+            sessionId={selectedSessionId}
+          >
+            {mobilePanels}
+          </ExecutionProcessesProvider>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 min-h-0 h-full">

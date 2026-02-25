@@ -50,6 +50,8 @@ import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
+import { useMobileLayoutStore } from '@/shared/stores/useMobileLayoutStore';
+import { isMobileQuery } from '@/shared/hooks/useIsMobile';
 
 import { attemptsApi, repoApi } from '@/shared/lib/api';
 import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
@@ -570,9 +572,16 @@ export const Actions = {
     shortcut: 'V S',
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'workspaces',
-    isActive: (ctx) => ctx.isLeftSidebarVisible,
+    isActive: (ctx) =>
+      ctx.isMobile
+        ? ctx.mobileActivePanel === 'sidebar'
+        : ctx.isLeftSidebarVisible,
     execute: () => {
-      useUiPreferencesStore.getState().toggleLeftSidebar();
+      if (isMobileQuery()) {
+        useMobileLayoutStore.getState().setMobileActivePanel('sidebar');
+      } else {
+        useUiPreferencesStore.getState().toggleLeftSidebar();
+      }
     },
   },
 
@@ -583,15 +592,24 @@ export const Actions = {
     shortcut: 'V H',
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'workspaces',
-    isActive: (ctx) => ctx.isLeftMainPanelVisible,
+    isActive: (ctx) =>
+      ctx.isMobile
+        ? ctx.mobileActivePanel === 'chat'
+        : ctx.isLeftMainPanelVisible,
     isEnabled: (ctx) =>
-      !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
+      ctx.isMobile
+        ? true
+        : !(ctx.isLeftMainPanelVisible && ctx.rightMainPanelMode === null),
     getLabel: (ctx) =>
       ctx.isLeftMainPanelVisible ? 'Hide Chat Panel' : 'Show Chat Panel',
     execute: (ctx) => {
-      useUiPreferencesStore
-        .getState()
-        .toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
+      if (isMobileQuery()) {
+        useMobileLayoutStore.getState().setMobileActivePanel('chat');
+      } else {
+        useUiPreferencesStore
+          .getState()
+          .toggleLeftMainPanel(ctx.currentWorkspaceId ?? undefined);
+      }
     },
   },
 
@@ -604,9 +622,16 @@ export const Actions = {
     icon: RightSidebarIcon,
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.layoutMode === 'workspaces',
-    isActive: (ctx) => ctx.isRightSidebarVisible,
+    isActive: (ctx) =>
+      ctx.isMobile
+        ? ctx.mobileActivePanel === 'right-sidebar'
+        : ctx.isRightSidebarVisible,
     execute: () => {
-      useUiPreferencesStore.getState().toggleRightSidebar();
+      if (isMobileQuery()) {
+        useMobileLayoutStore.getState().setMobileActivePanel('right-sidebar');
+      } else {
+        useUiPreferencesStore.getState().toggleRightSidebar();
+      }
     },
   },
 
@@ -618,19 +643,25 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
+      ctx.isMobile
+        ? ctx.mobileActivePanel === 'changes'
+        : ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.CHANGES
         ? 'Hide Changes Panel'
         : 'Show Changes Panel',
     execute: (ctx) => {
-      useUiPreferencesStore
-        .getState()
-        .toggleRightMainPanelMode(
-          RIGHT_MAIN_PANEL_MODES.CHANGES,
-          ctx.currentWorkspaceId ?? undefined
-        );
+      if (isMobileQuery()) {
+        useMobileLayoutStore.getState().setMobileActivePanel('changes');
+      } else {
+        useUiPreferencesStore
+          .getState()
+          .toggleRightMainPanelMode(
+            RIGHT_MAIN_PANEL_MODES.CHANGES,
+            ctx.currentWorkspaceId ?? undefined
+          );
+      }
     },
   },
 
@@ -641,19 +672,26 @@ export const Actions = {
     shortcut: 'V L',
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
-    isActive: (ctx) => ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
+    isActive: (ctx) =>
+      ctx.isMobile
+        ? ctx.mobileActivePanel === 'logs'
+        : ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS
         ? 'Hide Logs Panel'
         : 'Show Logs Panel',
     execute: (ctx) => {
-      useUiPreferencesStore
-        .getState()
-        .toggleRightMainPanelMode(
-          RIGHT_MAIN_PANEL_MODES.LOGS,
-          ctx.currentWorkspaceId ?? undefined
-        );
+      if (isMobileQuery()) {
+        useMobileLayoutStore.getState().setMobileActivePanel('logs');
+      } else {
+        useUiPreferencesStore
+          .getState()
+          .toggleRightMainPanelMode(
+            RIGHT_MAIN_PANEL_MODES.LOGS,
+            ctx.currentWorkspaceId ?? undefined
+          );
+      }
     },
   },
 
@@ -665,19 +703,25 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => !ctx.isCreateMode && ctx.layoutMode === 'workspaces',
     isActive: (ctx) =>
-      ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
+      ctx.isMobile
+        ? ctx.mobileActivePanel === 'preview'
+        : ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW,
     isEnabled: (ctx) => !ctx.isCreateMode,
     getLabel: (ctx) =>
       ctx.rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW
         ? 'Hide Preview Panel'
         : 'Show Preview Panel',
     execute: (ctx) => {
-      useUiPreferencesStore
-        .getState()
-        .toggleRightMainPanelMode(
-          RIGHT_MAIN_PANEL_MODES.PREVIEW,
-          ctx.currentWorkspaceId ?? undefined
-        );
+      if (isMobileQuery()) {
+        useMobileLayoutStore.getState().setMobileActivePanel('preview');
+      } else {
+        useUiPreferencesStore
+          .getState()
+          .toggleRightMainPanelMode(
+            RIGHT_MAIN_PANEL_MODES.PREVIEW,
+            ctx.currentWorkspaceId ?? undefined
+          );
+      }
     },
   },
 
@@ -808,12 +852,16 @@ export const Actions = {
       } else {
         ctx.startDevServer();
         // Auto-open preview mode when starting dev server
-        useUiPreferencesStore
-          .getState()
-          .setRightMainPanelMode(
-            RIGHT_MAIN_PANEL_MODES.PREVIEW,
-            ctx.currentWorkspaceId ?? undefined
-          );
+        if (isMobileQuery()) {
+          useMobileLayoutStore.getState().setMobileActivePanel('preview');
+        } else {
+          useUiPreferencesStore
+            .getState()
+            .setRightMainPanelMode(
+              RIGHT_MAIN_PANEL_MODES.PREVIEW,
+              ctx.currentWorkspaceId ?? undefined
+            );
+        }
       }
     },
   },
