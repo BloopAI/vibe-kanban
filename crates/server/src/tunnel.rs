@@ -152,7 +152,6 @@ async fn start_relay(
     start_relay_client(RelayClientConfig {
         ws_url,
         bearer_token: access_token,
-        accept_invalid_certs: cfg!(debug_assertions),
         local_addr: format!("127.0.0.1:{}", params.local_port),
         shutdown,
     })

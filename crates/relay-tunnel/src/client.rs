@@ -22,7 +22,6 @@ use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
 pub struct RelayClientConfig {
     pub ws_url: String,
     pub bearer_token: String,
-    pub accept_invalid_certs: bool,
     pub local_addr: String,
     pub shutdown: CancellationToken,
 }
@@ -45,7 +44,7 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
     );
 
     let mut tls_builder = native_tls::TlsConnector::builder();
-    if config.accept_invalid_certs {
+    if cfg!(debug_assertions) {
         tls_builder.danger_accept_invalid_certs(true);
     }
     let tls_connector = tls_builder
@@ -77,22 +76,16 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
                 return Ok(());
             }
             inbound = session.next() => {
-                match inbound {
-                    Some(Ok(stream)) => {
-                        let local_addr = local_addr.clone();
-                        tokio::spawn(async move {
-                            if let Err(error) = handle_inbound_stream(stream, local_addr).await {
-                                tracing::warn!(?error, "relay stream handling failed");
-                            }
-                        });
+                let stream = inbound
+                    .ok_or_else(|| anyhow::anyhow!("relay control channel closed"))?
+                    .map_err(|e| anyhow::anyhow!("relay yamux session error: {e}"))?;
+
+                let local_addr = local_addr.clone();
+                tokio::spawn(async move {
+                    if let Err(error) = handle_inbound_stream(stream, local_addr).await {
+                        tracing::warn!(?error, "relay stream handling failed");
                     }
-                    Some(Err(error)) => {
-                        return Err(anyhow::anyhow!("relay yamux session error: {error}"));
-                    }
-                    None => {
-                        return Err(anyhow::anyhow!("relay control channel closed"));
-                    }
-                }
+                });
             }
         }
     }
