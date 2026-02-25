@@ -9,7 +9,6 @@ use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
-use ed25519_dalek::{Signature, VerifyingKey};
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use hmac::{Hmac, Mac};
@@ -76,7 +75,6 @@ struct PendingHandoff {
 }
 
 struct RelaySigningSession {
-    public_key: [u8; 32],
     shared_key: Vec<u8>,
     created_at: Instant,
     last_used_at: Instant,
@@ -91,8 +89,8 @@ pub enum RelaySignatureValidationError {
     InvalidNonce,
     ReplayNonce,
     InvalidBodyHash,
+    InvalidRequestMac,
     InvalidMac,
-    InvalidSignature,
 }
 
 impl RelaySignatureValidationError {
@@ -104,8 +102,8 @@ impl RelaySignatureValidationError {
             Self::InvalidNonce => "invalid nonce",
             Self::ReplayNonce => "replayed nonce",
             Self::InvalidBodyHash => "invalid body hash",
+            Self::InvalidRequestMac => "invalid request mac",
             Self::InvalidMac => "invalid mac",
-            Self::InvalidSignature => "invalid signature",
         }
     }
 }
@@ -440,7 +438,6 @@ impl LocalDeployment {
 
     pub async fn create_relay_signing_session(
         &self,
-        public_key: [u8; 32],
         shared_key: Vec<u8>,
     ) -> Uuid {
         let signing_session_id = Uuid::new_v4();
@@ -449,7 +446,6 @@ impl LocalDeployment {
         sessions.insert(
             signing_session_id,
             RelaySigningSession {
-                public_key,
                 shared_key,
                 created_at: now,
                 last_used_at: now,
@@ -459,13 +455,14 @@ impl LocalDeployment {
         signing_session_id
     }
 
-    pub async fn verify_relay_request_signature(
+    pub async fn verify_relay_request_mac(
         &self,
         signing_session_id: Uuid,
         timestamp: i64,
         nonce: &str,
-        message: &str,
-        signature_b64: &str,
+        purpose: &str,
+        message: &[u8],
+        mac_b64: &str,
     ) -> Result<(), RelaySignatureValidationError> {
         if nonce.trim().is_empty() || nonce.len() > 128 {
             return Err(RelaySignatureValidationError::InvalidNonce);
@@ -484,13 +481,12 @@ impl LocalDeployment {
             return Err(RelaySignatureValidationError::TimestampOutOfDrift);
         }
 
-        let signature_bytes = BASE64_STANDARD
-            .decode(signature_b64)
-            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
-        let signature_bytes: [u8; 64] = signature_bytes
-            .try_into()
-            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
-        let signature = Signature::from_bytes(&signature_bytes);
+        let mac_bytes = BASE64_STANDARD
+            .decode(mac_b64)
+            .map_err(|_| RelaySignatureValidationError::InvalidRequestMac)?;
+        if mac_bytes.len() != 32 {
+            return Err(RelaySignatureValidationError::InvalidRequestMac);
+        }
 
         let now = Instant::now();
         let mut sessions = self.relay_signing_sessions.write().await;
@@ -510,11 +506,12 @@ impl LocalDeployment {
             return Err(RelaySignatureValidationError::ReplayNonce);
         }
 
-        let public_key = VerifyingKey::from_bytes(&session.public_key)
-            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
-        public_key
-            .verify_strict(message.as_bytes(), &signature)
-            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
+        let mac_key = derive_session_mac_key(&session.shared_key, purpose.as_bytes());
+        let mut mac = HmacSha256::new_from_slice(&mac_key)
+            .map_err(|_| RelaySignatureValidationError::InvalidRequestMac)?;
+        mac.update(message);
+        mac.verify_slice(&mac_bytes)
+            .map_err(|_| RelaySignatureValidationError::InvalidRequestMac)?;
 
         session.seen_nonces.insert(nonce.to_string(), now);
         session.last_used_at = now;

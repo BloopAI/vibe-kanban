@@ -4479,7 +4479,6 @@ dependencies = [
  "command-group",
  "db",
  "deployment",
- "ed25519-dalek",
  "executors",
  "futures",
  "git",

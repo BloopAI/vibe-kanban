@@ -18,7 +18,7 @@ const SIGNING_SESSION_HEADER: &str = "x-vk-sig-session";
 const TIMESTAMP_HEADER: &str = "x-vk-sig-ts";
 const NONCE_HEADER: &str = "x-vk-sig-nonce";
 const BODY_HASH_HEADER: &str = "x-vk-sig-body-sha256";
-const SIGNATURE_HEADER: &str = "x-vk-signature";
+const REQUEST_MAC_HEADER: &str = "x-vk-sig-mac";
 
 const RESPONSE_TIMESTAMP_HEADER: &str = "x-vk-resp-ts";
 const RESPONSE_NONCE_HEADER: &str = "x-vk-resp-nonce";
@@ -60,7 +60,7 @@ pub async fn require_relay_request_signature(
     let provided_body_hash = required_header(&request, BODY_HASH_HEADER)
         .ok_or(ApiError::Unauthorized)?
         .to_string();
-    let signature_b64 = required_header(&request, SIGNATURE_HEADER)
+    let request_mac_b64 = required_header(&request, REQUEST_MAC_HEADER)
         .ok_or(ApiError::Unauthorized)?
         .to_string();
 
@@ -89,12 +89,13 @@ pub async fn require_relay_request_signature(
     );
 
     if let Err(error) = deployment
-        .verify_relay_request_signature(
+        .verify_relay_request_mac(
             signing_session_id,
             timestamp,
             &nonce,
-            &message,
-            &signature_b64,
+            REQUEST_MAC_PURPOSE,
+            message.as_bytes(),
+            &request_mac_b64,
         )
         .await
     {
@@ -102,7 +103,7 @@ pub async fn require_relay_request_signature(
             signing_session_id = %signing_session_id,
             path = %path_and_query,
             reason = %error.as_str(),
-            "rejecting relay request with invalid signature"
+            "rejecting relay request with invalid MAC"
         );
         return Err(ApiError::Unauthorized);
     }
