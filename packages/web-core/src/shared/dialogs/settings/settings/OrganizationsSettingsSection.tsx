@@ -28,7 +28,7 @@ import { MemberListItem } from '@/shared/components/org/MemberListItem';
 import { PendingInvitationItem } from '@/shared/components/org/PendingInvitationItem';
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
-import { organizationsApi } from '@/shared/lib/api';
+import { ApiError, organizationsApi } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
@@ -212,11 +212,27 @@ export function OrganizationsSettingsSection() {
 
     try {
       const returnUrl = window.location.href;
-      const { url } = await organizationsApi.createCheckoutSession(
-        selectedOrgId,
-        returnUrl,
-        returnUrl
-      );
+      const url = await (async () => {
+        try {
+          const { url: portalUrl } = await organizationsApi.createPortalSession(
+            selectedOrgId,
+            returnUrl
+          );
+          return portalUrl;
+        } catch (err) {
+          if (err instanceof ApiError && err.statusCode === 402) {
+            const { url: checkoutUrl } =
+              await organizationsApi.createCheckoutSession(
+                selectedOrgId,
+                returnUrl,
+                returnUrl
+              );
+            return checkoutUrl;
+          }
+
+          throw err;
+        }
+      })();
 
       if (stripeTab) {
         stripeTab.opener = null;
@@ -226,9 +242,7 @@ export function OrganizationsSettingsSection() {
       }
     } catch (err) {
       stripeTab?.close();
-      setError(
-        err instanceof Error ? err.message : 'Failed to open billing checkout'
-      );
+      setError(err instanceof Error ? err.message : 'Failed to open billing');
     } finally {
       setIsOpeningBilling(false);
     }

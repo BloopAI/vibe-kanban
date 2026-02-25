@@ -1255,6 +1255,23 @@ export const organizationsApi = {
     return handleRemoteResponse<{ url: string }>(response);
   },
 
+  createPortalSession: async (
+    orgId: string,
+    returnUrl: string
+  ): Promise<{ url: string }> => {
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/billing/portal`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          return_url: returnUrl,
+        }),
+      }
+    );
+    return handleRemoteResponse<{ url: string }>(response);
+  },
+
   deleteOrganization: async (orgId: string): Promise<void> => {
     const response = await makeRemoteRequest(`/v1/organizations/${orgId}`, {
       method: 'DELETE',
