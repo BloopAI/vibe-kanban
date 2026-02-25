@@ -4,13 +4,12 @@ pub mod path_routes;
 
 use axum::{
     Router,
-    http::StatusCode,
+    http::{HeaderName, StatusCode},
     middleware,
     response::IntoResponse,
     routing::{any, get, post},
 };
 use serde::Serialize;
-use axum::http::HeaderName;
 use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer, ExposeHeaders},
     trace::TraceLayer,
