@@ -6,6 +6,7 @@ use axum::{
 };
 use serde::Serialize;
 use tower_http::{
+    compression::CompressionLayer,
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
     request_id::{MakeRequestUuid, PropagateRequestIdLayer, RequestId, SetRequestIdLayer},
     services::{ServeDir, ServeFile},
@@ -145,6 +146,7 @@ pub fn router(state: AppState) -> Router {
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)
+        .layer(CompressionLayer::new())
         .layer(middleware::from_fn(
             crate::middleware::version::add_version_headers,
         ))

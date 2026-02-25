@@ -32,7 +32,7 @@ sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio
 ipnetwork = "0.20"
 tokio = { version = "1.0", features = ["full"] }
 tokio-stream = { version = "0.1.17", features = ["sync"] }
-tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"] }
+tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request", "compression-gzip", "compression-br"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 tracing-error = "0.2"
