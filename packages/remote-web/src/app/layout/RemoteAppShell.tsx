@@ -16,6 +16,10 @@ import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
 } from "@/shared/dialogs/org/CreateOrganizationDialog";
+import {
+  CreateRemoteProjectDialog,
+  type CreateRemoteProjectResult,
+} from "@/shared/dialogs/org/CreateRemoteProjectDialog";
 
 interface RemoteAppShellProps {
   children: ReactNode;
@@ -108,9 +112,28 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     [navigate],
   );
 
-  const handleCreateProject = useCallback(() => {
-    navigate({ to: "/" });
-  }, [navigate]);
+  const handleCreateProject = useCallback(async () => {
+    if (!activeOrganizationId) {
+      return;
+    }
+
+    try {
+      const result: CreateRemoteProjectResult =
+        await CreateRemoteProjectDialog.show({
+          organizationId: activeOrganizationId,
+        });
+
+      if (result.action === "created" && result.project) {
+        void projectsQuery.refetch();
+        navigate({
+          to: "/projects/$projectId",
+          params: { projectId: result.project.id },
+        });
+      }
+    } catch {
+      // Dialog cancelled
+    }
+  }, [activeOrganizationId, navigate, projectsQuery]);
 
   const handleCreateOrg = useCallback(async () => {
     try {
