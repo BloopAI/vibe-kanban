@@ -11,6 +11,7 @@ CREATE TABLE hosts (
 );
 
 CREATE INDEX idx_hosts_owner_user_id ON hosts(owner_user_id);
+CREATE UNIQUE INDEX idx_hosts_owner_user_id_name ON hosts(owner_user_id, name);
 CREATE INDEX idx_hosts_shared_with_organization_id ON hosts(shared_with_organization_id);
 CREATE INDEX idx_hosts_last_seen_at ON hosts(last_seen_at DESC);
 

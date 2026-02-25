@@ -13,6 +13,34 @@ impl<'a> HostRepository<'a> {
         Self { pool }
     }
 
+    /// Find or create a host for the given user and name.
+    /// If a host with the same owner and name exists, returns it (updating agent_version).
+    /// Otherwise, creates a new one.
+    pub async fn upsert_host(
+        &self,
+        owner_user_id: Uuid,
+        name: &str,
+        agent_version: Option<&str>,
+    ) -> Result<Uuid, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            INSERT INTO hosts (owner_user_id, shared_with_organization_id, name, status, agent_version)
+            VALUES ($1, NULL, $2, 'offline', $3)
+            ON CONFLICT (owner_user_id, name) DO UPDATE
+                SET agent_version = COALESCE(EXCLUDED.agent_version, hosts.agent_version),
+                    updated_at = NOW()
+            RETURNING id AS "id!: Uuid"
+            "#,
+            owner_user_id,
+            name,
+            agent_version
+        )
+        .fetch_one(self.pool)
+        .await?;
+
+        Ok(row.id)
+    }
+
     pub async fn assert_host_access(
         &self,
         host_id: Uuid,

@@ -4,44 +4,50 @@ use std::sync::Arc;
 
 use axum::{
     Extension,
-    extract::{Path, State, ws::WebSocketUpgrade},
+    extract::{Query, State, ws::WebSocketUpgrade},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use serde::Deserialize;
 use uuid::Uuid;
 
 use super::super::{
     auth::RequestContext,
-    db::{hosts::HostRepository, identity_errors::IdentityError},
+    db::hosts::HostRepository,
     relay_registry::{ActiveRelay, RelayRegistry},
     state::RelayAppState,
 };
 use crate::server::run_control_channel;
 
+#[derive(Debug, Deserialize)]
+pub struct ConnectQuery {
+    pub name: String,
+    #[serde(default)]
+    pub agent_version: Option<String>,
+}
+
 /// Local server connects here to establish a relay control channel.
+/// The host record is upserted from the authenticated user + name query param.
 pub async fn relay_connect(
     State(state): State<RelayAppState>,
-    Path(host_id): Path<Uuid>,
     Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<ConnectQuery>,
     ws: WebSocketUpgrade,
 ) -> Response {
     let repo = HostRepository::new(&state.pool);
-    if let Err(error) = repo.assert_host_access(host_id, ctx.user.id).await {
-        return match error {
-            IdentityError::PermissionDenied | IdentityError::NotFound => {
-                (StatusCode::FORBIDDEN, "Host access denied").into_response()
-            }
-            IdentityError::Database(db_error) => {
-                tracing::warn!(
-                    ?db_error,
-                    "failed to validate host access for relay connect"
-                );
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        };
-    }
 
-    if let Err(error) = repo.mark_host_online(host_id, None).await {
+    let host_id = match repo
+        .upsert_host(ctx.user.id, &query.name, query.agent_version.as_deref())
+        .await
+    {
+        Ok(id) => id,
+        Err(error) => {
+            tracing::error!(?error, "failed to upsert host for relay connect");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    if let Err(error) = repo.mark_host_online(host_id, query.agent_version.as_deref()).await {
         tracing::warn!(?error, "failed to mark host online");
     }
 
