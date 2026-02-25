@@ -3,6 +3,7 @@ import { Navigate } from '@tanstack/react-router';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
 import {
   toOnboarding,
@@ -34,8 +35,16 @@ export function RootRedirectPage() {
         return;
       }
 
-      const firstProjectDestination =
-        await getFirstProjectDestination(setSelectedOrgId);
+      // Read saved selections imperatively to avoid re-triggering this effect
+      // when the scratch store initializes from the server
+      const { selectedOrgId, selectedProjectId } =
+        useUiPreferencesStore.getState();
+
+      const firstProjectDestination = await getFirstProjectDestination(
+        setSelectedOrgId,
+        selectedOrgId,
+        selectedProjectId
+      );
       if (!cancelled) {
         const resolvedDestination =
           firstProjectDestination ?? DEFAULT_DESTINATION;

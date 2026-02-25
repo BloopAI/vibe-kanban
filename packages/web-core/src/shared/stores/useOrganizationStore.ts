@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { useUiPreferencesStore } from './useUiPreferencesStore';
 
 type State = {
   selectedOrgId: string | null;
@@ -20,6 +21,11 @@ export const useOrganizationStore = create<State>()(
     }
   )
 );
+
+// Sync org store changes into the UI preferences store for server persistence
+useOrganizationStore.subscribe((state) => {
+  useUiPreferencesStore.getState().setSelectedOrgId(state.selectedOrgId);
+});
 
 export const useSelectedOrgId = () =>
   useOrganizationStore((s) => s.selectedOrgId);

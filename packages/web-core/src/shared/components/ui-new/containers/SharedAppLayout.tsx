@@ -9,6 +9,7 @@ import { AppBar } from '@vibe/ui/components/AppBar';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
@@ -135,6 +136,16 @@ export function SharedAppLayout() {
   const activeProjectId = location.pathname.startsWith('/projects/')
     ? location.pathname.split('/')[2]
     : null;
+
+  // Persist last selected project to scratch store
+  const setSelectedProjectId = useUiPreferencesStore(
+    (s) => s.setSelectedProjectId
+  );
+  useEffect(() => {
+    if (activeProjectId) {
+      setSelectedProjectId(activeProjectId);
+    }
+  }, [activeProjectId, setSelectedProjectId]);
 
   // Remember the last visited route for each project so AppBar clicks can
   // reopen the previous issue/workspace selection.

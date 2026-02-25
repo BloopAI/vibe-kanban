@@ -135,6 +135,12 @@ pub struct UiPreferencesData {
     /// Workspace sidebar sort preferences
     #[serde(default)]
     pub workspace_sort: WorkspaceSortStateData,
+    /// Last selected organization ID
+    #[serde(default)]
+    pub selected_org_id: Option<String>,
+    /// Last selected project ID
+    #[serde(default)]
+    pub selected_project_id: Option<String>,
 }
 
 /// Linked issue data for draft workspace scratch

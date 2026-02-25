@@ -118,7 +118,15 @@ workspace_filters: WorkspaceFilterStateData,
 /**
  * Workspace sidebar sort preferences
  */
-workspace_sort: WorkspaceSortStateData, };
+workspace_sort: WorkspaceSortStateData, 
+/**
+ * Last selected organization ID
+ */
+selected_org_id: string | null, 
+/**
+ * Last selected project ID
+ */
+selected_project_id: string | null, };
 
 export type ScratchPayload = { "type": "DRAFT_TASK", "data": string } | { "type": "DRAFT_FOLLOW_UP", "data": DraftFollowUpData } | { "type": "DRAFT_WORKSPACE", "data": DraftWorkspaceData } | { "type": "DRAFT_ISSUE", "data": DraftIssueData } | { "type": "PREVIEW_SETTINGS", "data": PreviewSettingsData } | { "type": "WORKSPACE_NOTES", "data": WorkspaceNotesData } | { "type": "UI_PREFERENCES", "data": UiPreferencesData };
 
