@@ -154,7 +154,7 @@ function TypeaheadMenuRoot({
     syncPlacement();
     const frameId = window.requestAnimationFrame(syncPlacement);
     return () => window.cancelAnimationFrame(frameId);
-  });
+  }, [syncPlacement]);
 
   useEffect(() => {
     const updateOnFrame = () => {
