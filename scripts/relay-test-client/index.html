@@ -1013,6 +1013,23 @@
         }
       });
 
+      // Persist URL fields across page reloads (e.g. OAuth redirects)
+      const REMOTE_API_KEY = "relay_test_remote_api";
+      const RELAY_API_KEY = "relay_test_relay_api";
+
+      function persistUrlFields() {
+        localStorage.setItem(REMOTE_API_KEY, remoteApiBaseEl.value);
+        localStorage.setItem(RELAY_API_KEY, relayApiBaseEl.value);
+      }
+
+      const savedRemote = localStorage.getItem(REMOTE_API_KEY);
+      const savedRelay = localStorage.getItem(RELAY_API_KEY);
+      if (savedRemote) remoteApiBaseEl.value = savedRemote;
+      if (savedRelay) relayApiBaseEl.value = savedRelay;
+
+      remoteApiBaseEl.addEventListener("change", persistUrlFields);
+      relayApiBaseEl.addEventListener("change", persistUrlFields);
+
       const existingToken = localStorage.getItem(ACCESS_TOKEN_KEY);
       if (existingToken) {
         accessTokenEl.value = existingToken;
