@@ -436,10 +436,7 @@ impl LocalDeployment {
             .await
     }
 
-    pub async fn create_relay_signing_session(
-        &self,
-        shared_key: Vec<u8>,
-    ) -> Uuid {
+    pub async fn create_relay_signing_session(&self, shared_key: Vec<u8>) -> Uuid {
         let signing_session_id = Uuid::new_v4();
         let now = Instant::now();
         let mut sessions = self.relay_signing_sessions.write().await;
