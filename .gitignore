@@ -67,6 +67,7 @@ coverage/
 
 .env
 packages/**/dist
+frontend/dist
 
 build-npm-package-codesign.sh
 
