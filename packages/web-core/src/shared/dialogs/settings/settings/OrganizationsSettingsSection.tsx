@@ -212,7 +212,24 @@ export function OrganizationsSettingsSection() {
 
     try {
       const returnUrl = window.location.href;
+      const billingStatus =
+        await organizationsApi.getBillingStatus(selectedOrgId);
+
+      const createCheckoutUrl = async () => {
+        const { url: checkoutUrl } =
+          await organizationsApi.createCheckoutSession(
+            selectedOrgId,
+            returnUrl,
+            returnUrl
+          );
+        return checkoutUrl;
+      };
+
       const url = await (async () => {
+        if (billingStatus.status === 'requires_subscription') {
+          return createCheckoutUrl();
+        }
+
         try {
           const { url: portalUrl } = await organizationsApi.createPortalSession(
             selectedOrgId,
@@ -224,13 +241,7 @@ export function OrganizationsSettingsSection() {
             err instanceof ApiError &&
             (err.statusCode === 402 || err.statusCode === 503)
           ) {
-            const { url: checkoutUrl } =
-              await organizationsApi.createCheckoutSession(
-                selectedOrgId,
-                returnUrl,
-                returnUrl
-              );
-            return checkoutUrl;
+            return createCheckoutUrl();
           }
 
           throw err;

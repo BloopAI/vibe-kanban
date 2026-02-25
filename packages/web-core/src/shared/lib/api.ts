@@ -136,6 +136,30 @@ type ListRemoteProjectsResponse = {
   projects: RemoteProject[];
 };
 
+export type OrganizationBillingStatus =
+  | 'free'
+  | 'active'
+  | 'past_due'
+  | 'cancelled'
+  | 'requires_subscription';
+
+export interface OrganizationBillingStatusResponse {
+  status: OrganizationBillingStatus;
+  billing_enabled: boolean;
+  seat_info: {
+    current_members: number;
+    free_seats: number;
+    requires_subscription: boolean;
+    subscription: {
+      status: string;
+      current_period_end: string;
+      cancel_at_period_end: boolean;
+      quantity: number;
+      unit_amount: number;
+    } | null;
+  } | null;
+}
+
 // Special handler for Result-returning endpoints
 const handleApiResponseAsResult = async <T, E>(
   response: Response
@@ -1234,6 +1258,15 @@ export const organizationsApi = {
       }
     );
     return handleRemoteResponse<void>(response);
+  },
+
+  getBillingStatus: async (
+    orgId: string
+  ): Promise<OrganizationBillingStatusResponse> => {
+    const response = await makeRemoteRequest(
+      `/v1/organizations/${orgId}/billing`
+    );
+    return handleRemoteResponse<OrganizationBillingStatusResponse>(response);
   },
 
   createCheckoutSession: async (
