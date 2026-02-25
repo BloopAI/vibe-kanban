@@ -47,7 +47,10 @@ pub async fn relay_connect(
         }
     };
 
-    if let Err(error) = repo.mark_host_online(host_id, query.agent_version.as_deref()).await {
+    if let Err(error) = repo
+        .mark_host_online(host_id, query.agent_version.as_deref())
+        .await
+    {
         tracing::warn!(?error, "failed to mark host online");
     }
 
