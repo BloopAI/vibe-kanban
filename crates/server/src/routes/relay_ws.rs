@@ -2,7 +2,7 @@ use anyhow::Context as _;
 use axum::{
     extract::{
         FromRef, FromRequestParts,
-        ws::{Message, WebSocket, WebSocketUpgrade},
+        ws::{CloseFrame, Message, WebSocket, WebSocketUpgrade},
     },
     http::request::Parts,
     response::IntoResponse,
@@ -47,6 +47,9 @@ struct RelaySignedWsEnvelope {
 enum RelayWsMessageType {
     Text,
     Binary,
+    Ping,
+    Pong,
+    Close,
 }
 
 impl RelayWsMessageType {
@@ -54,6 +57,9 @@ impl RelayWsMessageType {
         match self {
             Self::Text => "text",
             Self::Binary => "binary",
+            Self::Ping => "ping",
+            Self::Pong => "pong",
+            Self::Close => "close",
         }
     }
 }
@@ -183,7 +189,48 @@ where
                 signing.outbound_seq = seq;
                 Message::Binary(serde_json::to_vec(&envelope)?.into())
             }
-            other => other,
+            Message::Ping(payload) => {
+                let seq = signing.outbound_seq.saturating_add(1);
+                let envelope = build_signed_envelope(
+                    deployment,
+                    signing,
+                    RelayWsDirection::ServerToClient,
+                    seq,
+                    RelayWsMessageType::Ping,
+                    payload.to_vec(),
+                )
+                .await?;
+                signing.outbound_seq = seq;
+                Message::Binary(serde_json::to_vec(&envelope)?.into())
+            }
+            Message::Pong(payload) => {
+                let seq = signing.outbound_seq.saturating_add(1);
+                let envelope = build_signed_envelope(
+                    deployment,
+                    signing,
+                    RelayWsDirection::ServerToClient,
+                    seq,
+                    RelayWsMessageType::Pong,
+                    payload.to_vec(),
+                )
+                .await?;
+                signing.outbound_seq = seq;
+                Message::Binary(serde_json::to_vec(&envelope)?.into())
+            }
+            Message::Close(close_frame) => {
+                let seq = signing.outbound_seq.saturating_add(1);
+                let envelope = build_signed_envelope(
+                    deployment,
+                    signing,
+                    RelayWsDirection::ServerToClient,
+                    seq,
+                    RelayWsMessageType::Close,
+                    encode_close_payload(close_frame),
+                )
+                .await?;
+                signing.outbound_seq = seq;
+                Message::Binary(serde_json::to_vec(&envelope)?.into())
+            }
         }
     } else {
         message
@@ -221,7 +268,9 @@ where
                 decode_signed_envelope(deployment, signing, RelayWsDirection::ClientToServer, &data)
                     .await?
             }
-            other => other,
+            Message::Ping(payload) => Message::Ping(payload),
+            Message::Pong(payload) => Message::Pong(payload),
+            Message::Close(close_frame) => Message::Close(close_frame),
         }
     } else {
         message
@@ -320,6 +369,12 @@ async fn decode_signed_envelope(
             Ok(Message::Text(text.into()))
         }
         RelayWsMessageType::Binary => Ok(Message::Binary(payload.into())),
+        RelayWsMessageType::Ping => Ok(Message::Ping(payload.into())),
+        RelayWsMessageType::Pong => Ok(Message::Pong(payload.into())),
+        RelayWsMessageType::Close => {
+            let close_frame = decode_close_payload(payload)?;
+            Ok(Message::Close(close_frame))
+        }
     }
 }
 
@@ -355,4 +410,36 @@ fn ws_mac_purpose(direction: RelayWsDirection) -> &'static str {
 fn sha256_base64(data: &[u8]) -> String {
     let digest = Sha256::digest(data);
     BASE64_STANDARD.encode(digest)
+}
+
+fn encode_close_payload(close_frame: Option<CloseFrame>) -> Vec<u8> {
+    if let Some(close_frame) = close_frame {
+        let code: u16 = close_frame.code.into();
+        let reason = close_frame.reason.to_string();
+        let mut payload = Vec::with_capacity(2 + reason.len());
+        payload.extend_from_slice(&code.to_be_bytes());
+        payload.extend_from_slice(reason.as_bytes());
+        payload
+    } else {
+        Vec::new()
+    }
+}
+
+fn decode_close_payload(payload: Vec<u8>) -> anyhow::Result<Option<CloseFrame>> {
+    if payload.is_empty() {
+        return Ok(None);
+    }
+
+    if payload.len() < 2 {
+        return Err(anyhow::anyhow!("invalid close payload"));
+    }
+
+    let code = u16::from_be_bytes([payload[0], payload[1]]);
+    let reason =
+        String::from_utf8(payload[2..].to_vec()).context("invalid UTF-8 close frame reason")?;
+
+    Ok(Some(CloseFrame {
+        code: code.into(),
+        reason: reason.into(),
+    }))
 }
