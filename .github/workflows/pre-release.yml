@@ -744,6 +744,10 @@ jobs:
           name: frontend-dist
           path: frontend/dist/
 
+      - name: Copy frontend to packages/local-web/dist
+        run: cp -r frontend/dist packages/local-web/dist
+        shell: bash
+
       - name: Patch tauri.conf.json for CI
         run: |
           node -e "
