@@ -1,5 +1,12 @@
 use anyhow::Context as _;
-use axum::extract::ws::Message;
+use axum::{
+    extract::{
+        FromRef, FromRequestParts,
+        ws::{Message, WebSocket, WebSocketUpgrade},
+    },
+    http::request::Parts,
+    response::IntoResponse,
+};
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -44,6 +51,80 @@ pub fn relay_ws_signing_state(
         inbound_seq: 0,
         outbound_seq: 0,
     })
+}
+
+pub struct SignedWsUpgrade {
+    ws: WebSocketUpgrade,
+    deployment: DeploymentImpl,
+    relay_signing: Option<RelayWsSigningState>,
+}
+
+impl<S> FromRequestParts<S> for SignedWsUpgrade
+where
+    S: Send + Sync,
+    DeploymentImpl: FromRef<S>,
+{
+    type Rejection = axum::extract::ws::rejection::WebSocketUpgradeRejection;
+
+    async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
+        let ws = WebSocketUpgrade::from_request_parts(parts, state).await?;
+        let deployment = DeploymentImpl::from_ref(state);
+        let relay_ctx = parts
+            .extensions
+            .get::<RelayRequestSignatureContext>()
+            .cloned();
+
+        Ok(Self {
+            ws,
+            deployment,
+            relay_signing: relay_ws_signing_state(relay_ctx),
+        })
+    }
+}
+
+impl SignedWsUpgrade {
+    pub fn on_upgrade<F, Fut>(self, callback: F) -> impl IntoResponse
+    where
+        F: FnOnce(SignedWebSocket) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        let deployment = self.deployment.clone();
+        let relay_signing = self.relay_signing.clone();
+        self.ws.on_upgrade(move |socket| async move {
+            let signed_socket = SignedWebSocket {
+                socket,
+                deployment,
+                relay_signing,
+            };
+            callback(signed_socket).await;
+        })
+    }
+}
+
+pub struct SignedWebSocket {
+    socket: WebSocket,
+    deployment: DeploymentImpl,
+    relay_signing: Option<RelayWsSigningState>,
+}
+
+impl SignedWebSocket {
+    pub async fn send(&mut self, message: Message) -> anyhow::Result<()> {
+        send_ws_message(
+            &mut self.socket,
+            &self.deployment,
+            &mut self.relay_signing,
+            message,
+        )
+        .await
+    }
+
+    pub async fn recv(&mut self) -> anyhow::Result<Option<Message>> {
+        recv_ws_message(&mut self.socket, &self.deployment, &mut self.relay_signing).await
+    }
+
+    pub async fn close(&mut self) -> anyhow::Result<()> {
+        self.socket.close().await.map_err(anyhow::Error::from)
+    }
 }
 
 pub async fn send_ws_message<S>(
