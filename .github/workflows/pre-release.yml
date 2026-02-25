@@ -120,7 +120,7 @@ jobs:
           cd ..
 
           # Update web app package.json to match
-          cd packages/web
+          cd packages/local-web
           npm version $new_version --no-git-tag-version --allow-same-version
           cd ..
 
@@ -142,7 +142,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json packages/web/package.json Cargo.lock
+          git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
           [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
@@ -168,13 +168,13 @@ jobs:
         run: pnpm install
 
       - name: Lint frontend
-        run: cd packages/web && npm run lint
+        run: cd packages/local-web && npm run lint
 
       - name: Type check frontend
-        run: cd packages/web && npx tsc --noEmit
+        run: cd packages/local-web && npx tsc --noEmit
 
       - name: Build frontend
-        run: cd packages/web && npm run build
+        run: cd packages/local-web && npm run build
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
@@ -190,14 +190,14 @@ jobs:
         with:
           release: ${{ needs.bump-version.outputs.new_version }}
           environment: production
-          sourcemaps: "./packages/web/dist"
+          sourcemaps: "./packages/local-web/dist"
           ignore_missing: true
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
-          path: packages/web/dist/
+          path: packages/local-web/dist/
           retention-days: 1
 
   build-backend:
@@ -318,7 +318,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: frontend-dist
-          path: packages/web/dist/
+          path: packages/local-web/dist/
 
       - name: Build backend (Linux)
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
@@ -537,7 +537,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: frontend-dist
-          path: packages/web/dist/
+          path: packages/local-web/dist/
 
       - name: Download backend binary artifact
         uses: actions/download-artifact@v7
@@ -900,7 +900,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: frontend-dist
-          path: packages/web/dist/
+          path: packages/local-web/dist/
 
       - name: Download Tauri artifacts for release
         uses: actions/download-artifact@v7
@@ -920,12 +920,12 @@ jobs:
       - name: List downloaded artifacts
         run: |
           echo "Web dist:"
-          find packages/web/dist
+          find packages/local-web/dist
 
       - name: Zip frontend
         run: |
           mkdir vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          mv packages/web/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
+          mv packages/local-web/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
           zip -r vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
 
       - name: Setup Node for npm pack
