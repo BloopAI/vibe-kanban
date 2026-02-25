@@ -83,7 +83,6 @@ struct RelaySigningSession {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RelaySignatureValidationError {
-    InvalidTimestamp,
     TimestampOutOfDrift,
     MissingSigningSession,
     InvalidNonce,
@@ -94,7 +93,6 @@ pub enum RelaySignatureValidationError {
 impl RelaySignatureValidationError {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::InvalidTimestamp => "invalid timestamp",
             Self::TimestampOutOfDrift => "timestamp outside drift window",
             Self::MissingSigningSession => "missing or expired signing session",
             Self::InvalidNonce => "invalid nonce",
@@ -500,7 +498,7 @@ impl LocalDeployment {
         Ok(BASE64_STANDARD.encode(signature.to_bytes()))
     }
 
-    pub async fn verify_relay_message_no_replay(
+    pub async fn verify_relay_signature(
         &self,
         signing_session_id: Uuid,
         message: &[u8],
@@ -542,10 +540,10 @@ fn validate_timestamp(timestamp: i64) -> Result<(), RelaySignatureValidationErro
     let now_secs = i64::try_from(
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?
+            .map_err(|_| RelaySignatureValidationError::TimestampOutOfDrift)?
             .as_secs(),
     )
-    .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?;
+    .map_err(|_| RelaySignatureValidationError::TimestampOutOfDrift)?;
 
     let drift_secs = now_secs.saturating_sub(timestamp).abs();
     if drift_secs > RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS {

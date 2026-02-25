@@ -25,12 +25,6 @@ pub struct RelayWsSigningState {
     outbound_seq: u64,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum RelayWsDirection {
-    ClientToServer,
-    ServerToClient,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct RelaySignedWsEnvelope {
     version: u8,
@@ -273,7 +267,6 @@ async fn build_signed_envelope(
     let sign_message = ws_signing_input(
         signing.signing_session_id,
         &signing.request_nonce,
-        RelayWsDirection::ServerToClient,
         seq,
         msg_type,
         &payload,
@@ -321,14 +314,13 @@ async fn decode_signed_envelope(
     let sign_message = ws_signing_input(
         signing.signing_session_id,
         &signing.request_nonce,
-        RelayWsDirection::ClientToServer,
         envelope.seq,
         envelope.msg_type,
         &payload,
     );
 
     deployment
-        .verify_relay_message_no_replay(
+        .verify_relay_signature(
             signing.signing_session_id,
             sign_message.as_bytes(),
             &envelope.signature_b64,
@@ -356,24 +348,16 @@ async fn decode_signed_envelope(
 fn ws_signing_input(
     signing_session_id: Uuid,
     request_nonce: &str,
-    direction: RelayWsDirection,
+    direction: &str,
     seq: u64,
     msg_type: RelayWsMessageType,
     payload: &[u8],
 ) -> String {
     let payload_hash = BASE64_STANDARD.encode(Sha256::digest(payload));
     format!(
-        "v1|{signing_session_id}|{request_nonce}|{}|{seq}|{msg_type}|{payload_hash}",
-        ws_direction_name(direction),
+        "v1|{signing_session_id}|{request_nonce}|{direction}|{seq}|{msg_type}|{payload_hash}",
         msg_type = msg_type.as_str()
     )
-}
-
-fn ws_direction_name(direction: RelayWsDirection) -> &'static str {
-    match direction {
-        RelayWsDirection::ClientToServer => "c2s",
-        RelayWsDirection::ServerToClient => "s2c",
-    }
 }
 
 fn encode_close_payload(close_frame: Option<CloseFrame>) -> Vec<u8> {
