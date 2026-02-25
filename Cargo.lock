@@ -4478,11 +4478,9 @@ dependencies = [
  "anyhow",
  "api-types",
  "async-trait",
- "base64",
  "command-group",
  "db",
  "deployment",
- "ed25519-dalek",
  "executors",
  "futures",
  "git",
@@ -6639,8 +6637,11 @@ checksum = "a96887878f22d7bad8a3b6dc5b7440e0ada9a245242924394987b21cf2210a4c"
 name = "relay-control"
 version = "0.1.18"
 dependencies = [
+ "base64",
+ "ed25519-dalek",
  "tokio",
  "tokio-util",
+ "uuid",
 ]
 
 [[package]]

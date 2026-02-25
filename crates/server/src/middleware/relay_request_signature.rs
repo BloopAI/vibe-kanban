@@ -8,6 +8,7 @@ use axum::{
     response::Response,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use deployment::Deployment;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
@@ -49,7 +50,8 @@ pub async fn require_relay_request_signature(
     let body_bytes = to_bytes(body, usize::MAX)
         .await
         .map_err(|_| ApiError::Unauthorized)?;
-    let message = request_signing_input(
+
+    let message = build_request_message(
         timestamp,
         &method,
         &path_and_query,
@@ -59,7 +61,8 @@ pub async fn require_relay_request_signature(
     );
 
     if let Err(error) = deployment
-        .verify_relay_message(
+        .relay_signing()
+        .verify_message(
             signing_session_id,
             timestamp,
             &nonce,
@@ -72,7 +75,7 @@ pub async fn require_relay_request_signature(
             signing_session_id = %signing_session_id,
             path = %path_and_query,
             reason = %error.as_str(),
-            "rejecting relay request with invalid signature"
+            "Rejecting relay request with invalid signature"
         );
         return Err(ApiError::Unauthorized);
     }
@@ -111,7 +114,7 @@ pub async fn sign_relay_response(
     let response_nonce = Uuid::new_v4().simple().to_string();
     let status = parts.status.as_u16();
 
-    let message = response_signing_input(
+    let message = build_response_message(
         response_timestamp,
         status,
         &path_and_query,
@@ -122,7 +125,8 @@ pub async fn sign_relay_response(
     );
 
     let response_signature = deployment
-        .sign_relay_message(signing_session_id, message.as_bytes())
+        .relay_signing()
+        .sign_message(signing_session_id, message.as_bytes())
         .await
         .map_err(|error| {
             tracing::warn!(
@@ -145,7 +149,7 @@ pub async fn sign_relay_response(
     Ok(Response::from_parts(parts, Body::from(body_bytes)))
 }
 
-fn request_signing_input(
+fn build_request_message(
     timestamp: i64,
     method: &str,
     path_and_query: &str,
@@ -157,7 +161,7 @@ fn request_signing_input(
     format!("v1|{timestamp}|{method}|{path_and_query}|{signing_session_id}|{nonce}|{body_hash}")
 }
 
-fn response_signing_input(
+fn build_response_message(
     timestamp: i64,
     status: u16,
     path_and_query: &str,

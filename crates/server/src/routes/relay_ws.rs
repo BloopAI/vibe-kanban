@@ -8,6 +8,7 @@ use axum::{
     response::IntoResponse,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use deployment::Deployment;
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -273,7 +274,8 @@ async fn build_signed_envelope(
     );
 
     let signature_b64 = deployment
-        .sign_relay_message(signing.signing_session_id, sign_message.as_bytes())
+        .relay_signing()
+        .sign_message(signing.signing_session_id, sign_message.as_bytes())
         .await
         .map_err(|error| anyhow::anyhow!("failed to sign relay WS frame: {}", error.as_str()))?;
 
@@ -320,7 +322,8 @@ async fn decode_signed_envelope(
     );
 
     deployment
-        .verify_relay_signature(
+        .relay_signing()
+        .verify_signature(
             signing.signing_session_id,
             sign_message.as_bytes(),
             &envelope.signature_b64,

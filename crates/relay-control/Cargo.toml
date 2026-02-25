@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
+base64 = "0.22"
+ed25519-dalek = "2.2.0"
+uuid = { version = "1.0", features = ["v4"] }

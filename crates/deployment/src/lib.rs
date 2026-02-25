@@ -8,7 +8,7 @@ use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
-use relay_control::RelayControl;
+use relay_control::{RelayControl, signing::RelaySigningService};
 use serde_json::Value;
 use server_info::ServerInfo;
 use services::services::{
@@ -103,6 +103,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn auth_context(&self) -> &AuthContext;
 
     fn relay_control(&self) -> &Arc<RelayControl>;
+
+    fn relay_signing(&self) -> &RelaySigningService;
 
     fn server_info(&self) -> &Arc<ServerInfo>;
 

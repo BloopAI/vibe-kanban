@@ -7,6 +7,7 @@ use axum::{
     routing::post,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use deployment::Deployment;
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
@@ -166,7 +167,8 @@ async fn finish_spake2_enrollment(
     }
 
     let signing_session_id = deployment
-        .create_relay_signing_session(browser_public_key, server_signing_key)
+        .relay_signing()
+        .create_session(browser_public_key, server_signing_key)
         .await;
 
     let server_proof_b64 = build_server_proof(

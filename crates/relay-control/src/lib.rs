@@ -1,3 +1,5 @@
+pub mod signing;
+
 use tokio::sync::RwLock;
 use tokio_util::sync::CancellationToken;
 
