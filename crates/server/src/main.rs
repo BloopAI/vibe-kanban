@@ -169,12 +169,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    let tunnel_deployment = deployment.clone();
-    let tunnel_shutdown = shutdown_token.clone();
-    tokio::spawn(async move {
-        tunnel::start_relay_if_requested(&tunnel_deployment, actual_main_port, tunnel_shutdown)
-            .await;
-    });
+    tunnel::start_relay_lifecycle(&deployment, actual_main_port).await;
 
     tokio::select! {
         _ = shutdown_signal() => {
