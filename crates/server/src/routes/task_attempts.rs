@@ -14,10 +14,7 @@ use anyhow;
 use api_types::{CreateWorkspaceRequest, PullRequestStatus, UpsertPullRequestRequest};
 use axum::{
     Extension, Json, Router,
-    extract::{
-        Path as AxumPath, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path as AxumPath, Query, State, ws::Message},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
@@ -62,9 +59,9 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{RelayRequestSignatureContext, load_workspace_middleware},
+    middleware::load_workspace_middleware,
     routes::{
-        relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+        relay_ws::{SignedWebSocket, SignedWsUpgrade},
         task_attempts::gh_cli_setup::GhCliSetupError,
     },
 };
@@ -229,19 +226,15 @@ pub async fn run_agent_setup(
 
 #[axum::debug_handler]
 pub async fn stream_task_attempt_diff_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     Query(params): Query<DiffStreamQuery>,
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
     let _ = deployment.container().touch(&workspace).await;
     let stats_only = params.stats_only;
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) =
-            handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only, relay_signing)
-                .await
+        if let Err(e) = handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only).await
         {
             tracing::warn!("diff WS closed: {}", e);
         }
@@ -249,11 +242,10 @@ pub async fn stream_task_attempt_diff_ws(
 }
 
 async fn handle_task_attempt_diff_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     workspace: Workspace,
     stats_only: bool,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     use futures_util::{StreamExt, TryStreamExt};
     use utils::log_msg::LogMsg;
@@ -265,17 +257,13 @@ async fn handle_task_attempt_diff_ws(
 
     let mut stream = stream.map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-
     loop {
         tokio::select! {
             // Wait for next stream item
             item = stream.next() => {
                 match item {
                     Some(Ok(msg)) => {
-                        if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg).await.is_err() {
+                        if socket.send(msg).await.is_err() {
                             break;
                         }
                     }
@@ -287,8 +275,9 @@ async fn handle_task_attempt_diff_ws(
                 }
             }
             // Detect client disconnection
-            msg = recv_ws_message(&mut receiver, &deployment, &mut receiver_signing) => {
+            msg = socket.recv() => {
                 match msg {
+                    Ok(Some(Message::Close(_))) => break,
                     Ok(Some(_)) => {}
                     Ok(None) => break,
                     Err(_) => break,
@@ -300,21 +289,12 @@ async fn handle_task_attempt_diff_ws(
 }
 
 pub async fn stream_workspaces_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     Query(query): Query<WorkspaceStreamQuery>,
     State(deployment): State<DeploymentImpl>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_workspaces_ws(
-            socket,
-            deployment,
-            query.archived,
-            query.limit,
-            relay_signing,
-        )
-        .await
+        if let Err(e) = handle_workspaces_ws(socket, deployment, query.archived, query.limit).await
         {
             tracing::warn!("workspaces WS closed: {}", e);
         }
@@ -322,11 +302,10 @@ pub async fn stream_workspaces_ws(
 }
 
 async fn handle_workspaces_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     archived: Option<bool>,
     limit: Option<i64>,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     use futures_util::{StreamExt, TryStreamExt};
 
@@ -336,16 +315,12 @@ async fn handle_workspaces_ws(
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-
     loop {
         tokio::select! {
             item = stream.next() => {
                 match item {
                     Some(Ok(msg)) => {
-                        if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg).await.is_err() {
+                        if socket.send(msg).await.is_err() {
                             break;
                         }
                     }
@@ -356,8 +331,9 @@ async fn handle_workspaces_ws(
                     None => break,
                 }
             }
-            msg = recv_ws_message(&mut receiver, &deployment, &mut receiver_signing) => {
+            msg = socket.recv() => {
                 match msg {
+                    Ok(Some(Message::Close(_))) => break,
                     Ok(Some(_)) => {}
                     Ok(None) => break,
                     Err(_) => break,
