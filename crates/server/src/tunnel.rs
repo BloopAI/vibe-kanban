@@ -147,7 +147,7 @@ async fn start_relay(
         .await
         .context("Failed to get access token for relay")?;
 
-    tracing::info!(%ws_url, "connecting relay control channel");
+    tracing::info!(%ws_url, "Connecting relay control channel");
 
     start_relay_client(RelayClientConfig {
         ws_url,
