@@ -28,6 +28,7 @@ import {
   COMPONENT_INFO_EXPORT_TRANSFORMER,
 } from './wysiwyg/nodes/component-info-node';
 import { TABLE_TRANSFORMER } from './wysiwyg/transformers/table-transformer';
+import { URL_AUTO_LINK_TRANSFORMER } from './wysiwyg/transformers/url-auto-link-transformer';
 import {
   TaskAttemptContext,
   LocalImagesContext,
@@ -330,6 +331,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         COMPONENT_INFO_TRANSFORMER,
         CODE,
         ...TRANSFORMERS,
+        URL_AUTO_LINK_TRANSFORMER,
       ],
       []
     );
