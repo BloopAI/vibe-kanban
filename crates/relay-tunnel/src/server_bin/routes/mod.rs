@@ -10,8 +10,9 @@ use axum::{
     routing::{any, get, post},
 };
 use serde::Serialize;
+use axum::http::HeaderName;
 use tower_http::{
-    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
+    cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer, ExposeHeaders},
     trace::TraceLayer,
 };
 
@@ -56,6 +57,11 @@ pub fn build_router(state: RelayAppState) -> Router {
                 .allow_origin(AllowOrigin::mirror_request())
                 .allow_methods(AllowMethods::mirror_request())
                 .allow_headers(AllowHeaders::mirror_request())
+                .expose_headers(ExposeHeaders::list([
+                    HeaderName::from_static("x-vk-resp-ts"),
+                    HeaderName::from_static("x-vk-resp-nonce"),
+                    HeaderName::from_static("x-vk-resp-signature"),
+                ]))
                 .allow_credentials(true),
         )
         .layer(TraceLayer::new_for_http())
