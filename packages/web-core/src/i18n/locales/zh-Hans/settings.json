@@ -26,7 +26,9 @@
         "organizations": "组织设置",
         "organizationsDesc": "管理组织成员和权限",
         "remote-projects": "项目",
-        "remote-projectsDesc": "管理项目"
+        "remote-projectsDesc": "管理项目",
+        "relay": "Remote Access",
+        "relayDesc": "Relay tunnel and enrollment"
       }
     },
     "general": {
@@ -492,6 +494,21 @@
         "unsavedChanges": "您有未保存的更改",
         "discard": "放弃",
         "confirmSwitch": "您有未保存的更改。您确定要切换仓库吗？您的更改将丢失。"
+      }
+    },
+    "relay": {
+      "title": "Remote Access",
+      "description": "Allow access to this instance from the web via relay tunnel.",
+      "enabled": {
+        "label": "Enable remote access",
+        "helper": "When enabled, this instance can be accessed remotely through a relay tunnel."
+      },
+      "enrollmentCode": {
+        "label": "Enrollment Code",
+        "helper": "Enter this code in the browser to pair with this instance.",
+        "loginRequired": "Log in to generate an enrollment code.",
+        "fetchError": "Failed to fetch enrollment code.",
+        "show": "Show enrollment code"
       }
     },
     "remoteProjects": {

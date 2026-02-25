@@ -26,7 +26,9 @@
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
         "remote-projects": "프로젝트",
-        "remote-projectsDesc": "프로젝트 관리"
+        "remote-projectsDesc": "프로젝트 관리",
+        "relay": "Remote Access",
+        "relayDesc": "Relay tunnel and enrollment"
       }
     },
     "general": {
@@ -492,6 +494,21 @@
         "unsavedChanges": "저장되지 않은 변경사항이 있습니다",
         "discard": "취소",
         "confirmSwitch": "저장되지 않은 변경사항이 있습니다. 정말 저장소를 전환하시겠습니까? 변경사항이 손실됩니다."
+      }
+    },
+    "relay": {
+      "title": "Remote Access",
+      "description": "Allow access to this instance from the web via relay tunnel.",
+      "enabled": {
+        "label": "Enable remote access",
+        "helper": "When enabled, this instance can be accessed remotely through a relay tunnel."
+      },
+      "enrollmentCode": {
+        "label": "Enrollment Code",
+        "helper": "Enter this code in the browser to pair with this instance.",
+        "loginRequired": "Log in to generate an enrollment code.",
+        "fetchError": "Failed to fetch enrollment code.",
+        "show": "Show enrollment code"
       }
     },
     "remoteProjects": {

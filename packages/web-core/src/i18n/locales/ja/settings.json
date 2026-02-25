@@ -26,7 +26,9 @@
         "organizations": "Organization Settings",
         "organizationsDesc": "Manage organization members and permissions",
         "remote-projects": "プロジェクト",
-        "remote-projectsDesc": "プロジェクトを管理"
+        "remote-projectsDesc": "プロジェクトを管理",
+        "relay": "Remote Access",
+        "relayDesc": "Relay tunnel and enrollment"
       }
     },
     "general": {
@@ -492,6 +494,21 @@
         "unsavedChanges": "未保存の変更があります",
         "discard": "破棄",
         "confirmSwitch": "未保存の変更があります。本当にリポジトリを切り替えますか？変更は失われます。"
+      }
+    },
+    "relay": {
+      "title": "Remote Access",
+      "description": "Allow access to this instance from the web via relay tunnel.",
+      "enabled": {
+        "label": "Enable remote access",
+        "helper": "When enabled, this instance can be accessed remotely through a relay tunnel."
+      },
+      "enrollmentCode": {
+        "label": "Enrollment Code",
+        "helper": "Enter this code in the browser to pair with this instance.",
+        "loginRequired": "Log in to generate an enrollment code.",
+        "fetchError": "Failed to fetch enrollment code.",
+        "show": "Show enrollment code"
       }
     },
     "remoteProjects": {

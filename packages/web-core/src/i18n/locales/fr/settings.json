@@ -26,7 +26,9 @@
         "organizations": "Paramètres de l'organisation",
         "organizationsDesc": "Gérer les membres et les permissions de l'organisation",
         "remote-projects": "Projets",
-        "remote-projectsDesc": "Gérer les projets"
+        "remote-projectsDesc": "Gérer les projets",
+        "relay": "Remote Access",
+        "relayDesc": "Relay tunnel and enrollment"
       }
     },
     "general": {
@@ -492,6 +494,21 @@
         "unsavedChanges": "Vous avez des modifications non enregistrées",
         "discard": "Abandonner",
         "confirmSwitch": "Vous avez des modifications non enregistrées. Êtes-vous sûr de vouloir changer de dépôt ? Vos modifications seront perdues."
+      }
+    },
+    "relay": {
+      "title": "Remote Access",
+      "description": "Allow access to this instance from the web via relay tunnel.",
+      "enabled": {
+        "label": "Enable remote access",
+        "helper": "When enabled, this instance can be accessed remotely through a relay tunnel."
+      },
+      "enrollmentCode": {
+        "label": "Enrollment Code",
+        "helper": "Enter this code in the browser to pair with this instance.",
+        "loginRequired": "Log in to generate an enrollment code.",
+        "fetchError": "Failed to fetch enrollment code.",
+        "show": "Show enrollment code"
       }
     },
     "remoteProjects": {
