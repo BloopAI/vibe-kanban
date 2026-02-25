@@ -24,6 +24,7 @@ import { Route as AccountCompleteRouteImport } from './routes/account_.complete'
 import { Route as WorkspacesWorkspaceIdVscodeRouteImport } from './routes/workspaces.$workspaceId.vscode'
 import { Route as InvitationsTokenCompleteRouteImport } from './routes/invitations.$token.complete'
 import { Route as InvitationsTokenAcceptRouteImport } from './routes/invitations.$token.accept'
+import { Route as AccountOrganizationsOrgIdRouteImport } from './routes/account_.organizations.$orgId'
 import { Route as ProjectsProjectIdIssuesNewRouteImport } from './routes/projects.$projectId_.issues.new'
 import { Route as ProjectsProjectIdIssuesIssueIdRouteImport } from './routes/projects.$projectId_.issues.$issueId'
 import { Route as ProjectsProjectIdWorkspacesCreateDraftIdRouteImport } from './routes/projects.$projectId_.workspaces.create.$draftId'
@@ -107,6 +108,12 @@ const InvitationsTokenAcceptRoute = InvitationsTokenAcceptRouteImport.update({
   path: '/invitations/$token/accept',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccountOrganizationsOrgIdRoute =
+  AccountOrganizationsOrgIdRouteImport.update({
+    id: '/account_/organizations/$orgId',
+    path: '/account/organizations/$orgId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ProjectsProjectIdIssuesNewRoute =
   ProjectsProjectIdIssuesNewRouteImport.update({
     id: '/projects/$projectId_/issues/new',
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/upgrade/success': typeof UpgradeSuccessRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces/create': typeof WorkspacesCreateRoute
+  '/account/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
   '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
   '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
@@ -173,6 +181,7 @@ export interface FileRoutesByTo {
   '/upgrade/success': typeof UpgradeSuccessRoute
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces/create': typeof WorkspacesCreateRoute
+  '/account/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
   '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
   '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
@@ -196,6 +205,7 @@ export interface FileRoutesById {
   '/upgrade_/success': typeof UpgradeSuccessRoute
   '/workspaces_/$workspaceId': typeof WorkspacesWorkspaceIdRoute
   '/workspaces_/create': typeof WorkspacesCreateRoute
+  '/account_/organizations/$orgId': typeof AccountOrganizationsOrgIdRoute
   '/invitations/$token/accept': typeof InvitationsTokenAcceptRoute
   '/invitations/$token/complete': typeof InvitationsTokenCompleteRoute
   '/workspaces/$workspaceId/vscode': typeof WorkspacesWorkspaceIdVscodeRoute
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/upgrade/success'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
+    | '/account/organizations/$orgId'
     | '/invitations/$token/accept'
     | '/invitations/$token/complete'
     | '/workspaces/$workspaceId/vscode'
@@ -242,6 +253,7 @@ export interface FileRouteTypes {
     | '/upgrade/success'
     | '/workspaces/$workspaceId'
     | '/workspaces/create'
+    | '/account/organizations/$orgId'
     | '/invitations/$token/accept'
     | '/invitations/$token/complete'
     | '/workspaces/$workspaceId/vscode'
@@ -264,6 +276,7 @@ export interface FileRouteTypes {
     | '/upgrade_/success'
     | '/workspaces_/$workspaceId'
     | '/workspaces_/create'
+    | '/account_/organizations/$orgId'
     | '/invitations/$token/accept'
     | '/invitations/$token/complete'
     | '/workspaces/$workspaceId/vscode'
@@ -287,6 +300,7 @@ export interface RootRouteChildren {
   UpgradeSuccessRoute: typeof UpgradeSuccessRoute
   WorkspacesWorkspaceIdRoute: typeof WorkspacesWorkspaceIdRoute
   WorkspacesCreateRoute: typeof WorkspacesCreateRoute
+  AccountOrganizationsOrgIdRoute: typeof AccountOrganizationsOrgIdRoute
   InvitationsTokenAcceptRoute: typeof InvitationsTokenAcceptRoute
   InvitationsTokenCompleteRoute: typeof InvitationsTokenCompleteRoute
   ProjectsProjectIdIssuesIssueIdRoute: typeof ProjectsProjectIdIssuesIssueIdRoute
@@ -403,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InvitationsTokenAcceptRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/account_/organizations/$orgId': {
+      id: '/account_/organizations/$orgId'
+      path: '/account/organizations/$orgId'
+      fullPath: '/account/organizations/$orgId'
+      preLoaderRoute: typeof AccountOrganizationsOrgIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/$projectId_/issues/new': {
       id: '/projects/$projectId_/issues/new'
       path: '/projects/$projectId/issues/new'
@@ -466,6 +487,7 @@ const rootRouteChildren: RootRouteChildren = {
   UpgradeSuccessRoute: UpgradeSuccessRoute,
   WorkspacesWorkspaceIdRoute: WorkspacesWorkspaceIdRoute,
   WorkspacesCreateRoute: WorkspacesCreateRoute,
+  AccountOrganizationsOrgIdRoute: AccountOrganizationsOrgIdRoute,
   InvitationsTokenAcceptRoute: InvitationsTokenAcceptRoute,
   InvitationsTokenCompleteRoute: InvitationsTokenCompleteRoute,
   ProjectsProjectIdIssuesIssueIdRoute: ProjectsProjectIdIssuesIssueIdRoute,

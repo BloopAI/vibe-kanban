@@ -1,11 +1,13 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import type { Project } from "shared/remote-types";
 import type { OrganizationWithRole } from "shared/types";
 import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { clearTokens } from "@remote/shared/lib/auth";
+import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useUserOrganizations } from "@/shared/hooks/useUserOrganizations";
+import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 type OrganizationWithProjects = {
   organization: OrganizationWithRole;
@@ -14,6 +16,8 @@ type OrganizationWithProjects = {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const search = useSearch({ from: "/" });
+  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const {
     data: orgsResponse,
     isLoading: orgsLoading,
@@ -23,6 +27,26 @@ export default function HomePage() {
   const [items, setItems] = useState<OrganizationWithProjects[]>([]);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const legacyOrgId = search.legacyOrgSettingsOrgId;
+    if (!legacyOrgId) {
+      return;
+    }
+
+    setSelectedOrgId(legacyOrgId);
+    navigate({
+      to: "/",
+      search: {},
+      replace: true,
+    });
+
+    void SettingsDialog.show({
+      initialSection: "organizations",
+      initialState: { organizationId: legacyOrgId },
+      sections: REMOTE_SETTINGS_SECTIONS,
+    });
+  }, [navigate, search.legacyOrgSettingsOrgId, setSelectedOrgId]);
 
   const handleSignInAgain = async () => {
     await clearTokens();
