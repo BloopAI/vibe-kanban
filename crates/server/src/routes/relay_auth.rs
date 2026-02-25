@@ -10,12 +10,11 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
-    add_trusted_public_key,
     key_confirmation::{build_server_proof, verify_client_proof},
     spake2::{generate_one_time_code, start_spake2_enrollment},
     trusted_keys::parse_public_key_base64,
 };
-use utils::{assets::trusted_keys_path, response::ApiResponse};
+use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -161,7 +160,11 @@ async fn finish_spake2_enrollment(
     .map_err(|_| ApiError::Unauthorized)?;
 
     // Persist the browser's public key so it survives server restarts
-    if let Err(e) = add_trusted_public_key(&trusted_keys_path(), &payload.public_key_b64).await {
+    if let Err(e) = deployment
+        .trusted_key_auth()
+        .persist_trusted_public_key(&payload.public_key_b64)
+        .await
+    {
         tracing::warn!(?e, "Failed to persist trusted public key");
     }
 

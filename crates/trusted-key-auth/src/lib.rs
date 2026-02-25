@@ -7,4 +7,4 @@ pub mod trusted_keys;
 
 pub use error::TrustedKeyAuthError;
 pub use runtime::TrustedKeyAuthRuntime;
-pub use trusted_keys::{TRUSTED_KEYS_FILE_NAME, add_trusted_public_key, parse_public_key_base64};
+pub use trusted_keys::{TRUSTED_KEYS_FILE_NAME, parse_public_key_base64};

@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -7,10 +8,11 @@ use std::{
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::TrustedKeyAuthError;
+use crate::{TrustedKeyAuthError, trusted_keys::add_trusted_public_key};
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct TrustedKeyAuthRuntime {
+    trusted_keys_path: PathBuf,
     pake_enrollments: Arc<RwLock<HashMap<Uuid, PendingPakeEnrollment>>>,
     enrollment_code: Arc<RwLock<Option<String>>>,
     rate_limit_windows: Arc<RwLock<HashMap<String, Vec<Instant>>>>,
@@ -25,8 +27,20 @@ struct PendingPakeEnrollment {
 const PAKE_ENROLLMENT_TTL: Duration = Duration::from_secs(5 * 60);
 
 impl TrustedKeyAuthRuntime {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(trusted_keys_path: PathBuf) -> Self {
+        Self {
+            trusted_keys_path,
+            pake_enrollments: Default::default(),
+            enrollment_code: Default::default(),
+            rate_limit_windows: Default::default(),
+        }
+    }
+
+    pub async fn persist_trusted_public_key(
+        &self,
+        public_key_b64: &str,
+    ) -> Result<bool, TrustedKeyAuthError> {
+        add_trusted_public_key(&self.trusted_keys_path, public_key_b64).await
     }
 
     pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {
