@@ -8,7 +8,6 @@ use deployment::Deployment as _;
 use relay_tunnel::client::{RelayClientConfig, start_relay_client};
 use services::services::remote_client::RemoteClient;
 use trusted_key_auth::spake2::generate_one_time_code;
-use uuid::Uuid;
 
 use crate::DeploymentImpl;
 
@@ -46,10 +45,7 @@ pub async fn should_start_relay(deployment: &DeploymentImpl) -> bool {
 /// Called once at startup. Stores the local port and starts the relay if the
 /// user is already logged in and relay is enabled.
 pub async fn start_relay_lifecycle(deployment: &DeploymentImpl, local_port: u16) {
-    deployment
-        .relay_control()
-        .set_local_port(local_port)
-        .await;
+    deployment.relay_control().set_local_port(local_port).await;
 
     if !should_start_relay(deployment).await {
         return;
@@ -87,43 +83,12 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
         return;
     };
 
-    // Register or find existing host
-    let local_identity = deployment.user_id();
-    let host_name = format!("{} local ({local_identity})", env!("CARGO_PKG_NAME"));
-
-    let existing_host_id = match remote_client.list_relay_hosts().await {
-        Ok(hosts) => hosts
-            .into_iter()
-            .find(|host| host.name == host_name)
-            .map(|host| host.id),
-        Err(error) => {
-            tracing::warn!(?error, "Failed to list relay hosts");
-            None
-        }
-    };
-
-    let host_id = if let Some(host_id) = existing_host_id {
-        host_id
-    } else {
-        let create_host = api_types::CreateRelayHostRequest {
-            name: host_name,
-            agent_version: Some(env!("CARGO_PKG_VERSION").to_string()),
-        };
-
-        match remote_client.create_relay_host(&create_host).await {
-            Ok(host) => host.id,
-            Err(error) => {
-                tracing::error!(?error, "Failed to register relay host");
-                return;
-            }
-        }
-    };
+    let host_name = format!("{} local ({})", env!("CARGO_PKG_NAME"), deployment.user_id());
 
     let enrollment_code = deployment
         .get_or_set_enrollment_code(generate_one_time_code())
         .await;
     tracing::info!(
-        %host_id,
         enrollment_code = %enrollment_code,
         "Relay PAKE enrollment code ready"
     );
@@ -146,7 +111,7 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
                 local_port,
                 &relay_base,
                 &remote_client,
-                host_id,
+                &host_name,
                 cancel_token.clone(),
             )
             .await;
@@ -200,15 +165,20 @@ pub async fn start_relay(
     local_port: u16,
     relay_api_base: &str,
     remote_client: &RemoteClient,
-    host_id: Uuid,
+    host_name: &str,
     shutdown: tokio_util::sync::CancellationToken,
 ) -> anyhow::Result<()> {
     let base_url = relay_api_base.trim_end_matches('/');
 
+    let query: String = form_urlencoded::Serializer::new(String::new())
+        .append_pair("name", host_name)
+        .append_pair("agent_version", env!("CARGO_PKG_VERSION"))
+        .finish();
+
     let ws_url = if let Some(rest) = base_url.strip_prefix("https://") {
-        format!("wss://{rest}/v1/relay/connect/{host_id}")
+        format!("wss://{rest}/v1/relay/connect?{query}")
     } else if let Some(rest) = base_url.strip_prefix("http://") {
-        format!("ws://{rest}/v1/relay/connect/{host_id}")
+        format!("ws://{rest}/v1/relay/connect?{query}")
     } else {
         anyhow::bail!("Unexpected base URL scheme: {base_url}");
     };
