@@ -8,6 +8,7 @@ import {
   CloudIcon,
   CpuIcon,
   PlugIcon,
+  BroadcastIcon,
   CaretLeftIcon,
   XIcon,
 } from '@phosphor-icons/react';
@@ -37,6 +38,7 @@ const SETTINGS_SECTIONS: {
   { id: 'remote-projects', icon: CloudIcon },
   { id: 'agents', icon: CpuIcon },
   { id: 'mcp', icon: PlugIcon },
+  { id: 'relay', icon: BroadcastIcon },
 ];
 
 export interface SettingsDialogProps {

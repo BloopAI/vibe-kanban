@@ -1446,6 +1446,16 @@ export const migrationApi = {
   },
 };
 
+// Relay API
+export const relayApi = {
+  getEnrollmentCode: async (): Promise<{ enrollment_code: string }> => {
+    const response = await makeRequest('/api/relay-auth/enrollment-code', {
+      method: 'POST',
+    });
+    return handleApiResponse<{ enrollment_code: string }>(response);
+  },
+};
+
 // Search API (multi-repo file search)
 export const searchApi = {
   searchFiles: async (
