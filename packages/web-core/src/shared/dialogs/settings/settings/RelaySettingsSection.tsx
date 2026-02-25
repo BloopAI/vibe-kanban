@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual, merge } from 'lodash';
-import { SpinnerIcon } from '@phosphor-icons/react';
+import { SignInIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
@@ -179,9 +180,21 @@ export function RelaySettingsSectionContent() {
                 )}
               </>
             ) : (
-              <p className="text-sm text-low">
-                {t('settings.relay.enrollmentCode.loginRequired')}
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm text-low">
+                  {t('settings.relay.enrollmentCode.loginRequired')}
+                </p>
+                <PrimaryButton
+                  variant="secondary"
+                  value={t(
+                    'settings.remoteProjects.loginRequired.action',
+                    'Sign in'
+                  )}
+                  onClick={() => void OAuthDialog.show({})}
+                >
+                  <SignInIcon className="size-icon-xs mr-1" weight="bold" />
+                </PrimaryButton>
+              </div>
             )}
           </div>
         )}
