@@ -40,7 +40,7 @@ pub async fn migrate_execution_logs_to_files() -> Result<()> {
     if is_tty {
         let _ = writeln!(
             std::io::stderr(),
-            "Performing one time database migration, may take a few minutes..."
+            "Performing one time database migration to move logs from SQLite to flat file to improve performance, data remains local, may take a few minutes, please don't exit while this process is running..."
         );
     }
 
