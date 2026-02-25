@@ -30,6 +30,7 @@ use services::services::{
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
+use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::sentry as sentry_utils;
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -107,6 +108,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn relay_signing(&self) -> &RelaySigningService;
 
     fn server_info(&self) -> &Arc<ServerInfo>;
+
+    fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)

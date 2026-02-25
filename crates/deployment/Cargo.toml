@@ -13,6 +13,7 @@ async-trait = { workspace = true }
 thiserror = { workspace = true } 
 anyhow = { workspace = true }
 relay-control = { path = "../relay-control" }
+trusted-key-auth = { path = "../trusted-key-auth" }
 server-info = { path = "../server-info" }
 tokio = { workspace = true }
 sqlx = "0.8.6"

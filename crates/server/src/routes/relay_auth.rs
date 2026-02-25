@@ -89,6 +89,7 @@ async fn generate_enrollment_code(
     .await?;
 
     let enrollment_code = deployment
+        .trusted_key_auth()
         .get_or_set_enrollment_code(generate_one_time_code())
         .await;
 
@@ -118,6 +119,7 @@ async fn start_spake2_enrollment_route(
         )?;
 
     if !deployment
+        .trusted_key_auth()
         .consume_enrollment_code(&spake2_start.enrollment_code)
         .await
     {
@@ -126,6 +128,7 @@ async fn start_spake2_enrollment_route(
 
     let enrollment_id = Uuid::new_v4();
     deployment
+        .trusted_key_auth()
         .store_pake_enrollment(enrollment_id, spake2_start.shared_key)
         .await;
 
@@ -140,6 +143,7 @@ async fn finish_spake2_enrollment(
     ExtractJson(payload): ExtractJson<FinishSpake2EnrollmentRequest>,
 ) -> Result<Json<ApiResponse<FinishSpake2EnrollmentResponse>>, ApiError> {
     let Some(shared_key) = deployment
+        .trusted_key_auth()
         .take_pake_enrollment(&payload.enrollment_id)
         .await
     else {
@@ -200,6 +204,7 @@ async fn enforce_rate_limit(
     window: Duration,
 ) -> Result<(), ApiError> {
     if deployment
+        .trusted_key_auth()
         .allow_rate_limited_action(bucket, max_requests, window)
         .await
     {

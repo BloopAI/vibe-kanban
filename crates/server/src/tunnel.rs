@@ -7,7 +7,6 @@ use anyhow::Context as _;
 use deployment::Deployment as _;
 use relay_tunnel::client::{RelayClientConfig, start_relay_client};
 use services::services::remote_client::RemoteClient;
-use trusted_key_auth::spake2::generate_one_time_code;
 
 use crate::DeploymentImpl;
 
@@ -77,14 +76,6 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
     let Some(params) = resolve_relay_params(deployment).await else {
         return;
     };
-
-    let enrollment_code = deployment
-        .get_or_set_enrollment_code(generate_one_time_code())
-        .await;
-    tracing::info!(
-        enrollment_code = %enrollment_code,
-        "Relay PAKE enrollment code ready"
-    );
 
     let cancel_token = deployment.relay_control().reset().await;
 

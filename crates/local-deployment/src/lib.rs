@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
@@ -310,6 +310,10 @@ impl Deployment for LocalDeployment {
         &self.server_info
     }
 
+    fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {
+        &self.trusted_key_auth
+    }
+
     fn shared_api_base(&self) -> Option<String> {
         self.shared_api_base.clone()
     }
@@ -371,41 +375,6 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
-    }
-
-    pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {
-        self.trusted_key_auth
-            .store_pake_enrollment(enrollment_id, shared_key)
-            .await;
-    }
-
-    pub async fn take_pake_enrollment(&self, enrollment_id: &Uuid) -> Option<Vec<u8>> {
-        self.trusted_key_auth
-            .take_pake_enrollment(enrollment_id)
-            .await
-    }
-
-    pub async fn get_or_set_enrollment_code(&self, new_code: String) -> String {
-        self.trusted_key_auth
-            .get_or_set_enrollment_code(new_code)
-            .await
-    }
-
-    pub async fn consume_enrollment_code(&self, enrollment_code: &str) -> bool {
-        self.trusted_key_auth
-            .consume_enrollment_code(enrollment_code)
-            .await
-    }
-
-    pub async fn allow_rate_limited_action(
-        &self,
-        bucket: &str,
-        max_requests: usize,
-        window: Duration,
-    ) -> bool {
-        self.trusted_key_auth
-            .allow_rate_limited_action(bucket, max_requests, window)
-            .await
     }
 
     pub fn pty(&self) -> &PtyService {
