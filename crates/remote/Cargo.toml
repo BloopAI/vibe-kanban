@@ -32,7 +32,7 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 sqlx = { version = "0.8.6", default-features = false, features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "postgres", "uuid", "chrono", "json", "macros", "migrate", "ipnetwork"] }
 ipnetwork = "0.20"
 tokio = { version = "1.0", features = ["full"] }
-tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"] }
+tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request", "compression-gzip", "compression-br"] }
 tracing = "0.1.43"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
 tracing-error = "0.2"
