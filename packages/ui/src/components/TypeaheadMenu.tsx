@@ -1,7 +1,8 @@
 import {
   useRef,
   useEffect,
-  useMemo,
+  useLayoutEffect,
+  useCallback,
   useState,
   type ReactNode,
   type MouseEvent,
@@ -19,12 +20,6 @@ interface TypeaheadPlacement {
   top: number;
 }
 
-const VIEWPORT_PADDING = 16;
-const MENU_SIDE_OFFSET = 8;
-const MAX_MENU_HEIGHT = 360;
-const MAX_MENU_WIDTH = 370;
-const MIN_VISIBLE_MENU_HEIGHT = 96;
-
 function getViewportHeight() {
   return window.visualViewport?.height ?? window.innerHeight;
 }
@@ -33,41 +28,75 @@ function getViewportWidth() {
   return window.visualViewport?.width ?? window.innerWidth;
 }
 
+function parseLength(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function round(value: number): number {
+  return Math.round(value);
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function computePlacement(anchorEl: HTMLElement): TypeaheadPlacement {
+function placementsEqual(a: TypeaheadPlacement, b: TypeaheadPlacement): boolean {
+  return (
+    a.side === b.side &&
+    a.left === b.left &&
+    a.top === b.top &&
+    a.maxHeight === b.maxHeight
+  );
+}
+
+function computePlacement(
+  anchorEl: HTMLElement,
+  menuEl: HTMLElement
+): TypeaheadPlacement {
   const anchorRect = anchorEl.getBoundingClientRect();
+  const menuRect = menuEl.getBoundingClientRect();
+  const menuStyles = window.getComputedStyle(menuEl);
   const viewportWidth = getViewportWidth();
   const viewportHeight = getViewportHeight();
-  const above = anchorRect.top - VIEWPORT_PADDING - MENU_SIDE_OFFSET;
-  const below =
-    viewportHeight - anchorRect.bottom - VIEWPORT_PADDING - MENU_SIDE_OFFSET;
-  const side: VerticalSide =
-    below < MIN_VISIBLE_MENU_HEIGHT && above > below ? 'top' : 'bottom';
-  const availableSpace = side === 'bottom' ? below : above;
-  const measuredHeight = Math.floor(Math.max(availableSpace, 0));
-  const maxHeight = Math.min(
-    MAX_MENU_HEIGHT,
-    Math.max(MIN_VISIBLE_MENU_HEIGHT, measuredHeight)
+  const marginTop = parseLength(menuStyles.marginTop);
+  const marginBottom = parseLength(menuStyles.marginBottom);
+  const marginLeft = parseLength(menuStyles.marginLeft);
+  const marginRight = parseLength(menuStyles.marginRight);
+  const configuredMinHeight = parseLength(menuStyles.minHeight);
+  const configuredMaxHeight = parseLength(menuStyles.maxHeight);
+  const measuredHeight = round(
+    menuRect.height || parseLength(menuStyles.height) || parseLength(menuStyles.minHeight)
   );
 
-  // Horizontal: align to anchor left, but shift left if it would overflow
-  const minLeft = VIEWPORT_PADDING;
-  const maxLeft = Math.max(
-    VIEWPORT_PADDING,
-    viewportWidth - MAX_MENU_WIDTH - VIEWPORT_PADDING
-  );
-  const left = clamp(anchorRect.left, minLeft, maxLeft);
+  const aboveSpace = anchorRect.top - marginBottom;
+  const belowSpace = viewportHeight - anchorRect.bottom - marginTop;
+  const side: VerticalSide =
+    belowSpace >= measuredHeight || belowSpace >= aboveSpace ? 'bottom' : 'top';
+  const availableSpace = Math.max(side === 'bottom' ? belowSpace : aboveSpace, 0);
+
+  let maxHeight = configuredMaxHeight
+    ? Math.min(configuredMaxHeight, availableSpace)
+    : availableSpace;
+  if (configuredMinHeight) {
+    maxHeight = Math.max(maxHeight, Math.min(configuredMinHeight, availableSpace));
+  }
+
+  const measuredWidth =
+    round(menuRect.width) ||
+    round(parseLength(menuStyles.width)) ||
+    round(parseLength(menuStyles.minWidth));
+  const minLeft = marginLeft;
+  const maxLeft = Math.max(minLeft, viewportWidth - measuredWidth - marginRight);
+  const left = clamp(round(anchorRect.left), round(minLeft), round(maxLeft));
   const top =
     side === 'bottom'
-      ? anchorRect.bottom + MENU_SIDE_OFFSET
-      : anchorRect.top - MENU_SIDE_OFFSET;
+      ? round(anchorRect.bottom + marginTop)
+      : round(anchorRect.top - marginBottom);
 
   return {
     side,
-    maxHeight,
+    maxHeight: round(maxHeight),
     left,
     top,
   };
@@ -85,17 +114,31 @@ function TypeaheadMenuRoot({
   children,
 }: TypeaheadMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [viewportTick, setViewportTick] = useState(0);
-  const placement = useMemo(
-    () => computePlacement(anchorEl),
-    [anchorEl, viewportTick]
-  );
+  const [placement, setPlacement] = useState<TypeaheadPlacement | null>(null);
+
+  const syncPlacement = useCallback(() => {
+    const menuEl = menuRef.current;
+    if (!menuEl) return;
+
+    const nextPlacement = computePlacement(anchorEl, menuEl);
+    setPlacement((previous) => {
+      if (previous && placementsEqual(previous, nextPlacement)) {
+        return previous;
+      }
+
+      return nextPlacement;
+    });
+  }, [anchorEl]);
+
+  useLayoutEffect(() => {
+    syncPlacement();
+    const frameId = window.requestAnimationFrame(syncPlacement);
+    return () => window.cancelAnimationFrame(frameId);
+  });
 
   useEffect(() => {
     const updateOnFrame = () => {
-      window.requestAnimationFrame(() => {
-        setViewportTick((tick) => tick + 1);
-      });
+      window.requestAnimationFrame(syncPlacement);
     };
 
     window.addEventListener('resize', updateOnFrame);
@@ -114,7 +157,23 @@ function TypeaheadMenuRoot({
         vv.removeEventListener('scroll', updateOnFrame);
       }
     };
-  }, []);
+  }, [syncPlacement]);
+
+  useEffect(() => {
+    const menuEl = menuRef.current;
+    if (!menuEl) return;
+
+    const observer = new ResizeObserver(() => {
+      syncPlacement();
+    });
+
+    observer.observe(anchorEl);
+    observer.observe(menuEl);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [anchorEl, syncPlacement]);
 
   // Click-outside detection
   useEffect(() => {
@@ -131,8 +190,12 @@ function TypeaheadMenuRoot({
 
   // When side is 'top' the menu grows upward — use bottom-anchored positioning
   // so the menu expands upward from a fixed bottom edge.
-  const style =
-    placement.side === 'bottom'
+  const style: CSSProperties = !placement
+    ? {
+        position: 'fixed',
+        visibility: 'hidden',
+      }
+    : placement.side === 'bottom'
       ? ({
           position: 'fixed',
           left: placement.left,
@@ -149,8 +212,8 @@ function TypeaheadMenuRoot({
   return (
     <div
       ref={menuRef}
-      style={style as CSSProperties}
-      className="z-[10000] w-auto min-w-80 max-w-[370px] p-0 overflow-hidden bg-panel border border-border rounded-sm shadow-md flex flex-col"
+      style={style}
+      className="z-[10000] w-auto min-w-80 max-w-full p-0 overflow-hidden bg-panel border border-border rounded-sm shadow-md flex flex-col"
     >
       {children}
     </div>
@@ -179,7 +242,7 @@ function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
   return (
     <div
       className="py-half overflow-auto flex-1 min-h-0"
-      style={{ maxHeight: 'var(--typeahead-menu-max-height, 360px)' }}
+      style={{ maxHeight: 'var(--typeahead-menu-max-height, 100vh)' }}
     >
       {children}
     </div>
