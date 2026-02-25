@@ -43,10 +43,9 @@ pub async fn require_relay_request_signature(
         return Ok(next.run(request).await);
     }
 
-    let path_and_query = request_path_and_query(&request);
-    if path_and_query.starts_with("/api/relay-auth/") {
+    let Some(path_and_query) = relay_signed_path_and_query(&request)? else {
         return Ok(next.run(request).await);
-    }
+    };
 
     let signing_session_id = required_header(&request, SIGNING_SESSION_HEADER)
         .ok_or(ApiError::Unauthorized)
@@ -128,10 +127,9 @@ pub async fn sign_relay_response(
         return Ok(next.run(request).await);
     }
 
-    let path_and_query = request_path_and_query(&request);
-    if path_and_query.starts_with("/api/relay-auth/") {
+    let Some(path_and_query) = relay_signed_path_and_query(&request)? else {
         return Ok(next.run(request).await);
-    }
+    };
 
     let signing_session_id = required_header(&request, SIGNING_SESSION_HEADER)
         .ok_or(ApiError::Unauthorized)
@@ -211,28 +209,31 @@ fn build_signed_response_message(
     )
 }
 
-fn request_path_and_query(request: &Request) -> String {
-    let raw = if let Some(original_uri) = request.extensions().get::<OriginalUri>() {
-        if let Some(path_and_query) = original_uri.0.path_and_query() {
-            path_and_query.as_str().to_string()
-        } else {
-            original_uri.0.path().to_string()
-        }
-    } else {
-        request
-            .uri()
-            .path_and_query()
-            .map(|value| value.as_str().to_string())
-            .unwrap_or_else(|| request.uri().path().to_string())
+fn relay_signed_path_and_query(request: &Request) -> Result<Option<String>, ApiError> {
+    let Some(original_uri) = request.extensions().get::<OriginalUri>() else {
+        tracing::warn!("rejecting relay request without OriginalUri extension");
+        return Err(ApiError::Unauthorized);
     };
 
-    if raw.starts_with("/api/") {
-        raw
-    } else if raw.starts_with('/') {
-        format!("/api{raw}")
+    let path_and_query = if let Some(path_and_query) = original_uri.0.path_and_query() {
+        path_and_query.as_str().to_string()
     } else {
-        format!("/api/{raw}")
+        original_uri.0.path().to_string()
+    };
+
+    if !(path_and_query == "/api" || path_and_query.starts_with("/api/")) {
+        tracing::warn!(
+            path = %path_and_query,
+            "rejecting relay request outside /api scope"
+        );
+        return Err(ApiError::Unauthorized);
     }
+
+    if path_and_query == "/api/relay-auth" || path_and_query.starts_with("/api/relay-auth/") {
+        return Ok(None);
+    }
+
+    Ok(Some(path_and_query))
 }
 
 fn required_header<'a>(request: &'a Request, name: &'static str) -> Option<&'a str> {
