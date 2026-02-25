@@ -10,27 +10,33 @@ import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import type { IssuePriority } from 'shared/remote-types';
-import { useDebouncedCallback } from '@/hooks/useDebouncedCallback';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
+import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
+import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
+import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
+import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
+import { IssueCommentsSectionContainer } from './IssueCommentsSectionContainer';
+import { IssueSubIssuesSectionContainer } from './IssueSubIssuesSectionContainer';
+import { IssueRelationshipsSectionContainer } from './IssueRelationshipsSectionContainer';
+import { IssueWorkspacesSectionContainer } from './IssueWorkspacesSectionContainer';
 import {
   KanbanIssuePanel,
   type IssueFormData,
-} from '@/components/ui-new/views/KanbanIssuePanel';
-import { useActions } from '@/contexts/ActionsContext';
-import { useUserContext } from '@/contexts/remote/UserContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { CommandBarDialog } from '@/components/ui-new/dialogs/CommandBarDialog';
-import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+} from '@vibe/ui/components/KanbanIssuePanel';
+import { useActions } from '@/shared/hooks/useActions';
+import { useUserContext } from '@/shared/hooks/useUserContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
+import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
   buildWorkspaceCreateInitialState,
   buildWorkspaceCreatePrompt,
-} from '@/lib/workspaceCreateState';
+} from '@/shared/lib/workspaceCreateState';
 import { ScratchType, type DraftIssueData } from 'shared/types';
-import { useScratch } from '@/hooks/useScratch';
+import { useScratch } from '@/shared/hooks/useScratch';
 import {
   createBlankCreateFormData,
   createInitialKanbanIssuePanelFormState,
@@ -38,9 +44,12 @@ import {
   selectDisplayData,
   selectIsCreateDraftDirty,
 } from './kanban-issue-panel-state';
-import { useAzureAttachments } from '@/hooks/useAzureAttachments';
-import { commitIssueAttachments, deleteAttachment } from '@/lib/remoteApi';
-import { extractAttachmentIds } from '@/lib/attachmentUtils';
+import { useAzureAttachments } from '@/shared/hooks/useAzureAttachments';
+import {
+  commitIssueAttachments,
+  deleteAttachment,
+} from '@/shared/lib/remoteApi';
+import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
@@ -608,7 +617,7 @@ export function KanbanIssuePanelContainer({
         // For statusId, open the status selection dialog with callback
         if (field === 'statusId') {
           const { ProjectSelectionDialog } = await import(
-            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+            '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
           );
           const result = await ProjectSelectionDialog.show({
             projectId,
@@ -629,7 +638,7 @@ export function KanbanIssuePanelContainer({
         // For priority, open the priority selection dialog with callback
         if (field === 'priority') {
           const { ProjectSelectionDialog } = await import(
-            '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+            '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
           );
           const result = await ProjectSelectionDialog.show({
             projectId,
@@ -653,7 +662,7 @@ export function KanbanIssuePanelContainer({
         // For assigneeIds, open the assignee selection dialog with callback
         if (field === 'assigneeIds') {
           const { AssigneeSelectionDialog } = await import(
-            '@/components/ui-new/dialogs/AssigneeSelectionDialog'
+            '@/shared/dialogs/kanban/AssigneeSelectionDialog'
           );
           await AssigneeSelectionDialog.show({
             projectId,
@@ -983,8 +992,26 @@ export function KanbanIssuePanelContainer({
       onSubmit={handleSubmit}
       onCmdEnterSubmit={handleCmdEnterSubmit}
       onCreateTag={handleCreateTag}
+      renderAddTagControl={({
+        tags,
+        selectedTagIds,
+        onTagToggle,
+        onCreateTag,
+        disabled,
+        trigger,
+      }) => (
+        <SearchableTagDropdownContainer
+          tags={tags}
+          selectedTagIds={selectedTagIds}
+          onTagToggle={onTagToggle}
+          onCreateTag={onCreateTag}
+          disabled={disabled}
+          contentClassName=""
+          trigger={trigger}
+        />
+      )}
+      renderDescriptionEditor={(props) => <WYSIWYGEditor {...props} />}
       isSubmitting={isSubmitting}
-      isLoading={isLoading}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
       }
@@ -1000,6 +1027,18 @@ export function KanbanIssuePanelContainer({
       isUploading={isUploading}
       attachmentError={uploadError}
       onDismissAttachmentError={clearUploadError}
+      renderWorkspacesSection={(issueId) => (
+        <IssueWorkspacesSectionContainer issueId={issueId} />
+      )}
+      renderRelationshipsSection={(issueId) => (
+        <IssueRelationshipsSectionContainer issueId={issueId} />
+      )}
+      renderSubIssuesSection={(issueId) => (
+        <IssueSubIssuesSectionContainer issueId={issueId} />
+      )}
+      renderCommentsSection={(issueId) => (
+        <IssueCommentsSectionContainer issueId={issueId} />
+      )}
     />
   );
 }

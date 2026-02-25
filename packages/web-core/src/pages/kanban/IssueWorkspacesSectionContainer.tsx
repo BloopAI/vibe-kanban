@@ -2,26 +2,26 @@ import { useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
-import { useProjectContext } from '@/contexts/remote/ProjectContext';
-import { useAuth } from '@/hooks/auth/useAuth';
-import { useOrgContext } from '@/contexts/remote/OrgContext';
-import { useUserContext } from '@/contexts/remote/UserContext';
-import { useWorkspaceContext } from '@/contexts/WorkspaceContext';
-import { useKanbanNavigation } from '@/hooks/useKanbanNavigation';
-import { useProjectWorkspaceCreateDraft } from '@/hooks/useProjectWorkspaceCreateDraft';
-import { attemptsApi } from '@/lib/api';
-import { getWorkspaceDefaults } from '@/lib/workspaceDefaults';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
+import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useOrgContext } from '@/shared/hooks/useOrgContext';
+import { useUserContext } from '@/shared/hooks/useUserContext';
+import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
+import { attemptsApi } from '@/shared/lib/api';
+import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
   buildWorkspaceCreateInitialState,
   buildWorkspaceCreatePrompt,
-} from '@/lib/workspaceCreateState';
-import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
-import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
-import type { WorkspaceWithStats } from '@/components/ui-new/views/IssueWorkspaceCard';
-import { IssueWorkspacesSection } from '@/components/ui-new/views/IssueWorkspacesSection';
-import type { SectionAction } from '@/components/ui-new/primitives/CollapsibleSectionHeader';
+} from '@/shared/lib/workspaceCreateState';
+import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
+import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
+import type { WorkspaceWithStats } from '@vibe/ui/components/IssueWorkspaceCard';
+import { IssueWorkspacesSection } from '@vibe/ui/components/IssueWorkspacesSection';
+import type { SectionAction } from '@vibe/ui/components/CollapsibleSectionHeader';
 
 interface IssueWorkspacesSectionContainerProps {
   issueId: string;
@@ -181,7 +181,7 @@ export function IssueWorkspacesSectionContainer({
     }
 
     const { WorkspaceSelectionDialog } = await import(
-      '@/components/ui-new/dialogs/WorkspaceSelectionDialog'
+      '@/shared/dialogs/command-bar/WorkspaceSelectionDialog'
     );
     await WorkspaceSelectionDialog.show({ projectId, issueId });
   }, [projectId, issueId]);
@@ -240,10 +240,15 @@ export function IssueWorkspacesSectionContainer({
       }
 
       const result = await DeleteWorkspaceDialog.show({
-        workspaceId: localWorkspaceId,
         branchName: localWorkspace.branch,
-        linkedIssueId: issueId,
-        linkedProjectId: projectId,
+        hasOpenPR:
+          workspacesWithStats
+            .find(
+              (workspace) => workspace.localWorkspaceId === localWorkspaceId
+            )
+            ?.prs.some((pr) => pr.status === 'open') ?? false,
+        isLinkedToIssue: true,
+        linkedIssueSimpleId: getIssue(issueId)?.simple_id,
       });
 
       if (result.action !== 'confirmed') {
@@ -269,7 +274,7 @@ export function IssueWorkspacesSectionContainer({
         });
       }
     },
-    [localWorkspacesById, t, issueId, projectId]
+    [localWorkspacesById, workspacesWithStats, t, issueId, getIssue]
   );
 
   // Actions for the section header
