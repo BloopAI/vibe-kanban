@@ -102,56 +102,31 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
     tokio::spawn(async move {
         tracing::info!("Relay auto-reconnect loop started");
 
-        let mut reconnect_delay =
-            std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
-        let max_reconnect_delay = std::time::Duration::from_secs(RELAY_RECONNECT_MAX_DELAY_SECS);
+        let mut delay = std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
+        let max_delay = std::time::Duration::from_secs(RELAY_RECONNECT_MAX_DELAY_SECS);
 
-        loop {
-            if cancel_token.is_cancelled() {
-                break;
-            }
-
-            let run_result = start_relay(
+        while !cancel_token.is_cancelled()
+            && let Err(error) = start_relay(
                 local_port,
                 &relay_base,
                 &remote_client,
                 &host_name,
                 cancel_token.clone(),
             )
-            .await;
-
-            let mut should_backoff = false;
-
-            match run_result {
-                Ok(()) => {
-                    if !cancel_token.is_cancelled() {
-                        tracing::warn!("Relay disconnected; reconnecting");
-                    }
-                    reconnect_delay =
-                        std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
-                }
-                Err(error) => {
-                    if cancel_token.is_cancelled() {
-                        break;
-                    }
-                    tracing::warn!(
-                        ?error,
-                        retry_in_secs = reconnect_delay.as_secs(),
-                        "Relay connection failed; retrying"
-                    );
-                    should_backoff = true;
-                }
-            }
+            .await
+        {
+            tracing::warn!(
+                ?error,
+                retry_in_secs = delay.as_secs(),
+                "Relay connection failed; retrying"
+            );
 
             tokio::select! {
                 _ = cancel_token.cancelled() => break,
-                _ = tokio::time::sleep(reconnect_delay) => {}
+                _ = tokio::time::sleep(delay) => {}
             }
 
-            if should_backoff {
-                reconnect_delay =
-                    std::cmp::min(reconnect_delay.saturating_mul(2), max_reconnect_delay);
-            }
+            delay = std::cmp::min(delay.saturating_mul(2), max_delay);
         }
 
         tracing::info!("Relay reconnect loop exited");
