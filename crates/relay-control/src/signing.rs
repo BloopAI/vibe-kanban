@@ -6,7 +6,7 @@ use std::{
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use tokio::sync::RwLock;
+use tokio::sync::{RwLock, RwLockMappedWriteGuard, RwLockWriteGuard};
 use uuid::Uuid;
 
 struct RelaySigningSession {
@@ -91,8 +91,7 @@ impl RelaySigningService {
         validate_timestamp(timestamp)?;
 
         let signature = parse_signature_b64(signature_b64)?;
-        let mut sessions = self.sessions.write().await;
-        let session = get_valid_session(&mut sessions, signing_session_id)?;
+        let mut session = self.get_valid_session(signing_session_id).await?;
 
         session
             .seen_nonces
@@ -119,8 +118,7 @@ impl RelaySigningService {
         signing_session_id: Uuid,
         message: &[u8],
     ) -> Result<String, RelaySignatureValidationError> {
-        let mut sessions = self.sessions.write().await;
-        let session = get_valid_session(&mut sessions, signing_session_id)?;
+        let mut session = self.get_valid_session(signing_session_id).await?;
         session.last_used_at = Instant::now();
 
         let signature = session.server_signing_key.sign(message);
@@ -134,8 +132,7 @@ impl RelaySigningService {
         signature_b64: &str,
     ) -> Result<(), RelaySignatureValidationError> {
         let signature = parse_signature_b64(signature_b64)?;
-        let mut sessions = self.sessions.write().await;
-        let session = get_valid_session(&mut sessions, signing_session_id)?;
+        let mut session = self.get_valid_session(signing_session_id).await?;
 
         session
             .browser_public_key
@@ -145,20 +142,21 @@ impl RelaySigningService {
         session.last_used_at = Instant::now();
         Ok(())
     }
-}
 
-fn get_valid_session(
-    sessions: &mut HashMap<Uuid, RelaySigningSession>,
-    signing_session_id: Uuid,
-) -> Result<&mut RelaySigningSession, RelaySignatureValidationError> {
-    let now = Instant::now();
-    sessions.retain(|_, session| {
-        now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
-            && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
-    });
-    sessions
-        .get_mut(&signing_session_id)
-        .ok_or(RelaySignatureValidationError::MissingSigningSession)
+    async fn get_valid_session(
+        &self,
+        signing_session_id: Uuid,
+    ) -> Result<RwLockMappedWriteGuard<'_, RelaySigningSession>, RelaySignatureValidationError>
+    {
+        let mut sessions = self.sessions.write().await;
+        let now = Instant::now();
+        sessions.retain(|_, session| {
+            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
+                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
+        });
+        RwLockWriteGuard::try_map(sessions, |sessions| sessions.get_mut(&signing_session_id))
+            .map_err(|_| RelaySignatureValidationError::MissingSigningSession)
+    }
 }
 
 fn validate_timestamp(timestamp: i64) -> Result<(), RelaySignatureValidationError> {
