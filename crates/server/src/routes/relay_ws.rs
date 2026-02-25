@@ -16,8 +16,6 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, middleware::RelayRequestSignatureContext};
 
 const WS_ENVELOPE_VERSION: u8 = 1;
-const WS_CLIENT_TO_SERVER_MAC_PURPOSE: &str = "relay-ws-c2s-v1";
-const WS_SERVER_TO_CLIENT_MAC_PURPOSE: &str = "relay-ws-s2c-v1";
 
 #[derive(Debug, Clone)]
 pub struct RelayWsSigningState {
@@ -39,7 +37,7 @@ struct RelaySignedWsEnvelope {
     seq: u64,
     msg_type: RelayWsMessageType,
     payload_b64: String,
-    mac_b64: String,
+    signature_b64: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -166,7 +164,6 @@ where
                 let envelope = build_signed_envelope(
                     deployment,
                     signing,
-                    RelayWsDirection::ServerToClient,
                     seq,
                     RelayWsMessageType::Text,
                     payload,
@@ -180,7 +177,6 @@ where
                 let envelope = build_signed_envelope(
                     deployment,
                     signing,
-                    RelayWsDirection::ServerToClient,
                     seq,
                     RelayWsMessageType::Binary,
                     payload.to_vec(),
@@ -194,7 +190,6 @@ where
                 let envelope = build_signed_envelope(
                     deployment,
                     signing,
-                    RelayWsDirection::ServerToClient,
                     seq,
                     RelayWsMessageType::Ping,
                     payload.to_vec(),
@@ -208,7 +203,6 @@ where
                 let envelope = build_signed_envelope(
                     deployment,
                     signing,
-                    RelayWsDirection::ServerToClient,
                     seq,
                     RelayWsMessageType::Pong,
                     payload.to_vec(),
@@ -222,7 +216,6 @@ where
                 let envelope = build_signed_envelope(
                     deployment,
                     signing,
-                    RelayWsDirection::ServerToClient,
                     seq,
                     RelayWsMessageType::Close,
                     encode_close_payload(close_frame),
@@ -256,18 +249,9 @@ where
     let decoded = if let Some(signing) = relay_signing.as_mut() {
         match message {
             Message::Text(text) => {
-                decode_signed_envelope(
-                    deployment,
-                    signing,
-                    RelayWsDirection::ClientToServer,
-                    text.as_str().as_bytes(),
-                )
-                .await?
+                decode_signed_envelope(deployment, signing, text.as_str().as_bytes()).await?
             }
-            Message::Binary(data) => {
-                decode_signed_envelope(deployment, signing, RelayWsDirection::ClientToServer, &data)
-                    .await?
-            }
+            Message::Binary(data) => decode_signed_envelope(deployment, signing, &data).await?,
             Message::Ping(payload) => Message::Ping(payload),
             Message::Pong(payload) => Message::Pong(payload),
             Message::Close(close_frame) => Message::Close(close_frame),
@@ -282,27 +266,21 @@ where
 async fn build_signed_envelope(
     deployment: &DeploymentImpl,
     signing: &RelayWsSigningState,
-    direction: RelayWsDirection,
     seq: u64,
     msg_type: RelayWsMessageType,
     payload: Vec<u8>,
 ) -> anyhow::Result<RelaySignedWsEnvelope> {
-    let payload_hash = sha256_base64(&payload);
-    let mac_message = build_ws_mac_message(
+    let sign_message = ws_signing_input(
         signing.signing_session_id,
         &signing.request_nonce,
-        direction,
+        RelayWsDirection::ServerToClient,
         seq,
         msg_type,
-        &payload_hash,
+        &payload,
     );
 
-    let mac_b64 = deployment
-        .relay_transport_mac(
-            signing.signing_session_id,
-            ws_mac_purpose(direction),
-            mac_message.as_bytes(),
-        )
+    let signature_b64 = deployment
+        .sign_relay_message(signing.signing_session_id, sign_message.as_bytes())
         .await
         .map_err(|error| anyhow::anyhow!("failed to sign relay WS frame: {}", error.as_str()))?;
 
@@ -311,14 +289,13 @@ async fn build_signed_envelope(
         seq,
         msg_type,
         payload_b64: BASE64_STANDARD.encode(payload),
-        mac_b64,
+        signature_b64,
     })
 }
 
 async fn decode_signed_envelope(
     deployment: &DeploymentImpl,
     signing: &mut RelayWsSigningState,
-    direction: RelayWsDirection,
     raw_message: &[u8],
 ) -> anyhow::Result<Message> {
     let envelope: RelaySignedWsEnvelope =
@@ -341,25 +318,23 @@ async fn decode_signed_envelope(
         .decode(&envelope.payload_b64)
         .context("invalid relay WS payload")?;
 
-    let payload_hash = sha256_base64(&payload);
-    let mac_message = build_ws_mac_message(
+    let sign_message = ws_signing_input(
         signing.signing_session_id,
         &signing.request_nonce,
-        direction,
+        RelayWsDirection::ClientToServer,
         envelope.seq,
         envelope.msg_type,
-        &payload_hash,
+        &payload,
     );
 
     deployment
-        .verify_relay_transport_mac(
+        .verify_relay_message_no_replay(
             signing.signing_session_id,
-            ws_mac_purpose(direction),
-            mac_message.as_bytes(),
-            &envelope.mac_b64,
+            sign_message.as_bytes(),
+            &envelope.signature_b64,
         )
         .await
-        .map_err(|error| anyhow::anyhow!("invalid relay WS frame MAC: {}", error.as_str()))?;
+        .map_err(|error| anyhow::anyhow!("invalid relay WS frame signature: {}", error.as_str()))?;
 
     signing.inbound_seq = envelope.seq;
 
@@ -378,14 +353,15 @@ async fn decode_signed_envelope(
     }
 }
 
-fn build_ws_mac_message(
+fn ws_signing_input(
     signing_session_id: Uuid,
     request_nonce: &str,
     direction: RelayWsDirection,
     seq: u64,
     msg_type: RelayWsMessageType,
-    payload_hash: &str,
+    payload: &[u8],
 ) -> String {
+    let payload_hash = BASE64_STANDARD.encode(Sha256::digest(payload));
     format!(
         "v1|{signing_session_id}|{request_nonce}|{}|{seq}|{msg_type}|{payload_hash}",
         ws_direction_name(direction),
@@ -398,18 +374,6 @@ fn ws_direction_name(direction: RelayWsDirection) -> &'static str {
         RelayWsDirection::ClientToServer => "c2s",
         RelayWsDirection::ServerToClient => "s2c",
     }
-}
-
-fn ws_mac_purpose(direction: RelayWsDirection) -> &'static str {
-    match direction {
-        RelayWsDirection::ClientToServer => WS_CLIENT_TO_SERVER_MAC_PURPOSE,
-        RelayWsDirection::ServerToClient => WS_SERVER_TO_CLIENT_MAC_PURPOSE,
-    }
-}
-
-fn sha256_base64(data: &[u8]) -> String {
-    let digest = Sha256::digest(data);
-    BASE64_STANDARD.encode(digest)
 }
 
 fn encode_close_payload(close_frame: Option<CloseFrame>) -> Vec<u8> {

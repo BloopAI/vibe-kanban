@@ -7,13 +7,12 @@ use axum::{
     routing::post,
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
+use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
     TrustedKeyAuthError,
-    spake2::{
-        build_server_proof_base64, generate_one_time_code, start_spake2_enrollment,
-        verify_client_proof,
-    },
+    key_confirmation::{build_server_proof, verify_client_proof},
+    spake2::{generate_one_time_code, start_spake2_enrollment},
     trusted_keys::parse_public_key_base64,
 };
 use utils::response::ApiResponse;
@@ -53,6 +52,7 @@ struct FinishSpake2EnrollmentRequest {
 #[derive(Debug, Serialize)]
 struct FinishSpake2EnrollmentResponse {
     signing_session_id: Uuid,
+    server_public_key_b64: String,
     server_proof_b64: String,
 }
 
@@ -145,32 +145,43 @@ async fn finish_spake2_enrollment(
         return Err(ApiError::Unauthorized);
     };
 
-    let public_key = parse_public_key_base64(&payload.public_key_b64)
+    let browser_public_key = parse_public_key_base64(&payload.public_key_b64)
         .map_err(|_| ApiError::BadRequest("Invalid public_key_b64".to_string()))?;
+
+    let server_signing_key = SigningKey::generate(&mut rand::thread_rng());
+    let server_public_key = server_signing_key.verifying_key();
+    let server_public_key_b64 = BASE64_STANDARD.encode(server_public_key.as_bytes());
+
     verify_client_proof(
         &shared_key,
         &payload.enrollment_id,
-        &public_key,
+        browser_public_key.as_bytes(),
         &payload.client_proof_b64,
     )
     .map_err(|_| ApiError::Unauthorized)?;
 
     let signing_session_id = deployment
-        .create_relay_signing_session(shared_key.clone())
+        .create_relay_signing_session(browser_public_key, server_signing_key)
         .await;
-    let server_proof_b64 =
-        build_server_proof_base64(&shared_key, &payload.enrollment_id, &public_key)
-            .map_err(|_| ApiError::Unauthorized)?;
+
+    let server_proof_b64 = build_server_proof(
+        &shared_key,
+        &payload.enrollment_id,
+        browser_public_key.as_bytes(),
+        server_public_key.as_bytes(),
+    )
+    .map_err(|_| ApiError::Unauthorized)?;
 
     tracing::info!(
         enrollment_id = %payload.enrollment_id,
         signing_session_id = %signing_session_id,
-        public_key_b64 = %BASE64_STANDARD.encode(public_key.as_bytes()),
+        public_key_b64 = %BASE64_STANDARD.encode(browser_public_key.as_bytes()),
         "completed relay PAKE enrollment"
     );
 
     Ok(Json(ApiResponse::success(FinishSpake2EnrollmentResponse {
         signing_session_id,
+        server_public_key_b64,
         server_proof_b64,
     })))
 }

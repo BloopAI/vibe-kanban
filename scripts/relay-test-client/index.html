@@ -223,8 +223,9 @@
       const ED25519_ORDER = ed25519.CURVE.n;
       const CLIENT_ID = encoder.encode("vibe-kanban-browser");
       const SERVER_ID = encoder.encode("vibe-kanban-server");
-      const CLIENT_PROOF_CONTEXT = encoder.encode("vk-spake2-client-proof-v1");
-      const SERVER_PROOF_CONTEXT = encoder.encode("vk-spake2-server-proof-v1");
+      const CLIENT_PROOF_CONTEXT = encoder.encode("vk-spake2-client-proof-v2");
+      const SERVER_PROOF_CONTEXT = encoder.encode("vk-spake2-server-proof-v2");
+      const KEY_CONFIRMATION_INFO = encoder.encode("key-confirmation");
       const SPAKE2_M = ed25519.ExtendedPoint.fromHex(
         "15cfd18e385952982b6a8f8c7854963b58e34388c8e6dae891db756481a02312",
       );
@@ -446,19 +447,38 @@
         return sha256Bytes(transcript);
       }
 
-      async function buildProof(sharedKey, context, enrollmentId, publicKeyBytes) {
-        const proofInput = concatBytes(
-          context,
-          parseUuidBytes(enrollmentId),
-          publicKeyBytes,
-        );
-        return hmacSha256(sharedKey, proofInput);
+      async function deriveConfirmationKey(sharedKey) {
+        return hkdfSha256(sharedKey, KEY_CONFIRMATION_INFO, 32);
       }
 
-      async function relayTransportMacBase64(sharedKey, purpose, message) {
-        const derivedKey = await hmacSha256(sharedKey, encoder.encode(purpose));
-        const mac = await hmacSha256(derivedKey, encoder.encode(message));
-        return bytesToBase64(mac);
+      async function buildClientProof(sharedKey, enrollmentId, browserPkBytes) {
+        const confirmationKey = await deriveConfirmationKey(sharedKey);
+        const proofInput = concatBytes(
+          CLIENT_PROOF_CONTEXT,
+          parseUuidBytes(enrollmentId),
+          browserPkBytes,
+        );
+        return hmacSha256(confirmationKey, proofInput);
+      }
+
+      async function buildExpectedServerProof(sharedKey, enrollmentId, browserPkBytes, serverPkBytes) {
+        const confirmationKey = await deriveConfirmationKey(sharedKey);
+        const proofInput = concatBytes(
+          SERVER_PROOF_CONTEXT,
+          parseUuidBytes(enrollmentId),
+          browserPkBytes,
+          serverPkBytes,
+        );
+        return hmacSha256(confirmationKey, proofInput);
+      }
+
+      async function ed25519Sign(privateKey, message) {
+        const signature = await crypto.subtle.sign("Ed25519", privateKey, message);
+        return new Uint8Array(signature);
+      }
+
+      async function ed25519Verify(publicKey, signature, message) {
+        return crypto.subtle.verify("Ed25519", publicKey, signature, message);
       }
 
       function randomNonce() {
@@ -477,6 +497,9 @@
           await crypto.subtle.exportKey("raw", generated.publicKey),
         );
         return {
+          privateKey: generated.privateKey,
+          publicKey: generated.publicKey,
+          publicKeyBytes: publicRaw,
           publicKeyB64: bytesToBase64(publicRaw),
         };
       }
@@ -700,7 +723,6 @@
         }
 
         const signingKey = await createSigningKey();
-        const publicKeyBytes = base64ToBytes(signingKey.publicKeyB64);
 
         const x = randomScalar();
         const passwordBytes = encoder.encode(normalizedCode);
@@ -733,11 +755,10 @@
           keyPoint.toRawBytes(),
         );
 
-        const clientProof = await buildProof(
+        const clientProof = await buildClientProof(
           sharedKey,
-          CLIENT_PROOF_CONTEXT,
           enrollmentId,
-          publicKeyBytes,
+          signingKey.publicKeyBytes,
         );
         const finishResult = await postJson(`${sessionPrefix}/api/relay-auth/spake2/finish`, {
           enrollment_id: enrollmentId,
@@ -746,11 +767,20 @@
         });
         const finishData = unwrapApiData(finishResult, "SPAKE2 finish");
 
-        const expectedServerProof = await buildProof(
+        const serverPublicKeyBytes = base64ToBytes(finishData.server_public_key_b64);
+        const serverPublicKey = await crypto.subtle.importKey(
+          "raw",
+          serverPublicKeyBytes,
+          { name: "Ed25519" },
+          true,
+          ["verify"],
+        );
+
+        const expectedServerProof = await buildExpectedServerProof(
           sharedKey,
-          SERVER_PROOF_CONTEXT,
           enrollmentId,
-          publicKeyBytes,
+          signingKey.publicKeyBytes,
+          serverPublicKeyBytes,
         );
         const providedServerProof = base64ToBytes(finishData.server_proof_b64);
         if (!equalBytes(expectedServerProof, providedServerProof)) {
@@ -759,7 +789,8 @@
 
         return {
           signingSessionId: finishData.signing_session_id,
-          sharedKey,
+          browserPrivateKey: signingKey.privateKey,
+          serverPublicKey,
         };
       }
 
@@ -767,18 +798,16 @@
         sessionPrefix,
         path,
         signingSessionId,
-        sharedKey,
+        browserPrivateKey,
+        serverPublicKey,
       ) {
         const timestamp = Math.floor(Date.now() / 1000);
         const nonce = randomNonce();
-        const requestBodyHash = await sha256Base64(new Uint8Array(0));
+        const bodyHash = await sha256Base64(new Uint8Array(0));
         const message =
-          `v1|${timestamp}|GET|${path}|${signingSessionId}|${nonce}|${requestBodyHash}`;
-        const requestMacB64 = await relayTransportMacBase64(
-          sharedKey,
-          "relay-http-request-v1",
-          message,
-        );
+          `v1|${timestamp}|GET|${path}|${signingSessionId}|${nonce}|${bodyHash}`;
+        const signatureBytes = await ed25519Sign(browserPrivateKey, encoder.encode(message));
+        const requestSignatureB64 = bytesToBase64(signatureBytes);
 
         const response = await fetch(`${sessionPrefix}${path}`, {
           method: "GET",
@@ -786,8 +815,7 @@
             "x-vk-sig-session": signingSessionId,
             "x-vk-sig-ts": String(timestamp),
             "x-vk-sig-nonce": nonce,
-            "x-vk-sig-body-sha256": requestBodyHash,
-            "x-vk-sig-mac": requestMacB64,
+            "x-vk-sig-signature": requestSignatureB64,
           },
         });
         const responseBytes = new Uint8Array(await response.arrayBuffer());
@@ -798,7 +826,7 @@
           path,
           signingSessionId,
           nonce,
-          sharedKey,
+          serverPublicKey,
         );
         let json = null;
         if (text) {
@@ -817,32 +845,28 @@
         path,
         signingSessionId,
         requestNonce,
-        sharedKey,
+        serverPublicKey,
       ) {
         const responseTs = response.headers.get("x-vk-resp-ts");
         const responseNonce = response.headers.get("x-vk-resp-nonce");
-        const responseBodyHash = response.headers.get("x-vk-resp-body-sha256");
-        const responseMac = response.headers.get("x-vk-resp-mac");
+        const responseSignature = response.headers.get("x-vk-resp-signature");
 
-        if (!responseTs || !responseNonce || !responseBodyHash || !responseMac) {
+        if (!responseTs || !responseNonce || !responseSignature) {
           throw new Error("Missing signed relay response headers.");
         }
 
-        const computedBodyHash = await sha256Base64(responseBytes);
-        if (computedBodyHash !== responseBodyHash) {
-          throw new Error("Relay response body hash mismatch.");
-        }
-
+        const bodyHash = await sha256Base64(responseBytes);
         const message =
           `v1|${responseTs}|${response.status}|${path}|${signingSessionId}|` +
-          `${requestNonce}|${responseNonce}|${responseBodyHash}`;
-        const expectedMac = await relayTransportMacBase64(
-          sharedKey,
-          "relay-http-response-v1",
-          message,
+          `${requestNonce}|${responseNonce}|${bodyHash}`;
+        const signatureBytes = base64ToBytes(responseSignature);
+        const valid = await ed25519Verify(
+          serverPublicKey,
+          signatureBytes,
+          encoder.encode(message),
         );
-        if (expectedMac !== responseMac) {
-          throw new Error("Relay response MAC mismatch.");
+        if (!valid) {
+          throw new Error("Relay response signature mismatch.");
         }
       }
 
@@ -927,7 +951,8 @@
             sessionPrefix,
             "/api/task-attempts",
             signing.signingSessionId,
-            signing.sharedKey,
+            signing.browserPrivateKey,
+            signing.serverPublicKey,
           );
           if (!workspacesResult.response.ok) {
             throw new Error(

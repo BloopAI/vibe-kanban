@@ -21,8 +21,7 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
 base64 = "0.22"
-hmac = "0.12"
-sha2 = "0.10"
+ed25519-dalek = "2.2.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 futures = "0.3"
 tokio = { workspace = true }
