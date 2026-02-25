@@ -37,9 +37,25 @@ enum RelayWsDirection {
 struct RelaySignedWsEnvelope {
     version: u8,
     seq: u64,
-    msg_type: String,
+    msg_type: RelayWsMessageType,
     payload_b64: String,
     mac_b64: String,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum RelayWsMessageType {
+    Text,
+    Binary,
+}
+
+impl RelayWsMessageType {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Text => "text",
+            Self::Binary => "binary",
+        }
+    }
 }
 
 pub fn relay_ws_signing_state(
@@ -146,7 +162,7 @@ where
                     signing,
                     RelayWsDirection::ServerToClient,
                     seq,
-                    "text",
+                    RelayWsMessageType::Text,
                     payload,
                 )
                 .await?;
@@ -160,7 +176,7 @@ where
                     signing,
                     RelayWsDirection::ServerToClient,
                     seq,
-                    "binary",
+                    RelayWsMessageType::Binary,
                     payload.to_vec(),
                 )
                 .await?;
@@ -219,7 +235,7 @@ async fn build_signed_envelope(
     signing: &RelayWsSigningState,
     direction: RelayWsDirection,
     seq: u64,
-    msg_type: &'static str,
+    msg_type: RelayWsMessageType,
     payload: Vec<u8>,
 ) -> anyhow::Result<RelaySignedWsEnvelope> {
     let payload_hash = sha256_base64(&payload);
@@ -244,7 +260,7 @@ async fn build_signed_envelope(
     Ok(RelaySignedWsEnvelope {
         version: WS_ENVELOPE_VERSION,
         seq,
-        msg_type: msg_type.to_string(),
+        msg_type,
         payload_b64: BASE64_STANDARD.encode(payload),
         mac_b64,
     })
@@ -282,7 +298,7 @@ async fn decode_signed_envelope(
         &signing.request_nonce,
         direction,
         envelope.seq,
-        &envelope.msg_type,
+        envelope.msg_type,
         &payload_hash,
     );
 
@@ -298,13 +314,12 @@ async fn decode_signed_envelope(
 
     signing.inbound_seq = envelope.seq;
 
-    match envelope.msg_type.as_str() {
-        "text" => {
+    match envelope.msg_type {
+        RelayWsMessageType::Text => {
             let text = String::from_utf8(payload).context("invalid UTF-8 text frame")?;
             Ok(Message::Text(text.into()))
         }
-        "binary" => Ok(Message::Binary(payload.into())),
-        other => Err(anyhow::anyhow!("unsupported relay WS msg_type: {}", other)),
+        RelayWsMessageType::Binary => Ok(Message::Binary(payload.into())),
     }
 }
 
@@ -313,12 +328,13 @@ fn build_ws_mac_message(
     request_nonce: &str,
     direction: RelayWsDirection,
     seq: u64,
-    msg_type: &str,
+    msg_type: RelayWsMessageType,
     payload_hash: &str,
 ) -> String {
     format!(
         "v1|{signing_session_id}|{request_nonce}|{}|{seq}|{msg_type}|{payload_hash}",
-        ws_direction_name(direction)
+        ws_direction_name(direction),
+        msg_type = msg_type.as_str()
     )
 }
 
