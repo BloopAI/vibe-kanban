@@ -33,6 +33,16 @@ function parseLength(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function resolveLineHeight(style: CSSStyleDeclaration, fallbackHeight: number): number {
+  const explicit = parseLength(style.lineHeight);
+  if (explicit > 0) return explicit;
+
+  const fontSize = parseLength(style.fontSize);
+  if (fontSize > 0) return fontSize;
+
+  return Math.max(fallbackHeight, 0);
+}
+
 function round(value: number): number {
   return Math.round(value);
 }
@@ -58,6 +68,7 @@ function computePlacement(
   const anchorRect = anchorEl.getBoundingClientRect();
   const menuRect = menuEl.getBoundingClientRect();
   const editorRect = editorEl?.getBoundingClientRect();
+  const anchorStyles = window.getComputedStyle(anchorEl);
   const menuStyles = window.getComputedStyle(menuEl);
   const viewportWidth = getViewportWidth();
   const viewportHeight = getViewportHeight();
@@ -71,7 +82,11 @@ function computePlacement(
     menuRect.height || parseLength(menuStyles.height) || parseLength(menuStyles.minHeight)
   );
 
-  const topBoundary = editorRect ? editorRect.top : anchorRect.top;
+  const lineHeight = resolveLineHeight(anchorStyles, anchorRect.height);
+  const cursorTopBoundary = anchorRect.top - lineHeight;
+  const topBoundary = editorRect
+    ? Math.max(editorRect.top, cursorTopBoundary)
+    : cursorTopBoundary;
   const aboveSpace = topBoundary - marginBottom;
   const belowSpace = viewportHeight - anchorRect.bottom - marginTop;
   const side: VerticalSide =
