@@ -1,6 +1,7 @@
 import {
   useRef,
   useEffect,
+  useLayoutEffect,
   useCallback,
   useState,
   type ReactNode,
@@ -88,8 +89,9 @@ function getPlacement(
   const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
   const rightOverflow =
     anchorRect.left + MAX_MENU_WIDTH - viewportWidth + VIEWPORT_PADDING;
-  const left =
+  const rawLeft =
     rightOverflow > 0 ? anchorRect.left - rightOverflow : anchorRect.left;
+  const left = Math.max(VIEWPORT_PADDING, rawLeft);
 
   // Vertical: below the anchor or above the editor (if available)
   let top: number;
@@ -149,6 +151,10 @@ function TypeaheadMenuRoot({
     });
   }, [anchorEl, editorEl]);
 
+  useLayoutEffect(() => {
+    syncPlacement();
+  });
+
   useEffect(() => {
     syncPlacement();
 
@@ -171,6 +177,22 @@ function TypeaheadMenuRoot({
         vv.removeEventListener('resize', updateOnFrame);
         vv.removeEventListener('scroll', updateOnFrame);
       }
+    };
+  }, [anchorEl, syncPlacement]);
+
+  useEffect(() => {
+    const updateOnFrame = () => {
+      window.requestAnimationFrame(syncPlacement);
+    };
+
+    const observer = new MutationObserver(updateOnFrame);
+    observer.observe(anchorEl, {
+      attributes: true,
+      attributeFilter: ['style', 'class'],
+    });
+
+    return () => {
+      observer.disconnect();
     };
   }, [anchorEl, syncPlacement]);
 
