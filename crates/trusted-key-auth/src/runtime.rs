@@ -8,7 +8,7 @@ use std::{
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::{TrustedKeyAuthError, trusted_keys::add_trusted_public_key};
+use crate::{error::TrustedKeyAuthError, trusted_keys::add_trusted_public_key};
 
 #[derive(Clone)]
 pub struct TrustedKeyAuthRuntime {

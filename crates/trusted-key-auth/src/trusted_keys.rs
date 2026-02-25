@@ -5,7 +5,7 @@ use ed25519_dalek::VerifyingKey;
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
-use crate::TrustedKeyAuthError;
+use crate::error::TrustedKeyAuthError;
 
 pub const TRUSTED_KEYS_FILE_NAME: &str = "trusted_ed25519_public_keys.json";
 

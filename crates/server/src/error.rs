@@ -24,7 +24,7 @@ use services::services::{
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
-use trusted_key_auth::TrustedKeyAuthError;
+use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
 
 #[derive(Debug, Error, ts_rs::TS)]
