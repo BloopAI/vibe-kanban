@@ -1,0 +1,16 @@
+{
+  "name": "signed-request-curl",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Generate signed curl commands for the Ed25519 test endpoint",
+  "bin": {
+    "signed-request-curl": "./generate-signed-curl.js"
+  },
+  "scripts": {
+    "start": "node ./generate-signed-curl.js",
+    "test:smoke": "node ./generate-signed-curl.js --help"
+  },
+  "dependencies": {
+    "tweetnacl": "^1.0.3"
+  }
+}

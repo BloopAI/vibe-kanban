@@ -1,12 +1,11 @@
-use axum::{
-    Router,
-    routing::{IntoMakeService, get},
-};
+use axum::{Router, routing::get};
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 
 use crate::{DeploymentImpl, middleware};
 
 pub mod approvals;
+pub mod auth_spake2;
+pub mod auth_test;
 pub mod config;
 pub mod containers;
 pub mod filesystem;
@@ -28,11 +27,13 @@ pub mod tags;
 pub mod task_attempts;
 pub mod terminal;
 
-pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+pub fn router(deployment: DeploymentImpl) -> Router {
     // Create routers with different middleware layers
     let base_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
+        .merge(auth_test::router())
+        .merge(auth_spake2::router())
         .merge(containers::router(&deployment))
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
@@ -59,5 +60,4 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", base_routes)
-        .into_make_service()
 }

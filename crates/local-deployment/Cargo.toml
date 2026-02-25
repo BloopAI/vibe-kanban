@@ -11,6 +11,7 @@ deployment = { path = "../deployment" }
 services = { path = "../services" }
 utils = { path = "../utils" }
 git = { path = "../git" }
+trusted-key-auth = { path = "../trusted-key-auth" }
 tokio-util = { version = "0.7", features = ["io"] }
 serde_json = { workspace = true }
 anyhow = { workspace = true }

@@ -24,6 +24,7 @@ use services::services::{
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
+use trusted_key_auth::TrustedKeyAuthError;
 use utils::response::ApiResponse;
 
 #[derive(Debug, Error, ts_rs::TS)]
@@ -73,6 +74,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -96,6 +99,18 @@ impl From<Git2Error> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<TrustedKeyAuthError> for ApiError {
+    fn from(error: TrustedKeyAuthError) -> Self {
+        match error {
+            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
+            TrustedKeyAuthError::BadRequest(message) => ApiError::BadRequest(message),
+            TrustedKeyAuthError::Forbidden(message) => ApiError::Forbidden(message),
+            TrustedKeyAuthError::TooManyRequests(message) => ApiError::TooManyRequests(message),
+            TrustedKeyAuthError::Io(error) => ApiError::Io(error),
+        }
     }
 }
 
@@ -400,6 +415,9 @@ impl IntoResponse for ApiError {
             ApiError::Conflict(msg) => ErrorInfo::conflict("ConflictError", msg.clone()),
             ApiError::Forbidden(msg) => {
                 ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
+            }
+            ApiError::TooManyRequests(msg) => {
+                ErrorInfo::with_status(StatusCode::TOO_MANY_REQUESTS, "RateLimitError", msg.clone())
             }
             ApiError::Multipart(_) => ErrorInfo::bad_request(
                 "MultipartError",

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
@@ -24,6 +24,7 @@ use services::services::{
     worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
+use trusted_key_auth::TrustedKeyAuthRuntime;
 use utils::{
     assets::{config_path, credentials_path},
     msg_store::MsgStore,
@@ -55,6 +56,7 @@ pub struct LocalDeployment {
     shared_api_base: Option<String>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    trusted_key_auth: TrustedKeyAuthRuntime,
     pty: PtyService,
 }
 
@@ -167,6 +169,7 @@ impl Deployment for LocalDeployment {
         };
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+        let trusted_key_auth = TrustedKeyAuthRuntime::new();
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -221,6 +224,7 @@ impl Deployment for LocalDeployment {
             shared_api_base: api_base,
             auth_context,
             oauth_handoffs,
+            trusted_key_auth,
             pty,
         };
 
@@ -344,6 +348,41 @@ impl LocalDeployment {
             .await
             .remove(handoff_id)
             .map(|state| (state.provider, state.app_verifier))
+    }
+
+    pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {
+        self.trusted_key_auth
+            .store_pake_enrollment(enrollment_id, shared_key)
+            .await;
+    }
+
+    pub async fn take_pake_enrollment(&self, enrollment_id: &Uuid) -> Option<Vec<u8>> {
+        self.trusted_key_auth
+            .take_pake_enrollment(enrollment_id)
+            .await
+    }
+
+    pub async fn get_or_set_enrollment_code(&self, new_code: String) -> String {
+        self.trusted_key_auth
+            .get_or_set_enrollment_code(new_code)
+            .await
+    }
+
+    pub async fn consume_enrollment_code(&self, enrollment_code: &str) -> bool {
+        self.trusted_key_auth
+            .consume_enrollment_code(enrollment_code)
+            .await
+    }
+
+    pub async fn allow_rate_limited_action(
+        &self,
+        bucket: &str,
+        max_requests: usize,
+        window: Duration,
+    ) -> bool {
+        self.trusted_key_auth
+            .allow_rate_limited_action(bucket, max_requests, window)
+            .await
     }
 
     pub fn pty(&self) -> &PtyService {

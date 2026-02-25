@@ -89,7 +89,8 @@ async fn main() -> Result<(), VibeKanbanError> {
     tokio::spawn(async move {
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
-    let app_router = routes::router(deployment.clone());
+    let app_router = routes::router(deployment.clone())
+        .into_make_service_with_connect_info::<std::net::SocketAddr>();
 
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
