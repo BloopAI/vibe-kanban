@@ -220,7 +220,10 @@ export function OrganizationsSettingsSection() {
           );
           return portalUrl;
         } catch (err) {
-          if (err instanceof ApiError && err.statusCode === 402) {
+          if (
+            err instanceof ApiError &&
+            (err.statusCode === 402 || err.statusCode === 503)
+          ) {
             const { url: checkoutUrl } =
               await organizationsApi.createCheckoutSession(
                 selectedOrgId,
