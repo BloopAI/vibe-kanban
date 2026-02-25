@@ -1,31 +1,42 @@
-import type { ReactNode } from 'react';
+import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import type { Icon } from '@phosphor-icons/react';
-import { cn } from '@/lib/utils';
-import { Tooltip } from '../primitives/Tooltip';
-import { SyncErrorIndicator } from '../primitives/SyncErrorIndicator';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
 import {
-  type ActionDefinition,
-  type ActionVisibilityContext,
-  type NavbarItem,
-  isSpecialIcon,
-} from '../actions';
-import {
-  isActionActive,
-  isActionEnabled,
-  getActionIcon,
-  getActionTooltip,
-} from '../actions/useActionVisibility';
+  SyncErrorIndicator,
+  type SyncErrorIndicatorError,
+} from './SyncErrorIndicator';
 
 /**
- * Check if a NavbarItem is a divider
+ * Action item rendered in the navbar.
  */
-function isDivider(item: NavbarItem): item is { readonly type: 'divider' } {
-  return 'type' in item && item.type === 'divider';
+export interface NavbarActionItem {
+  type?: 'action';
+  id: string;
+  icon: Icon;
+  isActive?: boolean;
+  tooltip?: string;
+  shortcut?: string;
+  disabled?: boolean;
+  onClick?: () => void;
+}
+
+/**
+ * Divider item rendered in the navbar.
+ */
+export interface NavbarDividerItem {
+  type: 'divider';
+}
+
+export type NavbarSectionItem = NavbarActionItem | NavbarDividerItem;
+
+function isDivider(item: NavbarSectionItem): item is NavbarDividerItem {
+  return item.type === 'divider';
 }
 
 // NavbarIconButton - inlined from primitives
 interface NavbarIconButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon: Icon;
   isActive?: boolean;
   tooltip?: string;
@@ -70,15 +81,13 @@ function NavbarIconButton({
 export interface NavbarProps {
   workspaceTitle?: string;
   // Items for left side of navbar
-  leftItems?: NavbarItem[];
+  leftItems?: NavbarSectionItem[];
   // Items for right side of navbar (with dividers inline)
-  rightItems?: NavbarItem[];
+  rightItems?: NavbarSectionItem[];
   // Optional additional content for left side (after leftItems)
   leftSlot?: ReactNode;
-  // Context for deriving action state
-  actionContext: ActionVisibilityContext;
-  // Handler to execute an action
-  onExecuteAction: (action: ActionDefinition) => void;
+  // Sync errors shown in the right section
+  syncErrors?: readonly SyncErrorIndicatorError[] | null;
   className?: string;
 }
 
@@ -87,38 +96,26 @@ export function Navbar({
   leftItems = [],
   rightItems = [],
   leftSlot,
-  actionContext,
-  onExecuteAction,
+  syncErrors,
   className,
 }: NavbarProps) {
-  const renderItem = (item: NavbarItem, key: string) => {
+  const renderItem = (item: NavbarSectionItem, key: string) => {
     // Render divider
     if (isDivider(item)) {
       return <div key={key} className="h-4 w-px bg-border" />;
     }
 
-    // Render action - derive state from action callbacks
-    const action = item;
-    const active = isActionActive(action, actionContext);
-    const enabled = isActionEnabled(action, actionContext);
-    const iconOrSpecial = getActionIcon(action, actionContext);
-    const tooltip = getActionTooltip(action, actionContext);
-    const isDisabled = !enabled;
-
-    // Skip special icons in navbar (navbar only uses standard phosphor icons)
-    if (isSpecialIcon(iconOrSpecial)) {
-      return null;
-    }
+    const isDisabled = !!item.disabled;
 
     return (
       <NavbarIconButton
         key={key}
-        icon={iconOrSpecial}
-        isActive={active}
-        onClick={() => onExecuteAction(action)}
-        aria-label={tooltip}
-        tooltip={tooltip}
-        shortcut={action.shortcut}
+        icon={item.icon}
+        isActive={item.isActive}
+        onClick={item.onClick}
+        aria-label={item.tooltip}
+        tooltip={item.tooltip}
+        shortcut={item.shortcut}
         disabled={isDisabled}
         className={isDisabled ? 'opacity-40 cursor-not-allowed' : ''}
       />
@@ -150,7 +147,7 @@ export function Navbar({
 
       {/* Right - Sync Error Indicator + Diff Controls + Panel Toggles (dividers inline) */}
       <div className="flex-1 flex items-center justify-end gap-base">
-        <SyncErrorIndicator />
+        <SyncErrorIndicator errors={syncErrors} />
         {rightItems.map((item, index) =>
           renderItem(
             item,

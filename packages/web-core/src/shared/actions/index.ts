@@ -1,19 +1,7 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { NavigateFn } from '@tanstack/react-router';
+import type { Merge, Workspace } from 'shared/types';
 import type { QueryClient } from '@tanstack/react-query';
-import type {
-  EditorType,
-  ExecutionProcess,
-  Merge,
-  Workspace,
-} from 'shared/types';
-import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
-import type { DiffViewMode } from '@/stores/useDiffViewStore';
-import type { LogsPanelContent } from '../containers/LogsContentContainer';
-import type { LogEntry } from '../containers/VirtualizedProcessLogs';
-import type { LayoutMode } from '@/stores/useUiPreferencesStore';
-import type { IssueCreateRouteOptions } from '@/lib/routes/projectSidebarRoutes';
 import {
   CopyIcon,
   XIcon,
@@ -57,31 +45,32 @@ import {
   ArrowBendUpRightIcon,
   ProhibitIcon,
 } from '@phosphor-icons/react';
-import { useDiffViewStore } from '@/stores/useDiffViewStore';
+import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
-} from '@/stores/useUiPreferencesStore';
+} from '@/shared/stores/useUiPreferencesStore';
 
-import { attemptsApi, repoApi } from '@/lib/api';
-import { bulkUpdateIssues } from '@/lib/remoteApi';
-import { attemptKeys } from '@/hooks/useAttempt';
-import { workspaceSummaryKeys } from '@/components/ui-new/hooks/useWorkspaces';
-import { ConfirmDialog } from '@/components/ui-new/dialogs/ConfirmDialog';
-import { ChangeTargetDialog } from '@/components/ui-new/dialogs/ChangeTargetDialog';
-import { DeleteWorkspaceDialog } from '@/components/ui-new/dialogs/DeleteWorkspaceDialog';
-import { RebaseDialog } from '@/components/ui-new/dialogs/RebaseDialog';
-import { ResolveConflictsDialog } from '@/components/ui-new/dialogs/ResolveConflictsDialog';
-import { RenameWorkspaceDialog } from '@/components/ui-new/dialogs/RenameWorkspaceDialog';
-import { CreatePRDialog } from '@/components/dialogs/tasks/CreatePRDialog';
-import { getIdeName } from '@/components/ide/IdeIcon';
-import { EditorSelectionDialog } from '@/components/dialogs/tasks/EditorSelectionDialog';
-import { StartReviewDialog } from '@/components/dialogs/tasks/StartReviewDialog';
+import { attemptsApi, repoApi } from '@/shared/lib/api';
+import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
+import { attemptKeys } from '@/shared/hooks/useAttempt';
+import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
+import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
+import { ChangeTargetDialog } from '@vibe/ui/components/ChangeTargetDialog';
+import { DeleteWorkspaceDialog } from '@vibe/ui/components/DeleteWorkspaceDialog';
+import { RebaseDialog } from '@/shared/dialogs/command-bar/RebaseDialog';
+import { ResolveConflictsDialog } from '@/shared/dialogs/tasks/ResolveConflictsDialog';
+import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog';
+import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
+import { CreatePRDialog } from '@/shared/dialogs/command-bar/CreatePRDialog';
+import { getIdeName } from '@/shared/lib/ideName';
+import { EditorSelectionDialog } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
+import { StartReviewDialog } from '@/shared/dialogs/command-bar/StartReviewDialog';
 import posthog from 'posthog-js';
-import { WorkspacesGuideDialog } from '@/components/ui-new/dialogs/WorkspacesGuideDialog';
-import { ProjectsGuideDialog } from '@/components/ui-new/dialogs/ProjectsGuideDialog';
-import { SettingsDialog } from '@/components/ui-new/dialogs/SettingsDialog';
-import { CreateWorkspaceFromPrDialog } from '@/components/dialogs/CreateWorkspaceFromPrDialog';
+import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
+import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -94,196 +83,15 @@ const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
 );
 RightSidebarIcon.displayName = 'RightSidebarIcon';
 
-// Special icon types for ContextBar
-export type SpecialIconType = 'ide-icon' | 'copy-icon';
-export type ActionIcon = Icon | SpecialIconType;
-
-// Workspace type for sidebar (minimal subset needed for workspace selection)
-interface SidebarWorkspace {
-  id: string;
-  isRunning?: boolean;
-}
-
-// Dev server state type for visibility context
-export type DevServerState = 'stopped' | 'starting' | 'running' | 'stopping';
-
-// Project mutations interface (registered by ProjectProvider consumers)
-export interface ProjectMutations {
-  removeIssue: (id: string) => void;
-  duplicateIssue: (issueId: string) => void;
-  getIssue: (issueId: string) => { simple_id: string } | undefined;
-  getAssigneesForIssue: (issueId: string) => { user_id: string }[];
-}
-
-// Context provided to action executors (from React hooks)
-export interface ActionExecutorContext {
-  navigate: NavigateFn;
-  queryClient: QueryClient;
-  selectWorkspace: (workspaceId: string) => void;
-  activeWorkspaces: SidebarWorkspace[];
-  currentWorkspaceId: string | null;
-  containerRef: string | null;
-  runningDevServers: ExecutionProcess[];
-  startDevServer: () => void;
-  stopDevServer: () => void;
-  // Logs panel state
-  currentLogs: LogEntry[] | null;
-  logsPanelContent: LogsPanelContent | null;
-  // Command bar navigation
-  openStatusSelection: (projectId: string, issueIds: string[]) => Promise<void>;
-  openPrioritySelection: (
-    projectId: string,
-    issueIds: string[]
-  ) => Promise<void>;
-  openAssigneeSelection: (
-    projectId: string,
-    issueIds: string[],
-    isCreateMode?: boolean
-  ) => Promise<void>;
-  openSubIssueSelection: (
-    projectId: string,
-    issueId: string,
-    mode?: 'addChild' | 'setParent'
-  ) => Promise<{ type: string } | undefined>;
-  openWorkspaceSelection: (projectId: string, issueId: string) => Promise<void>;
-  openRelationshipSelection: (
-    projectId: string,
-    issueId: string,
-    relationshipType: 'blocking' | 'related' | 'has_duplicate',
-    direction: 'forward' | 'reverse'
-  ) => Promise<void>;
-  // Kanban navigation (URL-based)
-  navigateToCreateIssue: (options?: IssueCreateRouteOptions) => void;
-  // Default status for issue creation based on current kanban tab
-  defaultCreateStatusId?: string;
-  // Current kanban context (for project settings action)
-  kanbanOrgId?: string;
-  kanbanProjectId?: string;
-  // Project mutations (registered when inside ProjectProvider)
-  projectMutations?: ProjectMutations;
-  // Remote workspaces (from Electric sync via UserContext)
-  remoteWorkspaces: RemoteWorkspace[];
-}
-
-// Context for evaluating action visibility and state conditions
-export interface ActionVisibilityContext {
-  // Layout state
-  layoutMode: LayoutMode;
-  rightMainPanelMode:
-    | (typeof RIGHT_MAIN_PANEL_MODES)[keyof typeof RIGHT_MAIN_PANEL_MODES]
-    | null;
-  isLeftSidebarVisible: boolean;
-  isLeftMainPanelVisible: boolean;
-  isRightSidebarVisible: boolean;
-  isCreateMode: boolean;
-
-  // Workspace state
-  hasWorkspace: boolean;
-  workspaceArchived: boolean;
-
-  // Diff state
-  hasDiffs: boolean;
-  diffViewMode: DiffViewMode;
-  isAllDiffsExpanded: boolean;
-
-  // Dev server state
-  editorType: EditorType | null;
-  devServerState: DevServerState;
-  runningDevServers: ExecutionProcess[];
-
-  // Git panel state
-  hasGitRepos: boolean;
-  hasMultipleRepos: boolean;
-  hasOpenPR: boolean;
-  hasUnpushedCommits: boolean;
-
-  // Execution state
-  isAttemptRunning: boolean;
-
-  // Logs panel state
-  logsPanelContent: LogsPanelContent | null;
-
-  // Kanban state
-  hasSelectedKanbanIssue: boolean;
-  hasSelectedKanbanIssueParent: boolean;
-  isCreatingIssue: boolean;
-
-  // Auth state
-  isSignedIn: boolean;
-}
-
-// Base properties shared by all actions
-interface ActionBase {
-  id: string;
-  label: string | ((workspace?: Workspace) => string);
-  icon: ActionIcon;
-  shortcut?: string;
-  variant?: 'default' | 'destructive';
-  // Optional search keywords - included in command bar search but not displayed
-  keywords?: string[];
-  // Optional visibility condition - if omitted, action is always visible
-  isVisible?: (ctx: ActionVisibilityContext) => boolean;
-  // Optional active state - if omitted, action is not active
-  isActive?: (ctx: ActionVisibilityContext) => boolean;
-  // Optional enabled state - if omitted, action is enabled
-  isEnabled?: (ctx: ActionVisibilityContext) => boolean;
-  // Optional dynamic icon - if omitted, uses static icon property
-  getIcon?: (ctx: ActionVisibilityContext) => ActionIcon;
-  // Optional dynamic tooltip - if omitted, uses label
-  getTooltip?: (ctx: ActionVisibilityContext) => string;
-  // Optional dynamic label - if omitted, uses static label property
-  getLabel?: (ctx: ActionVisibilityContext) => string;
-}
-
-// Enum discriminant for action target types
-export enum ActionTargetType {
-  NONE = 'none',
-  WORKSPACE = 'workspace',
-  GIT = 'git',
-  ISSUE = 'issue',
-}
-
-// Global action (no target needed)
-export interface GlobalActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.NONE;
-  execute: (ctx: ActionExecutorContext) => Promise<void> | void;
-}
-
-// Workspace action (target required - validated by ActionsContext)
-export interface WorkspaceActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.WORKSPACE;
-  execute: (
-    ctx: ActionExecutorContext,
-    workspaceId: string
-  ) => Promise<void> | void;
-}
-
-// Git action (requires workspace + repoId)
-export interface GitActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.GIT;
-  execute: (
-    ctx: ActionExecutorContext,
-    workspaceId: string,
-    repoId: string
-  ) => Promise<void> | void;
-}
-
-// Issue action (requires projectId + issueIds)
-export interface IssueActionDefinition extends ActionBase {
-  requiresTarget: ActionTargetType.ISSUE;
-  execute: (
-    ctx: ActionExecutorContext,
-    projectId: string,
-    issueIds: string[]
-  ) => Promise<void> | void;
-}
-
-// Discriminated union
-export type ActionDefinition =
-  | GlobalActionDefinition
-  | WorkspaceActionDefinition
-  | GitActionDefinition
-  | IssueActionDefinition;
+import type {
+  ActionExecutorContext,
+  ActionDefinition,
+  GlobalActionDefinition,
+  WorkspaceActionDefinition,
+  IssueActionDefinition,
+  NavbarItem,
+} from '@/shared/types/actions';
+import { ActionTargetType, NavbarDivider } from '@/shared/types/actions';
 
 // Helper to get workspace from query cache or fetch from API
 async function getWorkspace(
@@ -311,7 +119,7 @@ function invalidateWorkspaceQueries(
 
 // Helper to find the next workspace to navigate to when removing current workspace
 function getNextWorkspaceId(
-  activeWorkspaces: SidebarWorkspace[],
+  activeWorkspaces: { id: string; isRunning?: boolean }[],
   removingWorkspaceId: string
 ): string | null {
   const currentIndex = activeWorkspaces.findIndex(
@@ -395,8 +203,11 @@ export const Actions = {
     execute: async (ctx, workspaceId) => {
       const workspace = await getWorkspace(ctx.queryClient, workspaceId);
       await RenameWorkspaceDialog.show({
-        workspaceId,
         currentName: workspace.name || workspace.branch,
+        onRename: async (newName) => {
+          await attemptsApi.update(workspaceId, { name: newName });
+          invalidateWorkspaceQueries(ctx.queryClient, workspaceId);
+        },
       });
     },
   },
@@ -459,12 +270,21 @@ export const Actions = {
       const remoteWs = ctx.remoteWorkspaces.find(
         (w) => w.local_workspace_id === workspaceId
       );
+      const linkedIssueSimpleId = remoteWs?.issue_id
+        ? ctx.projectMutations?.getIssue(remoteWs.issue_id)?.simple_id
+        : undefined;
+      const branchStatus = await attemptsApi.getBranchStatus(workspaceId);
+      const hasOpenPR = branchStatus.some((repoStatus) =>
+        repoStatus.merges?.some(
+          (m: Merge) => m.type === 'pr' && m.pr_info.status === 'open'
+        )
+      );
 
       const result = await DeleteWorkspaceDialog.show({
-        workspaceId,
         branchName: workspace.branch,
-        linkedIssueId: remoteWs?.issue_id ?? undefined,
-        linkedProjectId: remoteWs?.project_id,
+        hasOpenPR,
+        isLinkedToIssue: Boolean(remoteWs?.issue_id),
+        linkedIssueSimpleId,
       });
       if (result.action === 'confirmed') {
         // Calculate next workspace before deleting (only if deleting current)
@@ -606,7 +426,7 @@ export const Actions = {
     isVisible: (ctx) => !ctx.isSignedIn,
     execute: async () => {
       const { OAuthDialog } = await import(
-        '@/components/dialogs/global/OAuthDialog'
+        '@/shared/dialogs/global/OAuthDialog'
       );
       await OAuthDialog.show({});
     },
@@ -619,11 +439,13 @@ export const Actions = {
     requiresTarget: ActionTargetType.NONE,
     isVisible: (ctx) => ctx.isSignedIn,
     execute: async (ctx) => {
-      const { oauthApi } = await import('@/lib/api');
+      const { oauthApi } = await import('@/shared/lib/api');
       const { useOrganizationStore } = await import(
-        '@/stores/useOrganizationStore'
+        '@/shared/stores/useOrganizationStore'
       );
-      const { organizationKeys } = await import('@/hooks/organizationKeys');
+      const { organizationKeys } = await import(
+        '@/shared/hooks/organizationKeys'
+      );
 
       await oauthApi.logout();
       useOrganizationStore.getState().clearSelectedOrgId();
@@ -675,7 +497,7 @@ export const Actions = {
     execute: async () => {
       // Dynamic import to avoid circular dependency (pages.ts imports Actions)
       const { CommandBarDialog } = await import(
-        '@/components/ui-new/dialogs/CommandBarDialog'
+        '@/shared/dialogs/command-bar/CommandBarDialog'
       );
       CommandBarDialog.show();
     },
@@ -1186,11 +1008,32 @@ export const Actions = {
     icon: CrosshairIcon,
     requiresTarget: ActionTargetType.GIT,
     isVisible: (ctx) => ctx.hasWorkspace && ctx.hasGitRepos,
-    execute: async (_ctx, workspaceId, repoId) => {
-      // Open dialog - it loads branches internally
+    execute: async (ctx, workspaceId, repoId) => {
+      const branches = await repoApi.getBranches(repoId);
       await ChangeTargetDialog.show({
-        attemptId: workspaceId,
-        repoId,
+        branches: branches.map((branch) => ({
+          name: branch.name,
+          isCurrent: branch.is_current,
+        })),
+        onChangeTargetBranch: async (newTargetBranch) => {
+          await attemptsApi.change_target_branch(workspaceId, {
+            new_target_branch: newTargetBranch,
+            repo_id: repoId,
+          });
+
+          ctx.queryClient.invalidateQueries({
+            queryKey: ['branchStatus', workspaceId],
+          });
+          ctx.queryClient.invalidateQueries({
+            queryKey: attemptKeys.byId(workspaceId),
+          });
+          ctx.queryClient.invalidateQueries({
+            queryKey: ['attemptRepo', workspaceId],
+          });
+          ctx.queryClient.invalidateQueries({
+            queryKey: repoBranchKeys.byRepo(repoId),
+          });
+        },
       });
     },
   },
@@ -1381,7 +1224,7 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,
@@ -1413,7 +1256,7 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.kanbanProjectId) return;
       const { ProjectSelectionDialog } = await import(
-        '@/components/ui-new/dialogs/selections/ProjectSelectionDialog'
+        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
       );
       await ProjectSelectionDialog.show({
         projectId: ctx.kanbanProjectId,
@@ -1659,20 +1502,6 @@ export const Actions = {
   } satisfies IssueActionDefinition,
 } as const satisfies Record<string, ActionDefinition>;
 
-// Helper to resolve dynamic label
-export function resolveLabel(
-  action: ActionDefinition,
-  workspace?: Workspace
-): string {
-  return typeof action.label === 'function'
-    ? action.label(workspace)
-    : action.label;
-}
-
-// Divider marker for navbar action groups
-export const NavbarDivider = { type: 'divider' } as const;
-export type NavbarItem = ActionDefinition | typeof NavbarDivider;
-
 // Navbar action groups define which actions appear in each section
 export const NavbarActionGroups = {
   left: [Actions.ArchiveWorkspace] as NavbarItem[],
@@ -1695,10 +1524,6 @@ export const NavbarActionGroups = {
   ] as NavbarItem[],
 };
 
-// Divider marker for context bar action groups
-export const ContextBarDivider = { type: 'divider' } as const;
-export type ContextBarItem = ActionDefinition | typeof ContextBarDivider;
-
 // ContextBar action groups define which actions appear in each section
 export const ContextBarActionGroups = {
   primary: [Actions.OpenInIDE, Actions.CopyWorkspacePath] as ActionDefinition[],
@@ -1708,8 +1533,3 @@ export const ContextBarActionGroups = {
     Actions.ToggleChangesMode,
   ] as ActionDefinition[],
 };
-
-// Helper to check if an icon is a special type
-export function isSpecialIcon(icon: ActionIcon): icon is SpecialIconType {
-  return icon === 'ide-icon' || icon === 'copy-icon';
-}
