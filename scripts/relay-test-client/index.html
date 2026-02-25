@@ -477,7 +477,6 @@
           await crypto.subtle.exportKey("raw", generated.publicKey),
         );
         return {
-          privateKey: generated.privateKey,
           publicKeyB64: bytesToBase64(publicRaw),
         };
       }
@@ -760,7 +759,6 @@
 
         return {
           signingSessionId: finishData.signing_session_id,
-          privateKey: signingKey.privateKey,
           sharedKey,
         };
       }
@@ -769,7 +767,6 @@
         sessionPrefix,
         path,
         signingSessionId,
-        privateKey,
         sharedKey,
       ) {
         const timestamp = Math.floor(Date.now() / 1000);
@@ -777,10 +774,11 @@
         const requestBodyHash = await sha256Base64(new Uint8Array(0));
         const message =
           `v1|${timestamp}|GET|${path}|${signingSessionId}|${nonce}|${requestBodyHash}`;
-        const signatureBytes = new Uint8Array(
-          await crypto.subtle.sign("Ed25519", privateKey, encoder.encode(message)),
+        const requestMacB64 = await relayTransportMacBase64(
+          sharedKey,
+          "relay-http-request-v1",
+          message,
         );
-        const signatureB64 = bytesToBase64(signatureBytes);
 
         const response = await fetch(`${sessionPrefix}${path}`, {
           method: "GET",
@@ -789,7 +787,7 @@
             "x-vk-sig-ts": String(timestamp),
             "x-vk-sig-nonce": nonce,
             "x-vk-sig-body-sha256": requestBodyHash,
-            "x-vk-signature": signatureB64,
+            "x-vk-sig-mac": requestMacB64,
           },
         });
         const responseBytes = new Uint8Array(await response.arrayBuffer());
@@ -929,7 +927,6 @@
             sessionPrefix,
             "/api/task-attempts",
             signing.signingSessionId,
-            signing.privateKey,
             signing.sharedKey,
           );
           if (!workspacesResult.response.ok) {

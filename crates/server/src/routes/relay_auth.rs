@@ -156,7 +156,7 @@ async fn finish_spake2_enrollment(
     .map_err(|_| ApiError::Unauthorized)?;
 
     let signing_session_id = deployment
-        .create_relay_signing_session(*public_key.as_bytes(), shared_key.clone())
+        .create_relay_signing_session(shared_key.clone())
         .await;
     let server_proof_b64 =
         build_server_proof_base64(&shared_key, &payload.enrollment_id, &public_key)
