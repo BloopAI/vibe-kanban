@@ -479,7 +479,9 @@ impl LocalDeployment {
             .verify(message, &signature)
             .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
 
-        session.seen_nonces.insert(nonce.to_string(), Instant::now());
+        session
+            .seen_nonces
+            .insert(nonce.to_string(), Instant::now());
         session.last_used_at = Instant::now();
 
         Ok(())
