@@ -23,6 +23,43 @@ import { useTypeaheadOpen } from './TypeaheadOpenContext';
 import { TypeaheadMenu } from './TypeaheadMenu';
 
 const MAX_FILE_RESULTS = 10;
+const DEBUG_PREFIX = '[FileTagTypeahead][position]';
+
+function roundToTwo(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function getRectSnapshot(rect: DOMRect | null | undefined) {
+  if (!rect) return null;
+
+  return {
+    left: roundToTwo(rect.left),
+    top: roundToTwo(rect.top),
+    right: roundToTwo(rect.right),
+    bottom: roundToTwo(rect.bottom),
+    width: roundToTwo(rect.width),
+    height: roundToTwo(rect.height),
+  };
+}
+
+function getViewportSnapshot() {
+  const vv = window.visualViewport;
+
+  return {
+    innerWidth: window.innerWidth,
+    innerHeight: window.innerHeight,
+    scrollX: roundToTwo(window.scrollX),
+    scrollY: roundToTwo(window.scrollY),
+    visualViewport: vv
+      ? {
+          width: roundToTwo(vv.width),
+          height: roundToTwo(vv.height),
+          offsetLeft: roundToTwo(vv.offsetLeft),
+          offsetTop: roundToTwo(vv.offsetTop),
+        }
+      : null,
+  };
+}
 
 type DiffFileResult = {
   path: string;
@@ -153,6 +190,19 @@ export function FileTagTypeaheadPlugin({
   const { setIsOpen } = useTypeaheadOpen();
   const searchRequestRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
+  const sessionIdRef = useRef(0);
+  const lastTriggerLogKeyRef = useRef<string | null>(null);
+  const lastAnchorLogKeyRef = useRef<string | null>(null);
+
+  const logDebug = useCallback(
+    (event: string, payload: Record<string, unknown> = {}) => {
+      console.debug(DEBUG_PREFIX, event, {
+        sessionId: sessionIdRef.current,
+        ...payload,
+      });
+    },
+    []
+  );
 
   const effectiveDiffPaths = useMemo(
     () => diffPaths ?? new Set<string>(),
@@ -203,12 +253,25 @@ export function FileTagTypeaheadPlugin({
         : [];
       const localFilePaths = new Set(localFiles.map((f) => f.path));
 
+      logDebug('search.start', {
+        requestId,
+        query,
+        repoIds: scopedRepoIds ?? [],
+        fileSearchEnabled,
+        localFileCount: localFiles.length,
+      });
+
       try {
         const serverResults = searchTagsAndFiles
           ? await searchTagsAndFiles(query, { repoIds: scopedRepoIds })
           : [];
 
         if (requestId !== searchRequestRef.current) {
+          logDebug('search.stale', {
+            requestId,
+            currentRequestId: searchRequestRef.current,
+            query,
+          });
           return;
         }
 
@@ -231,10 +294,23 @@ export function FileTagTypeaheadPlugin({
         ];
 
         setOptions(mergedResults.map((result) => new FileTagOption(result)));
+        logDebug('search.done', {
+          requestId,
+          query,
+          tagCount: tagResults.length,
+          localFileCount: limitedLocalFiles.length,
+          serverFileCount: limitedServerFiles.length,
+          totalOptionCount: mergedResults.length,
+        });
       } catch (err) {
         if (requestId === searchRequestRef.current) {
           setOptions([]);
         }
+        logDebug('search.error', {
+          requestId,
+          query,
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
         console.error('Failed to search tags/files', {
           requestId,
           query,
@@ -242,7 +318,7 @@ export function FileTagTypeaheadPlugin({
         });
       }
     },
-    [effectiveDiffPaths, effectiveRepoIds, searchTagsAndFiles]
+    [effectiveDiffPaths, effectiveRepoIds, logDebug, searchTagsAndFiles]
   );
 
   useEffect(() => {
@@ -364,32 +440,93 @@ export function FileTagTypeaheadPlugin({
   const onQueryChange = useCallback(
     (query: string | null) => {
       if (query === null) {
+        logDebug('query.cleared', {
+          previousQuery: lastQueryRef.current,
+          optionCount: options.length,
+        });
         setOptions([]);
         return;
       }
 
       lastQueryRef.current = query;
+      logDebug('query.changed', {
+        query,
+        queryLength: query.length,
+        optionCount: options.length,
+      });
       void runSearch(query);
     },
-    [runSearch]
+    [logDebug, options.length, runSearch]
   );
+
+  const handleOpen = useCallback(() => {
+    sessionIdRef.current += 1;
+    lastAnchorLogKeyRef.current = null;
+
+    const editorEl = editor.getRootElement();
+    logDebug('menu.opened', {
+      query: lastQueryRef.current,
+      optionCount: options.length,
+      canSearchFiles,
+      usePreferenceRepoSelection,
+      preferredRepoId,
+      editorRootExists: Boolean(editorEl),
+      editorRect: getRectSnapshot(editorEl?.getBoundingClientRect()),
+    });
+
+    setIsOpen(true);
+  }, [
+    canSearchFiles,
+    editor,
+    logDebug,
+    options.length,
+    preferredRepoId,
+    setIsOpen,
+    usePreferenceRepoSelection,
+  ]);
+
+  const handleClose = useCallback(() => {
+    logDebug('menu.closed', {
+      query: lastQueryRef.current,
+      optionCount: options.length,
+    });
+    setIsOpen(false);
+    lastAnchorLogKeyRef.current = null;
+  }, [logDebug, options.length, setIsOpen]);
 
   return (
     <LexicalTypeaheadMenuPlugin<FileTagOption>
       triggerFn={(text) => {
         const match = /(?:^|\s)@([^\s@]*)$/.exec(text);
-        if (!match) return null;
+        if (!match) {
+          if (lastTriggerLogKeyRef.current !== 'no-match') {
+            lastTriggerLogKeyRef.current = 'no-match';
+            logDebug('trigger.no-match', {
+              textLength: text.length,
+            });
+          }
+          return null;
+        }
+
         const offset = match.index + match[0].indexOf('@');
-        return {
+        const result = {
           leadOffset: offset,
           matchingString: match[1],
           replaceableString: match[0].slice(match[0].indexOf('@')),
         };
+
+        const triggerLogKey = `${result.leadOffset}:${result.matchingString}`;
+        if (lastTriggerLogKeyRef.current !== triggerLogKey) {
+          lastTriggerLogKeyRef.current = triggerLogKey;
+          logDebug('trigger.match', result);
+        }
+
+        return result;
       }}
       options={options}
       onQueryChange={onQueryChange}
-      onOpen={() => setIsOpen(true)}
-      onClose={() => setIsOpen(false)}
+      onOpen={handleOpen}
+      onClose={handleClose}
       onSelectOption={(option, nodeToReplace, closeMenu) => {
         editor.update(() => {
           if (!nodeToReplace) return;
@@ -453,7 +590,17 @@ export function FileTagTypeaheadPlugin({
         anchorRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
       ) => {
-        if (!anchorRef.current) return null;
+        if (!anchorRef.current) {
+          if (lastAnchorLogKeyRef.current !== 'missing') {
+            lastAnchorLogKeyRef.current = 'missing';
+            logDebug('menu.anchor.missing', {
+              query: lastQueryRef.current,
+              optionCount: options.length,
+              viewport: getViewportSnapshot(),
+            });
+          }
+          return null;
+        }
 
         const tagResults = options.filter((r) => r.item.type === 'tag');
         const fileResults = options.filter((r) => r.item.type === 'file');
@@ -474,11 +621,40 @@ export function FileTagTypeaheadPlugin({
               repoName: selectedRepoLabel,
             })
           : t('typeahead.chooseRepo');
+        const editorEl = editor.getRootElement();
+        const anchorRect = getRectSnapshot(
+          anchorRef.current.getBoundingClientRect()
+        );
+        const editorRect = getRectSnapshot(editorEl?.getBoundingClientRect());
+        const viewport = getViewportSnapshot();
+
+        const anchorLogKey = JSON.stringify({
+          anchorRect,
+          editorRect,
+          viewport,
+        });
+        if (lastAnchorLogKeyRef.current !== anchorLogKey) {
+          lastAnchorLogKeyRef.current = anchorLogKey;
+          logDebug('menu.anchor.present', {
+            query: lastQueryRef.current,
+            selectedIndex,
+            optionCount: options.length,
+            tagResultCount: tagResults.length,
+            fileResultCount: fileResults.length,
+            showFilesSection,
+            showGlobalEmptyState,
+            anchorRect,
+            editorRect,
+            viewport,
+            anchorTagName: anchorRef.current.tagName,
+            anchorConnected: anchorRef.current.isConnected,
+          });
+        }
 
         return createPortal(
           <TypeaheadMenu
             anchorEl={anchorRef.current}
-            editorEl={editor.getRootElement()}
+            editorEl={editorEl}
             onClickOutside={closeTypeahead}
           >
             <TypeaheadMenu.Header>
