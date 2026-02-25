@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 export function RootRedirectPage() {
@@ -26,7 +27,16 @@ export function RootRedirectPage() {
         return;
       }
 
-      const destination = await getFirstProjectDestination(setSelectedOrgId);
+      // Read saved selections imperatively to avoid re-triggering this effect
+      // when the scratch store initializes from the server
+      const { selectedOrgId, selectedProjectId } =
+        useUiPreferencesStore.getState();
+
+      const destination = await getFirstProjectDestination(
+        setSelectedOrgId,
+        selectedOrgId,
+        selectedProjectId
+      );
       if (!isActive) {
         return;
       }

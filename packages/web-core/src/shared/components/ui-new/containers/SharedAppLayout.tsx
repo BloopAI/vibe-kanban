@@ -157,6 +157,16 @@ export function SharedAppLayout() {
   const isWorkspacesActive = isWorkspacesDestination(currentDestination);
   const activeProjectId = projectDestination?.projectId ?? null;
 
+  // Persist last selected project to scratch store
+  const setSelectedProjectId = useUiPreferencesStore(
+    (s) => s.setSelectedProjectId
+  );
+  useEffect(() => {
+    if (activeProjectId) {
+      setSelectedProjectId(activeProjectId);
+    }
+  }, [activeProjectId, setSelectedProjectId]);
+
   const handleWorkspacesClick = useCallback(() => {
     appNavigation.goToWorkspaces();
   }, [appNavigation]);
