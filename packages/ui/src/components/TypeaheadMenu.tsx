@@ -33,7 +33,10 @@ function parseLength(value: string): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function resolveLineHeight(style: CSSStyleDeclaration, fallbackHeight: number): number {
+function resolveLineHeight(
+  style: CSSStyleDeclaration,
+  fallbackHeight: number
+): number {
   const explicit = parseLength(style.lineHeight);
   if (explicit > 0) return explicit;
 
@@ -51,7 +54,10 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-function placementsEqual(a: TypeaheadPlacement, b: TypeaheadPlacement): boolean {
+function placementsEqual(
+  a: TypeaheadPlacement,
+  b: TypeaheadPlacement
+): boolean {
   return (
     a.side === b.side &&
     a.left === b.left &&
@@ -79,7 +85,9 @@ function computePlacement(
   const configuredMinHeight = parseLength(menuStyles.minHeight);
   const configuredMaxHeight = parseLength(menuStyles.maxHeight);
   const measuredHeight = round(
-    menuRect.height || parseLength(menuStyles.height) || parseLength(menuStyles.minHeight)
+    menuRect.height ||
+      parseLength(menuStyles.height) ||
+      parseLength(menuStyles.minHeight)
   );
 
   const lineHeight = resolveLineHeight(anchorStyles, anchorRect.height);
@@ -91,13 +99,19 @@ function computePlacement(
   const belowSpace = viewportHeight - anchorRect.bottom - marginTop;
   const side: VerticalSide =
     belowSpace >= measuredHeight || belowSpace >= aboveSpace ? 'bottom' : 'top';
-  const availableSpace = Math.max(side === 'bottom' ? belowSpace : aboveSpace, 0);
+  const availableSpace = Math.max(
+    side === 'bottom' ? belowSpace : aboveSpace,
+    0
+  );
 
   let maxHeight = configuredMaxHeight
     ? Math.min(configuredMaxHeight, availableSpace)
     : availableSpace;
   if (configuredMinHeight) {
-    maxHeight = Math.max(maxHeight, Math.min(configuredMinHeight, availableSpace));
+    maxHeight = Math.max(
+      maxHeight,
+      Math.min(configuredMinHeight, availableSpace)
+    );
   }
 
   const measuredWidth =
@@ -105,7 +119,10 @@ function computePlacement(
     round(parseLength(menuStyles.width)) ||
     round(parseLength(menuStyles.minWidth));
   const minLeft = marginLeft;
-  const maxLeft = Math.max(minLeft, viewportWidth - measuredWidth - marginRight);
+  const maxLeft = Math.max(
+    minLeft,
+    viewportWidth - measuredWidth - marginRight
+  );
   const left = clamp(round(anchorRect.left), round(minLeft), round(maxLeft));
   const top =
     side === 'bottom'
