@@ -83,7 +83,11 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
         return;
     };
 
-    let host_name = format!("{} local ({})", env!("CARGO_PKG_NAME"), deployment.user_id());
+    let host_name = format!(
+        "{} local ({})",
+        env!("CARGO_PKG_NAME"),
+        deployment.user_id()
+    );
 
     let enrollment_code = deployment
         .get_or_set_enrollment_code(generate_one_time_code())
@@ -170,15 +174,15 @@ pub async fn start_relay(
 ) -> anyhow::Result<()> {
     let base_url = relay_api_base.trim_end_matches('/');
 
-    let query: String = form_urlencoded::Serializer::new(String::new())
+    let encoded_name = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("name", host_name)
         .append_pair("agent_version", env!("CARGO_PKG_VERSION"))
         .finish();
 
     let ws_url = if let Some(rest) = base_url.strip_prefix("https://") {
-        format!("wss://{rest}/v1/relay/connect?{query}")
+        format!("wss://{rest}/v1/relay/connect?{encoded_name}")
     } else if let Some(rest) = base_url.strip_prefix("http://") {
-        format!("ws://{rest}/v1/relay/connect?{query}")
+        format!("ws://{rest}/v1/relay/connect?{encoded_name}")
     } else {
         anyhow::bail!("Unexpected base URL scheme: {base_url}");
     };

@@ -361,7 +361,7 @@ fn ws_signing_input(
 
 fn encode_close_payload(close_frame: Option<CloseFrame>) -> Vec<u8> {
     if let Some(close_frame) = close_frame {
-        let code: u16 = close_frame.code.into();
+        let code: u16 = close_frame.code;
         let reason = close_frame.reason.to_string();
         let mut payload = Vec::with_capacity(2 + reason.len());
         payload.extend_from_slice(&code.to_be_bytes());
@@ -386,7 +386,7 @@ fn decode_close_payload(payload: Vec<u8>) -> anyhow::Result<Option<CloseFrame>> 
         String::from_utf8(payload[2..].to_vec()).context("invalid UTF-8 close frame reason")?;
 
     Ok(Some(CloseFrame {
-        code: code.into(),
+        code,
         reason: reason.into(),
     }))
 }

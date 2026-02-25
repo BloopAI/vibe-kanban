@@ -171,7 +171,7 @@ async fn send_error(socket: &mut SignedWebSocket, message: &str) -> anyhow::Resu
     };
     let json = serde_json::to_string(&msg).unwrap_or_default();
     socket.send(Message::Text(json.into())).await?;
-    socket.close().await.map_err(anyhow::Error::from)?;
+    socket.close().await?;
     Ok(())
 }
 
