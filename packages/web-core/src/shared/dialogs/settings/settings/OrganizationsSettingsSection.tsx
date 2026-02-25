@@ -369,38 +369,37 @@ export function OrganizationsSettingsSection() {
       </SettingsCard>
 
       {/* Pending Invitations (admin only) */}
-      {selectedOrg && isAdmin && !isPersonalOrg && (
-        <SettingsCard
-          title={t('invitationList.title')}
-          description={t('invitationList.description', {
-            orgName: selectedOrg.name,
-          })}
-        >
-          {loadingInvitations ? (
-            <div className="flex items-center justify-center py-4 gap-2">
-              <SpinnerIcon className="size-icon-sm animate-spin" />
-              <span className="text-sm text-low">
-                {t('invitationList.loading')}
-              </span>
-            </div>
-          ) : invitations.length === 0 ? (
-            <div className="text-center py-4 text-sm text-low">
-              {t('invitationList.none')}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {invitations.map((invitation) => (
-                <PendingInvitationItem
-                  key={invitation.id}
-                  invitation={invitation}
-                  onRevoke={handleRevokeInvitation}
-                  isRevoking={revokeInvitation.isPending}
-                />
-              ))}
-            </div>
-          )}
-        </SettingsCard>
-      )}
+      {selectedOrg &&
+        isAdmin &&
+        !isPersonalOrg &&
+        (loadingInvitations || invitations.length > 0) && (
+          <SettingsCard
+            title={t('invitationList.title')}
+            description={t('invitationList.description', {
+              orgName: selectedOrg.name,
+            })}
+          >
+            {loadingInvitations ? (
+              <div className="flex items-center justify-center py-4 gap-2">
+                <SpinnerIcon className="size-icon-sm animate-spin" />
+                <span className="text-sm text-low">
+                  {t('invitationList.loading')}
+                </span>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {invitations.map((invitation) => (
+                  <PendingInvitationItem
+                    key={invitation.id}
+                    invitation={invitation}
+                    onRevoke={handleRevokeInvitation}
+                    isRevoking={revokeInvitation.isPending}
+                  />
+                ))}
+              </div>
+            )}
+          </SettingsCard>
+        )}
 
       {/* Members */}
       {selectedOrg && (
