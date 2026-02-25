@@ -1,10 +1,7 @@
 use anyhow;
 use axum::{
     Extension, Router,
-    extract::{
-        Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path, Query, State, ws::Message},
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
@@ -23,8 +20,8 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{RelayRequestSignatureContext, load_execution_process_middleware},
-    routes::relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+    middleware::load_execution_process_middleware,
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
 };
 
 #[derive(Debug, Deserialize)]
@@ -43,10 +40,9 @@ pub async fn get_execution_process_by_id(
 }
 
 pub async fn stream_raw_logs_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
     // Check if the stream exists before upgrading the WebSocket
     let _stream = deployment
@@ -57,20 +53,17 @@ pub async fn stream_raw_logs_ws(
             ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound)
         })?;
 
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
-
     Ok(ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_raw_logs_ws(socket, deployment, exec_id, relay_signing).await {
+        if let Err(e) = handle_raw_logs_ws(socket, deployment, exec_id).await {
             tracing::warn!("raw logs WS closed: {}", e);
         }
     }))
 }
 
 async fn handle_raw_logs_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     exec_id: Uuid,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     use std::sync::{
         Arc,
@@ -106,34 +99,29 @@ async fn handle_raw_logs_ws(
         }
     });
 
-    // Split socket into sender and receiver
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-    let receiver_deployment = deployment.clone();
-
-    // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move {
-        while let Ok(Some(_)) =
-            recv_ws_message(&mut receiver, &receiver_deployment, &mut receiver_signing).await
-        {
-        }
-    });
-
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg)
-                    .await
-                    .is_err()
-                {
-                    break; // client disconnected
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
+                }
             }
         }
     }
@@ -141,10 +129,9 @@ async fn handle_raw_logs_ws(
 }
 
 pub async fn stream_normalized_logs_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> Result<impl IntoResponse, ApiError> {
     let stream = deployment
         .container()
@@ -157,45 +144,41 @@ pub async fn stream_normalized_logs_ws(
     // Convert the error type to anyhow::Error and turn TryStream -> Stream<Result<_, _>>
     let stream = stream.err_into::<anyhow::Error>().into_stream();
 
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
-
     Ok(ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_normalized_logs_ws(socket, deployment, stream, relay_signing).await {
+        if let Err(e) = handle_normalized_logs_ws(socket, stream).await {
             tracing::warn!("normalized logs WS closed: {}", e);
         }
     }))
 }
 
 async fn handle_normalized_logs_ws(
-    socket: WebSocket,
-    deployment: DeploymentImpl,
+    mut socket: SignedWebSocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-    let receiver_deployment = deployment.clone();
-    tokio::spawn(async move {
-        while let Ok(Some(_)) =
-            recv_ws_message(&mut receiver, &receiver_deployment, &mut receiver_signing).await
-        {
-        }
-    });
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg)
-                    .await
-                    .is_err()
-                {
-                    break;
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
+                }
             }
         }
     }
@@ -215,19 +198,16 @@ pub async fn stop_execution_process(
 }
 
 pub async fn stream_execution_processes_by_session_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionExecutionProcessQuery>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
         if let Err(e) = handle_execution_processes_by_session_ws(
             socket,
             deployment,
             query.session_id,
             query.show_soft_deleted.unwrap_or(false),
-            relay_signing,
         )
         .await
         {
@@ -237,11 +217,10 @@ pub async fn stream_execution_processes_by_session_ws(
 }
 
 async fn handle_execution_processes_by_session_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     session_id: uuid::Uuid,
     show_soft_deleted: bool,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     // Get the raw stream and convert LogMsg to WebSocket messages
     let mut stream = deployment
@@ -250,34 +229,29 @@ async fn handle_execution_processes_by_session_ws(
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    // Split socket into sender and receiver
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-    let receiver_deployment = deployment.clone();
-
-    // Drain (and ignore) any client->server messages so pings/pongs work
-    tokio::spawn(async move {
-        while let Ok(Some(_)) =
-            recv_ws_message(&mut receiver, &receiver_deployment, &mut receiver_signing).await
-        {
-        }
-    });
-
-    // Forward server messages
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg)
-                    .await
-                    .is_err()
-                {
-                    break; // client disconnected
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("stream error: {}", e);
+                        break;
+                    }
+                    None => break,
                 }
             }
-            Err(e) => {
-                tracing::error!("stream error: {}", e);
-                break;
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
+                }
             }
         }
     }

@@ -1,9 +1,6 @@
 use axum::{
     Json, Router,
-    extract::{
-        Extension, Path, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path, State, ws::Message},
     response::{IntoResponse, Json as ResponseJson},
     routing::get,
 };
@@ -17,8 +14,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::RelayRequestSignatureContext,
-    routes::relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
 };
 
 /// Path parameters for scratch routes with composite key
@@ -106,26 +102,22 @@ pub async fn delete_scratch(
 }
 
 pub async fn stream_scratch_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_scratch_ws(socket, deployment, id, scratch_type, relay_signing).await
-        {
+        if let Err(e) = handle_scratch_ws(socket, deployment, id, scratch_type).await {
             tracing::warn!("scratch WS closed: {}", e);
         }
     })
 }
 
 async fn handle_scratch_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     let mut stream = deployment
         .events()
@@ -133,31 +125,29 @@ async fn handle_scratch_ws(
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-
-    let receiver_deployment = deployment.clone();
-    tokio::spawn(async move {
-        while let Ok(Some(_)) =
-            recv_ws_message(&mut receiver, &receiver_deployment, &mut receiver_signing).await
-        {
-        }
-    });
-
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if send_ws_message(&mut sender, &deployment, &mut sender_signing, msg)
-                    .await
-                    .is_err()
-                {
-                    break;
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("scratch stream error: {}", e);
+                        break;
+                    }
+                    None => break,
                 }
             }
-            Err(e) => {
-                tracing::error!("scratch stream error: {}", e);
-                break;
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
+                }
             }
         }
     }

@@ -4,10 +4,7 @@ use api_types::LoginStatus;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{
-        Extension, Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path, Query, State, ws::Message},
     http,
     response::{IntoResponse, Json as ResponseJson, Response},
     routing::{get, put},
@@ -38,8 +35,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::RelayRequestSignatureContext,
-    routes::relay_ws::{recv_ws_message, relay_ws_signing_state, send_ws_message},
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -543,40 +539,23 @@ pub struct ExecutorDiscoveredOptionsStreamQuery {
 }
 
 pub async fn stream_executor_discovered_options_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ExecutorDiscoveredOptionsStreamQuery>,
-    relay_ctx: Option<Extension<RelayRequestSignatureContext>>,
 ) -> impl IntoResponse {
-    let relay_signing = relay_ws_signing_state(relay_ctx.map(|Extension(ctx)| ctx));
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) =
-            handle_executor_discovered_options_ws(socket, deployment, query, relay_signing).await
-        {
+        if let Err(e) = handle_executor_discovered_options_ws(socket, deployment, query).await {
             tracing::warn!("discovered options WS closed: {}", e);
         }
     })
 }
 
 async fn handle_executor_discovered_options_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     query: ExecutorDiscoveredOptionsStreamQuery,
-    relay_signing: Option<crate::routes::relay_ws::RelayWsSigningState>,
 ) -> anyhow::Result<()> {
     use futures_util::StreamExt;
-
-    let (mut sender, mut receiver) = socket.split();
-    let mut sender_signing = relay_signing.clone();
-    let mut receiver_signing = relay_signing;
-    let receiver_deployment = deployment.clone();
-
-    tokio::spawn(async move {
-        while let Ok(Some(_)) =
-            recv_ws_message(&mut receiver, &receiver_deployment, &mut receiver_signing).await
-        {
-        }
-    });
 
     match deployment
         .container()
@@ -589,57 +568,48 @@ async fn handle_executor_discovered_options_ws(
     {
         Ok(Some(mut stream)) => {
             if let Some(patch) = stream.next().await {
-                let _ = send_ws_message(
-                    &mut sender,
-                    &deployment,
-                    &mut sender_signing,
-                    LogMsg::JsonPatch(patch).to_ws_message_unchecked(),
-                )
-                .await;
+                let _ = socket
+                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                    .await;
             }
 
-            let _ = send_ws_message(
-                &mut sender,
-                &deployment,
-                &mut sender_signing,
-                LogMsg::Ready.to_ws_message_unchecked(),
-            )
-            .await;
+            let _ = socket.send(LogMsg::Ready.to_ws_message_unchecked()).await;
 
-            while let Some(patch) = stream.next().await {
-                if send_ws_message(
-                    &mut sender,
-                    &deployment,
-                    &mut sender_signing,
-                    LogMsg::JsonPatch(patch).to_ws_message_unchecked(),
-                )
-                .await
-                .is_err()
-                {
-                    break;
+            loop {
+                tokio::select! {
+                    patch = stream.next() => {
+                        let Some(patch) = patch else {
+                            break;
+                        };
+                        if socket
+                            .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                    inbound = socket.recv() => {
+                        match inbound {
+                            Ok(Some(Message::Close(_))) => break,
+                            Ok(Some(_)) => {}
+                            Ok(None) => break,
+                            Err(_) => break,
+                        }
+                    }
                 }
             }
         }
         Ok(None) => {
-            let _ = send_ws_message(
-                &mut sender,
-                &deployment,
-                &mut sender_signing,
-                LogMsg::Ready.to_ws_message_unchecked(),
-            )
-            .await;
+            let _ = socket.send(LogMsg::Ready.to_ws_message_unchecked()).await;
         }
         Err(e) => {
             tracing::warn!("Failed to start discovered options stream: {}", e);
         }
     }
 
-    let _ = send_ws_message(
-        &mut sender,
-        &deployment,
-        &mut sender_signing,
-        LogMsg::Finished.to_ws_message_unchecked(),
-    )
-    .await;
+    let _ = socket
+        .send(LogMsg::Finished.to_ws_message_unchecked())
+        .await;
     Ok(())
 }
