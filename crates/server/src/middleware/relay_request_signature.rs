@@ -133,7 +133,7 @@ pub async fn sign_relay_response(
                 signing_session_id = %signing_session_id,
                 path = %path_and_query,
                 reason = %error.as_str(),
-                "failed to sign relay response"
+                "Failed to sign relay response"
             );
             ApiError::Unauthorized
         })?;
@@ -178,7 +178,7 @@ fn build_response_message(
 
 fn relay_path_and_query(request: &Request) -> Result<String, ApiError> {
     let Some(original_uri) = request.extensions().get::<OriginalUri>() else {
-        tracing::warn!("rejecting relay request without OriginalUri extension");
+        tracing::warn!("Rejecting relay request without OriginalUri extension");
         return Err(ApiError::Unauthorized);
     };
 
