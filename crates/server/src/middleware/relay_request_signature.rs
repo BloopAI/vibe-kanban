@@ -17,16 +17,11 @@ const RELAY_HEADER: &str = "x-vk-relayed";
 const SIGNING_SESSION_HEADER: &str = "x-vk-sig-session";
 const TIMESTAMP_HEADER: &str = "x-vk-sig-ts";
 const NONCE_HEADER: &str = "x-vk-sig-nonce";
-const BODY_HASH_HEADER: &str = "x-vk-sig-body-sha256";
-const REQUEST_MAC_HEADER: &str = "x-vk-sig-mac";
+const REQUEST_SIGNATURE_HEADER: &str = "x-vk-sig-signature";
 
 const RESPONSE_TIMESTAMP_HEADER: &str = "x-vk-resp-ts";
 const RESPONSE_NONCE_HEADER: &str = "x-vk-resp-nonce";
-const RESPONSE_BODY_HASH_HEADER: &str = "x-vk-resp-body-sha256";
-const RESPONSE_MAC_HEADER: &str = "x-vk-resp-mac";
-
-const REQUEST_MAC_PURPOSE: &str = "relay-http-request-v1";
-const RESPONSE_MAC_PURPOSE: &str = "relay-http-response-v1";
+const RESPONSE_SIGNATURE_HEADER: &str = "x-vk-resp-signature";
 
 #[derive(Clone, Debug)]
 pub struct RelayRequestSignatureContext {
@@ -54,10 +49,7 @@ pub async fn require_relay_request_signature(
     let nonce = required_header(&request, NONCE_HEADER)
         .ok_or(ApiError::Unauthorized)?
         .to_string();
-    let provided_body_hash = required_header(&request, BODY_HASH_HEADER)
-        .ok_or(ApiError::Unauthorized)?
-        .to_string();
-    let request_mac_b64 = required_header(&request, REQUEST_MAC_HEADER)
+    let request_signature_b64 = required_header(&request, REQUEST_SIGNATURE_HEADER)
         .ok_or(ApiError::Unauthorized)?
         .to_string();
 
@@ -66,33 +58,22 @@ pub async fn require_relay_request_signature(
     let body_bytes = to_bytes(body, usize::MAX)
         .await
         .map_err(|_| ApiError::Unauthorized)?;
-    let computed_body_hash = sha256_base64(&body_bytes);
-    if computed_body_hash != provided_body_hash {
-        tracing::warn!(
-            signing_session_id = %signing_session_id,
-            path = %path_and_query,
-            "rejecting relay request with body-hash mismatch"
-        );
-        return Err(ApiError::Unauthorized);
-    }
-
-    let message = build_signed_request_message(
+    let message = request_signing_input(
         timestamp,
         &method,
         &path_and_query,
         &signing_session_id,
         &nonce,
-        &computed_body_hash,
+        &body_bytes,
     );
 
     if let Err(error) = deployment
-        .verify_relay_request_mac(
+        .verify_relay_message(
             signing_session_id,
             timestamp,
             &nonce,
-            REQUEST_MAC_PURPOSE,
             message.as_bytes(),
-            &request_mac_b64,
+            &request_signature_b64,
         )
         .await
     {
@@ -100,7 +81,7 @@ pub async fn require_relay_request_signature(
             signing_session_id = %signing_session_id,
             path = %path_and_query,
             reason = %error.as_str(),
-            "rejecting relay request with invalid MAC"
+            "rejecting relay request with invalid signature"
         );
         return Err(ApiError::Unauthorized);
     }
@@ -139,24 +120,22 @@ pub async fn sign_relay_response(
     let body_bytes = to_bytes(body, usize::MAX)
         .await
         .map_err(|_| ApiError::Unauthorized)?;
-
-    let body_hash = sha256_base64(&body_bytes);
     let response_timestamp = unix_timestamp_now().map_err(|_| ApiError::Unauthorized)?;
     let response_nonce = Uuid::new_v4().simple().to_string();
     let status = parts.status.as_u16();
 
-    let message = build_signed_response_message(
+    let message = response_signing_input(
         response_timestamp,
         status,
         &path_and_query,
         &signing_session_id,
         &request_nonce,
         &response_nonce,
-        &body_hash,
+        &body_bytes,
     );
 
-    let response_mac = deployment
-        .relay_transport_mac(signing_session_id, RESPONSE_MAC_PURPOSE, message.as_bytes())
+    let response_signature = deployment
+        .sign_relay_message(signing_session_id, message.as_bytes())
         .await
         .map_err(|error| {
             tracing::warn!(
@@ -174,32 +153,33 @@ pub async fn sign_relay_response(
         &response_timestamp.to_string(),
     );
     insert_header(&mut parts, RESPONSE_NONCE_HEADER, &response_nonce);
-    insert_header(&mut parts, RESPONSE_BODY_HASH_HEADER, &body_hash);
-    insert_header(&mut parts, RESPONSE_MAC_HEADER, &response_mac);
+    insert_header(&mut parts, RESPONSE_SIGNATURE_HEADER, &response_signature);
 
     Ok(Response::from_parts(parts, Body::from(body_bytes)))
 }
 
-fn build_signed_request_message(
+fn request_signing_input(
     timestamp: i64,
     method: &str,
     path_and_query: &str,
     signing_session_id: &Uuid,
     nonce: &str,
-    body_hash: &str,
+    body: &[u8],
 ) -> String {
+    let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
     format!("v1|{timestamp}|{method}|{path_and_query}|{signing_session_id}|{nonce}|{body_hash}")
 }
 
-fn build_signed_response_message(
+fn response_signing_input(
     timestamp: i64,
     status: u16,
     path_and_query: &str,
     signing_session_id: &Uuid,
     request_nonce: &str,
     response_nonce: &str,
-    body_hash: &str,
+    body: &[u8],
 ) -> String {
+    let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
     format!(
         "v1|{timestamp}|{status}|{path_and_query}|{signing_session_id}|{request_nonce}|{response_nonce}|{body_hash}"
     )
@@ -236,11 +216,6 @@ fn insert_header(parts: &mut axum::http::response::Parts, name: &'static str, va
     }
 }
 
-fn sha256_base64(data: &[u8]) -> String {
-    let digest = Sha256::digest(data);
-    BASE64_STANDARD.encode(digest)
-}
-
 fn unix_timestamp_now() -> Result<i64, ()> {
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -254,12 +229,4 @@ fn is_relay_request(request: &Request) -> bool {
         .get(RELAY_HEADER)
         .and_then(|value| value.to_str().ok())
         .is_some_and(|value| value.trim() == "1")
-}
-
-pub fn relay_request_mac_purpose() -> &'static str {
-    REQUEST_MAC_PURPOSE
-}
-
-pub fn relay_response_mac_purpose() -> &'static str {
-    RESPONSE_MAC_PURPOSE
 }

@@ -9,9 +9,9 @@ use async_trait::async_trait;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
+use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use executors::profile::ExecutorConfigs;
 use git::GitService;
-use hmac::{Hmac, Mac};
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -29,7 +29,6 @@ use services::services::{
     repo::RepoService,
     worktree_manager::WorktreeManager,
 };
-use sha2::Sha256;
 use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
@@ -75,7 +74,8 @@ struct PendingHandoff {
 }
 
 struct RelaySigningSession {
-    shared_key: Vec<u8>,
+    browser_public_key: VerifyingKey,
+    server_signing_key: SigningKey,
     created_at: Instant,
     last_used_at: Instant,
     seen_nonces: HashMap<String, Instant>,
@@ -88,9 +88,7 @@ pub enum RelaySignatureValidationError {
     MissingSigningSession,
     InvalidNonce,
     ReplayNonce,
-    InvalidBodyHash,
-    InvalidRequestMac,
-    InvalidMac,
+    InvalidSignature,
 }
 
 impl RelaySignatureValidationError {
@@ -101,14 +99,10 @@ impl RelaySignatureValidationError {
             Self::MissingSigningSession => "missing or expired signing session",
             Self::InvalidNonce => "invalid nonce",
             Self::ReplayNonce => "replayed nonce",
-            Self::InvalidBodyHash => "invalid body hash",
-            Self::InvalidRequestMac => "invalid request mac",
-            Self::InvalidMac => "invalid mac",
+            Self::InvalidSignature => "invalid signature",
         }
     }
 }
-
-type HmacSha256 = Hmac<Sha256>;
 
 const RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS: i64 = 30;
 const RELAY_SIGNING_SESSION_TTL: Duration = Duration::from_secs(60 * 60);
@@ -436,14 +430,19 @@ impl LocalDeployment {
             .await
     }
 
-    pub async fn create_relay_signing_session(&self, shared_key: Vec<u8>) -> Uuid {
+    pub async fn create_relay_signing_session(
+        &self,
+        browser_public_key: VerifyingKey,
+        server_signing_key: SigningKey,
+    ) -> Uuid {
         let signing_session_id = Uuid::new_v4();
         let now = Instant::now();
         let mut sessions = self.relay_signing_sessions.write().await;
         sessions.insert(
             signing_session_id,
             RelaySigningSession {
-                shared_key,
+                browser_public_key,
+                server_signing_key,
                 created_at: now,
                 last_used_at: now,
                 seen_nonces: HashMap::new(),
@@ -452,128 +451,71 @@ impl LocalDeployment {
         signing_session_id
     }
 
-    pub async fn verify_relay_request_mac(
+    pub async fn verify_relay_message(
         &self,
         signing_session_id: Uuid,
         timestamp: i64,
         nonce: &str,
-        purpose: &str,
         message: &[u8],
-        mac_b64: &str,
+        signature_b64: &str,
     ) -> Result<(), RelaySignatureValidationError> {
         if nonce.trim().is_empty() || nonce.len() > 128 {
             return Err(RelaySignatureValidationError::InvalidNonce);
         }
 
-        let now_secs = i64::try_from(
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?
-                .as_secs(),
-        )
-        .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?;
+        validate_timestamp(timestamp)?;
 
-        let drift_secs = now_secs.saturating_sub(timestamp).abs();
-        if drift_secs > RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS {
-            return Err(RelaySignatureValidationError::TimestampOutOfDrift);
-        }
-
-        let mac_bytes = BASE64_STANDARD
-            .decode(mac_b64)
-            .map_err(|_| RelaySignatureValidationError::InvalidRequestMac)?;
-        if mac_bytes.len() != 32 {
-            return Err(RelaySignatureValidationError::InvalidRequestMac);
-        }
-
-        let now = Instant::now();
+        let signature = parse_signature_b64(signature_b64)?;
         let mut sessions = self.relay_signing_sessions.write().await;
-        sessions.retain(|_, session| {
-            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
-                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
-        });
-
-        let session = sessions
-            .get_mut(&signing_session_id)
-            .ok_or(RelaySignatureValidationError::MissingSigningSession)?;
+        let session = get_valid_session(&mut sessions, signing_session_id)?;
 
         session
             .seen_nonces
-            .retain(|_, seen_at| now.duration_since(*seen_at) <= RELAY_NONCE_TTL);
+            .retain(|_, seen_at| Instant::now().duration_since(*seen_at) <= RELAY_NONCE_TTL);
         if session.seen_nonces.contains_key(nonce) {
             return Err(RelaySignatureValidationError::ReplayNonce);
         }
 
-        let mac_key = derive_session_mac_key(&session.shared_key, purpose.as_bytes());
-        let mut mac = HmacSha256::new_from_slice(&mac_key)
-            .map_err(|_| RelaySignatureValidationError::InvalidRequestMac)?;
-        mac.update(message);
-        mac.verify_slice(&mac_bytes)
-            .map_err(|_| RelaySignatureValidationError::InvalidRequestMac)?;
+        session
+            .browser_public_key
+            .verify(message, &signature)
+            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
 
-        session.seen_nonces.insert(nonce.to_string(), now);
-        session.last_used_at = now;
+        session.seen_nonces.insert(nonce.to_string(), Instant::now());
+        session.last_used_at = Instant::now();
 
         Ok(())
     }
 
-    pub async fn relay_transport_mac(
+    pub async fn sign_relay_message(
         &self,
         signing_session_id: Uuid,
-        purpose: &str,
         message: &[u8],
     ) -> Result<String, RelaySignatureValidationError> {
-        let now = Instant::now();
         let mut sessions = self.relay_signing_sessions.write().await;
-        sessions.retain(|_, session| {
-            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
-                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
-        });
+        let session = get_valid_session(&mut sessions, signing_session_id)?;
+        session.last_used_at = Instant::now();
 
-        let session = sessions
-            .get_mut(&signing_session_id)
-            .ok_or(RelaySignatureValidationError::MissingSigningSession)?;
-        session.last_used_at = now;
-
-        let mac_key = derive_session_mac_key(&session.shared_key, purpose.as_bytes());
-        let mut mac = HmacSha256::new_from_slice(&mac_key)
-            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
-        mac.update(message);
-        Ok(BASE64_STANDARD.encode(mac.finalize().into_bytes()))
+        let signature = session.server_signing_key.sign(message);
+        Ok(BASE64_STANDARD.encode(signature.to_bytes()))
     }
 
-    pub async fn verify_relay_transport_mac(
+    pub async fn verify_relay_message_no_replay(
         &self,
         signing_session_id: Uuid,
-        purpose: &str,
         message: &[u8],
-        mac_b64: &str,
+        signature_b64: &str,
     ) -> Result<(), RelaySignatureValidationError> {
-        let mac_bytes = BASE64_STANDARD
-            .decode(mac_b64)
-            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
-        if mac_bytes.len() != 32 {
-            return Err(RelaySignatureValidationError::InvalidMac);
-        }
-
-        let now = Instant::now();
+        let signature = parse_signature_b64(signature_b64)?;
         let mut sessions = self.relay_signing_sessions.write().await;
-        sessions.retain(|_, session| {
-            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
-                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
-        });
+        let session = get_valid_session(&mut sessions, signing_session_id)?;
 
-        let session = sessions
-            .get_mut(&signing_session_id)
-            .ok_or(RelaySignatureValidationError::MissingSigningSession)?;
+        session
+            .browser_public_key
+            .verify(message, &signature)
+            .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
 
-        let mac_key = derive_session_mac_key(&session.shared_key, purpose.as_bytes());
-        let mut mac = HmacSha256::new_from_slice(&mac_key)
-            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
-        mac.update(message);
-        mac.verify_slice(&mac_bytes)
-            .map_err(|_| RelaySignatureValidationError::InvalidMac)?;
-
-        session.last_used_at = now;
+        session.last_used_at = Instant::now();
         Ok(())
     }
 
@@ -582,12 +524,39 @@ impl LocalDeployment {
     }
 }
 
-fn derive_session_mac_key(shared_key: &[u8], purpose: &[u8]) -> [u8; 32] {
-    let mut mac =
-        HmacSha256::new_from_slice(shared_key).expect("HMAC key creation should not fail");
-    mac.update(purpose);
-    let derived = mac.finalize().into_bytes();
-    let mut output = [0_u8; 32];
-    output.copy_from_slice(&derived);
-    output
+fn get_valid_session(
+    sessions: &mut HashMap<Uuid, RelaySigningSession>,
+    signing_session_id: Uuid,
+) -> Result<&mut RelaySigningSession, RelaySignatureValidationError> {
+    let now = Instant::now();
+    sessions.retain(|_, session| {
+        now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
+            && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
+    });
+    sessions
+        .get_mut(&signing_session_id)
+        .ok_or(RelaySignatureValidationError::MissingSigningSession)
+}
+
+fn validate_timestamp(timestamp: i64) -> Result<(), RelaySignatureValidationError> {
+    let now_secs = i64::try_from(
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?
+            .as_secs(),
+    )
+    .map_err(|_| RelaySignatureValidationError::InvalidTimestamp)?;
+
+    let drift_secs = now_secs.saturating_sub(timestamp).abs();
+    if drift_secs > RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS {
+        return Err(RelaySignatureValidationError::TimestampOutOfDrift);
+    }
+    Ok(())
+}
+
+fn parse_signature_b64(signature_b64: &str) -> Result<Signature, RelaySignatureValidationError> {
+    let sig_bytes = BASE64_STANDARD
+        .decode(signature_b64)
+        .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
+    Signature::from_slice(&sig_bytes).map_err(|_| RelaySignatureValidationError::InvalidSignature)
 }

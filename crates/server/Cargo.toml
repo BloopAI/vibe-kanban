@@ -48,6 +48,7 @@ hyper = { version = "1", features = ["client", "server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 tokio-yamux = "0.3.17"
 base64 = "0.22"
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 git2 = { workspace = true }
 mime_guess = "2.0"
 rust-embed = "8.2"
