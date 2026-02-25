@@ -39,19 +39,10 @@ pub async fn require_relay_request_signature(
     }
 
     let path_and_query = relay_path_and_query(&request)?;
-
-    let signing_session_id = required_header(&request, SIGNING_SESSION_HEADER)
-        .ok_or(ApiError::Unauthorized)
-        .and_then(|value| Uuid::parse_str(value).map_err(|_| ApiError::Unauthorized))?;
-    let timestamp = required_header(&request, TIMESTAMP_HEADER)
-        .ok_or(ApiError::Unauthorized)
-        .and_then(|value| value.parse::<i64>().map_err(|_| ApiError::Unauthorized))?;
-    let nonce = required_header(&request, NONCE_HEADER)
-        .ok_or(ApiError::Unauthorized)?
-        .to_string();
-    let request_signature_b64 = required_header(&request, REQUEST_SIGNATURE_HEADER)
-        .ok_or(ApiError::Unauthorized)?
-        .to_string();
+    let signing_session_id: Uuid = parse_header(&request, SIGNING_SESSION_HEADER)?;
+    let timestamp: i64 = parse_header(&request, TIMESTAMP_HEADER)?;
+    let nonce: String = parse_header(&request, NONCE_HEADER)?;
+    let request_signature_b64: String = parse_header(&request, REQUEST_SIGNATURE_HEADER)?;
 
     let method = request.method().as_str().to_string();
     let (parts, body) = request.into_parts();
@@ -108,12 +99,8 @@ pub async fn sign_relay_response(
 
     let path_and_query = relay_path_and_query(&request)?;
 
-    let signing_session_id = required_header(&request, SIGNING_SESSION_HEADER)
-        .ok_or(ApiError::Unauthorized)
-        .and_then(|value| Uuid::parse_str(value).map_err(|_| ApiError::Unauthorized))?;
-    let request_nonce = required_header(&request, NONCE_HEADER)
-        .ok_or(ApiError::Unauthorized)?
-        .to_string();
+    let signing_session_id: Uuid = parse_header(&request, SIGNING_SESSION_HEADER)?;
+    let request_nonce: String = parse_header(&request, NONCE_HEADER)?;
 
     let response = next.run(request).await;
     let (mut parts, body) = response.into_parts();
@@ -198,16 +185,17 @@ fn relay_path_and_query(request: &Request) -> Result<String, ApiError> {
         .unwrap_or_else(|| original_uri.0.path().to_string()))
 }
 
-fn required_header<'a>(request: &'a Request, name: &'static str) -> Option<&'a str> {
+fn parse_header<T: std::str::FromStr>(
+    request: &Request,
+    name: &'static str,
+) -> Result<T, ApiError> {
     request
         .headers()
-        .get(name)?
-        .to_str()
-        .ok()
-        .and_then(|value| {
-            let value = value.trim();
-            if value.is_empty() { None } else { Some(value) }
-        })
+        .get(name)
+        .and_then(|v| v.to_str().ok())
+        .ok_or(ApiError::Unauthorized)?
+        .parse()
+        .map_err(|_| ApiError::Unauthorized)
 }
 
 fn insert_header(parts: &mut axum::http::response::Parts, name: &'static str, value: &str) {
