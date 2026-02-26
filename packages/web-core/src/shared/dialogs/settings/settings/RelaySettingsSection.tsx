@@ -649,6 +649,7 @@ function RemoteRelaySettingsSectionContent({
         host_name: selectedHost?.name ?? selectedHostId,
         client_id: relayClientIdentity.clientId,
         client_name: relayClientIdentity.clientName,
+        signing_session_id: finishData.signing_session_id,
         public_key_b64: publicKeyB64,
         private_key_jwk: privateKeyJwk,
         server_public_key_b64: finishData.server_public_key_b64,

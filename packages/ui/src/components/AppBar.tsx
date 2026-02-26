@@ -44,6 +44,7 @@ function getProjectInitials(name: string): string {
 interface AppBarProps {
   projects: AppBarProject[];
   hosts?: AppBarHost[];
+  activeHostId?: string | null;
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
   onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
@@ -93,6 +94,7 @@ function getHostStatusIndicatorClass(status: AppBarHostStatus): string {
 export function AppBar({
   projects,
   hosts = [],
+  activeHostId = null,
   onCreateProject,
   onWorkspacesClick,
   onHostClick,
@@ -133,6 +135,7 @@ export function AppBar({
           )}
           {hosts.map((host) => {
             const isOffline = host.status === 'offline';
+            const isActiveHost = host.id === activeHostId;
             return (
               <Tooltip
                 key={host.id}
@@ -164,6 +167,7 @@ export function AppBar({
                       isOffline
                         ? 'bg-primary text-low opacity-50 cursor-not-allowed'
                         : 'bg-primary text-normal cursor-pointer',
+                      isActiveHost && 'ring-2 ring-brand',
                       host.status === 'online' && 'hover:bg-brand/10',
                       host.status === 'unpaired' &&
                         'text-warning hover:bg-warning/10'

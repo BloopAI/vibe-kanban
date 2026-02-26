@@ -7,6 +7,7 @@ export interface PairedRelayHost {
   host_name: string;
   client_id?: string;
   client_name?: string;
+  signing_session_id?: string;
   public_key_b64: string;
   private_key_jwk: JsonWebKey;
   server_public_key_b64: string;
