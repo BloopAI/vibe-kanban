@@ -85,6 +85,12 @@ function getHostStatusLabel(status: AppBarHostStatus): string {
   return 'Unpaired';
 }
 
+function getHostStatusBadgeClass(status: AppBarHostStatus): string {
+  if (status === 'online') return 'bg-success/90 text-white';
+  if (status === 'offline') return 'bg-secondary text-low border border-border';
+  return 'bg-warning text-high';
+}
+
 export function AppBar({
   projects,
   hosts = [],
@@ -134,43 +140,51 @@ export function AppBar({
                 content={`${host.name} · ${getHostStatusLabel(host.status)}`}
                 side="right"
               >
-                <button
-                  type="button"
-                  disabled={isOffline}
-                  onClick={() => {
-                    if (isOffline) {
-                      return;
-                    }
-                    onHostClick?.(host.id, host.status);
-                  }}
-                  className={cn(
-                    'relative flex items-center justify-center w-10 h-10 rounded-lg',
-                    'text-sm font-medium transition-colors',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                    isOffline
-                      ? 'bg-primary text-low opacity-50 cursor-not-allowed'
-                      : 'bg-primary text-normal cursor-pointer',
-                    host.status === 'online' && 'hover:bg-brand/10',
-                    host.status === 'unpaired' &&
-                      'text-warning hover:bg-warning/10'
-                  )}
-                  aria-label={`${host.name} (${getHostStatusLabel(host.status)})`}
-                >
-                  {getProjectInitials(host.name)}
-                  <CircleIcon
-                    weight="fill"
+                <div className="relative pt-2">
+                  <span
                     className={cn(
-                      'absolute -right-0.5 -bottom-0.5 size-icon-xs',
-                      host.status === 'online' && 'text-success',
-                      host.status === 'offline' && 'text-low',
-                      host.status === 'unpaired' && 'text-warning'
+                      'absolute top-0 left-1/2 -translate-x-1/2 z-10',
+                      'min-w-[16px] h-4 px-1 rounded-full',
+                      'flex items-center justify-center',
+                      getHostStatusBadgeClass(host.status)
                     )}
-                  />
-                </button>
+                    aria-hidden="true"
+                  >
+                    <CircleIcon weight="fill" className="size-[7px]" />
+                  </span>
+                  <button
+                    type="button"
+                    disabled={isOffline}
+                    onClick={() => {
+                      if (isOffline) {
+                        return;
+                      }
+                      onHostClick?.(host.id, host.status);
+                    }}
+                    className={cn(
+                      'relative flex items-center justify-center w-10 h-10 rounded-lg',
+                      'text-sm font-medium transition-colors',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                      isOffline
+                        ? 'bg-primary text-low opacity-50 cursor-not-allowed'
+                        : 'bg-primary text-normal cursor-pointer',
+                      host.status === 'online' && 'hover:bg-brand/10',
+                      host.status === 'unpaired' &&
+                        'text-warning hover:bg-warning/10'
+                    )}
+                    aria-label={`${host.name} (${getHostStatusLabel(host.status)})`}
+                  >
+                    {getProjectInitials(host.name)}
+                  </button>
+                </div>
               </Tooltip>
             );
           })}
         </div>
+      )}
+
+      {hosts.length > 0 && (
+        <div className="w-8 h-px bg-border" aria-hidden="true" />
       )}
 
       {/* Project management popover for unsigned users */}
