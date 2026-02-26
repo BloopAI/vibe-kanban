@@ -141,7 +141,6 @@ To test relay/tunnel mode end-to-end:
 ```bash
 export VK_SHARED_API_BASE=https://localhost:3001
 export VK_SHARED_RELAY_API_BASE=https://relay.localhost:3001
-export VK_TUNNEL=1
 
 pnpm run dev
 ```

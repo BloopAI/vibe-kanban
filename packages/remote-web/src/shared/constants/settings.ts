@@ -3,4 +3,5 @@ import type { SettingsSectionType } from "@/shared/dialogs/settings/settings/Set
 export const REMOTE_SETTINGS_SECTIONS: SettingsSectionType[] = [
   "organizations",
   "remote-projects",
+  "relay",
 ];

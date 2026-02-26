@@ -22,7 +22,6 @@ use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
 pub struct RelayClientConfig {
     pub ws_url: String,
     pub bearer_token: String,
-    pub accept_invalid_certs: bool,
     pub local_addr: String,
     pub shutdown: CancellationToken,
 }
@@ -45,7 +44,7 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
     );
 
     let mut tls_builder = native_tls::TlsConnector::builder();
-    if config.accept_invalid_certs {
+    if cfg!(debug_assertions) {
         tls_builder.danger_accept_invalid_certs(true);
     }
     let tls_connector = tls_builder
@@ -65,7 +64,7 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
     let mut session = Session::new_client(ws_io, YamuxConfig::default());
     let mut control = session.control();
 
-    tracing::info!("relay control channel connected");
+    tracing::info!("Relay control channel connected");
 
     let shutdown = config.shutdown;
     let local_addr = config.local_addr;
@@ -77,22 +76,16 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
                 return Ok(());
             }
             inbound = session.next() => {
-                match inbound {
-                    Some(Ok(stream)) => {
-                        let local_addr = local_addr.clone();
-                        tokio::spawn(async move {
-                            if let Err(error) = handle_inbound_stream(stream, local_addr).await {
-                                tracing::warn!(?error, "relay stream handling failed");
-                            }
-                        });
+                let stream = inbound
+                    .ok_or_else(|| anyhow::anyhow!("Relay control channel closed"))?
+                    .map_err(|e| anyhow::anyhow!("Relay yamux session error: {e}"))?;
+
+                let local_addr = local_addr.clone();
+                tokio::spawn(async move {
+                    if let Err(error) = handle_inbound_stream(stream, local_addr).await {
+                        tracing::warn!(?error, "Relay stream handling failed");
                     }
-                    Some(Err(error)) => {
-                        return Err(anyhow::anyhow!("relay yamux session error: {error}"));
-                    }
-                    None => {
-                        return Err(anyhow::anyhow!("relay control channel closed"));
-                    }
-                }
+                });
             }
         }
     }
@@ -113,7 +106,7 @@ async fn handle_inbound_stream(
         )
         .with_upgrades()
         .await
-        .context("yamux stream server connection failed")
+        .context("Yamux stream server connection failed")
 }
 
 async fn proxy_to_local(
@@ -130,7 +123,7 @@ async fn proxy_to_local(
         Err(error) => {
             tracing::warn!(
                 ?error,
-                "failed to connect to local server for relay request"
+                "Failed to connect to local server for relay request"
             );
             return Ok(simple_response(
                 StatusCode::BAD_GATEWAY,
@@ -145,7 +138,7 @@ async fn proxy_to_local(
     {
         Ok(value) => value,
         Err(error) => {
-            tracing::warn!(?error, "failed to create local proxy HTTP connection");
+            tracing::warn!(?error, "Failed to create local proxy HTTP connection");
             return Ok(simple_response(
                 StatusCode::BAD_GATEWAY,
                 "Failed to initialize local proxy connection",
@@ -155,7 +148,7 @@ async fn proxy_to_local(
 
     tokio::spawn(async move {
         if let Err(error) = connection.with_upgrades().await {
-            tracing::debug!(?error, "local proxy connection closed");
+            tracing::debug!(?error, "Local proxy connection closed");
         }
     });
 
@@ -164,7 +157,7 @@ async fn proxy_to_local(
     let mut response = match sender.send_request(request).await {
         Ok(response) => response,
         Err(error) => {
-            tracing::warn!(?error, "local proxy request failed");
+            tracing::warn!(?error, "Local proxy request failed");
             return Ok(simple_response(
                 StatusCode::BAD_GATEWAY,
                 "Local proxy request failed",
@@ -175,15 +168,10 @@ async fn proxy_to_local(
     if response.status() == StatusCode::SWITCHING_PROTOCOLS {
         let response_upgrade = upgrade::on(&mut response);
         tokio::spawn(async move {
-            let Ok(from_remote) = request_upgrade.await else {
-                return;
-            };
-            let Ok(to_local) = response_upgrade.await else {
-                return;
-            };
-            let mut from_remote = TokioIo::new(from_remote);
-            let mut to_local = TokioIo::new(to_local);
-            let _ = tokio::io::copy_bidirectional(&mut from_remote, &mut to_local).await;
+            let mut from_remote = TokioIo::new(request_upgrade.await?);
+            let mut to_local = TokioIo::new(response_upgrade.await?);
+            tokio::io::copy_bidirectional(&mut from_remote, &mut to_local).await?;
+            Ok::<_, anyhow::Error>(())
         });
     }
 

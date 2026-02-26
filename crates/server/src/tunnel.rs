@@ -7,7 +7,6 @@ use anyhow::Context as _;
 use deployment::Deployment as _;
 use relay_tunnel::client::{RelayClientConfig, start_relay_client};
 use services::services::remote_client::RemoteClient;
-use trusted_key_auth::spake2::generate_one_time_code;
 
 use crate::DeploymentImpl;
 
@@ -20,138 +19,87 @@ fn relay_api_base() -> Option<String> {
         .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()))
 }
 
-/// Returns true if the relay should start based on config and environment.
-pub async fn should_start_relay(deployment: &DeploymentImpl) -> bool {
+struct RelayParams {
+    local_port: u16,
+    remote_client: RemoteClient,
+    relay_base: String,
+    host_name: String,
+}
+
+/// Resolve all preconditions for starting the relay. Returns `None` if any
+/// requirement is missing (config, env, login, server info).
+async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams> {
     let config = deployment.config().read().await;
     if !config.relay_enabled {
         tracing::info!("Relay disabled by config");
-        return false;
+        return None;
     }
     drop(config);
 
-    if relay_api_base().is_none() {
+    let relay_base = relay_api_base().or_else(|| {
         tracing::debug!("VK_SHARED_RELAY_API_BASE not set; relay unavailable");
-        return false;
-    }
+        None
+    })?;
 
-    if deployment.remote_client().is_err() {
+    let remote_client = deployment.remote_client().ok().or_else(|| {
         tracing::debug!("Remote client not configured; relay unavailable");
-        return false;
-    }
-
-    true
-}
-
-/// Called once at startup. Stores the local port and starts the relay if the
-/// user is already logged in and relay is enabled.
-pub async fn start_relay_lifecycle(deployment: &DeploymentImpl, local_port: u16) {
-    deployment.relay_control().set_local_port(local_port).await;
-
-    if !should_start_relay(deployment).await {
-        return;
-    }
+        None
+    })?;
 
     let login_status = deployment.get_login_status().await;
     if matches!(login_status, api_types::LoginStatus::LoggedOut) {
-        tracing::info!("Not logged in at startup; relay will start on login");
-        return;
+        tracing::info!("Not logged in; relay will start on login");
+        return None;
     }
 
-    tracing::info!("Already logged in at startup; starting relay");
-    spawn_relay(deployment).await;
+    let local_port = deployment.server_info().get_port().await.or_else(|| {
+        tracing::warn!("Relay local port not set; cannot spawn relay");
+        None
+    })?;
+
+    let host_name = deployment.server_info().get_hostname().await.or_else(|| {
+        tracing::warn!("Server hostname not set; cannot spawn relay");
+        None
+    })?;
+
+    Some(RelayParams {
+        local_port,
+        remote_client,
+        relay_base,
+        host_name,
+    })
 }
 
 /// Spawn the relay reconnect loop. Safe to call multiple times — cancels any
-/// previous session first via `RelayControl::start`.
+/// previous session first via `RelayControl::reset`.
 pub async fn spawn_relay(deployment: &DeploymentImpl) {
-    if !should_start_relay(deployment).await {
-        return;
-    }
-
-    let Some(local_port) = deployment.relay_control().local_port().await else {
-        tracing::warn!("Relay local port not set; cannot spawn relay");
+    let Some(params) = resolve_relay_params(deployment).await else {
         return;
     };
 
-    let Ok(remote_client) = deployment.remote_client() else {
-        tracing::warn!("Remote client unavailable; cannot spawn relay");
-        return;
-    };
-
-    let Some(relay_base) = relay_api_base() else {
-        tracing::warn!("VK_SHARED_RELAY_API_BASE not set; cannot spawn relay");
-        return;
-    };
-
-    let host_name = format!(
-        "{} local ({})",
-        env!("CARGO_PKG_NAME"),
-        deployment.user_id()
-    );
-
-    let enrollment_code = deployment
-        .get_or_set_enrollment_code(generate_one_time_code())
-        .await;
-    tracing::info!(
-        enrollment_code = %enrollment_code,
-        "Relay PAKE enrollment code ready"
-    );
-
-    let cancel_token = deployment.relay_control().start().await;
+    let cancel_token = deployment.relay_control().reset().await;
 
     tokio::spawn(async move {
         tracing::info!("Relay auto-reconnect loop started");
 
-        let mut reconnect_delay =
-            std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
-        let max_reconnect_delay = std::time::Duration::from_secs(RELAY_RECONNECT_MAX_DELAY_SECS);
+        let mut delay = std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
+        let max_delay = std::time::Duration::from_secs(RELAY_RECONNECT_MAX_DELAY_SECS);
 
-        loop {
-            if cancel_token.is_cancelled() {
-                break;
-            }
-
-            let run_result = start_relay(
-                local_port,
-                &relay_base,
-                &remote_client,
-                &host_name,
-                cancel_token.clone(),
-            )
-            .await;
-
-            let mut should_backoff = false;
-
-            match run_result {
-                Ok(()) => {
-                    if !cancel_token.is_cancelled() {
-                        tracing::warn!("Relay disconnected; reconnecting");
-                    }
-                    reconnect_delay =
-                        std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
-                }
-                Err(error) => {
-                    if cancel_token.is_cancelled() {
-                        break;
-                    }
-                    tracing::warn!(
-                        ?error,
-                        retry_in_secs = reconnect_delay.as_secs(),
-                        "Relay connection failed; retrying"
-                    );
-                    should_backoff = true;
-                }
-            }
+        while !cancel_token.is_cancelled()
+            && let Err(error) = start_relay(&params, cancel_token.clone()).await
+        {
+            tracing::warn!(
+                ?error,
+                retry_in_secs = delay.as_secs(),
+                "Relay connection failed; retrying"
+            );
 
             tokio::select! {
                 _ = cancel_token.cancelled() => break,
-                _ = tokio::time::sleep(reconnect_delay) => {}
+                _ = tokio::time::sleep(delay) => {}
             }
 
-            if should_backoff {
-                reconnect_delay =
-                    std::cmp::min(reconnect_delay.saturating_mul(2), max_reconnect_delay);
-            }
+            delay = std::cmp::min(delay.saturating_mul(2), max_delay);
         }
 
         tracing::info!("Relay reconnect loop exited");
@@ -165,17 +113,14 @@ pub async fn stop_relay(deployment: &DeploymentImpl) {
 }
 
 /// Start the relay client transport.
-pub async fn start_relay(
-    local_port: u16,
-    relay_api_base: &str,
-    remote_client: &RemoteClient,
-    host_name: &str,
+async fn start_relay(
+    params: &RelayParams,
     shutdown: tokio_util::sync::CancellationToken,
 ) -> anyhow::Result<()> {
-    let base_url = relay_api_base.trim_end_matches('/');
+    let base_url = params.relay_base.trim_end_matches('/');
 
     let encoded_name = url::form_urlencoded::Serializer::new(String::new())
-        .append_pair("name", host_name)
+        .append_pair("name", &params.host_name)
         .append_pair("agent_version", env!("CARGO_PKG_VERSION"))
         .finish();
 
@@ -187,18 +132,18 @@ pub async fn start_relay(
         anyhow::bail!("Unexpected base URL scheme: {base_url}");
     };
 
-    let access_token = remote_client
+    let access_token = params
+        .remote_client
         .access_token()
         .await
         .context("Failed to get access token for relay")?;
 
-    tracing::info!(%ws_url, "connecting relay control channel");
+    tracing::info!(%ws_url, "Connecting relay control channel");
 
     start_relay_client(RelayClientConfig {
         ws_url,
         bearer_token: access_token,
-        accept_invalid_certs: cfg!(debug_assertions),
-        local_addr: format!("127.0.0.1:{local_port}"),
+        local_addr: format!("127.0.0.1:{}", params.local_port),
         shutdown,
     })
     .await

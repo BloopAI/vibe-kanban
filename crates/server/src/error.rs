@@ -24,6 +24,7 @@ use services::services::{
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
+use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
 
 #[derive(Debug, Error, ts_rs::TS)]
@@ -469,6 +470,18 @@ impl IntoResponse for ApiError {
             .unwrap_or_else(|| format!("{}: {}", info.error_type, self));
         let response = ApiResponse::<()>::error(&message);
         (info.status, Json(response)).into_response()
+    }
+}
+
+impl From<TrustedKeyAuthError> for ApiError {
+    fn from(err: TrustedKeyAuthError) -> Self {
+        match err {
+            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
+            TrustedKeyAuthError::BadRequest(msg) => ApiError::BadRequest(msg),
+            TrustedKeyAuthError::Forbidden(msg) => ApiError::Forbidden(msg),
+            TrustedKeyAuthError::TooManyRequests(msg) => ApiError::TooManyRequests(msg),
+            TrustedKeyAuthError::Io(e) => ApiError::Io(e),
+        }
     }
 }
 

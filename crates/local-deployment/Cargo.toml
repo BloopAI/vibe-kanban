@@ -8,6 +8,8 @@ api-types = { path = "../api-types" }
 db = { path = "../db" }
 executors = { path="../executors" }
 deployment = { path = "../deployment" }
+relay-control = { path = "../relay-control" }
+server-info = { path = "../server-info" }
 services = { path = "../services" }
 utils = { path = "../utils" }
 git = { path = "../git" }
@@ -20,8 +22,6 @@ sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs",
 uuid = { version = "1.0", features = ["v4", "serde"] }
 async-trait = { workspace = true }
 thiserror = { workspace = true }
-base64 = "0.22"
-ed25519-dalek = "2.2.0"
 command-group = { version = "5.0", features = ["with-tokio"] }
 futures = "0.3"
 tokio = { workspace = true }
