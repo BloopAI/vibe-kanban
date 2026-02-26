@@ -6,6 +6,7 @@ import {
   type TerminalTab,
   type TerminalInstance,
 } from '@/shared/hooks/useTerminal';
+import { openLocalApiWebSocket } from '@/shared/lib/localApiTransport';
 
 interface TerminalConnection {
   ws: WebSocket;
@@ -315,81 +316,100 @@ export function TerminalProvider({ children }: TerminalProviderProps) {
         intentionallyClosed: false,
       });
 
+      const scheduleReconnect = () => {
+        const state = reconnectStateRef.current.get(tabId);
+        if (!state || state.intentionallyClosed) {
+          return;
+        }
+
+        const maxRetries = 6;
+        if (state.retryCount >= maxRetries) {
+          return;
+        }
+
+        const delay = Math.min(8000, 500 * Math.pow(2, state.retryCount));
+        state.retryCount += 1;
+        state.retryTimer = setTimeout(() => {
+          state.retryTimer = null;
+          connectWebSocket();
+        }, delay);
+      };
+
       const connectWebSocket = () => {
         const reconnectState = reconnectStateRef.current.get(tabId);
         if (!reconnectState || reconnectState.intentionallyClosed) {
           return;
         }
 
-        // Create new WebSocket
-        const wsEndpoint = endpoint.replace(/^http/, 'ws');
-        const ws = new WebSocket(wsEndpoint);
-
-        ws.onopen = () => {
-          // Reset retry count on successful connection
-          const state = reconnectStateRef.current.get(tabId);
-          if (state) {
-            state.retryCount = 0;
-          }
-        };
-
-        ws.onmessage = (event) => {
+        void (async () => {
           try {
-            const msg = JSON.parse(event.data);
-            const callbacks = connectionCallbacksRef.current.get(tabId);
-            if (msg.type === 'output' && msg.data && callbacks) {
-              callbacks.onData(decodeBase64(msg.data));
-            } else if (msg.type === 'exit' && callbacks) {
-              callbacks.onExit?.();
+            const ws = await openLocalApiWebSocket(endpoint);
+            const state = reconnectStateRef.current.get(tabId);
+            if (!state || state.intentionallyClosed) {
+              ws.close();
+              return;
             }
+
+            ws.onopen = () => {
+              // Reset retry count on successful connection
+              const latestState = reconnectStateRef.current.get(tabId);
+              if (latestState) {
+                latestState.retryCount = 0;
+              }
+            };
+
+            ws.onmessage = (event) => {
+              try {
+                const msg = JSON.parse(event.data);
+                const callbacks = connectionCallbacksRef.current.get(tabId);
+                if (msg.type === 'output' && msg.data && callbacks) {
+                  callbacks.onData(decodeBase64(msg.data));
+                } else if (msg.type === 'exit' && callbacks) {
+                  callbacks.onExit?.();
+                }
+              } catch {
+                // Ignore parse errors
+              }
+            };
+
+            ws.onerror = () => {
+              // Error will be followed by onclose, so we handle reconnection there
+            };
+
+            ws.onclose = (event) => {
+              const latestState = reconnectStateRef.current.get(tabId);
+              if (!latestState || latestState.intentionallyClosed) {
+                return;
+              }
+
+              // Don't reconnect on clean close (code 1000) or if shell exited
+              if (event.code === 1000 && event.wasClean) {
+                return;
+              }
+
+              scheduleReconnect();
+            };
+
+            const send = (data: string) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(
+                  JSON.stringify({ type: 'input', data: encodeBase64(data) })
+                );
+              }
+            };
+
+            const resize = (cols: number, rows: number) => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+              }
+            };
+
+            const connection: TerminalConnection = { ws, send, resize };
+            terminalConnectionsRef.current.set(tabId, connection);
           } catch {
-            // Ignore parse errors
+            scheduleReconnect();
           }
-        };
-
-        ws.onerror = () => {
-          // Error will be followed by onclose, so we handle reconnection there
-        };
-
-        ws.onclose = (event) => {
-          const state = reconnectStateRef.current.get(tabId);
-          if (!state || state.intentionallyClosed) {
-            return;
-          }
-
-          // Don't reconnect on clean close (code 1000) or if shell exited
-          if (event.code === 1000 && event.wasClean) {
-            return;
-          }
-
-          // Exponential backoff: 500ms, 1s, 2s, 4s, 8s (max), up to 6 retries
-          const maxRetries = 6;
-          if (state.retryCount < maxRetries) {
-            const delay = Math.min(8000, 500 * Math.pow(2, state.retryCount));
-            state.retryCount += 1;
-            state.retryTimer = setTimeout(() => {
-              state.retryTimer = null;
-              connectWebSocket();
-            }, delay);
-          }
-        };
-
-        const send = (data: string) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(
-              JSON.stringify({ type: 'input', data: encodeBase64(data) })
-            );
-          }
-        };
-
-        const resize = (cols: number, rows: number) => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'resize', cols, rows }));
-          }
-        };
-
-        const connection: TerminalConnection = { ws, send, resize };
-        terminalConnectionsRef.current.set(tabId, connection);
+        })();
       };
 
       connectWebSocket();

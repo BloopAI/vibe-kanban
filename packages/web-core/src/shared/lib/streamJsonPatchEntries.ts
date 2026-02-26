@@ -1,6 +1,7 @@
 // streamJsonPatchEntries.ts - WebSocket JSON patch streaming utility
 import type { Operation } from 'rfc6902';
 import { applyUpsertPatch } from '@/shared/lib/jsonPatch';
+import { openLocalApiWebSocket } from '@/shared/lib/localApiTransport';
 
 type PatchContainer<E = unknown> = { entries: E[] };
 
@@ -39,16 +40,14 @@ export function streamJsonPatchEntries<E = unknown>(
   opts: StreamOptions<E> = {}
 ): StreamController<E> {
   let connected = false;
+  let closed = false;
+  let ws: WebSocket | null = null;
   let snapshot: PatchContainer<E> = structuredClone(
     opts.initial ?? ({ entries: [] } as PatchContainer<E>)
   );
 
   const subscribers = new Set<(entries: E[]) => void>();
   if (opts.onEntries) subscribers.add(opts.onEntries);
-
-  // Convert HTTP endpoint to WebSocket endpoint
-  const wsUrl = url.replace(/^http/, 'ws');
-  const ws = new WebSocket(wsUrl);
 
   const notify = () => {
     for (const cb of subscribers) {
@@ -80,28 +79,44 @@ export function streamJsonPatchEntries<E = unknown>(
       // Handle Finished messages
       if (msg.finished !== undefined) {
         opts.onFinished?.(snapshot.entries);
-        ws.close();
+        ws?.close();
       }
     } catch (err) {
       opts.onError?.(err);
     }
   };
 
-  ws.addEventListener('open', () => {
-    connected = true;
-    opts.onConnect?.();
-  });
+  void (async () => {
+    try {
+      const opened = await openLocalApiWebSocket(url);
 
-  ws.addEventListener('message', handleMessage);
+      if (closed) {
+        opened.close();
+        return;
+      }
 
-  ws.addEventListener('error', (err) => {
-    connected = false;
-    opts.onError?.(err);
-  });
+      ws = opened;
+      ws.addEventListener('open', () => {
+        connected = true;
+        opts.onConnect?.();
+      });
 
-  ws.addEventListener('close', () => {
-    connected = false;
-  });
+      ws.addEventListener('message', handleMessage);
+
+      ws.addEventListener('error', (err) => {
+        connected = false;
+        opts.onError?.(err);
+      });
+
+      ws.addEventListener('close', () => {
+        connected = false;
+      });
+    } catch (error) {
+      if (!closed) {
+        opts.onError?.(error);
+      }
+    }
+  })();
 
   return {
     getEntries(): E[] {
@@ -120,7 +135,8 @@ export function streamJsonPatchEntries<E = unknown>(
       return () => subscribers.delete(cb);
     },
     close(): void {
-      ws.close();
+      closed = true;
+      ws?.close();
       subscribers.clear();
       connected = false;
     },

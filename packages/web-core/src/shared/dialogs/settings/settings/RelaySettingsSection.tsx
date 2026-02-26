@@ -17,31 +17,14 @@ import {
 } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
-import { createRelaySession, listRelayHosts } from '@/shared/lib/remoteApi';
-import {
-  createRelaySessionAuthCode,
-  establishRelaySessionBaseUrl,
-  finishRelaySpake2Enrollment,
-  getRelayApiUrl,
-  startRelaySpake2Enrollment,
-} from '@/shared/lib/relayBackendApi';
-import {
-  buildClientProofB64,
-  finishSpake2Enrollment,
-  generateRelaySigningKeyPair,
-  normalizeEnrollmentCode,
-  startSpake2Enrollment,
-  verifyServerProof,
-} from '@/shared/lib/relayPake';
-import {
-  listPairedRelayHosts,
-  removePairedRelayHost,
-  savePairedRelayHost,
-  type PairedRelayHost,
-} from '@/shared/lib/relayPairingStorage';
-import { createRelayClientIdentity } from '@/shared/lib/relayClientIdentity';
+import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
-import type { RelayHost } from 'shared/remote-types';
+import {
+  usePairRelayHostMutation,
+  useRelayRemoteHostsQuery,
+  useRelayRemotePairedHostsQuery,
+  useRemovePairedRelayHostMutation,
+} from '@/shared/dialogs/settings/settings/useRelayRemoteHostMutations';
 import {
   SettingsCard,
   SettingsCheckbox,
@@ -65,7 +48,6 @@ const RELAY_REMOTE_CONTROL_DOCS_URL =
 interface RelaySettingsSectionInitialState {
   hostId?: string;
 }
-
 export function RelaySettingsSectionContent({
   initialState,
 }: {
@@ -433,59 +415,38 @@ function RemoteRelaySettingsSectionContent({
   const initialHostId = initialState?.hostId;
   const hasAppliedInitialHostRef = useRef(false);
 
-  const [hosts, setHosts] = useState<RelayHost[]>([]);
-  const [hostsLoading, setHostsLoading] = useState(false);
-  const [hostsError, setHostsError] = useState<string | null>(null);
-
-  const [pairedHosts, setPairedHosts] = useState<PairedRelayHost[]>([]);
-  const [pairedHostsLoading, setPairedHostsLoading] = useState(false);
-
   const [showPairForm, setShowPairForm] = useState(false);
   const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
   const [pairingCode, setPairingCode] = useState('');
-  const [pairing, setPairing] = useState(false);
   const [pairError, setPairError] = useState<string | null>(null);
   const [pairSuccess, setPairSuccess] = useState<string | null>(null);
   const [removingHostId, setRemovingHostId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
-  const loadHosts = useCallback(async () => {
-    setHostsLoading(true);
-    setHostsError(null);
-    try {
-      const relayHosts = await listRelayHosts();
-      setHosts(relayHosts);
-    } catch (error) {
-      console.error('Failed to load relay hosts', error);
-      setHostsError(
-        t('settings.relay.remote.hosts.loadError', 'Failed to load hosts.')
-      );
-    } finally {
-      setHostsLoading(false);
-    }
-  }, [t]);
+  const {
+    data: hosts = [],
+    isLoading: hostsLoading,
+    error: hostsQueryError,
+  } = useQuery({
+    ...useRelayRemoteHostsQuery(),
+    enabled: isSignedIn,
+  });
 
-  const loadPairedHosts = useCallback(async () => {
-    setPairedHostsLoading(true);
-    try {
-      const entries = await listPairedRelayHosts();
-      setPairedHosts(entries);
-    } catch (error) {
-      console.error('Failed to load paired hosts', error);
-    } finally {
-      setPairedHostsLoading(false);
-    }
-  }, []);
+  const { data: pairedHosts = [], isLoading: pairedHostsLoading } = useQuery({
+    ...useRelayRemotePairedHostsQuery(),
+    enabled: isSignedIn,
+  });
 
-  useEffect(() => {
-    if (!isSignedIn) {
-      setHosts([]);
-      setPairedHosts([]);
-      return;
-    }
+  const hostsError =
+    hostsQueryError != null
+      ? t('settings.relay.remote.hosts.loadError', 'Failed to load hosts.')
+      : null;
 
-    void Promise.all([loadHosts(), loadPairedHosts()]);
-  }, [isSignedIn, loadHosts, loadPairedHosts]);
+  const { mutateAsync: pairRelayHostMutation, isPending: isPairing } =
+    usePairRelayHostMutation();
+
+  const { mutateAsync: removePairedHostMutation } =
+    useRemovePairedRelayHostMutation();
 
   const pairedHostIds = useMemo(
     () => new Set(pairedHosts.map((host) => host.host_id)),
@@ -557,7 +518,7 @@ function RemoteRelaySettingsSectionContent({
   const canSubmitPairing =
     !!selectedHostId &&
     normalizeEnrollmentCode(pairingCode).length === 6 &&
-    !pairing;
+    !isPairing;
 
   const resetPairForm = () => {
     setPairingCode('');
@@ -582,80 +543,16 @@ function RemoteRelaySettingsSectionContent({
       return;
     }
 
-    setPairing(true);
     setPairError(null);
     setPairSuccess(null);
 
     try {
-      const relaySession = await createRelaySession(selectedHostId);
-      const authCode = await createRelaySessionAuthCode(relaySession.id);
-
-      const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
-        getRelayApiUrl(),
-        selectedHostId,
-        authCode.code
-      );
-
-      const { state, clientMessageB64 } =
-        await startSpake2Enrollment(normalizedCode);
-
-      const startData = await startRelaySpake2Enrollment(relaySessionBaseUrl, {
-        enrollment_code: normalizedCode,
-        client_message_b64: clientMessageB64,
-      });
-
-      const sharedKey = await finishSpake2Enrollment(
-        state,
-        startData.server_message_b64
-      );
-
-      const { privateKeyJwk, publicKeyB64, publicKeyBytes } =
-        await generateRelaySigningKeyPair();
-      const clientProofB64 = await buildClientProofB64(
-        sharedKey,
-        startData.enrollment_id,
-        publicKeyBytes
-      );
-      const relayClientIdentity = createRelayClientIdentity();
-
-      const finishData = await finishRelaySpake2Enrollment(
-        relaySessionBaseUrl,
-        {
-          enrollment_id: startData.enrollment_id,
-          client_id: relayClientIdentity.clientId,
-          client_name: relayClientIdentity.clientName,
-          client_browser: relayClientIdentity.clientBrowser,
-          client_os: relayClientIdentity.clientOs,
-          client_device: relayClientIdentity.clientDevice,
-          public_key_b64: publicKeyB64,
-          client_proof_b64: clientProofB64,
-        }
-      );
-
-      const serverProofValid = await verifyServerProof(
-        sharedKey,
-        startData.enrollment_id,
-        publicKeyBytes,
-        finishData.server_public_key_b64,
-        finishData.server_proof_b64
-      );
-      if (!serverProofValid) {
-        throw new Error('Server proof verification failed.');
-      }
-
       const selectedHost = hosts.find((host) => host.id === selectedHostId);
-      await savePairedRelayHost({
-        host_id: selectedHostId,
-        host_name: selectedHost?.name ?? selectedHostId,
-        client_id: relayClientIdentity.clientId,
-        client_name: relayClientIdentity.clientName,
-        public_key_b64: publicKeyB64,
-        private_key_jwk: privateKeyJwk,
-        server_public_key_b64: finishData.server_public_key_b64,
-        paired_at: new Date().toISOString(),
+      await pairRelayHostMutation({
+        hostId: selectedHostId,
+        hostName: selectedHost?.name ?? selectedHostId,
+        normalizedCode,
       });
-
-      await loadPairedHosts();
       setPairSuccess(
         t('settings.relay.remote.pair.success', 'Host paired successfully.')
       );
@@ -664,10 +561,8 @@ function RemoteRelaySettingsSectionContent({
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setPairError(message);
-    } finally {
-      setPairing(false);
     }
-  }, [hosts, loadPairedHosts, pairingCode, selectedHostId, t]);
+  }, [hosts, pairRelayHostMutation, pairingCode, selectedHostId, t]);
 
   const handleRemovePairedHost = useCallback(
     async (hostId: string) => {
@@ -676,8 +571,7 @@ function RemoteRelaySettingsSectionContent({
       setPairSuccess(null);
 
       try {
-        await removePairedRelayHost(hostId);
-        await loadPairedHosts();
+        await removePairedHostMutation(hostId);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         setRemoveError(message);
@@ -685,7 +579,7 @@ function RemoteRelaySettingsSectionContent({
         setRemovingHostId(null);
       }
     },
-    [loadPairedHosts]
+    [removePairedHostMutation]
   );
 
   if (!isSignedIn) {
@@ -754,7 +648,7 @@ function RemoteRelaySettingsSectionContent({
               setPairError(null);
               setShowPairForm((current) => !current);
             }}
-            disabled={availableHostsToPair.length === 0 || pairing}
+            disabled={availableHostsToPair.length === 0 || isPairing}
           />
         }
       >
@@ -784,7 +678,7 @@ function RemoteRelaySettingsSectionContent({
                   'settings.relay.remote.pair.host.placeholder',
                   'Select a host'
                 )}
-                disabled={pairing || hostOptions.length === 0}
+                disabled={isPairing || hostOptions.length === 0}
               />
             </div>
 
@@ -795,7 +689,7 @@ function RemoteRelaySettingsSectionContent({
               <RelayCodeInput
                 value={pairingCode}
                 onChange={setPairingCode}
-                disabled={pairing}
+                disabled={isPairing}
               />
               <p className="text-sm text-low">
                 {t(
@@ -807,7 +701,7 @@ function RemoteRelaySettingsSectionContent({
 
             {pairError && <p className="text-sm text-error">{pairError}</p>}
 
-            {pairing && (
+            {isPairing && (
               <div className="flex items-center gap-2 text-sm text-normal">
                 <SpinnerIcon
                   className="size-icon-sm animate-spin"
@@ -827,13 +721,13 @@ function RemoteRelaySettingsSectionContent({
                 value={t('settings.relay.remote.pair.confirm', 'Pair host')}
                 onClick={() => void handlePairHost()}
                 disabled={!canSubmitPairing}
-                actionIcon={pairing ? 'spinner' : undefined}
+                actionIcon={isPairing ? 'spinner' : undefined}
               />
               <PrimaryButton
                 variant="tertiary"
                 value={t('common:buttons.cancel')}
                 onClick={resetPairForm}
-                disabled={pairing}
+                disabled={isPairing}
               />
             </div>
           </div>
