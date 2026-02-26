@@ -1,5 +1,6 @@
 import {
   CommandExitStatus,
+  ExecutorAction,
   ExecutionProcess,
   ExecutionProcessStatus,
   NormalizedEntry,
@@ -36,6 +37,25 @@ import {
   nextActionPatch,
   REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
+
+/** Walk the next_action chain to find the first coding agent prompt. */
+function extractPromptFromActionChain(
+  action: ExecutorAction | null
+): string | null {
+  let current = action;
+  while (current) {
+    const typ = current.typ;
+    if (
+      typ.type === 'CodingAgentInitialRequest' ||
+      typ.type === 'CodingAgentFollowUpRequest' ||
+      typ.type === 'ReviewRequest'
+    ) {
+      return typ.prompt;
+    }
+    current = current.next_action;
+  }
+  return null;
+}
 
 export const useConversationHistory = ({
   attempt,
@@ -182,6 +202,20 @@ export const useConversationHistory = ({
       let setupHelpText: string | undefined;
       let latestTokenUsageInfo: TokenUsageInfo | null = null;
 
+      // Check whether any coding agent process already exists.  When the
+      // setup script chain completed successfully the coding agent process
+      // will render the initial prompt itself; we only need to extract the
+      // prompt from the action chain when no such process exists (e.g. the
+      // setup script failed before the coding agent could start).
+      const hasCodingAgentProcess = Object.values(executionProcessState).some(
+        (p) =>
+          p.executionProcess.executor_action.typ.type ===
+            'CodingAgentInitialRequest' ||
+          p.executionProcess.executor_action.typ.type ===
+            'CodingAgentFollowUpRequest' ||
+          p.executionProcess.executor_action.typ.type === 'ReviewRequest'
+      );
+
       // Create user messages + tool calls for setup/cleanup scripts
       const allEntries = Object.values(executionProcessState)
         .sort(
@@ -327,6 +361,33 @@ export const useConversationHistory = ({
               setHasSetupScriptRun(true);
             } else if (scriptContext === 'CleanupScript') {
               setHasCleanupScriptRun(true);
+            }
+
+            // Show the initial prompt before the first setup script so the
+            // user can see (and later edit/retry) their original message even
+            // when the setup script fails before the coding agent starts.
+            if (
+              scriptContext === 'SetupScript' &&
+              index === 0 &&
+              !hasCodingAgentProcess
+            ) {
+              const initialPrompt = extractPromptFromActionChain(
+                p.executionProcess.executor_action
+              );
+              if (initialPrompt) {
+                const userNormalizedEntry: NormalizedEntry = {
+                  entry_type: { type: 'user_message' },
+                  content: initialPrompt,
+                  timestamp: null,
+                };
+                const userPatch: PatchType = {
+                  type: 'NORMALIZED_ENTRY',
+                  content: userNormalizedEntry,
+                };
+                entries.push(
+                  patchWithKey(userPatch, p.executionProcess.id, 'user')
+                );
+              }
             }
 
             const executionProcess = getLiveExecutionProcess(
