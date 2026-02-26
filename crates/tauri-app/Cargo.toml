@@ -1,6 +1,6 @@
 [package]
 name = "vibe-kanban-tauri"
-version = "0.1.19-pthis.7"
+version = "0.1.20"
 edition = "2024"
 
 [[bin]]
@@ -19,6 +19,7 @@ tauri-plugin-updater = "2"
 server = { path = "../server" }
 
 tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
