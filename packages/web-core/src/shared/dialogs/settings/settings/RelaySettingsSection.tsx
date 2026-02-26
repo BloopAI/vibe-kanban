@@ -57,6 +57,8 @@ interface PairedHostRow {
 }
 
 const RELAY_PAIRED_CLIENTS_QUERY_KEY = ['relay', 'paired-clients'] as const;
+const RELAY_REMOTE_CONTROL_DOCS_URL =
+  'https://www.vibekanban.com/docs/remote-control';
 
 interface RelaySettingsSectionInitialState {
   hostId?: string;
@@ -234,7 +236,19 @@ function LocalRelaySettingsSectionContent({
 
       <SettingsCard
         title={t('settings.relay.title')}
-        description={t('settings.relay.description')}
+        description={
+          <>
+            {t('settings.relay.description')}{' '}
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          </>
+        }
       >
         <SettingsCheckbox
           id="relay-enabled"
@@ -655,7 +669,19 @@ function RemoteRelaySettingsSectionContent({
     return (
       <SettingsCard
         title={t('settings.relay.title')}
-        description={t('settings.relay.description')}
+        description={
+          <>
+            {t('settings.relay.description')}{' '}
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          </>
+        }
       >
         <div className="space-y-2">
           <p className="text-sm text-low">
@@ -680,10 +706,22 @@ function RemoteRelaySettingsSectionContent({
     <div className="space-y-4 pb-6">
       <SettingsCard
         title={t('settings.relay.title')}
-        description={t(
-          'settings.relay.remote.description',
-          'Pair browser access to your relay hosts using a one-time code.'
-        )}
+        description={
+          <>
+            {t(
+              'settings.relay.remote.description',
+              'Pair browser access to your relay hosts using a one-time code.'
+            )}{' '}
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          </>
+        }
         headerAction={
           <PrimaryButton
             variant="secondary"
