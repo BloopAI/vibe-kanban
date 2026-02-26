@@ -11,7 +11,6 @@ import {
   KanbanIcon,
   SpinnerIcon,
   StarIcon,
-  CircleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import { AppBarButton } from './AppBarButton';
@@ -85,10 +84,10 @@ function getHostStatusLabel(status: AppBarHostStatus): string {
   return 'Unpaired';
 }
 
-function getHostStatusBadgeClass(status: AppBarHostStatus): string {
-  if (status === 'online') return 'bg-success/90 text-white';
-  if (status === 'offline') return 'bg-secondary text-low border border-border';
-  return 'bg-warning text-high';
+function getHostStatusIndicatorClass(status: AppBarHostStatus): string {
+  if (status === 'online') return 'bg-success';
+  if (status === 'offline') return 'bg-low';
+  return 'bg-white border-warning';
 }
 
 export function AppBar({
@@ -140,18 +139,15 @@ export function AppBar({
                 content={`${host.name} · ${getHostStatusLabel(host.status)}`}
                 side="right"
               >
-                <div className="relative pt-2">
+                <div className="relative">
                   <span
                     className={cn(
-                      'absolute top-0 right-0 z-10',
-                      'min-w-[16px] h-4 px-1 rounded-full',
-                      'flex items-center justify-center',
-                      getHostStatusBadgeClass(host.status)
+                      'absolute -top-1 -right-1 z-10',
+                      'w-3.5 h-3.5 rounded-full border border-secondary',
+                      getHostStatusIndicatorClass(host.status)
                     )}
                     aria-hidden="true"
-                  >
-                    <CircleIcon weight="fill" className="size-[7px]" />
-                  </span>
+                  />
                   <button
                     type="button"
                     disabled={isOffline}
