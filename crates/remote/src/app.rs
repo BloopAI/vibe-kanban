@@ -87,7 +87,7 @@ impl Server {
         ));
 
         let oauth_token_validator =
-            Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone()));
+            Arc::new(OAuthTokenValidator::new(pool.clone(), registry.clone(), jwt.clone()));
 
         let mailer: Arc<dyn Mailer> = match std::env::var("LOOPS_EMAIL_API_KEY") {
             Ok(api_key) if !api_key.is_empty() => {
