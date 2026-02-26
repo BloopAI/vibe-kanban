@@ -143,7 +143,7 @@ export function AppBar({
                 <div className="relative pt-2">
                   <span
                     className={cn(
-                      'absolute top-0 left-1/2 -translate-x-1/2 z-10',
+                      'absolute top-0 right-0 z-10',
                       'min-w-[16px] h-4 px-1 rounded-full',
                       'flex items-center justify-center',
                       getHostStatusBadgeClass(host.status)
