@@ -151,7 +151,7 @@ export const useConversationHistory = ({
   const patchWithKey = (
     patch: PatchType,
     executionProcessId: string,
-    index: number | 'user'
+    index: number | 'user' | 'script'
   ) => {
     return {
       ...patch,
@@ -446,10 +446,12 @@ export const useConversationHistory = ({
               type: 'NORMALIZED_ENTRY',
               content: toolNormalizedEntry,
             };
+            // Use a distinct key suffix so Virtuoso doesn't reuse the
+            // height measured while the script was still streaming logs.
             const toolPatchWithKey: PatchTypeWithKey = patchWithKey(
               toolPatch,
               p.executionProcess.id,
-              0
+              'script'
             );
 
             entries.push(toolPatchWithKey);
