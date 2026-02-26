@@ -8,7 +8,12 @@ use std::{
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use crate::{error::TrustedKeyAuthError, trusted_keys::add_trusted_public_key};
+use crate::{
+    error::TrustedKeyAuthError,
+    trusted_keys::{
+        TrustedRelayClient, list_trusted_clients, remove_trusted_client, upsert_trusted_client,
+    },
+};
 
 #[derive(Clone)]
 pub struct TrustedKeyAuthRuntime {
@@ -36,11 +41,24 @@ impl TrustedKeyAuthRuntime {
         }
     }
 
-    pub async fn persist_trusted_public_key(
+    pub async fn persist_trusted_client(
         &self,
-        public_key_b64: &str,
+        client: TrustedRelayClient,
     ) -> Result<bool, TrustedKeyAuthError> {
-        add_trusted_public_key(&self.trusted_keys_path, public_key_b64).await
+        upsert_trusted_client(&self.trusted_keys_path, client).await
+    }
+
+    pub async fn list_trusted_clients(
+        &self,
+    ) -> Result<Vec<TrustedRelayClient>, TrustedKeyAuthError> {
+        list_trusted_clients(&self.trusted_keys_path).await
+    }
+
+    pub async fn remove_trusted_client(
+        &self,
+        client_id: Uuid,
+    ) -> Result<bool, TrustedKeyAuthError> {
+        remove_trusted_client(&self.trusted_keys_path, client_id).await
     }
 
     pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {

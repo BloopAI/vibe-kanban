@@ -7,6 +7,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import { SignInIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
@@ -36,6 +37,7 @@ import {
   savePairedRelayHost,
   type PairedRelayHost,
 } from '@/shared/lib/relayPairingStorage';
+import { createRelayClientIdentity } from '@/shared/lib/relayClientIdentity';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import type { RelayHost } from 'shared/remote-types';
 import {
@@ -53,6 +55,8 @@ interface PairedHostRow {
   agentVersion: string | null;
   pairedAt: string;
 }
+
+const RELAY_PAIRED_CLIENTS_QUERY_KEY = ['relay', 'paired-clients'] as const;
 
 interface RelaySettingsSectionInitialState {
   hostId?: string;
@@ -81,6 +85,7 @@ function LocalRelaySettingsSectionContent({
   const { setDirty: setContextDirty } = useSettingsDirty();
   const { config, loading, updateAndSaveConfig } = userSystem;
   const { isSignedIn } = useAuth();
+  const queryClient = useQueryClient();
 
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
   const [dirty, setDirty] = useState(false);
@@ -91,6 +96,29 @@ function LocalRelaySettingsSectionContent({
   const [enrollmentCode, setEnrollmentCode] = useState<string | null>(null);
   const [enrollmentLoading, setEnrollmentLoading] = useState(false);
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
+  const [removingClientId, setRemovingClientId] = useState<string | null>(null);
+
+  const {
+    data: pairedClients = [],
+    isLoading: pairedClientsLoading,
+    isFetching: pairedClientsFetching,
+    error: pairedClientsError,
+    refetch: refetchPairedClients,
+  } = useQuery({
+    queryKey: RELAY_PAIRED_CLIENTS_QUERY_KEY,
+    queryFn: () => relayApi.listPairedClients(),
+    enabled: isSignedIn && (draft?.relay_enabled ?? false),
+    refetchInterval: 15000,
+  });
+
+  const removePairedClientMutation = useMutation({
+    mutationFn: (clientId: string) => relayApi.removePairedClient(clientId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: RELAY_PAIRED_CLIENTS_QUERY_KEY,
+      });
+    },
+  });
 
   useEffect(() => {
     if (!config) return;
@@ -158,6 +186,15 @@ function LocalRelaySettingsSectionContent({
       setEnrollmentError(t('settings.relay.enrollmentCode.fetchError'));
     } finally {
       setEnrollmentLoading(false);
+    }
+  };
+
+  const handleRemovePairedClient = async (clientId: string) => {
+    setRemovingClientId(clientId);
+    try {
+      await removePairedClientMutation.mutateAsync(clientId);
+    } finally {
+      setRemovingClientId(null);
     }
   };
 
@@ -240,6 +277,104 @@ function LocalRelaySettingsSectionContent({
                     </p>
                   </div>
                 )}
+
+                <div className="space-y-2 pt-2 border-t border-border/70">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className="text-sm font-medium text-normal">
+                      {t(
+                        'settings.relay.pairedClients.title',
+                        'Paired clients'
+                      )}
+                    </h4>
+                    <PrimaryButton
+                      variant="tertiary"
+                      value={t(
+                        'settings.relay.pairedClients.check',
+                        'Check for new paired clients'
+                      )}
+                      onClick={() => void refetchPairedClients()}
+                      disabled={pairedClientsFetching}
+                      actionIcon={pairedClientsFetching ? 'spinner' : undefined}
+                    />
+                  </div>
+
+                  {pairedClientsLoading && (
+                    <div className="flex items-center gap-2 text-sm text-low">
+                      <SpinnerIcon
+                        className="size-icon-sm animate-spin"
+                        weight="bold"
+                      />
+                      <span>
+                        {t(
+                          'settings.relay.pairedClients.loading',
+                          'Loading paired clients...'
+                        )}
+                      </span>
+                    </div>
+                  )}
+
+                  {pairedClientsError instanceof Error && (
+                    <p className="text-sm text-error">
+                      {pairedClientsError.message}
+                    </p>
+                  )}
+
+                  {removePairedClientMutation.error instanceof Error && (
+                    <p className="text-sm text-error">
+                      {removePairedClientMutation.error.message}
+                    </p>
+                  )}
+
+                  {!pairedClientsLoading && pairedClients.length === 0 && (
+                    <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
+                      {t(
+                        'settings.relay.pairedClients.empty',
+                        'No paired clients found.'
+                      )}
+                    </div>
+                  )}
+
+                  {!pairedClientsLoading && pairedClients.length > 0 && (
+                    <div className="space-y-2">
+                      {pairedClients.map((client) => (
+                        <div
+                          key={client.client_id}
+                          className="rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-high truncate">
+                              {client.client_name}
+                            </p>
+                            <p className="text-xs text-low">
+                              {client.client_browser} · {client.client_os} ·{' '}
+                              {formatDeviceLabel(client.client_device)}
+                            </p>
+                          </div>
+                          <PrimaryButton
+                            variant="tertiary"
+                            value={t(
+                              'settings.relay.pairedClients.remove',
+                              'Remove'
+                            )}
+                            onClick={() =>
+                              void handleRemovePairedClient(client.client_id)
+                            }
+                            disabled={
+                              removePairedClientMutation.isPending &&
+                              removingClientId === client.client_id
+                            }
+                            actionIcon={
+                              removePairedClientMutation.isPending &&
+                              removingClientId === client.client_id
+                                ? 'spinner'
+                                : undefined
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <div className="space-y-2">
@@ -463,11 +598,17 @@ function RemoteRelaySettingsSectionContent({
         startData.enrollment_id,
         publicKeyBytes
       );
+      const relayClientIdentity = createRelayClientIdentity();
 
       const finishData = await finishRelaySpake2Enrollment(
         relaySessionBaseUrl,
         {
           enrollment_id: startData.enrollment_id,
+          client_id: relayClientIdentity.clientId,
+          client_name: relayClientIdentity.clientName,
+          client_browser: relayClientIdentity.clientBrowser,
+          client_os: relayClientIdentity.clientOs,
+          client_device: relayClientIdentity.clientDevice,
           public_key_b64: publicKeyB64,
           client_proof_b64: clientProofB64,
         }
@@ -488,6 +629,8 @@ function RemoteRelaySettingsSectionContent({
       await savePairedRelayHost({
         host_id: selectedHostId,
         host_name: selectedHost?.name ?? selectedHostId,
+        client_id: relayClientIdentity.clientId,
+        client_name: relayClientIdentity.clientName,
         public_key_b64: publicKeyB64,
         private_key_jwk: privateKeyJwk,
         server_public_key_b64: finishData.server_public_key_b64,
@@ -704,6 +847,13 @@ function RemoteRelaySettingsSectionContent({
       </SettingsCard>
     </div>
   );
+}
+
+function formatDeviceLabel(device: string): string {
+  if (!device) {
+    return '';
+  }
+  return `${device[0]?.toUpperCase() ?? ''}${device.slice(1)}`;
 }
 
 function RelayCodeInput({

@@ -213,7 +213,16 @@ mod tests {
         let signing_key = signing_key(17);
         let public_key_b64 = BASE64_STANDARD.encode(signing_key.verifying_key().as_bytes());
         let trusted_keys_json = serde_json::json!({
-            "keys": [public_key_b64]
+            "clients": [
+                {
+                    "client_id": Uuid::new_v4(),
+                    "client_name": "Test Client",
+                    "client_browser": "Chrome",
+                    "client_os": "macOS",
+                    "client_device": "desktop",
+                    "public_key_b64": public_key_b64
+                }
+            ]
         })
         .to_string();
 
