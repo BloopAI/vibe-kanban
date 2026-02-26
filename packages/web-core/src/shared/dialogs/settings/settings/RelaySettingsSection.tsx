@@ -292,7 +292,7 @@ function LocalRelaySettingsSectionContent({
                       <span>
                         {t(
                           'settings.relay.pairedClients.checking',
-                          'Checking every 10 seconds for new paired clients...'
+                          'Checking for new clients'
                         )}
                       </span>
                     </div>
