@@ -91,6 +91,9 @@ import {
   Project,
   CreateAndStartWorkspaceRequest,
   CreateAndStartWorkspaceResponse,
+  RelayPairedClient,
+  ListRelayPairedClientsResponse,
+  RemoveRelayPairedClientResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -1453,6 +1456,25 @@ export const relayApi = {
       method: 'POST',
     });
     return handleApiResponse<{ enrollment_code: string }>(response);
+  },
+
+  listPairedClients: async (): Promise<RelayPairedClient[]> => {
+    const response = await makeRequest('/api/relay-auth/clients');
+    const body =
+      await handleApiResponse<ListRelayPairedClientsResponse>(response);
+    return body.clients;
+  },
+
+  removePairedClient: async (
+    clientId: string
+  ): Promise<RemoveRelayPairedClientResponse> => {
+    const response = await makeRequest(
+      `/api/relay-auth/clients/${encodeURIComponent(clientId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<RemoveRelayPairedClientResponse>(response);
   },
 };
 

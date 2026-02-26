@@ -2,9 +2,9 @@ use std::time::Duration;
 
 use axum::{
     Json, Router,
-    extract::{Json as ExtractJson, State},
+    extract::{Json as ExtractJson, Path, State},
     http::HeaderMap,
-    routing::post,
+    routing::{delete, get, post},
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
     key_confirmation::{build_server_proof, verify_client_proof},
     spake2::{generate_one_time_code, start_spake2_enrollment},
-    trusted_keys::parse_public_key_base64,
+    trusted_keys::{TrustedRelayClient, parse_public_key_base64},
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -45,6 +45,11 @@ pub struct StartSpake2EnrollmentResponse {
 #[derive(Debug, Deserialize, TS)]
 pub struct FinishSpake2EnrollmentRequest {
     enrollment_id: Uuid,
+    client_id: Uuid,
+    client_name: String,
+    client_browser: String,
+    client_os: String,
+    client_device: String,
     public_key_b64: String,
     client_proof_b64: String,
 }
@@ -56,11 +61,35 @@ pub struct FinishSpake2EnrollmentResponse {
     server_proof_b64: String,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct RelayPairedClient {
+    client_id: Uuid,
+    client_name: String,
+    client_browser: String,
+    client_os: String,
+    client_device: String,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct ListRelayPairedClientsResponse {
+    clients: Vec<RelayPairedClient>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct RemoveRelayPairedClientResponse {
+    removed: bool,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
             "/relay-auth/enrollment-code",
             post(generate_enrollment_code),
+        )
+        .route("/relay-auth/clients", get(list_relay_paired_clients))
+        .route(
+            "/relay-auth/clients/{client_id}",
+            delete(remove_relay_paired_client),
         )
         .route(
             "/relay-auth/spake2/start",
@@ -134,6 +163,40 @@ async fn start_spake2_enrollment_route(
     })))
 }
 
+async fn list_relay_paired_clients(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<Json<ApiResponse<ListRelayPairedClientsResponse>>, ApiError> {
+    let clients = deployment.trusted_key_auth().list_trusted_clients().await?;
+    let clients = clients
+        .into_iter()
+        .map(|client| RelayPairedClient {
+            client_id: client.client_id,
+            client_name: client.client_name,
+            client_browser: client.client_browser,
+            client_os: client.client_os,
+            client_device: client.client_device,
+        })
+        .collect();
+
+    Ok(Json(ApiResponse::success(ListRelayPairedClientsResponse {
+        clients,
+    })))
+}
+
+async fn remove_relay_paired_client(
+    State(deployment): State<DeploymentImpl>,
+    Path(client_id): Path<Uuid>,
+) -> Result<Json<ApiResponse<RemoveRelayPairedClientResponse>>, ApiError> {
+    let removed = deployment
+        .trusted_key_auth()
+        .remove_trusted_client(client_id)
+        .await?;
+
+    Ok(Json(ApiResponse::success(
+        RemoveRelayPairedClientResponse { removed },
+    )))
+}
+
 async fn finish_spake2_enrollment(
     State(deployment): State<DeploymentImpl>,
     ExtractJson(payload): ExtractJson<FinishSpake2EnrollmentRequest>,
@@ -163,10 +226,17 @@ async fn finish_spake2_enrollment(
     // Persist the browser's public key so it survives server restarts
     if let Err(e) = deployment
         .trusted_key_auth()
-        .persist_trusted_public_key(&payload.public_key_b64)
+        .persist_trusted_client(TrustedRelayClient {
+            client_id: payload.client_id,
+            client_name: payload.client_name.clone(),
+            client_browser: payload.client_browser.clone(),
+            client_os: payload.client_os.clone(),
+            client_device: payload.client_device.clone(),
+            public_key_b64: payload.public_key_b64.clone(),
+        })
         .await
     {
-        tracing::warn!(?e, "Failed to persist trusted public key");
+        tracing::warn!(?e, "Failed to persist trusted relay client");
     }
 
     let signing_session_id = deployment
@@ -184,6 +254,7 @@ async fn finish_spake2_enrollment(
 
     tracing::info!(
         enrollment_id = %payload.enrollment_id,
+        client_id = %payload.client_id,
         signing_session_id = %signing_session_id,
         public_key_b64 = %BASE64_STANDARD.encode(browser_public_key.as_bytes()),
         "completed relay PAKE enrollment"
