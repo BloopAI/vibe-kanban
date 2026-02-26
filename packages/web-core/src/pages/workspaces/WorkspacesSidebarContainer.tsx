@@ -583,6 +583,13 @@ export function WorkspacesSidebarContainer({
     ]
   );
 
+  const handleAddWorkspace = useCallback(() => {
+    navigateToCreate();
+    if (isMobile) {
+      setMobileActiveTab('chat');
+    }
+  }, [navigateToCreate, isMobile, setMobileActiveTab]);
+
   const handleOpenWorkspaceActions = useCallback((workspaceId: string) => {
     CommandBarDialog.show({
       page: 'workspaceActions',
@@ -658,7 +665,7 @@ export function WorkspacesSidebarContainer({
       onSelectWorkspace={handleSelectWorkspace}
       searchQuery={searchQuery}
       onSearchChange={setSearchQuery}
-      onAddWorkspace={navigateToCreate}
+      onAddWorkspace={handleAddWorkspace}
       isCreateMode={isCreateMode}
       draftTitle={persistedDraftTitle}
       onSelectCreate={navigateToCreate}
