@@ -34,6 +34,7 @@ import {
 } from '@/shared/lib/relayPake';
 import {
   listPairedRelayHosts,
+  removePairedRelayHost,
   savePairedRelayHost,
   type PairedRelayHost,
 } from '@/shared/lib/relayPairingStorage';
@@ -444,6 +445,8 @@ function RemoteRelaySettingsSectionContent({
   const [pairing, setPairing] = useState(false);
   const [pairError, setPairError] = useState<string | null>(null);
   const [pairSuccess, setPairSuccess] = useState<string | null>(null);
+  const [removingHostId, setRemovingHostId] = useState<string | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   const loadHosts = useCallback(async () => {
     setHostsLoading(true);
@@ -665,6 +668,25 @@ function RemoteRelaySettingsSectionContent({
     }
   }, [hosts, loadPairedHosts, pairingCode, selectedHostId, t]);
 
+  const handleRemovePairedHost = useCallback(
+    async (hostId: string) => {
+      setRemovingHostId(hostId);
+      setRemoveError(null);
+      setPairSuccess(null);
+
+      try {
+        await removePairedRelayHost(hostId);
+        await loadPairedHosts();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        setRemoveError(message);
+      } finally {
+        setRemovingHostId(null);
+      }
+    },
+    [loadPairedHosts]
+  );
+
   if (!isSignedIn) {
     return (
       <SettingsCard
@@ -836,6 +858,8 @@ function RemoteRelaySettingsSectionContent({
             </div>
           )}
 
+          {removeError && <p className="text-sm text-error">{removeError}</p>}
+
           {!hostsLoading &&
             !pairedHostsLoading &&
             pairedHostRows.length === 0 && (
@@ -870,13 +894,27 @@ function RemoteRelaySettingsSectionContent({
                         {host.agentVersion ? ` · v${host.agentVersion}` : ''}
                       </p>
                     </div>
-                    <p className="text-xs text-low shrink-0">
-                      {t(
-                        'settings.relay.remote.pairedHosts.pairedOn',
-                        'Paired'
-                      )}{' '}
-                      · {new Date(host.pairedAt).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <p className="text-xs text-low shrink-0">
+                        {t(
+                          'settings.relay.remote.pairedHosts.pairedOn',
+                          'Paired'
+                        )}{' '}
+                        · {new Date(host.pairedAt).toLocaleDateString()}
+                      </p>
+                      <PrimaryButton
+                        variant="tertiary"
+                        value={t(
+                          'settings.relay.remote.pairedHosts.remove',
+                          'Remove'
+                        )}
+                        onClick={() => void handleRemovePairedHost(host.id)}
+                        disabled={removingHostId !== null}
+                        actionIcon={
+                          removingHostId === host.id ? 'spinner' : undefined
+                        }
+                      />
+                    </div>
                   </div>
                 ))}
               </div>
