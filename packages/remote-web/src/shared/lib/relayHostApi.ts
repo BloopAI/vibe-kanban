@@ -62,7 +62,25 @@ interface RelayWsSigningContext {
 }
 
 export function isWorkspaceRoutePath(pathname: string): boolean {
-  return pathname === "/workspaces" || pathname.startsWith("/workspaces/");
+  if (pathname === "/workspaces" || pathname.startsWith("/workspaces/")) {
+    return true;
+  }
+
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] !== "projects" || !segments[1]) {
+    return false;
+  }
+
+  const isIssueWorkspacePath =
+    segments[2] === "issues" &&
+    !!segments[3] &&
+    segments[4] === "workspaces" &&
+    !!segments[5];
+
+  const isProjectWorkspaceCreatePath =
+    segments[2] === "workspaces" && segments[3] === "create" && !!segments[4];
+
+  return isIssueWorkspacePath || isProjectWorkspaceCreatePath;
 }
 
 export async function requestLocalApiViaRelay(
