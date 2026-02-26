@@ -10,7 +10,8 @@ import { getToken, triggerRefresh } from "@remote/shared/lib/auth/tokenManager";
 import "@remote/app/styles/index.css";
 import "@/i18n";
 import { configureAuthRuntime } from "@/shared/lib/auth/runtime";
-import { setRelayApiBase, setRemoteApiBase } from "@/shared/lib/remoteApi";
+import { setRemoteApiBase } from "@/shared/lib/remoteApi";
+import { setRelayApiBase } from "@/shared/lib/relayBackendApi";
 import "@/shared/types/modals";
 import { queryClient } from "@/shared/lib/queryClient";
 
