@@ -23,7 +23,7 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let pool = db::create_pool(&config.database_url).await?;
-    tracing::info!("Database pool created");
+    tracing::debug!("Database pool created");
 
     let jwt = Arc::new(JwtService::new(config.jwt_secret.clone()));
     let state = RelayAppState::new(pool, config.clone(), jwt);

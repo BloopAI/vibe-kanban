@@ -64,7 +64,7 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
     let mut session = Session::new_client(ws_io, YamuxConfig::default());
     let mut control = session.control();
 
-    tracing::info!("Relay control channel connected");
+    tracing::debug!("Relay control channel connected");
 
     let shutdown = config.shutdown;
     let local_addr = config.local_addr;

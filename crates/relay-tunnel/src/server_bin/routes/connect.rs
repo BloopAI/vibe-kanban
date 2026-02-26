@@ -78,7 +78,7 @@ async fn handle_control_channel(
             let relay = Arc::new(ActiveRelay::new(control));
             registry_for_connect.insert(host_id, relay.clone()).await;
             *connected_relay_for_connect.lock().await = Some(relay);
-            tracing::info!(%host_id, "Relay control channel connected");
+            tracing::debug!(%host_id, "Relay control channel connected");
         }
     })
     .await;
@@ -99,10 +99,10 @@ async fn handle_control_channel(
             tracing::warn!(?error, "failed to mark host offline");
         }
     } else {
-        tracing::info!(
+        tracing::debug!(
             %host_id,
             "Relay control channel disconnected; keeping host online because a newer channel is active"
         );
     }
-    tracing::info!(%host_id, "Relay control channel disconnected");
+    tracing::debug!(%host_id, "Relay control channel disconnected");
 }

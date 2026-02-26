@@ -154,7 +154,7 @@ async fn validate_browser_session_for_host(
         .touch(relay_browser_session.id)
         .await
     {
-        tracing::warn!(
+        tracing::debug!(
             ?error,
             relay_browser_session_id = %relay_browser_session.id,
             "failed to update relay browser session last-used timestamp"
