@@ -42,44 +42,41 @@ fn main() {
         .setup(|app| {
             let handle = app.handle().clone();
 
-            // Create the main window programmatically so we can attach on_new_window
-            // to handle OAuth popups (window.open) by opening them in the system browser.
-            let window = tauri::WebviewWindowBuilder::new(
-                app,
-                "main",
-                tauri::WebviewUrl::App("index.html".into()),
-            )
-            .title("Vibe Kanban")
-            .inner_size(1280.0, 800.0)
-            .min_inner_size(800.0, 600.0)
-            .resizable(true)
-            .zoom_hotkeys_enabled(true)
-            .on_new_window(move |url, _features| {
-                // Open external URLs (OAuth, etc.) in the system browser
-                tracing::info!("New window requested for URL: {}", url);
-                let url_str = url.to_string();
-                let _ = handle.opener().open_url(&url_str, None::<&str>);
-                tauri::webview::NewWindowResponse::Deny
-            })
-            .build()?;
-
             if cfg!(debug_assertions) {
-                // Dev mode: the frontend dev server (Vite) and backend are started
-                // externally by the tauri:dev script. The Tauri devUrl points to Vite,
-                // which proxies /api calls to the backend. No embedded server needed.
+                // Dev mode: frontend dev server (Vite) and backend are started
+                // externally. Create the window immediately pointing to devUrl.
                 tracing::info!("Running in dev mode — using external frontend/backend servers");
-                // Consume the shutdown channel so it doesn't hang
+                create_window(app, tauri::WebviewUrl::App("index.html".into()))?;
                 drop(shutdown_rx);
             } else {
-                // Production: run the embedded Axum server
+                // Production: start the Axum server first, then open the window
+                // once it's ready so the user never sees a blank/error page.
+                let app_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    if let Err(e) = run_server(window, shutdown_rx).await {
-                        tracing::error!("Server failed to start: {}", e);
+                    match start_server(shutdown_rx).await {
+                        Ok((url, server_future)) => {
+                            let webview_url = tauri::WebviewUrl::External(url.parse().unwrap());
+                            match create_window(&app_handle, webview_url) {
+                                Ok(_) => {
+                                    tracing::info!("Window opened at {url}");
+                                }
+                                Err(e) => {
+                                    tracing::error!("Failed to create window: {e}");
+                                }
+                            }
+
+                            // Run the server until shutdown
+                            if let Err(e) = server_future.await {
+                                tracing::error!("Server error: {e}");
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Server failed to start: {e}");
+                        }
                     }
                 });
 
-                // Check for updates in the background (only in production —
-                // dev builds have a placeholder endpoint that would fail)
+                // Check for updates in the background
                 let handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
                     check_for_updates(handle).await;
@@ -90,7 +87,6 @@ fn main() {
         })
         .on_window_event(move |_window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                // Send shutdown signal to the server
                 if let Some(tx) = shutdown_tx_clone.lock().unwrap().take() {
                     let _ = tx.send(());
                 }
@@ -100,6 +96,7 @@ fn main() {
         .expect("error while running tauri application");
 }
 
+<<<<<<< HEAD
 async fn run_server(
     window: tauri::WebviewWindow,
     shutdown_rx: oneshot::Receiver<()>,
@@ -125,6 +122,56 @@ async fn run_server(
     handle.serve().await?;
 
     Ok(())
+=======
+fn create_window<M: tauri::Manager>(
+    manager: &M,
+    url: tauri::WebviewUrl,
+) -> Result<tauri::WebviewWindow, tauri::Error> {
+    let handle = manager.app_handle().clone();
+    tauri::WebviewWindowBuilder::new(manager, "main", url)
+        .title("Vibe Kanban")
+        .inner_size(1280.0, 800.0)
+        .min_inner_size(800.0, 600.0)
+        .resizable(true)
+        .zoom_hotkeys_enabled(true)
+        .on_new_window(move |url, _features| {
+            tracing::info!("New window requested for URL: {}", url);
+            let url_str = url.to_string();
+            let _ = handle.opener().open_url(&url_str, None::<&str>);
+            tauri::webview::NewWindowResponse::Deny
+        })
+        .build()
+}
+
+/// Start the Axum server and return the URL + a future that runs it.
+async fn start_server(
+    shutdown_rx: oneshot::Receiver<()>,
+) -> anyhow::Result<(
+    String,
+    impl std::future::Future<Output = anyhow::Result<()>>,
+)> {
+    let deployment = server::startup::initialize_deployment().await?;
+    let app_router = server::routes::router(deployment.clone());
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let port = listener.local_addr()?.port();
+    let url = format!("http://127.0.0.1:{port}");
+
+    tracing::info!("Server running on {url}");
+
+    let server_future = async move {
+        axum::serve(listener, app_router)
+            .with_graceful_shutdown(async {
+                let _ = shutdown_rx.await;
+                tracing::info!("Shutdown signal received, stopping server...");
+            })
+            .await?;
+        server::startup::perform_cleanup_actions(&deployment).await;
+        Ok(())
+    };
+
+    Ok((url, server_future))
+>>>>>>> 026c48f5b (fix: delay window creation until server is ready)
 }
 
 async fn check_for_updates(app: tauri::AppHandle) {
@@ -144,7 +191,6 @@ async fn check_for_updates(app: tauri::AppHandle) {
                 update.version
             );
 
-            // Emit event to frontend so it can show an update notification
             let _ = app.emit(
                 "update-available",
                 serde_json::json!({
@@ -154,7 +200,6 @@ async fn check_for_updates(app: tauri::AppHandle) {
                 }),
             );
 
-            // Download and install the update
             match update.download_and_install(|_, _| {}, || {}).await {
                 Ok(_) => {
                     tracing::info!("Update installed successfully, restart required");
