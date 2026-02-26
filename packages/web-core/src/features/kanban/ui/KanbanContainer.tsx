@@ -1,4 +1,11 @@
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  type MouseEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
@@ -53,6 +60,9 @@ import {
 } from '@vibe/ui/components/Dropdown';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
 import type { IssuePriority } from 'shared/remote-types';
+import { useIssueMultiSelect } from '@/shared/hooks/useIssueMultiSelect';
+import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
+import { BulkActionBarContainer } from './BulkActionBarContainer';
 
 const areStringSetsEqual = (left: string[], right: string[]): boolean => {
   if (left.length !== right.length) {
@@ -664,11 +674,47 @@ export function KanbanContainer() {
     [kanbanFilters.sortField, calculateSortOrder]
   );
 
+  // Multi-select support
+  const {
+    selectedIssueIds,
+    isMultiSelectActive,
+    handleIssueClick,
+    handleCheckboxChange,
+    clearSelection,
+  } = useIssueMultiSelect();
+  const setOrderedIssueIds = useIssueSelectionStore(
+    (s) => s.setOrderedIssueIds
+  );
+
+  // Compute ordered issue IDs for range selection
+  const orderedIssueIds = useMemo(() => {
+    const statusOrder =
+      kanbanViewMode === 'kanban' ? visibleStatuses : listViewStatuses;
+    return statusOrder.flatMap((status) => items[status.id] ?? []);
+  }, [kanbanViewMode, visibleStatuses, listViewStatuses, items]);
+
+  // Keep the store's ordered IDs in sync
+  useEffect(() => {
+    setOrderedIssueIds(orderedIssueIds);
+  }, [orderedIssueIds, setOrderedIssueIds]);
+
+  // Clear multi-selection when project or view mode changes
+  useEffect(() => {
+    clearSelection();
+  }, [projectId, kanbanViewMode, clearSelection]);
+
   const handleCardClick = useCallback(
-    (issueId: string) => {
-      openIssue(issueId);
+    (issueId: string, e?: MouseEvent) => {
+      if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+        handleIssueClick(issueId, e);
+      } else {
+        if (selectedIssueIds.size > 0) {
+          clearSelection();
+        }
+        openIssue(issueId);
+      }
     },
-    [openIssue]
+    [openIssue, handleIssueClick, selectedIssueIds.size, clearSelection]
   );
 
   const handleAddTask = useCallback(
@@ -877,8 +923,16 @@ export function KanbanContainer() {
                             name={issue.title}
                             index={index}
                             className="group"
-                            onClick={() => handleCardClick(issue.id)}
+                            onClick={(e) => {
+                              if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) {
+                                handleIssueClick(issue.id, e);
+                              } else {
+                                handleCardClick(issue.id);
+                              }
+                            }}
                             isOpen={selectedKanbanIssueId === issue.id}
+                            isSelected={selectedIssueIds.has(issue.id)}
+                            dragDisabled={isMultiSelectActive}
                           >
                             <KanbanCardContent
                               displayId={issue.simple_id}
@@ -978,10 +1032,15 @@ export function KanbanContainer() {
               }
               onIssueClick={handleCardClick}
               selectedIssueId={selectedKanbanIssueId}
+              selectedIssueIds={selectedIssueIds}
+              isMultiSelectActive={isMultiSelectActive}
+              onIssueCheckboxChange={handleCheckboxChange}
             />
           </KanbanProvider>
         </div>
       )}
+
+      {isMultiSelectActive && <BulkActionBarContainer projectId={projectId} />}
     </div>
   );
 }
