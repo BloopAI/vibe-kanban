@@ -288,11 +288,17 @@ export type CurrentUserResponse = { user_id: string, };
 
 export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };
 
-export type FinishSpake2EnrollmentRequest = { enrollment_id: string, public_key_b64: string, client_proof_b64: string, };
+export type FinishSpake2EnrollmentRequest = { enrollment_id: string, client_id: string, client_name: string, client_browser: string, client_os: string, client_device: string, public_key_b64: string, client_proof_b64: string, };
 
 export type StartSpake2EnrollmentResponse = { enrollment_id: string, server_message_b64: string, };
 
 export type FinishSpake2EnrollmentResponse = { signing_session_id: string, server_public_key_b64: string, server_proof_b64: string, };
+
+export type RelayPairedClient = { client_id: string, client_name: string, client_browser: string, client_os: string, client_device: string, };
+
+export type ListRelayPairedClientsResponse = { clients: Array<RelayPairedClient>, };
+
+export type RemoveRelayPairedClientResponse = { removed: boolean, };
 
 export type CreateFollowUpAttempt = { prompt: string, executor_config: ExecutorConfig, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 

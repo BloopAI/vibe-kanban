@@ -147,7 +147,7 @@ export function SettingsCard({
   headerAction,
 }: {
   title: string;
-  description?: string;
+  description?: ReactNode;
   children: React.ReactNode;
   headerAction?: React.ReactNode;
 }) {
