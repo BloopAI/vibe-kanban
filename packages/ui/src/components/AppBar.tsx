@@ -11,6 +11,7 @@ import {
   KanbanIcon,
   SpinnerIcon,
   StarIcon,
+  CircleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import { AppBarButton } from './AppBarButton';
@@ -43,8 +44,10 @@ function getProjectInitials(name: string): string {
 
 interface AppBarProps {
   projects: AppBarProject[];
+  hosts?: AppBarHost[];
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
+  onHostClick?: (hostId: string, status: AppBarHostStatus) => void;
   showWorkspacesButton?: boolean;
   onProjectClick: (projectId: string) => void;
   onProjectsDragEnd: (result: DropResult) => void;
@@ -68,10 +71,26 @@ export interface AppBarProject {
   color: string;
 }
 
+export type AppBarHostStatus = 'online' | 'offline' | 'unpaired';
+
+export interface AppBarHost {
+  id: string;
+  name: string;
+  status: AppBarHostStatus;
+}
+
+function getHostStatusLabel(status: AppBarHostStatus): string {
+  if (status === 'online') return 'Online';
+  if (status === 'offline') return 'Offline';
+  return 'Unpaired';
+}
+
 export function AppBar({
   projects,
+  hosts = [],
   onCreateProject,
   onWorkspacesClick,
+  onHostClick,
   showWorkspacesButton = true,
   onProjectClick,
   onProjectsDragEnd,
@@ -97,14 +116,60 @@ export function AppBar({
         'bg-secondary border-r border-border'
       )}
     >
-      {showWorkspacesButton && (
+      {(showWorkspacesButton || hosts.length > 0) && (
         <div className="flex flex-col items-center gap-1">
-          <AppBarButton
-            icon={LayoutIcon}
-            label="Workspaces"
-            isActive={isWorkspacesActive}
-            onClick={onWorkspacesClick}
-          />
+          {showWorkspacesButton && (
+            <AppBarButton
+              icon={LayoutIcon}
+              label="Workspaces"
+              isActive={isWorkspacesActive}
+              onClick={onWorkspacesClick}
+            />
+          )}
+          {hosts.map((host) => {
+            const isOffline = host.status === 'offline';
+            return (
+              <Tooltip
+                key={host.id}
+                content={`${host.name} · ${getHostStatusLabel(host.status)}`}
+                side="right"
+              >
+                <button
+                  type="button"
+                  disabled={isOffline}
+                  onClick={() => {
+                    if (isOffline) {
+                      return;
+                    }
+                    onHostClick?.(host.id, host.status);
+                  }}
+                  className={cn(
+                    'relative flex items-center justify-center w-10 h-10 rounded-lg',
+                    'text-sm font-medium transition-colors',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                    isOffline
+                      ? 'bg-primary text-low opacity-50 cursor-not-allowed'
+                      : 'bg-primary text-normal cursor-pointer',
+                    host.status === 'online' && 'hover:bg-brand/10',
+                    host.status === 'unpaired' &&
+                      'text-warning hover:bg-warning/10'
+                  )}
+                  aria-label={`${host.name} (${getHostStatusLabel(host.status)})`}
+                >
+                  {getProjectInitials(host.name)}
+                  <CircleIcon
+                    weight="fill"
+                    className={cn(
+                      'absolute -right-0.5 -bottom-0.5 size-icon-xs',
+                      host.status === 'online' && 'text-success',
+                      host.status === 'offline' && 'text-low',
+                      host.status === 'unpaired' && 'text-warning'
+                    )}
+                  />
+                </button>
+              </Tooltip>
+            );
+          })}
         </div>
       )}
 
