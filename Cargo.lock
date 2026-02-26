@@ -7431,6 +7431,7 @@ dependencies = [
  "deployment",
  "dotenv",
  "executors",
+ "flate2",
  "futures-util",
  "git",
  "git-host",

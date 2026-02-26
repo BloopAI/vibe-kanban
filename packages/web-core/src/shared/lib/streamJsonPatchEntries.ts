@@ -60,31 +60,50 @@ export function streamJsonPatchEntries<E = unknown>(
     }
   };
 
-  const handleMessage = (event: MessageEvent) => {
-    try {
-      const msg = JSON.parse(event.data);
+  const processMsg = (msg: Record<string, unknown>) => {
+    // Handle JsonPatch messages (from LogMsg::to_ws_message)
+    if (msg.JsonPatch) {
+      const raw = msg.JsonPatch as Operation[];
+      const ops = dedupeOps(raw);
 
-      // Handle JsonPatch messages (from LogMsg::to_ws_message)
-      if (msg.JsonPatch) {
-        const raw = msg.JsonPatch as Operation[];
-        const ops = dedupeOps(raw);
+      // Apply to a working copy (applyPatch mutates)
+      const next = structuredClone(snapshot);
+      applyUpsertPatch(next, ops);
 
-        // Apply to a working copy (applyPatch mutates)
-        const next = structuredClone(snapshot);
-        applyUpsertPatch(next, ops);
-
-        snapshot = next;
-        notify();
-      }
-
-      // Handle Finished messages
-      if (msg.finished !== undefined) {
-        opts.onFinished?.(snapshot.entries);
-        ws.close();
-      }
-    } catch (err) {
-      opts.onError?.(err);
+      snapshot = next;
+      notify();
     }
+
+    // Handle Finished messages
+    if (msg.finished !== undefined) {
+      opts.onFinished?.(snapshot.entries);
+      ws.close();
+    }
+  };
+
+  // Chain message processing so async gzip decompression completes
+  // before subsequent (e.g. Finished) messages are handled.
+  let msgChain: Promise<void> = Promise.resolve();
+
+  const handleMessage = (event: MessageEvent) => {
+    msgChain = msgChain.then(() => {
+      // Binary frames are gzip-compressed JSON; decompress first
+      if (event.data instanceof Blob) {
+        const blob = event.data;
+        const ds = new DecompressionStream('gzip');
+        const decompressed = blob.stream().pipeThrough(ds);
+        return new Response(decompressed)
+          .json()
+          .then((msg: Record<string, unknown>) => processMsg(msg))
+          .catch((err: unknown) => opts.onError?.(err));
+      }
+
+      try {
+        processMsg(JSON.parse(event.data));
+      } catch (err) {
+        opts.onError?.(err);
+      }
+    });
   };
 
   ws.addEventListener('open', () => {
