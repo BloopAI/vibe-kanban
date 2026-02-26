@@ -1,7 +1,7 @@
 {
   "name": "@vibe/local-web",
   "private": true,
-  "version": "0.1.19-pthis.6",
+  "version": "0.1.19-pthis.7",
   "type": "module",
   "scripts": {
     "dev": "VITE_OPEN=${VITE_OPEN:-false} vite",
