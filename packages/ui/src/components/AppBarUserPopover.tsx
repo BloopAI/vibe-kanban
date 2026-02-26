@@ -68,7 +68,7 @@ export function AppBarUserPopover({
           <button
             type="button"
             className={cn(
-              'flex items-center justify-center w-10 h-10 rounded-lg',
+              'flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg',
               'bg-panel text-normal font-medium text-sm',
               'transition-colors cursor-pointer',
               'hover:bg-panel/70',
@@ -102,7 +102,7 @@ export function AppBarUserPopover({
         <button
           type="button"
           className={cn(
-            'flex items-center justify-center w-10 h-10 rounded-lg',
+            'flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg',
             'transition-colors cursor-pointer overflow-hidden',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
             (!avatarUrl || avatarError) &&
