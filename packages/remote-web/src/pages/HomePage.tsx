@@ -147,7 +147,7 @@ export default function HomePage() {
 
   return (
     <div className="h-full overflow-auto">
-      <div className="mx-auto w-full max-w-6xl px-double py-double">
+      <div className="mx-auto w-full max-w-6xl px-base py-base sm:px-double sm:py-double">
         <header className="space-y-half">
           <h1 className="text-2xl font-semibold text-high">Organizations</h1>
           <p className="text-sm text-low">
@@ -159,7 +159,7 @@ export default function HomePage() {
         </header>
 
         {organizationCount === 0 ? (
-          <section className="mt-double rounded-sm border border-border bg-secondary p-double">
+          <section className="mt-double rounded-sm border border-border bg-secondary p-base sm:p-double">
             <h2 className="text-base font-medium text-high">
               No organizations found
             </h2>
