@@ -12,6 +12,7 @@ import {
   Kanban as KanbanIcon,
   CaretLeft as CaretLeftIcon,
   ArrowClockwise as ArrowClockwiseIcon,
+  SidebarSimple as SidebarSimpleIcon,
 } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import { Tooltip } from './Tooltip';
@@ -128,6 +129,8 @@ export interface NavbarProps {
   onNavigateToBoard?: (() => void) | null;
   onNavigateBack?: () => void;
   onReload?: () => void;
+  onOpenDrawer?: () => void;
+  isOnProjectSubRoute?: boolean;
   mobileActiveTab?: MobileTabId;
   onMobileTabChange?: (tab: MobileTabId) => void;
 }
@@ -147,6 +150,8 @@ export function Navbar({
   onNavigateToBoard,
   onNavigateBack,
   onReload,
+  onOpenDrawer,
+  isOnProjectSubRoute = false,
   mobileActiveTab = 'chat',
   onMobileTabChange,
 }: NavbarProps) {
@@ -186,20 +191,46 @@ export function Navbar({
         <div className="flex items-center justify-between px-base py-half">
           {isOnProjectPage ? (
             <div className="flex items-center gap-base">
-              {onNavigateBack && (
-                <button
-                  type="button"
-                  className="flex items-center justify-center text-low hover:text-normal"
-                  onClick={onNavigateBack}
-                  aria-label="Back"
-                >
-                  <CaretLeftIcon className="size-icon-base" />
-                </button>
+              {isOnProjectSubRoute ? (
+                onNavigateBack && (
+                  <button
+                    type="button"
+                    className="flex items-center justify-center text-low hover:text-normal"
+                    onClick={onNavigateBack}
+                    aria-label="Back"
+                  >
+                    <CaretLeftIcon className="size-icon-base" />
+                  </button>
+                )
+              ) : (
+                onOpenDrawer && (
+                  <button
+                    type="button"
+                    className="flex items-center justify-center text-low hover:text-normal"
+                    onClick={onOpenDrawer}
+                    aria-label="Open menu"
+                  >
+                    <SidebarSimpleIcon className="size-icon-base" />
+                  </button>
+                )
               )}
               <p className="text-base text-normal font-medium truncate">{workspaceTitle}</p>
             </div>
           ) : (
             <div className="flex items-center gap-0.5 overflow-x-auto">
+              {onOpenDrawer && (
+                <>
+                  <button
+                    type="button"
+                    className="flex items-center justify-center px-1.5 py-1 text-low hover:text-normal"
+                    onClick={onOpenDrawer}
+                    aria-label="Projects"
+                  >
+                    <KanbanIcon className="size-icon-sm" />
+                  </button>
+                  <div className="h-4 w-px bg-border mx-0.5 shrink-0" />
+                </>
+              )}
               {MOBILE_TABS.map((tab) => {
                 const TabIcon = tab.icon;
                 const isActive = mobileActiveTab === tab.id;

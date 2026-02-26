@@ -31,6 +31,7 @@ import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { toWorkspaces } from '@/shared/lib/routes/navigation';
+import { buildProjectRootPath } from '@/shared/lib/routes/projectSidebarRoutes';
 
 /**
  * Check if a NavbarItem is a divider
@@ -107,8 +108,14 @@ function toNavbarSectionItems(
 
 export function NavbarContainer({
   mobileMode = false,
+  onCreateOrg,
+  onOrgSelect,
+  onOpenDrawer,
 }: {
   mobileMode?: boolean;
+  onCreateOrg?: () => void;
+  onOrgSelect?: (orgId: string) => void;
+  onOpenDrawer?: () => void;
 }) {
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
@@ -116,6 +123,11 @@ export function NavbarContainer({
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
   const isOnProjectPage = location.pathname.startsWith('/projects/');
+  const projectId = isOnProjectPage ? location.pathname.split('/')[2] : null;
+  const isOnProjectSubRoute =
+    isOnProjectPage &&
+    (location.pathname.includes('/issues/') ||
+      location.pathname.includes('/workspaces/'));
   const navigate = useNavigate();
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
@@ -192,20 +204,22 @@ export function NavbarContainer({
     SettingsDialog.show();
   }, []);
 
-  const handleReload = useCallback(() => {
-    window.location.reload();
-  }, []);
-
   const handleNavigateBack = useCallback(() => {
-    navigate(toWorkspaces());
-  }, [navigate]);
+    if (isOnProjectPage && projectId) {
+      // On project sub-route: go back to project root (kanban board)
+      navigate(buildProjectRootPath(projectId));
+    } else {
+      // Non-project page: go to workspaces
+      navigate(toWorkspaces());
+    }
+  }, [navigate, isOnProjectPage, projectId]);
 
   const handleNavigateToBoard = useMemo(() => {
-    if (!isOnProjectPage) return null;
+    if (!isOnProjectPage || !projectId) return null;
     return () => {
-      // Already on project page, no-op for board navigation
+      navigate(buildProjectRootPath(projectId));
     };
-  }, [isOnProjectPage]);
+  }, [isOnProjectPage, projectId, navigate]);
 
   // Build user popover slot for mobile mode
   const userPopoverSlot = useMemo(() => {
@@ -214,11 +228,17 @@ export function NavbarContainer({
       <AppBarUserPopoverContainer
         organizations={orgsData?.organizations ?? []}
         selectedOrgId={selectedOrgId ?? ''}
-        onOrgSelect={() => {}}
-        onCreateOrg={() => {}}
+        onOrgSelect={onOrgSelect ?? (() => {})}
+        onCreateOrg={onCreateOrg ?? (() => {})}
       />
     );
-  }, [mobileMode, orgsData?.organizations, selectedOrgId]);
+  }, [
+    mobileMode,
+    orgsData?.organizations,
+    selectedOrgId,
+    onCreateOrg,
+    onOrgSelect,
+  ]);
   return (
     <Navbar
       workspaceTitle={navbarTitle}
@@ -228,11 +248,12 @@ export function NavbarContainer({
       mobileMode={mobileMode}
       mobileUserSlot={userPopoverSlot}
       isOnProjectPage={isOnProjectPage}
+      isOnProjectSubRoute={isOnProjectSubRoute}
       onOpenCommandBar={handleOpenCommandBar}
       onOpenSettings={handleOpenSettings}
       onNavigateBack={handleNavigateBack}
       onNavigateToBoard={handleNavigateToBoard}
-      onReload={handleReload}
+      onOpenDrawer={onOpenDrawer}
       mobileActiveTab={mobileActiveTab as MobileTabId}
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}
       leftSlot={
