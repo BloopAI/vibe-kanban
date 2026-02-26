@@ -11442,7 +11442,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vibe-kanban-tauri"
-version = "0.1.13"
+version = "0.1.20"
 dependencies = [
  "anyhow",
  "rustls",
@@ -11454,6 +11454,7 @@ dependencies = [
  "tauri-plugin-shell",
  "tauri-plugin-updater",
  "tokio",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
 ]
