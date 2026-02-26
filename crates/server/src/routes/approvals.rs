@@ -1,19 +1,22 @@
 use axum::{
     Router,
-    extract::{State, WebSocketUpgrade, ws::WebSocket},
+    extract::{State, ws::Message},
     http::StatusCode,
     response::{IntoResponse, Json as ResponseJson},
     routing::{get, post},
 };
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt};
+use futures_util::StreamExt;
 use utils::{
     approvals::{ApprovalOutcome, ApprovalResponse},
     log_msg::LogMsg,
     response::ApiResponse,
 };
 
-use crate::DeploymentImpl;
+use crate::{
+    DeploymentImpl,
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+};
 
 pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
@@ -46,7 +49,7 @@ pub async fn respond_to_approval(
 }
 
 pub async fn stream_approvals_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
@@ -56,31 +59,47 @@ pub async fn stream_approvals_ws(
     })
 }
 
-async fn handle_approvals_ws(socket: WebSocket, deployment: DeploymentImpl) -> anyhow::Result<()> {
+async fn handle_approvals_ws(
+    mut socket: SignedWebSocket,
+    deployment: DeploymentImpl,
+) -> anyhow::Result<()> {
     let mut stream = deployment.approvals().patch_stream();
 
-    let (mut sender, mut receiver) = socket.split();
-
     if let Some(snapshot_patch) = stream.next().await {
-        sender
+        socket
             .send(LogMsg::JsonPatch(snapshot_patch).to_ws_message_unchecked())
             .await?;
     } else {
         return Ok(());
     }
-    sender.send(LogMsg::Ready.to_ws_message_unchecked()).await?;
+    socket.send(LogMsg::Ready.to_ws_message_unchecked()).await?;
 
-    // Drain client messages in background
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+    loop {
+        tokio::select! {
+            patch = stream.next() => {
+                let Some(patch) = patch else {
+                    break;
+                };
 
-    // Forward approval events
-    while let Some(patch) = stream.next().await {
-        if sender
-            .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
-            .await
-            .is_err()
-        {
-            break;
+                if socket
+                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(error) => {
+                        tracing::warn!("approvals WS receive error: {}", error);
+                        break;
+                    }
+                }
+            }
         }
     }
 
