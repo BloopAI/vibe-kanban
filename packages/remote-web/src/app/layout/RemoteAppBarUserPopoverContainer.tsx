@@ -68,6 +68,13 @@ export function RemoteAppBarUserPopoverContainer({
     [onOrgSelect],
   );
 
+  const handleSettings = useCallback(async () => {
+    setOpen(false);
+    await SettingsDialog.show({
+      sections: REMOTE_SETTINGS_SECTIONS,
+    });
+  }, []);
+
   return (
     <AppBarUserPopover
       isSignedIn={isSignedIn}
@@ -87,6 +94,9 @@ export function RemoteAppBarUserPopoverContainer({
         void handleLogout();
       }}
       onAvatarError={() => setAvatarError(true)}
+      onSettings={() => {
+        void handleSettings();
+      }}
     />
   );
 }

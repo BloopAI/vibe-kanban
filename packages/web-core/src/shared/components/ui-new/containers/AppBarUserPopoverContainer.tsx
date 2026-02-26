@@ -55,6 +55,11 @@ export function AppBarUserPopoverContainer({
     navigate(toMigrate());
   };
 
+  const handleSettings = async () => {
+    setOpen(false);
+    await SettingsDialog.show();
+  };
+
   return (
     <AppBarUserPopover
       isSignedIn={isSignedIn}
@@ -71,6 +76,7 @@ export function AppBarUserPopoverContainer({
       onLogout={handleLogout}
       onAvatarError={() => setAvatarError(true)}
       onMigrate={handleMigrate}
+      onSettings={handleSettings}
     />
   );
 }

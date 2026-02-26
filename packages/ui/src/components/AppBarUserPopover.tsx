@@ -35,6 +35,7 @@ interface AppBarUserPopoverProps {
   onOrgSelect: (orgId: string) => void;
   onCreateOrg?: () => void;
   onOrgSettings?: (orgId: string) => void;
+  onSettings?: () => void;
   onSignIn: () => void;
   onLogout: () => void;
   onAvatarError: () => void;
@@ -52,6 +53,7 @@ export function AppBarUserPopover({
   onOrgSelect,
   onCreateOrg,
   onOrgSettings,
+  onSettings,
   onSignIn,
   onLogout,
   onAvatarError,
@@ -151,6 +153,14 @@ export function AppBarUserPopover({
             <DropdownMenuSeparator />
             <DropdownMenuItem icon={CloudArrowUpIcon} onClick={onMigrate}>
               {t('orgSwitcher.migrate')}
+            </DropdownMenuItem>
+          </>
+        )}
+        {onSettings && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem icon={GearIcon} onClick={onSettings}>
+              {t('shortcuts.actions.settings')}
             </DropdownMenuItem>
           </>
         )}
