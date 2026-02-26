@@ -25,6 +25,7 @@ import {
 import type { EditorType } from 'shared/types';
 import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityContext';
 import { CopyButton } from '@/shared/components/CopyButton';
+import { isRealMobileDevice } from '@/shared/hooks/useIsMobile';
 
 /**
  * Check if a ContextBarItem is a divider
@@ -104,6 +105,9 @@ function buildSpecialItem(
   onExecuteAction: () => void
 ): ContextBarRenderItem {
   if (iconType === 'ide-icon') {
+    if (isRealMobileDevice()) {
+      return { type: 'action', key, label: tooltip, customContent: null };
+    }
     return {
       type: 'action',
       key,
