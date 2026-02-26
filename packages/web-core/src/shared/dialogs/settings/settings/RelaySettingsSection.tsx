@@ -35,6 +35,10 @@ import {
   type PairedRelayHost,
 } from '@/shared/lib/relayPairingStorage';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import type {
+  FinishSpake2EnrollmentResponse,
+  StartSpake2EnrollmentResponse,
+} from 'shared/types';
 import type { RelayHost } from 'shared/remote-types';
 import {
   SettingsCard,
@@ -43,17 +47,6 @@ import {
   SettingsSelect,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-
-interface StartSpake2EnrollmentResponse {
-  enrollment_id: string;
-  server_message_b64: string;
-}
-
-interface FinishSpake2EnrollmentResponse {
-  signing_session_id: string;
-  server_public_key_b64: string;
-  server_proof_b64: string;
-}
 
 interface LocalApiSuccess<T> {
   success: true;
