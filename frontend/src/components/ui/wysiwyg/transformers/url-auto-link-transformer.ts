@@ -4,12 +4,11 @@ import { $createTextNode } from 'lexical';
 
 /**
  * Matches plain http/https URLs that are NOT already inside markdown link
- * syntax (i.e. not preceded by `(` or `[`). Handles URLs containing
- * balanced parentheses (e.g. Wikipedia links) and strips common trailing
+ * syntax (i.e. not preceded by `(` or `[`). Strips common trailing
  * punctuation that is typically not part of the URL.
  */
 const URL_IMPORT_REGEX =
-  /(?<![(\["])(https?:\/\/[^\s<>\[\]"]+(?:\([^\s<>\[\]"]*\))*[^\s<>\[\]".,;:!?')}>\]]*)/;
+  /(?<![(\["])(https?:\/\/[^\s<>\[\]"]*[^\s<>\[\]".,;:!?')}>\]])/;
 
 const URL_MATCH_REGEX = new RegExp(URL_IMPORT_REGEX.source + '$');
 
