@@ -14,6 +14,7 @@ use trusted_key_auth::{
     spake2::{generate_one_time_code, start_spake2_enrollment},
     trusted_keys::parse_public_key_base64,
 };
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -35,8 +36,8 @@ struct StartSpake2EnrollmentRequest {
     client_message_b64: String,
 }
 
-#[derive(Debug, Serialize)]
-struct StartSpake2EnrollmentResponse {
+#[derive(Debug, Serialize, TS)]
+pub struct StartSpake2EnrollmentResponse {
     enrollment_id: Uuid,
     server_message_b64: String,
 }
@@ -48,8 +49,8 @@ struct FinishSpake2EnrollmentRequest {
     client_proof_b64: String,
 }
 
-#[derive(Debug, Serialize)]
-struct FinishSpake2EnrollmentResponse {
+#[derive(Debug, Serialize, TS)]
+pub struct FinishSpake2EnrollmentResponse {
     signing_session_id: Uuid,
     server_public_key_b64: String,
     server_proof_b64: String,
