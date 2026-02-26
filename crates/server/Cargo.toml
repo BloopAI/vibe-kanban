@@ -38,6 +38,7 @@ rustls = { workspace = true }
 strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
+flate2 = "1.0"
 futures-util = "0.3"
 base64 = "0.22"
 git2 = { workspace = true }

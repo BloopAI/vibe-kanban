@@ -3,7 +3,7 @@ use axum::{
     Extension, Router,
     extract::{
         Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
+        ws::{Message, WebSocket, WebSocketUpgrade},
     },
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
@@ -147,22 +147,45 @@ async fn handle_normalized_logs_ws(
     socket: WebSocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
-    let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
     let (mut sender, mut receiver) = socket.split();
     tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+
+    // Collect all JsonPatch ops, then send as a single gzip-compressed binary
+    // WebSocket frame. This avoids per-message network overhead and reduces
+    // transfer size ~10-20x for large conversations.
+    let mut all_ops: Vec<serde_json::Value> = Vec::new();
+    let mut stream = std::pin::pin!(stream);
     while let Some(item) = stream.next().await {
         match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break;
+            Ok(LogMsg::JsonPatch(patch)) => {
+                if let Ok(serde_json::Value::Array(ops)) = serde_json::to_value(&patch) {
+                    all_ops.extend(ops);
                 }
             }
+            Ok(LogMsg::Finished) => break,
+            Ok(_) => continue,
             Err(e) => {
                 tracing::error!("stream error: {}", e);
                 break;
             }
         }
     }
+
+    if !all_ops.is_empty() {
+        use std::io::Write;
+
+        use flate2::{Compression, write::GzEncoder};
+
+        let json = serde_json::json!({ "JsonPatch": all_ops }).to_string();
+        let mut encoder = GzEncoder::new(Vec::new(), Compression::fast());
+        encoder.write_all(json.as_bytes())?;
+        let compressed = encoder.finish()?;
+        let _ = sender.send(Message::Binary(compressed.into())).await;
+    }
+    let _ = sender
+        .send(LogMsg::Finished.to_ws_message_unchecked())
+        .await;
+
     Ok(())
 }
 
