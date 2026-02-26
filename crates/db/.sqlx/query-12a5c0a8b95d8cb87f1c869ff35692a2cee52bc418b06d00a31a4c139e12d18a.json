@@ -1,0 +1,26 @@
+{
+  "db_name": "SQLite",
+  "query": "\n            SELECT \n                ep.id as \"execution_id!: Uuid\", \n                ep.session_id as \"session_id!: Uuid\"\n            FROM execution_processes ep\n            WHERE EXISTS (\n                SELECT 1 FROM execution_process_logs epl WHERE epl.execution_id = ep.id\n            )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "name": "execution_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      },
+      {
+        "name": "session_id!: Uuid",
+        "ordinal": 1,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 0
+    },
+    "nullable": [
+      true,
+      false
+    ]
+  },
+  "hash": "12a5c0a8b95d8cb87f1c869ff35692a2cee52bc418b06d00a31a4c139e12d18a"
+}

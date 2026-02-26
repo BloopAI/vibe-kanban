@@ -9,16 +9,13 @@ WORKDIR /repo
 RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY frontend/package.json frontend/package.json
-COPY remote-frontend/package.json remote-frontend/package.json
-
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --filter ./remote-frontend --frozen-lockfile
-
-COPY remote-frontend/ remote-frontend/
+COPY packages/ packages/
 COPY shared/ shared/
 
-RUN pnpm -C remote-frontend build
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
+
+RUN pnpm -C packages/remote-web build
 
 FROM rust:1.93-slim-bookworm AS builder
 ARG APP_NAME
@@ -75,7 +72,7 @@ RUN apt-get update \
 WORKDIR /srv
 
 COPY --from=builder /app/bin/${APP_NAME} /usr/local/bin/${APP_NAME}
-COPY --from=fe-builder /repo/remote-frontend/dist /srv/static
+COPY --from=fe-builder /repo/packages/remote-web/dist /srv/static
 
 USER appuser
 

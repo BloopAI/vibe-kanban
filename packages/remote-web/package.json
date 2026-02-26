@@ -1,0 +1,48 @@
+{
+  "name": "@vibe/remote-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "check": "tsc --noEmit",
+    "preview": "vite preview",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
+    "migrate:structure": "node ../../scripts/migrate-remote-web-structure.mjs --apply",
+    "migrate:structure:dry-run": "node ../../scripts/migrate-remote-web-structure.mjs"
+  },
+  "dependencies": {
+    "@ebay/nice-modal-react": "^1.2.13",
+    "@tanstack/react-query": "^5.85.5",
+    "@tanstack/react-router": "^1.161.1",
+    "@tanstack/zod-adapter": "^1.161.1",
+    "@vibe/ui": "workspace:*",
+    "@vibe/web-core": "workspace:*",
+    "clsx": "^2.1.1",
+    "posthog-js": "^1.283.0",
+    "prettier": "^3.6.1",
+    "react": "^18.2.0",
+    "react-compiler-runtime": "^1.0.0",
+    "react-dom": "^18.2.0",
+    "simple-icons": "^15.16.0",
+    "tailwind-merge": "^2.6.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
+    "@tanstack/router-plugin": "^1.161.1",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "postcss": "^8.4.32",
+    "tailwind-scrollbar": "^3.1.0",
+    "tailwindcss": "^3.4.0",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.9.2",
+    "vite": "^7.3.1"
+  }
+}

@@ -1,6 +1,6 @@
 [package]
 name = "services"
-version = "0.1.18"
+version = "0.1.19"
 edition = "2024"
 
 [features]
@@ -9,6 +9,7 @@ cloud = []
 qa-mode = ["executors/qa-mode"]
 
 [dependencies]
+indicatif = "0.17"
 api-types = { path = "../api-types" }
 utils = { path = "../utils" }
 git = { path = "../git" }

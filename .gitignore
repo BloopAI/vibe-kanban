@@ -66,8 +66,7 @@ coverage/
 .storybook-out
 
 .env
-frontend/dist
-remote-frontend/dist
+packages/**/dist
 
 build-npm-package-codesign.sh
 
@@ -79,10 +78,13 @@ vibe-kanban-*.tgz
 .dev-ports.json
 
 dev_assets
-/frontend/.env.sentry-build-plugin
+/packages/web/.env.sentry-build-plugin
 .ssh
 
 vibe-kanban-cloud/
 
 .jj
 .sisyphus/
+
+# Vite temp files
+*.timestamp-*.mjs

@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT logs\n               FROM execution_process_logs \n               WHERE execution_id = $1\n               ORDER BY inserted_at ASC",
+  "describe": {
+    "columns": [
+      {
+        "name": "logs",
+        "ordinal": 0,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9139f8d02c4ff94db0f2e8de7a6d5a53092479499815531962b7c84f5e0b2129"
+}
