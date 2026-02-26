@@ -12,6 +12,23 @@ const URL_IMPORT_REGEX =
 
 const URL_MATCH_REGEX = new RegExp(URL_IMPORT_REGEX.source + '$');
 
+/**
+ * Matches GitHub issue/PR/discussion URLs and extracts owner, repo, and number.
+ * e.g. https://github.com/skypilot-org/skypilot/pull/8922 → skypilot-org/skypilot#8922
+ */
+const GITHUB_ISSUE_PR_REGEX =
+  /^https?:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)\/(?:issues|pull|discussions)\/(\d+)\/?$/;
+
+/**
+ * Returns a short display label for GitHub issue/PR/discussion URLs,
+ * e.g. `skypilot-org/skypilot#8922`. Returns null for non-GitHub URLs.
+ */
+function getGitHubShortLabel(url: string): string | null {
+  const m = GITHUB_ISSUE_PR_REGEX.exec(url);
+  if (!m) return null;
+  return `${m[1]}/${m[2]}#${m[3]}`;
+}
+
 export const URL_AUTO_LINK_TRANSFORMER: TextMatchTransformer = {
   dependencies: [LinkNode],
   type: 'text-match',
@@ -22,20 +39,21 @@ export const URL_AUTO_LINK_TRANSFORMER: TextMatchTransformer = {
     const url = match[1];
     if (!url) return;
     const linkNode = $createLinkNode(url);
-    const linkTextNode = $createTextNode(url);
+    const label = getGitHubShortLabel(url) ?? url;
+    const linkTextNode = $createTextNode(label);
     linkTextNode.setFormat(textNode.getFormat());
     linkNode.append(linkTextNode);
     textNode.replace(linkNode);
   },
   export: (node) => {
-    // If this is a LinkNode where the display text equals the URL,
-    // export as a plain URL (preserving original plain-text form).
+    // If this is a LinkNode where the display text is the URL itself
+    // or a GitHub short label, export as the plain URL.
     if (!$isLinkNode(node)) return null;
     const url = node.getURL();
     const children = node.getChildren();
     if (children.length === 1) {
       const textContent = children[0].getTextContent();
-      if (textContent === url) {
+      if (textContent === url || textContent === getGitHubShortLabel(url)) {
         return url;
       }
     }
