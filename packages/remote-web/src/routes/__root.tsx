@@ -3,6 +3,7 @@ import { Provider as NiceModalProvider } from "@ebay/nice-modal-react";
 import { useSystemTheme } from "@remote/shared/hooks/useSystemTheme";
 import { RemoteActionsProvider } from "@remote/app/providers/RemoteActionsProvider";
 import { RemoteWorkspaceProvider } from "@remote/app/providers/RemoteWorkspaceProvider";
+import { RemoteUserSystemProvider } from "@remote/app/providers/RemoteUserSystemProvider";
 import { RemoteAppShell } from "@remote/app/layout/RemoteAppShell";
 import { UserProvider } from "@/shared/providers/remote/UserProvider";
 import NotFoundPage from "../pages/NotFoundPage";
@@ -27,13 +28,15 @@ function RootLayout() {
     <UserProvider>
       <RemoteWorkspaceProvider>
         <RemoteActionsProvider>
-          <NiceModalProvider>
-            {isStandaloneRoute ? (
-              content
-            ) : (
-              <RemoteAppShell>{content}</RemoteAppShell>
-            )}
-          </NiceModalProvider>
+          {isStandaloneRoute ? (
+            <NiceModalProvider>{content}</NiceModalProvider>
+          ) : (
+            <RemoteUserSystemProvider>
+              <NiceModalProvider>
+                <RemoteAppShell>{content}</RemoteAppShell>
+              </NiceModalProvider>
+            </RemoteUserSystemProvider>
+          )}
         </RemoteActionsProvider>
       </RemoteWorkspaceProvider>
     </UserProvider>
