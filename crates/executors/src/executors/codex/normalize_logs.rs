@@ -288,6 +288,13 @@ struct LogState {
     patches: HashMap<String, PatchState>,
     web_searches: HashMap<String, WebSearchState>,
     review: Option<ReviewState>,
+    model_params: ModelParamsState,
+}
+
+struct ModelParamsState {
+    index: Option<usize>,
+    model: Option<String>,
+    reasoning_effort: Option<ReasoningEffort>,
 }
 
 enum StreamingTextKind {
@@ -306,6 +313,11 @@ impl LogState {
             patches: HashMap::new(),
             web_searches: HashMap::new(),
             review: None,
+            model_params: ModelParamsState {
+                index: None,
+                model: None,
+                reasoning_effort: None,
+            },
         }
     }
 
@@ -547,7 +559,12 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
 
             if let Ok(response) = serde_json::from_str::<JSONRPCResponse>(&line) {
-                handle_jsonrpc_response(response, &msg_store, &entry_index);
+                handle_jsonrpc_response(
+                    response,
+                    &msg_store,
+                    &entry_index,
+                    &mut state.model_params,
+                );
                 continue;
             }
 
@@ -557,10 +574,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 {
                     msg_store.push_session_id(session_configured.session_id.to_string());
                     handle_model_params(
-                        session_configured.model,
+                        Some(session_configured.model),
                         session_configured.reasoning_effort,
                         &msg_store,
                         &entry_index,
+                        &mut state.model_params,
                     );
                 };
                 continue;
@@ -595,10 +613,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                 EventMsg::SessionConfigured(payload) => {
                     msg_store.push_session_id(payload.session_id.to_string());
                     handle_model_params(
-                        payload.model,
+                        Some(payload.model),
                         payload.reasoning_effort,
                         &msg_store,
                         &entry_index,
+                        &mut state.model_params,
                     );
                 }
                 EventMsg::AgentMessageDelta(AgentMessageDeltaEvent { delta }) => {
@@ -1281,6 +1300,7 @@ fn handle_jsonrpc_response(
     response: JSONRPCResponse,
     msg_store: &Arc<MsgStore>,
     entry_index: &EntryIndexProvider,
+    model_params: &mut ModelParamsState,
 ) {
     let Ok(response) = serde_json::from_value::<NewConversationResponse>(response.result.clone())
     else {
@@ -1293,35 +1313,49 @@ fn handle_jsonrpc_response(
     }
 
     handle_model_params(
-        response.model,
+        Some(response.model),
         response.reasoning_effort,
         msg_store,
         entry_index,
+        model_params,
     );
 }
 
 fn handle_model_params(
-    model: String,
+    model: Option<String>,
     reasoning_effort: Option<ReasoningEffort>,
     msg_store: &Arc<MsgStore>,
     entry_index: &EntryIndexProvider,
+    state: &mut ModelParamsState,
 ) {
-    let mut params = vec![];
-    params.push(format!("model: {model}"));
+    if let Some(model) = model {
+        state.model = Some(model);
+    }
     if let Some(reasoning_effort) = reasoning_effort {
+        state.reasoning_effort = Some(reasoning_effort);
+    }
+
+    let mut params = vec![];
+    if let Some(model) = &state.model {
+        params.push(format!("model: {model}"));
+    }
+    if let Some(reasoning_effort) = &state.reasoning_effort {
         params.push(format!("reasoning effort: {reasoning_effort}"));
     }
 
-    add_normalized_entry(
-        msg_store,
-        entry_index,
-        NormalizedEntry {
-            timestamp: None,
-            entry_type: NormalizedEntryType::SystemMessage,
-            content: params.join("  ").to_string(),
-            metadata: None,
-        },
-    );
+    if params.is_empty() {
+        return;
+    }
+
+    let is_new = state.index.is_none();
+    let index = *state.index.get_or_insert_with(|| entry_index.next());
+    let entry = NormalizedEntry {
+        timestamp: None,
+        entry_type: NormalizedEntryType::SystemMessage,
+        content: params.join("  "),
+        metadata: None,
+    };
+    upsert_normalized_entry(msg_store, index, entry, is_new);
 }
 
 fn build_command_output(stdout: Option<&str>, stderr: Option<&str>) -> Option<String> {
