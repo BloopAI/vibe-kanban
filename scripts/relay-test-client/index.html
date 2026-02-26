@@ -914,14 +914,13 @@
             );
           }
           const authCodePayload = await authCodeRes.json();
-          const relayUrl = authCodePayload?.relay_url;
           const code = authCodePayload?.code;
-          if (!relayUrl || !code) {
-            throw new Error("Missing relay_url/code in auth-code response.");
+          if (!code) {
+            throw new Error("Missing code in auth-code response.");
           }
           log("Created auth code");
 
-          const exchangeUrl = new URL(relayUrl);
+          const exchangeUrl = new URL(relayApiBase);
           exchangeUrl.pathname = `/relay/h/${hostId}/exchange`;
           exchangeUrl.searchParams.set("code", code);
 

@@ -8,9 +8,6 @@ pub struct RelayServerConfig {
     pub database_url: String,
     pub listen_addr: String,
     pub jwt_secret: SecretString,
-    /// Public relay host (e.g. "relay.vibekanban.com").
-    /// Browser redirects are issued against `https://{relay_base_domain}`.
-    pub relay_base_domain: String,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -35,19 +32,10 @@ impl RelayServerConfig {
         validate_jwt_secret(&jwt_secret_str)?;
         let jwt_secret = SecretString::new(jwt_secret_str.into());
 
-        let relay_base_domain = env::var("RELAY_BASE_DOMAIN")
-            .map_err(|_| ConfigError::MissingVar("RELAY_BASE_DOMAIN"))?
-            .trim()
-            .to_string();
-        if relay_base_domain.is_empty() {
-            return Err(ConfigError::MissingVar("RELAY_BASE_DOMAIN"));
-        }
-
         Ok(Self {
             database_url,
             listen_addr,
             jwt_secret,
-            relay_base_domain,
         })
     }
 }

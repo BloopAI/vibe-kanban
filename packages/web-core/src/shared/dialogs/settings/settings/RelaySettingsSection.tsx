@@ -22,6 +22,7 @@ import {
   createRelaySessionAuthCode,
   establishRelaySessionBaseUrl,
   finishRelaySpake2Enrollment,
+  getRelayApiUrl,
   startRelaySpake2Enrollment,
 } from '@/shared/lib/relayBackendApi';
 import {
@@ -590,7 +591,7 @@ function RemoteRelaySettingsSectionContent({
       const authCode = await createRelaySessionAuthCode(relaySession.id);
 
       const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
-        authCode.relay_url,
+        getRelayApiUrl(),
         selectedHostId,
         authCode.code
       );
