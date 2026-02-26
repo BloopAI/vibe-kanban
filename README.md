@@ -1,9 +1,9 @@
 <p align="center">
   <a href="https://vibekanban.com">
     <picture>
-      <source srcset="packages/local-web/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="packages/local-web/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="packages/local-web/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
+      <source srcset="packages/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="packages/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
     </picture>
   </a>
 </p>
@@ -19,7 +19,7 @@
   <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
 </h1>
 
-![](packages/local-web/public/vibe-kanban-screenshot-overview.png)
+![](packages/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
