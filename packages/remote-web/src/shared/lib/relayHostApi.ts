@@ -816,10 +816,11 @@ async function normalizeRequestBody(
     body,
   });
 
-  const bodyBuffer = await probeRequest.arrayBuffer();
+  const serializedBody = new Uint8Array(await probeRequest.arrayBuffer());
   return {
-    body,
-    bodyBytes: new Uint8Array(bodyBuffer),
+    // Use the exact serialized bytes for both signing and transport.
+    body: serializedBody,
+    bodyBytes: serializedBody,
     contentType: probeRequest.headers.get(CONTENT_TYPE_HEADER),
   };
 }
