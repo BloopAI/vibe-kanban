@@ -1,7 +1,7 @@
-import type { ReactNode, RefObject } from "react";
-import { useTranslation } from "react-i18next";
-import { ArrowDownIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import type { ReactNode, RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ArrowDownIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 export interface WorkspacesMainWorkspace {
   id: string;
@@ -31,25 +31,25 @@ export function WorkspacesMain({
   onScrollToBottom,
   isMobile,
 }: WorkspacesMainProps) {
-  const { t } = useTranslation(["tasks", "common"]);
+  const { t } = useTranslation(['tasks', 'common']);
 
   // Always render the main structure to prevent chat box flash during workspace transitions
   return (
     <main
       ref={containerRef}
       className={cn(
-        "relative flex flex-1 flex-col bg-primary",
-        isMobile ? "min-h-0" : "h-full",
+        'relative flex flex-1 flex-col bg-primary',
+        isMobile ? 'min-h-0' : 'h-full'
       )}
     >
       {/* Conversation content - conditional based on loading/workspace state */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-low">{t("common:workspaces.loading")}</p>
+          <p className="text-low">{t('common:workspaces.loading')}</p>
         </div>
       ) : !workspaceWithSession ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-low">{t("common:workspaces.selectToStart")}</p>
+          <p className="text-low">{t('common:workspaces.selectToStart')}</p>
         </div>
       ) : (
         conversationContent

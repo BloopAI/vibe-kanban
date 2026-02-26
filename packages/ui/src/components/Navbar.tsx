@@ -191,30 +191,30 @@ export function Navbar({
         <div className="flex items-center justify-between px-base py-half">
           {isOnProjectPage ? (
             <div className="flex items-center gap-base">
-              {isOnProjectSubRoute ? (
-                onNavigateBack && (
-                  <button
-                    type="button"
-                    className="flex items-center justify-center text-low hover:text-normal"
-                    onClick={onNavigateBack}
-                    aria-label="Back"
-                  >
-                    <CaretLeftIcon className="size-icon-base" />
-                  </button>
-                )
-              ) : (
-                onOpenDrawer && (
-                  <button
-                    type="button"
-                    className="flex items-center justify-center text-low hover:text-normal"
-                    onClick={onOpenDrawer}
-                    aria-label="Open menu"
-                  >
-                    <SidebarSimpleIcon className="size-icon-base" />
-                  </button>
-                )
-              )}
-              <p className="text-base text-normal font-medium truncate">{workspaceTitle}</p>
+              {isOnProjectSubRoute
+                ? onNavigateBack && (
+                    <button
+                      type="button"
+                      className="flex items-center justify-center text-low hover:text-normal"
+                      onClick={onNavigateBack}
+                      aria-label="Back"
+                    >
+                      <CaretLeftIcon className="size-icon-base" />
+                    </button>
+                  )
+                : onOpenDrawer && (
+                    <button
+                      type="button"
+                      className="flex items-center justify-center text-low hover:text-normal"
+                      onClick={onOpenDrawer}
+                      aria-label="Open menu"
+                    >
+                      <SidebarSimpleIcon className="size-icon-base" />
+                    </button>
+                  )}
+              <p className="text-base text-normal font-medium truncate">
+                {workspaceTitle}
+              </p>
             </div>
           ) : (
             <div className="flex items-center gap-0.5 overflow-x-auto">
@@ -246,8 +246,13 @@ export function Navbar({
                     )}
                     onClick={() => onMobileTabChange?.(tab.id)}
                   >
-                    <TabIcon className="size-icon-sm" weight={isActive ? 'fill' : 'regular'} />
-                    <span className="hidden min-[480px]:inline">{tab.label}</span>
+                    <TabIcon
+                      className="size-icon-sm"
+                      weight={isActive ? 'fill' : 'regular'}
+                    />
+                    <span className="hidden min-[480px]:inline">
+                      {tab.label}
+                    </span>
                   </button>
                 );
               })}
