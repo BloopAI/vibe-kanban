@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import type { OrganizationWithRole } from 'shared/types';
 import { AppBarUserPopover } from '@vibe/ui/components/AppBarUserPopover';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
@@ -8,7 +7,6 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useActions } from '@/shared/hooks/useActions';
 import { Actions } from '@/shared/actions';
-import { toMigrate } from '@/shared/lib/routes/navigation';
 
 interface AppBarUserPopoverContainerProps {
   organizations: OrganizationWithRole[];
@@ -27,7 +25,6 @@ export function AppBarUserPopoverContainer({
   const { isSignedIn } = useAuth();
   const { loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
 
@@ -50,11 +47,6 @@ export function AppBarUserPopoverContainer({
     await SettingsDialog.show({ initialSection: 'organizations' });
   };
 
-  const handleMigrate = () => {
-    setOpen(false);
-    navigate(toMigrate());
-  };
-
   const handleSettings = async () => {
     setOpen(false);
     await SettingsDialog.show();
@@ -75,7 +67,6 @@ export function AppBarUserPopoverContainer({
       onSignIn={handleSignIn}
       onLogout={handleLogout}
       onAvatarError={() => setAvatarError(true)}
-      onMigrate={handleMigrate}
       onSettings={handleSettings}
     />
   );
