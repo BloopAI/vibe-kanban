@@ -78,6 +78,11 @@ jobs:
           cargo update relay-tunnel
           cd ../..
 
+          # Keep remote's Cargo.lock in sync (remote depends on relay-tunnel via path)
+          cd crates/remote
+          cargo update -p relay-tunnel --precise "$new_version"
+          cd ../..
+
           echo "New version: $new_version"
           echo "New tag: $new_tag"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
@@ -88,7 +93,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add crates/relay-tunnel/Cargo.toml crates/relay-tunnel/Cargo.lock
+          git add crates/relay-tunnel/Cargo.toml crates/relay-tunnel/Cargo.lock crates/remote/Cargo.lock
           git commit -m "chore: bump relay-tunnel version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Relay release ${{ steps.version.outputs.new_tag }}"
           git push
