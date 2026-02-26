@@ -7,14 +7,13 @@ use api_types::{
     CreateNotificationRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
     IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationType,
-    ListRelayHostsResponse, OrganizationMember, Project, ProjectStatus, PullRequest,
+    OrganizationMember, Project, ProjectStatus, PullRequest,
     PullRequestStatus, RelayHost, RelaySession, RelaySessionAuthCodeResponse, Tag,
     UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
     UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-    UpdateTagRequest, User, UserData, Workspace,
+    UpdateTagRequest, User, UserData, Workspace, ListRelayHostsResponse,
 };
 use remote::{
-    db::hosts::Host,
     routes::{
         all_mutation_definitions,
         attachments::{
@@ -95,7 +94,6 @@ fn export_shapes() -> String {
         PullRequest::decl(),
         UserData::decl(),
         User::decl(),
-        Host::decl(),
         RelayHost::decl(),
         ListRelayHostsResponse::decl(),
         RelaySession::decl(),

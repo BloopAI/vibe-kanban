@@ -3,14 +3,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct CreateRelayHostRequest {
-    pub name: String,
-    #[serde(default)]
-    pub agent_version: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
 pub struct RelayHost {
     pub id: Uuid,
     pub owner_user_id: Uuid,

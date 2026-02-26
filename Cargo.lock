@@ -2211,12 +2211,15 @@ dependencies = [
  "futures",
  "git",
  "git2",
+ "relay-control",
  "serde_json",
+ "server-info",
  "services",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "trusted-key-auth",
  "utils",
 ]
 
@@ -4476,17 +4479,17 @@ dependencies = [
  "anyhow",
  "api-types",
  "async-trait",
- "base64",
  "command-group",
  "db",
  "deployment",
- "ed25519-dalek",
  "executors",
  "futures",
  "git",
  "globwalk",
  "portable-pty 0.8.1",
+ "relay-control",
  "serde_json",
+ "server-info",
  "services",
  "sqlx",
  "tempfile",
@@ -6632,6 +6635,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a96887878f22d7bad8a3b6dc5b7440e0ada9a245242924394987b21cf2210a4c"
 
 [[package]]
+name = "relay-control"
+version = "0.1.18"
+dependencies = [
+ "base64",
+ "ed25519-dalek",
+ "rand 0.8.5",
+ "tokio",
+ "tokio-util",
+ "uuid",
+]
+
+[[package]]
 name = "relay-tunnel"
 version = "0.1.0"
 dependencies = [
@@ -7670,6 +7685,13 @@ dependencies = [
  "url",
  "utils",
  "uuid",
+]
+
+[[package]]
+name = "server-info"
+version = "0.1.18"
+dependencies = [
+ "tokio",
 ]
 
 [[package]]

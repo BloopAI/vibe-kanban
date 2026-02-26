@@ -8,7 +8,9 @@ use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
+use relay_control::{RelayControl, signing::RelaySigningService};
 use serde_json::Value;
+use server_info::ServerInfo;
 use services::services::{
     analytics::AnalyticsService,
     approvals::Approvals,
@@ -28,6 +30,7 @@ use services::services::{
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
+use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::sentry as sentry_utils;
 
 #[derive(Debug, Clone, Copy, Error)]
@@ -99,6 +102,14 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn queued_message_service(&self) -> &QueuedMessageService;
 
     fn auth_context(&self) -> &AuthContext;
+
+    fn relay_control(&self) -> &Arc<RelayControl>;
+
+    fn relay_signing(&self) -> &RelaySigningService;
+
+    fn server_info(&self) -> &Arc<ServerInfo>;
+
+    fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)

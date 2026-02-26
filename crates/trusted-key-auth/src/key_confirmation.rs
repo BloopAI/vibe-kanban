@@ -4,7 +4,7 @@ use hmac::{Hmac, Mac};
 use sha2::Sha256;
 use uuid::Uuid;
 
-use crate::TrustedKeyAuthError;
+use crate::error::TrustedKeyAuthError;
 
 const KEY_CONFIRMATION_INFO: &[u8] = b"key-confirmation";
 const CLIENT_PROOF_CONTEXT: &[u8] = b"vk-spake2-client-proof-v2";

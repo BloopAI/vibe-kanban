@@ -10,7 +10,7 @@ import { getToken, triggerRefresh } from "@remote/shared/lib/auth/tokenManager";
 import "@remote/app/styles/index.css";
 import "@/i18n";
 import { configureAuthRuntime } from "@/shared/lib/auth/runtime";
-import { setRemoteApiBase } from "@/shared/lib/remoteApi";
+import { setRelayApiBase, setRemoteApiBase } from "@/shared/lib/remoteApi";
 import "@/shared/types/modals";
 import { queryClient } from "@/shared/lib/queryClient";
 
@@ -21,6 +21,11 @@ if (import.meta.env.VITE_PUBLIC_POSTHOG_KEY) {
 }
 
 setRemoteApiBase(import.meta.env.VITE_API_BASE_URL || window.location.origin);
+setRelayApiBase(
+  import.meta.env.VITE_RELAY_API_BASE_URL ||
+    import.meta.env.VITE_API_BASE_URL ||
+    window.location.origin,
+);
 
 configureAuthRuntime({
   getToken,

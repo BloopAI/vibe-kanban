@@ -2,7 +2,7 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use rand::Rng;
 use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
 
-use crate::TrustedKeyAuthError;
+use crate::error::TrustedKeyAuthError;
 
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
