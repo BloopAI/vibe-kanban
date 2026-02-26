@@ -11,6 +11,7 @@ import { Scope } from '@/shared/keyboard/registry';
 import { isProjectDestination } from '@/shared/lib/routes/appNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
+import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
 
 const SEQUENCE_TIMEOUT_MS = 1500;
 
@@ -27,11 +28,21 @@ export function useIssueShortcuts() {
 
   const isKanban = isProjectDestination(destination);
 
+  // Multi-selection support
+  const multiSelectedIssueIds = useIssueSelectionStore(
+    (s) => s.selectedIssueIds
+  );
+  const selectAll = useIssueSelectionStore((s) => s.selectAll);
+  const clearSelection = useIssueSelectionStore((s) => s.clearSelection);
+
   const executeActionRef = useRef(executeAction);
   const projectIdRef = useRef(projectId);
   const issueIdRef = useRef(issueId);
   const isKanbanRef = useRef(isKanban);
   const isCreatingIssueRef = useRef(isCreatingIssue);
+  const multiSelectedIssueIdsRef = useRef(multiSelectedIssueIds);
+  const selectAllRef = useRef(selectAll);
+  const clearSelectionRef = useRef(clearSelection);
 
   useEffect(() => {
     executeActionRef.current = executeAction;
@@ -39,9 +50,18 @@ export function useIssueShortcuts() {
     issueIdRef.current = issueId;
     isKanbanRef.current = isKanban;
     isCreatingIssueRef.current = isCreatingIssue;
+    multiSelectedIssueIdsRef.current = multiSelectedIssueIds;
+    selectAllRef.current = selectAll;
+    clearSelectionRef.current = clearSelection;
   });
 
-  const issueIds = useMemo(() => (issueId ? [issueId] : []), [issueId]);
+  // Use multi-selected IDs when available, otherwise fall back to single issue
+  const issueIds = useMemo(() => {
+    if (multiSelectedIssueIds.size > 0) {
+      return [...multiSelectedIssueIds];
+    }
+    return issueId ? [issueId] : [];
+  }, [multiSelectedIssueIds, issueId]);
   const issueIdsRef = useRef(issueIds);
   useEffect(() => {
     issueIdsRef.current = issueIds;
@@ -136,4 +156,27 @@ export function useIssueShortcuts() {
     ...OPTIONS,
     enabled,
   });
+
+  // Select all visible issues
+  useHotkeys(
+    'mod+a',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      e.preventDefault();
+      selectAllRef.current();
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Clear selection on Escape
+  useHotkeys(
+    'escape',
+    () => {
+      if (!isKanbanRef.current) return;
+      if (multiSelectedIssueIdsRef.current.size > 0) {
+        clearSelectionRef.current();
+      }
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
 }
