@@ -31,7 +31,7 @@ export function PrimaryButton({
   return (
     <button
       className={cn(
-        'rounded-sm px-base py-half text-cta h-cta flex gap-half items-center',
+        'rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center',
         variantStyles,
         className
       )}

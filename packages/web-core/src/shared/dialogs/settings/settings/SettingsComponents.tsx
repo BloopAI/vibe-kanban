@@ -160,7 +160,7 @@ export function SettingsCard({
             <p className="text-sm text-low mt-1">{description}</p>
           )}
         </div>
-        {headerAction}
+        {headerAction && <div className="shrink-0 ml-2">{headerAction}</div>}
       </div>
       <div className="space-y-4">{children}</div>
     </div>

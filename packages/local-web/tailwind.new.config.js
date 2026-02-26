@@ -59,6 +59,9 @@ module.exports = {
       height: {
         'cta': '29px',
       },
+      minHeight: {
+        'cta': '29px',
+      },
       width: {
         chat: chatMaxWidth,
       },

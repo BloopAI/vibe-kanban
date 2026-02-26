@@ -500,7 +500,7 @@ export function OrganizationsSettingsSection() {
               onClick={() => void handleManageBilling()}
               disabled={isOpeningBilling}
               className={cn(
-                'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium',
+                'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium whitespace-nowrap shrink-0',
                 'bg-brand/10 text-brand hover:bg-brand/20 border border-brand/50',
                 'transition-colors disabled:cursor-not-allowed disabled:opacity-50'
               )}
@@ -535,7 +535,7 @@ export function OrganizationsSettingsSection() {
               onClick={handleDeleteOrganization}
               disabled={deleteOrganization.isPending}
               className={cn(
-                'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium',
+                'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium whitespace-nowrap shrink-0',
                 'bg-error/10 text-error hover:bg-error/20 border border-error/50',
                 'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
               )}
