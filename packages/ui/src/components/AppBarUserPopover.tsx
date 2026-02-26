@@ -1,7 +1,6 @@
 import {
   BuildingsIcon,
   CheckIcon,
-  CloudArrowUpIcon,
   GearIcon,
   PlusIcon,
   SignInIcon,
@@ -35,10 +34,10 @@ interface AppBarUserPopoverProps {
   onOrgSelect: (orgId: string) => void;
   onCreateOrg?: () => void;
   onOrgSettings?: (orgId: string) => void;
+  onSettings?: () => void;
   onSignIn: () => void;
   onLogout: () => void;
   onAvatarError: () => void;
-  onMigrate?: () => void;
 }
 
 export function AppBarUserPopover({
@@ -52,12 +51,15 @@ export function AppBarUserPopover({
   onOrgSelect,
   onCreateOrg,
   onOrgSettings,
+  onSettings,
   onSignIn,
   onLogout,
   onAvatarError,
-  onMigrate,
 }: AppBarUserPopoverProps) {
   const { t } = useTranslation();
+  const settingsLabel = t('settings:settings.layout.nav.title', {
+    defaultValue: 'Settings',
+  });
 
   if (!isSignedIn) {
     return (
@@ -81,6 +83,14 @@ export function AppBarUserPopover({
           <DropdownMenuItem icon={SignInIcon} onClick={onSignIn}>
             {t('signIn')}
           </DropdownMenuItem>
+          {onSettings && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem icon={GearIcon} onClick={onSettings}>
+                {settingsLabel}
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     );
@@ -146,11 +156,11 @@ export function AppBarUserPopover({
         <DropdownMenuItem icon={PlusIcon} onClick={onCreateOrg}>
           {t('orgSwitcher.createOrganization')}
         </DropdownMenuItem>
-        {onMigrate && (
+        {onSettings && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem icon={CloudArrowUpIcon} onClick={onMigrate}>
-              {t('orgSwitcher.migrate')}
+            <DropdownMenuItem icon={GearIcon} onClick={onSettings}>
+              {settingsLabel}
             </DropdownMenuItem>
           </>
         )}
