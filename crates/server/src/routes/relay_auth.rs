@@ -30,8 +30,8 @@ struct GenerateEnrollmentCodeResponse {
     enrollment_code: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct StartSpake2EnrollmentRequest {
+#[derive(Debug, Deserialize, TS)]
+pub struct StartSpake2EnrollmentRequest {
     enrollment_code: String,
     client_message_b64: String,
 }
@@ -42,8 +42,8 @@ pub struct StartSpake2EnrollmentResponse {
     server_message_b64: String,
 }
 
-#[derive(Debug, Deserialize)]
-struct FinishSpake2EnrollmentRequest {
+#[derive(Debug, Deserialize, TS)]
+pub struct FinishSpake2EnrollmentRequest {
     enrollment_id: Uuid,
     public_key_b64: String,
     client_proof_b64: String,

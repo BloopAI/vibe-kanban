@@ -109,6 +109,8 @@ fn generate_types_content() -> String {
         server::routes::config::CheckAgentAvailabilityQuery::decl(),
         server::routes::config::AgentPresetOptionsQuery::decl(),
         server::routes::oauth::CurrentUserResponse::decl(),
+        server::routes::relay_auth::StartSpake2EnrollmentRequest::decl(),
+        server::routes::relay_auth::FinishSpake2EnrollmentRequest::decl(),
         server::routes::relay_auth::StartSpake2EnrollmentResponse::decl(),
         server::routes::relay_auth::FinishSpake2EnrollmentResponse::decl(),
         server::routes::sessions::CreateFollowUpAttempt::decl(),
