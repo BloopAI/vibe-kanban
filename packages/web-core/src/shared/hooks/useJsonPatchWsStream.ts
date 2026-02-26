@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { produce } from 'immer';
 import type { Operation } from 'rfc6902';
 import { applyUpsertPatch } from '@/shared/lib/jsonPatch';
+import { openLocalApiWebSocket } from '@/shared/lib/localApiTransport';
 
 type WsJsonPatchMsg = { JsonPatch: Operation[] };
 type WsReadyMsg = { Ready: true };
@@ -91,90 +92,113 @@ export const useJsonPatchWsStream = <T extends object>(
       }
     }
 
+    let cancelled = false;
+
     // Create WebSocket if it doesn't exist
     if (!wsRef.current) {
       // Reset finished flag for new connection
       finishedRef.current = false;
 
-      // Convert HTTP endpoint to WebSocket endpoint
-      const wsEndpoint = endpoint.replace(/^http/, 'ws');
-      const ws = new WebSocket(wsEndpoint);
-
-      ws.onopen = () => {
-        setError(null);
-        setIsConnected(true);
-        // Reset backoff on successful connection
-        retryAttemptsRef.current = 0;
-        if (retryTimerRef.current) {
-          window.clearTimeout(retryTimerRef.current);
-          retryTimerRef.current = null;
-        }
-      };
-
-      ws.onmessage = (event) => {
+      void (async () => {
         try {
-          const msg: WsMsg = JSON.parse(event.data);
+          const ws = await openLocalApiWebSocket(endpoint);
 
-          // Handle JsonPatch messages (same as SSE json_patch event)
-          if ('JsonPatch' in msg) {
-            const patches: Operation[] = msg.JsonPatch;
-            const filtered = deduplicatePatches
-              ? deduplicatePatches(patches)
-              : patches;
-
-            const current = dataRef.current;
-            if (!filtered.length || !current) return;
-
-            // Use Immer for structural sharing - only modified parts get new references
-            const next = produce(current, (draft) => {
-              applyUpsertPatch(draft, filtered);
-            });
-
-            dataRef.current = next;
-            setData(next);
+          if (cancelled) {
+            ws.close();
+            return;
           }
 
-          // Handle Ready messages (initial data has been sent)
-          if ('Ready' in msg) {
-            setIsInitialized(true);
-          }
+          ws.onopen = () => {
+            setError(null);
+            setIsConnected(true);
+            // Reset backoff on successful connection
+            retryAttemptsRef.current = 0;
+            if (retryTimerRef.current) {
+              window.clearTimeout(retryTimerRef.current);
+              retryTimerRef.current = null;
+            }
+          };
 
-          // Handle finished messages ({finished: true})
-          // Treat finished as terminal - do NOT reconnect
-          if ('finished' in msg) {
-            finishedRef.current = true;
-            ws.close(1000, 'finished');
-            wsRef.current = null;
+          ws.onmessage = (event) => {
+            try {
+              const msg: WsMsg = JSON.parse(event.data);
+
+              // Handle JsonPatch messages (same as SSE json_patch event)
+              if ('JsonPatch' in msg) {
+                const patches: Operation[] = msg.JsonPatch;
+                const filtered = deduplicatePatches
+                  ? deduplicatePatches(patches)
+                  : patches;
+
+                const current = dataRef.current;
+                if (!filtered.length || !current) return;
+
+                // Use Immer for structural sharing - only modified parts get new references
+                const next = produce(current, (draft) => {
+                  applyUpsertPatch(draft, filtered);
+                });
+
+                dataRef.current = next;
+                setData(next);
+              }
+
+              // Handle Ready messages (initial data has been sent)
+              if ('Ready' in msg) {
+                setIsInitialized(true);
+              }
+
+              // Handle finished messages ({finished: true})
+              // Treat finished as terminal - do NOT reconnect
+              if ('finished' in msg) {
+                finishedRef.current = true;
+                ws.close(1000, 'finished');
+                wsRef.current = null;
+                setIsConnected(false);
+              }
+            } catch (err) {
+              console.error('Failed to process WebSocket message:', err);
+              setError('Failed to process stream update');
+            }
+          };
+
+          ws.onerror = () => {
+            setError('Connection failed');
+          };
+
+          ws.onclose = (evt) => {
             setIsConnected(false);
+            wsRef.current = null;
+
+            // Do not reconnect if we received a finished message or clean close
+            if (
+              cancelled ||
+              finishedRef.current ||
+              (evt?.code === 1000 && evt?.wasClean)
+            ) {
+              return;
+            }
+
+            // Otherwise, reconnect on unexpected/error closures
+            retryAttemptsRef.current += 1;
+            scheduleReconnect();
+          };
+
+          wsRef.current = ws;
+        } catch (error) {
+          if (cancelled) {
+            return;
           }
-        } catch (err) {
-          console.error('Failed to process WebSocket message:', err);
-          setError('Failed to process stream update');
+
+          console.error('Failed to open WebSocket stream:', error);
+          setError('Connection failed');
+          retryAttemptsRef.current += 1;
+          scheduleReconnect();
         }
-      };
-
-      ws.onerror = () => {
-        setError('Connection failed');
-      };
-
-      ws.onclose = (evt) => {
-        setIsConnected(false);
-        wsRef.current = null;
-
-        // Do not reconnect if we received a finished message or clean close
-        if (finishedRef.current || (evt?.code === 1000 && evt?.wasClean)) {
-          return;
-        }
-
-        // Otherwise, reconnect on unexpected/error closures
-        retryAttemptsRef.current += 1;
-        scheduleReconnect();
-      };
-
-      wsRef.current = ws;
+      })();
     }
 
     return () => {
+      cancelled = true;
       if (wsRef.current) {
         const ws = wsRef.current;
 

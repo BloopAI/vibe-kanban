@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
+import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
 import type {
   WorkspaceWithStatus,
   WorkspaceSummary,
@@ -93,7 +94,7 @@ async function fetchWorkspaceSummariesByArchived(
   archived: boolean
 ): Promise<Map<string, WorkspaceSummary>> {
   try {
-    const response = await fetch('/api/task-attempts/summary', {
+    const response = await makeLocalApiRequest('/api/task-attempts/summary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ archived }),
