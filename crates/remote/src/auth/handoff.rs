@@ -268,10 +268,6 @@ impl OAuthHandoffService {
             .await
             .map_err(HandoffError::Provider)?;
 
-        let user_profile = self.fetch_user_with_retries(&provider, &grant).await?;
-
-        let user = self.upsert_identity(&provider, &user_profile).await?;
-
         let provider_token_details = crate::auth::ProviderTokenDetails {
             provider: provider.name().to_string(),
             access_token: grant.access_token.expose_secret().to_string(),
@@ -282,16 +278,22 @@ impl OAuthHandoffService {
             expires_at: grant.expires_in.map(|d| (Utc::now() + d).timestamp()),
         };
 
+        let encrypted_tokens = self
+            .jwt
+            .encrypt_provider_tokens(&provider_token_details)
+            .map_err(|e| HandoffError::Failed(format!("Failed to encrypt provider token: {e}")))?;
+
+        let user_profile = self.fetch_user_with_retries(&provider, &grant).await?;
+
+        let user = self
+            .upsert_identity(&provider, &user_profile, Some(encrypted_tokens.as_str()))
+            .await?;
+
         let session_repo = AuthSessionRepository::new(&self.pool);
         let session_record = session_repo.create(user.id, None).await?;
 
         let app_code = generate_app_code();
         let app_code_hash = hash_sha256_hex(&app_code);
-
-        let encrypted_tokens = self
-            .jwt
-            .encrypt_provider_tokens(&provider_token_details)
-            .map_err(|e| HandoffError::Failed(format!("Failed to encrypt provider token: {e}")))?;
 
         repo.mark_authorized(
             record.id,
@@ -348,9 +350,7 @@ impl OAuthHandoffService {
         let user_id = record
             .user_id
             .ok_or_else(|| HandoffError::Failed("missing_user".into()))?;
-        let encrypted_provider_tokens = record
-            .encrypted_provider_tokens
-            .ok_or_else(|| HandoffError::Failed("missing_encrypted_provider_tokens".into()))?;
+        let provider = record.provider.clone();
 
         let session_repo = AuthSessionRepository::new(&self.pool);
         let session = session_repo.get(session_id).await?;
@@ -370,11 +370,7 @@ impl OAuthHandoffService {
             .ensure_personal_org_and_admin_membership(user.id, user.username.as_deref())
             .await?;
 
-        let provider_token = self
-            .jwt
-            .decrypt_provider_tokens(&encrypted_provider_tokens)?;
-
-        let tokens = self.jwt.generate_tokens(&session, &user, provider_token)?;
+        let tokens = self.jwt.generate_tokens(&session, &user, &provider)?;
 
         session_repo
             .set_current_refresh_token(session.id, tokens.refresh_token_id)
@@ -428,6 +424,7 @@ impl OAuthHandoffService {
         &self,
         provider: &Arc<dyn AuthorizationProvider>,
         profile: &ProviderUser,
+        encrypted_provider_tokens: Option<&str>,
     ) -> Result<IdentityUser, HandoffError> {
         let account_repo = OAuthAccountRepository::new(&self.pool);
         let user_repo = UserRepository::new(&self.pool);
@@ -471,6 +468,7 @@ impl OAuthHandoffService {
                 username: username.as_deref(),
                 display_name: display_name.as_deref(),
                 avatar_url: profile.avatar_url.as_deref(),
+                encrypted_provider_tokens,
             })
             .await?;
 

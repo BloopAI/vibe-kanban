@@ -1,0 +1,82 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                id                AS \"id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                provider          AS \"provider!\",\n                provider_user_id  AS \"provider_user_id!\",\n                email             AS \"email?\",\n                username          AS \"username?\",\n                display_name      AS \"display_name?\",\n                avatar_url        AS \"avatar_url?\",\n                encrypted_provider_tokens AS \"encrypted_provider_tokens?\",\n                created_at        AS \"created_at!\",\n                updated_at        AS \"updated_at!\"\n            FROM oauth_accounts\n            WHERE user_id = $1\n            ORDER BY provider\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "provider!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "provider_user_id!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "email?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "username?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "display_name?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "avatar_url?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "encrypted_provider_tokens?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "3e682d961f272a5c1ce20366008889156928c87babc1704d3277ff9a1812193c"
+}

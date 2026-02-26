@@ -19,6 +19,7 @@ pub struct OAuthAccount {
     pub username: Option<String>,
     pub display_name: Option<String>,
     pub avatar_url: Option<String>,
+    pub encrypted_provider_tokens: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -32,6 +33,7 @@ pub struct OAuthAccountInsert<'a> {
     pub username: Option<&'a str>,
     pub display_name: Option<&'a str>,
     pub avatar_url: Option<&'a str>,
+    pub encrypted_provider_tokens: Option<&'a str>,
 }
 
 pub struct OAuthAccountRepository<'a> {
@@ -60,6 +62,7 @@ impl<'a> OAuthAccountRepository<'a> {
                 username          AS "username?",
                 display_name      AS "display_name?",
                 avatar_url        AS "avatar_url?",
+                encrypted_provider_tokens AS "encrypted_provider_tokens?",
                 created_at        AS "created_at!",
                 updated_at        AS "updated_at!"
             FROM oauth_accounts
@@ -68,6 +71,39 @@ impl<'a> OAuthAccountRepository<'a> {
             "#,
             provider,
             provider_user_id
+        )
+        .fetch_optional(self.pool)
+        .await
+        .map_err(OAuthAccountError::from)
+    }
+
+    pub async fn get_by_user_provider(
+        &self,
+        user_id: Uuid,
+        provider: &str,
+    ) -> Result<Option<OAuthAccount>, OAuthAccountError> {
+        sqlx::query_as!(
+            OAuthAccount,
+            r#"
+            SELECT
+                id                AS "id!: Uuid",
+                user_id           AS "user_id!: Uuid",
+                provider          AS "provider!",
+                provider_user_id  AS "provider_user_id!",
+                email             AS "email?",
+                username          AS "username?",
+                display_name      AS "display_name?",
+                avatar_url        AS "avatar_url?",
+                encrypted_provider_tokens AS "encrypted_provider_tokens?",
+                created_at        AS "created_at!",
+                updated_at        AS "updated_at!"
+            FROM oauth_accounts
+            WHERE user_id = $1
+              AND provider = $2
+            LIMIT 1
+            "#,
+            user_id,
+            provider,
         )
         .fetch_optional(self.pool)
         .await
@@ -90,6 +126,7 @@ impl<'a> OAuthAccountRepository<'a> {
                 username          AS "username?",
                 display_name      AS "display_name?",
                 avatar_url        AS "avatar_url?",
+                encrypted_provider_tokens AS "encrypted_provider_tokens?",
                 created_at        AS "created_at!",
                 updated_at        AS "updated_at!"
             FROM oauth_accounts
@@ -117,15 +154,20 @@ impl<'a> OAuthAccountRepository<'a> {
                 email,
                 username,
                 display_name,
-                avatar_url
+                avatar_url,
+                encrypted_provider_tokens
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             ON CONFLICT (provider, provider_user_id) DO UPDATE
             SET
                 email = EXCLUDED.email,
                 username = EXCLUDED.username,
                 display_name = EXCLUDED.display_name,
-                avatar_url = EXCLUDED.avatar_url
+                avatar_url = EXCLUDED.avatar_url,
+                encrypted_provider_tokens = COALESCE(
+                    EXCLUDED.encrypted_provider_tokens,
+                    oauth_accounts.encrypted_provider_tokens
+                )
             RETURNING
                 id                AS "id!: Uuid",
                 user_id           AS "user_id!: Uuid",
@@ -135,6 +177,7 @@ impl<'a> OAuthAccountRepository<'a> {
                 username          AS "username?",
                 display_name      AS "display_name?",
                 avatar_url        AS "avatar_url?",
+                encrypted_provider_tokens AS "encrypted_provider_tokens?",
                 created_at        AS "created_at!",
                 updated_at        AS "updated_at!"
             "#,
@@ -144,10 +187,34 @@ impl<'a> OAuthAccountRepository<'a> {
             account.email,
             account.username,
             account.display_name,
-            account.avatar_url
+            account.avatar_url,
+            account.encrypted_provider_tokens
         )
         .fetch_one(self.pool)
         .await
         .map_err(OAuthAccountError::from)
+    }
+
+    pub async fn update_encrypted_provider_tokens(
+        &self,
+        user_id: Uuid,
+        provider: &str,
+        encrypted_provider_tokens: &str,
+    ) -> Result<(), OAuthAccountError> {
+        sqlx::query!(
+            r#"
+            UPDATE oauth_accounts
+            SET encrypted_provider_tokens = $3
+            WHERE user_id = $1
+              AND provider = $2
+            "#,
+            user_id,
+            provider,
+            encrypted_provider_tokens,
+        )
+        .execute(self.pool)
+        .await?;
+
+        Ok(())
     }
 }
