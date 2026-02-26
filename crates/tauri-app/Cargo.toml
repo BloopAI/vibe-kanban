@@ -17,14 +17,8 @@ tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
 
 server = { path = "../server" }
-deployment = { path = "../deployment" }
-utils = { path = "../utils" }
-services = { path = "../services" }
-local-deployment = { path = "../local-deployment" }
 
-tokio = { workspace = true }
-axum = { workspace = true }
-anyhow = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 serde_json = { workspace = true }

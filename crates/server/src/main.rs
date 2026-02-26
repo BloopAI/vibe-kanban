@@ -1,11 +1,9 @@
 use anyhow::{self, Error as AnyhowError};
-use axum::Router;
 use deployment::DeploymentError;
-use server::{preview_proxy, routes, startup};
+use server::startup;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
-use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     browser::open_browser,
@@ -45,15 +43,10 @@ async fn main() -> Result<(), VibeKanbanError> {
         .with(sentry_layer())
         .init();
 
-    let deployment = startup::initialize_deployment().await?;
-
-    let app_router = routes::router(deployment.clone());
-
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
         .ok()
         .and_then(|s| {
-            // Remove any ANSI codes, then turn into String
             let cleaned =
                 String::from_utf8(strip(s.as_bytes())).expect("UTF-8 after stripping ANSI");
             cleaned.trim().parse::<u16>().ok()
@@ -61,7 +54,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         .unwrap_or_else(|| {
             tracing::info!("No PORT environment variable set, using port 0 for auto-assignment");
             0
-        }); // Use 0 to find free port if no specific port provided
+        });
 
     let proxy_port = std::env::var("PREVIEW_PROXY_PORT")
         .ok()
@@ -70,72 +63,36 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
 
-    let main_listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
-    let actual_main_port = main_listener.local_addr()?.port();
+    let handle =
+        startup::start_with_bind(&format!("{host}:{port}"), &format!("{host}:{proxy_port}"))
+            .await?;
 
-    let proxy_listener = tokio::net::TcpListener::bind(format!("{host}:{proxy_port}")).await?;
-    let actual_proxy_port = proxy_listener.local_addr()?.port();
-
-    preview_proxy::set_proxy_port(actual_proxy_port);
-
-    if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
+    if let Err(e) = write_port_file_with_proxy(handle.port, Some(handle.proxy_port)).await {
         tracing::warn!("Failed to write port file: {}", e);
     }
-
-    tracing::info!(
-        "Main server on :{}, Preview proxy on :{}",
-        actual_main_port,
-        actual_proxy_port
-    );
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
-        let browser_port = actual_main_port;
+        let url = handle.url();
         tokio::spawn(async move {
-            if let Err(e) = open_browser(&format!("http://127.0.0.1:{browser_port}")).await {
+            if let Err(e) = open_browser(&url).await {
                 tracing::warn!(
-                    "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
-                    e,
-                    browser_port
+                    "Failed to open browser automatically: {e}. Please open {url} manually."
                 );
             }
         });
     }
 
-    let proxy_router: Router = preview_proxy::router();
-    let shutdown_token = CancellationToken::new();
-
-    let main_shutdown = shutdown_token.clone();
-    let proxy_shutdown = shutdown_token.clone();
-
-    let main_server = axum::serve(main_listener, app_router)
-        .with_graceful_shutdown(async move { main_shutdown.cancelled().await });
-    let proxy_server = axum::serve(proxy_listener, proxy_router)
-        .with_graceful_shutdown(async move { proxy_shutdown.cancelled().await });
-
-    let main_handle = tokio::spawn(async move {
-        if let Err(e) = main_server.await {
-            tracing::error!("Main server error: {}", e);
-        }
-    });
-    let proxy_handle = tokio::spawn(async move {
-        if let Err(e) = proxy_server.await {
-            tracing::error!("Preview proxy error: {}", e);
-        }
+    // Cancel the server when a shutdown signal (Ctrl-C / SIGTERM) arrives.
+    let shutdown_token = handle.shutdown_token();
+    tokio::spawn(async move {
+        shutdown_signal().await;
+        tracing::info!("Shutdown signal received");
+        shutdown_token.cancel();
     });
 
-    tokio::select! {
-        _ = shutdown_signal() => {
-            tracing::info!("Shutdown signal received");
-        }
-        _ = main_handle => {}
-        _ = proxy_handle => {}
-    }
-
-    shutdown_token.cancel();
-
-    startup::perform_cleanup_actions(&deployment).await;
+    handle.serve().await?;
 
     Ok(())
 }
