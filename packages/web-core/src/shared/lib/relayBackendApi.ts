@@ -1,6 +1,8 @@
 import type { RelaySessionAuthCodeResponse } from 'shared/remote-types';
 import type {
+  FinishSpake2EnrollmentRequest,
   FinishSpake2EnrollmentResponse,
+  StartSpake2EnrollmentRequest,
   StartSpake2EnrollmentResponse,
 } from 'shared/types';
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
@@ -61,18 +63,14 @@ export async function establishRelaySessionBaseUrl(
 
 export async function startRelaySpake2Enrollment(
   relaySessionBaseUrl: string,
-  enrollmentCode: string,
-  clientMessageB64: string
+  payload: StartSpake2EnrollmentRequest
 ): Promise<StartSpake2EnrollmentResponse> {
   const response = await fetch(
     `${relaySessionBaseUrl}/api/relay-auth/spake2/start`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        enrollment_code: enrollmentCode,
-        client_message_b64: clientMessageB64,
-      }),
+      body: JSON.stringify(payload),
     }
   );
 
@@ -81,11 +79,7 @@ export async function startRelaySpake2Enrollment(
 
 export async function finishRelaySpake2Enrollment(
   relaySessionBaseUrl: string,
-  payload: {
-    enrollment_id: string;
-    public_key_b64: string;
-    client_proof_b64: string;
-  }
+  payload: FinishSpake2EnrollmentRequest
 ): Promise<FinishSpake2EnrollmentResponse> {
   const response = await fetch(
     `${relaySessionBaseUrl}/api/relay-auth/spake2/finish`,

@@ -286,6 +286,10 @@ export type AgentPresetOptionsQuery = { executor: BaseCodingAgent, variant: stri
 
 export type CurrentUserResponse = { user_id: string, };
 
+export type StartSpake2EnrollmentRequest = { enrollment_code: string, client_message_b64: string, };
+
+export type FinishSpake2EnrollmentRequest = { enrollment_id: string, public_key_b64: string, client_proof_b64: string, };
+
 export type StartSpake2EnrollmentResponse = { enrollment_id: string, server_message_b64: string, };
 
 export type FinishSpake2EnrollmentResponse = { signing_session_id: string, server_public_key_b64: string, server_proof_b64: string, };

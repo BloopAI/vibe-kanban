@@ -411,11 +411,10 @@ function RemoteRelaySettingsSectionContent() {
       const { state, clientMessageB64 } =
         await startSpake2Enrollment(normalizedCode);
 
-      const startData = await startRelaySpake2Enrollment(
-        relaySessionBaseUrl,
-        normalizedCode,
-        clientMessageB64
-      );
+      const startData = await startRelaySpake2Enrollment(relaySessionBaseUrl, {
+        enrollment_code: normalizedCode,
+        client_message_b64: clientMessageB64,
+      });
 
       const sharedKey = await finishSpake2Enrollment(
         state,
