@@ -21,7 +21,6 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 
 # Relay (required for tunnel/relay features)
 # For local HTTPS via Caddy on :3001:
-RELAY_BASE_DOMAIN=relay.localhost:3001
 VITE_RELAY_API_BASE_URL=https://relay.localhost:3001
 
 # Optional — leave empty to disable invitation emails

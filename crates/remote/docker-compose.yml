@@ -144,7 +144,6 @@ services:
       SERVER_DATABASE_URL: postgres://remote:remote@remote-db:5432/remote
       RELAY_LISTEN_ADDR: 0.0.0.0:8082
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
-      RELAY_BASE_DOMAIN: ${RELAY_BASE_DOMAIN:?set in .env.remote}
     ports:
       - "127.0.0.1:8082:8082"
     restart: unless-stopped

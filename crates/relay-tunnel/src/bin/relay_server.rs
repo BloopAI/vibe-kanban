@@ -19,7 +19,6 @@ async fn main() -> anyhow::Result<()> {
     let config = RelayServerConfig::from_env()?;
     tracing::info!(
         listen_addr = %config.listen_addr,
-        relay_public_base = %config.relay_base_domain,
         "Starting relay server"
     );
 

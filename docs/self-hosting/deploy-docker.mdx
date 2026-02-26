@@ -67,9 +67,7 @@ DB_PASSWORD=<secure_database_password>
 # Your domain
 DOMAIN=your-domain.com
 
-# Relay base domain (required if you enable relay/tunnel)
-# The relay browser URL pattern is: https://{host_id}.relay.your-domain.com
-RELAY_BASE_DOMAIN=relay.your-domain.com
+# Relay API base URL (required if you enable relay/tunnel)
 VITE_RELAY_API_BASE_URL=https://relay.your-domain.com
 
 # OAuth — configure at least one provider. Leave the other empty or remove it.
@@ -189,7 +187,7 @@ Create a `Caddyfile` in the `crates/remote` directory for automatic HTTPS (core 
 ```
 
 <Info>
-This base deployment serves the main Cloud app/API only. Relay/tunnel support is optional and requires additional relay routing plus wildcard DNS/TLS for `*.${RELAY_BASE_DOMAIN}`.
+This base deployment serves the main Cloud app/API only. Relay/tunnel support is optional and requires additional relay routing plus wildcard DNS/TLS for your relay domain.
 </Info>
 
 ## Step 6: Deploy
@@ -240,7 +238,6 @@ Relay/tunnel support requires:
       SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD:-remote}@remote-db:5432/remote
       RELAY_LISTEN_ADDR: 0.0.0.0:8082
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
-      RELAY_BASE_DOMAIN: ${RELAY_BASE_DOMAIN}
 ```
 
 ### Add relay proxy routes

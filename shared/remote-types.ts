@@ -56,7 +56,7 @@ export type RelaySession = { id: string, host_id: string, request_user_id: strin
 
 export type CreateRelaySessionResponse = { session: RelaySession, };
 
-export type RelaySessionAuthCodeResponse = { session_id: string, relay_url: string, code: string, };
+export type RelaySessionAuthCodeResponse = { session_id: string, code: string, };
 
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 

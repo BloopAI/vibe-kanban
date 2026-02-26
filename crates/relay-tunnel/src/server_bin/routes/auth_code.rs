@@ -25,8 +25,6 @@ pub async fn relay_session_auth_code(
     Path(session_id): Path<Uuid>,
     Extension(ctx): Extension<RequestContext>,
 ) -> Result<Json<RelaySessionAuthCodeResponse>, Response> {
-    let relay_public_base = &state.config.relay_base_domain;
-
     let repo = HostRepository::new(&state.pool);
     let session = match repo
         .get_session_for_requester(session_id, ctx.user.id)
@@ -95,7 +93,6 @@ pub async fn relay_session_auth_code(
 
     Ok(Json(RelaySessionAuthCodeResponse {
         session_id: session.id,
-        relay_url: format!("https://{relay_public_base}/"),
         code,
     }))
 }
