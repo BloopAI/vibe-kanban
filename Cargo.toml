@@ -10,7 +10,6 @@ members = [
     "crates/services",
     "crates/relay-control",
     "crates/server-info",
-    "crates/relay-tunnel",
     "crates/utils",
     "crates/git",
     "crates/git-host",
@@ -18,7 +17,7 @@ members = [
     "crates/deployment",
     "crates/review",
 ]
-exclude = ["crates/remote"]
+exclude = ["crates/remote", "crates/relay-tunnel"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
