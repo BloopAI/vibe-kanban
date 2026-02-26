@@ -3,9 +3,13 @@ import type {
   AttachmentWithBlob,
   CommitAttachmentsRequest,
   CommitAttachmentsResponse,
+  CreateRelaySessionResponse,
   ConfirmUploadRequest,
   InitUploadRequest,
   InitUploadResponse,
+  ListRelayHostsResponse,
+  RelayHost,
+  RelaySessionAuthCodeResponse,
   UpdateIssueRequest,
   UpdateProjectRequest,
   UpdateProjectStatusRequest,
@@ -13,10 +17,12 @@ import type {
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
+const BUILD_TIME_RELAY_API_BASE = import.meta.env.VITE_RELAY_API_BASE_URL || '';
 
 // Mutable module-level variable — overridden at runtime by ConfigProvider
 // when VK_SHARED_API_BASE is set (for self-hosting support)
 let _remoteApiBase: string = BUILD_TIME_API_BASE;
+let _relayApiBase: string = BUILD_TIME_RELAY_API_BASE || BUILD_TIME_API_BASE;
 
 /**
  * Set the remote API base URL at runtime.
@@ -26,6 +32,9 @@ let _remoteApiBase: string = BUILD_TIME_API_BASE;
 export function setRemoteApiBase(base: string | null | undefined) {
   if (base) {
     _remoteApiBase = base;
+    if (!BUILD_TIME_RELAY_API_BASE) {
+      _relayApiBase = base;
+    }
   }
 }
 
@@ -37,6 +46,16 @@ export function getRemoteApiUrl(): string {
   return _remoteApiBase;
 }
 
+export function setRelayApiBase(base: string | null | undefined) {
+  if (base) {
+    _relayApiBase = base;
+  }
+}
+
+export function getRelayApiUrl(): string {
+  return _relayApiBase;
+}
+
 // Backward-compatible export — consumers should migrate to getRemoteApiUrl()
 export const REMOTE_API_URL = BUILD_TIME_API_BASE;
 
@@ -45,6 +64,15 @@ export const makeRequest = async (
   options: RequestInit = {},
   retryOn401 = true
 ): Promise<Response> => {
+  return makeAuthenticatedRequest(getRemoteApiUrl(), path, options, retryOn401);
+};
+
+async function makeAuthenticatedRequest(
+  baseUrl: string,
+  path: string,
+  options: RequestInit = {},
+  retryOn401 = true
+): Promise<Response> {
   const authRuntime = getAuthRuntime();
   const token = await authRuntime.getToken();
   if (!token) {
@@ -59,7 +87,7 @@ export const makeRequest = async (
   headers.set('X-Client-Version', __APP_VERSION__);
   headers.set('X-Client-Type', 'frontend');
 
-  const response = await fetch(`${getRemoteApiUrl()}${path}`, {
+  const response = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers,
     credentials: 'include',
@@ -71,7 +99,7 @@ export const makeRequest = async (
     if (newToken) {
       // Retry the request with the new token
       headers.set('Authorization', `Bearer ${newToken}`);
-      return fetch(`${getRemoteApiUrl()}${path}`, {
+      return fetch(`${baseUrl}${path}`, {
         ...options,
         headers,
         credentials: 'include',
@@ -82,7 +110,7 @@ export const makeRequest = async (
   }
 
   return response;
-};
+}
 
 export interface BulkUpdateIssueItem {
   id: string;
@@ -142,6 +170,52 @@ export async function bulkUpdateProjectStatuses(
     const error = await response.json();
     throw new Error(error.message || 'Failed to bulk update project statuses');
   }
+}
+
+// ---------------------------------------------------------------------------
+// Relay API functions
+// ---------------------------------------------------------------------------
+
+export async function listRelayHosts(): Promise<RelayHost[]> {
+  const response = await makeRequest('/v1/hosts', { method: 'GET' });
+  if (!response.ok) {
+    throw await parseErrorResponse(response, 'Failed to list relay hosts');
+  }
+
+  const body = (await response.json()) as ListRelayHostsResponse;
+  return body.hosts;
+}
+
+export async function createRelaySession(
+  hostId: string
+): Promise<CreateRelaySessionResponse['session']> {
+  const response = await makeRequest(`/v1/hosts/${hostId}/sessions`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw await parseErrorResponse(response, 'Failed to create relay session');
+  }
+
+  const body = (await response.json()) as CreateRelaySessionResponse;
+  return body.session;
+}
+
+export async function createRelaySessionAuthCode(
+  sessionId: string
+): Promise<RelaySessionAuthCodeResponse> {
+  const response = await makeAuthenticatedRequest(
+    getRelayApiUrl(),
+    `/v1/relay/sessions/${sessionId}/auth-code`,
+    { method: 'POST' }
+  );
+  if (!response.ok) {
+    throw await parseErrorResponse(
+      response,
+      'Failed to create relay session auth code'
+    );
+  }
+
+  return (await response.json()) as RelaySessionAuthCodeResponse;
 }
 
 // ---------------------------------------------------------------------------

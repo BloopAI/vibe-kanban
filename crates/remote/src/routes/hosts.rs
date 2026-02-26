@@ -2,9 +2,9 @@ use axum::{
     Json, Router,
     extract::{Extension, Path, State},
     http::StatusCode,
-    routing::post,
+    routing::{get, post},
 };
-use api_types::RelaySession;
+use api_types::{ListRelayHostsResponse, RelaySession};
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
@@ -29,7 +29,21 @@ pub struct CreateRelaySessionResponse {
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/hosts", get(list_hosts))
         .route("/hosts/{host_id}/sessions", post(create_relay_session))
+}
+
+async fn list_hosts(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+) -> Result<Json<ListRelayHostsResponse>, ErrorResponse> {
+    let repo = HostRepository::new(state.pool());
+    let hosts = repo.list_accessible_hosts(ctx.user.id).await.map_err(|error| {
+        tracing::warn!(?error, "failed to list relay hosts");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list hosts")
+    })?;
+
+    Ok(Json(ListRelayHostsResponse { hosts }))
 }
 
 async fn create_relay_session(

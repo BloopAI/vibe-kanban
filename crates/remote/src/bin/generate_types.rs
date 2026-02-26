@@ -11,7 +11,7 @@ use api_types::{
     PullRequestStatus, RelayHost, RelaySession, RelaySessionAuthCodeResponse, Tag,
     UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
     UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-    UpdateTagRequest, User, UserData, Workspace,
+    UpdateTagRequest, User, UserData, Workspace, ListRelayHostsResponse,
 };
 use remote::{
     routes::{
@@ -95,6 +95,7 @@ fn export_shapes() -> String {
         UserData::decl(),
         User::decl(),
         RelayHost::decl(),
+        ListRelayHostsResponse::decl(),
         RelaySession::decl(),
         CreateRelaySessionResponse::decl(),
         RelaySessionAuthCodeResponse::decl(),

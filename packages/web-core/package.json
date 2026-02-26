@@ -27,6 +27,7 @@
     "@lexical/react": "^0.36.2",
     "@lexical/rich-text": "^0.36.2",
     "@lexical/table": "^0.36.2",
+    "@noble/curves": "^1.9.7",
     "@phosphor-icons/react": "^2.1.10",
     "@pierre/diffs": "^1.0.8",
     "@radix-ui/react-accordion": "^1.2.1",

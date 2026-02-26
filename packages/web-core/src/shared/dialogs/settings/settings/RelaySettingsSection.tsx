@@ -1,23 +1,98 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import { SignInIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
-import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import {
+  UserSystemContext,
+  type UserSystemContextType,
+} from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
+import {
+  createRelaySession,
+  createRelaySessionAuthCode,
+  listRelayHosts,
+} from '@/shared/lib/remoteApi';
+import {
+  buildClientProofB64,
+  finishSpake2Enrollment,
+  generateRelaySigningKeyPair,
+  normalizeEnrollmentCode,
+  startSpake2Enrollment,
+  verifyServerProof,
+} from '@/shared/lib/relayPake';
+import {
+  listPairedRelayHosts,
+  savePairedRelayHost,
+  type PairedRelayHost,
+} from '@/shared/lib/relayPairingStorage';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import type { RelayHost } from 'shared/remote-types';
 import {
   SettingsCard,
   SettingsCheckbox,
   SettingsSaveBar,
+  SettingsSelect,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 
+interface StartSpake2EnrollmentResponse {
+  enrollment_id: string;
+  server_message_b64: string;
+}
+
+interface FinishSpake2EnrollmentResponse {
+  signing_session_id: string;
+  server_public_key_b64: string;
+  server_proof_b64: string;
+}
+
+interface LocalApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
+interface LocalApiFailure {
+  success: false;
+  message?: string;
+}
+
+type LocalApiEnvelope<T> = LocalApiSuccess<T> | LocalApiFailure;
+
+interface PairedHostRow {
+  id: string;
+  name: string;
+  status: string;
+  agentVersion: string | null;
+  pairedAt: string;
+}
+
 export function RelaySettingsSectionContent() {
+  const userSystem = useContext(UserSystemContext);
+
+  if (userSystem) {
+    return <LocalRelaySettingsSectionContent userSystem={userSystem} />;
+  }
+
+  return <RemoteRelaySettingsSectionContent />;
+}
+
+function LocalRelaySettingsSectionContent({
+  userSystem,
+}: {
+  userSystem: UserSystemContextType;
+}) {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
-  const { config, loading, updateAndSaveConfig } = useUserSystem();
+  const { config, loading, updateAndSaveConfig } = userSystem;
   const { isSignedIn } = useAuth();
 
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
@@ -208,4 +283,581 @@ export function RelaySettingsSectionContent() {
       />
     </>
   );
+}
+
+function RemoteRelaySettingsSectionContent() {
+  const { t } = useTranslation(['settings', 'common']);
+  const { isSignedIn } = useAuth();
+
+  const [hosts, setHosts] = useState<RelayHost[]>([]);
+  const [hostsLoading, setHostsLoading] = useState(false);
+  const [hostsError, setHostsError] = useState<string | null>(null);
+
+  const [pairedHosts, setPairedHosts] = useState<PairedRelayHost[]>([]);
+  const [pairedHostsLoading, setPairedHostsLoading] = useState(false);
+
+  const [showPairForm, setShowPairForm] = useState(false);
+  const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
+  const [pairingCode, setPairingCode] = useState('');
+  const [pairing, setPairing] = useState(false);
+  const [pairError, setPairError] = useState<string | null>(null);
+  const [pairSuccess, setPairSuccess] = useState<string | null>(null);
+
+  const loadHosts = useCallback(async () => {
+    setHostsLoading(true);
+    setHostsError(null);
+    try {
+      const relayHosts = await listRelayHosts();
+      setHosts(relayHosts);
+    } catch (error) {
+      console.error('Failed to load relay hosts', error);
+      setHostsError(
+        t('settings.relay.remote.hosts.loadError', 'Failed to load hosts.')
+      );
+    } finally {
+      setHostsLoading(false);
+    }
+  }, [t]);
+
+  const loadPairedHosts = useCallback(async () => {
+    setPairedHostsLoading(true);
+    try {
+      const entries = await listPairedRelayHosts();
+      setPairedHosts(entries);
+    } catch (error) {
+      console.error('Failed to load paired hosts', error);
+    } finally {
+      setPairedHostsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setHosts([]);
+      setPairedHosts([]);
+      return;
+    }
+
+    void Promise.all([loadHosts(), loadPairedHosts()]);
+  }, [isSignedIn, loadHosts, loadPairedHosts]);
+
+  const pairedHostIds = useMemo(
+    () => new Set(pairedHosts.map((host) => host.host_id)),
+    [pairedHosts]
+  );
+
+  const availableHostsToPair = useMemo(
+    () => hosts.filter((host) => !pairedHostIds.has(host.id)),
+    [hosts, pairedHostIds]
+  );
+
+  useEffect(() => {
+    if (!showPairForm) {
+      return;
+    }
+
+    if (
+      availableHostsToPair.length > 0 &&
+      (!selectedHostId ||
+        !availableHostsToPair.some((host) => host.id === selectedHostId))
+    ) {
+      setSelectedHostId(availableHostsToPair[0]?.id);
+    }
+  }, [availableHostsToPair, selectedHostId, showPairForm]);
+
+  const pairedHostRows = useMemo<PairedHostRow[]>(() => {
+    return pairedHosts.map((entry) => {
+      const liveHost = hosts.find((host) => host.id === entry.host_id);
+      return {
+        id: entry.host_id,
+        name: liveHost?.name ?? entry.host_name,
+        status: liveHost?.status ?? 'offline',
+        agentVersion: liveHost?.agent_version ?? null,
+        pairedAt: entry.paired_at,
+      };
+    });
+  }, [hosts, pairedHosts]);
+
+  const hostOptions = useMemo(
+    () =>
+      availableHostsToPair.map((host) => ({
+        value: host.id,
+        label: host.name,
+      })),
+    [availableHostsToPair]
+  );
+
+  const canSubmitPairing =
+    !!selectedHostId &&
+    normalizeEnrollmentCode(pairingCode).length === 6 &&
+    !pairing;
+
+  const resetPairForm = () => {
+    setPairingCode('');
+    setPairError(null);
+    setPairSuccess(null);
+    setShowPairForm(false);
+  };
+
+  const handlePairHost = useCallback(async () => {
+    if (!selectedHostId) {
+      return;
+    }
+
+    const normalizedCode = normalizeEnrollmentCode(pairingCode);
+    if (normalizedCode.length !== 6) {
+      setPairError(
+        t(
+          'settings.relay.remote.pair.code.invalid',
+          'Enter a 6-character code.'
+        )
+      );
+      return;
+    }
+
+    setPairing(true);
+    setPairError(null);
+    setPairSuccess(null);
+
+    try {
+      const relaySession = await createRelaySession(selectedHostId);
+      const authCode = await createRelaySessionAuthCode(relaySession.id);
+
+      const exchangeUrl = buildRelayExchangeUrl(
+        authCode.relay_url,
+        selectedHostId,
+        authCode.code
+      );
+      const exchangeResponse = await fetch(exchangeUrl, {
+        method: 'GET',
+        redirect: 'follow',
+      });
+      const relaySessionBaseUrl = parseRelaySessionBaseUrl(
+        exchangeResponse.url,
+        selectedHostId
+      );
+
+      const { state, clientMessageB64 } =
+        await startSpake2Enrollment(normalizedCode);
+
+      const startResponse = await fetch(
+        `${relaySessionBaseUrl}/api/relay-auth/spake2/start`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enrollment_code: normalizedCode,
+            client_message_b64: clientMessageB64,
+          }),
+        }
+      );
+      const startData =
+        await parseLocalApiResponse<StartSpake2EnrollmentResponse>(
+          startResponse,
+          'Failed to start pairing.'
+        );
+
+      const sharedKey = await finishSpake2Enrollment(
+        state,
+        startData.server_message_b64
+      );
+
+      const { privateKeyJwk, publicKeyB64, publicKeyBytes } =
+        await generateRelaySigningKeyPair();
+      const clientProofB64 = await buildClientProofB64(
+        sharedKey,
+        startData.enrollment_id,
+        publicKeyBytes
+      );
+
+      const finishResponse = await fetch(
+        `${relaySessionBaseUrl}/api/relay-auth/spake2/finish`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enrollment_id: startData.enrollment_id,
+            public_key_b64: publicKeyB64,
+            client_proof_b64: clientProofB64,
+          }),
+        }
+      );
+      const finishData =
+        await parseLocalApiResponse<FinishSpake2EnrollmentResponse>(
+          finishResponse,
+          'Failed to finish pairing.'
+        );
+
+      const serverProofValid = await verifyServerProof(
+        sharedKey,
+        startData.enrollment_id,
+        publicKeyBytes,
+        finishData.server_public_key_b64,
+        finishData.server_proof_b64
+      );
+      if (!serverProofValid) {
+        throw new Error('Server proof verification failed.');
+      }
+
+      const selectedHost = hosts.find((host) => host.id === selectedHostId);
+      await savePairedRelayHost({
+        host_id: selectedHostId,
+        host_name: selectedHost?.name ?? selectedHostId,
+        public_key_b64: publicKeyB64,
+        private_key_jwk: privateKeyJwk,
+        server_public_key_b64: finishData.server_public_key_b64,
+        paired_at: new Date().toISOString(),
+      });
+
+      await loadPairedHosts();
+      setPairSuccess(
+        t('settings.relay.remote.pair.success', 'Host paired successfully.')
+      );
+      setPairingCode('');
+      setShowPairForm(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      setPairError(message);
+    } finally {
+      setPairing(false);
+    }
+  }, [hosts, loadPairedHosts, pairingCode, selectedHostId, t]);
+
+  if (!isSignedIn) {
+    return (
+      <SettingsCard
+        title={t('settings.relay.title')}
+        description={t('settings.relay.description')}
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-low">
+            {t(
+              'settings.relay.remote.loginRequired',
+              'Sign in to view and pair relay hosts.'
+            )}
+          </p>
+          <PrimaryButton
+            variant="secondary"
+            value={t('settings.remoteProjects.loginRequired.action', 'Sign in')}
+            onClick={() => void OAuthDialog.show({})}
+          >
+            <SignInIcon className="size-icon-xs mr-1" weight="bold" />
+          </PrimaryButton>
+        </div>
+      </SettingsCard>
+    );
+  }
+
+  return (
+    <div className="space-y-4 pb-6">
+      <SettingsCard
+        title={t('settings.relay.title')}
+        description={t(
+          'settings.relay.remote.description',
+          'Pair browser access to your relay hosts using a one-time code.'
+        )}
+        headerAction={
+          <PrimaryButton
+            variant="secondary"
+            value={t('settings.relay.remote.pair.button', 'Pair new host')}
+            onClick={() => {
+              setPairSuccess(null);
+              setPairError(null);
+              setShowPairForm((current) => !current);
+            }}
+            disabled={availableHostsToPair.length === 0 || pairing}
+          />
+        }
+      >
+        {pairSuccess && (
+          <div className="bg-success/10 border border-success/50 rounded-sm p-3 text-success text-sm">
+            {pairSuccess}
+          </div>
+        )}
+
+        {hostsError && (
+          <div className="bg-error/10 border border-error/50 rounded-sm p-3 text-error text-sm">
+            {hostsError}
+          </div>
+        )}
+
+        {showPairForm && (
+          <div className="border border-border rounded-sm bg-secondary/40 p-4 space-y-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-normal">
+                {t('settings.relay.remote.pair.host.label', 'Host')}
+              </label>
+              <SettingsSelect
+                value={selectedHostId}
+                options={hostOptions}
+                onChange={setSelectedHostId}
+                placeholder={t(
+                  'settings.relay.remote.pair.host.placeholder',
+                  'Select a host'
+                )}
+                disabled={pairing || hostOptions.length === 0}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-normal">
+                {t('settings.relay.remote.pair.code.label', 'Pairing code')}
+              </label>
+              <RelayCodeInput
+                value={pairingCode}
+                onChange={setPairingCode}
+                disabled={pairing}
+              />
+              <p className="text-sm text-low">
+                {t(
+                  'settings.relay.remote.pair.code.helper',
+                  'Enter the 6-character code shown on the host settings page.'
+                )}
+              </p>
+            </div>
+
+            {pairError && <p className="text-sm text-error">{pairError}</p>}
+
+            {pairing && (
+              <div className="flex items-center gap-2 text-sm text-normal">
+                <SpinnerIcon
+                  className="size-icon-sm animate-spin"
+                  weight="bold"
+                />
+                <span>
+                  {t(
+                    'settings.relay.remote.pair.inProgress',
+                    'Pairing host, please wait...'
+                  )}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-2">
+              <PrimaryButton
+                value={t('settings.relay.remote.pair.confirm', 'Pair host')}
+                onClick={() => void handlePairHost()}
+                disabled={!canSubmitPairing}
+                actionIcon={pairing ? 'spinner' : undefined}
+              />
+              <PrimaryButton
+                variant="tertiary"
+                value={t('common:buttons.cancel')}
+                onClick={resetPairForm}
+                disabled={pairing}
+              />
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <h4 className="text-sm font-medium text-normal">
+            {t('settings.relay.remote.pairedHosts.title', 'Paired hosts')}
+          </h4>
+
+          {(hostsLoading || pairedHostsLoading) && (
+            <div className="flex items-center gap-2 text-sm text-low">
+              <SpinnerIcon
+                className="size-icon-sm animate-spin"
+                weight="bold"
+              />
+              <span>
+                {t(
+                  'settings.relay.remote.pairedHosts.loading',
+                  'Loading hosts...'
+                )}
+              </span>
+            </div>
+          )}
+
+          {!hostsLoading &&
+            !pairedHostsLoading &&
+            pairedHostRows.length === 0 && (
+              <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
+                {t(
+                  'settings.relay.remote.pairedHosts.empty',
+                  'No hosts are paired yet.'
+                )}
+              </div>
+            )}
+
+          {!hostsLoading &&
+            !pairedHostsLoading &&
+            pairedHostRows.length > 0 && (
+              <div className="space-y-2">
+                {pairedHostRows.map((host) => (
+                  <div
+                    key={host.id}
+                    className="rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-high truncate">
+                        {host.name}
+                      </p>
+                      <p className="text-xs text-low">
+                        {host.status === 'online'
+                          ? t('settings.relay.remote.status.online', 'Online')
+                          : t(
+                              'settings.relay.remote.status.offline',
+                              'Offline'
+                            )}
+                        {host.agentVersion ? ` · v${host.agentVersion}` : ''}
+                      </p>
+                    </div>
+                    <p className="text-xs text-low shrink-0">
+                      {t(
+                        'settings.relay.remote.pairedHosts.pairedOn',
+                        'Paired'
+                      )}{' '}
+                      · {new Date(host.pairedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+        </div>
+      </SettingsCard>
+    </div>
+  );
+}
+
+function RelayCodeInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string;
+  onChange: (nextValue: string) => void;
+  disabled?: boolean;
+}) {
+  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
+  const normalizedValue = normalizeEnrollmentCode(value).slice(0, 6);
+  const characters = useMemo(
+    () => Array.from({ length: 6 }, (_, index) => normalizedValue[index] ?? ''),
+    [normalizedValue]
+  );
+
+  const setCharacterAt = (index: number, char: string) => {
+    const next = [...characters];
+    next[index] = char;
+    onChange(next.join(''));
+  };
+
+  return (
+    <div
+      className="flex gap-2"
+      onPaste={(event) => {
+        const pasted = normalizeEnrollmentCode(
+          event.clipboardData.getData('text')
+        ).slice(0, 6);
+        if (!pasted) {
+          return;
+        }
+
+        event.preventDefault();
+        onChange(pasted);
+        const focusIndex = Math.min(pasted.length, 5);
+        inputsRef.current[focusIndex]?.focus();
+      }}
+    >
+      {characters.map((char, index) => (
+        <input
+          key={index}
+          ref={(element) => {
+            inputsRef.current[index] = element;
+          }}
+          type="text"
+          inputMode="text"
+          autoComplete="one-time-code"
+          value={char}
+          maxLength={1}
+          disabled={disabled}
+          onChange={(event) => {
+            const nextChar = normalizeEnrollmentCode(event.target.value).slice(
+              -1
+            );
+            setCharacterAt(index, nextChar);
+            if (nextChar && index < 5) {
+              inputsRef.current[index + 1]?.focus();
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Backspace' && !characters[index] && index > 0) {
+              inputsRef.current[index - 1]?.focus();
+            }
+            if (event.key === 'ArrowLeft' && index > 0) {
+              event.preventDefault();
+              inputsRef.current[index - 1]?.focus();
+            }
+            if (event.key === 'ArrowRight' && index < 5) {
+              event.preventDefault();
+              inputsRef.current[index + 1]?.focus();
+            }
+          }}
+          className="w-10 h-12 rounded-sm border border-border bg-panel text-center font-mono text-lg uppercase text-high focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
+        />
+      ))}
+    </div>
+  );
+}
+
+function buildRelayExchangeUrl(
+  relayUrl: string,
+  hostId: string,
+  code: string
+): string {
+  const relayBase = relayUrl.replace(/\/+$/, '');
+  return `${relayBase}/relay/h/${hostId}/exchange?code=${encodeURIComponent(code)}`;
+}
+
+function parseRelaySessionBaseUrl(finalUrl: string, hostId: string): string {
+  const parsed = new URL(finalUrl);
+  const hostPattern = escapeRegExp(hostId);
+  const match = parsed.pathname.match(
+    new RegExp(`^/relay/h/${hostPattern}/s/[^/]+`)
+  );
+  if (!match) {
+    throw new Error('Failed to establish relay browser session.');
+  }
+
+  return `${parsed.origin}${match[0]}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function parseLocalApiResponse<T>(
+  response: Response,
+  fallbackMessage: string
+): Promise<T> {
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response, fallbackMessage));
+  }
+
+  const body = (await response.json()) as LocalApiEnvelope<T>;
+  if (!body.success) {
+    throw new Error(body.message || fallbackMessage);
+  }
+
+  return body.data;
+}
+
+async function extractErrorMessage(
+  response: Response,
+  fallbackMessage: string
+): Promise<string> {
+  try {
+    const body = await response.json();
+    if (body && typeof body.message === 'string') {
+      return body.message;
+    }
+    if (body && typeof body.error === 'string') {
+      return body.error;
+    }
+  } catch {
+    // Ignore parse failures and use fallback.
+  }
+
+  return `${fallbackMessage} (${response.status})`;
 }
