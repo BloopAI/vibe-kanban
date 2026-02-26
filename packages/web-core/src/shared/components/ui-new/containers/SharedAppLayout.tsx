@@ -3,6 +3,9 @@ import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
+import { cn } from '@/shared/lib/utils';
 
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
@@ -45,12 +48,30 @@ export function SharedAppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isMigrateRoute = location.pathname.startsWith('/migrate');
+  const isMobile = useIsMobile();
+  const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
   const { isSignedIn } = useAuth();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
+
+  // Apply mobile font scale CSS variable
+  useEffect(() => {
+    if (!isMobile) {
+      document.documentElement.style.removeProperty('--mobile-font-scale');
+      return;
+    }
+    const scaleMap = { default: '1', small: '0.9', smaller: '0.8' } as const;
+    document.documentElement.style.setProperty(
+      '--mobile-font-scale',
+      scaleMap[mobileFontScale]
+    );
+    return () => {
+      document.documentElement.style.removeProperty('--mobile-font-scale');
+    };
+  }, [isMobile, mobileFontScale]);
 
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
@@ -259,8 +280,15 @@ export function SharedAppLayout() {
 
   return (
     <SyncErrorProvider>
-      <div className="flex h-screen bg-primary">
-        {!isMigrateRoute && (
+      <div
+        className={cn(
+          'flex bg-primary',
+          isMobile
+            ? 'fixed inset-0 pb-[env(safe-area-inset-bottom)]'
+            : 'h-screen'
+        )}
+      >
+        {!isMobile && !isMigrateRoute && (
           <AppBar
             projects={orderedProjects}
             onCreateProject={handleCreateProject}
@@ -288,9 +316,9 @@ export function SharedAppLayout() {
             discordIconPath={siDiscord.path}
           />
         )}
-        <div className="flex flex-col flex-1 min-w-0">
-          <NavbarContainer />
-          <div className="flex-1 min-h-0">
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+          <NavbarContainer mobileMode={isMobile} />
+          <div className="flex-1 min-h-0 overflow-hidden">
             <Outlet />
           </div>
         </div>

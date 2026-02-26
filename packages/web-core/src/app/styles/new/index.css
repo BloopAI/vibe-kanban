@@ -447,3 +447,27 @@
 }
 
 @config '../../../../../local-web/tailwind.new.config.js';
+
+/* Mobile-specific styles */
+@media (max-width: 767px) {
+  html,
+  body,
+  #root {
+    overscroll-behavior: none;
+  }
+
+  html {
+    font-size: var(--mobile-font-scale, 100%);
+  }
+
+  /* Background colors for PWA safe-area */
+  html,
+  body {
+    background-color: #f2f2f2;
+  }
+
+  html.dark body,
+  html.dark {
+    background-color: #212121;
+  }
+}

@@ -9,6 +9,7 @@ import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { KanbanContainer } from '@/features/kanban/ui/KanbanContainer';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { ProjectRightSidebarContainer } from './ProjectRightSidebarContainer';
 import { LoginRequiredPrompt } from '@/shared/dialogs/shared/LoginRequiredPrompt';
 import {
@@ -95,6 +96,7 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
 
 function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   const { issueId, isPanelOpen } = useKanbanNavigation();
+  const isMobile = useIsMobile();
   const { getIssue } = useProjectContext();
   const issue = issueId ? getIssue(issueId) : undefined;
   usePageTitle(issue?.title, projectName);
@@ -104,6 +106,18 @@ function ProjectKanbanLayout({ projectName }: { projectName: string }) {
   );
 
   const isRightPanelOpen = isPanelOpen;
+
+  if (isMobile) {
+    return isRightPanelOpen ? (
+      <div className="h-full w-full overflow-hidden bg-secondary">
+        <ProjectRightSidebarContainer />
+      </div>
+    ) : (
+      <div className="h-full w-full overflow-hidden bg-primary">
+        <KanbanContainer />
+      </div>
+    );
+  }
 
   const kanbanDefaultLayout: Layout =
     typeof kanbanLeftPanelSize === 'number'

@@ -16,6 +16,7 @@ import {
 } from '@vibe/ui/components/PreviewBrowser';
 import { usePreviewDevServer } from '@/features/workspace/model/hooks/usePreviewDevServer';
 import { usePreviewUrl } from '@/shared/hooks/usePreviewUrl';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import {
   usePreviewSettings,
   type ScreenSize,
@@ -136,6 +137,8 @@ export function PreviewBrowserContainer({
   // URL auto-detection, and preview settings (override URL, screen size).
 
   const previewRefreshKey = useUiPreferencesStore((s) => s.previewRefreshKey);
+  const isMobile = useIsMobile();
+  const [mobileUrlExpanded, setMobileUrlExpanded] = useState(false);
   const triggerPreviewRefresh = useUiPreferencesStore(
     (s) => s.triggerPreviewRefresh
   );
@@ -871,6 +874,9 @@ export function PreviewBrowserContainer({
       isErudaVisible={isErudaVisible}
       onToggleEruda={handleToggleEruda}
       onIframeLoad={handleIframeLoad}
+      isMobile={isMobile}
+      mobileUrlExpanded={mobileUrlExpanded}
+      onMobileUrlExpandedChange={setMobileUrlExpanded}
     />
   );
 }

@@ -1,5 +1,6 @@
 import {
   DataWithScrollModifier,
+  type ListScrollLocation,
   ScrollModifier,
   VirtuosoMessageList,
   VirtuosoMessageListLicense,
@@ -49,6 +50,7 @@ import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
+  onAtBottomChange?: (atBottom: boolean) => void;
 }
 
 export interface ConversationListHandle {
@@ -170,7 +172,7 @@ const itemIdentity: VirtuosoMessageListProps<
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
->(function ConversationList({ attempt }, ref) {
+>(function ConversationList({ attempt, onAtBottomChange }, ref) {
   const resetAction = useResetProcess();
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<DisplayEntry> | null>(null);
@@ -182,6 +184,17 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const lastAtBottomRef = useRef(true);
+  const handleScroll = useCallback(
+    (location: ListScrollLocation) => {
+      if (location.isAtBottom !== lastAtBottomRef.current) {
+        lastAtBottomRef.current = location.isAtBottom;
+        onAtBottomChange?.(location.isAtBottom);
+      }
+    },
+    [onAtBottomChange]
+  );
 
   // Get repos from workspace context to check if scripts are configured
   let repos: RepoWithTargetBranch[] = [];
@@ -405,6 +418,7 @@ export const ConversationList = forwardRef<
             computeItemKey={computeItemKey}
             itemIdentity={itemIdentity}
             ItemContent={ItemContent}
+            onScroll={handleScroll}
             Header={({ context }) => (
               <div className="pt-2">
                 {context?.showSetupPlaceholder && (

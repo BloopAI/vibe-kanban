@@ -1,13 +1,18 @@
 import { useMemo, useCallback } from 'react';
-import { useLocation } from '@tanstack/react-router';
+import { useLocation, useNavigate } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useSyncErrorContext } from '@/shared/hooks/useSyncErrorContext';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { Navbar, type NavbarSectionItem } from '@vibe/ui/components/Navbar';
+import {
+  Navbar,
+  type NavbarSectionItem,
+  type MobileTabId,
+} from '@vibe/ui/components/Navbar';
 import { RemoteIssueLink } from './RemoteIssueLink';
+import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { NavbarActionGroups } from '@/shared/actions';
 import {
   NavbarDivider,
@@ -22,6 +27,10 @@ import {
   isActionVisible,
 } from '@/shared/types/actions';
 import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityContext';
+import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
+import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
+import { toWorkspaces } from '@/shared/lib/routes/navigation';
 
 /**
  * Check if a NavbarItem is a divider
@@ -96,13 +105,19 @@ function toNavbarSectionItems(
   }, []);
 }
 
-export function NavbarContainer() {
+export function NavbarContainer({
+  mobileMode = false,
+}: {
+  mobileMode?: boolean;
+}) {
   const { executeAction } = useActions();
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
   const isOnProjectPage = location.pathname.startsWith('/projects/');
+  const navigate = useNavigate();
+  const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
   // Find remote workspace linked to current local workspace
   const linkedRemoteWorkspace = useMemo(() => {
@@ -168,12 +183,58 @@ export function NavbarContainer() {
         ? orgName
         : selectedWorkspace?.branch;
 
+  // Mobile-specific callbacks
+  const handleOpenCommandBar = useCallback(() => {
+    CommandBarDialog.show();
+  }, []);
+
+  const handleOpenSettings = useCallback(() => {
+    SettingsDialog.show();
+  }, []);
+
+  const handleReload = useCallback(() => {
+    window.location.reload();
+  }, []);
+
+  const handleNavigateBack = useCallback(() => {
+    navigate(toWorkspaces());
+  }, [navigate]);
+
+  const handleNavigateToBoard = useMemo(() => {
+    if (!isOnProjectPage) return null;
+    return () => {
+      // Already on project page, no-op for board navigation
+    };
+  }, [isOnProjectPage]);
+
+  // Build user popover slot for mobile mode
+  const userPopoverSlot = useMemo(() => {
+    if (!mobileMode) return undefined;
+    return (
+      <AppBarUserPopoverContainer
+        organizations={orgsData?.organizations ?? []}
+        selectedOrgId={selectedOrgId ?? ''}
+        onOrgSelect={() => {}}
+        onCreateOrg={() => {}}
+      />
+    );
+  }, [mobileMode, orgsData?.organizations, selectedOrgId]);
   return (
     <Navbar
       workspaceTitle={navbarTitle}
       leftItems={leftItems}
       rightItems={rightItems}
       syncErrors={syncErrorContext?.errors}
+      mobileMode={mobileMode}
+      mobileUserSlot={userPopoverSlot}
+      isOnProjectPage={isOnProjectPage}
+      onOpenCommandBar={handleOpenCommandBar}
+      onOpenSettings={handleOpenSettings}
+      onNavigateBack={handleNavigateBack}
+      onNavigateToBoard={handleNavigateToBoard}
+      onReload={handleReload}
+      mobileActiveTab={mobileActiveTab as MobileTabId}
+      onMobileTabChange={(tab) => setMobileActiveTab(tab)}
       leftSlot={
         linkedRemoteWorkspace?.issue_id ? (
           <RemoteIssueLink

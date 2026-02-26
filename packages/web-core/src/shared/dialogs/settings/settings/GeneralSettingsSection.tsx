@@ -28,6 +28,11 @@ import {
 import { useTheme } from '@/shared/hooks/useTheme';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { TagManager } from '@/shared/components/TagManager';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import {
+  type MobileFontScale,
+  useMobileFontScale,
+} from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
@@ -53,6 +58,8 @@ export function GeneralSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
 
+  const isMobile = useIsMobile();
+  const [mobileFontScale, setMobileFontScale] = useMobileFontScale();
   const languageOptions = getLanguageOptions(
     t('language.browserDefault', {
       ns: 'common',
@@ -285,6 +292,26 @@ export function GeneralSettingsSection() {
             placeholder={t('settings.general.appearance.language.placeholder')}
           />
         </SettingsField>
+
+        {isMobile && (
+          <SettingsField
+            label="Mobile Font Size"
+            description="Scale text size on mobile for better readability"
+          >
+            <SettingsSelect
+              value={mobileFontScale}
+              options={[
+                {
+                  value: 'default' as MobileFontScale,
+                  label: 'Default (100%)',
+                },
+                { value: 'small' as MobileFontScale, label: 'Small (95%)' },
+                { value: 'smaller' as MobileFontScale, label: 'Smaller (90%)' },
+              ]}
+              onChange={(value: MobileFontScale) => setMobileFontScale(value)}
+            />
+          </SettingsField>
+        )}
       </SettingsCard>
 
       {/* Editor */}

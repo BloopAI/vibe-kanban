@@ -4,6 +4,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
+import { cn } from '@/shared/lib/utils';
 import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcessesProvider';
 import { CreateModeProvider } from '@/integrations/CreateModeProvider';
 import { ReviewProvider } from '@/shared/hooks/ReviewProvider';
@@ -52,6 +55,8 @@ export function WorkspacesLayout() {
     isCreateMode ? t('workspaces.newWorkspace') : selectedWorkspace?.name
   );
 
+  const isMobile = useIsMobile();
+  const [mobileTab] = useMobileActiveTab();
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
 
   const handleScrollToBottom = useCallback(() => {
@@ -128,6 +133,129 @@ export function WorkspacesLayout() {
     if (isLeftMainPanelVisible && rightMainPanelMode !== null)
       setRightMainPanelSize(layout['right-main']);
   };
+
+  // ── Mobile layout ──────────────────────────────────────────────────
+  // Uses `hidden` CSS class (NOT conditional rendering) to preserve
+  // WebSocket connections and scroll positions across tab switches.
+  if (isMobile) {
+    const mobileContent = (
+      <ReviewProvider attemptId={selectedWorkspace?.id}>
+        <ChangesViewProvider>
+          <div className="flex flex-col h-full min-h-0">
+            {/* Workspaces tab */}
+            <div
+              className={cn(
+                'flex-1 min-h-0 overflow-hidden',
+                mobileTab !== 'workspaces' && 'hidden'
+              )}
+            >
+              <WorkspacesSidebarContainer
+                onScrollToBottom={handleScrollToBottom}
+              />
+            </div>
+
+            {/* Chat tab */}
+            <div
+              className={cn(
+                'flex-1 min-h-0 overflow-hidden',
+                mobileTab !== 'chat' && 'hidden'
+              )}
+            >
+              {isCreateMode ? (
+                <CreateChatBoxContainer
+                  onWorkspaceCreated={handleWorkspaceCreated}
+                />
+              ) : (
+                <WorkspacesMainContainer
+                  ref={mainContainerRef}
+                  selectedWorkspace={selectedWorkspace ?? null}
+                  selectedSession={selectedSession}
+                  sessions={sessions}
+                  onSelectSession={selectSession}
+                  isLoading={isLoading}
+                  isNewSessionMode={isNewSessionMode}
+                  onStartNewSession={startNewSession}
+                />
+              )}
+            </div>
+
+            {/* Changes tab */}
+            <div
+              className={cn(
+                'flex-1 min-h-0 overflow-hidden',
+                mobileTab !== 'changes' && 'hidden'
+              )}
+            >
+              {selectedWorkspace?.id && (
+                <ChangesPanelContainer
+                  className=""
+                  attemptId={selectedWorkspace.id}
+                />
+              )}
+            </div>
+
+            {/* Logs tab */}
+            <div
+              className={cn(
+                'flex-1 min-h-0 overflow-hidden',
+                mobileTab !== 'logs' && 'hidden'
+              )}
+            >
+              <LogsContentContainer className="" />
+            </div>
+
+            {/* Preview tab */}
+            <div
+              className={cn(
+                'flex-1 min-h-0 overflow-hidden',
+                mobileTab !== 'preview' && 'hidden'
+              )}
+            >
+              {selectedWorkspace?.id && (
+                <PreviewBrowserContainer
+                  attemptId={selectedWorkspace.id}
+                  className=""
+                />
+              )}
+            </div>
+
+            {/* Git tab */}
+            <div
+              className={cn(
+                'flex-1 min-h-0 overflow-hidden',
+                mobileTab !== 'git' && 'hidden'
+              )}
+            >
+              {selectedWorkspace && !isCreateMode && (
+                <RightSidebar
+                  rightMainPanelMode={rightMainPanelMode}
+                  selectedWorkspace={selectedWorkspace}
+                  repos={repos}
+                />
+              )}
+            </div>
+          </div>
+        </ChangesViewProvider>
+      </ReviewProvider>
+    );
+
+    return (
+      <div className="flex flex-1 min-h-0 h-full">
+        <div className="flex-1 min-w-0 h-full">
+          {isCreateMode ? (
+            <CreateModeProvider>{mobileContent}</CreateModeProvider>
+          ) : (
+            <ExecutionProcessesProvider
+              key={`${selectedWorkspace?.id}-${selectedSessionId}`}
+              sessionId={selectedSessionId}
+            >
+              {mobileContent}
+            </ExecutionProcessesProvider>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const mainContent = (
     <ReviewProvider attemptId={selectedWorkspace?.id}>

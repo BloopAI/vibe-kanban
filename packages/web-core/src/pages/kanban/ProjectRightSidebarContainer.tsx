@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
+import { ArrowDownIcon, ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -141,6 +141,7 @@ function WorkspaceSessionPanel({
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const conversationListRef = useRef<ConversationListHandle>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const { data: workspace, isLoading: isWorkspaceLoading } = useAttempt(
     workspaceId,
     { enabled: !!workspaceId }
@@ -210,6 +211,10 @@ function WorkspaceSessionPanel({
     conversationListRef.current?.scrollToBottom();
   }, []);
 
+  const handleAtBottomChange = useCallback((atBottom: boolean) => {
+    setIsAtBottom(atBottom);
+  }, []);
+
   return (
     <ExecutionProcessesProvider
       key={`${workspaceId}-${selectedSessionId ?? 'new'}`}
@@ -267,12 +272,29 @@ function WorkspaceSessionPanel({
                       <ConversationList
                         ref={conversationListRef}
                         attempt={workspaceWithSession}
+                        onAtBottomChange={handleAtBottomChange}
                       />
                     </RetryUiProvider>
                   </div>
                 </div>
               ) : (
                 <div className="flex-1" />
+              )}
+
+              {workspaceWithSession && !isAtBottom && (
+                <div className="flex justify-center pointer-events-none">
+                  <div className="w-chat max-w-full relative">
+                    <button
+                      type="button"
+                      onClick={handleScrollToBottom}
+                      className="absolute bottom-2 right-4 z-10 pointer-events-auto flex items-center justify-center size-8 rounded-full bg-secondary/80 backdrop-blur-sm border border-secondary text-low hover:text-normal hover:bg-secondary shadow-md transition-all"
+                      aria-label="Scroll to bottom"
+                      title="Scroll to bottom"
+                    >
+                      <ArrowDownIcon className="size-icon-base" weight="bold" />
+                    </button>
+                  </div>
+                </div>
               )}
 
               <div className="flex justify-center @container pl-px">

@@ -647,5 +647,6 @@
     "submitting": "Submitting answers...",
     "answeredCount": "Answered {{count}} question",
     "answeredCount_other": "Answered {{count}} questions"
-  }
+  },
+  "kanban.board": "Board"
 }

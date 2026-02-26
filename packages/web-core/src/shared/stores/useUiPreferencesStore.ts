@@ -14,6 +14,28 @@ export type RightMainPanelMode =
 
 export type LayoutMode = 'workspaces' | 'kanban' | 'migrate';
 
+export type MobileTab =
+  | 'workspaces'
+  | 'chat'
+  | 'changes'
+  | 'logs'
+  | 'preview'
+  | 'git';
+
+export type MobileFontScale = 'default' | 'small' | 'smaller';
+
+const MOBILE_FONT_SCALE_KEY = 'vk-mobile-font-scale';
+
+const loadMobileFontScale = (): MobileFontScale => {
+  try {
+    const stored = localStorage.getItem(MOBILE_FONT_SCALE_KEY);
+    if (stored === 'small' || stored === 'smaller') return stored;
+  } catch {
+    // localStorage may be unavailable
+  }
+  return 'default';
+};
+
 export type KanbanViewMode = 'kanban' | 'list';
 
 export type ContextBarPosition =
@@ -313,6 +335,12 @@ type State = {
   kanbanViewMode: KanbanViewMode;
   listViewStatusFilter: string | null;
 
+  // Mobile tab state
+  mobileActiveTab: MobileTab;
+
+  // Mobile font scale
+  mobileFontScale: MobileFontScale;
+
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
@@ -384,6 +412,12 @@ type State = {
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
   setListViewStatusFilter: (statusId: string | null) => void;
+
+  // Mobile tab actions
+  setMobileActiveTab: (tab: MobileTab) => void;
+
+  // Mobile font scale actions
+  setMobileFontScale: (scale: MobileFontScale) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -416,6 +450,12 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   // Kanban view mode state
   kanbanViewMode: 'kanban' as KanbanViewMode,
   listViewStatusFilter: null,
+
+  // Mobile tab state
+  mobileActiveTab: 'chat' as MobileTab,
+
+  // Mobile font scale
+  mobileFontScale: loadMobileFontScale(),
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -484,6 +524,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     const wsState =
       state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
     const isCurrentlyActive = wsState.rightMainPanelMode === mode;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
 
     set({
       workspacePanelStates: {
@@ -498,6 +539,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
         : isWideScreen()
           ? state.isLeftSidebarVisible
           : false,
+      ...(isMobile &&
+        !isCurrentlyActive && { mobileActiveTab: mode as MobileTab }),
     });
   },
 
@@ -506,6 +549,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
     const state = get();
     const wsState =
       state.workspacePanelStates[workspaceId] ?? DEFAULT_WORKSPACE_PANEL_STATE;
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
     set({
       workspacePanelStates: {
         ...state.workspacePanelStates,
@@ -519,6 +563,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
           ? state.isLeftSidebarVisible
           : false,
       }),
+      ...(isMobile && mode !== null && { mobileActiveTab: mode as MobileTab }),
     });
   },
 
@@ -717,6 +762,23 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   setListViewStatusFilter: (statusId) =>
     set({ listViewStatusFilter: statusId }),
+
+  // Mobile tab actions
+  setMobileActiveTab: (tab) => set({ mobileActiveTab: tab }),
+
+  // Mobile font scale actions
+  setMobileFontScale: (scale) => {
+    try {
+      if (scale === 'default') {
+        localStorage.removeItem(MOBILE_FONT_SCALE_KEY);
+      } else {
+        localStorage.setItem(MOBILE_FONT_SCALE_KEY, scale);
+      }
+    } catch {
+      // localStorage may be unavailable
+    }
+    set({ mobileFontScale: scale });
+  },
 }));
 
 // Hook for repo action preference
@@ -795,6 +857,20 @@ export function usePersistedCollapsedPaths(
   );
 
   return [pathSet, setPathSet];
+}
+
+// Hook for mobile active tab
+export function useMobileActiveTab() {
+  const tab = useUiPreferencesStore((s) => s.mobileActiveTab);
+  const set = useUiPreferencesStore((s) => s.setMobileActiveTab);
+  return [tab, set] as const;
+}
+
+// Hook for mobile font scale
+export function useMobileFontScale() {
+  const scale = useUiPreferencesStore((s) => s.mobileFontScale);
+  const set = useUiPreferencesStore((s) => s.setMobileFontScale);
+  return [scale, set] as const;
 }
 
 // Hook for workspace-specific panel state

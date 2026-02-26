@@ -13,9 +13,14 @@
       "sizes": "any",
       "purpose": "maskable",
       "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#f2f2f2",
+  "background_color": "#f2f2f2",
   "display": "standalone"
 }
