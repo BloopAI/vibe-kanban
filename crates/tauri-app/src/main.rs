@@ -6,7 +6,7 @@ use std::sync::Arc;
 use tauri::Emitter;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
-use tokio::sync::oneshot;
+use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
 
 fn main() {
@@ -23,10 +23,9 @@ fn main() {
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
-    // Channel to signal the server to shut down when the window closes
-    let (shutdown_tx, shutdown_rx) = oneshot::channel::<()>();
-    let shutdown_tx = Arc::new(std::sync::Mutex::new(Some(shutdown_tx)));
-    let shutdown_tx_clone = shutdown_tx.clone();
+    // Shared token so we can tell the server to shut down when the window closes.
+    let shutdown_token = Arc::new(CancellationToken::new());
+    let shutdown_token_for_event = shutdown_token.clone();
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -39,34 +38,37 @@ fn main() {
     }
 
     builder
-        .setup(|app| {
-            let handle = app.handle().clone();
-
+        .setup(move |app| {
             if cfg!(debug_assertions) {
                 // Dev mode: frontend dev server (Vite) and backend are started
                 // externally. Create the window immediately pointing to devUrl.
                 tracing::info!("Running in dev mode — using external frontend/backend servers");
                 create_window(app, tauri::WebviewUrl::App("index.html".into()))?;
-                drop(shutdown_rx);
             } else {
                 // Production: start the Axum server first, then open the window
                 // once it's ready so the user never sees a blank/error page.
                 let app_handle = app.handle().clone();
+                let token = shutdown_token.clone();
                 tauri::async_runtime::spawn(async move {
-                    match start_server(shutdown_rx).await {
-                        Ok((url, server_future)) => {
+                    match server::startup::start().await {
+                        Ok(server_handle) => {
+                            let url = server_handle.url();
                             let webview_url = tauri::WebviewUrl::External(url.parse().unwrap());
+
                             match create_window(&app_handle, webview_url) {
-                                Ok(_) => {
-                                    tracing::info!("Window opened at {url}");
-                                }
-                                Err(e) => {
-                                    tracing::error!("Failed to create window: {e}");
-                                }
+                                Ok(_) => tracing::info!("Window opened at {url}"),
+                                Err(e) => tracing::error!("Failed to create window: {e}"),
                             }
 
-                            // Run the server until shutdown
-                            if let Err(e) = server_future.await {
+                            // Wait for either the server to exit on its own or
+                            // the external shutdown token to be cancelled.
+                            let server_token = server_handle.shutdown_token();
+                            tauri::async_runtime::spawn(async move {
+                                token.cancelled().await;
+                                server_token.cancel();
+                            });
+
+                            if let Err(e) = server_handle.serve().await {
                                 tracing::error!("Server error: {e}");
                             }
                         }
@@ -77,9 +79,9 @@ fn main() {
                 });
 
                 // Check for updates in the background
-                let handle = app.handle().clone();
+                let update_handle = app.handle().clone();
                 tauri::async_runtime::spawn(async move {
-                    check_for_updates(handle).await;
+                    check_for_updates(update_handle).await;
                 });
             }
 
@@ -87,46 +89,17 @@ fn main() {
         })
         .on_window_event(move |_window, event| {
             if let tauri::WindowEvent::Destroyed = event {
-                if let Some(tx) = shutdown_tx_clone.lock().unwrap().take() {
-                    let _ = tx.send(());
-                }
+                shutdown_token_for_event.cancel();
             }
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
-<<<<<<< HEAD
-async fn run_server(
-    window: tauri::WebviewWindow,
-    shutdown_rx: oneshot::Receiver<()>,
-) -> anyhow::Result<()> {
-    let handle = server::startup::start().await?;
-
-    let url = handle.url();
-    tracing::info!("Server running on {url}");
-
-    // Navigate the webview to the server URL
-    if let Err(e) = window.eval(&format!("window.location.replace('{url}')")) {
-        tracing::error!("Failed to navigate webview: {}", e);
-    }
-
-    // When the window closes, cancel the server's shutdown token
-    let shutdown_token = handle.shutdown_token();
-    tauri::async_runtime::spawn(async move {
-        let _ = shutdown_rx.await;
-        tracing::info!("Shutdown signal received, stopping server...");
-        shutdown_token.cancel();
-    });
-
-    handle.serve().await?;
-
-    Ok(())
-=======
-fn create_window<M: tauri::Manager>(
+fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
     manager: &M,
     url: tauri::WebviewUrl,
-) -> Result<tauri::WebviewWindow, tauri::Error> {
+) -> Result<tauri::WebviewWindow<R>, tauri::Error> {
     let handle = manager.app_handle().clone();
     tauri::WebviewWindowBuilder::new(manager, "main", url)
         .title("Vibe Kanban")
@@ -141,37 +114,6 @@ fn create_window<M: tauri::Manager>(
             tauri::webview::NewWindowResponse::Deny
         })
         .build()
-}
-
-/// Start the Axum server and return the URL + a future that runs it.
-async fn start_server(
-    shutdown_rx: oneshot::Receiver<()>,
-) -> anyhow::Result<(
-    String,
-    impl std::future::Future<Output = anyhow::Result<()>>,
-)> {
-    let deployment = server::startup::initialize_deployment().await?;
-    let app_router = server::routes::router(deployment.clone());
-
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
-    let port = listener.local_addr()?.port();
-    let url = format!("http://127.0.0.1:{port}");
-
-    tracing::info!("Server running on {url}");
-
-    let server_future = async move {
-        axum::serve(listener, app_router)
-            .with_graceful_shutdown(async {
-                let _ = shutdown_rx.await;
-                tracing::info!("Shutdown signal received, stopping server...");
-            })
-            .await?;
-        server::startup::perform_cleanup_actions(&deployment).await;
-        Ok(())
-    };
-
-    Ok((url, server_future))
->>>>>>> 026c48f5b (fix: delay window creation until server is ready)
 }
 
 async fn check_for_updates(app: tauri::AppHandle) {
