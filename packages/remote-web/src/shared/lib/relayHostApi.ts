@@ -6,6 +6,7 @@ import { createRelaySession } from "@/shared/lib/remoteApi";
 import {
   createRelaySessionAuthCode,
   establishRelaySessionBaseUrl,
+  getRelayApiUrl,
 } from "@/shared/lib/relayBackendApi";
 import {
   getActiveRelayHostId,
@@ -239,8 +240,9 @@ async function getRelaySessionBaseUrl(hostId: string): Promise<string> {
 async function createRelaySessionBaseUrl(hostId: string): Promise<string> {
   const relaySession = await createRelaySession(hostId);
   const authCode = await createRelaySessionAuthCode(relaySession.id);
+  const relayApiUrl = getRelayApiUrl();
   return establishRelaySessionBaseUrl(
-    authCode.relay_url,
+    relayApiUrl,
     hostId,
     authCode.code,
   );
