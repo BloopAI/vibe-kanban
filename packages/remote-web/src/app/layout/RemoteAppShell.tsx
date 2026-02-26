@@ -23,6 +23,11 @@ import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from "@/shared/dialogs/org/CreateRemoteProjectDialog";
+import {
+  getActiveRelayHostId,
+  parseRelayHostIdFromSearch,
+  setActiveRelayHostId,
+} from "@remote/shared/lib/activeRelayHost";
 
 interface RemoteAppShellProps {
   children: ReactNode;
@@ -98,11 +103,36 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       ?.name ?? null;
 
   const isWorkspacesActive = location.pathname.startsWith("/workspaces");
+  const hostIdFromSearch = useMemo(
+    () => parseRelayHostIdFromSearch(location.searchStr),
+    [location.searchStr],
+  );
+
+  useEffect(() => {
+    if (hostIdFromSearch) {
+      setActiveRelayHostId(hostIdFromSearch);
+    }
+  }, [hostIdFromSearch]);
+
+  const activeHostId = useMemo(() => {
+    if (!isWorkspacesActive) {
+      return null;
+    }
+
+    return hostIdFromSearch ?? getActiveRelayHostId();
+  }, [hostIdFromSearch, isWorkspacesActive]);
+
   const activeProjectId = location.pathname.startsWith("/projects/")
     ? (location.pathname.split("/")[2] ?? null)
     : null;
 
   const handleWorkspacesClick = useCallback(() => {
+    const currentHostId = getActiveRelayHostId();
+    if (currentHostId) {
+      navigate({ to: "/workspaces", search: { hostId: currentHostId } });
+      return;
+    }
+
     navigate({ to: "/workspaces" });
   }, [navigate]);
 
@@ -154,6 +184,15 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
 
   const handleHostClick = useCallback(
     (hostId: string, status: AppBarHostStatus) => {
+      if (status === "online") {
+        setActiveRelayHostId(hostId);
+        navigate({
+          to: "/workspaces",
+          search: { hostId },
+        });
+        return;
+      }
+
       if (status !== "unpaired") {
         return;
       }
@@ -164,7 +203,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         sections: REMOTE_SETTINGS_SECTIONS,
       });
     },
-    [],
+    [navigate],
   );
 
   return (
@@ -172,6 +211,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       <AppBar
         projects={projects}
         hosts={relayHosts}
+        activeHostId={activeHostId}
         onCreateProject={handleCreateProject}
         onWorkspacesClick={handleWorkspacesClick}
         onHostClick={handleHostClick}

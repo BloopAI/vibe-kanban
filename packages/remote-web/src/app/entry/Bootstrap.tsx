@@ -12,8 +12,13 @@ import "@/i18n";
 import { configureAuthRuntime } from "@/shared/lib/auth/runtime";
 import { setRemoteApiBase } from "@/shared/lib/remoteApi";
 import { setRelayApiBase } from "@/shared/lib/relayBackendApi";
+import { setLocalApiTransport } from "@/shared/lib/localApiTransport";
 import "@/shared/types/modals";
 import { queryClient } from "@/shared/lib/queryClient";
+import {
+  openLocalApiWebSocketViaRelay,
+  requestLocalApiViaRelay,
+} from "@remote/shared/lib/relayHostApi";
 
 if (import.meta.env.VITE_PUBLIC_POSTHOG_KEY) {
   posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
@@ -27,6 +32,10 @@ setRelayApiBase(
     import.meta.env.VITE_API_BASE_URL ||
     window.location.origin,
 );
+setLocalApiTransport({
+  request: requestLocalApiViaRelay,
+  openWebSocket: openLocalApiWebSocketViaRelay,
+});
 
 configureAuthRuntime({
   getToken,

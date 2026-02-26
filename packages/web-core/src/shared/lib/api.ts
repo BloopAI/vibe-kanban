@@ -99,6 +99,7 @@ import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
+import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -123,7 +124,7 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
     headers.set('Content-Type', 'application/json');
   }
 
-  return fetch(url, {
+  return makeLocalApiRequest(url, {
     ...options,
     headers,
   });
@@ -976,7 +977,7 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch('/api/images/upload', {
+    const response = await makeLocalApiRequest('/api/images/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -998,11 +999,14 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch(`/api/images/task/${taskId}/upload`, {
-      method: 'POST',
-      body: formData,
-      credentials: 'include',
-    });
+    const response = await makeLocalApiRequest(
+      `/api/images/task/${taskId}/upload`,
+      {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -1027,7 +1031,7 @@ export const imagesApi = {
     const formData = new FormData();
     formData.append('image', file);
 
-    const response = await fetch(
+    const response = await makeLocalApiRequest(
       `/api/task-attempts/${attemptId}/images/upload`,
       {
         method: 'POST',
