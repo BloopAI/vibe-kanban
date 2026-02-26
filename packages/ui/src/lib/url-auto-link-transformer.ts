@@ -8,7 +8,7 @@ import { $createTextNode } from 'lexical';
  * punctuation that is typically not part of the URL.
  */
 const URL_IMPORT_REGEX =
-  /(?<![(\["])(https?:\/\/[^\s<>\[\]"]*[^\s<>\[\]".,;:!?')}>\]])/;
+  /(?<![(\["])(https?:\/\/[^\s<>\[\]"]*[^\s<>\[\]".,;:!?')}>\]])/; // eslint-disable-line no-useless-escape
 
 const URL_MATCH_REGEX = new RegExp(URL_IMPORT_REGEX.source + '$');
 
