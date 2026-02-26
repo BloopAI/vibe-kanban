@@ -568,11 +568,32 @@ export const useConversationHistory = ({
 
       if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
 
+      // Always load script processes (setup/cleanup/archive) first so they
+      // appear at their correct position from the very first render.  This
+      // avoids a reorder when the remaining-batch pass loads them later,
+      // which causes Virtuoso to apply stale item sizes.
+      const scriptProcesses = executionProcesses.current.filter(
+        (ep) =>
+          ep.status !== ExecutionProcessStatus.running &&
+          ep.executor_action.typ.type === 'ScriptRequest'
+      );
+      for (const ep of scriptProcesses) {
+        const entries = await loadEntriesForHistoricExecutionProcess(ep);
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, ep.id, idx)
+        );
+        localDisplayedExecutionProcesses[ep.id] = {
+          executionProcess: ep,
+          entries: entriesWithKey,
+        };
+      }
+
       for (const executionProcess of [
         ...executionProcesses.current,
       ].reverse()) {
         if (executionProcess.status === ExecutionProcessStatus.running)
           continue;
+        if (localDisplayedExecutionProcesses[executionProcess.id]) continue;
 
         const entries =
           await loadEntriesForHistoricExecutionProcess(executionProcess);
