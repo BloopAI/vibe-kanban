@@ -18,8 +18,8 @@ RUN mkdir -p /app/bin
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/usr/local/cargo/git \
     --mount=type=cache,target=/app/target \
-    cargo build --release -p relay-tunnel --features server \
- && cp target/release/relay-server /app/bin/relay-server
+    cargo build --locked --release --manifest-path crates/relay-tunnel/Cargo.toml --features server \
+ && cp crates/relay-tunnel/target/release/relay-server /app/bin/relay-server
 
 FROM debian:bookworm-slim
 
