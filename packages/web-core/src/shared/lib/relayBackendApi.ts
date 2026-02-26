@@ -1,4 +1,8 @@
 import type { RelaySessionAuthCodeResponse } from 'shared/remote-types';
+import type {
+  FinishSpake2EnrollmentResponse,
+  StartSpake2EnrollmentResponse,
+} from 'shared/types';
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
@@ -39,6 +43,60 @@ export async function createRelaySessionAuthCode(
   }
 
   return (await response.json()) as RelaySessionAuthCodeResponse;
+}
+
+export async function establishRelaySessionBaseUrl(
+  relayUrl: string,
+  hostId: string,
+  code: string
+): Promise<string> {
+  const exchangeUrl = buildRelayExchangeUrl(relayUrl, hostId, code);
+  const exchangeResponse = await fetch(exchangeUrl, {
+    method: 'GET',
+    redirect: 'follow',
+  });
+
+  return parseRelaySessionBaseUrl(exchangeResponse.url, hostId);
+}
+
+export async function startRelaySpake2Enrollment(
+  relaySessionBaseUrl: string,
+  enrollmentCode: string,
+  clientMessageB64: string
+): Promise<StartSpake2EnrollmentResponse> {
+  const response = await fetch(
+    `${relaySessionBaseUrl}/api/relay-auth/spake2/start`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enrollment_code: enrollmentCode,
+        client_message_b64: clientMessageB64,
+      }),
+    }
+  );
+
+  return parseLocalApiResponse(response, 'Failed to start pairing.');
+}
+
+export async function finishRelaySpake2Enrollment(
+  relaySessionBaseUrl: string,
+  payload: {
+    enrollment_id: string;
+    public_key_b64: string;
+    client_proof_b64: string;
+  }
+): Promise<FinishSpake2EnrollmentResponse> {
+  const response = await fetch(
+    `${relaySessionBaseUrl}/api/relay-auth/spake2/finish`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  return parseLocalApiResponse(response, 'Failed to finish pairing.');
 }
 
 async function makeAuthenticatedRequest(
@@ -97,4 +155,77 @@ async function parseErrorResponse(
       `${fallbackMessage} (${response.status} ${response.statusText})`
     );
   }
+}
+
+function buildRelayExchangeUrl(
+  relayUrl: string,
+  hostId: string,
+  code: string
+): string {
+  const relayBase = relayUrl.replace(/\/+$/, '');
+  return `${relayBase}/relay/h/${hostId}/exchange?code=${encodeURIComponent(code)}`;
+}
+
+function parseRelaySessionBaseUrl(finalUrl: string, hostId: string): string {
+  const parsed = new URL(finalUrl);
+  const hostPattern = escapeRegExp(hostId);
+  const match = parsed.pathname.match(
+    new RegExp(`^/relay/h/${hostPattern}/s/[^/]+`)
+  );
+  if (!match) {
+    throw new Error('Failed to establish relay browser session.');
+  }
+
+  return `${parsed.origin}${match[0]}`;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+interface LocalApiSuccess<T> {
+  success: true;
+  data: T;
+}
+
+interface LocalApiFailure {
+  success: false;
+  message?: string;
+}
+
+type LocalApiEnvelope<T> = LocalApiSuccess<T> | LocalApiFailure;
+
+async function parseLocalApiResponse<T>(
+  response: Response,
+  fallbackMessage: string
+): Promise<T> {
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response, fallbackMessage));
+  }
+
+  const body = (await response.json()) as LocalApiEnvelope<T>;
+  if (!body.success) {
+    throw new Error(body.message || fallbackMessage);
+  }
+
+  return body.data;
+}
+
+async function extractErrorMessage(
+  response: Response,
+  fallbackMessage: string
+): Promise<string> {
+  try {
+    const body = await response.json();
+    if (body && typeof body.message === 'string') {
+      return body.message;
+    }
+    if (body && typeof body.error === 'string') {
+      return body.error;
+    }
+  } catch {
+    // Ignore parse failures and use fallback.
+  }
+
+  return `${fallbackMessage} (${response.status})`;
 }
