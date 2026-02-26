@@ -9,20 +9,18 @@ import type {
   InitUploadResponse,
   ListRelayHostsResponse,
   RelayHost,
-  RelaySessionAuthCodeResponse,
   UpdateIssueRequest,
   UpdateProjectRequest,
   UpdateProjectStatusRequest,
 } from 'shared/remote-types';
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
+import { syncRelayApiBaseWithRemote } from '@/shared/lib/relayBackendApi';
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
-const BUILD_TIME_RELAY_API_BASE = import.meta.env.VITE_RELAY_API_BASE_URL || '';
 
 // Mutable module-level variable — overridden at runtime by ConfigProvider
 // when VK_SHARED_API_BASE is set (for self-hosting support)
 let _remoteApiBase: string = BUILD_TIME_API_BASE;
-let _relayApiBase: string = BUILD_TIME_RELAY_API_BASE || BUILD_TIME_API_BASE;
 
 /**
  * Set the remote API base URL at runtime.
@@ -32,9 +30,7 @@ let _relayApiBase: string = BUILD_TIME_RELAY_API_BASE || BUILD_TIME_API_BASE;
 export function setRemoteApiBase(base: string | null | undefined) {
   if (base) {
     _remoteApiBase = base;
-    if (!BUILD_TIME_RELAY_API_BASE) {
-      _relayApiBase = base;
-    }
+    syncRelayApiBaseWithRemote(base);
   }
 }
 
@@ -44,16 +40,6 @@ export function setRemoteApiBase(base: string | null | undefined) {
  */
 export function getRemoteApiUrl(): string {
   return _remoteApiBase;
-}
-
-export function setRelayApiBase(base: string | null | undefined) {
-  if (base) {
-    _relayApiBase = base;
-  }
-}
-
-export function getRelayApiUrl(): string {
-  return _relayApiBase;
 }
 
 // Backward-compatible export — consumers should migrate to getRemoteApiUrl()
@@ -173,7 +159,7 @@ export async function bulkUpdateProjectStatuses(
 }
 
 // ---------------------------------------------------------------------------
-// Relay API functions
+// Relay host API functions (served by remote backend)
 // ---------------------------------------------------------------------------
 
 export async function listRelayHosts(): Promise<RelayHost[]> {
@@ -198,24 +184,6 @@ export async function createRelaySession(
 
   const body = (await response.json()) as CreateRelaySessionResponse;
   return body.session;
-}
-
-export async function createRelaySessionAuthCode(
-  sessionId: string
-): Promise<RelaySessionAuthCodeResponse> {
-  const response = await makeAuthenticatedRequest(
-    getRelayApiUrl(),
-    `/v1/relay/sessions/${sessionId}/auth-code`,
-    { method: 'POST' }
-  );
-  if (!response.ok) {
-    throw await parseErrorResponse(
-      response,
-      'Failed to create relay session auth code'
-    );
-  }
-
-  return (await response.json()) as RelaySessionAuthCodeResponse;
 }
 
 // ---------------------------------------------------------------------------

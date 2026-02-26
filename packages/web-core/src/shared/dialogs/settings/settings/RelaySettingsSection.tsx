@@ -16,11 +16,8 @@ import {
 } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
-import {
-  createRelaySession,
-  createRelaySessionAuthCode,
-  listRelayHosts,
-} from '@/shared/lib/remoteApi';
+import { createRelaySession, listRelayHosts } from '@/shared/lib/remoteApi';
+import { createRelaySessionAuthCode } from '@/shared/lib/relayBackendApi';
 import {
   buildClientProofB64,
   finishSpake2Enrollment,
