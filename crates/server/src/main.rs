@@ -46,7 +46,6 @@ async fn main() -> Result<(), VibeKanbanError> {
         .or_else(|_| std::env::var("PORT"))
         .ok()
         .and_then(|s| {
-            // Remove any ANSI codes, then turn into String
             let cleaned =
                 String::from_utf8(strip(s.as_bytes())).expect("UTF-8 after stripping ANSI");
             cleaned.trim().parse::<u16>().ok()
