@@ -101,14 +101,12 @@ function LocalRelaySettingsSectionContent({
   const {
     data: pairedClients = [],
     isLoading: pairedClientsLoading,
-    isFetching: pairedClientsFetching,
     error: pairedClientsError,
-    refetch: refetchPairedClients,
   } = useQuery({
     queryKey: RELAY_PAIRED_CLIENTS_QUERY_KEY,
     queryFn: () => relayApi.listPairedClients(),
     enabled: isSignedIn && (draft?.relay_enabled ?? false),
-    refetchInterval: 15000,
+    refetchInterval: 10000,
   });
 
   const removePairedClientMutation = useMutation({
@@ -286,16 +284,18 @@ function LocalRelaySettingsSectionContent({
                         'Paired clients'
                       )}
                     </h4>
-                    <PrimaryButton
-                      variant="tertiary"
-                      value={t(
-                        'settings.relay.pairedClients.check',
-                        'Check for new paired clients'
-                      )}
-                      onClick={() => void refetchPairedClients()}
-                      disabled={pairedClientsFetching}
-                      actionIcon={pairedClientsFetching ? 'spinner' : undefined}
-                    />
+                    <div className="flex items-center gap-2 text-xs text-low">
+                      <SpinnerIcon
+                        className="size-icon-xs animate-spin"
+                        weight="bold"
+                      />
+                      <span>
+                        {t(
+                          'settings.relay.pairedClients.checking',
+                          'Checking every 10 seconds for new paired clients...'
+                        )}
+                      </span>
+                    </div>
                   </div>
 
                   {pairedClientsLoading && (
