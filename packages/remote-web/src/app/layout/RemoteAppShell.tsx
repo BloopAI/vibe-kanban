@@ -2,16 +2,19 @@ import { useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { siDiscord, siGithub } from "simple-icons";
-import { AppBar } from "@vibe/ui/components/AppBar";
+import { AppBar, type AppBarHostStatus } from "@vibe/ui/components/AppBar";
 import type { Project } from "shared/remote-types";
 import { useUserOrganizations } from "@/shared/hooks/useUserOrganizations";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useDiscordOnlineCount } from "@/shared/hooks/useDiscordOnlineCount";
 import { useGitHubStars } from "@/shared/hooks/useGitHubStars";
+import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { RemoteAppBarUserPopoverContainer } from "@remote/app/layout/RemoteAppBarUserPopoverContainer";
 import { RemoteNavbarContainer } from "@remote/app/layout/RemoteNavbarContainer";
+import { useRelayAppBarHosts } from "@remote/shared/hooks/useRelayAppBarHosts";
+import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -88,6 +91,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
 
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
+  const { hosts: relayHosts } = useRelayAppBarHosts(isSignedIn);
 
   const selectedOrgName =
     organizations.find((organization) => organization.id === selectedOrgId)
@@ -148,12 +152,29 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     }
   }, [setSelectedOrgId]);
 
+  const handleHostClick = useCallback(
+    (hostId: string, status: AppBarHostStatus) => {
+      if (status !== "unpaired") {
+        return;
+      }
+
+      void SettingsDialog.show({
+        initialSection: "relay",
+        initialState: { hostId },
+        sections: REMOTE_SETTINGS_SECTIONS,
+      });
+    },
+    [],
+  );
+
   return (
     <div className="flex h-screen bg-primary">
       <AppBar
         projects={projects}
+        hosts={relayHosts}
         onCreateProject={handleCreateProject}
         onWorkspacesClick={handleWorkspacesClick}
+        onHostClick={handleHostClick}
         showWorkspacesButton={false}
         onProjectClick={handleProjectClick}
         onProjectsDragEnd={() => {}}

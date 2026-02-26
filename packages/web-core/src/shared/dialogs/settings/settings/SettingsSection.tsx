@@ -28,7 +28,7 @@ export type SettingsSectionInitialState = {
     | undefined;
   agents: { executor?: string; variant?: string } | undefined;
   mcp: undefined;
-  relay: undefined;
+  relay: { hostId?: string } | undefined;
 };
 
 interface SettingsSectionProps {
@@ -69,7 +69,11 @@ export function SettingsSection({
       case 'mcp':
         return <McpSettingsSectionContent />;
       case 'relay':
-        return <RelaySettingsSectionContent />;
+        return (
+          <RelaySettingsSectionContent
+            initialState={initialState as SettingsSectionInitialState['relay']}
+          />
+        );
       default:
         return <GeneralSettingsSectionContent />;
     }

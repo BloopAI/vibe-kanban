@@ -54,14 +54,22 @@ interface PairedHostRow {
   pairedAt: string;
 }
 
-export function RelaySettingsSectionContent() {
+interface RelaySettingsSectionInitialState {
+  hostId?: string;
+}
+
+export function RelaySettingsSectionContent({
+  initialState,
+}: {
+  initialState?: RelaySettingsSectionInitialState;
+}) {
   const userSystem = useContext(UserSystemContext);
 
   if (userSystem) {
     return <LocalRelaySettingsSectionContent userSystem={userSystem} />;
   }
 
-  return <RemoteRelaySettingsSectionContent />;
+  return <RemoteRelaySettingsSectionContent initialState={initialState} />;
 }
 
 function LocalRelaySettingsSectionContent({
@@ -264,9 +272,15 @@ function LocalRelaySettingsSectionContent({
   );
 }
 
-function RemoteRelaySettingsSectionContent() {
+function RemoteRelaySettingsSectionContent({
+  initialState,
+}: {
+  initialState?: RelaySettingsSectionInitialState;
+}) {
   const { t } = useTranslation(['settings', 'common']);
   const { isSignedIn } = useAuth();
+  const initialHostId = initialState?.hostId;
+  const hasAppliedInitialHostRef = useRef(false);
 
   const [hosts, setHosts] = useState<RelayHost[]>([]);
   const [hostsLoading, setHostsLoading] = useState(false);
@@ -343,6 +357,27 @@ function RemoteRelaySettingsSectionContent() {
       setSelectedHostId(availableHostsToPair[0]?.id);
     }
   }, [availableHostsToPair, selectedHostId, showPairForm]);
+
+  useEffect(() => {
+    if (!initialHostId || hasAppliedInitialHostRef.current) {
+      return;
+    }
+
+    if (hostsLoading || pairedHostsLoading) {
+      return;
+    }
+
+    if (!availableHostsToPair.some((host) => host.id === initialHostId)) {
+      hasAppliedInitialHostRef.current = true;
+      return;
+    }
+
+    setPairSuccess(null);
+    setPairError(null);
+    setSelectedHostId(initialHostId);
+    setShowPairForm(true);
+    hasAppliedInitialHostRef.current = true;
+  }, [availableHostsToPair, hostsLoading, initialHostId, pairedHostsLoading]);
 
   const pairedHostRows = useMemo<PairedHostRow[]>(() => {
     return pairedHosts.map((entry) => {
