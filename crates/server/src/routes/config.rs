@@ -36,6 +36,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    tunnel,
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -198,6 +199,12 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
+
+    match (old.relay_enabled, new.relay_enabled) {
+        (false, true) => tunnel::spawn_relay(deployment).await,
+        (true, false) => tunnel::stop_relay(deployment).await,
+        (true, true) | (false, false) => (),
+    }
 }
 
 async fn get_sound(Path(sound): Path<SoundFile>) -> Result<Response, ApiError> {
