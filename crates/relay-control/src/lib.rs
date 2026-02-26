@@ -12,6 +12,12 @@ pub struct RelayControl {
     shutdown: RwLock<Option<CancellationToken>>,
 }
 
+impl Default for RelayControl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RelayControl {
     pub fn new() -> Self {
         Self {
