@@ -66,6 +66,9 @@ We would prefer that ideas and changes are first raised with the core team via [
 - [Node.js](https://nodejs.org/) (>=20)
 - [pnpm](https://pnpm.io/) (>=8)
 
+> [!WARNING]
+> Make sure you have installed the library `libclang`.
+
 Additional development tools:
 ```bash
 cargo install cargo-watch
@@ -80,7 +83,7 @@ pnpm i
 ### Running the dev server
 
 ```bash
-pnpm run dev
+PORT=3000 pnpm run dev
 ```
 
 This will start the backend and web app. A blank DB will be copied from the `dev_assets_seed` folder.
