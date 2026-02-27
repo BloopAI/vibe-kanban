@@ -42,6 +42,8 @@ function storeToScratchData(state: {
   workspacePanelStates: Record<string, WorkspacePanelState>;
   workspaceFilters: WorkspaceFilterState;
   workspaceSort: WorkspaceSortState;
+  selectedOrgId: string | null;
+  selectedProjectId: string | null;
 }): UiPreferencesData {
   const workspacePanelStates: { [key: string]: WorkspacePanelStateData } = {};
   for (const [key, value] of Object.entries(state.workspacePanelStates)) {
@@ -70,6 +72,8 @@ function storeToScratchData(state: {
       sort_by: state.workspaceSort.sortBy,
       sort_order: state.workspaceSort.sortOrder,
     },
+    selected_org_id: state.selectedOrgId,
+    selected_project_id: state.selectedProjectId,
   };
 }
 
@@ -89,6 +93,8 @@ function scratchDataToStore(data: UiPreferencesData): {
   workspacePanelStates: Record<string, WorkspacePanelState>;
   workspaceFilters: WorkspaceFilterState;
   workspaceSort: WorkspaceSortState;
+  selectedOrgId: string | null;
+  selectedProjectId: string | null;
 } {
   const workspacePanelStates: Record<string, WorkspacePanelState> = {};
   if (data.workspace_panel_states) {
@@ -138,6 +144,8 @@ function scratchDataToStore(data: UiPreferencesData): {
       sortOrder:
         (data.workspace_sort?.sort_order as WorkspaceSortOrder) ?? 'desc',
     },
+    selectedOrgId: data.selected_org_id ?? null,
+    selectedProjectId: data.selected_project_id ?? null,
   };
 }
 
@@ -170,6 +178,8 @@ export function useUiPreferencesScratch() {
     workspacePanelStates: state.workspacePanelStates,
     workspaceFilters: state.workspaceFilters,
     workspaceSort: state.workspaceSort,
+    selectedOrgId: state.selectedOrgId,
+    selectedProjectId: state.selectedProjectId,
   }));
 
   // Extract scratch data
@@ -197,6 +207,8 @@ export function useUiPreferencesScratch() {
       workspacePanelStates: currentState.workspacePanelStates,
       workspaceFilters: currentState.workspaceFilters,
       workspaceSort: currentState.workspaceSort,
+      selectedOrgId: currentState.selectedOrgId,
+      selectedProjectId: currentState.selectedProjectId,
     });
 
     try {
@@ -240,6 +252,8 @@ export function useUiPreferencesScratch() {
         workspacePanelStates: serverState.workspacePanelStates,
         workspaceFilters: serverState.workspaceFilters,
         workspaceSort: serverState.workspaceSort,
+        selectedOrgId: serverState.selectedOrgId,
+        selectedProjectId: serverState.selectedProjectId,
       });
 
       // Allow a brief delay for state to settle

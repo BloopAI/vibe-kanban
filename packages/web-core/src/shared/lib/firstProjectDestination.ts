@@ -16,9 +16,9 @@ function getFirstOrganization(
   return organizations[0];
 }
 
-async function getFirstProjectInOrganization(
+async function getProjectsInOrganization(
   organizationId: string
-): Promise<Project | null> {
+): Promise<Project[] | null> {
   const collection = createShapeCollection(PROJECTS_SHAPE, {
     organization_id: organizationId,
   });
@@ -27,16 +27,15 @@ async function getFirstProjectInOrganization(
     collection.toArray as unknown as Project[];
 
   if (collection.isReady()) {
-    const projects = getCollectionProjects();
-    return getFirstProjectByOrder(projects);
+    return getCollectionProjects();
   }
 
-  return new Promise<Project | null>((resolve) => {
+  return new Promise<Project[] | null>((resolve) => {
     let settled = false;
     let timeoutId: number | undefined;
     let subscription: { unsubscribe: () => void } | undefined;
 
-    const settle = (project: Project | null) => {
+    const settle = (projects: Project[] | null) => {
       if (settled) return;
       settled = true;
 
@@ -49,7 +48,7 @@ async function getFirstProjectInOrganization(
         subscription = undefined;
       }
 
-      resolve(project);
+      resolve(projects);
     };
 
     const tryResolve = () => {
@@ -57,8 +56,7 @@ async function getFirstProjectInOrganization(
         return;
       }
 
-      const projects = getCollectionProjects();
-      settle(getFirstProjectByOrder(projects));
+      settle(getCollectionProjects());
     };
 
     subscription = collection.subscribeChanges(tryResolve, {
@@ -74,23 +72,37 @@ async function getFirstProjectInOrganization(
 }
 
 export async function getFirstProjectDestination(
-  setSelectedOrgId: (orgId: string | null) => void
+  setSelectedOrgId: (orgId: string | null) => void,
+  savedOrgId?: string | null,
+  savedProjectId?: string | null
 ): Promise<string | null> {
   try {
     const organizationsResponse = await organizationsApi.getUserOrganizations();
-    const firstOrganization = getFirstOrganization(
-      organizationsResponse.organizations ?? []
-    );
+    const organizations = organizationsResponse.organizations ?? [];
 
-    if (!firstOrganization) {
+    // Prefer saved org if it still exists, otherwise fall back to first org
+    const savedOrg = savedOrgId
+      ? organizations.find((org) => org.id === savedOrgId)
+      : null;
+    const resolvedOrg = savedOrg ?? getFirstOrganization(organizations);
+
+    if (!resolvedOrg) {
       return null;
     }
 
-    setSelectedOrgId(firstOrganization.id);
+    setSelectedOrgId(resolvedOrg.id);
 
-    const firstProject = await getFirstProjectInOrganization(
-      firstOrganization.id
-    );
+    const projects = await getProjectsInOrganization(resolvedOrg.id);
+
+    // If we have a saved project in the same saved org, use it if still valid
+    if (savedProjectId && savedOrg && projects) {
+      if (projects.some((p) => p.id === savedProjectId)) {
+        return `/projects/${savedProjectId}`;
+      }
+    }
+
+    // Fall back to first project by sort order
+    const firstProject = projects ? getFirstProjectByOrder(projects) : null;
     if (!firstProject) {
       return null;
     }

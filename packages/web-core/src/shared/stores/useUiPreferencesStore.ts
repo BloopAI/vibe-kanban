@@ -313,6 +313,10 @@ type State = {
   kanbanViewMode: KanbanViewMode;
   listViewStatusFilter: string | null;
 
+  // Last selected organization and project (persisted via scratch store)
+  selectedOrgId: string | null;
+  selectedProjectId: string | null;
+
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
   setExpanded: (key: string, value: boolean) => void;
@@ -384,6 +388,11 @@ type State = {
   // Kanban view mode actions
   setKanbanViewMode: (mode: KanbanViewMode) => void;
   setListViewStatusFilter: (statusId: string | null) => void;
+
+  // Last selected organization and project actions
+  setSelectedOrgId: (orgId: string | null) => void;
+  clearSelectedOrgId: () => void;
+  setSelectedProjectId: (projectId: string | null) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -416,6 +425,10 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   // Kanban view mode state
   kanbanViewMode: 'kanban' as KanbanViewMode,
   listViewStatusFilter: null,
+
+  // Last selected organization and project
+  selectedOrgId: null,
+  selectedProjectId: null,
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -717,6 +730,11 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   setListViewStatusFilter: (statusId) =>
     set({ listViewStatusFilter: statusId }),
+
+  // Last selected organization and project actions
+  setSelectedOrgId: (orgId) => set({ selectedOrgId: orgId }),
+  clearSelectedOrgId: () => set({ selectedOrgId: null }),
+  setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),
 }));
 
 // Hook for repo action preference
