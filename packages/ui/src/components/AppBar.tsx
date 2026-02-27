@@ -7,6 +7,7 @@ import {
 import type { ReactNode } from 'react';
 import {
   LayoutIcon,
+  LinkIcon,
   PlusIcon,
   KanbanIcon,
   SpinnerIcon,
@@ -46,6 +47,7 @@ interface AppBarProps {
   hosts?: AppBarHost[];
   hostsLabel?: string;
   projectsLabel?: string;
+  onPairHostClick?: () => void;
   activeHostId?: string | null;
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
@@ -98,6 +100,7 @@ export function AppBar({
   hosts = [],
   hostsLabel,
   projectsLabel,
+  onPairHostClick,
   activeHostId = null,
   onCreateProject,
   onWorkspacesClick,
@@ -119,6 +122,8 @@ export function AppBar({
   discordIconPath,
 }: AppBarProps) {
   const { t } = useTranslation('common');
+  const showHostsSection =
+    showWorkspacesButton || hosts.length > 0 || !!onPairHostClick;
 
   return (
     <div
@@ -127,7 +132,7 @@ export function AppBar({
         'bg-secondary border-r border-border'
       )}
     >
-      {(showWorkspacesButton || hosts.length > 0) && (
+      {showHostsSection && (
         <div className="flex flex-col items-center gap-1">
           {hostsLabel && (
             <p className="w-10 text-center text-[9px] font-medium uppercase leading-none tracking-wide text-low">
@@ -189,10 +194,27 @@ export function AppBar({
               </Tooltip>
             );
           })}
+          {onPairHostClick && (
+            <Tooltip content="Pair host" side="right">
+              <button
+                type="button"
+                onClick={onPairHostClick}
+                className={cn(
+                  'flex items-center justify-center w-10 h-10 rounded-lg',
+                  'text-sm font-medium transition-colors cursor-pointer',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                  'bg-primary text-muted hover:text-normal hover:bg-tertiary'
+                )}
+                aria-label="Pair host"
+              >
+                <LinkIcon size={20} />
+              </button>
+            </Tooltip>
+          )}
         </div>
       )}
 
-      {hosts.length > 0 && (
+      {(hosts.length > 0 || onPairHostClick) && (
         <div className="w-8 h-px bg-border" aria-hidden="true" />
       )}
 
