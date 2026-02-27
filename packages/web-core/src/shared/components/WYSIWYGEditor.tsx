@@ -278,8 +278,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     // Ref to capture the Lexical editor instance for imperative methods
     const editorInstanceRef = useRef<LexicalEditor | null>(null);
 
-    // Expose focus method via ref
-    useImperativeHandle(ref, () => ({
+    // Expose focus method via ref.
+    // Guard: only pass a valid ref to useImperativeHandle. When the component
+    // is rendered without a ref (e.g. the nested preview editor), React dev
+    // mode may pass a frozen empty object which causes "Cannot add property
+    // current, object is not extensible".
+    const safeRef =
+      typeof ref === 'function' || (ref && 'current' in ref) ? ref : null;
+    useImperativeHandle(safeRef, () => ({
       focus: () => {
         editorInstanceRef.current?.focus();
       },
