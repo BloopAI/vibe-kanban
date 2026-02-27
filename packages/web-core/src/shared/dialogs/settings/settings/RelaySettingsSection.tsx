@@ -28,6 +28,8 @@ import {
 import {
   SettingsCard,
   SettingsCheckbox,
+  SettingsField,
+  SettingsInput,
   SettingsSaveBar,
   SettingsSelect,
 } from './SettingsComponents';
@@ -244,6 +246,27 @@ function LocalRelaySettingsSectionContent({
 
         {draft?.relay_enabled && (
           <div className="space-y-3 mt-2">
+            <SettingsField
+              label={t('settings.relay.hostName.label', 'Host name')}
+              description={t(
+                'settings.relay.hostName.helper',
+                'Shown when pairing from browser. Leave blank to use the default format.'
+              )}
+            >
+              <SettingsInput
+                value={draft.relay_host_name ?? ''}
+                onChange={(value) =>
+                  updateDraft({
+                    relay_host_name: value === '' ? null : value,
+                  })
+                }
+                placeholder={t(
+                  'settings.relay.hostName.placeholder',
+                  '<os_type> host (<user_id>)'
+                )}
+              />
+            </SettingsField>
+
             {isSignedIn ? (
               <>
                 {!enrollmentCode && (

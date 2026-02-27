@@ -6,12 +6,27 @@
 use anyhow::Context as _;
 use deployment::Deployment as _;
 use relay_tunnel::client::{RelayClientConfig, start_relay_client};
-use services::services::remote_client::RemoteClient;
+use services::services::{config::Config, remote_client::RemoteClient};
 
 use crate::DeploymentImpl;
 
 const RELAY_RECONNECT_INITIAL_DELAY_SECS: u64 = 1;
 const RELAY_RECONNECT_MAX_DELAY_SECS: u64 = 30;
+
+pub fn default_relay_host_name(user_id: &str) -> String {
+    let os_type = os_info::get().os_type().to_string();
+    format!("{os_type} host ({user_id})")
+}
+
+pub fn effective_relay_host_name(config: &Config, user_id: &str) -> String {
+    config
+        .relay_host_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| default_relay_host_name(user_id))
+}
 
 fn relay_api_base() -> Option<String> {
     std::env::var("VK_SHARED_RELAY_API_BASE")

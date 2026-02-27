@@ -66,6 +66,8 @@ pub struct Config {
     pub send_message_shortcut: SendMessageShortcut,
     #[serde(default = "default_relay_enabled")]
     pub relay_enabled: bool,
+    #[serde(default)]
+    pub relay_host_name: Option<String>,
 }
 
 impl Config {
@@ -96,6 +98,7 @@ impl Config {
             commit_reminder_prompt: None,
             send_message_shortcut: SendMessageShortcut::default(),
             relay_enabled: true,
+            relay_host_name: None,
         }
     }
 
@@ -151,6 +154,7 @@ impl Default for Config {
             commit_reminder_prompt: None,
             send_message_shortcut: SendMessageShortcut::default(),
             relay_enabled: true,
+            relay_host_name: None,
         }
     }
 }

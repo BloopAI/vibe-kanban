@@ -170,14 +170,11 @@ async fn main() -> Result<(), VibeKanbanError> {
     });
 
     deployment.server_info().set_port(actual_main_port).await;
-    deployment
-        .server_info()
-        .set_hostname(format!(
-            "{} local ({})",
-            env!("CARGO_PKG_NAME"),
-            deployment.user_id()
-        ))
-        .await;
+    let relay_host_name = {
+        let config = deployment.config().read().await;
+        tunnel::effective_relay_host_name(&config, deployment.user_id())
+    };
+    deployment.server_info().set_hostname(relay_host_name).await;
     tunnel::spawn_relay(&deployment).await;
 
     tokio::select! {

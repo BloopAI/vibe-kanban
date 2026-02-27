@@ -200,10 +200,23 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
+    let old_relay_host_name = tunnel::effective_relay_host_name(old, deployment.user_id());
+    let new_relay_host_name = tunnel::effective_relay_host_name(new, deployment.user_id());
+
+    deployment
+        .server_info()
+        .set_hostname(new_relay_host_name.clone())
+        .await;
+
     match (old.relay_enabled, new.relay_enabled) {
         (false, true) => tunnel::spawn_relay(deployment).await,
         (true, false) => tunnel::stop_relay(deployment).await,
-        (true, true) | (false, false) => (),
+        (true, true) => {
+            if old_relay_host_name != new_relay_host_name {
+                tunnel::spawn_relay(deployment).await;
+            }
+        }
+        (false, false) => (),
     }
 }
 
