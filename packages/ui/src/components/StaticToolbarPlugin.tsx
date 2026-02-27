@@ -9,8 +9,6 @@ import {
   ListBullets,
   ListNumbers,
   ArrowCounterClockwise,
-  Eye,
-  PencilSimple,
   type Icon,
   CheckIcon,
 } from '@phosphor-icons/react';
@@ -18,18 +16,12 @@ import { INSERT_MARKDOWN_LIST_COMMAND } from './MarkdownInsertPlugin';
 import { cn } from '../lib/cn';
 
 interface ToolbarButtonProps {
-  active?: boolean;
   onClick: () => void;
   icon: Icon;
   label: string;
 }
 
-function ToolbarButton({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-}: ToolbarButtonProps) {
+function ToolbarButton({ onClick, icon: Icon, label }: ToolbarButtonProps) {
   return (
     <button
       type="button"
@@ -40,12 +32,7 @@ function ToolbarButton({
       }}
       aria-label={label}
       title={label}
-      className={cn(
-        'p-half rounded-sm transition-colors',
-        active
-          ? 'text-normal bg-panel'
-          : 'text-low hover:text-normal hover:bg-panel/50'
-      )}
+      className="p-half rounded-sm transition-colors text-low hover:text-normal hover:bg-panel/50"
     >
       <Icon className="size-icon-sm" weight="bold" />
     </button>
@@ -55,15 +42,11 @@ function ToolbarButton({
 interface StaticToolbarPluginProps {
   saveStatus?: 'idle' | 'saved';
   extraActions?: ReactNode;
-  isPreviewMode?: boolean;
-  onTogglePreview?: () => void;
 }
 
 export function StaticToolbarPlugin({
   saveStatus,
   extraActions,
-  isPreviewMode = false,
-  onTogglePreview,
 }: StaticToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
 
@@ -126,19 +109,6 @@ export function StaticToolbarPlugin({
         <>
           <div className="w-px h-4 bg-border mx-half" />
           <div className="flex items-center gap-half">{extraActions}</div>
-        </>
-      )}
-
-      {/* Preview toggle */}
-      {onTogglePreview && (
-        <>
-          <div className="w-px h-4 bg-border mx-half" />
-          <ToolbarButton
-            active={isPreviewMode}
-            onClick={onTogglePreview}
-            icon={isPreviewMode ? PencilSimple : Eye}
-            label={isPreviewMode ? 'Edit' : 'Preview'}
-          />
         </>
       )}
 

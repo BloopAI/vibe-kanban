@@ -71,7 +71,14 @@ import { cn } from '@/shared/lib/utils';
 import { repoApi } from '@/shared/lib/api';
 import { searchTagsAndFiles } from '@/shared/lib/searchTagsAndFiles';
 import { Button } from '@vibe/ui/components/Button';
-import { Check, Clipboard, Pencil, Trash2 } from 'lucide-react';
+import {
+  Check,
+  Clipboard,
+  Eye,
+  Pencil,
+  PencilLine,
+  Trash2,
+} from 'lucide-react';
 import type { RepoItem } from '@/shared/types/selectionItems';
 import { TagEditDialog } from '@/shared/dialogs/shared/TagEditDialog';
 import { ImagePreviewDialog } from '@/shared/dialogs/wysiwyg/ImagePreviewDialog';
@@ -520,6 +527,28 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 transformers={activeTransformers}
               />
               {!disabled && !isPreviewMode && <ToolbarPlugin />}
+
+              {/* Preview toggle — top-right corner of every editable editor */}
+              {!disabled && (
+                <div className="flex justify-end -mb-6 relative z-10">
+                  <Button
+                    type="button"
+                    variant="icon"
+                    size="icon"
+                    aria-label={isPreviewMode ? 'Edit' : 'Preview'}
+                    title={isPreviewMode ? 'Edit' : 'Preview'}
+                    onClick={() => setIsPreviewMode((p) => !p)}
+                    className="h-6 w-6 p-1 text-muted-foreground hover:text-foreground"
+                  >
+                    {isPreviewMode ? (
+                      <PencilLine className="w-3.5 h-3.5" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                  </Button>
+                </div>
+              )}
+
               <div
                 className="relative"
                 style={
@@ -563,8 +592,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <StaticToolbarPlugin
                   saveStatus={saveStatus}
                   extraActions={staticToolbarActions}
-                  isPreviewMode={isPreviewMode}
-                  onTogglePreview={() => setIsPreviewMode((p) => !p)}
                 />
               )}
 
