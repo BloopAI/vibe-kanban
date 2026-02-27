@@ -1,8 +1,13 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { Navbar } from "@vibe/ui/components/Navbar";
+import {
+  MOBILE_TABS,
+  Navbar,
+  type MobileTabId,
+} from "@vibe/ui/components/Navbar";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
+import { useMobileActiveTab } from "@/shared/stores/useUiPreferencesStore";
 
 interface RemoteNavbarContainerProps {
   organizationName: string | null;
@@ -18,6 +23,16 @@ export function RemoteNavbarContainer({
   mobileUserSlot,
 }: RemoteNavbarContainerProps) {
   const location = useLocation();
+
+  const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
+
+  const remoteMobileTabs = useMemo(
+    () =>
+      MOBILE_TABS.filter((t) => t.id !== "preview" && t.id !== "workspaces"),
+    [],
+  );
+
+  const isOnWorkspaceView = /^\/workspaces\/[^/]+/.test(location.pathname);
   const navigate = useNavigate();
 
   const isOnProjectPage = location.pathname.startsWith("/projects/");
@@ -66,6 +81,10 @@ export function RemoteNavbarContainer({
       onNavigateBack={handleNavigateBack}
       onOpenDrawer={onOpenDrawer}
       onOpenSettings={handleOpenSettings}
+      mobileActiveTab={mobileActiveTab as MobileTabId}
+      onMobileTabChange={(tab) => setMobileActiveTab(tab)}
+      mobileTabs={remoteMobileTabs}
+      showMobileTabs={isOnWorkspaceView}
     />
   );
 }
