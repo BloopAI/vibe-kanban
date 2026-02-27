@@ -2,7 +2,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cloneDeep, isEqual, merge } from 'lodash';
-import { CheckIcon, CopyIcon, SignInIcon, SpinnerIcon } from '@phosphor-icons/react';
+import {
+  CheckIcon,
+  CopyIcon,
+  SignInIcon,
+  SpinnerIcon,
+} from '@phosphor-icons/react';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -285,7 +290,10 @@ function LocalRelaySettingsSectionContent() {
                         onClick={() => {
                           void navigator.clipboard.writeText(enrollmentCode);
                           setEnrollmentCodeCopied(true);
-                          setTimeout(() => setEnrollmentCodeCopied(false), 2000);
+                          setTimeout(
+                            () => setEnrollmentCodeCopied(false),
+                            2000
+                          );
                         }}
                         className="p-2 text-low hover:text-normal transition-colors rounded-sm"
                         aria-label={t(
