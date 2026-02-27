@@ -1,7 +1,9 @@
 pub mod attachments;
 pub mod auth;
 pub mod blobs;
+pub mod electric_publications;
 pub mod github_app;
+pub mod hosts;
 pub mod identity_errors;
 pub mod invitations;
 pub mod issue_assignees;

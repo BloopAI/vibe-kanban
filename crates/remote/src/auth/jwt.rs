@@ -62,7 +62,9 @@ pub struct RefreshTokenClaims {
     pub iat: i64,
     pub exp: i64,
     pub aud: String,
-    pub provider_tokens_blob: String, // Encrypted JSON blob containing provider tokens
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_tokens_blob: Option<String>, // Legacy claim for older refresh tokens
 }
 
 #[derive(Debug, Clone)]
@@ -77,7 +79,8 @@ pub struct RefreshTokenDetails {
     pub user_id: Uuid,
     pub session_id: Uuid,
     pub refresh_token_id: Uuid,
-    pub provider_token_details: ProviderTokenDetails,
+    pub provider: String,
+    pub legacy_provider_token_details: Option<ProviderTokenDetails>,
 }
 
 #[derive(Clone)]
@@ -90,7 +93,6 @@ pub struct Tokens {
     pub access_token: String,
     pub refresh_token: String,
     pub refresh_token_id: Uuid,
-    pub encrypted_provider_tokens: String,
 }
 
 impl JwtService {
@@ -104,7 +106,7 @@ impl JwtService {
         &self,
         session: &AuthSession,
         user: &User,
-        provider_token: ProviderTokenDetails,
+        provider: &str,
     ) -> Result<Tokens, JwtError> {
         let now = Utc::now();
         let refresh_token_id = Uuid::new_v4();
@@ -119,8 +121,6 @@ impl JwtService {
             aud: "access".to_string(),
         };
 
-        let encrypted_provider_tokens = self.encrypt_provider_tokens(&provider_token)?;
-
         // Refresh token, long-lived (~1 year)
         let refresh_exp = now + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
         let refresh_claims = RefreshTokenClaims {
@@ -130,7 +130,8 @@ impl JwtService {
             iat: now.timestamp(),
             exp: refresh_exp.timestamp(),
             aud: "refresh".to_string(),
-            provider_tokens_blob: encrypted_provider_tokens.clone(),
+            provider: Some(provider.to_string()),
+            provider_tokens_blob: None,
         };
 
         let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
@@ -151,8 +152,22 @@ impl JwtService {
             access_token,
             refresh_token,
             refresh_token_id,
-            encrypted_provider_tokens,
         })
+    }
+
+    pub fn generate_access_token(&self, user_id: Uuid, session_id: Uuid) -> Result<String, JwtError> {
+        let now = Utc::now();
+        let access_exp = now + ChronoDuration::seconds(ACCESS_TOKEN_TTL_SECONDS);
+        let claims = AccessTokenClaims {
+            sub: user_id,
+            session_id,
+            iat: now.timestamp(),
+            exp: access_exp.timestamp(),
+            aud: "access".to_string(),
+        };
+
+        let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
+        Ok(encode(&Header::new(Algorithm::HS256), &claims, &encoding_key)?)
     }
 
     pub fn decode_access_token(&self, token: &str) -> Result<AccessTokenDetails, JwtError> {
@@ -208,13 +223,26 @@ impl JwtService {
         let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
         let data = decode::<RefreshTokenClaims>(token, &decoding_key, &validation)?;
         let claims = data.claims;
-        let provider_token_details = self.decrypt_provider_tokens(&claims.provider_tokens_blob)?;
+
+        let (provider, legacy_provider_token_details) =
+            if let Some(provider) = claims.provider.as_ref().filter(|p| !p.trim().is_empty()) {
+                (provider.to_string(), None)
+            } else if let Some(provider_tokens_blob) = claims.provider_tokens_blob.as_deref() {
+                let provider_token_details = self.decrypt_provider_tokens(provider_tokens_blob)?;
+                (
+                    provider_token_details.provider.clone(),
+                    Some(provider_token_details),
+                )
+            } else {
+                return Err(JwtError::InvalidToken);
+            };
 
         Ok(RefreshTokenDetails {
             user_id: claims.sub,
             session_id: claims.session_id,
             refresh_token_id: claims.jti,
-            provider_token_details,
+            provider,
+            legacy_provider_token_details,
         })
     }
 

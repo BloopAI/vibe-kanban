@@ -2,21 +2,21 @@ use std::path::PathBuf;
 
 use axum::{
     Router,
-    extract::{
-        Query, State,
-        ws::{Message, WebSocket, WebSocketUpgrade},
-    },
+    extract::{Query, State, ws::Message},
     response::IntoResponse,
     routing::get,
 };
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct TerminalQuery {
@@ -50,7 +50,7 @@ enum TerminalMessage {
 }
 
 pub async fn terminal_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TerminalQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -93,7 +93,7 @@ pub async fn terminal_ws(
 }
 
 async fn handle_terminal_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     working_dir: PathBuf,
     cols: u16,
@@ -107,58 +107,65 @@ async fn handle_terminal_ws(
         Ok(result) => result,
         Err(e) => {
             tracing::error!("Failed to create PTY session: {}", e);
-            let _ = send_error(socket, &e.to_string()).await;
+            let _ = send_error(&mut socket, &e.to_string()).await;
             return;
         }
     };
 
-    let (mut ws_sender, mut ws_receiver) = socket.split();
-
     let pty_service = deployment.pty().clone();
     let session_id_for_input = session_id;
 
-    let output_task = tokio::spawn(async move {
-        while let Some(data) = output_rx.recv().await {
-            let msg = TerminalMessage::Output {
-                data: BASE64.encode(&data),
-            };
-            let json = match serde_json::to_string(&msg) {
-                Ok(j) => j,
-                Err(_) => continue,
-            };
-            if ws_sender.send(Message::Text(json.into())).await.is_err() {
-                break;
-            }
-        }
-        ws_sender
-    });
+    loop {
+        tokio::select! {
+            maybe_output = output_rx.recv() => {
+                let Some(data) = maybe_output else {
+                    break;
+                };
 
-    while let Some(Ok(msg)) = ws_receiver.next().await {
-        match msg {
-            Message::Text(text) => {
-                if let Ok(cmd) = serde_json::from_str::<TerminalCommand>(&text) {
-                    match cmd {
-                        TerminalCommand::Input { data } => {
-                            if let Ok(bytes) = BASE64.decode(&data) {
-                                let _ = pty_service.write(session_id_for_input, &bytes).await;
+                let msg = TerminalMessage::Output {
+                    data: BASE64.encode(&data),
+                };
+                let json = match serde_json::to_string(&msg) {
+                    Ok(j) => j,
+                    Err(_) => continue,
+                };
+
+                if socket.send(Message::Text(json.into())).await.is_err() {
+                    break;
+                }
+            }
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Text(text))) => {
+                        if let Ok(cmd) = serde_json::from_str::<TerminalCommand>(text.as_str()) {
+                            match cmd {
+                                TerminalCommand::Input { data } => {
+                                    if let Ok(bytes) = BASE64.decode(&data) {
+                                        let _ = pty_service.write(session_id_for_input, &bytes).await;
+                                    }
+                                }
+                                TerminalCommand::Resize { cols, rows } => {
+                                    let _ = pty_service.resize(session_id_for_input, cols, rows).await;
+                                }
                             }
                         }
-                        TerminalCommand::Resize { cols, rows } => {
-                            let _ = pty_service.resize(session_id_for_input, cols, rows).await;
-                        }
+                    }
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(error) => {
+                        tracing::warn!("terminal WS receive error: {}", error);
+                        break;
                     }
                 }
             }
-            Message::Close(_) => break,
-            _ => {}
         }
     }
 
     let _ = deployment.pty().close_session(session_id).await;
-    output_task.abort();
 }
 
-async fn send_error(mut socket: WebSocket, message: &str) -> Result<(), axum::Error> {
+async fn send_error(socket: &mut SignedWebSocket, message: &str) -> anyhow::Result<()> {
     let msg = TerminalMessage::Error {
         message: message.to_string(),
     };

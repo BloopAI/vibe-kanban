@@ -14,10 +14,7 @@ use anyhow;
 use api_types::{CreateWorkspaceRequest, PullRequestStatus, UpsertPullRequestRequest};
 use axum::{
     Extension, Json, Router,
-    extract::{
-        Path as AxumPath, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path as AxumPath, Query, State, ws::Message},
     http::StatusCode,
     middleware::from_fn_with_state,
     response::{IntoResponse, Json as ResponseJson},
@@ -60,8 +57,13 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, middleware::load_workspace_middleware,
-    routes::task_attempts::gh_cli_setup::GhCliSetupError,
+    DeploymentImpl,
+    error::ApiError,
+    middleware::load_workspace_middleware,
+    routes::{
+        relay_ws::{SignedWebSocket, SignedWsUpgrade},
+        task_attempts::gh_cli_setup::GhCliSetupError,
+    },
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -224,7 +226,7 @@ pub async fn run_agent_setup(
 
 #[axum::debug_handler]
 pub async fn stream_task_attempt_diff_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     Query(params): Query<DiffStreamQuery>,
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -240,12 +242,12 @@ pub async fn stream_task_attempt_diff_ws(
 }
 
 async fn handle_task_attempt_diff_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     workspace: Workspace,
     stats_only: bool,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+    use futures_util::{StreamExt, TryStreamExt};
     use utils::log_msg::LogMsg;
 
     let stream = deployment
@@ -255,15 +257,13 @@ async fn handle_task_attempt_diff_ws(
 
     let mut stream = stream.map_ok(|msg: LogMsg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-
     loop {
         tokio::select! {
             // Wait for next stream item
             item = stream.next() => {
                 match item {
                     Some(Ok(msg)) => {
-                        if sender.send(msg).await.is_err() {
+                        if socket.send(msg).await.is_err() {
                             break;
                         }
                     }
@@ -275,9 +275,12 @@ async fn handle_task_attempt_diff_ws(
                 }
             }
             // Detect client disconnection
-            msg = receiver.next() => {
-                if msg.is_none() {
-                    break;
+            msg = socket.recv() => {
+                match msg {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
                 }
             }
         }
@@ -286,7 +289,7 @@ async fn handle_task_attempt_diff_ws(
 }
 
 pub async fn stream_workspaces_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     Query(query): Query<WorkspaceStreamQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
@@ -299,12 +302,12 @@ pub async fn stream_workspaces_ws(
 }
 
 async fn handle_workspaces_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     archived: Option<bool>,
     limit: Option<i64>,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt, TryStreamExt};
+    use futures_util::{StreamExt, TryStreamExt};
 
     let mut stream = deployment
         .events()
@@ -312,14 +315,12 @@ async fn handle_workspaces_ws(
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-
     loop {
         tokio::select! {
             item = stream.next() => {
                 match item {
                     Some(Ok(msg)) => {
-                        if sender.send(msg).await.is_err() {
+                        if socket.send(msg).await.is_err() {
                             break;
                         }
                     }
@@ -330,9 +331,12 @@ async fn handle_workspaces_ws(
                     None => break,
                 }
             }
-            msg = receiver.next() => {
-                if msg.is_none() {
-                    break;
+            msg = socket.recv() => {
+                match msg {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
                 }
             }
         }
@@ -435,6 +439,14 @@ pub async fn merge_task_attempt(
         &merge_commit_id,
     )
     .await?;
+
+    if let Ok(client) = deployment.remote_client() {
+        let workspace_id = workspace.id;
+        tokio::spawn(async move {
+            remote_sync::sync_local_workspace_merge_to_remote(&client, workspace_id).await;
+        });
+    }
+
     if !workspace.pinned
         && let Err(e) = deployment.container().archive_workspace(workspace.id).await
     {
@@ -1619,6 +1631,11 @@ pub async fn delete_workspace(
     // Gather data needed for background cleanup
     let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
     let repositories = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let session_ids: Vec<Uuid> = Session::find_by_workspace_id(pool, workspace.id)
+        .await?
+        .into_iter()
+        .map(|s| s.id)
+        .collect();
 
     // Delete workspace from database (FK CASCADE will handle sessions, execution_processes, etc.)
     let rows_affected = Workspace::delete(pool, workspace.id).await?;
@@ -1660,13 +1677,25 @@ pub async fn delete_workspace(
     }
 
     // Spawn background cleanup task for filesystem resources
-    if let Some(workspace_dir) = workspace_dir {
-        let workspace_id = workspace.id;
-        let delete_branches = query.delete_branches;
-        let branch_name = workspace.branch.clone();
-        let repo_paths: Vec<PathBuf> = repositories.iter().map(|r| r.path.clone()).collect();
+    let workspace_id = workspace.id;
+    let delete_branches = query.delete_branches;
+    let branch_name = workspace.branch.clone();
+    let repo_paths: Vec<PathBuf> = repositories.iter().map(|r| r.path.clone()).collect();
 
-        tokio::spawn(async move {
+    tokio::spawn(async move {
+        for session_id in session_ids {
+            if let Err(e) =
+                services::services::execution_process::remove_session_process_logs(session_id).await
+            {
+                tracing::warn!(
+                    "Failed to remove filesystem process logs for session {}: {}",
+                    session_id,
+                    e
+                );
+            }
+        }
+
+        if let Some(workspace_dir) = workspace_dir {
             tracing::info!(
                 "Starting background cleanup for workspace {} at {}",
                 workspace_id,
@@ -1687,31 +1716,31 @@ pub async fn delete_workspace(
                     workspace_id
                 );
             }
+        }
 
-            if delete_branches {
-                let git_service = GitService::new();
-                for repo_path in repo_paths {
-                    match git_service.delete_branch(&repo_path, &branch_name) {
-                        Ok(()) => {
-                            tracing::info!(
-                                "Deleted branch '{}' from repo {:?}",
-                                branch_name,
-                                repo_path
-                            );
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to delete branch '{}' from repo {:?}: {}",
-                                branch_name,
-                                repo_path,
-                                e
-                            );
-                        }
+        if delete_branches {
+            let git_service = GitService::new();
+            for repo_path in repo_paths {
+                match git_service.delete_branch(&repo_path, &branch_name) {
+                    Ok(()) => {
+                        tracing::info!(
+                            "Deleted branch '{}' from repo {:?}",
+                            branch_name,
+                            repo_path
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Failed to delete branch '{}' from repo {:?}: {}",
+                            branch_name,
+                            repo_path,
+                            e
+                        );
                     }
                 }
             }
-        });
-    }
+        }
+    });
 
     // Return 202 Accepted to indicate deletion was scheduled
     Ok((StatusCode::ACCEPTED, ResponseJson(ApiResponse::success(()))))

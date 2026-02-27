@@ -1,20 +1,21 @@
 use axum::{
     Json, Router,
-    extract::{
-        Path, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path, State, ws::Message},
     response::{IntoResponse, Json as ResponseJson},
     routing::get,
 };
 use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt, TryStreamExt};
+use futures_util::{StreamExt, TryStreamExt};
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+};
 
 /// Path parameters for scratch routes with composite key
 #[derive(Deserialize)]
@@ -101,7 +102,7 @@ pub async fn delete_scratch(
 }
 
 pub async fn stream_scratch_ws(
-    ws: WebSocketUpgrade,
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
 ) -> impl IntoResponse {
@@ -113,7 +114,7 @@ pub async fn stream_scratch_ws(
 }
 
 async fn handle_scratch_ws(
-    socket: WebSocket,
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,
@@ -124,20 +125,29 @@ async fn handle_scratch_ws(
         .await?
         .map_ok(|msg| msg.to_ws_message_unchecked());
 
-    let (mut sender, mut receiver) = socket.split();
-
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
-
-    while let Some(item) = stream.next().await {
-        match item {
-            Ok(msg) => {
-                if sender.send(msg).await.is_err() {
-                    break;
+    loop {
+        tokio::select! {
+            item = stream.next() => {
+                match item {
+                    Some(Ok(msg)) => {
+                        if socket.send(msg).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(Err(e)) => {
+                        tracing::error!("scratch stream error: {}", e);
+                        break;
+                    }
+                    None => break,
                 }
             }
-            Err(e) => {
-                tracing::error!("scratch stream error: {}", e);
-                break;
+            inbound = socket.recv() => {
+                match inbound {
+                    Ok(Some(Message::Close(_))) => break,
+                    Ok(Some(_)) => {}
+                    Ok(None) => break,
+                    Err(_) => break,
+                }
             }
         }
     }

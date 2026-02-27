@@ -87,6 +87,39 @@ pub async fn sync_workspace_to_remote(
     update_workspace_on_remote(client, workspace_id, name, archived, stats).await;
 }
 
+/// Syncs issue status to remote for a workspace merged locally without a PR.
+pub async fn sync_local_workspace_merge_to_remote(client: &RemoteClient, workspace_id: Uuid) {
+    match client
+        .sync_issue_status_from_local_workspace_merge(workspace_id)
+        .await
+    {
+        Ok(()) => {
+            debug!(
+                "Synced local workspace merge status to remote for workspace {}",
+                workspace_id
+            );
+        }
+        Err(RemoteClientError::Auth) => {
+            debug!(
+                "Local workspace merge sync skipped for workspace {}: not authenticated",
+                workspace_id
+            );
+        }
+        Err(RemoteClientError::Http { status: 404, .. }) => {
+            debug!(
+                "Local workspace merge sync skipped for workspace {}: workspace not found on remote",
+                workspace_id
+            );
+        }
+        Err(e) => {
+            error!(
+                "Failed to sync local workspace merge status for workspace {}: {}",
+                workspace_id, e
+            );
+        }
+    }
+}
+
 async fn upsert_pr_on_remote(client: &RemoteClient, request: UpsertPullRequestRequest) {
     let number = request.number;
     let workspace_id = request.local_workspace_id;

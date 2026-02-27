@@ -1,9 +1,9 @@
 <p align="center">
   <a href="https://vibekanban.com">
     <picture>
-      <source srcset="frontend/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
-      <source srcset="frontend/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
-      <img src="frontend/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
+      <source srcset="packages/public/vibe-kanban-logo-dark.svg" media="(prefers-color-scheme: dark)">
+      <source srcset="packages/public/vibe-kanban-logo.svg" media="(prefers-color-scheme: light)">
+      <img src="packages/public/vibe-kanban-logo.svg" alt="Vibe Kanban Logo">
     </picture>
   </a>
 </p>
@@ -19,7 +19,7 @@
   <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
 </h1>
 
-![](frontend/public/vibe-kanban-screenshot-overview.png)
+![](packages/public/vibe-kanban-screenshot-overview.png)
 
 ## Overview
 
@@ -63,7 +63,7 @@ We would prefer that ideas and changes are first raised with the core team via [
 ### Prerequisites
 
 - [Rust](https://rustup.rs/) (latest stable)
-- [Node.js](https://nodejs.org/) (>=18)
+- [Node.js](https://nodejs.org/) (>=20)
 - [pnpm](https://pnpm.io/) (>=8)
 
 Additional development tools:
@@ -83,15 +83,15 @@ pnpm i
 pnpm run dev
 ```
 
-This will start the backend and frontend. A blank DB will be copied from the `dev_assets_seed` folder.
+This will start the backend and web app. A blank DB will be copied from the `dev_assets_seed` folder.
 
-### Building the frontend
+### Building the web app
 
-To build just the frontend:
+To build just the web app:
 
 ```bash
-cd frontend
-pnpm build
+cd packages/local-web
+pnpm run build
 ```
 
 ### Build from source (macOS)
@@ -115,6 +115,9 @@ The following environment variables can be configured at build time or runtime:
 | `MCP_PORT` | Runtime | Value of `BACKEND_PORT` | MCP server connection port |
 | `DISABLE_WORKTREE_CLEANUP` | Runtime | Not set | Disable all git worktree cleanup including orphan and expired workspace cleanup (for debugging) |
 | `VK_ALLOWED_ORIGINS` | Runtime | Not set | Comma-separated list of origins that are allowed to make backend API requests (e.g., `https://my-vibekanban-frontend.com`) |
+| `VK_SHARED_API_BASE` | Runtime | Not set | Base URL for the remote/cloud API used by the local desktop app |
+| `VK_SHARED_RELAY_API_BASE` | Runtime | Not set | Base URL for the relay API used by tunnel-mode connections |
+| `VK_TUNNEL` | Runtime | Not set | Enable relay tunnel mode when set (requires relay API base URL) |
 
 **Build-time variables** must be set when running `pnpm run build`. **Runtime variables** are read when the application starts.
 

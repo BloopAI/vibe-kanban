@@ -1,6 +1,6 @@
 [package]
 name = "server"
-version = "0.1.18"
+version = "0.1.19"
 edition = "2024"
 default-run = "server"
 
@@ -17,6 +17,8 @@ git = { path = "../git" }
 git-host = { path = "../git-host" }
 db = { path = "../db" }
 services = { path = "../services" }
+relay-tunnel = { path = "../relay-tunnel" }
+trusted-key-auth = { path = "../trusted-key-auth" }
 tokio = { workspace = true }
 shlex = "1.3.0"
 tokio-util = { version = "0.7", features = ["io"] }
@@ -39,7 +41,14 @@ strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
 futures-util = "0.3"
+futures = "0.3"
+bytes = "1"
+http = "1"
+hyper = { version = "1", features = ["client", "server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+tokio-yamux = "0.3.17"
 base64 = "0.22"
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 git2 = { workspace = true }
 mime_guess = "2.0"
 rust-embed = "8.2"
@@ -47,7 +56,9 @@ url = "2.5"
 rand = { version = "0.8", features = ["std"] }
 sha2 = "0.10"
 regex = "1"
-tokio-tungstenite = { version = "0.24", features = ["connect"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+native-tls = "0.2"
+rmp-serde = "1.3"
 
 [build-dependencies]
 dotenv = "0.15"

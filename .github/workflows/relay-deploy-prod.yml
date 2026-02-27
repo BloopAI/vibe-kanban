@@ -1,0 +1,108 @@
+name: Deploy Relay Prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Version bump type"
+        required: true
+        default: "patch"
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+concurrency:
+  group: relay-deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  RUST_TOOLCHAIN: nightly-2025-12-04
+
+jobs:
+  release-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cache cargo-edit
+        uses: actions/cache@v5
+        id: cache-cargo-edit
+        with:
+          path: ~/.cargo/bin/cargo-set-version
+          key: cargo-edit-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}
+
+      - name: Install cargo-edit
+        if: steps.cache-cargo-edit.outputs.cache-hit != 'true'
+        run: cargo install cargo-edit
+
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
+
+      - name: Determine and update version
+        id: version
+        run: |
+          # Get current version from crates/relay-tunnel/Cargo.toml
+          current_version=$(grep '^version = ' crates/relay-tunnel/Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          echo "Current relay-tunnel version: $current_version"
+
+          # Parse version components
+          IFS='.' read -r major minor patch <<< "$current_version"
+
+          # Bump based on type
+          case "${{ github.event.inputs.version_type }}" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+          esac
+
+          new_version="${major}.${minor}.${patch}"
+          new_tag="relay-v${new_version}"
+
+          # Update version in crates/relay-tunnel/Cargo.toml
+          cd crates/relay-tunnel
+          cargo set-version "$new_version"
+          cargo update relay-tunnel
+          cd ../..
+
+          echo "New version: $new_version"
+          echo "New tag: $new_tag"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
+          echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
+          echo "new_ref=$new_tag" >> $GITHUB_OUTPUT
+
+      - name: Commit changes and create tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add crates/relay-tunnel/Cargo.toml crates/relay-tunnel/Cargo.lock
+          git commit -m "chore: bump relay-tunnel version to ${{ steps.version.outputs.new_version }}"
+          git tag -a ${{ steps.version.outputs.new_tag }} -m "Relay release ${{ steps.version.outputs.new_tag }}"
+          git push
+          git push --tags
+
+      - name: Dispatch relay deployment workflow
+        uses: peter-evans/repository-dispatch@28959ce8df70de7be546dd1250a005dd32156697 # v4.0.1
+        with:
+          token: ${{ secrets.REMOTE_DEPLOYMENT_TOKEN }}
+          repository: BloopAI/vibe-kanban-remote-deployment
+          event-type: vibe-kanban-relay-deploy-prod
+          client-payload: |
+            {
+              "ref": "${{ steps.version.outputs.new_ref }}",
+              "sha": "${{ github.sha }}",
+              "version": "${{ steps.version.outputs.new_version }}"
+            }

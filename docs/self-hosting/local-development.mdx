@@ -55,7 +55,7 @@ You need at least one OAuth provider. Choose GitHub, Google, or both.
 
 ## Step 3: Configure Environment
 
-Create a `.env.remote` file in the repository root:
+Create a `.env.remote` file in `crates/remote/`:
 
 ```bash
 # Generate a secure JWT secret
@@ -79,6 +79,10 @@ GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 
+# Relay (required for relay/tunnel features)
+# For plain HTTP local dev:
+VITE_RELAY_API_BASE_URL=http://localhost:8082
+
 # Email invitations (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
 ```
@@ -95,13 +99,20 @@ From the `crates/remote` directory, start all services:
 
 ```bash
 cd crates/remote
-docker compose --env-file ../../.env.remote -f docker-compose.yml up --build
+docker compose --env-file .env.remote -f docker-compose.yml up --build
+```
+
+Or from the repo root:
+
+```bash
+pnpm run remote:dev
 ```
 
 This starts:
 - **PostgreSQL** on port 5433 (external) / 5432 (internal)
 - **ElectricSQL** on port 3000 (internal only, used by Remote Server for real-time sync)
 - **Remote Server** on port 3000 (external) / 8081 (internal)
+- **Relay Server** on port 8082 (external and internal)
 
 <Warning>
 The remote server binds to `127.0.0.1:3000` only - it's not accessible from other machines. For production, use a reverse proxy.
@@ -131,6 +142,46 @@ pnpm run dev
 ```
 
 The desktop client will now connect to your local Cloud instance instead of the hosted version.
+
+To test relay/tunnel mode end-to-end, add:
+
+```bash
+export VK_SHARED_API_BASE=https://localhost:3001
+export VK_SHARED_RELAY_API_BASE=https://relay.localhost:3001
+export VK_TUNNEL=1
+```
+
+This mode requires local HTTPS + Caddy routing (next step).
+
+## Step 7: Optional Local HTTPS + Caddy (required for tunnel-mode testing)
+
+Create a Caddy config that routes:
+- `localhost:3001` -> remote server (`127.0.0.1:3000`)
+- `relay.localhost:3001` and `*.relay.localhost:3001` -> relay server (`127.0.0.1:8082`)
+
+```bash
+caddy run --config - --adapter caddyfile <<'EOF'
+localhost:3001, relay.localhost:3001, *.relay.localhost:3001 {
+  tls internal
+
+  @relay host relay.localhost *.relay.localhost
+  handle @relay {
+    reverse_proxy 127.0.0.1:8082
+  }
+
+  @app expression `{http.request.host} == "localhost:3001" || {http.request.host} == "localhost"`
+  handle @app {
+    reverse_proxy 127.0.0.1:3000
+  }
+
+  respond "not found" 404
+}
+EOF
+```
+
+If you use this HTTPS setup, update OAuth callback URLs to:
+- GitHub: `https://localhost:3001/v1/oauth/github/callback`
+- Google: `https://localhost:3001/v1/oauth/google/callback`
 
 ## Stopping the Stack
 
@@ -162,9 +213,13 @@ docker compose logs remote-db
 </Accordion>
 
 <Accordion title="OAuth callback errors">
-Verify your OAuth callback URLs match exactly:
-- GitHub: `http://localhost:3000/v1/oauth/github/callback`
-- Google: `http://localhost:3000/v1/oauth/google/callback`
+Verify your OAuth callback URLs match exactly for your setup:
+- HTTP local stack:
+  - GitHub: `http://localhost:3000/v1/oauth/github/callback`
+  - Google: `http://localhost:3000/v1/oauth/google/callback`
+- HTTPS + Caddy:
+  - GitHub: `https://localhost:3001/v1/oauth/github/callback`
+  - Google: `https://localhost:3001/v1/oauth/google/callback`
 </Accordion>
 
 <Accordion title="ElectricSQL fails to connect">
@@ -175,7 +230,7 @@ ElectricSQL requires the `electric_sync` database user, which is created automat
 3. Restart the stack — ElectricSQL will retry the connection
 
 ```bash
-docker compose --env-file ../../.env.remote -f docker-compose.yml restart electric
+docker compose --env-file .env.remote -f docker-compose.yml restart electric
 ```
 </Accordion>
 
@@ -188,6 +243,18 @@ ports:
 ```
 
 Update your OAuth callback URLs accordingly.
+</Accordion>
+
+<Accordion title="Relay health endpoint returns HTML instead of JSON">
+**Problem:** `curl -sk https://relay.localhost:3001/health` returns HTML, and relay/tunnel fails.
+
+**Cause:** Caddy routed relay hostnames to the remote app (`:3000`) instead of relay server (`:8082`).
+
+**Solution:**
+1. Use host-specific routing for `relay.localhost` and `*.relay.localhost`
+2. Verify:
+   - `curl -sk https://relay.localhost:3001/health` returns `{"status":"ok"}`
+   - `curl -sk https://localhost:3001/v1/health` returns remote server health JSON
 </Accordion>
 </AccordionGroup>
 

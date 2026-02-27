@@ -24,6 +24,7 @@ use services::services::{
     worktree_manager::WorktreeError,
 };
 use thiserror::Error;
+use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
 
 #[derive(Debug, Error, ts_rs::TS)]
@@ -73,6 +74,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -401,6 +404,11 @@ impl IntoResponse for ApiError {
             ApiError::Forbidden(msg) => {
                 ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
             }
+            ApiError::TooManyRequests(msg) => ErrorInfo::with_status(
+                StatusCode::TOO_MANY_REQUESTS,
+                "TooManyRequests",
+                msg.clone(),
+            ),
             ApiError::Multipart(_) => ErrorInfo::bad_request(
                 "MultipartError",
                 "Failed to upload file. Please ensure the file is valid and try again.",
@@ -462,6 +470,18 @@ impl IntoResponse for ApiError {
             .unwrap_or_else(|| format!("{}: {}", info.error_type, self));
         let response = ApiResponse::<()>::error(&message);
         (info.status, Json(response)).into_response()
+    }
+}
+
+impl From<TrustedKeyAuthError> for ApiError {
+    fn from(err: TrustedKeyAuthError) -> Self {
+        match err {
+            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
+            TrustedKeyAuthError::BadRequest(msg) => ApiError::BadRequest(msg),
+            TrustedKeyAuthError::Forbidden(msg) => ApiError::Forbidden(msg),
+            TrustedKeyAuthError::TooManyRequests(msg) => ApiError::TooManyRequests(msg),
+            TrustedKeyAuthError::Io(e) => ApiError::Io(e),
+        }
     }
 }
 

@@ -16,9 +16,9 @@ lint_count() {
   
   (
     set -eo pipefail
-    cd "$dir/frontend"
+    cd "$dir/packages/local-web"
     # Lint current directory using ESLint from PR workspace
-    LINT_I18N=true npx --prefix "$REPO_ROOT/frontend" eslint . \
+    LINT_I18N=true npx --prefix "$REPO_ROOT/packages/local-web" eslint . \
       --ext ts,tsx \
       --format json \
       --output-file "$tmp" \
@@ -63,7 +63,7 @@ check_duplicate_keys() {
 }
 
 check_duplicate_json_keys() {
-  local locales_dir="$REPO_ROOT/frontend/src/i18n/locales"
+  local locales_dir="$REPO_ROOT/packages/web-core/src/i18n/locales"
   local exit_code=0
 
   if [ ! -d "$locales_dir" ]; then
@@ -90,7 +90,7 @@ check_duplicate_json_keys() {
 }
 
 check_key_consistency() {
-  local locales_dir="$REPO_ROOT/frontend/src/i18n/locales"
+  local locales_dir="$REPO_ROOT/packages/web-core/src/i18n/locales"
   local exit_code=0
   local fail_on_extra="${I18N_FAIL_ON_EXTRA:-0}"
   local verbose="${I18N_VERBOSE:-0}"
@@ -211,7 +211,7 @@ if (( PR_COUNT > BASE_COUNT )); then
   echo "   After:  <Button>{t('buttons.save')}</Button>"
   echo ""
   echo "Files with new violations:"
-  (cd "$REPO_ROOT/frontend" && LINT_I18N=true npx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
+  (cd "$REPO_ROOT/packages/local-web" && LINT_I18N=true npx eslint . --ext ts,tsx --rule "$RULE:error" -f codeframe 2>/dev/null || true)
   EXIT_STATUS=1
 elif (( PR_COUNT < BASE_COUNT )); then
   echo "🎉 Great job! PR removes $((BASE_COUNT - PR_COUNT)) hard-coded strings."

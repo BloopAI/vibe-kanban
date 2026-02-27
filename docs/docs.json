@@ -26,7 +26,8 @@
           "index",
           "getting-started",
           "browser-testing",
-          "reviewing-code",
+          "issue-management",
+          "reviewing-code"
           {
             "group": "Supported Coding Agents",
             "expanded": true,

@@ -1160,8 +1160,12 @@ impl ContainerService for LocalContainerService {
 
         for repo in &repositories {
             let worktree_path = workspace_dir.join(&repo.name);
-            if worktree_path.exists() && !self.git().is_worktree_clean(&worktree_path)? {
-                return Ok(false);
+            if worktree_path.exists() {
+                let (uncommitted, untracked) =
+                    self.git().get_worktree_change_counts(&worktree_path)?;
+                if uncommitted > 0 || untracked > 0 {
+                    return Ok(false);
+                }
             }
         }
 

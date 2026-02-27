@@ -1,0 +1,19 @@
+[package]
+name = "trusted-key-auth"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base64 = "0.22"
+ed25519-dalek = "2.2.0"
+hkdf = "0.12"
+hmac = "0.12"
+http = "1"
+rand = { version = "0.8", features = ["std"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+spake2 = { version = "0.5.0-pre.0", features = ["getrandom"] }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+uuid = { version = "1.0", features = ["v4", "serde"] }

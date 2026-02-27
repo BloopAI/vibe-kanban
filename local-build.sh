@@ -50,8 +50,8 @@ echo "🧹 Cleaning previous builds..."
 rm -rf npx-cli/dist
 mkdir -p npx-cli/dist/$PLATFORM
 
-echo "🔨 Building frontend..."
-(cd frontend && npm run build)
+echo "🔨 Building web app..."
+(cd packages/local-web && npm run build)
 
 echo "🔨 Building Rust binaries..."
 cargo build --release --manifest-path Cargo.toml

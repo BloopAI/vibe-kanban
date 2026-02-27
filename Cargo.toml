@@ -3,10 +3,13 @@ resolver = "3"
 members = [
     "crates/api-types",
     "crates/server",
+    "crates/trusted-key-auth",
     "crates/mcp",
     "crates/db",
     "crates/executors",
     "crates/services",
+    "crates/relay-control",
+    "crates/server-info",
     "crates/utils",
     "crates/git",
     "crates/git-host",
@@ -14,7 +17,7 @@ members = [
     "crates/deployment",
     "crates/review",
 ]
-exclude = ["crates/remote"]
+exclude = ["crates/remote", "crates/relay-tunnel"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }

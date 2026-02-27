@@ -700,6 +700,21 @@ impl RemoteClient {
         Ok(())
     }
 
+    /// Triggers issue-status sync for a workspace that was merged locally without a PR.
+    pub async fn sync_issue_status_from_local_workspace_merge(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::POST,
+            &format!("/v1/workspaces/{local_workspace_id}/sync_issue_status_from_local_merge"),
+            true,
+            None::<&()>,
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
     pub async fn create_workspace(
         &self,

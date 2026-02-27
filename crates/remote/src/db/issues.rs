@@ -27,6 +27,12 @@ pub enum IssueError {
 
 pub struct IssueRepository;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum IssueWorkflowSignal {
+    ReviewStarted,
+    WorkMerged,
+}
+
 impl IssueRepository {
     pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Issue>, IssueError>
     where
@@ -317,27 +323,28 @@ impl IssueRepository {
         Ok(DeleteResponse { txid })
     }
 
-    /// Syncs issue status based on the current PR state.
-    /// - If PR is open → move issue to "In review" (no need to fetch other PRs)
-    /// - If PR is merged/closed → check if ALL PRs are merged → move to "Done"
-    pub async fn sync_status_from_pull_request(
+    /// Syncs issue status based on a workflow signal.
+    /// - `ReviewStarted` → move issue to "In review"
+    /// - `WorkMerged` → if all linked PRs are merged, move issue to "Done"
+    async fn sync_status_from_workflow_signal(
         pool: &PgPool,
         issue_id: Uuid,
-        pr_status: PullRequestStatus,
+        signal: IssueWorkflowSignal,
     ) -> Result<(), IssueError> {
         let Some(issue) = Self::find_by_id(pool, issue_id).await? else {
             return Ok(());
         };
 
-        let target_status_name = if pr_status == PullRequestStatus::Open {
-            "In review"
-        } else {
-            let prs = PullRequestRepository::list_by_issue(pool, issue_id).await?;
-            let all_merged = prs.iter().all(|pr| pr.status == PullRequestStatus::Merged);
-            if all_merged {
-                "Done"
-            } else {
-                return Ok(());
+        let target_status_name = match signal {
+            IssueWorkflowSignal::ReviewStarted => "In review",
+            IssueWorkflowSignal::WorkMerged => {
+                let prs = PullRequestRepository::list_by_issue(pool, issue_id).await?;
+                let all_merged = prs.iter().all(|pr| pr.status == PullRequestStatus::Merged);
+                if all_merged {
+                    "Done"
+                } else {
+                    return Ok(());
+                }
             }
         };
 
@@ -370,6 +377,31 @@ impl IssueRepository {
         .await?;
 
         Ok(())
+    }
+
+    /// Syncs issue status based on the current pull-request status.
+    /// - Open PR => move issue to "In review"
+    /// - Merged/closed PR => if all linked PRs are merged, move issue to "Done"
+    pub async fn sync_status_from_pull_request(
+        pool: &PgPool,
+        issue_id: Uuid,
+        pr_status: PullRequestStatus,
+    ) -> Result<(), IssueError> {
+        let signal = if pr_status == PullRequestStatus::Open {
+            IssueWorkflowSignal::ReviewStarted
+        } else {
+            IssueWorkflowSignal::WorkMerged
+        };
+        Self::sync_status_from_workflow_signal(pool, issue_id, signal).await
+    }
+
+    /// Syncs issue status when a workspace is merged locally without a PR.
+    pub async fn sync_status_from_local_workspace_merge(
+        pool: &PgPool,
+        issue_id: Uuid,
+    ) -> Result<(), IssueError> {
+        Self::sync_status_from_workflow_signal(pool, issue_id, IssueWorkflowSignal::WorkMerged)
+            .await
     }
 
     /// Moves an issue to the given target status if its current status is "Backlog" or "To do".

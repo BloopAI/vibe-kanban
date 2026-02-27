@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes};
+use server::{DeploymentImpl, preview_proxy, routes, tunnel};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
@@ -10,7 +10,6 @@ use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,
-    browser::open_browser,
     port_file::write_port_file_with_proxy,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
@@ -124,6 +123,8 @@ async fn main() -> Result<(), VibeKanbanError> {
         tracing::warn!("Failed to write port file: {}", e);
     }
 
+    let shutdown_token = CancellationToken::new();
+
     tracing::info!(
         "Main server on :{}, Preview proxy on :{}",
         actual_main_port,
@@ -135,7 +136,9 @@ async fn main() -> Result<(), VibeKanbanError> {
         tracing::info!("Opening browser...");
         let browser_port = actual_main_port;
         tokio::spawn(async move {
-            if let Err(e) = open_browser(&format!("http://127.0.0.1:{browser_port}")).await {
+            if let Err(e) =
+                utils::browser::open_browser(&format!("http://127.0.0.1:{browser_port}")).await
+            {
                 tracing::warn!(
                     "Failed to open browser automatically: {}. Please open http://127.0.0.1:{} manually.",
                     e,
@@ -146,7 +149,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     }
 
     let proxy_router: Router = preview_proxy::router();
-    let shutdown_token = CancellationToken::new();
 
     let main_shutdown = shutdown_token.clone();
     let proxy_shutdown = shutdown_token.clone();
@@ -166,6 +168,17 @@ async fn main() -> Result<(), VibeKanbanError> {
             tracing::error!("Preview proxy error: {}", e);
         }
     });
+
+    deployment.server_info().set_port(actual_main_port).await;
+    deployment
+        .server_info()
+        .set_hostname(format!(
+            "{} local ({})",
+            env!("CARGO_PKG_NAME"),
+            deployment.user_id()
+        ))
+        .await;
+    tunnel::spawn_relay(&deployment).await;
 
     tokio::select! {
         _ = shutdown_signal() => {

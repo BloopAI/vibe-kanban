@@ -41,9 +41,14 @@ jobs:
         with:
           filters: |
             frontend:
-              - 'frontend/**'
+              - 'packages/local-web/**'
+              - 'packages/web-core/**'
+              - 'packages/remote-web/**'
+              - 'packages/ui/**'
               - 'shared/**'
               - 'scripts/check-i18n.sh'
+              - 'scripts/check-legacy-frontend-paths.sh'
+              - 'scripts/legacy-frontend-paths-allowlist.txt'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'package.json'
@@ -105,12 +110,20 @@ jobs:
         run: |
           npx concurrently \
             --kill-others-on-fail \
-            --names "lint,i18n,fmt,build" \
+            --names "local:lint,local:fmt,local:build,remote:fmt,remote:build,ui:check,ui:lint,ui:fmt,core:check,core:fmt,i18n,legacy" \
             --timings \
-            "cd frontend && npm run lint" \
+            "cd packages/local-web && npm run lint" \
+            "cd packages/local-web && npm run format:check" \
+            "cd packages/local-web && npm run build" \
+            "cd packages/remote-web && npm run format:check" \
+            "cd packages/remote-web && npm run build" \
+            "cd packages/ui && npm run check" \
+            "cd packages/ui && npm run lint" \
+            "cd packages/ui && npm run format:check" \
+            "cd packages/web-core && npm run check" \
+            "cd packages/web-core && npm run format:check" \
             "GITHUB_BASE_REF=${{ github.base_ref || 'main' }} ./scripts/check-i18n.sh" \
-            "cd frontend && npm run format:check" \
-            "cd frontend && npm run build"
+            "./scripts/check-legacy-frontend-paths.sh"
 
   backend-schema-checks:
     needs: changes

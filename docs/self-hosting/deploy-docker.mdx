@@ -67,6 +67,9 @@ DB_PASSWORD=<secure_database_password>
 # Your domain
 DOMAIN=your-domain.com
 
+# Relay API base URL (required if you enable relay/tunnel)
+VITE_RELAY_API_BASE_URL=https://relay.your-domain.com
+
 # OAuth — configure at least one provider. Leave the other empty or remove it.
 GITHUB_OAUTH_CLIENT_ID=your_github_client_id
 GITHUB_OAUTH_CLIENT_SECRET=your_github_client_secret
@@ -140,6 +143,8 @@ services:
     build:
       context: ../..
       dockerfile: crates/remote/Dockerfile
+      args:
+        VITE_RELAY_API_BASE_URL: ${VITE_RELAY_API_BASE_URL:-}
     restart: unless-stopped
     depends_on:
       remote-db:
@@ -173,13 +178,17 @@ volumes:
 
 ## Step 5: Create Caddyfile
 
-Create a `Caddyfile` in the `crates/remote` directory for automatic HTTPS:
+Create a `Caddyfile` in the `crates/remote` directory for automatic HTTPS (core app/API):
 
 ```text Caddyfile
 {$DOMAIN} {
     reverse_proxy remote-server:8081
 }
 ```
+
+<Info>
+This base deployment serves the main Cloud app/API only. Relay/tunnel support is optional and requires additional relay routing plus wildcard DNS/TLS for your relay domain.
+</Info>
 
 ## Step 6: Deploy
 
@@ -203,6 +212,44 @@ The first build takes 10-15 minutes. Subsequent deployments are faster as Docker
 2. You should see the Vibe Kanban Cloud login page
 3. Sign in with your OAuth provider
 4. Create your first organisation and project
+
+## Optional: Enable Relay/Tunnel in Production
+
+Relay/tunnel support requires:
+
+1. A running `relay-server` service
+2. Reverse proxy routing for both `relay.your-domain.com` and `*.relay.your-domain.com`
+3. A wildcard certificate for `*.relay.your-domain.com` (or equivalent managed TLS at your edge)
+4. `VITE_RELAY_API_BASE_URL` set to your public relay API base URL before building `remote-server`
+
+### Add relay-server to docker compose
+
+```yaml docker-compose.prod.yml
+  relay-server:
+    build:
+      context: ../..
+      dockerfile: crates/relay-tunnel/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      remote-db:
+        condition: service_healthy
+    environment:
+      RUST_LOG: info
+      SERVER_DATABASE_URL: postgres://remote:${DB_PASSWORD:-remote}@remote-db:5432/remote
+      RELAY_LISTEN_ADDR: 0.0.0.0:8082
+      VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET}
+```
+
+### Add relay proxy routes
+
+Your reverse proxy must route:
+
+- `relay.your-domain.com` -> `relay-server:8082`
+- `*.relay.your-domain.com` -> `relay-server:8082`
+
+<Warning>
+Standard ACME HTTP challenge does not issue wildcard certificates. For wildcard relay hostnames, use a DNS-based ACME challenge or another edge provider that can terminate wildcard TLS certificates.
+</Warning>
 
 ## Updating
 

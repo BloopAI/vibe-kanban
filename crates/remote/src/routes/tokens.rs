@@ -1,3 +1,4 @@
+use api_types::{TokenRefreshRequest, TokenRefreshResponse};
 use axum::{
     Json, Router,
     extract::State,
@@ -5,8 +6,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use tracing::warn;
-use api_types::{TokenRefreshRequest, TokenRefreshResponse};
+use tracing::{info, warn};
 
 use crate::{
     AppState,
@@ -14,7 +14,7 @@ use crate::{
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
         identity_errors::IdentityError,
-        oauth_accounts::OAuthAccountError,
+        oauth_accounts::{OAuthAccountError, OAuthAccountRepository},
         users::UserRepository,
     },
 };
@@ -64,6 +64,14 @@ impl From<OAuthTokenValidationError> for TokenRefreshError {
     }
 }
 
+impl From<OAuthAccountError> for TokenRefreshError {
+    fn from(err: OAuthAccountError) -> Self {
+        match err {
+            OAuthAccountError::Database(db_err) => TokenRefreshError::Database(db_err),
+        }
+    }
+}
+
 pub async fn refresh_token(
     State(state): State<AppState>,
     Json(payload): Json<TokenRefreshRequest>,
@@ -77,7 +85,11 @@ pub async fn refresh_token(
         Err(_) => return Err(TokenRefreshError::InvalidToken),
     };
 
-    let session = session_repo.get(token_details.session_id).await?;
+    let session = match session_repo.get(token_details.session_id).await {
+        Ok(session) => session,
+        Err(AuthSessionError::NotFound) => return Err(TokenRefreshError::SessionRevoked),
+        Err(error) => return Err(TokenRefreshError::SessionError(error)),
+    };
 
     if session.revoked_at.is_some() {
         return Err(TokenRefreshError::SessionRevoked);
@@ -101,11 +113,36 @@ pub async fn refresh_token(
         return Err(TokenRefreshError::TokenReuseDetected);
     }
 
-    // Check if provider has revoked the OAuth token
-    let provider_token_details = state
+    // Move encrypted_provider_tokens from legacy refresh token claim to the DB
+    if let Some(legacy_provider_token_details) =
+        token_details.legacy_provider_token_details.as_ref()
+        && let oauth_account_repo = OAuthAccountRepository::new(state.pool())
+        && oauth_account_repo
+            .get_by_user_provider(token_details.user_id, &token_details.provider)
+            .await?
+            .is_some_and(|account| account.encrypted_provider_tokens.is_none())
+    {
+        let encrypted_provider_tokens =
+            jwt_service.encrypt_provider_tokens(legacy_provider_token_details)?;
+        oauth_account_repo
+            .update_encrypted_provider_tokens(
+                token_details.user_id,
+                &token_details.provider,
+                &encrypted_provider_tokens,
+            )
+            .await?;
+        info!(
+            user_id = %token_details.user_id,
+            provider = %token_details.provider,
+            session_id = %token_details.session_id,
+            "Backfilled DB provider token from legacy refresh token claim"
+        );
+    }
+
+    state
         .oauth_token_validator()
         .validate(
-            token_details.provider_token_details.clone(),
+            &token_details.provider,
             token_details.user_id,
             token_details.session_id,
         )
@@ -114,7 +151,7 @@ pub async fn refresh_token(
     let user_repo = UserRepository::new(state.pool());
     let user = user_repo.fetch_user(token_details.user_id).await?;
 
-    let tokens = jwt_service.generate_tokens(&session, &user, provider_token_details)?;
+    let tokens = jwt_service.generate_tokens(&session, &user, &token_details.provider)?;
 
     let old_token_id = token_details.refresh_token_id;
     let new_token_id = tokens.refresh_token_id;
