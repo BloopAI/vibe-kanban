@@ -58,27 +58,27 @@ function RootLayout() {
     location.pathname.startsWith("/invitations");
   const isWorkspaceRoute = location.pathname.includes("/workspaces");
 
+  const pageContent = isStandaloneRoute ? (
+    <Outlet />
+  ) : (
+    <RemoteAppShell>
+      <Outlet />
+    </RemoteAppShell>
+  );
+
   const content = isWorkspaceRoute ? (
     <WorkspaceRouteProviders>
-      <Outlet />
+      <NiceModalProvider>{pageContent}</NiceModalProvider>
     </WorkspaceRouteProviders>
   ) : (
-    <Outlet />
+    <NiceModalProvider>{pageContent}</NiceModalProvider>
   );
 
   return (
     <UserProvider>
       <RemoteWorkspaceProvider>
         <RemoteActionsProvider>
-          <RemoteUserSystemProvider>
-            <NiceModalProvider>
-              {isStandaloneRoute ? (
-                content
-              ) : (
-                <RemoteAppShell>{content}</RemoteAppShell>
-              )}
-            </NiceModalProvider>
-          </RemoteUserSystemProvider>
+          <RemoteUserSystemProvider>{content}</RemoteUserSystemProvider>
         </RemoteActionsProvider>
       </RemoteWorkspaceProvider>
     </UserProvider>
