@@ -73,5 +73,16 @@ async fn create_relay_session(
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create session")
         })?;
 
+    if let Some(analytics) = state.analytics() {
+        analytics.track(
+            ctx.user.id,
+            "relay_host_session_created",
+            serde_json::json!({
+                "host_id": host_id,
+                "relay_session_id": session.id,
+            }),
+        );
+    }
+
     Ok(Json(CreateRelaySessionResponse { session }))
 }

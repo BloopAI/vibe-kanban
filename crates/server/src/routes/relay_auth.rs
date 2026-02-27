@@ -260,6 +260,18 @@ async fn finish_spake2_enrollment(
         "completed relay PAKE enrollment"
     );
 
+    deployment
+        .track_if_analytics_allowed(
+            "relay_host_paired",
+            serde_json::json!({
+                "client_id": payload.client_id,
+                "client_browser": payload.client_browser,
+                "client_os": payload.client_os,
+                "client_device": payload.client_device,
+            }),
+        )
+        .await;
+
     Ok(Json(ApiResponse::success(FinishSpake2EnrollmentResponse {
         signing_session_id,
         server_public_key_b64,
