@@ -28,15 +28,15 @@ function RootLayout() {
     <UserProvider>
       <RemoteWorkspaceProvider>
         <RemoteActionsProvider>
-          {isStandaloneRoute ? (
-            <NiceModalProvider>{content}</NiceModalProvider>
-          ) : (
-            <RemoteUserSystemProvider>
-              <NiceModalProvider>
+          <RemoteUserSystemProvider>
+            <NiceModalProvider>
+              {isStandaloneRoute ? (
+                content
+              ) : (
                 <RemoteAppShell>{content}</RemoteAppShell>
-              </NiceModalProvider>
-            </RemoteUserSystemProvider>
-          )}
+              )}
+            </NiceModalProvider>
+          </RemoteUserSystemProvider>
         </RemoteActionsProvider>
       </RemoteWorkspaceProvider>
     </UserProvider>

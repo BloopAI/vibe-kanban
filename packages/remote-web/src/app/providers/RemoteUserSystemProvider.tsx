@@ -8,6 +8,7 @@ import type {
   UserSystemInfo,
 } from "shared/types";
 import { configApi } from "@/shared/lib/api";
+import { useAuth } from "@/shared/hooks/auth/useAuth";
 import {
   UserSystemContext,
   type UserSystemContextType,
@@ -21,10 +22,12 @@ export function RemoteUserSystemProvider({
   children,
 }: RemoteUserSystemProviderProps) {
   const queryClient = useQueryClient();
+  const { isSignedIn, isLoaded } = useAuth();
 
   const { data: userSystemInfo, isLoading } = useQuery({
     queryKey: ["remote-workspace-user-system"],
     queryFn: configApi.getConfig,
+    enabled: isLoaded && isSignedIn,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -40,6 +43,7 @@ export function RemoteUserSystemProvider({
       string,
       BaseAgentCapability[]
     > | null) || null;
+  const loading = !isLoaded || (isSignedIn && isLoading);
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
@@ -171,7 +175,7 @@ export function RemoteUserSystemProvider({
       setProfiles,
       setCapabilities,
       reloadSystem,
-      loading: isLoading,
+      loading,
     }),
     [
       config,
@@ -187,7 +191,7 @@ export function RemoteUserSystemProvider({
       setProfiles,
       setCapabilities,
       reloadSystem,
-      isLoading,
+      loading,
     ],
   );
 
