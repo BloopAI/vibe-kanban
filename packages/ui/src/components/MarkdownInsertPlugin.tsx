@@ -5,6 +5,8 @@ import {
   COMMAND_PRIORITY_HIGH,
   $getSelection,
   $isRangeSelection,
+  $createRangeSelection,
+  $setSelection,
   createCommand,
   type LexicalCommand,
 } from 'lexical';
@@ -54,13 +56,15 @@ export function MarkdownInsertPlugin() {
             selection.insertRawText(`${marker}${marker}`);
 
             // Move cursor between the markers
-            const newSelection = $getSelection();
-            if ($isRangeSelection(newSelection)) {
-              const anchor = newSelection.anchor;
-              const offset = anchor.offset - marker.length;
-              if (offset >= 0) {
-                newSelection.anchor.set(anchor.key, offset, anchor.type);
-                newSelection.focus.set(anchor.key, offset, anchor.type);
+            const afterInsert = $getSelection();
+            if ($isRangeSelection(afterInsert)) {
+              const { key, offset, type } = afterInsert.anchor;
+              const newOffset = offset - marker.length;
+              if (newOffset >= 0) {
+                const moved = $createRangeSelection();
+                moved.anchor.set(key, newOffset, type);
+                moved.focus.set(key, newOffset, type);
+                $setSelection(moved);
               }
             }
           }
