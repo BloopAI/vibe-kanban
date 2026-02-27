@@ -26,7 +26,7 @@ export function RemoteWorkspacesPageShell({
     retry: false,
     staleTime: 5_000,
     refetchInterval: 15_000,
-    queryFn: async () => {
+    queryFn: async (): Promise<true> => {
       const response = await makeLocalApiRequest("/api/info", {
         cache: "no-store",
       });
@@ -34,6 +34,8 @@ export function RemoteWorkspacesPageShell({
       if (!response.ok) {
         throw new Error(`Host returned HTTP ${response.status}`);
       }
+
+      return true;
     },
   });
 
