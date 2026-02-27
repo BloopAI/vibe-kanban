@@ -51,12 +51,12 @@ function MobileWorkspacesList() {
         <button
           onClick={handleCreateWorkspace}
           className={cn(
-            "flex items-center gap-1 rounded-md px-3 py-1.5",
+            "flex items-center gap-half rounded-md px-plusfifty py-half",
             "bg-brand text-on-brand text-sm font-medium",
             "active:opacity-80 transition-opacity",
           )}
         >
-          <PlusIcon className="size-4" />
+          <PlusIcon className="size-icon-sm" />
           New
         </button>
       </div>
@@ -80,7 +80,7 @@ function MobileWorkspacesList() {
                 key={workspace.id}
                 onClick={() => handleSelectWorkspace(workspace.id)}
                 className={cn(
-                  "flex flex-col gap-1 px-base py-3",
+                  "flex flex-col gap-half px-base py-plusfifty",
                   "border-b border-border",
                   "text-left active:bg-secondary transition-colors",
                 )}
@@ -89,8 +89,8 @@ function MobileWorkspacesList() {
                   {workspace.name}
                 </span>
                 {workspace.branch && (
-                  <span className="flex items-center gap-1 text-xs text-low">
-                    <GitBranchIcon className="size-3 shrink-0" />
+                  <span className="flex items-center gap-half text-xs text-low">
+                    <GitBranchIcon className="size-icon-xs shrink-0" />
                     <span className="truncate">{workspace.branch}</span>
                   </span>
                 )}

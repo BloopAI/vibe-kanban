@@ -367,7 +367,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
                           : "opacity-50",
                       )}
                     >
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[10px] font-semibold text-brand">
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/15 text-xs font-semibold text-brand">
                         {getHostInitials(host.name)}
                       </div>
                       <span className="min-w-0 flex-1 truncate text-normal">
