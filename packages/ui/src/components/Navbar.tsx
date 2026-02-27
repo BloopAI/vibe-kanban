@@ -235,31 +235,32 @@ export function Navbar({
                   <div className="h-4 w-px bg-border mx-0.5 shrink-0" />
                 </>
               )}
-              {showMobileTabs !== false && (mobileTabs ?? MOBILE_TABS).map((tab) => {
-                const TabIcon = tab.icon;
-                const isActive = mobileActiveTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    className={cn(
-                      'flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap transition-colors',
-                      isActive
-                        ? 'text-normal border-b-2 border-brand'
-                        : 'text-low hover:text-normal'
-                    )}
-                    onClick={() => onMobileTabChange?.(tab.id)}
-                  >
-                    <TabIcon
-                      className="size-icon-sm"
-                      weight={isActive ? 'fill' : 'regular'}
-                    />
-                    <span className="hidden min-[480px]:inline">
-                      {tab.label}
-                    </span>
-                  </button>
-                );
-              })}
+              {showMobileTabs !== false &&
+                (mobileTabs ?? MOBILE_TABS).map((tab) => {
+                  const TabIcon = tab.icon;
+                  const isActive = mobileActiveTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={cn(
+                        'flex items-center gap-1 px-1.5 py-1 text-xs whitespace-nowrap transition-colors',
+                        isActive
+                          ? 'text-normal border-b-2 border-brand'
+                          : 'text-low hover:text-normal'
+                      )}
+                      onClick={() => onMobileTabChange?.(tab.id)}
+                    >
+                      <TabIcon
+                        className="size-icon-sm"
+                        weight={isActive ? 'fill' : 'regular'}
+                      />
+                      <span className="hidden min-[480px]:inline">
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
               {onNavigateToBoard && (
                 <button
                   type="button"
