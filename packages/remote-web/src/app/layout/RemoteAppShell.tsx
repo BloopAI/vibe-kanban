@@ -45,6 +45,16 @@ interface RemoteAppShellProps {
   children: ReactNode;
 }
 
+function getHostInitials(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return "??";
+  const words = trimmed.split(/\s+/);
+  if (words.length >= 2) {
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }
+  return trimmed.slice(0, 2).toUpperCase();
+}
+
 export function RemoteAppShell({ children }: RemoteAppShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -324,6 +334,78 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
             <HouseIcon className="h-4 w-4" />
             Home
           </button>
+
+          {/* Divider */}
+          <div className="mx-3 border-t border-border" />
+
+          {/* Hosts section */}
+          {isSignedIn && relayHosts.length > 0 && (
+            <>
+              <p className="px-4 pt-3 pb-1 text-xs font-medium uppercase tracking-wide text-low">
+                Hosts
+              </p>
+              <div className="px-2">
+                {relayHosts.map((host) => {
+                  const isOnline = host.status === "online";
+                  const isUnpaired = host.status === "unpaired";
+                  const isClickable = isOnline || isUnpaired;
+
+                  return (
+                    <button
+                      key={host.id}
+                      type="button"
+                      disabled={!isClickable}
+                      onClick={() => {
+                        handleHostClick(host.id, host.status);
+                        setIsDrawerOpen(false);
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm text-left",
+                        "transition-colors",
+                        isClickable
+                          ? "cursor-pointer hover:bg-secondary"
+                          : "opacity-50",
+                      )}
+                    >
+                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[10px] font-semibold text-brand">
+                        {getHostInitials(host.name)}
+                      </div>
+                      <span className="min-w-0 flex-1 truncate text-normal">
+                        {host.name}
+                      </span>
+                      <span
+                        className={cn(
+                          "h-2 w-2 shrink-0 rounded-full",
+                          isOnline
+                            ? "bg-success"
+                            : isUnpaired
+                              ? "border border-warning bg-white"
+                              : "bg-low",
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Link a host button */}
+          {isSignedIn && (
+            <div className="px-2">
+              <button
+                type="button"
+                onClick={() => {
+                  handlePairHostClick();
+                  setIsDrawerOpen(false);
+                }}
+                className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm text-low hover:text-normal hover:bg-secondary cursor-pointer"
+              >
+                <PlusIcon className="h-4 w-4" />
+                Link a host
+              </button>
+            </div>
+          )}
 
           {/* Divider */}
           <div className="mx-3 border-t border-border" />
