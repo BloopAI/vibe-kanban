@@ -1,5 +1,6 @@
 import {
   CommandExitStatus,
+  ExecutorAction,
   ExecutionProcess,
   ExecutionProcessStatus,
   NormalizedEntry,
@@ -36,6 +37,25 @@ import {
   nextActionPatch,
   REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
+
+/** Walk the next_action chain to find the first coding agent prompt. */
+function extractPromptFromActionChain(
+  action: ExecutorAction | null
+): string | null {
+  let current = action;
+  while (current) {
+    const typ = current.typ;
+    if (
+      typ.type === 'CodingAgentInitialRequest' ||
+      typ.type === 'CodingAgentFollowUpRequest' ||
+      typ.type === 'ReviewRequest'
+    ) {
+      return typ.prompt;
+    }
+    current = current.next_action;
+  }
+  return null;
+}
 
 export const useConversationHistory = ({
   attempt,
@@ -131,7 +151,7 @@ export const useConversationHistory = ({
   const patchWithKey = (
     patch: PatchType,
     executionProcessId: string,
-    index: number | 'user'
+    index: number | 'user' | 'script'
   ) => {
     return {
       ...patch,
@@ -182,6 +202,17 @@ export const useConversationHistory = ({
       let setupHelpText: string | undefined;
       let latestTokenUsageInfo: TokenUsageInfo | null = null;
 
+      // Check whether a setup script process exists.  When it does, the
+      // initial user message is emitted from the script branch (after the
+      // script finishes) instead of from the CodingAgentInitialRequest
+      // branch – this avoids a Virtuoso list reorder when the script and
+      // coding agent load at different times.
+      const hasSetupScriptProcess = Object.values(executionProcessState).some(
+        (p) =>
+          p.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
+          p.executionProcess.executor_action.typ.context === 'SetupScript'
+      );
+
       // Create user messages + tool calls for setup/cleanup scripts
       const allEntries = Object.values(executionProcessState)
         .sort(
@@ -202,25 +233,33 @@ export const useConversationHistory = ({
               'CodingAgentFollowUpRequest' ||
             p.executionProcess.executor_action.typ.type === 'ReviewRequest'
           ) {
-            // New user message
-            const actionType = p.executionProcess.executor_action.typ;
-            const userNormalizedEntry: NormalizedEntry = {
-              entry_type: {
-                type: 'user_message',
-              },
-              content: actionType.prompt,
-              timestamp: null,
-            };
-            const userPatch: PatchType = {
-              type: 'NORMALIZED_ENTRY',
-              content: userNormalizedEntry,
-            };
-            const userPatchTypeWithKey = patchWithKey(
-              userPatch,
-              p.executionProcess.id,
-              'user'
-            );
-            entries.push(userPatchTypeWithKey);
+            // Suppress the initial user message when a setup script exists –
+            // the script branch emits it instead (after the script finishes)
+            // to avoid a Virtuoso list reorder.
+            const isInitialWithSetup =
+              p.executionProcess.executor_action.typ.type ===
+                'CodingAgentInitialRequest' && hasSetupScriptProcess;
+
+            if (!isInitialWithSetup) {
+              const actionType = p.executionProcess.executor_action.typ;
+              const userNormalizedEntry: NormalizedEntry = {
+                entry_type: {
+                  type: 'user_message',
+                },
+                content: actionType.prompt,
+                timestamp: null,
+              };
+              const userPatch: PatchType = {
+                type: 'NORMALIZED_ENTRY',
+                content: userNormalizedEntry,
+              };
+              const userPatchTypeWithKey = patchWithKey(
+                userPatch,
+                p.executionProcess.id,
+                'user'
+              );
+              entries.push(userPatchTypeWithKey);
+            }
 
             // Extract latest token usage info before filtering
             const tokenUsageEntry = p.entries.findLast(
@@ -385,13 +424,43 @@ export const useConversationHistory = ({
               type: 'NORMALIZED_ENTRY',
               content: toolNormalizedEntry,
             };
+            // Use a distinct key suffix so Virtuoso doesn't reuse the
+            // height measured while the script was still streaming logs.
             const toolPatchWithKey: PatchTypeWithKey = patchWithKey(
               toolPatch,
               p.executionProcess.id,
-              0
+              'script'
             );
 
             entries.push(toolPatchWithKey);
+
+            // After the setup script finishes (success or failure), show the
+            // initial user prompt so the user can see and edit/retry it.
+            // Only emit when the script is no longer running – this preserves
+            // the original UX where the user message appears after the script.
+            if (
+              scriptContext === 'SetupScript' &&
+              index === 0 &&
+              executionProcess?.status !== ExecutionProcessStatus.running
+            ) {
+              const initialPrompt = extractPromptFromActionChain(
+                p.executionProcess.executor_action
+              );
+              if (initialPrompt) {
+                const userNormalizedEntry: NormalizedEntry = {
+                  entry_type: { type: 'user_message' },
+                  content: initialPrompt,
+                  timestamp: null,
+                };
+                const userPatch: PatchType = {
+                  type: 'NORMALIZED_ENTRY',
+                  content: userNormalizedEntry,
+                };
+                entries.push(
+                  patchWithKey(userPatch, p.executionProcess.id, 'user')
+                );
+              }
+            }
           }
 
           return entries;
@@ -505,11 +574,32 @@ export const useConversationHistory = ({
 
       if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
 
+      // Always load script processes (setup/cleanup/archive) first so they
+      // appear at their correct position from the very first render.  This
+      // avoids a reorder when the remaining-batch pass loads them later,
+      // which causes Virtuoso to apply stale item sizes.
+      const scriptProcesses = executionProcesses.current.filter(
+        (ep) =>
+          ep.status !== ExecutionProcessStatus.running &&
+          ep.executor_action.typ.type === 'ScriptRequest'
+      );
+      for (const ep of scriptProcesses) {
+        const entries = await loadEntriesForHistoricExecutionProcess(ep);
+        const entriesWithKey = entries.map((e, idx) =>
+          patchWithKey(e, ep.id, idx)
+        );
+        localDisplayedExecutionProcesses[ep.id] = {
+          executionProcess: ep,
+          entries: entriesWithKey,
+        };
+      }
+
       for (const executionProcess of [
         ...executionProcesses.current,
       ].reverse()) {
         if (executionProcess.status === ExecutionProcessStatus.running)
           continue;
+        if (localDisplayedExecutionProcesses[executionProcess.id]) continue;
 
         const entries =
           await loadEntriesForHistoricExecutionProcess(executionProcess);
