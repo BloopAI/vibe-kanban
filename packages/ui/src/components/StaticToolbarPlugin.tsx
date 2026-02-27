@@ -1,31 +1,20 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import {
-  $getSelection,
-  $isRangeSelection,
-  FORMAT_TEXT_COMMAND,
-  SELECTION_CHANGE_COMMAND,
-  COMMAND_PRIORITY_CRITICAL,
-  UNDO_COMMAND,
-} from 'lexical';
-import {
-  INSERT_UNORDERED_LIST_COMMAND,
-  INSERT_ORDERED_LIST_COMMAND,
-  REMOVE_LIST_COMMAND,
-  $isListNode,
-} from '@lexical/list';
+import { FORMAT_TEXT_COMMAND, UNDO_COMMAND } from 'lexical';
 import {
   TextB,
   TextItalic,
-  TextUnderline,
   TextStrikethrough,
   Code,
   ListBullets,
   ListNumbers,
   ArrowCounterClockwise,
+  Eye,
+  PencilSimple,
   type Icon,
   CheckIcon,
 } from '@phosphor-icons/react';
+import { INSERT_MARKDOWN_LIST_COMMAND } from './MarkdownInsertPlugin';
 import { cn } from '../lib/cn';
 
 interface ToolbarButtonProps {
@@ -66,80 +55,17 @@ function ToolbarButton({
 interface StaticToolbarPluginProps {
   saveStatus?: 'idle' | 'saved';
   extraActions?: ReactNode;
+  isPreviewMode?: boolean;
+  onTogglePreview?: () => void;
 }
 
 export function StaticToolbarPlugin({
   saveStatus,
   extraActions,
+  isPreviewMode = false,
+  onTogglePreview,
 }: StaticToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
-
-  // Text format state
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isUnderline, setIsUnderline] = useState(false);
-  const [isStrikethrough, setIsStrikethrough] = useState(false);
-  const [isCode, setIsCode] = useState(false);
-
-  // List state
-  const [isBulletList, setIsBulletList] = useState(false);
-  const [isNumberedList, setIsNumberedList] = useState(false);
-
-  const updateToolbarState = useCallback(() => {
-    const selection = $getSelection();
-    if ($isRangeSelection(selection)) {
-      // Text formats
-      setIsBold(selection.hasFormat('bold'));
-      setIsItalic(selection.hasFormat('italic'));
-      setIsUnderline(selection.hasFormat('underline'));
-      setIsStrikethrough(selection.hasFormat('strikethrough'));
-      setIsCode(selection.hasFormat('code'));
-
-      // List detection - traverse up to find parent list
-      let node = selection.anchor.getNode();
-      let foundBullet = false;
-      let foundNumber = false;
-
-      // Walk up the tree to find a list node
-      while (node !== null) {
-        const parent = node.getParent();
-        if (parent && $isListNode(parent)) {
-          const listType = parent.getListType();
-          if (listType === 'bullet') {
-            foundBullet = true;
-          } else if (listType === 'number') {
-            foundNumber = true;
-          }
-          break;
-        }
-        node = parent as typeof node;
-      }
-
-      setIsBulletList(foundBullet);
-      setIsNumberedList(foundNumber);
-    }
-  }, []);
-
-  // Update toolbar state on selection change
-  useEffect(() => {
-    return editor.registerCommand(
-      SELECTION_CHANGE_COMMAND,
-      () => {
-        updateToolbarState();
-        return false;
-      },
-      COMMAND_PRIORITY_CRITICAL
-    );
-  }, [editor, updateToolbarState]);
-
-  // Also update on editor state changes
-  useEffect(() => {
-    return editor.registerUpdateListener(({ editorState }) => {
-      editorState.read(() => {
-        updateToolbarState();
-      });
-    });
-  }, [editor, updateToolbarState]);
 
   return (
     <div className="flex items-center gap-half mt-base p-base border-t border-border/50">
@@ -153,27 +79,18 @@ export function StaticToolbarPlugin({
       {/* Separator */}
       <div className="w-px h-4 bg-border mx-half" />
 
-      {/* Text formatting buttons */}
+      {/* Text formatting buttons — insert markdown syntax */}
       <ToolbarButton
-        active={isBold}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
         icon={TextB}
         label="Bold"
       />
       <ToolbarButton
-        active={isItalic}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
         icon={TextItalic}
         label="Italic"
       />
       <ToolbarButton
-        active={isUnderline}
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}
-        icon={TextUnderline}
-        label="Underline"
-      />
-      <ToolbarButton
-        active={isStrikethrough}
         onClick={() =>
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
         }
@@ -181,7 +98,6 @@ export function StaticToolbarPlugin({
         label="Strikethrough"
       />
       <ToolbarButton
-        active={isCode}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
         icon={Code}
         label="Inline Code"
@@ -190,28 +106,18 @@ export function StaticToolbarPlugin({
       {/* Separator */}
       <div className="w-px h-4 bg-border mx-half" />
 
-      {/* List buttons */}
+      {/* List buttons — insert markdown list prefixes */}
       <ToolbarButton
-        active={isBulletList}
-        onClick={() => {
-          if (isBulletList) {
-            editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
-          } else {
-            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-          }
-        }}
+        onClick={() =>
+          editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'bullet')
+        }
         icon={ListBullets}
         label="Bullet List"
       />
       <ToolbarButton
-        active={isNumberedList}
-        onClick={() => {
-          if (isNumberedList) {
-            editor.dispatchCommand(REMOVE_LIST_COMMAND, undefined);
-          } else {
-            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-          }
-        }}
+        onClick={() =>
+          editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'number')
+        }
         icon={ListNumbers}
         label="Numbered List"
       />
@@ -220,6 +126,19 @@ export function StaticToolbarPlugin({
         <>
           <div className="w-px h-4 bg-border mx-half" />
           <div className="flex items-center gap-half">{extraActions}</div>
+        </>
+      )}
+
+      {/* Preview toggle */}
+      {onTogglePreview && (
+        <>
+          <div className="w-px h-4 bg-border mx-half" />
+          <ToolbarButton
+            active={isPreviewMode}
+            onClick={onTogglePreview}
+            icon={isPreviewMode ? PencilSimple : Eye}
+            label={isPreviewMode ? 'Edit' : 'Preview'}
+          />
         </>
       )}
 

@@ -15,8 +15,8 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
 import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
+import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
@@ -62,7 +62,7 @@ import { CODE_HIGHLIGHT_CLASSES } from '@vibe/ui/lib/code-highlight-theme';
 import { LinkNode } from '@lexical/link';
 import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
-import { EditorState, type LexicalEditor } from 'lexical';
+import { type EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
@@ -426,8 +426,21 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [ImageNode]
     );
 
-    // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
-    const extendedTransformers: Transformer[] = useMemo(
+    // Edit mode: only custom element transformers (no markdown rendering)
+    const editTransformers: Transformer[] = useMemo(
+      () => [
+        IMAGE_TRANSFORMER,
+        PR_COMMENT_EXPORT_TRANSFORMER,
+        PR_COMMENT_TRANSFORMER,
+        COMPONENT_INFO_EXPORT_TRANSFORMER,
+        COMPONENT_INFO_TRANSFORMER,
+        CODE,
+      ],
+      [IMAGE_TRANSFORMER]
+    );
+
+    // Display mode: full markdown rendering
+    const displayTransformers: Transformer[] = useMemo(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
@@ -440,6 +453,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       ],
       [IMAGE_TRANSFORMER]
     );
+
+    // Use display transformers for read-only, edit transformers for editing
+    const activeTransformers = disabled
+      ? displayTransformers
+      : editTransformers;
+
+    // Preview toggle state (only used in edit mode with static toolbar)
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
 
     // Memoized handlers for ContentEditable to prevent re-renders
     const handlePaste = useCallback(
@@ -496,10 +517,21 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 onChange={onChange}
                 onEditorStateChange={onEditorStateChange}
                 editable={!disabled}
-                transformers={extendedTransformers}
+                transformers={activeTransformers}
               />
-              {!disabled && <ToolbarPlugin />}
-              <div className="relative">
+              {!disabled && !isPreviewMode && <ToolbarPlugin />}
+              <div
+                className="relative"
+                style={
+                  !disabled && isPreviewMode
+                    ? {
+                        position: 'absolute',
+                        opacity: 0,
+                        pointerEvents: 'none',
+                      }
+                    : undefined
+                }
+              >
                 <RichTextPlugin
                   contentEditable={
                     <ContentEditable
@@ -515,10 +547,24 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 />
               </div>
 
+              {/* Preview: render a read-only editor with full markdown rendering */}
+              {!disabled && isPreviewMode && (
+                <div className={cn(className)}>
+                  <WYSIWYGEditor
+                    value={value}
+                    disabled
+                    className={className}
+                    taskAttemptId={taskAttemptId}
+                  />
+                </div>
+              )}
+
               {!disabled && showStaticToolbar && (
                 <StaticToolbarPlugin
                   saveStatus={saveStatus}
                   extraActions={staticToolbarActions}
+                  isPreviewMode={isPreviewMode}
+                  onTogglePreview={() => setIsPreviewMode((p) => !p)}
                 />
               )}
 
@@ -530,8 +576,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <>
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
-                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
-                  <PasteMarkdownPlugin transformers={extendedTransformers} />
+                  <MarkdownInsertPlugin />
+                  <PasteMarkdownPlugin transformers={activeTransformers} />
                   <TypeaheadOpenProvider>
                     <FileTagTypeaheadPlugin
                       repoIds={repoIds}
@@ -556,7 +602,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       onCmdEnter={onCmdEnter}
                       onShiftCmdEnter={onShiftCmdEnter}
                       onChange={onChange}
-                      transformers={extendedTransformers}
+                      transformers={activeTransformers}
                       sendShortcut={sendShortcut}
                     />
                   </TypeaheadOpenProvider>
