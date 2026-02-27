@@ -211,6 +211,8 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       <AppBar
         projects={projects}
         hosts={relayHosts}
+        hostsLabel="HOSTS"
+        projectsLabel="PROJECTS"
         activeHostId={activeHostId}
         onCreateProject={handleCreateProject}
         onWorkspacesClick={handleWorkspacesClick}

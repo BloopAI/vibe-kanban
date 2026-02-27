@@ -44,6 +44,8 @@ function getProjectInitials(name: string): string {
 interface AppBarProps {
   projects: AppBarProject[];
   hosts?: AppBarHost[];
+  hostsLabel?: string;
+  projectsLabel?: string;
   activeHostId?: string | null;
   onCreateProject: () => void;
   onWorkspacesClick: () => void;
@@ -94,6 +96,8 @@ function getHostStatusIndicatorClass(status: AppBarHostStatus): string {
 export function AppBar({
   projects,
   hosts = [],
+  hostsLabel,
+  projectsLabel,
   activeHostId = null,
   onCreateProject,
   onWorkspacesClick,
@@ -125,6 +129,11 @@ export function AppBar({
     >
       {(showWorkspacesButton || hosts.length > 0) && (
         <div className="flex flex-col items-center gap-1">
+          {hostsLabel && (
+            <p className="w-10 text-center text-[9px] font-medium uppercase leading-none tracking-wide text-low">
+              {hostsLabel}
+            </p>
+          )}
           {showWorkspacesButton && (
             <AppBarButton
               icon={LayoutIcon}
@@ -251,6 +260,11 @@ export function AppBar({
       )}
 
       {/* Middle section: Project buttons */}
+      {projectsLabel && (
+        <p className="w-10 text-center text-[9px] font-medium uppercase leading-none tracking-wide text-low">
+          {projectsLabel}
+        </p>
+      )}
       <DragDropContext onDragEnd={onProjectsDragEnd}>
         <Droppable
           droppableId="app-bar-projects"
