@@ -103,9 +103,7 @@ export function IssueListRow({
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onClick(
-                e as unknown as MouseEvent
-              );
+              onClick(e as unknown as MouseEvent);
             }
           }}
           className={cn(
@@ -125,9 +123,7 @@ export function IssueListRow({
                 {...provided.dragHandleProps}
                 className={cn(
                   'cursor-grab',
-                  showCheckbox
-                    ? 'hidden'
-                    : 'flex group-hover/row:hidden'
+                  showCheckbox ? 'hidden' : 'flex group-hover/row:hidden'
                 )}
                 onClick={(e) => e.stopPropagation()}
               >
