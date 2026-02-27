@@ -29,7 +29,8 @@
     "react-dom": "^18.2.0",
     "simple-icons": "^15.16.0",
     "tailwind-merge": "^2.6.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@tailwindcss/container-queries": "^0.1.1",

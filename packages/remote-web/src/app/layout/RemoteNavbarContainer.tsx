@@ -8,21 +8,21 @@ import {
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import { useMobileActiveTab } from "@/shared/stores/useUiPreferencesStore";
+import { useMobileWorkspaceTitle } from "@remote/shared/stores/useMobileWorkspaceTitle";
 
 interface RemoteNavbarContainerProps {
   organizationName: string | null;
   mobileMode?: boolean;
-  onOpenDrawer?: () => void;
   mobileUserSlot?: ReactNode;
 }
 
 export function RemoteNavbarContainer({
   organizationName,
   mobileMode,
-  onOpenDrawer,
   mobileUserSlot,
 }: RemoteNavbarContainerProps) {
   const location = useLocation();
+  const mobileWorkspaceTitle = useMobileWorkspaceTitle((s) => s.title);
 
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
@@ -33,6 +33,8 @@ export function RemoteNavbarContainer({
   );
 
   const isOnWorkspaceView = /^\/workspaces\/[^/]+/.test(location.pathname);
+  const isOnWorkspaceList =
+    location.pathname === "/workspaces" || location.pathname === "/workspaces/";
 
   useEffect(() => {
     if (isOnWorkspaceView) {
@@ -52,26 +54,36 @@ export function RemoteNavbarContainer({
     if (isOnProjectPage) {
       return organizationName ?? "Project";
     }
-
-    if (location.pathname.startsWith("/workspaces")) {
-      return "Workspaces";
+    // Inside a workspace: show workspace name from store
+    if (isOnWorkspaceView) {
+      return mobileWorkspaceTitle ?? undefined;
     }
+    // Home page or workspace list: no section title (Row 2 hidden)
+    return undefined;
+  }, [
+    location.pathname,
+    organizationName,
+    isOnProjectPage,
+    isOnWorkspaceView,
+    mobileWorkspaceTitle,
+  ]);
 
-    return "Organizations";
-  }, [location.pathname, organizationName, isOnProjectPage]);
+  const mobileShowBack = isOnWorkspaceView || isOnWorkspaceList;
 
   const handleNavigateBack = useCallback(() => {
     if (isOnProjectPage && projectId) {
-      // On project sub-route: go back to project root
       navigate({
         to: "/projects/$projectId",
         params: { projectId },
       });
+    } else if (isOnWorkspaceView) {
+      // Inside workspace: go back to workspace list
+      navigate({ to: "/workspaces" });
     } else {
-      // Non-project page: go home (NOT /workspaces — remote-web stubs)
+      // Workspace list or other: go home
       navigate({ to: "/" });
     }
-  }, [navigate, isOnProjectPage, projectId]);
+  }, [navigate, isOnProjectPage, projectId, isOnWorkspaceView]);
 
   const handleOpenSettings = useCallback(() => {
     SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });
@@ -85,7 +97,7 @@ export function RemoteNavbarContainer({
       isOnProjectPage={isOnProjectPage}
       isOnProjectSubRoute={isOnProjectSubRoute}
       onNavigateBack={handleNavigateBack}
-      onOpenDrawer={onOpenDrawer}
+      mobileShowBack={mobileShowBack}
       onOpenSettings={handleOpenSettings}
       mobileActiveTab={mobileActiveTab as MobileTabId}
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}

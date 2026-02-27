@@ -135,10 +135,11 @@ export interface NavbarProps {
   onMobileTabChange?: (tab: MobileTabId) => void;
   mobileTabs?: { id: MobileTabId; icon: Icon; label: string }[];
   showMobileTabs?: boolean;
+  mobileShowBack?: boolean;
 }
 
 export function Navbar({
-  workspaceTitle = 'Workspace Title',
+  workspaceTitle,
   leftItems = [],
   rightItems = [],
   leftSlot,
@@ -158,6 +159,7 @@ export function Navbar({
   onMobileTabChange,
   mobileTabs,
   showMobileTabs,
+  mobileShowBack,
 }: NavbarProps) {
   const renderItem = (item: NavbarSectionItem, key: string) => {
     // Render divider
@@ -222,18 +224,32 @@ export function Navbar({
             </div>
           ) : (
             <div className="flex items-center gap-0.5 overflow-x-auto">
-              {onOpenDrawer && (
+              {mobileShowBack && onNavigateBack ? (
                 <>
                   <button
                     type="button"
                     className="flex items-center justify-center px-1.5 py-1 text-low hover:text-normal"
-                    onClick={onOpenDrawer}
-                    aria-label="Projects"
+                    onClick={onNavigateBack}
+                    aria-label="Back"
                   >
-                    <KanbanIcon className="size-icon-sm" />
+                    <CaretLeftIcon className="size-icon-sm" />
                   </button>
                   <div className="h-4 w-px bg-border mx-0.5 shrink-0" />
                 </>
+              ) : (
+                onOpenDrawer && (
+                  <>
+                    <button
+                      type="button"
+                      className="flex items-center justify-center px-1.5 py-1 text-low hover:text-normal"
+                      onClick={onOpenDrawer}
+                      aria-label="Projects"
+                    >
+                      <KanbanIcon className="size-icon-sm" />
+                    </button>
+                    <div className="h-4 w-px bg-border mx-0.5 shrink-0" />
+                  </>
+                )
               )}
               {showMobileTabs !== false &&
                 (mobileTabs ?? MOBILE_TABS).map((tab) => {
@@ -312,7 +328,7 @@ export function Navbar({
         </div>
 
         {/* Row 2: Info bar with leftSlot + workspace title (workspace pages only) */}
-        {!isOnProjectPage && (
+        {!isOnProjectPage && workspaceTitle && (
           <div className="flex items-center justify-between px-base py-half border-t border-border">
             <div className="flex items-center gap-base flex-1 min-w-0">
               {leftSlot}
@@ -345,7 +361,7 @@ export function Navbar({
 
       {/* Center - Workspace Title */}
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-base text-low truncate">{workspaceTitle}</p>
+        <p className="text-base text-low truncate">{workspaceTitle ?? ''}</p>
       </div>
 
       {/* Right - Sync Error Indicator + Diff Controls + Panel Toggles (dividers inline) */}
