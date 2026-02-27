@@ -15,7 +15,12 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
+import {
+  TRANSFORMERS,
+  TEXT_FORMAT_TRANSFORMERS,
+  CODE,
+  type Transformer,
+} from '@lexical/markdown';
 import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
 import {
   PrCommentNode,
@@ -439,7 +444,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [ImageNode]
     );
 
-    // Edit mode: only custom element transformers (no markdown rendering)
+    // Edit mode: custom elements + text format transformers (so asterisks
+    // aren't escaped during $convertToMarkdownString and preview can parse them)
     const editTransformers: Transformer[] = useMemo(
       () => [
         IMAGE_TRANSFORMER,
@@ -448,6 +454,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
         CODE,
+        ...TEXT_FORMAT_TRANSFORMERS,
       ],
       [IMAGE_TRANSFORMER]
     );
