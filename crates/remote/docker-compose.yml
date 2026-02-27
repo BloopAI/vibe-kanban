@@ -78,6 +78,7 @@ services:
         POSTHOG_API_ENDPOINT: ${POSTHOG_API_ENDPOINT:-}
         SENTRY_DSN_REMOTE: ${SENTRY_DSN_REMOTE:-}
         VITE_RELAY_API_BASE_URL: ${VITE_RELAY_API_BASE_URL:-http://localhost:8082}
+        VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY: ${VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY:-}
       ssh:
         - default
     depends_on:

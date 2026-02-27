@@ -23,6 +23,9 @@ GOOGLE_OAUTH_CLIENT_SECRET=
 # For local HTTPS via Caddy on :3001:
 VITE_RELAY_API_BASE_URL=https://relay.localhost:3001
 
+# Optional — enables Virtuoso Message List license for remote web UI
+VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=
+
 # Optional — leave empty to disable invitation emails
 LOOPS_EMAIL_API_KEY=
 ```
