@@ -212,7 +212,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         projects={projects}
         hosts={relayHosts}
         hostsLabel="HOSTS"
-        projectsLabel="PROJECTS"
+        projectsLabel="BOARDS"
         activeHostId={activeHostId}
         onCreateProject={handleCreateProject}
         onWorkspacesClick={handleWorkspacesClick}
