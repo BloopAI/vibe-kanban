@@ -1,8 +1,7 @@
 import { useMemo } from "react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation } from "@tanstack/react-router";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
-import { useRelayAppBarHosts } from "@remote/shared/hooks/useRelayAppBarHosts";
 import { parseRelayHostIdFromSearch } from "@remote/shared/lib/activeRelayHost";
 
 interface BlockedHostState {
@@ -21,27 +20,15 @@ export default function WorkspacesUnavailablePage({
   isCheckingBlockedHost = false,
 }: WorkspacesUnavailablePageProps) {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { hosts, isLoading } = useRelayAppBarHosts(true);
 
   const selectedHostId = useMemo(
     () => blockedHost?.id ?? parseRelayHostIdFromSearch(location.searchStr),
     [blockedHost?.id, location.searchStr],
   );
 
-  const selectedHost = useMemo(
-    () => hosts.find((host) => host.id === selectedHostId),
-    [hosts, selectedHostId],
-  );
-
   const selectedHostName = useMemo(
-    () => blockedHost?.name ?? selectedHost?.name ?? selectedHostId,
-    [blockedHost?.name, selectedHost?.name, selectedHostId],
-  );
-
-  const onlineHosts = useMemo(
-    () => hosts.filter((host) => host.status === "online"),
-    [hosts],
+    () => blockedHost?.name ?? selectedHostId,
+    [blockedHost?.name, selectedHostId],
   );
 
   const isBlockedHostState = Boolean(blockedHost);
@@ -85,7 +72,6 @@ export default function WorkspacesUnavailablePage({
               <li>
                 If it still fails, open Relay Settings and pair this host again.
               </li>
-              <li>Select a different online host below to continue.</li>
             </ol>
 
             {blockedHost?.errorMessage && (
@@ -93,66 +79,27 @@ export default function WorkspacesUnavailablePage({
                 Last connection error: {blockedHost.errorMessage}
               </p>
             )}
-
-            <button
-              type="button"
-              onClick={openRelaySettings}
-              className="rounded-sm border border-border bg-primary px-base py-half text-xs text-normal hover:border-brand/60"
-            >
-              Open Relay Settings
-            </button>
           </div>
         ) : (
           <p className="text-sm text-low">
-            Connect an online host in the app bar to load local workspaces
+            Select an online host in the app bar to load local workspaces
             through relay.
           </p>
         )}
 
-        {isLoading ? (
-          <p className="text-sm text-low">Loading hosts...</p>
-        ) : onlineHosts.length > 0 ? (
-          <div className="space-y-half">
-            {isBlockedHostState && (
-              <p className="text-sm text-low">Available online hosts:</p>
-            )}
-            <div className="flex flex-wrap gap-half">
-              {onlineHosts.map((host) => (
-                <button
-                  key={host.id}
-                  type="button"
-                  onClick={() => {
-                    navigate({
-                      to: "/workspaces",
-                      search: { hostId: host.id },
-                    });
-                  }}
-                  className={`rounded-sm border px-base py-half text-xs transition-colors ${
-                    host.id === selectedHostId
-                      ? "border-brand bg-brand/10 text-high"
-                      : "border-border bg-primary text-normal hover:border-brand/60"
-                  }`}
-                >
-                  {host.name}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-half">
-            <p className="text-sm text-low">
-              {isBlockedHostState
-                ? "No online paired hosts are available right now. Bring a host online, then retry."
-                : "No online paired hosts are available right now."}
-            </p>
-            <button
-              type="button"
-              onClick={openRelaySettings}
-              className="rounded-sm border border-border bg-primary px-base py-half text-xs text-normal hover:border-brand/60"
-            >
-              Open Relay Settings
-            </button>
-          </div>
+        <button
+          type="button"
+          onClick={openRelaySettings}
+          className="rounded-sm border border-border bg-primary px-base py-half text-xs text-normal hover:border-brand/60"
+        >
+          Open Relay Settings
+        </button>
+
+        {isBlockedHostState && (
+          <p className="text-sm text-low">
+            After the host is online again, select it from the app bar and
+            retry.
+          </p>
         )}
       </div>
     </div>

@@ -1,8 +1,7 @@
-import { useMemo, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WorkspacesUnavailablePage from "@remote/pages/WorkspacesUnavailablePage";
 import { useResolvedRelayWorkspaceHostId } from "@remote/shared/hooks/useResolvedRelayWorkspaceHostId";
-import { useRelayAppBarHosts } from "@remote/shared/hooks/useRelayAppBarHosts";
 import { RemoteUserSystemProvider } from "@remote/app/providers/RemoteUserSystemProvider";
 import { WorkspaceProvider } from "@/shared/providers/WorkspaceProvider";
 import { ExecutionProcessesProvider } from "@/shared/providers/ExecutionProcessesProvider";
@@ -42,15 +41,6 @@ export function RemoteWorkspacesPageShell({
   children,
 }: RemoteWorkspacesPageShellProps) {
   const resolvedHostId = useResolvedRelayWorkspaceHostId();
-  const { hosts } = useRelayAppBarHosts(Boolean(resolvedHostId));
-
-  const selectedHostName = useMemo(() => {
-    if (!resolvedHostId) {
-      return null;
-    }
-
-    return hosts.find((host) => host.id === resolvedHostId)?.name ?? null;
-  }, [hosts, resolvedHostId]);
 
   const hostHealthQuery = useQuery({
     queryKey: ["remote-workspaces-host-health", resolvedHostId],
@@ -78,7 +68,7 @@ export function RemoteWorkspacesPageShell({
       <WorkspacesUnavailablePage
         blockedHost={{
           id: resolvedHostId,
-          name: selectedHostName,
+          name: null,
         }}
         isCheckingBlockedHost
       />
@@ -90,7 +80,7 @@ export function RemoteWorkspacesPageShell({
       <WorkspacesUnavailablePage
         blockedHost={{
           id: resolvedHostId,
-          name: selectedHostName,
+          name: null,
           errorMessage: getErrorMessage(hostHealthQuery.error),
         }}
       />
