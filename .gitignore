@@ -17,6 +17,7 @@ bindings/
 # Environment variables
 .env
 .env.remote
+docker-compose.override.yml
 .env.local
 .env.development.local
 .env.test.local

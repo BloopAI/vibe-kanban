@@ -100,7 +100,7 @@ export type MobileTabId =
   | 'preview'
   | 'git';
 
-const MOBILE_TABS: { id: MobileTabId; icon: Icon; label: string }[] = [
+export const MOBILE_TABS: { id: MobileTabId; icon: Icon; label: string }[] = [
   { id: 'workspaces', icon: LayoutIcon, label: 'Wksps' },
   { id: 'chat', icon: ChatsTeardropIcon, label: 'Chat' },
   { id: 'changes', icon: GitDiffIcon, label: 'Diff' },
@@ -133,6 +133,8 @@ export interface NavbarProps {
   isOnProjectSubRoute?: boolean;
   mobileActiveTab?: MobileTabId;
   onMobileTabChange?: (tab: MobileTabId) => void;
+  mobileTabs?: { id: MobileTabId; icon: Icon; label: string }[];
+  showMobileTabs?: boolean;
 }
 
 export function Navbar({
@@ -154,6 +156,8 @@ export function Navbar({
   isOnProjectSubRoute = false,
   mobileActiveTab = 'chat',
   onMobileTabChange,
+  mobileTabs,
+  showMobileTabs,
 }: NavbarProps) {
   const renderItem = (item: NavbarSectionItem, key: string) => {
     // Render divider
@@ -231,7 +235,7 @@ export function Navbar({
                   <div className="h-4 w-px bg-border mx-0.5 shrink-0" />
                 </>
               )}
-              {MOBILE_TABS.map((tab) => {
+              {showMobileTabs !== false && (mobileTabs ?? MOBILE_TABS).map((tab) => {
                 const TabIcon = tab.icon;
                 const isActive = mobileActiveTab === tab.id;
                 return (

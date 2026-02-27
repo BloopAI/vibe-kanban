@@ -2,6 +2,7 @@ import { useCallback, useMemo, type ReactNode } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Navbar } from "@vibe/ui/components/Navbar";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
+import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteNavbarContainerProps {
   organizationName: string | null;
@@ -52,7 +53,7 @@ export function RemoteNavbarContainer({
   }, [navigate, isOnProjectPage, projectId]);
 
   const handleOpenSettings = useCallback(() => {
-    SettingsDialog.show();
+    SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });
   }, []);
 
   return (
