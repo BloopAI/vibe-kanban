@@ -6,7 +6,7 @@ use std::{
 use axum::response::sse::Event;
 use futures::{StreamExt, TryStreamExt, future};
 use tokio::{sync::broadcast, task::JoinHandle};
-use tokio_stream::wrappers::BroadcastStream;
+use tokio_stream::wrappers::{BroadcastStream, errors::BroadcastStreamRecvError};
 
 use crate::{log_msg::LogMsg, stream_lines::LinesStreamExt};
 
@@ -37,7 +37,7 @@ impl Default for MsgStore {
 
 impl MsgStore {
     pub fn new() -> Self {
-        let (sender, _) = broadcast::channel(10000);
+        let (sender, _) = broadcast::channel(100000);
         Self {
             inner: RwLock::new(Inner {
                 history: VecDeque::with_capacity(32),
@@ -108,8 +108,18 @@ impl MsgStore {
         let (history, rx) = (self.get_history(), self.get_receiver());
 
         let hist = futures::stream::iter(history.into_iter().map(Ok::<_, std::io::Error>));
-        let live = BroadcastStream::new(rx)
-            .filter_map(|res| async move { res.ok().map(Ok::<_, std::io::Error>) });
+        let live = BroadcastStream::new(rx).filter_map(|res| async move {
+            match res {
+                Ok(msg) => Some(Ok(msg)),
+                Err(BroadcastStreamRecvError::Lagged(n)) => {
+                    tracing::error!(
+                        skipped = n,
+                        "MsgStore broadcast lagged. {n} messages dropped for this subscriber"
+                    );
+                    None
+                }
+            }
+        });
 
         Box::pin(hist.chain(live))
     }
