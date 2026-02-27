@@ -5,11 +5,18 @@ interface IssueSelectionState {
   selectedIssueIds: Set<string>;
   /** Anchor issue for Shift+Click range selection */
   anchorIssueId: string | null;
+  /** Cursor position for keyboard-driven selection (Shift+J/K) */
+  cursorIssueId: string | null;
   /** Flat ordered list of all visible issue IDs (set by the kanban container) */
   orderedIssueIds: string[];
 
   toggleIssue: (issueId: string) => void;
   selectRange: (targetIssueId: string) => void;
+  /** Extend selection by one issue in the given direction (for Shift+J/K) */
+  selectAdjacent: (
+    direction: 'up' | 'down',
+    fallbackIssueId?: string | null
+  ) => void;
   selectAll: () => void;
   clearSelection: () => void;
   setOrderedIssueIds: (ids: string[]) => void;
@@ -19,6 +26,7 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
   (set, get) => ({
     selectedIssueIds: new Set<string>(),
     anchorIssueId: null,
+    cursorIssueId: null,
     orderedIssueIds: [],
 
     toggleIssue: (issueId: string) => {
@@ -32,6 +40,7 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
       set({
         selectedIssueIds: next,
         anchorIssueId: issueId,
+        cursorIssueId: issueId,
       });
     },
 
@@ -42,6 +51,7 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
         set({
           selectedIssueIds: new Set([targetIssueId]),
           anchorIssueId: targetIssueId,
+          cursorIssueId: targetIssueId,
         });
         return;
       }
@@ -54,6 +64,7 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
         set({
           selectedIssueIds: new Set([targetIssueId]),
           anchorIssueId: targetIssueId,
+          cursorIssueId: targetIssueId,
         });
         return;
       }
@@ -67,7 +78,62 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
       for (const id of rangeIds) {
         next.add(id);
       }
-      set({ selectedIssueIds: next });
+      set({ selectedIssueIds: next, cursorIssueId: targetIssueId });
+    },
+
+    selectAdjacent: (
+      direction: 'up' | 'down',
+      fallbackIssueId?: string | null
+    ) => {
+      const {
+        anchorIssueId,
+        cursorIssueId,
+        orderedIssueIds,
+        selectedIssueIds,
+      } = get();
+      if (orderedIssueIds.length === 0) return;
+
+      // Determine starting point: cursor > anchor > fallback (open issue) > first
+      const startId = cursorIssueId ?? anchorIssueId ?? fallbackIssueId ?? null;
+      const startIndex = startId ? orderedIssueIds.indexOf(startId) : -1;
+
+      if (startIndex === -1 && selectedIssueIds.size === 0) {
+        // No starting point — select the first or last issue to begin
+        const id =
+          direction === 'down'
+            ? orderedIssueIds[0]
+            : orderedIssueIds[orderedIssueIds.length - 1];
+        set({
+          selectedIssueIds: new Set([id]),
+          anchorIssueId: id,
+          cursorIssueId: id,
+        });
+        return;
+      }
+
+      const effectiveIndex = startIndex === -1 ? 0 : startIndex;
+      const nextIndex =
+        direction === 'down' ? effectiveIndex + 1 : effectiveIndex - 1;
+
+      // Clamp to bounds
+      if (nextIndex < 0 || nextIndex >= orderedIssueIds.length) return;
+
+      const nextId = orderedIssueIds[nextIndex];
+
+      // Set anchor if none exists
+      const effectiveAnchor = anchorIssueId ?? orderedIssueIds[effectiveIndex];
+
+      // Build range from anchor to new cursor
+      const anchorIndex = orderedIssueIds.indexOf(effectiveAnchor);
+      const rangeStart = Math.min(anchorIndex, nextIndex);
+      const rangeEnd = Math.max(anchorIndex, nextIndex);
+      const rangeIds = orderedIssueIds.slice(rangeStart, rangeEnd + 1);
+
+      set({
+        selectedIssueIds: new Set(rangeIds),
+        anchorIssueId: effectiveAnchor,
+        cursorIssueId: nextId,
+      });
     },
 
     selectAll: () => {
@@ -79,6 +145,7 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
       set({
         selectedIssueIds: new Set<string>(),
         anchorIssueId: null,
+        cursorIssueId: null,
       });
     },
 

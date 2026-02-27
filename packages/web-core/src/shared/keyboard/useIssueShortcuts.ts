@@ -33,6 +33,8 @@ export function useIssueShortcuts() {
   );
   const selectAll = useIssueSelectionStore((s) => s.selectAll);
   const clearSelection = useIssueSelectionStore((s) => s.clearSelection);
+  const toggleIssue = useIssueSelectionStore((s) => s.toggleIssue);
+  const selectAdjacent = useIssueSelectionStore((s) => s.selectAdjacent);
 
   const executeActionRef = useRef(executeAction);
   const projectIdRef = useRef(projectId);
@@ -42,6 +44,8 @@ export function useIssueShortcuts() {
   const multiSelectedIssueIdsRef = useRef(multiSelectedIssueIds);
   const selectAllRef = useRef(selectAll);
   const clearSelectionRef = useRef(clearSelection);
+  const toggleIssueRef = useRef(toggleIssue);
+  const selectAdjacentRef = useRef(selectAdjacent);
 
   useEffect(() => {
     executeActionRef.current = executeAction;
@@ -52,6 +56,8 @@ export function useIssueShortcuts() {
     multiSelectedIssueIdsRef.current = multiSelectedIssueIds;
     selectAllRef.current = selectAll;
     clearSelectionRef.current = clearSelection;
+    toggleIssueRef.current = toggleIssue;
+    selectAdjacentRef.current = selectAdjacent;
   });
 
   // Use multi-selected IDs when available, otherwise fall back to single issue
@@ -175,6 +181,41 @@ export function useIssueShortcuts() {
       if (multiSelectedIssueIdsRef.current.size > 0) {
         clearSelectionRef.current();
       }
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Toggle current issue selection with X
+  useHotkeys(
+    'x',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      const currentIssueId = issueIdRef.current;
+      if (!currentIssueId) return;
+      e.preventDefault();
+      toggleIssueRef.current(currentIssueId);
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Extend selection with Shift+J / Shift+ArrowDown (select next issue)
+  useHotkeys(
+    'shift+j, shift+down',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      e.preventDefault();
+      selectAdjacentRef.current('down', issueIdRef.current);
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Extend selection with Shift+K / Shift+ArrowUp (select previous issue)
+  useHotkeys(
+    'shift+k, shift+up',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      e.preventDefault();
+      selectAdjacentRef.current('up', issueIdRef.current);
     },
     { scopes: [Scope.KANBAN], enabled }
   );
