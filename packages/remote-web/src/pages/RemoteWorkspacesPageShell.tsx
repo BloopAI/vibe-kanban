@@ -2,12 +2,6 @@ import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import WorkspacesUnavailablePage from "@remote/pages/WorkspacesUnavailablePage";
 import { useResolvedRelayWorkspaceHostId } from "@remote/shared/hooks/useResolvedRelayWorkspaceHostId";
-import { WorkspaceProvider } from "@/shared/providers/WorkspaceProvider";
-import { ExecutionProcessesProvider } from "@/shared/providers/ExecutionProcessesProvider";
-import { LogsPanelProvider } from "@/shared/providers/LogsPanelProvider";
-import { ActionsProvider } from "@/shared/providers/ActionsProvider";
-import { TerminalProvider } from "@/shared/providers/TerminalProvider";
-import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { makeLocalApiRequest } from "@/shared/lib/localApiTransport";
 
 interface RemoteWorkspacesPageShellProps {
@@ -21,21 +15,6 @@ function getErrorMessage(error: unknown): string | null {
 
   return null;
 }
-
-function ExecutionProcessesProviderWrapper({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const { selectedSessionId } = useWorkspaceContext();
-
-  return (
-    <ExecutionProcessesProvider sessionId={selectedSessionId}>
-      {children}
-    </ExecutionProcessesProvider>
-  );
-}
-
 export function RemoteWorkspacesPageShell({
   children,
 }: RemoteWorkspacesPageShellProps) {
@@ -86,15 +65,5 @@ export function RemoteWorkspacesPageShell({
     );
   }
 
-  return (
-    <WorkspaceProvider>
-      <ExecutionProcessesProviderWrapper>
-        <TerminalProvider>
-          <LogsPanelProvider>
-            <ActionsProvider>{children}</ActionsProvider>
-          </LogsPanelProvider>
-        </TerminalProvider>
-      </ExecutionProcessesProviderWrapper>
-    </WorkspaceProvider>
-  );
+  return children;
 }
