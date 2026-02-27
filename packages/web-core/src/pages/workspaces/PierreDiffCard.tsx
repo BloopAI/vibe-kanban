@@ -467,7 +467,7 @@ export function PierreDiffCard({
       <div
         className={cn(
           'w-full flex items-center bg-primary px-base gap-base sticky top-0 z-10 border-b border-transparent',
-          'cursor-pointer',
+          'cursor-pointer min-h-10',
           expanded && 'rounded-t-sm'
         )}
         onClick={onToggle}
