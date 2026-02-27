@@ -103,6 +103,23 @@ Above the board, tabs let you switch between views:
 Hidden status tabs (like Backlog or Cancelled) only appear if you've hidden those statuses in [Display Settings](/cloud/customisation). This is useful for keeping your board clean while still having quick access to archived or backlogged items.
 </Info>
 
+## Multi-Select
+
+Select multiple issue cards to perform bulk actions directly from the board.
+
+### How to Select
+
+- **Cmd/Ctrl + Click** a card to toggle it in or out of the selection
+- **Shift + Click** a card to select a range from the last selected card
+- **X** to toggle the currently open issue
+- **Shift + J / ↓** or **Shift + K / ↑** to extend the selection by one issue
+- **Cmd/Ctrl + A** to select all visible issues
+- **Escape** to clear the selection
+
+Selected cards are highlighted with an accent ring. While issues are selected, drag and drop is disabled to prevent accidental moves.
+
+When two or more issues are selected, a **bulk action bar** appears at the bottom of the screen. You can change the status, priority, or assignees of all selected issues at once, or delete them. See [Selecting Multiple Issues](/cloud/issues#selecting-multiple-issues) for full details.
+
 ## Working with the Board
 
 ### Opening an Issue
@@ -117,7 +134,11 @@ Instead of opening an issue, you can change its status by dragging it to another
 
 | Shortcut | Action |
 |----------|--------|
-| `Escape` | Close the issue panel |
+| `X` | Toggle current issue selection |
+| `Shift + J / ↓` | Extend selection down |
+| `Shift + K / ↑` | Extend selection up |
+| `Cmd/Ctrl + A` | Select all issues |
+| `Escape` | Clear selection / close the issue panel |
 | `Cmd/Ctrl + K` | Open the command bar for quick actions |
 
 ## Real-Time Collaboration
