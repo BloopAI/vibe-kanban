@@ -504,11 +504,11 @@
         "helper": "When enabled, this instance can be accessed remotely through a relay tunnel."
       },
       "enrollmentCode": {
-        "label": "Enrollment Code",
+        "label": "Pairing Code",
         "helper": "Enter this code in the browser to pair with this instance.",
-        "loginRequired": "Log in to generate an enrollment code.",
-        "fetchError": "Failed to fetch enrollment code.",
-        "show": "Show enrollment code"
+        "loginRequired": "Log in to generate a pairing code.",
+        "fetchError": "Failed to fetch pairing code.",
+        "show": "Show pairing code"
       }
     },
     "remoteProjects": {

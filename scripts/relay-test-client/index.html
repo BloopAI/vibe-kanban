@@ -170,7 +170,7 @@
           <input id="hostIdOverride" placeholder="UUID" autocomplete="off" />
         </div>
         <div class="grid" style="grid-column: 1 / -1">
-          <label for="enrollmentCode">Host Enrollment Code</label>
+          <label for="enrollmentCode">Host Pairing Code</label>
           <input
             id="enrollmentCode"
             placeholder="Code shown in local backend relay logs"
@@ -719,7 +719,7 @@
       async function runPakeEnrollment(sessionPrefix, enrollmentCode) {
         const normalizedCode = String(enrollmentCode || "").trim().toUpperCase();
         if (!normalizedCode) {
-          throw new Error("Missing host enrollment code.");
+          throw new Error("Missing host pairing code.");
         }
 
         const signingKey = await createSigningKey();

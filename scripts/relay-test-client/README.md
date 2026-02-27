@@ -21,7 +21,7 @@ Open:
 - `Relay API Base` (example: `https://relay.localhost:3001`)
 - Use **Sign In (GitHub)** or **Sign In (Google)** to authenticate directly in
   the standalone client.
-- Enter the host enrollment code shown in the local backend logs after relay
+- Enter the host pairing code shown in the local backend logs after relay
   startup (`Relay PAKE enrollment code ready`).
 - Tokens are stored in browser localStorage:
   - `relay_test_access_token`
