@@ -402,7 +402,7 @@ export const ConversationList = forwardRef<
     <ApprovalFormProvider>
       <div
         className={cn(
-          'h-full transition-opacity duration-300',
+          'h-full overflow-hidden transition-opacity duration-300',
           hasContent ? 'opacity-100' : 'opacity-0'
         )}
       >
