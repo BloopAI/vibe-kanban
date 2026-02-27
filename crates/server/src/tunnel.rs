@@ -38,6 +38,7 @@ struct RelayParams {
     local_port: u16,
     remote_client: RemoteClient,
     relay_base: String,
+    machine_id: String,
     host_name: String,
 }
 
@@ -81,6 +82,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         local_port,
         remote_client,
         relay_base,
+        machine_id: deployment.user_id().to_string(),
         host_name,
     })
 }
@@ -135,6 +137,7 @@ async fn start_relay(
     let base_url = params.relay_base.trim_end_matches('/');
 
     let encoded_name = url::form_urlencoded::Serializer::new(String::new())
+        .append_pair("machine_id", &params.machine_id)
         .append_pair("name", &params.host_name)
         .append_pair("agent_version", env!("CARGO_PKG_VERSION"))
         .finish();

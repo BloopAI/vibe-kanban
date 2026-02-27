@@ -21,13 +21,14 @@ use crate::server::run_control_channel;
 
 #[derive(Debug, Deserialize)]
 pub struct ConnectQuery {
+    pub machine_id: String,
     pub name: String,
     #[serde(default)]
     pub agent_version: Option<String>,
 }
 
 /// Local server connects here to establish a relay control channel.
-/// The host record is upserted from the authenticated user + name query param.
+/// The host record is upserted from the authenticated user + machine_id query param.
 pub async fn relay_connect(
     State(state): State<RelayAppState>,
     Extension(ctx): Extension<RequestContext>,
@@ -37,7 +38,12 @@ pub async fn relay_connect(
     let repo = HostRepository::new(&state.pool);
 
     let host_id = match repo
-        .upsert_host(ctx.user.id, &query.name, query.agent_version.as_deref())
+        .upsert_host(
+            ctx.user.id,
+            &query.machine_id,
+            &query.name,
+            query.agent_version.as_deref(),
+        )
         .await
     {
         Ok(id) => id,
