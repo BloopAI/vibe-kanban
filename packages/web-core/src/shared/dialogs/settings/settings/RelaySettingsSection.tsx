@@ -282,10 +282,8 @@ function LocalRelaySettingsSectionContent() {
                     <label className="text-sm font-medium text-normal">
                       {t('settings.relay.enrollmentCode.label')}
                     </label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 bg-secondary border border-border rounded-sm px-base py-half font-mono text-lg text-high tracking-widest select-all">
-                        {enrollmentCode}
-                      </div>
+                    <div className="relative bg-secondary border border-border rounded-sm px-base py-half font-mono text-lg text-high tracking-widest select-all pr-10">
+                      {enrollmentCode}
                       <button
                         onClick={() => {
                           void navigator.clipboard.writeText(enrollmentCode);
@@ -295,7 +293,7 @@ function LocalRelaySettingsSectionContent() {
                             2000
                           );
                         }}
-                        className="p-2 text-low hover:text-normal transition-colors rounded-sm"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-low hover:text-normal transition-colors rounded-sm"
                         aria-label={t(
                           'settings.relay.enrollmentCode.copy',
                           'Copy code'
