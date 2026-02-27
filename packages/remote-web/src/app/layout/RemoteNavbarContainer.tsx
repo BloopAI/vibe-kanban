@@ -13,12 +13,14 @@ import { useMobileWorkspaceTitle } from "@remote/shared/stores/useMobileWorkspac
 interface RemoteNavbarContainerProps {
   organizationName: string | null;
   mobileMode?: boolean;
+  onOpenDrawer?: () => void;
   mobileUserSlot?: ReactNode;
 }
 
 export function RemoteNavbarContainer({
   organizationName,
   mobileMode,
+  onOpenDrawer,
   mobileUserSlot,
 }: RemoteNavbarContainerProps) {
   const location = useLocation();
@@ -99,6 +101,7 @@ export function RemoteNavbarContainer({
       onNavigateBack={handleNavigateBack}
       mobileShowBack={mobileShowBack}
       onOpenSettings={handleOpenSettings}
+      onOpenDrawer={isOnProjectPage ? onOpenDrawer : undefined}
       mobileActiveTab={mobileActiveTab as MobileTabId}
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}
       mobileTabs={remoteMobileTabs}
