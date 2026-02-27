@@ -10,6 +10,8 @@ import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useDiscordOnlineCount } from "@/shared/hooks/useDiscordOnlineCount";
 import { useGitHubStars } from "@/shared/hooks/useGitHubStars";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
+import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
+import { useCommandBarShortcut } from "@/shared/hooks/useCommandBarShortcut";
 import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { RemoteAppBarUserPopoverContainer } from "@remote/app/layout/RemoteAppBarUserPopoverContainer";
 import { RemoteNavbarContainer } from "@remote/app/layout/RemoteNavbarContainer";
@@ -37,6 +39,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSignedIn } = useAuth();
+  const isWorkspaceContextRoute = location.pathname.includes("/workspaces");
+
+  useCommandBarShortcut(() => CommandBarDialog.show(), isWorkspaceContextRoute);
 
   const { data: organizationsData } = useUserOrganizations();
   const organizations = organizationsData?.organizations ?? [];
