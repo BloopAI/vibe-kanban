@@ -246,6 +246,8 @@ export function ContextBarContainer({
     return toRenderItems(filtered, 'secondary');
   }, [actionCtx, toRenderItems]);
 
+  if (isRealMobileDevice()) return null;
+
   return (
     <ContextBar
       style={style}
