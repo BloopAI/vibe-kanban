@@ -105,7 +105,7 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
         while !cancel_token.is_cancelled()
             && let Err(error) = start_relay(&params, cancel_token.clone()).await
         {
-            tracing::warn!(
+            tracing::debug!(
                 ?error,
                 retry_in_secs = delay.as_secs(),
                 "Relay connection failed; retrying"
