@@ -332,9 +332,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
           <div className="flex-1 overflow-y-auto p-2">
             {isSignedIn ? (
               isLoadingProjects ? (
-                <p className="px-3 py-4 text-sm text-low">
-                  Loading projects…
-                </p>
+                <p className="px-3 py-4 text-sm text-low">Loading projects…</p>
               ) : (
                 projects.map((project) => (
                   <button
