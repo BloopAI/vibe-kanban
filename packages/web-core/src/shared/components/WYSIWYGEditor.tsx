@@ -571,6 +571,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 onEditorStateChange={onEditorStateChange}
                 editable={!disabled}
                 transformers={activeTransformers}
+                preserveMarkdownSyntax={!disabled}
               />
               {!disabled && !isPreviewMode && <ToolbarPlugin />}
 
