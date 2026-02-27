@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, type ReactNode } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import {
   MOBILE_TABS,
@@ -33,6 +33,12 @@ export function RemoteNavbarContainer({
   );
 
   const isOnWorkspaceView = /^\/workspaces\/[^/]+/.test(location.pathname);
+
+  useEffect(() => {
+    if (isOnWorkspaceView) {
+      setMobileActiveTab("chat");
+    }
+  }, [isOnWorkspaceView, setMobileActiveTab]);
   const navigate = useNavigate();
 
   const isOnProjectPage = location.pathname.startsWith("/projects/");
