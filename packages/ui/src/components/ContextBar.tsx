@@ -150,7 +150,7 @@ export function ContextBar({
 
         <div className="flex flex-col py-base">
           {primaryItems.length > 0 && (
-            <div className="flex flex-col gap-base">
+            <div className="flex flex-col items-center gap-base">
               {primaryItems.map(renderContextBarItem)}
             </div>
           )}
@@ -160,7 +160,7 @@ export function ContextBar({
           )}
 
           {secondaryItems.length > 0 && (
-            <div className="flex flex-col gap-base">
+            <div className="flex flex-col items-center gap-base">
               {secondaryItems.map(renderContextBarItem)}
             </div>
           )}
