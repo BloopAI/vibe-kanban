@@ -103,7 +103,7 @@ export function WorkspaceSummary({
           'flex w-full cursor-pointer flex-col text-left px-base py-half transition-all duration-150',
           isActive
             ? 'text-normal'
-            : 'text-low opacity-60 hover:opacity-100 hover:text-normal'
+            : 'text-low sm:opacity-60 sm:hover:opacity-100 sm:hover:text-normal'
         )}
       >
         <div
@@ -215,7 +215,7 @@ export function WorkspaceSummary({
 
       {/* Right-side hover action - more options only */}
       {workspaceId && onOpenWorkspaceActions && (
-        <div className="absolute right-0 top-0 bottom-0 flex items-center opacity-0 group-hover:opacity-100">
+        <div className="absolute right-0 top-0 bottom-0 flex items-center sm:opacity-0 sm:group-hover:opacity-100">
           {/* Gradient fade from transparent to background */}
           <div className="h-full w-6 pointer-events-none bg-gradient-to-r from-transparent to-secondary" />
           {/* Single action button */}
