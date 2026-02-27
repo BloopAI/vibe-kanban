@@ -1,20 +1,11 @@
-import {
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import { SignInIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
-import {
-  UserSystemContext,
-  type UserSystemContextType,
-} from '@/shared/hooks/useUserSystem';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
@@ -55,22 +46,19 @@ export function RelaySettingsSectionContent({
 }: {
   initialState?: RelaySettingsSectionInitialState;
 }) {
-  const userSystem = useContext(UserSystemContext);
+  const runtime = useAppRuntime();
 
-  if (userSystem) {
-    return <LocalRelaySettingsSectionContent userSystem={userSystem} />;
+  if (runtime === 'local') {
+    return <LocalRelaySettingsSectionContent />;
   }
 
   return <RemoteRelaySettingsSectionContent initialState={initialState} />;
 }
 
-function LocalRelaySettingsSectionContent({
-  userSystem,
-}: {
-  userSystem: UserSystemContextType;
-}) {
+function LocalRelaySettingsSectionContent() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
+  const userSystem = useUserSystem();
   const { config, loading, updateAndSaveConfig } = userSystem;
   const { isSignedIn } = useAuth();
   const queryClient = useQueryClient();
