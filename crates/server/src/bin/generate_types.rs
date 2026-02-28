@@ -116,6 +116,8 @@ fn generate_types_content() -> String {
         server::routes::relay_auth::RelayPairedClient::decl(),
         server::routes::relay_auth::ListRelayPairedClientsResponse::decl(),
         server::routes::relay_auth::RemoveRelayPairedClientResponse::decl(),
+        server::routes::relay_auth::RefreshRelaySigningSessionRequest::decl(),
+        server::routes::relay_auth::RefreshRelaySigningSessionResponse::decl(),
         server::routes::sessions::CreateFollowUpAttempt::decl(),
         server::routes::sessions::ResetProcessRequest::decl(),
         server::routes::task_attempts::ChangeTargetBranchRequest::decl(),

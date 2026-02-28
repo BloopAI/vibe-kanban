@@ -11,6 +11,7 @@ use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use trusted_key_auth::{
     key_confirmation::{build_server_proof, verify_client_proof},
+    refresh::{build_refresh_message, validate_refresh_timestamp, verify_refresh_signature},
     spake2::{generate_one_time_code, start_spake2_enrollment},
     trusted_keys::{TrustedRelayClient, parse_public_key_base64},
 };
@@ -23,6 +24,7 @@ use crate::{DeploymentImpl, error::ApiError};
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
 const SPAKE2_START_GLOBAL_LIMIT: usize = 30;
+const SIGNING_SESSION_REFRESH_GLOBAL_LIMIT: usize = 120;
 const RELAY_HEADER: &str = "x-vk-relayed";
 
 #[derive(Debug, Serialize)]
@@ -80,6 +82,20 @@ pub struct RemoveRelayPairedClientResponse {
     removed: bool,
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct RefreshRelaySigningSessionRequest {
+    client_id: Uuid,
+    timestamp: i64,
+    nonce: String,
+    signature_b64: String,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct RefreshRelaySigningSessionResponse {
+    signing_session_id: Uuid,
+    server_public_key_b64: String,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
@@ -96,6 +112,10 @@ pub fn router() -> Router<DeploymentImpl> {
             post(start_spake2_enrollment_route),
         )
         .route("/relay-auth/spake2/finish", post(finish_spake2_enrollment))
+        .route(
+            "/relay-auth/signing-session/refresh",
+            post(refresh_relay_signing_session),
+        )
 }
 
 async fn generate_enrollment_code(
@@ -277,6 +297,57 @@ async fn finish_spake2_enrollment(
         server_public_key_b64,
         server_proof_b64,
     })))
+}
+
+async fn refresh_relay_signing_session(
+    State(deployment): State<DeploymentImpl>,
+    ExtractJson(payload): ExtractJson<RefreshRelaySigningSessionRequest>,
+) -> Result<Json<ApiResponse<RefreshRelaySigningSessionResponse>>, ApiError> {
+    deployment
+        .trusted_key_auth()
+        .enforce_rate_limit(
+            "relay-auth:signing-refresh:global",
+            SIGNING_SESSION_REFRESH_GLOBAL_LIMIT,
+            RATE_LIMIT_WINDOW,
+        )
+        .await?;
+
+    let trusted_client = deployment
+        .trusted_key_auth()
+        .find_trusted_client(payload.client_id)
+        .await?
+        .ok_or(ApiError::Unauthorized)?;
+
+    let browser_public_key = parse_public_key_base64(&trusted_client.public_key_b64)
+        .map_err(|_| ApiError::Unauthorized)?;
+
+    validate_refresh_timestamp(payload.timestamp)?;
+    deployment
+        .trusted_key_auth()
+        .claim_refresh_nonce(&payload.nonce)
+        .await?;
+
+    let refresh_message =
+        build_refresh_message(payload.timestamp, &payload.nonce, payload.client_id);
+    verify_refresh_signature(
+        &browser_public_key,
+        &refresh_message,
+        &payload.signature_b64,
+    )?;
+
+    let signing_session_id = deployment
+        .relay_signing()
+        .create_session(browser_public_key)
+        .await;
+    let server_public_key_b64 =
+        BASE64_STANDARD.encode(deployment.relay_signing().server_public_key().as_bytes());
+
+    Ok(Json(ApiResponse::success(
+        RefreshRelaySigningSessionResponse {
+            signing_session_id,
+            server_public_key_b64,
+        },
+    )))
 }
 
 fn is_relay_request(headers: &HeaderMap) -> bool {

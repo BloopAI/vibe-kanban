@@ -300,6 +300,10 @@ export type ListRelayPairedClientsResponse = { clients: Array<RelayPairedClient>
 
 export type RemoveRelayPairedClientResponse = { removed: boolean, };
 
+export type RefreshRelaySigningSessionRequest = { client_id: string, timestamp: bigint, nonce: string, signature_b64: string, };
+
+export type RefreshRelaySigningSessionResponse = { signing_session_id: string, server_public_key_b64: string, };
+
 export type CreateFollowUpAttempt = { prompt: string, executor_config: ExecutorConfig, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ResetProcessRequest = { process_id: string, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };

@@ -1,13 +1,16 @@
 import {
   type PairedRelayHost,
   listPairedRelayHosts,
+  savePairedRelayHost,
 } from "@/shared/lib/relayPairingStorage";
 import { createRelaySession } from "@/shared/lib/remoteApi";
 import {
   createRelaySessionAuthCode,
   establishRelaySessionBaseUrl,
   getRelayApiUrl,
+  refreshRelaySigningSession,
 } from "@/shared/lib/relayBackendApi";
+import { buildRelaySigningSessionRefreshPayload } from "@/shared/lib/relaySigningSessionRefresh";
 import {
   getActiveRelayHostId,
   parseRelayHostIdFromSearch,
@@ -123,7 +126,6 @@ export async function requestRelayHostApi(
   pathOrUrl: string,
   requestInit: RequestInit = {},
 ): Promise<Response> {
-  const context = await resolveRelayHostContext(hostId);
   const pathAndQuery = toPathAndQuery(pathOrUrl);
   const normalizedPath = normalizePath(pathAndQuery);
   const method = (requestInit.method ?? "GET").toUpperCase();
@@ -132,40 +134,47 @@ export async function requestRelayHostApi(
     requestInit.body,
   );
 
-  const headers = await buildSignedHeaders(
-    context.pairedHost,
-    method,
+  const context = await resolveRelayHostContext(hostId);
+  const initialResponse = await sendRelayHostRequest(context, {
     normalizedPath,
+    method,
+    body,
     bodyBytes,
-    requestInit.headers,
-  );
-
-  if (contentType && !headers.has(CONTENT_TYPE_HEADER)) {
-    headers.set(CONTENT_TYPE_HEADER, contentType);
+    contentType,
+    requestInit,
+  });
+  if (!isAuthFailureStatus(initialResponse.status)) {
+    return initialResponse;
   }
 
-  const response = await fetch(
-    `${context.relaySessionBaseUrl}${normalizedPath}`,
-    {
-      ...requestInit,
-      body,
-      headers,
-      credentials: "include",
-    },
-  );
+  relaySessionBaseUrlCache.delete(hostId);
+  const refreshedContext = await tryRefreshRelayHostSigningSession(context);
+  if (!refreshedContext) {
+    return initialResponse;
+  }
 
-  if (response.status === 401 || response.status === 403) {
+  const retryResponse = await sendRelayHostRequest(refreshedContext, {
+    normalizedPath,
+    method,
+    body,
+    bodyBytes,
+    contentType,
+    requestInit,
+  });
+  if (isAuthFailureStatus(retryResponse.status)) {
     relaySessionBaseUrlCache.delete(hostId);
   }
 
-  return response;
+  return retryResponse;
 }
 
 export async function openRelayHostWebSocket(
   hostId: string,
   pathOrUrl: string,
 ): Promise<WebSocket> {
-  const context = await resolveRelayHostContext(hostId);
+  const baseContext = await resolveRelayHostContext(hostId);
+  const context =
+    (await tryRefreshRelayHostSigningSession(baseContext)) ?? baseContext;
   const pathAndQuery = toPathAndQuery(pathOrUrl);
   const normalizedPath = normalizePath(pathAndQuery);
 
@@ -187,6 +196,76 @@ export async function openRelayHostWebSocket(
     signature,
   );
   return createRelaySignedWebSocket(new WebSocket(wsUrl), signingContext);
+}
+
+function isAuthFailureStatus(status: number): boolean {
+  return status === 401 || status === 403;
+}
+
+async function sendRelayHostRequest(
+  context: RelayHostContext,
+  params: {
+    normalizedPath: string;
+    method: string;
+    body: BodyInit | undefined;
+    bodyBytes: Uint8Array;
+    contentType: string | null;
+    requestInit: RequestInit;
+  },
+): Promise<Response> {
+  const headers = await buildSignedHeaders(
+    context.pairedHost,
+    params.method,
+    params.normalizedPath,
+    params.bodyBytes,
+    params.requestInit.headers,
+  );
+
+  if (params.contentType && !headers.has(CONTENT_TYPE_HEADER)) {
+    headers.set(CONTENT_TYPE_HEADER, params.contentType);
+  }
+
+  return fetch(`${context.relaySessionBaseUrl}${params.normalizedPath}`, {
+    ...params.requestInit,
+    body: params.body,
+    headers,
+    credentials: "include",
+  });
+}
+
+async function tryRefreshRelayHostSigningSession(
+  context: RelayHostContext,
+): Promise<RelayHostContext | null> {
+  const clientId = context.pairedHost.client_id;
+  if (!clientId) {
+    return null;
+  }
+
+  try {
+    const payload = await buildRelaySigningSessionRefreshPayload(
+      clientId,
+      context.pairedHost.private_key_jwk,
+    );
+    const refreshed = await refreshRelaySigningSession(
+      context.relaySessionBaseUrl,
+      payload,
+    );
+    const updatedPairedHost: PairedRelayHost = {
+      ...context.pairedHost,
+      signing_session_id: refreshed.signing_session_id,
+      server_public_key_b64: refreshed.server_public_key_b64,
+    };
+    await savePairedRelayHost(updatedPairedHost);
+    clearCryptoKeyCacheForHost(context.hostId);
+
+    return {
+      ...context,
+      pairedHost: updatedPairedHost,
+    };
+  } catch (error) {
+    console.warn("Failed to refresh relay signing session", error);
+    return null;
+  }
 }
 
 function resolveRelayHostIdForCurrentPage(): string | null {
@@ -878,6 +957,21 @@ function toPathAndQuery(pathOrUrl: string): string {
   }
 
   return pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+}
+
+function clearCryptoKeyCacheForHost(hostId: string): void {
+  const cachePrefix = `${hostId}:`;
+  for (const key of signingKeyCache.keys()) {
+    if (key.startsWith(cachePrefix)) {
+      signingKeyCache.delete(key);
+    }
+  }
+
+  for (const key of serverVerifyKeyCache.keys()) {
+    if (key.startsWith(cachePrefix)) {
+      serverVerifyKeyCache.delete(key);
+    }
+  }
 }
 
 function bytesToBase64(bytes: Uint8Array): string {

@@ -21,6 +21,7 @@ pub struct TrustedKeyAuthRuntime {
     pake_enrollments: Arc<RwLock<HashMap<Uuid, PendingPakeEnrollment>>>,
     enrollment_code: Arc<RwLock<Option<String>>>,
     rate_limit_windows: Arc<RwLock<HashMap<String, Vec<Instant>>>>,
+    refresh_nonces: Arc<RwLock<HashMap<String, Instant>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -30,6 +31,7 @@ struct PendingPakeEnrollment {
 }
 
 const PAKE_ENROLLMENT_TTL: Duration = Duration::from_secs(5 * 60);
+const REFRESH_NONCE_TTL: Duration = Duration::from_secs(2 * 60);
 
 impl TrustedKeyAuthRuntime {
     pub fn new(trusted_keys_path: PathBuf) -> Self {
@@ -38,6 +40,7 @@ impl TrustedKeyAuthRuntime {
             pake_enrollments: Default::default(),
             enrollment_code: Default::default(),
             rate_limit_windows: Default::default(),
+            refresh_nonces: Default::default(),
         }
     }
 
@@ -59,6 +62,16 @@ impl TrustedKeyAuthRuntime {
         client_id: Uuid,
     ) -> Result<bool, TrustedKeyAuthError> {
         remove_trusted_client(&self.trusted_keys_path, client_id).await
+    }
+
+    pub async fn find_trusted_client(
+        &self,
+        client_id: Uuid,
+    ) -> Result<Option<TrustedRelayClient>, TrustedKeyAuthError> {
+        let clients = list_trusted_clients(&self.trusted_keys_path).await?;
+        Ok(clients
+            .into_iter()
+            .find(|client| client.client_id == client_id))
     }
 
     pub async fn store_pake_enrollment(&self, enrollment_id: Uuid, shared_key: Vec<u8>) {
@@ -119,5 +132,41 @@ impl TrustedKeyAuthRuntime {
 
         entry.push(now);
         Ok(())
+    }
+
+    pub async fn claim_refresh_nonce(&self, nonce: &str) -> Result<(), TrustedKeyAuthError> {
+        let normalized = nonce.trim();
+        if normalized.is_empty() || normalized.len() > 128 {
+            return Err(TrustedKeyAuthError::Unauthorized);
+        }
+
+        let now = Instant::now();
+        let mut seen = self.refresh_nonces.write().await;
+        seen.retain(|_, inserted_at| now.duration_since(*inserted_at) <= REFRESH_NONCE_TTL);
+        if seen.contains_key(normalized) {
+            return Err(TrustedKeyAuthError::Unauthorized);
+        }
+
+        seen.insert(normalized.to_string(), now);
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn claim_refresh_nonce_rejects_replay() {
+        let runtime = TrustedKeyAuthRuntime::new(PathBuf::from("/tmp/unused-trusted-keys.json"));
+        runtime.claim_refresh_nonce("nonce-1").await.unwrap();
+
+        assert!(runtime.claim_refresh_nonce("nonce-1").await.is_err());
+    }
+
+    #[tokio::test]
+    async fn claim_refresh_nonce_rejects_blank_values() {
+        let runtime = TrustedKeyAuthRuntime::new(PathBuf::from("/tmp/unused-trusted-keys.json"));
+        assert!(runtime.claim_refresh_nonce("   ").await.is_err());
     }
 }

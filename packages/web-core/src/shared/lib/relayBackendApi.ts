@@ -2,10 +2,18 @@ import type { RelaySessionAuthCodeResponse } from 'shared/remote-types';
 import type {
   FinishSpake2EnrollmentRequest,
   FinishSpake2EnrollmentResponse,
+  RefreshRelaySigningSessionResponse,
   StartSpake2EnrollmentRequest,
   StartSpake2EnrollmentResponse,
 } from 'shared/types';
 import { getAuthRuntime } from '@/shared/lib/auth/runtime';
+
+export interface RelaySigningSessionRefreshPayload {
+  client_id: string;
+  timestamp: number;
+  nonce: string;
+  signature_b64: string;
+}
 
 const BUILD_TIME_API_BASE = import.meta.env.VITE_VK_SHARED_API_BASE || '';
 const BUILD_TIME_RELAY_API_BASE = import.meta.env.VITE_RELAY_API_BASE_URL || '';
@@ -91,6 +99,25 @@ export async function finishRelaySpake2Enrollment(
   );
 
   return parseLocalApiResponse(response, 'Failed to finish pairing.');
+}
+
+export async function refreshRelaySigningSession(
+  relaySessionBaseUrl: string,
+  payload: RelaySigningSessionRefreshPayload
+): Promise<RefreshRelaySigningSessionResponse> {
+  const response = await fetch(
+    `${relaySessionBaseUrl}/api/relay-auth/signing-session/refresh`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  return parseLocalApiResponse(
+    response,
+    'Failed to refresh relay signing session.'
+  );
 }
 
 async function makeAuthenticatedRequest(
