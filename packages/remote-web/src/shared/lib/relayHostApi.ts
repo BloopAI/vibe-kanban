@@ -40,7 +40,6 @@ interface RelaySignature {
 }
 
 interface RelayHostContext {
-  hostId: string;
   pairedHost: PairedRelayHost;
   relaySessionBaseUrl: string;
 }
@@ -255,7 +254,6 @@ async function tryRefreshRelayHostSigningSession(
       signing_session_id: refreshed.signing_session_id,
     };
     await savePairedRelayHost(updatedPairedHost);
-    clearCryptoKeyCacheForHost(context.hostId);
 
     return {
       ...context,
@@ -312,7 +310,6 @@ async function resolveRelayHostContext(
 
   const relaySessionBaseUrl = await getRelaySessionBaseUrl(hostId);
   return {
-    hostId,
     pairedHost,
     relaySessionBaseUrl,
   };
@@ -415,7 +412,7 @@ async function getSigningKey(pairedHost: PairedRelayHost): Promise<CryptoKey> {
     throw new Error("Missing signing session for paired host.");
   }
 
-  const cacheKey = `${pairedHost.host_id}:${signingSessionId}`;
+  const cacheKey = buildSigningKeyCacheKey(pairedHost);
   const cachedKey = signingKeyCache.get(cacheKey);
   if (cachedKey) {
     return cachedKey;
@@ -441,7 +438,7 @@ async function getServerVerifyKey(
     throw new Error("Missing signing session for paired host.");
   }
 
-  const cacheKey = `${pairedHost.host_id}:${signingSessionId}`;
+  const cacheKey = buildServerVerifyKeyCacheKey(pairedHost);
   const cachedKey = serverVerifyKeyCache.get(cacheKey);
   if (cachedKey) {
     return cachedKey;
@@ -958,19 +955,18 @@ function toPathAndQuery(pathOrUrl: string): string {
   return pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
 }
 
-function clearCryptoKeyCacheForHost(hostId: string): void {
-  const cachePrefix = `${hostId}:`;
-  for (const key of signingKeyCache.keys()) {
-    if (key.startsWith(cachePrefix)) {
-      signingKeyCache.delete(key);
-    }
-  }
+function buildSigningKeyCacheKey(pairedHost: PairedRelayHost): string {
+  const privateKeyFingerprint = [
+    pairedHost.private_key_jwk.kty ?? "",
+    pairedHost.private_key_jwk.crv ?? "",
+    pairedHost.private_key_jwk.x ?? "",
+    pairedHost.private_key_jwk.d ?? "",
+  ].join("|");
+  return `${pairedHost.host_id}:${privateKeyFingerprint}`;
+}
 
-  for (const key of serverVerifyKeyCache.keys()) {
-    if (key.startsWith(cachePrefix)) {
-      serverVerifyKeyCache.delete(key);
-    }
-  }
+function buildServerVerifyKeyCacheKey(pairedHost: PairedRelayHost): string {
+  return `${pairedHost.host_id}:${pairedHost.server_public_key_b64}`;
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
