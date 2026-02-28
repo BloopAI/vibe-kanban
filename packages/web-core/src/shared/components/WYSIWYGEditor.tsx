@@ -136,6 +136,8 @@ type WysiwygProps = {
   findMatchingDiffPath?: (text: string) => string | null;
   /** Callback when clickable inline code is clicked (only in read-only mode) */
   onCodeClick?: (fullPath: string) => void;
+  /** Hide the copy/edit/delete action buttons in read-only mode */
+  hideActions?: boolean;
   /** Show a static toolbar below the editor content */
   showStaticToolbar?: boolean;
   /** Save status indicator for static toolbar */
@@ -274,6 +276,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       autoFocus = false,
       findMatchingDiffPath,
       onCodeClick,
+      hideActions = false,
       showStaticToolbar = false,
       saveStatus,
       staticToolbarActions,
@@ -555,6 +558,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
             <WYSIWYGEditor
               value={value}
               disabled
+              hideActions
               className={className}
               taskAttemptId={taskAttemptId}
             />
@@ -670,7 +674,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     );
 
     // Wrap with action buttons in read-only mode
-    if (disabled) {
+    if (disabled && !hideActions) {
       return (
         <div className="relative group">
           <div className="sticky top-0 right-2 z-10 pointer-events-none h-0">
