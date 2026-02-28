@@ -28,6 +28,7 @@
           "browser-testing",
           "issue-management",
           "reviewing-code",
+          "remote-access",
           {
             "group": "Supported Coding Agents",
             "expanded": true,
@@ -96,7 +97,6 @@
           "settings/projects-repositories",
           "settings/organization-settings",
           "settings/remote-projects",
-          "remote-control",
           "settings/agent-configurations",
           "settings/mcp-servers"
         ]
@@ -165,6 +165,10 @@
     {
       "source": "/workspaces/preview",
       "destination": "/browser-testing"
+    },
+    {
+      "source": "/remote-control",
+      "destination": "/remote-access"
     }
   ],
   "footer": {
