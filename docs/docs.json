@@ -120,7 +120,8 @@
       {
         "group": "Help",
         "pages": [
-          "troubleshooting"
+          "troubleshooting",
+          "responsible-disclosures"
         ]
       }
     ]
