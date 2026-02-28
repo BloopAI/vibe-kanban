@@ -91,7 +91,13 @@ export function MarkdownSyncPlugin({
       lastSerializedRef.current = markdown;
       onChange(markdown);
     });
-  }, [editor, onChange, onEditorStateChange, transformers, preserveMarkdownSyntax]);
+  }, [
+    editor,
+    onChange,
+    onEditorStateChange,
+    transformers,
+    preserveMarkdownSyntax,
+  ]);
 
   return null;
 }

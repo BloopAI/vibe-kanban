@@ -61,9 +61,7 @@ export function MarkdownInsertPlugin() {
             const currentText = anchorNode.getTextContent();
             const before = currentText.slice(0, anchorOffset);
             const after = currentText.slice(anchorOffset);
-            anchorNode.setTextContent(
-              `${before}${marker}${marker}${after}`
-            );
+            anchorNode.setTextContent(`${before}${marker}${marker}${after}`);
             // Place cursor between the two markers using a fresh selection
             const newOffset = anchorOffset + marker.length;
             const nodeKey = anchorNode.getKey();
