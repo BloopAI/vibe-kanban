@@ -37,10 +37,13 @@ export function useRelayWorkspaceHostHealth(
     },
   });
 
+  const isHostUnavailable =
+    hostHealthQuery.isError || hostHealthQuery.isRefetchError;
+
   return {
     isChecking: hostHealthQuery.isPending,
-    isError: hostHealthQuery.isError,
-    errorMessage: hostHealthQuery.isError
+    isError: isHostUnavailable,
+    errorMessage: isHostUnavailable
       ? getErrorMessage(hostHealthQuery.error)
       : null,
   };
