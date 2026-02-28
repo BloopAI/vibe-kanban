@@ -20,6 +20,8 @@ const NONCE_HEADER = "x-vk-sig-nonce";
 const REQUEST_SIGNATURE_HEADER = "x-vk-sig-signature";
 
 const EMPTY_BYTES = new Uint8Array();
+// Placeholder origin used only to construct/parse relative URLs. Never fetched.
+const URL_PARSE_BASE = "https://example.invalid";
 
 export async function buildSignedHeaders(
   pairedHost: PairedRelayHost,
@@ -100,7 +102,7 @@ export async function normalizeRequestBody(
     };
   }
 
-  const probeRequest = new Request("https://relay.local", {
+  const probeRequest = new Request(URL_PARSE_BASE, {
     method: "POST",
     body,
   });
@@ -118,7 +120,7 @@ export function appendSignatureToPath(
   pathAndQuery: string,
   signature: RelaySignature,
 ): string {
-  const url = new URL(pathAndQuery, "https://relay.local");
+  const url = new URL(pathAndQuery, URL_PARSE_BASE);
   url.searchParams.set(SIGNING_SESSION_HEADER, signature.signingSessionId);
   url.searchParams.set(TIMESTAMP_HEADER, String(signature.timestamp));
   url.searchParams.set(NONCE_HEADER, signature.nonce);
