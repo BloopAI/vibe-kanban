@@ -1,5 +1,6 @@
 'use client';
 
+import type { MouseEvent } from 'react';
 import { cn } from '../lib/cn';
 import type { KanbanAssigneeUser } from './KanbanAssignee';
 import {
@@ -21,8 +22,11 @@ export interface IssueListViewProps {
   getResolvedRelationshipsForIssue?: (
     issueId: string
   ) => IssueListRowRelationship[];
-  onIssueClick: (issueId: string) => void;
+  onIssueClick: (issueId: string, e: MouseEvent) => void;
   selectedIssueId: string | null;
+  selectedIssueIds?: Set<string>;
+  isMultiSelectActive?: boolean;
+  onIssueCheckboxChange?: (issueId: string, checked: boolean) => void;
   className?: string;
 }
 
@@ -35,6 +39,9 @@ export function IssueListView({
   getResolvedRelationshipsForIssue,
   onIssueClick,
   selectedIssueId,
+  selectedIssueIds,
+  isMultiSelectActive,
+  onIssueCheckboxChange,
   className,
 }: IssueListViewProps) {
   return (
@@ -50,6 +57,9 @@ export function IssueListView({
           getResolvedRelationshipsForIssue={getResolvedRelationshipsForIssue}
           onIssueClick={onIssueClick}
           selectedIssueId={selectedIssueId}
+          selectedIssueIds={selectedIssueIds}
+          isMultiSelectActive={isMultiSelectActive}
+          onIssueCheckboxChange={onIssueCheckboxChange}
         />
       ))}
     </div>

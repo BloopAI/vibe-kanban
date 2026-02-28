@@ -19,6 +19,7 @@ import {
 } from '@hello-pangea/dnd';
 import {
   type KeyboardEvent,
+  type MouseEvent,
   type MutableRefObject,
   type ReactNode,
   type Ref,
@@ -66,11 +67,12 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   index: number;
   children?: ReactNode;
   className?: string;
-  onClick?: () => void;
+  onClick?: (e: MouseEvent<HTMLDivElement>) => void;
   tabIndex?: number;
   forwardedRef?: Ref<HTMLDivElement>;
   onKeyDown?: (e: KeyboardEvent) => void;
   isOpen?: boolean;
+  isSelected?: boolean;
   dragDisabled?: boolean;
 };
 
@@ -85,6 +87,7 @@ export const KanbanCard = ({
   forwardedRef,
   onKeyDown,
   isOpen,
+  isSelected,
   dragDisabled = false,
 }: KanbanCardProps) => {
   return (
@@ -106,7 +109,9 @@ export const KanbanCard = ({
             className={cn(
               'p-base outline-none flex-col border -mt-[1px] -mx-[1px] bg-primary',
               snapshot.isDragging && 'cursor-grabbing shadow-lg',
-              isOpen && 'ring-2 ring-secondary-foreground ring-inset',
+              isSelected
+                ? 'ring-2 ring-accent ring-inset bg-accent/5'
+                : isOpen && 'ring-2 ring-secondary-foreground ring-inset',
               className
             )}
             ref={setRefs}

@@ -8,6 +8,7 @@ import {
   ActionTargetType,
 } from '@/shared/types/actions';
 import { Scope } from '@/shared/keyboard/registry';
+import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
 
 const SEQUENCE_TIMEOUT_MS = 1500;
 
@@ -26,11 +27,25 @@ export function useIssueShortcuts() {
   // NOT from ?mode=create searchParam which is a legacy format
   const isCreatingIssue = location.pathname.endsWith('/issues/new');
 
+  // Multi-selection support
+  const multiSelectedIssueIds = useIssueSelectionStore(
+    (s) => s.selectedIssueIds
+  );
+  const selectAll = useIssueSelectionStore((s) => s.selectAll);
+  const clearSelection = useIssueSelectionStore((s) => s.clearSelection);
+  const toggleIssue = useIssueSelectionStore((s) => s.toggleIssue);
+  const selectAdjacent = useIssueSelectionStore((s) => s.selectAdjacent);
+
   const executeActionRef = useRef(executeAction);
   const projectIdRef = useRef(projectId);
   const issueIdRef = useRef(issueId);
   const isKanbanRef = useRef(isKanban);
   const isCreatingIssueRef = useRef(isCreatingIssue);
+  const multiSelectedIssueIdsRef = useRef(multiSelectedIssueIds);
+  const selectAllRef = useRef(selectAll);
+  const clearSelectionRef = useRef(clearSelection);
+  const toggleIssueRef = useRef(toggleIssue);
+  const selectAdjacentRef = useRef(selectAdjacent);
 
   useEffect(() => {
     executeActionRef.current = executeAction;
@@ -38,9 +53,20 @@ export function useIssueShortcuts() {
     issueIdRef.current = issueId;
     isKanbanRef.current = isKanban;
     isCreatingIssueRef.current = isCreatingIssue;
+    multiSelectedIssueIdsRef.current = multiSelectedIssueIds;
+    selectAllRef.current = selectAll;
+    clearSelectionRef.current = clearSelection;
+    toggleIssueRef.current = toggleIssue;
+    selectAdjacentRef.current = selectAdjacent;
   });
 
-  const issueIds = useMemo(() => (issueId ? [issueId] : []), [issueId]);
+  // Use multi-selected IDs when available, otherwise fall back to single issue
+  const issueIds = useMemo(() => {
+    if (multiSelectedIssueIds.size > 0) {
+      return [...multiSelectedIssueIds];
+    }
+    return issueId ? [issueId] : [];
+  }, [multiSelectedIssueIds, issueId]);
   const issueIdsRef = useRef(issueIds);
   useEffect(() => {
     issueIdsRef.current = issueIds;
@@ -135,4 +161,62 @@ export function useIssueShortcuts() {
     ...OPTIONS,
     enabled,
   });
+
+  // Select all visible issues
+  useHotkeys(
+    'mod+a',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      e.preventDefault();
+      selectAllRef.current();
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Clear selection on Escape
+  useHotkeys(
+    'escape',
+    () => {
+      if (!isKanbanRef.current) return;
+      if (multiSelectedIssueIdsRef.current.size > 0) {
+        clearSelectionRef.current();
+      }
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Toggle current issue selection with X
+  useHotkeys(
+    'x',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      const currentIssueId = issueIdRef.current;
+      if (!currentIssueId) return;
+      e.preventDefault();
+      toggleIssueRef.current(currentIssueId);
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Extend selection with Shift+J / Shift+ArrowDown (select next issue)
+  useHotkeys(
+    'shift+j, shift+down',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      e.preventDefault();
+      selectAdjacentRef.current('down', issueIdRef.current);
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
+
+  // Extend selection with Shift+K / Shift+ArrowUp (select previous issue)
+  useHotkeys(
+    'shift+k, shift+up',
+    (e) => {
+      if (!isKanbanRef.current) return;
+      e.preventDefault();
+      selectAdjacentRef.current('up', issueIdRef.current);
+    },
+    { scopes: [Scope.KANBAN], enabled }
+  );
 }
