@@ -2,6 +2,17 @@ const DB_NAME = 'vk-relay-pairing';
 const DB_VERSION = 1;
 const PAIRED_HOSTS_STORE = 'paired_hosts';
 
+type RelayPairingChangeType = 'saved' | 'removed';
+
+export interface RelayPairingChange {
+  hostId: string;
+  type: RelayPairingChangeType;
+}
+
+type RelayPairingChangeListener = (change: RelayPairingChange) => void;
+
+const relayPairingChangeListeners = new Set<RelayPairingChangeListener>();
+
 export interface PairedRelayHost {
   host_id: string;
   host_name: string;
@@ -12,6 +23,25 @@ export interface PairedRelayHost {
   private_key_jwk: JsonWebKey;
   server_public_key_b64: string;
   paired_at: string;
+}
+
+export function subscribeRelayPairingChanges(
+  listener: RelayPairingChangeListener
+): () => void {
+  relayPairingChangeListeners.add(listener);
+  return () => {
+    relayPairingChangeListeners.delete(listener);
+  };
+}
+
+function emitRelayPairingChange(change: RelayPairingChange): void {
+  for (const listener of relayPairingChangeListeners) {
+    try {
+      listener(change);
+    } catch (error) {
+      console.error('relay pairing change listener failed', error);
+    }
+  }
 }
 
 function openDb(): Promise<IDBDatabase> {
@@ -65,6 +95,7 @@ export async function savePairedRelayHost(
     tx.onabort = () => reject(tx.error);
     tx.oncomplete = () => {
       db.close();
+      emitRelayPairingChange({ hostId: host.host_id, type: 'saved' });
       resolve();
     };
   });
@@ -82,6 +113,7 @@ export async function removePairedRelayHost(hostId: string): Promise<void> {
     tx.onabort = () => reject(tx.error);
     tx.oncomplete = () => {
       db.close();
+      emitRelayPairingChange({ hostId, type: 'removed' });
       resolve();
     };
   });

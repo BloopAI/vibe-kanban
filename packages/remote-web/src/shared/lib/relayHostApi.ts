@@ -2,6 +2,7 @@ import {
   type PairedRelayHost,
   listPairedRelayHosts,
   savePairedRelayHost,
+  subscribeRelayPairingChanges,
 } from "@/shared/lib/relayPairingStorage";
 import { createRelaySession } from "@/shared/lib/remoteApi";
 import {
@@ -31,6 +32,11 @@ const REQUEST_SIGNATURE_HEADER = "x-vk-sig-signature";
 const signingKeyCache = new Map<string, CryptoKey>();
 const serverVerifyKeyCache = new Map<string, CryptoKey>();
 const relaySessionBaseUrlCache = new Map<string, Promise<string>>();
+
+subscribeRelayPairingChanges(({ hostId }) => {
+  clearRelayHostCryptoCaches(hostId);
+  relaySessionBaseUrlCache.delete(hostId);
+});
 
 interface RelaySignature {
   signingSessionId: string;
@@ -412,7 +418,7 @@ async function getSigningKey(pairedHost: PairedRelayHost): Promise<CryptoKey> {
     throw new Error("Missing signing session for paired host.");
   }
 
-  const cacheKey = buildSigningKeyCacheKey(pairedHost);
+  const cacheKey = pairedHost.host_id;
   const cachedKey = signingKeyCache.get(cacheKey);
   if (cachedKey) {
     return cachedKey;
@@ -438,7 +444,7 @@ async function getServerVerifyKey(
     throw new Error("Missing signing session for paired host.");
   }
 
-  const cacheKey = buildServerVerifyKeyCacheKey(pairedHost);
+  const cacheKey = pairedHost.host_id;
   const cachedKey = serverVerifyKeyCache.get(cacheKey);
   if (cachedKey) {
     return cachedKey;
@@ -955,18 +961,9 @@ function toPathAndQuery(pathOrUrl: string): string {
   return pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
 }
 
-function buildSigningKeyCacheKey(pairedHost: PairedRelayHost): string {
-  const privateKeyFingerprint = [
-    pairedHost.private_key_jwk.kty ?? "",
-    pairedHost.private_key_jwk.crv ?? "",
-    pairedHost.private_key_jwk.x ?? "",
-    pairedHost.private_key_jwk.d ?? "",
-  ].join("|");
-  return `${pairedHost.host_id}:${privateKeyFingerprint}`;
-}
-
-function buildServerVerifyKeyCacheKey(pairedHost: PairedRelayHost): string {
-  return `${pairedHost.host_id}:${pairedHost.server_public_key_b64}`;
+function clearRelayHostCryptoCaches(hostId: string): void {
+  signingKeyCache.delete(hostId);
+  serverVerifyKeyCache.delete(hostId);
 }
 
 function bytesToBase64(bytes: Uint8Array): string {
