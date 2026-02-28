@@ -233,9 +233,9 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
         </p>
       )}
 
-      {/* Row 4: Priority, Tags, Assignee */}
+      {/* Row 4: Priority + Assignee */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-half flex-wrap flex-1 min-w-0">
+        <div className="flex items-center gap-half min-w-0">
           {onPriorityClick ? (
             <button
               type="button"
@@ -253,6 +253,26 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
           ) : (
             <PriorityIcon priority={priority} />
           )}
+        </div>
+        {onAssigneeClick ? (
+          <button
+            type="button"
+            onClick={onAssigneeClick}
+            className="cursor-pointer hover:bg-secondary rounded-sm transition-colors"
+          >
+            <KanbanAssignee assignees={assignees} />
+          </button>
+        ) : (
+          <KanbanAssignee assignees={assignees} />
+        )}
+      </div>
+
+      {/* Row 5: Tags, PRs, Relationships (own row to prevent overflow) */}
+      {(tags.length > 0 ||
+        tagEditProps ||
+        pullRequests.length > 0 ||
+        relationships.length > 0) && (
+        <div className="flex items-center gap-half flex-wrap min-w-0">
           {tagEditProps ? (
             (tagEditProps.renderTagEditor?.({
               allTags: tagEditProps.allTags,
@@ -296,18 +316,7 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
             </span>
           )}
         </div>
-        {onAssigneeClick ? (
-          <button
-            type="button"
-            onClick={onAssigneeClick}
-            className="cursor-pointer hover:bg-secondary rounded-sm transition-colors"
-          >
-            <KanbanAssignee assignees={assignees} />
-          </button>
-        ) : (
-          <KanbanAssignee assignees={assignees} />
-        )}
-      </div>
+      )}
     </div>
   );
 }
