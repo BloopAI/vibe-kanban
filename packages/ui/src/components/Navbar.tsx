@@ -323,6 +323,9 @@ export function Navbar({
                 <ListIcon className="size-icon-sm" />
               </button>
             )}
+            {mobileUserSlot && (
+              <div className="h-4 w-px bg-border mx-0.5 shrink-0" />
+            )}
             {mobileUserSlot}
           </div>
         </div>
