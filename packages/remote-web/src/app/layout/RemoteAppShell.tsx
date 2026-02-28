@@ -25,6 +25,7 @@ import { useCommandBarShortcut } from "@/shared/hooks/useCommandBarShortcut";
 import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { RemoteAppBarUserPopoverContainer } from "@remote/app/layout/RemoteAppBarUserPopoverContainer";
 import { RemoteNavbarContainer } from "@remote/app/layout/RemoteNavbarContainer";
+import { RemoteDesktopNavbar } from "@remote/app/layout/RemoteDesktopNavbar";
 import { useRelayAppBarHosts } from "@remote/shared/hooks/useRelayAppBarHosts";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import {
@@ -497,6 +498,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
             mobileUserSlot={mobileUserSlot}
           />
         )}
+        {!isMobile && isWorkspaceContextRoute && <RemoteDesktopNavbar />}
         <div className="min-h-0 flex-1">{children}</div>
       </div>
     </div>
