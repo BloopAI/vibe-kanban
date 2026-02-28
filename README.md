@@ -30,7 +30,7 @@ AI coding agents are increasingly writing the world's code and human engineers n
 - Quickly review work and start dev servers
 - Track the status of tasks that your coding agents are working on
 - Centralise configuration of coding agent MCP configs
-- Open projects remotely via SSH when running Vibe Kanban on a remote server
+- Remote Access: Open projects via SSH when running Vibe Kanban on a remote server
 
 You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
