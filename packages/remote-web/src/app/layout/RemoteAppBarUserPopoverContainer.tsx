@@ -5,6 +5,7 @@ import { AppBarUserPopover } from "@vibe/ui/components/AppBarUserPopover";
 import { logout } from "@remote/shared/lib/api";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
+import { useUserSystem } from "@/shared/hooks/useUserSystem";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteAppBarUserPopoverContainerProps {
@@ -29,6 +30,13 @@ export function RemoteAppBarUserPopoverContainer({
   onCreateOrg,
 }: RemoteAppBarUserPopoverContainerProps) {
   const { isSignedIn } = useAuth();
+  const { loginStatus } = useUserSystem();
+
+  // Extract avatar URL from first provider (matches local-web behavior)
+  const avatarUrl =
+    loginStatus?.status === "loggedin"
+      ? (loginStatus.profile.providers[0]?.avatar_url ?? null)
+      : null;
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
@@ -78,7 +86,7 @@ export function RemoteAppBarUserPopoverContainer({
   return (
     <AppBarUserPopover
       isSignedIn={isSignedIn}
-      avatarUrl={null}
+      avatarUrl={avatarUrl}
       avatarError={avatarError}
       organizations={organizations}
       selectedOrgId={selectedOrgId}
