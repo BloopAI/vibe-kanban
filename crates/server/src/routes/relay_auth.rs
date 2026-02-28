@@ -24,7 +24,7 @@ use crate::{DeploymentImpl, error::ApiError};
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
 const SPAKE2_START_GLOBAL_LIMIT: usize = 30;
-const SIGNING_SESSION_REFRESH_GLOBAL_LIMIT: usize = 120;
+const SIGNING_SESSION_REFRESH_GLOBAL_LIMIT: usize = 30;
 const RELAY_HEADER: &str = "x-vk-relayed";
 
 #[derive(Debug, Serialize)]
