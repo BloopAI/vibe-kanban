@@ -96,6 +96,7 @@
           "settings/projects-repositories",
           "settings/organization-settings",
           "settings/remote-projects",
+          "remote-control",
           "settings/agent-configurations",
           "settings/mcp-servers"
         ]
