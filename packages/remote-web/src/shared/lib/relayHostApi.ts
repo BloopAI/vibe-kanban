@@ -253,7 +253,6 @@ async function tryRefreshRelayHostSigningSession(
     const updatedPairedHost: PairedRelayHost = {
       ...context.pairedHost,
       signing_session_id: refreshed.signing_session_id,
-      server_public_key_b64: refreshed.server_public_key_b64,
     };
     await savePairedRelayHost(updatedPairedHost);
     clearCryptoKeyCacheForHost(context.hostId);

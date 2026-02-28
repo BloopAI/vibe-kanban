@@ -93,7 +93,6 @@ pub struct RefreshRelaySigningSessionRequest {
 #[derive(Debug, Serialize, TS)]
 pub struct RefreshRelaySigningSessionResponse {
     signing_session_id: Uuid,
-    server_public_key_b64: String,
 }
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -339,14 +338,9 @@ async fn refresh_relay_signing_session(
         .relay_signing()
         .create_session(browser_public_key)
         .await;
-    let server_public_key_b64 =
-        BASE64_STANDARD.encode(deployment.relay_signing().server_public_key().as_bytes());
 
     Ok(Json(ApiResponse::success(
-        RefreshRelaySigningSessionResponse {
-            signing_session_id,
-            server_public_key_b64,
-        },
+        RefreshRelaySigningSessionResponse { signing_session_id },
     )))
 }
 
