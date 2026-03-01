@@ -228,21 +228,31 @@ Rules:
 ## Migration Phases
 
 ### Phase 1: Shared Contract and Parsing
-1. Replace route-object API in
+Status: Completed (March 1, 2026)
+
+Completed:
+1. Introduced `AppDestination` and `NavigationTransition` in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
-2. Introduce `AppDestination` and `NavigationTransition` (replace only; no
-   `state`).
-3. Replace `resolveAppNavigationFromPath` to return semantic destination only
-   (ignore Kanban query params), including `hostId` when path is host-scoped.
-4. Consolidate duplicate parsing between:
-   - `packages/web-core/src/shared/lib/routes/appNavigation.ts`
-   - `packages/web-core/src/shared/lib/routes/projectSidebarRoutes.ts`
-5. Keep host-aware parsing behavior in shared parser.
+2. Added semantic path parsing via `resolveAppDestinationFromPath(...)` and
+   switched `resolveAppNavigationFromPath(...)` to route through that semantic
+   parser.
+3. Parser now ignores Kanban query params and preserves host-aware path
+   parsing.
+4. Consolidated project sidebar parsing by rewriting
+   `packages/web-core/src/shared/lib/routes/projectSidebarRoutes.ts` to map from
+   `AppDestination` (single shared path parser source of truth).
+
+Plan adjustment:
+1. The original task “replace route-object API in
+   `appNavigation.ts`” is moved to Phase 2 to avoid a half-migrated provider
+   contract/type break between `web-core`, `local-web`, and `remote-web`.
 
 ### Phase 2: Provider Interface
-1. Update `packages/web-core/src/shared/hooks/useAppNavigation.ts` provider
+1. Replace route-object API in
+   `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
+2. Update `packages/web-core/src/shared/hooks/useAppNavigation.ts` provider
    types to the new imperative contract.
-2. Remove legacy `toX()` route-object signatures and keep only semantic
+3. Remove legacy `toX()` route-object signatures and keep only semantic
    methods (`navigate`, `resolveFromPath`, optional typed convenience wrappers
    returning `AppDestination`).
 

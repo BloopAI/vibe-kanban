@@ -1,3 +1,5 @@
+import { resolveAppDestinationFromPath } from '@/shared/lib/routes/appNavigation';
+
 export type ProjectSidebarRouteState =
   | {
       type: 'closed';
@@ -30,102 +32,59 @@ export type ProjectSidebarRouteState =
       issueId: string | null;
     };
 
-function decodeSegment(segment: string): string {
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
-}
-
 export function parseProjectSidebarRoute(
   pathname: string
 ): ProjectSidebarRouteState | null {
-  const segments = pathname
-    .split('/')
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map(decodeSegment);
-
-  const isHostScoped = segments[0] === 'hosts' && !!segments[1];
-  const offset = isHostScoped ? 2 : 0;
-  const hostId = isHostScoped ? segments[1] : null;
-
-  if (segments[offset] !== 'projects' || !segments[offset + 1]) {
+  const destination = resolveAppDestinationFromPath(pathname);
+  if (!destination) {
     return null;
   }
 
-  const projectId = segments[offset + 1];
-
-  if (segments.length === offset + 2) {
-    return {
-      type: 'closed',
-      hostId,
-      projectId,
-    };
+  switch (destination.kind) {
+    case 'project':
+      return {
+        type: 'closed',
+        hostId: destination.hostId ?? null,
+        projectId: destination.projectId,
+      };
+    case 'project-issue-create':
+      return {
+        type: 'issue-create',
+        hostId: destination.hostId ?? null,
+        projectId: destination.projectId,
+      };
+    case 'project-issue':
+      return {
+        type: 'issue',
+        hostId: destination.hostId ?? null,
+        projectId: destination.projectId,
+        issueId: destination.issueId,
+      };
+    case 'project-issue-workspace':
+      return {
+        type: 'issue-workspace',
+        hostId: destination.hostId ?? null,
+        projectId: destination.projectId,
+        issueId: destination.issueId,
+        workspaceId: destination.workspaceId,
+      };
+    case 'project-issue-workspace-create':
+      return {
+        type: 'workspace-create',
+        hostId: destination.hostId ?? null,
+        projectId: destination.projectId,
+        issueId: destination.issueId,
+        draftId: destination.draftId,
+      };
+    case 'project-workspace-create':
+      return {
+        type: 'workspace-create',
+        hostId: destination.hostId ?? null,
+        projectId: destination.projectId,
+        issueId: null,
+        draftId: destination.draftId,
+      };
+    default:
+      return null;
   }
-
-  if (segments[offset + 2] === 'issues' && segments[offset + 3] === 'new') {
-    return {
-      type: 'issue-create',
-      hostId,
-      projectId,
-    };
-  }
-
-  if (
-    segments[offset + 2] === 'issues' &&
-    segments[offset + 3] &&
-    segments[offset + 4] === 'workspaces' &&
-    segments[offset + 5] === 'create' &&
-    segments[offset + 6]
-  ) {
-    return {
-      type: 'workspace-create',
-      hostId,
-      projectId,
-      issueId: segments[offset + 3],
-      draftId: segments[offset + 6],
-    };
-  }
-
-  if (
-    segments[offset + 2] === 'issues' &&
-    segments[offset + 3] &&
-    segments[offset + 4] === 'workspaces' &&
-    segments[offset + 5]
-  ) {
-    return {
-      type: 'issue-workspace',
-      hostId,
-      projectId,
-      issueId: segments[offset + 3],
-      workspaceId: segments[offset + 5],
-    };
-  }
-
-  if (segments[offset + 2] === 'issues' && segments[offset + 3]) {
-    return {
-      type: 'issue',
-      hostId,
-      projectId,
-      issueId: segments[offset + 3],
-    };
-  }
-
-  if (
-    segments[offset + 2] === 'workspaces' &&
-    segments[offset + 3] === 'create' &&
-    segments[offset + 4]
-  ) {
-    return {
-      type: 'workspace-create',
-      hostId,
-      projectId,
-      issueId: null,
-      draftId: segments[offset + 4],
-    };
-  }
-
-  return null;
 }

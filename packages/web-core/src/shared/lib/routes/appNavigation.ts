@@ -12,57 +12,47 @@ export type ProjectKanbanSearch = {
   orgId?: string;
 };
 
-type NavigationIntent =
-  | { type: 'root'; hostId: string | null }
-  | { type: 'onboarding'; hostId: string | null }
-  | { type: 'onboarding-sign-in'; hostId: string | null }
-  | { type: 'migrate'; hostId: string | null }
-  | { type: 'workspaces'; hostId: string | null }
-  | { type: 'workspaces-create'; hostId: string | null }
-  | { type: 'workspace'; hostId: string | null; workspaceId: string }
-  | { type: 'workspace-vscode'; hostId: string | null; workspaceId: string }
+export type AppDestination =
+  | { kind: 'root' }
+  | { kind: 'onboarding' }
+  | { kind: 'onboarding-sign-in' }
+  | { kind: 'migrate' }
+  | { kind: 'workspaces'; hostId?: string }
+  | { kind: 'workspaces-create'; hostId?: string }
+  | { kind: 'workspace'; workspaceId: string; hostId?: string }
+  | { kind: 'workspace-vscode'; workspaceId: string; hostId?: string }
+  | { kind: 'project'; projectId: string; hostId?: string }
+  | { kind: 'project-issue-create'; projectId: string; hostId?: string }
   | {
-      type: 'project';
-      hostId: string | null;
-      projectId: string;
-      search?: ProjectKanbanSearch;
-    }
-  | {
-      type: 'project-issue-create';
-      hostId: string | null;
-      projectId: string;
-      search?: ProjectKanbanSearch;
-    }
-  | {
-      type: 'project-issue';
-      hostId: string | null;
+      kind: 'project-issue';
       projectId: string;
       issueId: string;
-      search?: ProjectKanbanSearch;
+      hostId?: string;
     }
   | {
-      type: 'project-issue-workspace';
-      hostId: string | null;
+      kind: 'project-issue-workspace';
       projectId: string;
       issueId: string;
       workspaceId: string;
-      search?: ProjectKanbanSearch;
+      hostId?: string;
     }
   | {
-      type: 'project-issue-workspace-create';
-      hostId: string | null;
+      kind: 'project-issue-workspace-create';
       projectId: string;
       issueId: string;
       draftId: string;
-      search?: ProjectKanbanSearch;
+      hostId?: string;
     }
   | {
-      type: 'project-workspace-create';
-      hostId: string | null;
+      kind: 'project-workspace-create';
       projectId: string;
       draftId: string;
-      search?: ProjectKanbanSearch;
+      hostId?: string;
     };
+
+export type NavigationTransition = {
+  replace?: boolean;
+};
 
 export interface AppNavigation {
   toRoot(): any;
@@ -121,65 +111,35 @@ export function toProjectIssueCreateSearch(
   };
 }
 
-export function pruneUndefinedSearch(search: ProjectKanbanSearch) {
-  return Object.fromEntries(
-    Object.entries(search).filter(([, value]) => value !== undefined)
-  ) as ProjectKanbanSearch;
+type HostAwareDestination = Exclude<
+  AppDestination,
+  | { kind: 'root' }
+  | { kind: 'onboarding' }
+  | { kind: 'onboarding-sign-in' }
+  | { kind: 'migrate' }
+>;
+
+function withHost<T extends HostAwareDestination>(
+  hostId: string | null,
+  destination: T
+): T {
+  return hostId ? { ...destination, hostId } : destination;
 }
 
-export function searchParamsToKanbanSearch(
-  params: URLSearchParams
-): ProjectKanbanSearch {
-  return pruneUndefinedSearch({
-    statusId: params.get('statusId') ?? undefined,
-    priority: params.get('priority') ?? undefined,
-    assignees: params.get('assignees') ?? undefined,
-    parentIssueId: params.get('parentIssueId') ?? undefined,
-    mode: params.get('mode') ?? undefined,
-    orgId: params.get('orgId') ?? undefined,
-  });
-}
-
-export function resolveAppNavigationFromPath(
-  path: string,
-  navigation: AppNavigation,
-  options?: {
-    resolveHostNavigation?: (hostId: string) => AppNavigation | null;
-  }
-): AppNavigationTarget | null {
-  const intent = parseNavigationIntent(path);
-  if (!intent) {
-    return null;
-  }
-
-  if (intent.hostId && options?.resolveHostNavigation) {
-    const hostScopedNavigation = options.resolveHostNavigation(intent.hostId);
-    if (hostScopedNavigation) {
-      return resolveNavigationIntent(intent, hostScopedNavigation);
-    }
-  }
-
-  return resolveNavigationIntent(intent, navigation);
-}
-
-function hasSearch(search: ProjectKanbanSearch): boolean {
-  return Object.keys(search).length > 0;
-}
-
-function parseNavigationIntent(path: string): NavigationIntent | null {
+export function resolveAppDestinationFromPath(
+  path: string
+): AppDestination | null {
   const url = new URL(path, 'http://localhost');
   const pathname = url.pathname;
   const { hostId, segments, offset } = parseAppPathname(pathname);
 
-  if (pathname === '/') return { type: 'root', hostId };
-  if (pathname === '/onboarding') return { type: 'onboarding', hostId };
-  if (pathname === '/onboarding/sign-in') {
-    return { type: 'onboarding-sign-in', hostId };
-  }
-  if (pathname === '/migrate') return { type: 'migrate', hostId };
+  if (pathname === '/') return { kind: 'root' };
+  if (pathname === '/onboarding') return { kind: 'onboarding' };
+  if (pathname === '/onboarding/sign-in') return { kind: 'onboarding-sign-in' };
+  if (pathname === '/migrate') return { kind: 'migrate' };
 
   if (segments.length === offset + 1 && segments[offset] === 'workspaces') {
-    return { type: 'workspaces', hostId };
+    return withHost(hostId, { kind: 'workspaces' });
   }
 
   if (
@@ -187,7 +147,7 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
     segments[offset] === 'workspaces' &&
     segments[offset + 1] === 'create'
   ) {
-    return { type: 'workspaces-create', hostId };
+    return withHost(hostId, { kind: 'workspaces-create' });
   }
 
   if (
@@ -195,21 +155,18 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
     segments[offset] === 'workspaces' &&
     segments[offset + 2] === 'vscode'
   ) {
-    return {
-      type: 'workspace-vscode',
-      hostId,
+    return withHost(hostId, {
+      kind: 'workspace-vscode',
       workspaceId: segments[offset + 1],
-    };
+    });
   }
 
   if (segments.length === offset + 2 && segments[offset] === 'workspaces') {
-    return { type: 'workspace', hostId, workspaceId: segments[offset + 1] };
+    return withHost(hostId, {
+      kind: 'workspace',
+      workspaceId: segments[offset + 1],
+    });
   }
-
-  const kanbanSearch = pruneUndefinedSearch(
-    searchParamsToKanbanSearch(url.searchParams)
-  );
-  const projectSearch = hasSearch(kanbanSearch) ? kanbanSearch : undefined;
 
   if (segments[offset] !== 'projects' || !segments[offset + 1]) {
     return null;
@@ -218,16 +175,14 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
   const projectId = segments[offset + 1];
 
   if (segments.length === offset + 2) {
-    return { type: 'project', hostId, projectId, search: projectSearch };
+    return withHost(hostId, { kind: 'project', projectId });
   }
 
   if (segments[offset + 2] === 'issues' && segments[offset + 3] === 'new') {
-    return {
-      type: 'project-issue-create',
-      hostId,
+    return withHost(hostId, {
+      kind: 'project-issue-create',
       projectId,
-      search: projectSearch,
-    };
+    });
   }
 
   if (
@@ -237,14 +192,12 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
     segments[offset + 5] === 'create' &&
     segments[offset + 6]
   ) {
-    return {
-      type: 'project-issue-workspace-create',
-      hostId,
+    return withHost(hostId, {
+      kind: 'project-issue-workspace-create',
       projectId,
       issueId: segments[offset + 3],
       draftId: segments[offset + 6],
-      search: projectSearch,
-    };
+    });
   }
 
   if (
@@ -253,24 +206,20 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
     segments[offset + 4] === 'workspaces' &&
     segments[offset + 5]
   ) {
-    return {
-      type: 'project-issue-workspace',
-      hostId,
+    return withHost(hostId, {
+      kind: 'project-issue-workspace',
       projectId,
       issueId: segments[offset + 3],
       workspaceId: segments[offset + 5],
-      search: projectSearch,
-    };
+    });
   }
 
   if (segments[offset + 2] === 'issues' && segments[offset + 3]) {
-    return {
-      type: 'project-issue',
-      hostId,
+    return withHost(hostId, {
+      kind: 'project-issue',
       projectId,
       issueId: segments[offset + 3],
-      search: projectSearch,
-    };
+    });
   }
 
   if (
@@ -278,22 +227,49 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
     segments[offset + 3] === 'create' &&
     segments[offset + 4]
   ) {
-    return {
-      type: 'project-workspace-create',
-      hostId,
+    return withHost(hostId, {
+      kind: 'project-workspace-create',
       projectId,
       draftId: segments[offset + 4],
-      search: projectSearch,
-    };
+    });
   }
 
   return null;
 }
-function resolveNavigationIntent(
-  intent: NavigationIntent,
-  navigation: AppNavigation
+
+function getDestinationHostId(destination: AppDestination): string | null {
+  return 'hostId' in destination ? (destination.hostId ?? null) : null;
+}
+
+export function resolveAppNavigationFromPath(
+  path: string,
+  navigation: AppNavigation,
+  options?: {
+    resolveHostNavigation?: (hostId: string) => AppNavigation | null;
+  }
 ): AppNavigationTarget | null {
-  switch (intent.type) {
+  const destination = resolveAppDestinationFromPath(path);
+  if (!destination) {
+    return null;
+  }
+
+  const destinationHostId = getDestinationHostId(destination);
+  if (destinationHostId && options?.resolveHostNavigation) {
+    const hostScopedNavigation =
+      options.resolveHostNavigation(destinationHostId);
+    if (hostScopedNavigation) {
+      return resolveDestination(destination, hostScopedNavigation);
+    }
+  }
+
+  return resolveDestination(destination, navigation);
+}
+
+function resolveDestination(
+  destination: AppDestination,
+  navigation: AppNavigation
+): AppNavigationTarget {
+  switch (destination.kind) {
     case 'root':
       return navigation.toRoot();
     case 'onboarding':
@@ -307,40 +283,34 @@ function resolveNavigationIntent(
     case 'workspaces-create':
       return navigation.toWorkspacesCreate();
     case 'workspace':
-      return navigation.toWorkspace(intent.workspaceId);
+      return navigation.toWorkspace(destination.workspaceId);
     case 'workspace-vscode':
-      return navigation.toWorkspaceVsCode(intent.workspaceId);
+      return navigation.toWorkspaceVsCode(destination.workspaceId);
     case 'project':
-      return navigation.toProject(intent.projectId, intent.search);
+      return navigation.toProject(destination.projectId);
     case 'project-issue-create':
-      return navigation.toProjectIssueCreate(intent.projectId, intent.search);
+      return navigation.toProjectIssueCreate(destination.projectId);
     case 'project-issue':
       return navigation.toProjectIssue(
-        intent.projectId,
-        intent.issueId,
-        intent.search
+        destination.projectId,
+        destination.issueId
       );
     case 'project-issue-workspace':
       return navigation.toProjectIssueWorkspace(
-        intent.projectId,
-        intent.issueId,
-        intent.workspaceId,
-        intent.search
+        destination.projectId,
+        destination.issueId,
+        destination.workspaceId
       );
     case 'project-issue-workspace-create':
       return navigation.toProjectIssueWorkspaceCreate(
-        intent.projectId,
-        intent.issueId,
-        intent.draftId,
-        intent.search
+        destination.projectId,
+        destination.issueId,
+        destination.draftId
       );
     case 'project-workspace-create':
       return navigation.toProjectWorkspaceCreate(
-        intent.projectId,
-        intent.draftId,
-        intent.search
+        destination.projectId,
+        destination.draftId
       );
-    default:
-      return null;
   }
 }
