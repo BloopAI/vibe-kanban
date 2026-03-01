@@ -14,7 +14,8 @@ import { ActionsProvider } from "@/shared/providers/ActionsProvider";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { AppNavigationProvider } from "@/shared/hooks/useAppNavigation";
 import {
-  createLocalAppNavigation,
+  type AppNavigation,
+  type ProjectKanbanSearch,
   createRemoteAppNavigation,
 } from "@/shared/lib/routes/appNavigation";
 import { parseAppPathname } from "@/shared/lib/routes/pathResolution";
@@ -24,6 +25,87 @@ export const Route = createRootRoute({
   component: RootLayout,
   notFoundComponent: NotFoundPage,
 });
+
+function createRemoteFallbackNavigation(): AppNavigation {
+  const navigation: AppNavigation = {
+    toRoot: () => ({ to: "/" }) as any,
+    toOnboarding: () => ({ to: "/onboarding" }) as any,
+    toOnboardingSignIn: () => ({ to: "/onboarding/sign-in" }) as any,
+    toMigrate: () => ({ to: "/migrate" }) as any,
+    toWorkspaces: () => ({ to: "/workspaces" }) as any,
+    toWorkspacesCreate: () => ({ to: "/workspaces/create" }) as any,
+    toWorkspace: (workspaceId) =>
+      ({ to: "/workspaces/$workspaceId", params: { workspaceId } }) as any,
+    toWorkspaceVsCode: (workspaceId) =>
+      ({
+        to: "/workspaces/$workspaceId/vscode",
+        params: { workspaceId },
+      }) as any,
+    toProject: (projectId, search?: ProjectKanbanSearch) =>
+      ({
+        to: "/projects/$projectId",
+        params: { projectId },
+        ...(search ? { search } : {}),
+      }) as any,
+    toProjectIssueCreate: (projectId, search?: ProjectKanbanSearch) =>
+      ({
+        to: "/projects/$projectId/issues/new",
+        params: { projectId },
+        ...(search ? { search } : {}),
+      }) as any,
+    toProjectIssue: (projectId, issueId, search?: ProjectKanbanSearch) =>
+      ({
+        to: "/projects/$projectId/issues/$issueId",
+        params: { projectId, issueId },
+        ...(search ? { search } : {}),
+      }) as any,
+    toProjectIssueWorkspace: (
+      projectId,
+      issueId,
+      workspaceId,
+      search?: ProjectKanbanSearch,
+    ) =>
+      ({
+        to: "/projects/$projectId/issues/$issueId/workspaces/$workspaceId",
+        params: { projectId, issueId, workspaceId },
+        ...(search ? { search } : {}),
+      }) as any,
+    toProjectIssueWorkspaceCreate: (
+      projectId,
+      issueId,
+      draftId,
+      search?: ProjectKanbanSearch,
+    ) =>
+      ({
+        to: "/projects/$projectId/issues/$issueId/workspaces/create/$draftId",
+        params: { projectId, issueId, draftId },
+        ...(search ? { search } : {}),
+      }) as any,
+    toProjectWorkspaceCreate: (
+      projectId,
+      draftId,
+      search?: ProjectKanbanSearch,
+    ) =>
+      ({
+        to: "/projects/$projectId/workspaces/create/$draftId",
+        params: { projectId, draftId },
+        ...(search ? { search } : {}),
+      }) as any,
+    fromPath: (path) => {
+      const { hostId: nextHostId } = parseAppPathname(
+        new URL(path, "http://localhost").pathname,
+      );
+      if (nextHostId) {
+        return createRemoteAppNavigation(nextHostId).fromPath(path);
+      }
+      return navigation.toRoot();
+    },
+  };
+
+  return navigation;
+}
+
+const remoteFallbackNavigation = createRemoteFallbackNavigation();
 
 function ExecutionProcessesProviderWrapper({
   children,
@@ -59,7 +141,7 @@ function RootLayout() {
   const { hostId } = parseAppPathname(location.pathname);
   const appNavigation = useMemo(
     () =>
-      hostId ? createRemoteAppNavigation(hostId) : createLocalAppNavigation(),
+      hostId ? createRemoteAppNavigation(hostId) : remoteFallbackNavigation,
     [hostId],
   );
   const isStandaloneRoute =
