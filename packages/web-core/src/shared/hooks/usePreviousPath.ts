@@ -26,13 +26,13 @@ export function usePreviousPath() {
       .find((p) => !p.startsWith('/settings'));
 
     if (!lastNonSettingsPath) {
-      appNavigation.navigate(appNavigation.toRoot());
+      appNavigation.goToRoot();
       return;
     }
 
     appNavigation.navigate(
       appNavigation.resolveFromPath(lastNonSettingsPath) ??
-        appNavigation.toRoot()
+        ({ kind: 'root' } as const)
     );
   }, [appNavigation]);
 }

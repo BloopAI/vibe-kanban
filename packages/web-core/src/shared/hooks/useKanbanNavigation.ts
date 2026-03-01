@@ -89,7 +89,7 @@ export function useKanbanNavigation() {
       if (isCreateMode && createDefaultsKey) {
         clearKanbanCreateDefaults(createDefaultsKey);
       }
-      appNavigation.navigate(appNavigation.toProjectIssue(projectId, id));
+      appNavigation.goToProjectIssue(projectId, id);
     },
     [projectId, isCreateMode, createDefaultsKey, appNavigation]
   );
@@ -97,8 +97,10 @@ export function useKanbanNavigation() {
   const openIssueWorkspace = useCallback(
     (id: string, workspaceAttemptId: string) => {
       if (!projectId) return;
-      appNavigation.navigate(
-        appNavigation.toProjectIssueWorkspace(projectId, id, workspaceAttemptId)
+      appNavigation.goToProjectIssueWorkspace(
+        projectId,
+        id,
+        workspaceAttemptId
       );
     },
     [projectId, appNavigation]
@@ -109,19 +111,15 @@ export function useKanbanNavigation() {
       if (!projectId) return;
       const targetIssueId = options?.issueId ?? issueId;
       if (targetIssueId) {
-        appNavigation.navigate(
-          appNavigation.toProjectIssueWorkspaceCreate(
-            projectId,
-            targetIssueId,
-            workspaceDraftId
-          )
+        appNavigation.goToProjectIssueWorkspaceCreate(
+          projectId,
+          targetIssueId,
+          workspaceDraftId
         );
         return;
       }
 
-      appNavigation.navigate(
-        appNavigation.toProjectWorkspaceCreate(projectId, workspaceDraftId)
-      );
+      appNavigation.goToProjectWorkspaceCreate(projectId, workspaceDraftId);
     },
     [projectId, issueId, appNavigation]
   );
@@ -131,7 +129,7 @@ export function useKanbanNavigation() {
     if (isCreateMode && createDefaultsKey) {
       clearKanbanCreateDefaults(createDefaultsKey);
     }
-    appNavigation.navigate(appNavigation.toProject(projectId));
+    appNavigation.goToProject(projectId);
   }, [projectId, isCreateMode, createDefaultsKey, appNavigation]);
 
   const startCreate = useCallback(
@@ -144,7 +142,7 @@ export function useKanbanNavigation() {
         assigneeIds: options?.assigneeIds,
         parentIssueId: options?.parentIssueId,
       });
-      appNavigation.navigate(appNavigation.toProjectIssueCreate(projectId));
+      appNavigation.goToProjectIssueCreate(projectId);
     },
     [projectId, createDefaultsKey, appNavigation]
   );

@@ -206,7 +206,7 @@ export function LandingPage() {
     }
 
     hasRedirectedToRootRef.current = true;
-    appNavigation.navigate(appNavigation.toRoot(), { replace: true });
+    appNavigation.goToRoot({ replace: true });
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
   const executorOptions = useMemo(() => {
@@ -301,7 +301,7 @@ export function LandingPage() {
         stage: 'landing',
         destination: '/onboarding/sign-in',
       });
-      appNavigation.navigate(appNavigation.toOnboardingSignIn(), {
+      appNavigation.goToOnboardingSignIn({
         replace: true,
       });
       return;

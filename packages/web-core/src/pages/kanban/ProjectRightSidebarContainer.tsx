@@ -191,7 +191,7 @@ function WorkspaceSessionPanel({
   }, [breadcrumbIssueId, openIssue, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
-    appNavigation.navigate(appNavigation.toWorkspace(workspaceId));
+    appNavigation.goToWorkspace(workspaceId);
   }, [appNavigation, workspaceId]);
 
   const breadcrumbButtonClass =
@@ -448,7 +448,7 @@ export function ProjectRightSidebarContainer() {
         return;
       }
 
-      appNavigation.navigate(appNavigation.toWorkspace(createdWorkspaceId));
+      appNavigation.goToWorkspace(createdWorkspaceId);
     },
     [issueId, openIssueWorkspace, appNavigation]
   );

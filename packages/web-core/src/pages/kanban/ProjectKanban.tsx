@@ -249,7 +249,7 @@ export function ProjectKanban() {
     if (!projectId) return;
 
     if (hasInvalidWorkspaceCreateDraftId) {
-      appNavigation.navigate(appNavigation.toProject(projectId), {
+      appNavigation.goToProject(projectId, {
         replace: true,
       });
     }

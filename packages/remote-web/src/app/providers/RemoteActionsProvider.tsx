@@ -57,7 +57,7 @@ export function RemoteActionsProvider({
 
   const navigateToCreateIssue = useCallback(() => {
     if (!projectId) return;
-    appNavigation.navigate(appNavigation.toProjectIssueCreate(projectId));
+    appNavigation.goToProjectIssueCreate(projectId);
   }, [projectId, appNavigation]);
 
   const openStatusSelection = useCallback(async () => {

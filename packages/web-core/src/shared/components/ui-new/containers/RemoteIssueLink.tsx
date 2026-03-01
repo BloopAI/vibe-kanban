@@ -28,9 +28,7 @@ export function RemoteIssueLink({ projectId, issueId }: RemoteIssueLinkProps) {
       type="button"
       className="flex items-center gap-half px-base text-sm text-low hover:text-normal hover:bg-secondary rounded-sm transition-colors"
       onClick={() => {
-        appNavigation.navigate(
-          appNavigation.toProjectIssue(projectId, issueId)
-        );
+        appNavigation.goToProjectIssue(projectId, issueId);
       }}
     >
       <LinkIcon className="size-icon-xs" weight="bold" />

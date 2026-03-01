@@ -36,11 +36,11 @@ export function MigrateFinishContainer({
   const handleViewProject = (project: MigrateFinishProject) => {
     if (project.remoteId) {
       setSelectedOrgId(orgId);
-      appNavigation.navigate(appNavigation.toProject(project.remoteId));
+      appNavigation.goToProject(project.remoteId);
       return;
     }
 
-    appNavigation.navigate(appNavigation.toWorkspaces());
+    appNavigation.goToWorkspaces();
   };
 
   return (

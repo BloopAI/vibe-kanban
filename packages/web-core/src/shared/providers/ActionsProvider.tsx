@@ -86,7 +86,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
         assigneeIds: options?.assigneeIds,
         parentIssueId: options?.parentIssueId,
       });
-      appNavigation.navigate(appNavigation.toProjectIssueCreate(projectId));
+      appNavigation.goToProjectIssueCreate(projectId);
     },
     [projectId, hostId, appNavigation]
   );

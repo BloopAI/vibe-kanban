@@ -89,14 +89,14 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleGoToCreateWorkspace = () => {
-    appNavigation.navigate(appNavigation.toWorkspacesCreate());
+    appNavigation.goToWorkspacesCreate();
   };
 
   const handleViewMigratedProject = (projectId: string) => {
     if (selectedOrgId) {
       setSelectedOrgIdInStore(selectedOrgId);
     }
-    appNavigation.navigate(appNavigation.toProject(projectId));
+    appNavigation.goToProject(projectId);
   };
 
   const migratedProjects = useMemo(
@@ -106,10 +106,9 @@ export function MigrateChooseProjectsContainer({
 
   const handleSkip = () => {
     if (migratedProjects.length > 0 && migratedProjects[0].remote_project_id) {
-      appNavigation.navigate(
-        appNavigation.toProject(migratedProjects[0].remote_project_id),
-        { replace: true }
-      );
+      appNavigation.goToProject(migratedProjects[0].remote_project_id, {
+        replace: true,
+      });
     } else {
       onSkip();
     }

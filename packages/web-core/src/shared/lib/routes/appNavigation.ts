@@ -49,28 +49,44 @@ export interface AppNavigation {
     transition?: NavigationTransition
   ): void;
   resolveFromPath(path: string): AppDestination | null;
-  toRoot(): AppDestination;
-  toOnboarding(): AppDestination;
-  toOnboardingSignIn(): AppDestination;
-  toMigrate(): AppDestination;
-  toWorkspaces(): AppDestination;
-  toWorkspacesCreate(): AppDestination;
-  toWorkspace(workspaceId: string): AppDestination;
-  toWorkspaceVsCode(workspaceId: string): AppDestination;
-  toProject(projectId: string): AppDestination;
-  toProjectIssueCreate(projectId: string): AppDestination;
-  toProjectIssue(projectId: string, issueId: string): AppDestination;
-  toProjectIssueWorkspace(
+  goToRoot(transition?: NavigationTransition): void;
+  goToOnboarding(transition?: NavigationTransition): void;
+  goToOnboardingSignIn(transition?: NavigationTransition): void;
+  goToMigrate(transition?: NavigationTransition): void;
+  goToWorkspaces(transition?: NavigationTransition): void;
+  goToWorkspacesCreate(transition?: NavigationTransition): void;
+  goToWorkspace(workspaceId: string, transition?: NavigationTransition): void;
+  goToWorkspaceVsCode(
+    workspaceId: string,
+    transition?: NavigationTransition
+  ): void;
+  goToProject(projectId: string, transition?: NavigationTransition): void;
+  goToProjectIssueCreate(
+    projectId: string,
+    transition?: NavigationTransition
+  ): void;
+  goToProjectIssue(
     projectId: string,
     issueId: string,
-    workspaceId: string
-  ): AppDestination;
-  toProjectIssueWorkspaceCreate(
+    transition?: NavigationTransition
+  ): void;
+  goToProjectIssueWorkspace(
     projectId: string,
     issueId: string,
-    draftId: string
-  ): AppDestination;
-  toProjectWorkspaceCreate(projectId: string, draftId: string): AppDestination;
+    workspaceId: string,
+    transition?: NavigationTransition
+  ): void;
+  goToProjectIssueWorkspaceCreate(
+    projectId: string,
+    issueId: string,
+    draftId: string,
+    transition?: NavigationTransition
+  ): void;
+  goToProjectWorkspaceCreate(
+    projectId: string,
+    draftId: string,
+    transition?: NavigationTransition
+  ): void;
 }
 
 export interface ProjectIssueCreateOptions {

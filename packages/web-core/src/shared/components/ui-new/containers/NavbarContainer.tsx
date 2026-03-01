@@ -206,17 +206,17 @@ export function NavbarContainer({
   const handleNavigateBack = useCallback(() => {
     if (isOnProjectPage && projectId) {
       // On project sub-route: go back to project root (kanban board)
-      appNavigation.navigate(appNavigation.toProject(projectId));
+      appNavigation.goToProject(projectId);
     } else {
       // Non-project page: go to workspaces
-      appNavigation.navigate(appNavigation.toWorkspaces());
+      appNavigation.goToWorkspaces();
     }
   }, [isOnProjectPage, projectId, appNavigation]);
 
   const handleNavigateToBoard = useMemo(() => {
     if (!isOnProjectPage || !projectId) return null;
     return () => {
-      appNavigation.navigate(appNavigation.toProject(projectId));
+      appNavigation.goToProject(projectId);
     };
   }, [isOnProjectPage, projectId, appNavigation]);
 

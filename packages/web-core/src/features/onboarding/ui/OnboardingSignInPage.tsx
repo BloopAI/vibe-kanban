@@ -117,7 +117,7 @@ export function OnboardingSignInPage() {
     }
 
     hasRedirectedToRootRef.current = true;
-    appNavigation.navigate(appNavigation.toRoot(), { replace: true });
+    appNavigation.goToRoot({ replace: true });
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
   const getOnboardingDestination = async (): Promise<AppDestination> => {
@@ -128,7 +128,7 @@ export function OnboardingSignInPage() {
         stage: 'sign_in',
         reason: 'destination_lookup_failed',
       });
-      return appNavigation.toWorkspacesCreate();
+      return { kind: 'workspaces-create' };
     }
 
     return firstProjectDestination;

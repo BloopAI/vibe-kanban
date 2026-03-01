@@ -64,7 +64,7 @@ export function WorkspacesLayout() {
 
   const handleWorkspaceCreated = useCallback(
     (workspaceId: string) => {
-      appNavigation.navigate(appNavigation.toWorkspace(workspaceId));
+      appNavigation.goToWorkspace(workspaceId);
     },
     [appNavigation]
   );

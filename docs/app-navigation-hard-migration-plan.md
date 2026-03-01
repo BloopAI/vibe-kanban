@@ -343,7 +343,7 @@ Completed:
 
 ### Phase 5: Consumer Migration
 
-Status: In Progress
+Status: Completed (March 1, 2026)
 
 Completed so far:
 
@@ -380,9 +380,20 @@ Completed so far:
      `useCreateModeState` (explicit seed-state + scratch only)
    - removed `state` from `NavigationTransition` and deleted adapter-level
      router-state bridges in local/remote app navigation.
+9. Replaced destination-builder usage in consumers:
+   - migrated `appNavigation.navigate(appNavigation.toX(...))` callsites to
+     imperative `goTo*` methods.
+   - removed `to*` methods from the `AppNavigation` interface and both
+     local/remote adapters.
+10. Added guardrail for route-local normalization patterns:
+    - `scripts/check-legacy-frontend-paths.sh` now fails when
+      `navigate({ to: '.' ... })` is found in `packages/web-core/src`.
 
-Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
-and spread patterns (`...appNavigation.toX()`) to imperative calls.
+Completed:
+
+1. Migrated all `useAppNavigation` consumers from
+   `navigate(appNavigation.toX(...))` and spread-style destination usage to
+   imperative `goTo*` calls.
 
 Direct routing cleanup policy:
 

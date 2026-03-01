@@ -69,3 +69,28 @@ if [ -n "$any_hits" ]; then
 fi
 
 echo "✅ No explicit any in navigation modules."
+
+echo "▶️  Checking web-core for navigate({ to: '.' ... }) usage..."
+
+dot_navigation_hits="$(
+  find "$REPO_ROOT/packages/web-core/src" \
+    -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    -print0 |
+    xargs -0 perl -0ne '
+      my $content = $_;
+      while ($content =~ /navigate\s*\(\s*\{[\s\S]*?\bto\s*:\s*["\x27]\.["\x27][\s\S]*?\}\s*\)/g) {
+        my $line = 1 + (substr($content, 0, $-[0]) =~ tr/\n//);
+        print "$ARGV:$line\n";
+      }
+    ' || true
+)"
+
+if [ -n "$dot_navigation_hits" ]; then
+  echo "❌ Found navigate({ to: '.' ... }) usage in web-core:"
+  printf '%s\n' "$dot_navigation_hits"
+  echo ""
+  echo "Use AppNavigation destination methods instead of route-local '.' normalization."
+  exit 1
+fi
+
+echo "✅ No navigate({ to: '.' ... }) usage in web-core."

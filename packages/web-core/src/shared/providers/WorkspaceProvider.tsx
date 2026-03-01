@@ -124,14 +124,14 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           // Silently fail - this is not critical
           console.warn('Failed to mark workspace as seen:', error);
         });
-      appNavigation.navigate(appNavigation.toWorkspace(id));
+      appNavigation.goToWorkspace(id);
     },
     [queryClient, appNavigation]
   );
 
   const navigateToCreate = useMemo(
     () => () => {
-      appNavigation.navigate(appNavigation.toWorkspacesCreate());
+      appNavigation.goToWorkspacesCreate();
     },
     [appNavigation]
   );

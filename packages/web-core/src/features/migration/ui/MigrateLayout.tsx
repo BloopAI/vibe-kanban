@@ -22,7 +22,7 @@ export function MigrateLayout() {
   );
 
   const handleSkip = () => {
-    appNavigation.navigate(appNavigation.toWorkspacesCreate(), {
+    appNavigation.goToWorkspacesCreate({
       replace: true,
     });
   };

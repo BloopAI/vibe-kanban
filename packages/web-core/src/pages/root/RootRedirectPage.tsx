@@ -21,7 +21,7 @@ export function RootRedirectPage() {
       }
 
       if (!config.remote_onboarding_acknowledged) {
-        setDestination(appNavigation.toOnboarding());
+        setDestination({ kind: 'onboarding' });
         return;
       }
 

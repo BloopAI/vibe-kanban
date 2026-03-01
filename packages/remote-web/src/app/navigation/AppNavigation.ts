@@ -2,6 +2,7 @@ import { router } from "@remote/app/router";
 import {
   type AppDestination,
   type AppNavigation,
+  type NavigationTransition,
   resolveAppDestinationFromPath,
 } from "@/shared/lib/routes/appNavigation";
 
@@ -136,125 +137,144 @@ function destinationToRemoteTarget(
 }
 
 export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
+  const navigateTo = (
+    destination: AppDestination,
+    transition?: NavigationTransition,
+  ) => {
+    void router.navigate({
+      ...destinationToRemoteTarget(destination, {
+        currentHostId: hostId,
+      }),
+      ...(transition?.replace !== undefined
+        ? { replace: transition.replace }
+        : {}),
+    });
+  };
+
   const navigation: AppNavigation = {
-    navigate: (destination, transition) => {
-      void router.navigate({
-        ...destinationToRemoteTarget(destination, {
-          currentHostId: hostId,
-        }),
-        ...(transition?.replace !== undefined
-          ? { replace: transition.replace }
-          : {}),
-      });
-    },
+    navigate: navigateTo,
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
-    toRoot: () => ({ kind: "root" }),
-    toOnboarding: () => ({ kind: "onboarding" }),
-    toOnboardingSignIn: () => ({ kind: "onboarding-sign-in" }),
-    toMigrate: () => ({ kind: "migrate" }),
-    toWorkspaces: () => ({ kind: "workspaces", hostId }),
-    toWorkspacesCreate: () => ({ kind: "workspaces-create", hostId }),
-    toWorkspace: (workspaceId) => ({ kind: "workspace", hostId, workspaceId }),
-    toWorkspaceVsCode: (workspaceId) => ({
-      kind: "workspace-vscode",
-      hostId,
-      workspaceId,
-    }),
-    toProject: (projectId) => ({
-      kind: "project",
-      hostId,
-      projectId,
-    }),
-    toProjectIssueCreate: (projectId) => ({
-      kind: "project-issue-create",
-      hostId,
-      projectId,
-    }),
-    toProjectIssue: (projectId, issueId) => ({
-      kind: "project-issue",
-      hostId,
-      projectId,
-      issueId,
-    }),
-    toProjectIssueWorkspace: (projectId, issueId, workspaceId) => ({
-      kind: "project-issue-workspace",
-      hostId,
-      projectId,
-      issueId,
-      workspaceId,
-    }),
-    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId) => ({
-      kind: "project-issue-workspace-create",
-      hostId,
+    goToRoot: (transition) => navigateTo({ kind: "root" }, transition),
+    goToOnboarding: (transition) =>
+      navigateTo({ kind: "onboarding" }, transition),
+    goToOnboardingSignIn: (transition) =>
+      navigateTo({ kind: "onboarding-sign-in" }, transition),
+    goToMigrate: (transition) => navigateTo({ kind: "migrate" }, transition),
+    goToWorkspaces: (transition) =>
+      navigateTo({ kind: "workspaces", hostId }, transition),
+    goToWorkspacesCreate: (transition) =>
+      navigateTo({ kind: "workspaces-create", hostId }, transition),
+    goToWorkspace: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace", hostId, workspaceId }, transition),
+    goToWorkspaceVsCode: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace-vscode", hostId, workspaceId }, transition),
+    goToProject: (projectId, transition) =>
+      navigateTo({ kind: "project", hostId, projectId }, transition),
+    goToProjectIssueCreate: (projectId, transition) =>
+      navigateTo(
+        { kind: "project-issue-create", hostId, projectId },
+        transition,
+      ),
+    goToProjectIssue: (projectId, issueId, transition) =>
+      navigateTo(
+        { kind: "project-issue", hostId, projectId, issueId },
+        transition,
+      ),
+    goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>
+      navigateTo(
+        {
+          kind: "project-issue-workspace",
+          hostId,
+          projectId,
+          issueId,
+          workspaceId,
+        },
+        transition,
+      ),
+    goToProjectIssueWorkspaceCreate: (
       projectId,
       issueId,
       draftId,
-    }),
-    toProjectWorkspaceCreate: (projectId, draftId) => ({
-      kind: "project-workspace-create",
-      hostId,
-      projectId,
-      draftId,
-    }),
+      transition,
+    ) =>
+      navigateTo(
+        {
+          kind: "project-issue-workspace-create",
+          hostId,
+          projectId,
+          issueId,
+          draftId,
+        },
+        transition,
+      ),
+    goToProjectWorkspaceCreate: (projectId, draftId, transition) =>
+      navigateTo(
+        { kind: "project-workspace-create", hostId, projectId, draftId },
+        transition,
+      ),
   };
 
   return navigation;
 }
 
 function createRemoteFallbackAppNavigation(): AppNavigation {
+  const navigateTo = (
+    destination: AppDestination,
+    transition?: NavigationTransition,
+  ) => {
+    void router.navigate({
+      ...destinationToRemoteTarget(destination, {
+        currentHostId: null,
+      }),
+      ...(transition?.replace !== undefined
+        ? { replace: transition.replace }
+        : {}),
+    });
+  };
+
   const navigation: AppNavigation = {
-    navigate: (destination, transition) => {
-      void router.navigate({
-        ...destinationToRemoteTarget(destination, {
-          currentHostId: null,
-        }),
-        ...(transition?.replace !== undefined
-          ? { replace: transition.replace }
-          : {}),
-      });
-    },
+    navigate: navigateTo,
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
-    toRoot: () => ({ kind: "root" }),
-    toOnboarding: () => ({ kind: "onboarding" }),
-    toOnboardingSignIn: () => ({ kind: "onboarding-sign-in" }),
-    toMigrate: () => ({ kind: "migrate" }),
-    toWorkspaces: () => ({ kind: "workspaces" }),
-    toWorkspacesCreate: () => ({ kind: "workspaces-create" }),
-    toWorkspace: (workspaceId) => ({ kind: "workspace", workspaceId }),
-    toWorkspaceVsCode: (workspaceId) => ({
-      kind: "workspace-vscode",
-      workspaceId,
-    }),
-    toProject: (projectId) => ({
-      kind: "project",
-      projectId,
-    }),
-    toProjectIssueCreate: (projectId) => ({
-      kind: "project-issue-create",
-      projectId,
-    }),
-    toProjectIssue: (projectId, issueId) => ({
-      kind: "project-issue",
-      projectId,
-      issueId,
-    }),
-    toProjectIssueWorkspace: (projectId, issueId, workspaceId) => ({
-      kind: "project-issue-workspace",
-      projectId,
-      issueId,
-      workspaceId,
-    }),
-    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId) => ({
-      kind: "project-issue-workspace-create",
+    goToRoot: (transition) => navigateTo({ kind: "root" }, transition),
+    goToOnboarding: (transition) =>
+      navigateTo({ kind: "onboarding" }, transition),
+    goToOnboardingSignIn: (transition) =>
+      navigateTo({ kind: "onboarding-sign-in" }, transition),
+    goToMigrate: (transition) => navigateTo({ kind: "migrate" }, transition),
+    goToWorkspaces: (transition) =>
+      navigateTo({ kind: "workspaces" }, transition),
+    goToWorkspacesCreate: (transition) =>
+      navigateTo({ kind: "workspaces-create" }, transition),
+    goToWorkspace: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace", workspaceId }, transition),
+    goToWorkspaceVsCode: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace-vscode", workspaceId }, transition),
+    goToProject: (projectId, transition) =>
+      navigateTo({ kind: "project", projectId }, transition),
+    goToProjectIssueCreate: (projectId, transition) =>
+      navigateTo({ kind: "project-issue-create", projectId }, transition),
+    goToProjectIssue: (projectId, issueId, transition) =>
+      navigateTo({ kind: "project-issue", projectId, issueId }, transition),
+    goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>
+      navigateTo(
+        { kind: "project-issue-workspace", projectId, issueId, workspaceId },
+        transition,
+      ),
+    goToProjectIssueWorkspaceCreate: (
       projectId,
       issueId,
       draftId,
-    }),
-    toProjectWorkspaceCreate: (projectId, draftId) => ({
-      kind: "project-workspace-create",
-      projectId,
-      draftId,
-    }),
+      transition,
+    ) =>
+      navigateTo(
+        { kind: "project-issue-workspace-create", projectId, issueId, draftId },
+        transition,
+      ),
+    goToProjectWorkspaceCreate: (projectId, draftId, transition) =>
+      navigateTo(
+        { kind: "project-workspace-create", projectId, draftId },
+        transition,
+      ),
   };
 
   return navigation;

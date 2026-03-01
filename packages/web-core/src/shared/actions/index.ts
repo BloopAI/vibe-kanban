@@ -200,10 +200,10 @@ export const Actions = {
           return;
         }
 
-        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
+        ctx.appNavigation.goToWorkspacesCreate();
       } catch {
         // Fallback to creating without the prompt/repos
-        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
+        ctx.appNavigation.goToWorkspacesCreate();
       }
     },
   },
@@ -322,7 +322,7 @@ export const Actions = {
           if (nextWorkspaceId) {
             ctx.selectWorkspace(nextWorkspaceId);
           } else {
-            ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
+            ctx.appNavigation.goToWorkspacesCreate();
           }
         }
       }
@@ -386,9 +386,9 @@ export const Actions = {
           return;
         }
 
-        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
+        ctx.appNavigation.goToWorkspacesCreate();
       } catch {
-        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
+        ctx.appNavigation.goToWorkspacesCreate();
       }
     },
   },
@@ -401,7 +401,7 @@ export const Actions = {
     shortcut: 'G N',
     requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
-      ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
+      ctx.appNavigation.goToWorkspacesCreate();
     },
   },
 
@@ -478,7 +478,7 @@ export const Actions = {
       ctx.queryClient.removeQueries({ queryKey: organizationKeys.all });
       // Invalidate user-system query to update loginStatus/useAuth state
       await ctx.queryClient.invalidateQueries({ queryKey: ['user-system'] });
-      ctx.appNavigation.navigate(ctx.appNavigation.toWorkspaces());
+      ctx.appNavigation.goToWorkspaces();
     },
   } satisfies GlobalActionDefinition,
 

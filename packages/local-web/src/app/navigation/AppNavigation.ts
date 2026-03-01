@@ -2,6 +2,7 @@ import { router } from '@web/app/router';
 import {
   type AppDestination,
   type AppNavigation,
+  type NavigationTransition,
   resolveAppDestinationFromPath,
 } from '@/shared/lib/routes/appNavigation';
 
@@ -77,57 +78,61 @@ function destinationToLocalTarget(destination: AppDestination) {
 }
 
 export function createLocalAppNavigation(): AppNavigation {
+  const navigateTo = (
+    destination: AppDestination,
+    transition?: NavigationTransition
+  ) => {
+    void router.navigate({
+      ...destinationToLocalTarget(destination),
+      ...(transition?.replace !== undefined
+        ? { replace: transition.replace }
+        : {}),
+    });
+  };
+
   const navigation: AppNavigation = {
-    navigate: (destination, transition) => {
-      void router.navigate({
-        ...destinationToLocalTarget(destination),
-        ...(transition?.replace !== undefined
-          ? { replace: transition.replace }
-          : {}),
-      });
-    },
+    navigate: navigateTo,
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
-    toRoot: () => ({ kind: 'root' }),
-    toOnboarding: () => ({ kind: 'onboarding' }),
-    toOnboardingSignIn: () => ({ kind: 'onboarding-sign-in' }),
-    toMigrate: () => ({ kind: 'migrate' }),
-    toWorkspaces: () => ({ kind: 'workspaces' }),
-    toWorkspacesCreate: () => ({ kind: 'workspaces-create' }),
-    toWorkspace: (workspaceId) => ({ kind: 'workspace', workspaceId }),
-    toWorkspaceVsCode: (workspaceId) => ({
-      kind: 'workspace-vscode',
-      workspaceId,
-    }),
-    toProject: (projectId) => ({
-      kind: 'project',
-      projectId,
-    }),
-    toProjectIssueCreate: (projectId) => ({
-      kind: 'project-issue-create',
-      projectId,
-    }),
-    toProjectIssue: (projectId, issueId) => ({
-      kind: 'project-issue',
-      projectId,
-      issueId,
-    }),
-    toProjectIssueWorkspace: (projectId, issueId, workspaceId) => ({
-      kind: 'project-issue-workspace',
-      projectId,
-      issueId,
-      workspaceId,
-    }),
-    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId) => ({
-      kind: 'project-issue-workspace-create',
+    goToRoot: (transition) => navigateTo({ kind: 'root' }, transition),
+    goToOnboarding: (transition) =>
+      navigateTo({ kind: 'onboarding' }, transition),
+    goToOnboardingSignIn: (transition) =>
+      navigateTo({ kind: 'onboarding-sign-in' }, transition),
+    goToMigrate: (transition) => navigateTo({ kind: 'migrate' }, transition),
+    goToWorkspaces: (transition) =>
+      navigateTo({ kind: 'workspaces' }, transition),
+    goToWorkspacesCreate: (transition) =>
+      navigateTo({ kind: 'workspaces-create' }, transition),
+    goToWorkspace: (workspaceId, transition) =>
+      navigateTo({ kind: 'workspace', workspaceId }, transition),
+    goToWorkspaceVsCode: (workspaceId, transition) =>
+      navigateTo({ kind: 'workspace-vscode', workspaceId }, transition),
+    goToProject: (projectId, transition) =>
+      navigateTo({ kind: 'project', projectId }, transition),
+    goToProjectIssueCreate: (projectId, transition) =>
+      navigateTo({ kind: 'project-issue-create', projectId }, transition),
+    goToProjectIssue: (projectId, issueId, transition) =>
+      navigateTo({ kind: 'project-issue', projectId, issueId }, transition),
+    goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>
+      navigateTo(
+        { kind: 'project-issue-workspace', projectId, issueId, workspaceId },
+        transition
+      ),
+    goToProjectIssueWorkspaceCreate: (
       projectId,
       issueId,
       draftId,
-    }),
-    toProjectWorkspaceCreate: (projectId, draftId) => ({
-      kind: 'project-workspace-create',
-      projectId,
-      draftId,
-    }),
+      transition
+    ) =>
+      navigateTo(
+        { kind: 'project-issue-workspace-create', projectId, issueId, draftId },
+        transition
+      ),
+    goToProjectWorkspaceCreate: (projectId, draftId, transition) =>
+      navigateTo(
+        { kind: 'project-workspace-create', projectId, draftId },
+        transition
+      ),
   };
 
   return navigation;

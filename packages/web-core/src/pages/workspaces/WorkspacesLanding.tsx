@@ -5,7 +5,7 @@ export function WorkspacesLanding() {
   const appNavigation = useAppNavigation();
 
   useEffect(() => {
-    appNavigation.navigate(appNavigation.toWorkspacesCreate(), {
+    appNavigation.goToWorkspacesCreate({
       replace: true,
     });
   }, [appNavigation]);

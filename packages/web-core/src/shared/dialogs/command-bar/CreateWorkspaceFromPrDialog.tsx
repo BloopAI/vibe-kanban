@@ -180,7 +180,7 @@ const CreateWorkspaceFromPrDialogImpl =
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
         queryClient.invalidateQueries({ queryKey: ['workspaces'] });
         modal.hide();
-        appNavigation.navigate(appNavigation.toWorkspace(data.workspace.id));
+        appNavigation.goToWorkspace(data.workspace.id);
       },
     });
 

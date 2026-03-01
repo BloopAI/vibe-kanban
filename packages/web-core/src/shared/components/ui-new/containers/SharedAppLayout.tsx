@@ -137,9 +137,9 @@ export function SharedAppLayout() {
       !isLoading
     ) {
       if (sortedProjects.length > 0) {
-        appNavigation.navigate(appNavigation.toProject(sortedProjects[0].id));
+        appNavigation.goToProject(sortedProjects[0].id);
       } else {
-        appNavigation.navigate(appNavigation.toWorkspaces());
+        appNavigation.goToWorkspaces();
       }
       prevOrgIdRef.current = selectedOrgId;
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
@@ -165,7 +165,7 @@ export function SharedAppLayout() {
   }, [location.pathname, location.searchStr]);
 
   const handleWorkspacesClick = useCallback(() => {
-    appNavigation.navigate(appNavigation.toWorkspaces());
+    appNavigation.goToWorkspaces();
   }, [appNavigation]);
 
   const handleProjectClick = useCallback(
@@ -179,7 +179,7 @@ export function SharedAppLayout() {
         }
       }
 
-      appNavigation.navigate(appNavigation.toProject(projectId));
+      appNavigation.goToProject(projectId);
     },
     [appNavigation]
   );
@@ -243,7 +243,7 @@ export function SharedAppLayout() {
         await CreateRemoteProjectDialog.show({ organizationId: selectedOrgId });
 
       if (result.action === 'created' && result.project) {
-        appNavigation.navigate(appNavigation.toProject(result.project.id));
+        appNavigation.goToProject(result.project.id);
       }
     } catch {
       // Dialog cancelled
@@ -263,13 +263,13 @@ export function SharedAppLayout() {
       try {
         const profile = await OAuthDialog.show({});
         if (profile) {
-          appNavigation.navigate(appNavigation.toMigrate());
+          appNavigation.goToMigrate();
         }
       } catch {
         // Dialog cancelled
       }
     } else {
-      appNavigation.navigate(appNavigation.toMigrate());
+      appNavigation.goToMigrate();
     }
   }, [isSignedIn, appNavigation]);
 
@@ -337,7 +337,7 @@ export function SharedAppLayout() {
             <button
               type="button"
               onClick={() => {
-                appNavigation.navigate(appNavigation.toWorkspaces());
+                appNavigation.goToWorkspaces();
                 setIsDrawerOpen(false);
               }}
               className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"
