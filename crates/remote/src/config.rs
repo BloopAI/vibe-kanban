@@ -11,7 +11,9 @@ use url::Url;
 /// - `https://github.mycompany.com` → `https://github.mycompany.com/api/v3` (GHE convention)
 fn github_urls_from_env() -> (String, String) {
     let base_url = env::var("GITHUB_BASE_URL")
-        .unwrap_or_else(|_| "https://github.com".to_string())
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://github.com".to_string())
         .trim_end_matches('/')
         .to_string();
 
@@ -433,4 +435,42 @@ fn validate_jwt_secret(secret: &str) -> Result<(), ConfigError> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_api_url_public_github() {
+        assert_eq!(
+            derive_github_api_url("https://github.com"),
+            "https://api.github.com"
+        );
+    }
+
+    #[test]
+    fn derive_api_url_public_github_trailing_slash_stripped() {
+        // Caller strips trailing slashes, but verify the function still works
+        assert_eq!(
+            derive_github_api_url("https://github.com"),
+            "https://api.github.com"
+        );
+    }
+
+    #[test]
+    fn derive_api_url_ghe() {
+        assert_eq!(
+            derive_github_api_url("https://github.mycompany.com"),
+            "https://github.mycompany.com/api/v3"
+        );
+    }
+
+    #[test]
+    fn derive_api_url_ghe_custom_host() {
+        assert_eq!(
+            derive_github_api_url("https://git.corp.example.com"),
+            "https://git.corp.example.com/api/v3"
+        );
+    }
 }

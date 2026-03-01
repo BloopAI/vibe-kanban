@@ -14,10 +14,10 @@ VIBEKANBAN_REMOTE_JWT_SECRET=your_base64_encoded_secret
 ELECTRIC_ROLE_PASSWORD=your_secure_password
 
 # OAuth — at least one provider (GitHub or Google) must be configured
-# Optional — set for GitHub Enterprise Server (default: https://github.com)
-GITHUB_BASE_URL=
 GITHUB_OAUTH_CLIENT_ID=your_github_web_app_client_id
 GITHUB_OAUTH_CLIENT_SECRET=your_github_web_app_client_secret
+# Optional — set for GitHub Enterprise Server (default: https://github.com)
+GITHUB_BASE_URL=
 GOOGLE_OAUTH_CLIENT_ID=
 GOOGLE_OAUTH_CLIENT_SECRET=
 

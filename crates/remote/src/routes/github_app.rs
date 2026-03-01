@@ -1161,3 +1161,50 @@ pub async fn trigger_pr_review(
 
     Ok(Json(TriggerPrReviewResponse { review_id }))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_pr_url_public_github() {
+        let result = parse_pr_url("https://github.com/owner/repo/pull/123");
+        assert_eq!(
+            result,
+            Some(("owner".into(), "repo".into(), 123))
+        );
+    }
+
+    #[test]
+    fn parse_pr_url_ghe() {
+        let result = parse_pr_url("https://github.mycompany.com/owner/repo/pull/42");
+        assert_eq!(
+            result,
+            Some(("owner".into(), "repo".into(), 42))
+        );
+    }
+
+    #[test]
+    fn parse_pr_url_trailing_slash() {
+        let result = parse_pr_url("https://github.com/owner/repo/pull/1/");
+        assert_eq!(
+            result,
+            Some(("owner".into(), "repo".into(), 1))
+        );
+    }
+
+    #[test]
+    fn parse_pr_url_invalid_no_pull() {
+        assert_eq!(parse_pr_url("https://github.com/owner/repo/issues/123"), None);
+    }
+
+    #[test]
+    fn parse_pr_url_invalid_not_a_number() {
+        assert_eq!(parse_pr_url("https://github.com/owner/repo/pull/abc"), None);
+    }
+
+    #[test]
+    fn parse_pr_url_invalid_too_short() {
+        assert_eq!(parse_pr_url("https://github.com/owner"), None);
+    }
+}
