@@ -49,10 +49,6 @@ function resolveLocalDestinationFromPath(path: string): AppDestination | null {
       const projectId = getPathParam(routeParams, 'projectId');
       return projectId ? { kind: 'project', projectId } : null;
     }
-    case '/_app/projects/$projectId_/issues/new': {
-      const projectId = getPathParam(routeParams, 'projectId');
-      return projectId ? { kind: 'project-issue-create', projectId } : null;
-    }
     case '/_app/projects/$projectId_/issues/$issueId': {
       const projectId = getPathParam(routeParams, 'projectId');
       const issueId = getPathParam(routeParams, 'issueId');
@@ -131,11 +127,6 @@ function destinationToLocalTarget(destination: AppDestination) {
         to: '/projects/$projectId',
         params: { projectId: destination.projectId },
       } as const;
-    case 'project-issue-create':
-      return {
-        to: '/projects/$projectId/issues/new',
-        params: { projectId: destination.projectId },
-      } as const;
     case 'project-issue':
       return {
         to: '/projects/$projectId/issues/$issueId',
@@ -204,8 +195,6 @@ export function createLocalAppNavigation(): AppNavigation {
       navigateTo({ kind: 'workspace-vscode', workspaceId }, transition),
     goToProject: (projectId, transition) =>
       navigateTo({ kind: 'project', projectId }, transition),
-    goToProjectIssueCreate: (projectId, transition) =>
-      navigateTo({ kind: 'project-issue-create', projectId }, transition),
     goToProjectIssue: (projectId, issueId, transition) =>
       navigateTo({ kind: 'project-issue', projectId, issueId }, transition),
     goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>

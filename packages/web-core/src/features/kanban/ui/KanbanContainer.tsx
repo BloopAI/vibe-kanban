@@ -27,10 +27,11 @@ import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
 import { type ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
 import {
-  buildKanbanCreateDefaultsKey,
-  clearKanbanCreateDefaults,
-  setKanbanCreateDefaults,
-} from '@/shared/stores/useKanbanCreateDefaultsStore';
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+  openKanbanIssueComposer,
+  useKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   KanbanProvider,
@@ -147,19 +148,21 @@ export function KanbanContainer() {
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
   const selectedKanbanIssueId = routeState.issueId;
-  const createDefaultsKey = useMemo(
-    () => buildKanbanCreateDefaultsKey(routeState.hostId, projectId),
+  const issueComposerKey = useMemo(
+    () => buildKanbanIssueComposerKey(routeState.hostId, projectId),
     [routeState.hostId, projectId]
   );
+  const issueComposer = useKanbanIssueComposer(issueComposerKey);
+  const isIssueComposerOpen = issueComposer !== null;
   const openIssue = useCallback(
     (issueId: string) => {
-      if (routeState.isCreateMode) {
-        clearKanbanCreateDefaults(createDefaultsKey);
+      if (isIssueComposerOpen) {
+        closeKanbanIssueComposer(issueComposerKey);
       }
 
       appNavigation.goToProjectIssue(projectId, issueId);
     },
-    [routeState.isCreateMode, createDefaultsKey, appNavigation, projectId]
+    [isIssueComposerOpen, issueComposerKey, appNavigation, projectId]
   );
   const openIssueWorkspace = useCallback(
     (issueId: string, workspaceAttemptId: string) => {
@@ -173,15 +176,9 @@ export function KanbanContainer() {
   );
   const startCreate = useCallback(
     (options?: ProjectIssueCreateOptions) => {
-      setKanbanCreateDefaults(createDefaultsKey, {
-        statusId: options?.statusId,
-        priority: options?.priority,
-        assigneeIds: options?.assigneeIds,
-        parentIssueId: options?.parentIssueId,
-      });
-      appNavigation.goToProjectIssueCreate(projectId);
+      openKanbanIssueComposer(issueComposerKey, options);
     },
-    [createDefaultsKey, appNavigation, projectId]
+    [issueComposerKey]
   );
 
   // Get setter and executor from ActionsContext

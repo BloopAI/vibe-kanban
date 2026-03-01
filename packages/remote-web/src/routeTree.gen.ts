@@ -25,7 +25,6 @@ import { Route as HostsHostIdWorkspacesCreateRouteImport } from './routes/hosts.
 import { Route as HostsHostIdWorkspacesWorkspaceIdRouteImport } from './routes/hosts.$hostId.workspaces_.$workspaceId'
 import { Route as HostsHostIdProjectsProjectIdRouteImport } from './routes/hosts.$hostId.projects.$projectId'
 import { Route as HostsHostIdWorkspacesWorkspaceIdVscodeRouteImport } from './routes/hosts.$hostId.workspaces.$workspaceId.vscode'
-import { Route as HostsHostIdProjectsProjectIdIssuesNewRouteImport } from './routes/hosts.$hostId.projects.$projectId_.issues.new'
 import { Route as HostsHostIdProjectsProjectIdIssuesIssueIdRouteImport } from './routes/hosts.$hostId.projects.$projectId_.issues.$issueId'
 import { Route as HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRouteImport } from './routes/hosts.$hostId.projects.$projectId_.workspaces.create.$draftId'
 import { Route as HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRouteImport } from './routes/hosts.$hostId.projects.$projectId_.issues.$issueId_.workspaces.$workspaceId'
@@ -117,12 +116,6 @@ const HostsHostIdWorkspacesWorkspaceIdVscodeRoute =
     path: '/$workspaceId/vscode',
     getParentRoute: () => HostsHostIdWorkspacesRoute,
   } as any)
-const HostsHostIdProjectsProjectIdIssuesNewRoute =
-  HostsHostIdProjectsProjectIdIssuesNewRouteImport.update({
-    id: '/hosts/$hostId/projects/$projectId_/issues/new',
-    path: '/hosts/$hostId/projects/$projectId/issues/new',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const HostsHostIdProjectsProjectIdIssuesIssueIdRoute =
   HostsHostIdProjectsProjectIdIssuesIssueIdRouteImport.update({
     id: '/hosts/$hostId/projects/$projectId_/issues/$issueId',
@@ -170,7 +163,6 @@ export interface FileRoutesByFullPath {
   '/hosts/$hostId/workspaces/create': typeof HostsHostIdWorkspacesCreateRoute
   '/hosts/$hostId/workspaces/$workspaceId/vscode': typeof HostsHostIdWorkspacesWorkspaceIdVscodeRoute
   '/hosts/$hostId/projects/$projectId/issues/$issueId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdRoute
-  '/hosts/$hostId/projects/$projectId/issues/new': typeof HostsHostIdProjectsProjectIdIssuesNewRoute
   '/hosts/$hostId/projects/$projectId/workspaces/create/$draftId': typeof HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute
   '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/$workspaceId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRoute
   '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/create/$draftId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute
@@ -193,7 +185,6 @@ export interface FileRoutesByTo {
   '/hosts/$hostId/workspaces/create': typeof HostsHostIdWorkspacesCreateRoute
   '/hosts/$hostId/workspaces/$workspaceId/vscode': typeof HostsHostIdWorkspacesWorkspaceIdVscodeRoute
   '/hosts/$hostId/projects/$projectId/issues/$issueId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdRoute
-  '/hosts/$hostId/projects/$projectId/issues/new': typeof HostsHostIdProjectsProjectIdIssuesNewRoute
   '/hosts/$hostId/projects/$projectId/workspaces/create/$draftId': typeof HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute
   '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/$workspaceId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRoute
   '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/create/$draftId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute
@@ -217,7 +208,6 @@ export interface FileRoutesById {
   '/hosts/$hostId/workspaces_/create': typeof HostsHostIdWorkspacesCreateRoute
   '/hosts/$hostId/workspaces/$workspaceId/vscode': typeof HostsHostIdWorkspacesWorkspaceIdVscodeRoute
   '/hosts/$hostId/projects/$projectId_/issues/$issueId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdRoute
-  '/hosts/$hostId/projects/$projectId_/issues/new': typeof HostsHostIdProjectsProjectIdIssuesNewRoute
   '/hosts/$hostId/projects/$projectId_/workspaces/create/$draftId': typeof HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute
   '/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/$workspaceId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRoute
   '/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/create/$draftId': typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute
@@ -242,7 +232,6 @@ export interface FileRouteTypes {
     | '/hosts/$hostId/workspaces/create'
     | '/hosts/$hostId/workspaces/$workspaceId/vscode'
     | '/hosts/$hostId/projects/$projectId/issues/$issueId'
-    | '/hosts/$hostId/projects/$projectId/issues/new'
     | '/hosts/$hostId/projects/$projectId/workspaces/create/$draftId'
     | '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/$workspaceId'
     | '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/create/$draftId'
@@ -265,7 +254,6 @@ export interface FileRouteTypes {
     | '/hosts/$hostId/workspaces/create'
     | '/hosts/$hostId/workspaces/$workspaceId/vscode'
     | '/hosts/$hostId/projects/$projectId/issues/$issueId'
-    | '/hosts/$hostId/projects/$projectId/issues/new'
     | '/hosts/$hostId/projects/$projectId/workspaces/create/$draftId'
     | '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/$workspaceId'
     | '/hosts/$hostId/projects/$projectId/issues/$issueId/workspaces/create/$draftId'
@@ -288,7 +276,6 @@ export interface FileRouteTypes {
     | '/hosts/$hostId/workspaces_/create'
     | '/hosts/$hostId/workspaces/$workspaceId/vscode'
     | '/hosts/$hostId/projects/$projectId_/issues/$issueId'
-    | '/hosts/$hostId/projects/$projectId_/issues/new'
     | '/hosts/$hostId/projects/$projectId_/workspaces/create/$draftId'
     | '/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/$workspaceId'
     | '/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/create/$draftId'
@@ -311,7 +298,6 @@ export interface RootRouteChildren {
   HostsHostIdWorkspacesWorkspaceIdRoute: typeof HostsHostIdWorkspacesWorkspaceIdRoute
   HostsHostIdWorkspacesCreateRoute: typeof HostsHostIdWorkspacesCreateRoute
   HostsHostIdProjectsProjectIdIssuesIssueIdRoute: typeof HostsHostIdProjectsProjectIdIssuesIssueIdRoute
-  HostsHostIdProjectsProjectIdIssuesNewRoute: typeof HostsHostIdProjectsProjectIdIssuesNewRoute
   HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute: typeof HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute
   HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRoute: typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRoute
   HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute: typeof HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesCreateDraftIdRoute
@@ -431,13 +417,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HostsHostIdWorkspacesWorkspaceIdVscodeRouteImport
       parentRoute: typeof HostsHostIdWorkspacesRoute
     }
-    '/hosts/$hostId/projects/$projectId_/issues/new': {
-      id: '/hosts/$hostId/projects/$projectId_/issues/new'
-      path: '/hosts/$hostId/projects/$projectId/issues/new'
-      fullPath: '/hosts/$hostId/projects/$projectId/issues/new'
-      preLoaderRoute: typeof HostsHostIdProjectsProjectIdIssuesNewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/hosts/$hostId/projects/$projectId_/issues/$issueId': {
       id: '/hosts/$hostId/projects/$projectId_/issues/$issueId'
       path: '/hosts/$hostId/projects/$projectId/issues/$issueId'
@@ -501,8 +480,6 @@ const rootRouteChildren: RootRouteChildren = {
   HostsHostIdWorkspacesCreateRoute: HostsHostIdWorkspacesCreateRoute,
   HostsHostIdProjectsProjectIdIssuesIssueIdRoute:
     HostsHostIdProjectsProjectIdIssuesIssueIdRoute,
-  HostsHostIdProjectsProjectIdIssuesNewRoute:
-    HostsHostIdProjectsProjectIdIssuesNewRoute,
   HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute:
     HostsHostIdProjectsProjectIdWorkspacesCreateDraftIdRoute,
   HostsHostIdProjectsProjectIdIssuesIssueIdWorkspacesWorkspaceIdRoute:

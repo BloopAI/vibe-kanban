@@ -56,13 +56,6 @@ function resolveRemoteDestinationFromPath(path: string): AppDestination | null {
         ? { kind: "project", hostId, projectId }
         : null;
     }
-    case "/hosts/$hostId/projects/$projectId_/issues/new": {
-      const hostId = getPathParam(routeParams, "hostId");
-      const projectId = getPathParam(routeParams, "projectId");
-      return hostId && projectId
-        ? { kind: "project-issue-create", hostId, projectId }
-        : null;
-    }
     case "/hosts/$hostId/projects/$projectId_/issues/$issueId": {
       const hostId = getPathParam(routeParams, "hostId");
       const projectId = getPathParam(routeParams, "projectId");
@@ -185,17 +178,6 @@ function destinationToRemoteTarget(
         } as const;
       }
       return { to: "/" } as const;
-    case "project-issue-create":
-      if (effectiveHostId) {
-        return {
-          to: "/hosts/$hostId/projects/$projectId/issues/new",
-          params: {
-            hostId: effectiveHostId,
-            projectId: destination.projectId,
-          },
-        } as const;
-      }
-      return { to: "/" } as const;
     case "project-issue":
       if (effectiveHostId) {
         return {
@@ -282,11 +264,6 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
       navigateTo({ kind: "workspace-vscode", hostId, workspaceId }, transition),
     goToProject: (projectId, transition) =>
       navigateTo({ kind: "project", hostId, projectId }, transition),
-    goToProjectIssueCreate: (projectId, transition) =>
-      navigateTo(
-        { kind: "project-issue-create", hostId, projectId },
-        transition,
-      ),
     goToProjectIssue: (projectId, issueId, transition) =>
       navigateTo(
         { kind: "project-issue", hostId, projectId, issueId },
@@ -362,8 +339,6 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
       navigateTo({ kind: "workspace-vscode", workspaceId }, transition),
     goToProject: (projectId, transition) =>
       navigateTo({ kind: "project", projectId }, transition),
-    goToProjectIssueCreate: (projectId, transition) =>
-      navigateTo({ kind: "project-issue-create", projectId }, transition),
     goToProjectIssue: (projectId, issueId, transition) =>
       navigateTo({ kind: "project-issue", projectId, issueId }, transition),
     goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>

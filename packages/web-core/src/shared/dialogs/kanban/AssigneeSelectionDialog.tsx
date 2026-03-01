@@ -22,10 +22,10 @@ import {
   getProjectDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
-  buildKanbanCreateDefaultsKey,
-  patchKanbanCreateDefaults,
-  useKanbanCreateDefaults,
-} from '@/shared/stores/useKanbanCreateDefaultsStore';
+  buildKanbanIssueComposerKey,
+  patchKanbanIssueComposer,
+  useKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 export interface AssigneeSelectionDialogProps {
   projectId: string;
   issueIds: string[];
@@ -72,12 +72,12 @@ function AssigneeSelectionContent({
     [destination]
   );
   const resolvedProjectId = projectId || projectDestination?.projectId || null;
-  const createDefaultsKey = useMemo(() => {
+  const issueComposerKey = useMemo(() => {
     if (!resolvedProjectId) return null;
     const hostId = getDestinationHostId(projectDestination);
-    return buildKanbanCreateDefaultsKey(hostId, resolvedProjectId);
+    return buildKanbanIssueComposerKey(hostId, resolvedProjectId);
   }, [resolvedProjectId, projectDestination]);
-  const createDefaults = useKanbanCreateDefaults(createDefaultsKey);
+  const issueComposer = useKanbanIssueComposer(issueComposerKey);
 
   // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
   const { membersWithProfilesById } = useOrgContext();
@@ -103,14 +103,14 @@ function AssigneeSelectionContent({
   }, [hasCreateCallback, createModeAssigneeIds, modal.visible]);
 
   // Fallback: get/set create mode defaults from shared in-memory state.
-  const kanbanCreateDefaultAssigneeIds = createDefaults?.assigneeIds ?? [];
+  const issueComposerAssigneeIds = issueComposer?.draft.assigneeIds ?? [];
 
-  const setKanbanCreateDefaultAssigneeIds = useCallback(
+  const setIssueComposerAssigneeIds = useCallback(
     (assigneeIds: string[]) => {
-      if (!createDefaultsKey) return;
-      patchKanbanCreateDefaults(createDefaultsKey, { assigneeIds });
+      if (!issueComposerKey) return;
+      patchKanbanIssueComposer(issueComposerKey, { assigneeIds });
     },
-    [createDefaultsKey]
+    [issueComposerKey]
   );
 
   // Derive selected assignee IDs based on mode and callback availability
@@ -118,7 +118,7 @@ function AssigneeSelectionContent({
     if (isCreateMode) {
       return hasCreateCallback
         ? localCreateAssignees
-        : kanbanCreateDefaultAssigneeIds;
+        : issueComposerAssigneeIds;
     }
     return issueAssignees
       .filter((a) => issueIds.includes(a.issue_id))
@@ -129,7 +129,7 @@ function AssigneeSelectionContent({
     issueAssignees,
     hasCreateCallback,
     localCreateAssignees,
-    kanbanCreateDefaultAssigneeIds,
+    issueComposerAssigneeIds,
   ]);
 
   const [search, setSearch] = useState('');
@@ -174,7 +174,7 @@ function AssigneeSelectionContent({
           setLocalCreateAssignees(newIds);
           onCreateModeAssigneesChange(newIds);
         } else {
-          setKanbanCreateDefaultAssigneeIds(newIds);
+          setIssueComposerAssigneeIds(newIds);
         }
       } else {
         // Edit mode: apply mutation immediately for each issue
@@ -200,7 +200,7 @@ function AssigneeSelectionContent({
       issueIds,
       issueAssignees,
       onCreateModeAssigneesChange,
-      setKanbanCreateDefaultAssigneeIds,
+      setIssueComposerAssigneeIds,
       insertIssueAssignee,
       removeIssueAssignee,
     ]

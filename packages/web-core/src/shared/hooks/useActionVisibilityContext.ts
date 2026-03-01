@@ -19,6 +19,7 @@ import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { isProjectDestination } from '@/shared/lib/routes/appNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 import type {
@@ -53,7 +54,7 @@ export function useActionVisibilityContext(
     strict: false,
   });
   const destination = useCurrentAppDestination();
-  const kanbanCreateMode = destination?.kind === 'project-issue-create';
+  const { isCreateMode: kanbanCreateMode } = useCurrentKanbanRouteState();
   const effectiveProjectId = options?.projectId ?? routeProjectId;
   const optionIssueIds = options?.issueIds;
   const effectiveIssueIds = useMemo(

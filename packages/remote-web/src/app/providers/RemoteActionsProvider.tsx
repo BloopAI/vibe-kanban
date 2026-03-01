@@ -21,9 +21,14 @@ import {
   resolveLabel,
   type ProjectMutations,
 } from "@/shared/types/actions";
+import type { ProjectIssueCreateOptions } from "@/shared/lib/routes/appNavigation";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useAppNavigation } from "@/shared/hooks/useAppNavigation";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
+import {
+  buildKanbanIssueComposerKey,
+  openKanbanIssueComposer,
+} from "@/shared/stores/useKanbanIssueComposerStore";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteActionsProviderProps {
@@ -39,7 +44,7 @@ export function RemoteActionsProvider({
 }: RemoteActionsProviderProps) {
   const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
-  const { projectId } = useParams({ strict: false });
+  const { projectId, hostId } = useParams({ strict: false });
   const userCtx = useContext(UserContext);
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const [defaultCreateStatusId, setDefaultCreateStatusId] = useState<
@@ -55,10 +60,16 @@ export function RemoteActionsProvider({
     [],
   );
 
-  const navigateToCreateIssue = useCallback(() => {
-    if (!projectId) return;
-    appNavigation.goToProjectIssueCreate(projectId);
-  }, [projectId, appNavigation]);
+  const navigateToCreateIssue = useCallback(
+    (options?: ProjectIssueCreateOptions) => {
+      if (!projectId) return;
+      openKanbanIssueComposer(
+        buildKanbanIssueComposerKey(hostId ?? null, projectId),
+        options,
+      );
+    },
+    [hostId, projectId],
+  );
 
   const openStatusSelection = useCallback(async () => {
     noOpSelection("Status selection");

@@ -41,7 +41,6 @@ export type AppDestination =
   | { kind: "workspace"; hostId?: string; workspaceId: string }
   | { kind: "workspace-vscode"; hostId?: string; workspaceId: string }
   | { kind: "project"; hostId?: string; projectId: string }
-  | { kind: "project-issue-create"; hostId?: string; projectId: string }
   | {
       kind: "project-issue";
       hostId?: string;
@@ -91,7 +90,8 @@ Notes:
 3. Remote adapter rule: use `destination.hostId ?? currentHostId` when mapping
    host-aware routes.
 4. Local adapter ignores `hostId`.
-5. Kanban create defaults move to local in-memory state, not query params.
+5. Kanban issue creation uses local in-memory composer state, not query params
+   or dedicated create routes.
 6. Destination construction helpers may be added, but they must return
    `AppDestination` only.
 7. `NavigationTransition` intentionally excludes `state`.
@@ -218,29 +218,25 @@ Rules:
 5. If draft persistence fails, do not navigate; show an error and keep user on
    current screen.
 
-## Kanban Create Defaults Rules (In-Memory Only)
+## Kanban Issue Composer Rules (In-Memory Only)
 
-Kanban issue-create defaults are transported via local state only.
+Kanban issue-create state is local in-memory state only.
 
 Rules:
 
-1. Store create defaults in one shared `web-core` in-memory state container
-   (not per-component local state), keyed by `hostId + projectId`
-   (`statusId`, `priority`, `assigneeIds`, `parentIssueId`).
+1. Store create state in one shared `web-core` in-memory composer state
+   container (not per-component local state), keyed by `hostId + projectId`
+   (`statusId`, `priority`, `assigneeIds`, `parentIssueId`, title/body draft,
+   tags, create-workspace toggle).
 2. Local-web and remote-web use the same key model:
    `effectiveHostId + projectId`, where local-web uses `null` host.
-3. `startCreate(...)` writes defaults to local state and navigates to
-   `/issues/new` with no query payload.
-4. `updateCreateDefaults(...)` mutates local state only (no URL writes).
-5. `KanbanIssuePanelContainer` initialization order:
-   - draft issue scratch (if present for project)
-   - in-memory create defaults
-   - board-derived fallback defaults
-6. Create-mode detection is path-based only (`/issues/new`), never query-based.
-7. Remove query-based compatibility behavior for
-   `statusId/priority/assignees/parentIssueId/mode/orgId` in one pass
-   (no dual-read/write transition).
-8. Reset defaults when:
+3. `startCreate(...)` opens the composer state only and does not navigate.
+4. `patch`/`reset` operations mutate composer state only (no URL writes).
+5. `KanbanIssuePanelContainer` create initialization comes from composer state
+   and board-derived fallback defaults (no draft-issue scratch path).
+6. Create-mode detection is composer-state based, never path/query based.
+7. `/issues/new` routes are removed in local-web and remote-web.
+8. Reset/close composer when:
    - issue create is submitted successfully
    - issue create is cancelled/closed
    - `effectiveHostId` or `projectId` changes
@@ -361,14 +357,16 @@ Completed so far:
 5. Removed project-search payload transport from the shared navigation
    contract (`AppDestination`/`AppNavigation`) and both local/remote adapters;
    project navigation is path-only.
-6. Completed Kanban create-default migration to in-memory state:
-   - emptied project route search schema for Kanban defaults
-   - added shared `useKanbanCreateDefaultsStore` keyed by
+6. Completed Kanban create-state migration to in-memory state:
+   - removed project-route query schema transport for create defaults
+   - replaced create-default state with shared composer state keyed by
      `effectiveHostId + projectId`
-   - rewired `useKanbanNavigation`, `ActionsProvider`, and
-     `AssigneeSelectionDialog` to use the in-memory defaults source
-   - removed legacy `mode/orgId` query migration in `ProjectKanban`
-   - made `isCreatingIssue` path-derived in `useActionVisibilityContext`
+   - rewired `ActionsProvider`, `RemoteActionsProvider`,
+     `KanbanContainer`, `ProjectRightSidebarContainer`,
+     `KanbanIssuePanelContainer`, and `AssigneeSelectionDialog` to composer
+     state
+   - made `isCreatingIssue` composer-state derived in action visibility and
+     keyboard shortcuts
 7. Updated migration project entry points to set selected org in store before
    project navigation (no `orgId` query transport).
 8. Removed workspace-create router-state transport:
@@ -571,6 +569,40 @@ Completed:
    kinds instead of ad-hoc pathname checks in shared consumers.
 4. Kept one pathname parser boundary in `web-core`: `useCurrentAppDestination`
    now owns the `location.pathname -> AppDestination` conversion.
+
+### Phase 11: Kanban Create Route Hard-Cut
+
+Status: Completed (March 1, 2026)
+
+Completed:
+
+1. Removed `project-issue-create` from shared navigation semantics:
+   - deleted from `AppDestination`
+   - deleted from project destination classification
+   - deleted `goToProjectIssueCreate(...)` from `AppNavigation`
+2. Removed `/issues/new` route files from both apps:
+   - `packages/local-web/src/routes/_app.projects.$projectId_.issues.new.tsx`
+   - `packages/remote-web/src/routes/hosts.$hostId.projects.$projectId_.issues.new.tsx`
+3. Regenerated route trees in local-web and remote-web with the create routes
+   removed.
+4. Replaced legacy create-default storage with shared composer storage:
+   - deleted `useKanbanCreateDefaultsStore`
+   - added `useKanbanIssueComposerStore` with `open/patch/reset/close`
+     operations
+5. Migrated create entry points and create-mode consumers to composer state:
+   - `KanbanContainer`, `ActionsProvider`, `RemoteActionsProvider`,
+     `ProjectRightSidebarContainer`, `KanbanIssuePanelContainer`,
+     `AssigneeSelectionDialog`
+6. Updated create-mode detection and shortcut visibility to composer state:
+   - `useCurrentKanbanRouteState`
+   - `useActionVisibilityContext`
+   - `useIssueShortcuts`
+7. Validation completed:
+   - `pnpm --filter @vibe/web-core run check`
+   - `pnpm --filter @vibe/local-web run check`
+   - `pnpm --filter @vibe/remote-web run check`
+   - `pnpm run local-web:legacy-path-guard`
+   - `pnpm run format`
 
 ## Risk Areas to Verify During Migration
 

@@ -15,9 +15,9 @@ import {
   type ProjectIssueCreateOptions,
 } from '@/shared/lib/routes/appNavigation';
 import {
-  buildKanbanCreateDefaultsKey,
-  setKanbanCreateDefaults,
-} from '@/shared/stores/useKanbanCreateDefaultsStore';
+  buildKanbanIssueComposerKey,
+  openKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 import {
   type ActionDefinition,
   type ActionExecutorContext,
@@ -83,15 +83,12 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
         return;
       }
 
-      setKanbanCreateDefaults(buildKanbanCreateDefaultsKey(hostId, projectId), {
-        statusId: options?.statusId,
-        priority: options?.priority,
-        assigneeIds: options?.assigneeIds,
-        parentIssueId: options?.parentIssueId,
-      });
-      appNavigation.goToProjectIssueCreate(projectId);
+      openKanbanIssueComposer(
+        buildKanbanIssueComposerKey(hostId, projectId),
+        options
+      );
     },
-    [projectId, hostId, appNavigation]
+    [projectId, hostId]
   );
 
   // Get logs panel state

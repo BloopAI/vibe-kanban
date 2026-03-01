@@ -22,9 +22,9 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
-  buildKanbanCreateDefaultsKey,
-  clearKanbanCreateDefaults,
-} from '@/shared/stores/useKanbanCreateDefaultsStore';
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 /**
  * Component that registers project mutations with ActionsContext.
  * Must be rendered inside both ActionsProvider and ProjectProvider.
@@ -236,8 +236,9 @@ function useFindProjectById(projectId: string | undefined) {
  * - /projects/:projectId - Kanban board with no issue selected
  * - /projects/:projectId/issues/:issueId - Kanban with issue panel open
  * - /projects/:projectId/issues/:issueId/workspaces/:workspaceId - Kanban with workspace session panel open
- * - /projects/:projectId/issues/new - Kanban with create issue panel
  * - /projects/:projectId/issues/:issueId/workspaces/create/:draftId - Kanban with workspace create panel
+ *
+ * Note: issue creation is composer-store state on top of /projects/:projectId.
  *
  * Note: This component is rendered inside SharedAppLayout which provides
  * NavbarContainer, AppBar, and SyncErrorProvider.
@@ -248,22 +249,22 @@ export function ProjectKanban() {
   const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
-  const createDefaultsKey = useMemo(() => {
+  const issueComposerKey = useMemo(() => {
     if (!projectId) {
       return null;
     }
-    return buildKanbanCreateDefaultsKey(hostId, projectId);
+    return buildKanbanIssueComposerKey(hostId, projectId);
   }, [hostId, projectId]);
-  const previousCreateDefaultsKeyRef = useRef<string | null>(null);
+  const previousIssueComposerKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const previousKey = previousCreateDefaultsKeyRef.current;
-    if (previousKey && previousKey !== createDefaultsKey) {
-      clearKanbanCreateDefaults(previousKey);
+    const previousKey = previousIssueComposerKeyRef.current;
+    if (previousKey && previousKey !== issueComposerKey) {
+      closeKanbanIssueComposer(previousKey);
     }
 
-    previousCreateDefaultsKeyRef.current = createDefaultsKey;
-  }, [createDefaultsKey]);
+    previousIssueComposerKeyRef.current = issueComposerKey;
+  }, [issueComposerKey]);
 
   // Redirect invalid workspace-create draft URLs back to the closed project view.
   useEffect(() => {

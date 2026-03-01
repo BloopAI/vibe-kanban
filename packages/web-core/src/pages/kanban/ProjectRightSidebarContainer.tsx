@@ -30,9 +30,10 @@ import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
-  buildKanbanCreateDefaultsKey,
-  clearKanbanCreateDefaults,
-} from '@/shared/stores/useKanbanCreateDefaultsStore';
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+  useKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
@@ -349,34 +350,30 @@ export function ProjectRightSidebarContainer() {
     issuesById,
   } = useProjectContext();
   const routeState = useCurrentKanbanRouteState();
-  const {
-    issueId,
-    workspaceId,
-    draftId,
-    isCreateMode,
-    isWorkspaceCreateMode,
-    hostId,
-  } = routeState;
-  const createDefaultsKey = useMemo(() => {
+  const { issueId, workspaceId, draftId, isWorkspaceCreateMode, hostId } =
+    routeState;
+  const issueComposerKey = useMemo(() => {
     if (!projectId) {
       return null;
     }
 
-    return buildKanbanCreateDefaultsKey(hostId, projectId);
+    return buildKanbanIssueComposerKey(hostId, projectId);
   }, [hostId, projectId]);
+  const issueComposer = useKanbanIssueComposer(issueComposerKey);
+  const isCreateMode = issueComposer !== null;
   const openIssue = useCallback(
     (targetIssueId: string) => {
       if (!projectId) {
         return;
       }
 
-      if (isCreateMode && createDefaultsKey) {
-        clearKanbanCreateDefaults(createDefaultsKey);
+      if (isCreateMode && issueComposerKey) {
+        closeKanbanIssueComposer(issueComposerKey);
       }
 
       appNavigation.goToProjectIssue(projectId, targetIssueId);
     },
-    [projectId, isCreateMode, createDefaultsKey, appNavigation]
+    [projectId, isCreateMode, issueComposerKey, appNavigation]
   );
   const openIssueWorkspace = useCallback(
     (targetIssueId: string, targetWorkspaceId: string) => {
@@ -397,12 +394,12 @@ export function ProjectRightSidebarContainer() {
       return;
     }
 
-    if (isCreateMode && createDefaultsKey) {
-      clearKanbanCreateDefaults(createDefaultsKey);
+    if (isCreateMode && issueComposerKey) {
+      closeKanbanIssueComposer(issueComposerKey);
     }
 
     appNavigation.goToProject(projectId);
-  }, [projectId, isCreateMode, createDefaultsKey, appNavigation]);
+  }, [projectId, isCreateMode, issueComposerKey, appNavigation]);
   const [expectedIssueId, setExpectedIssueId] = useState<string | null>(null);
 
   const markExpectedIssue = useCallback((nextIssueId: string) => {

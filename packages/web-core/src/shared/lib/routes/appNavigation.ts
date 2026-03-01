@@ -10,7 +10,6 @@ export type AppDestination =
   | { kind: 'workspace'; workspaceId: string; hostId?: string }
   | { kind: 'workspace-vscode'; workspaceId: string; hostId?: string }
   | { kind: 'project'; projectId: string; hostId?: string }
-  | { kind: 'project-issue-create'; projectId: string; hostId?: string }
   | {
       kind: 'project-issue';
       projectId: string;
@@ -56,10 +55,6 @@ export interface AppNavigation {
     transition?: NavigationTransition
   ): void;
   goToProject(projectId: string, transition?: NavigationTransition): void;
-  goToProjectIssueCreate(
-    projectId: string,
-    transition?: NavigationTransition
-  ): void;
   goToProjectIssue(
     projectId: string,
     issueId: string,
@@ -93,7 +88,6 @@ export interface ProjectIssueCreateOptions {
 
 type ProjectDestinationKind =
   | 'project'
-  | 'project-issue-create'
   | 'project-issue'
   | 'project-issue-workspace'
   | 'project-issue-workspace-create'
@@ -117,7 +111,6 @@ export type WorkspaceDestination = Extract<
 
 export type KanbanSidebarMode =
   | 'closed'
-  | 'issue-create'
   | 'issue'
   | 'issue-workspace'
   | 'workspace-create';
@@ -154,7 +147,6 @@ export function isProjectDestination(
 
   switch (destination.kind) {
     case 'project':
-    case 'project-issue-create':
     case 'project-issue':
     case 'project-issue-workspace':
     case 'project-issue-workspace-create':
@@ -235,7 +227,6 @@ export function resolveKanbanRouteState(
     rawDraftId !== null &&
     !draftId;
 
-  const isCreateMode = projectDestination?.kind === 'project-issue-create';
   const isWorkspaceCreateMode =
     (projectDestination?.kind === 'project-issue-workspace-create' ||
       projectDestination?.kind === 'project-workspace-create') &&
@@ -249,8 +240,6 @@ export function resolveKanbanRouteState(
     switch (projectDestination.kind) {
       case 'project':
         return 'closed';
-      case 'project-issue-create':
-        return 'issue-create';
       case 'project-issue':
         return 'issue';
       case 'project-issue-workspace':
@@ -268,7 +257,8 @@ export function resolveKanbanRouteState(
     workspaceId,
     draftId,
     sidebarMode,
-    isCreateMode,
+    // Issue-create mode is route-independent and derived from composer state.
+    isCreateMode: false,
     isWorkspaceCreateMode,
     hasInvalidWorkspaceCreateDraftId,
     isPanelOpen: !!projectDestination && projectDestination.kind !== 'project',
