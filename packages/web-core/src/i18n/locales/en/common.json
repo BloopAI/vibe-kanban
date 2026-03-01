@@ -55,8 +55,6 @@
     "output": "Output",
     "result": "Result",
     "deniedByUser": "{{toolName}} denied by user",
-    "taskCompleted": "Task completed",
-    "ran": "Ran",
     "tool": "Tool",
     "thinking": "Thinking",
     "toolSummary": {
@@ -91,35 +89,14 @@
     },
     "currentDisabled": "Cannot select the current branch"
   },
-  "breadcrumb": {
-    "more": "More"
-  },
-  "orgMembers": {
-    "moreCount": "+{{count}} more"
-  },
   "orgSwitcher": {
-    "title": "Switch Organization",
-    "description": "Select an organization to switch to.",
-    "loadError": "Failed to load organizations. Please try again.",
-    "noOrganizations": "You are not a member of any organizations.",
-    "menuItem": "Organization",
-    "loadingPlaceholder": "Loading organizations...",
-    "selectPlaceholder": "Select an organization",
-    "currentBadge": " (current)",
     "organizations": "Organizations",
     "createOrganization": "Create organization",
-    "orgSettings": "Organization settings",
-    "migrate": "Migrate"
-  },
-  "navbar": {
-    "tryNewUI": "try the new UI"
+    "orgSettings": "Organization settings"
   },
   "personal": "Personal",
   "signIn": "Sign in",
   "signOut": "Sign out",
-  "devMode": {
-    "banner": "Development Mode - This is a development build"
-  },
   "oauth": {
     "title": "Sign in to Vibe Kanban",
     "description": "Sign in to join organizations and share tasks with your team",
@@ -234,20 +211,8 @@
     "placeholder": "Add notes about this workspace...",
     "selectWorkspace": "Select a workspace to view notes"
   },
-  "repos": {
-    "loading": "Loading repositories...",
-    "noRecentRepos": "No recent repositories found",
-    "noReposAdded": "No repositories added",
-    "noReposAddedHint": "Add one or more repositories to this workspace from the options below"
-  },
   "actions": {
-    "browseRepos": "Browse repos on disk",
-    "createNewRepo": "Create new repo on disk",
-    "viewInChangesPanel": "View in changes panel",
     "copyPath": "Copy path",
-    "copyWorktreePath": "Copy worktree path",
-    "openInIde": "Open in IDE",
-    "repoSettings": "Repository settings",
     "cancel": "Cancel",
     "saveChanges": "Save Changes",
     "copied": "Copied",
@@ -276,36 +241,6 @@
     "defaultPlaceholder": "Type a command or search...",
     "selectBranch": "Select Branch",
     "selectBranchFor": "Select Branch for {{repoName}}"
-  },
-  "chatBox": {
-    "variants": "Variants",
-    "customise": "Customise"
-  },
-  "projects": {
-    "noProjectFound": "No project found",
-    "createFirstPrompt": "Create a project first to start working on tasks.",
-    "createNew": "Create new project",
-    "noProjectsFound": "No projects found"
-  },
-  "betaWorkspaces": {
-    "title": "It's time to migrate!",
-    "intro": "We've rebuilt Vibe Kanban's UI from the ground up, and Workspaces is now the recommended way to use it.",
-    "newUiDescription": "The new UI is designed for day-to-day work: juggling agents, previewing changes, and reviewing code. It also unlocks features that aren't available in the old UI:",
-    "newFeatures": {
-      "multiRepo": "Edit multiple repositories at the same time",
-      "multiAgent": "Run multiple agent conversations (even across different agents) in a single workspace",
-      "commandBar": "Faster navigation with the command bar"
-    },
-    "oldUiDescription": "For now, a few things still live in the current UI:",
-    "oldFeatures": {
-      "kanban": "Managing tasks on the kanban board",
-      "settings": "Changing settings",
-      "projects": "Managing projects"
-    },
-    "transition": "During the transition over the next few weeks, you'll move between both views.",
-    "optOutNote": "Heads up: the legacy Local Projects view will be unavailable shortly and should no longer be used.",
-    "joinBeta": "Join Beta",
-    "maybeLater": "Not Right Now"
   },
   "workspacesGuide": {
     "welcome": {
@@ -441,34 +376,23 @@
     "noCommands": "No commands available for this agent."
   },
   "kanban": {
-    "noStatusesFound": "No statuses found for this project",
     "noVisibleStatuses": "All statuses are hidden. Use display settings or switch to another tab to view issues.",
     "noProjectFound": "No project found",
-    "noOrganizationFound": "No organization found",
     "unassigned": "Unassigned",
     "noTagsAvailable": "No tags available",
     "createNewIssue": "Create new issue",
-    "createNewTag": "Create new tag",
     "searchTags": "Search tags...",
     "selectColorFor": "Select color for",
     "createTag": "Create",
-    "filesCount": "{{count}} Files",
-    "attachmentsTitle": "Attachments ({{count}})",
-    "deleteAttachmentAria": "Delete {{filename}}",
     "noPrCreated": "No PR created",
     "noCommentsYet": "No comments yet",
     "createdBy": "Created by",
     "comments": "Comments",
     "enterCommentPlaceholder": "Enter your comment here...",
-    "attachImage": "Attach image",
     "attachFile": "Attach file",
     "attachFileHint": "Attach files (max 20MB each)",
-    "attach": "Attach",
-    "dropImagesHere": "Drop images here",
     "dropFilesHere": "Drop files here",
-    "imageDropHint": "PNG, JPG, GIF up to 20MB",
     "fileDropHint": "Any file type up to 20MB",
-    "unknownFile": "Unknown file",
     "unknownUser": "Unknown User",
     "deletedUser": "Deleted User",
     "replyQuotePrefix": "wrote:",
@@ -488,20 +412,16 @@
     "previewFileWithName": "[File: {{name}}]",
     "imageAttachmentNameFallback": "Attachment",
     "removeImage": "Remove image",
-    "maxImagesAtOnce": "Maximum {{count}} images at once",
     "maxFilesAtOnce": "Maximum {{count}} files at once",
-    "fileNotImage": "File {{filename}} is not an image",
     "fileExceedsLimit": "File {{filename}} exceeds 20MB limit",
     "unknownError": "Unknown error",
     "failedToUploadFile": "Failed to upload {{filename}}: {{message}}",
     "downloadAttachment": "Download attachment",
-    "downloadAttachmentAria": "Download {{filename}}",
     "subIssues": "Sub-issues",
     "noSubIssues": "No sub-issues",
     "markIndependentIssue": "Mark as independent issue",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
-    "showSubIssues": "Show sub-issues",
     "viewTabs": {
       "active": "Active",
       "all": "All"
@@ -589,12 +509,6 @@
       }
     }
   },
-  "changeStatus": {
-    "title": "Change Status",
-    "descriptionSingle": "Change status for \"{{title}}\"",
-    "descriptionMultiple": "Change status for {{count}} issues",
-    "action": "Change Status"
-  },
   "createMode": {
     "headings": {
       "repoStep": "Which repositories would you like to work on?",
@@ -615,11 +529,9 @@
     "permissionAuto": "Auto",
     "permissionAsk": "Ask",
     "permissionPlan": "Plan",
-    "nextTurn": "Next turn",
     "agent": "Agent",
     "default": "Default",
-    "model": "Model",
-    "providers": "Providers"
+    "model": "Model"
   },
   "syncError": {
     "networkErrors": "Network Errors",

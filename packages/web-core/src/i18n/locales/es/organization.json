@@ -40,7 +40,6 @@
     "title": "Pending Invitations",
     "description": "View pending invitations for {{orgName}}",
     "loading": "Loading invitations...",
-    "none": "No pending invitations",
     "invited": "Invited {{date}}",
     "pending": "Pending"
   },
@@ -67,17 +66,6 @@
     "action": "Iniciar sesión"
   },
   "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
-  "sharedProjects": {
-    "title": "Proyectos compartidos",
-    "description": "Proyectos remotos en {{orgName}} y sus enlaces a proyectos locales",
-    "loading": "Cargando proyectos...",
-    "noProjects": "No se encontraron proyectos compartidos en esta organización",
-    "notLinked": "Sin enlazar",
-    "linkedTo": "Enlazado a: {{projectName}}",
-    "linked": "Enlazado",
-    "linkProject": "Enlazar proyecto...",
-    "noAvailableProjects": "No hay proyectos disponibles"
-  },
   "billing": {
     "title": "Facturación y suscripción",
     "description": "Administra la suscripción y configuración de facturación de tu organización",

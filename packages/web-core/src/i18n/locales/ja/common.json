@@ -21,9 +21,6 @@
     "placeholder": "ブランチを選択",
     "searchPlaceholder": "ブランチを検索..."
   },
-  "breadcrumb": {
-    "more": "More"
-  },
   "buttons": {
     "cancel": "キャンセル",
     "close": "閉じる",
@@ -61,8 +58,6 @@
       "hide": "詳細を非表示",
       "show": "詳細を表示"
     },
-    "taskCompleted": "タスク完了",
-    "ran": "実行",
     "tool": "ツール",
     "thinking": "思考中",
     "toolSummary": {
@@ -89,33 +84,15 @@
     "saving": "保存中...",
     "success": "成功"
   },
-  "orgMembers": {
-    "moreCount": "他 {{count}} 人"
-  },
   "orgSwitcher": {
-    "title": "組織を切り替える",
-    "description": "切り替える組織を選択してください。",
-    "loadError": "組織の読み込みに失敗しました。もう一度お試しください。",
-    "noOrganizations": "あなたはどの組織にも所属していません。",
-    "menuItem": "組織",
-    "loadingPlaceholder": "組織を読み込み中...",
-    "selectPlaceholder": "組織を選択",
-    "currentBadge": " (現在)",
     "organizations": "組織",
     "createOrganization": "組織を作成",
-    "orgSettings": "組織の設定",
-    "migrate": "移行"
-  },
-  "navbar": {
-    "tryNewUI": "新しいUIを試す"
+    "orgSettings": "組織の設定"
   },
   "ok": "OK",
   "error": "エラー",
   "signIn": "サインイン",
   "signOut": "サインアウト",
-  "devMode": {
-    "banner": "開発モード - これは開発ビルドです"
-  },
   "oauth": {
     "title": "Vibe Kanbanにサインイン",
     "description": "サインインして組織に参加し、チームとタスクを共有します",
@@ -220,20 +197,8 @@
     "placeholder": "このワークスペースについてメモを追加...",
     "selectWorkspace": "メモを表示するにはワークスペースを選択してください"
   },
-  "repos": {
-    "loading": "リポジトリを読み込み中...",
-    "noRecentRepos": "最近のリポジトリが見つかりません",
-    "noReposAdded": "リポジトリが追加されていません",
-    "noReposAddedHint": "下のオプションからこのワークスペースにリポジトリを追加してください"
-  },
   "actions": {
-    "browseRepos": "ディスク上のリポジトリを参照",
-    "createNewRepo": "ディスク上に新しいリポジトリを作成",
-    "viewInChangesPanel": "変更パネルで表示",
     "copyPath": "パスをコピー",
-    "copyWorktreePath": "ワークツリーパスをコピー",
-    "openInIde": "IDEで開く",
-    "repoSettings": "リポジトリ設定",
     "cancel": "キャンセル",
     "saveChanges": "変更を保存",
     "copied": "コピーしました",
@@ -262,36 +227,6 @@
     "defaultPlaceholder": "コマンドを入力または検索...",
     "selectBranch": "Select Branch",
     "selectBranchFor": "Select Branch for {{repoName}}"
-  },
-  "chatBox": {
-    "variants": "バリアント",
-    "customise": "カスタマイズ"
-  },
-  "projects": {
-    "noProjectFound": "プロジェクトが見つかりません",
-    "createFirstPrompt": "タスクを開始するには、まずプロジェクトを作成してください。",
-    "createNew": "新しいプロジェクトを作成",
-    "noProjectsFound": "プロジェクトが見つかりません"
-  },
-  "betaWorkspaces": {
-    "title": "新しいUIを試す",
-    "intro": "Vibe KanbanのUIをゼロから再構築しました。あなたは試用に招待されています。",
-    "newUiDescription": "新しいUIは日常業務に最適化されています：エージェントの管理、変更のプレビュー、コードのレビュー。また、旧UIでは利用できない機能も利用可能になります：",
-    "newFeatures": {
-      "multiRepo": "複数のリポジトリを同時に編集",
-      "multiAgent": "単一のワークスペースで複数のエージェント会話（異なるエージェント間でも）を実行",
-      "commandBar": "コマンドバーでより高速なナビゲーション"
-    },
-    "oldUiDescription": "現時点では、いくつかの機能は現在のUIに残っています：",
-    "oldFeatures": {
-      "kanban": "カンバンボードでのタスク管理",
-      "settings": "設定の変更",
-      "projects": "プロジェクトの管理"
-    },
-    "transition": "今後数週間の移行期間中は、両方のUIを行き来します。",
-    "optOutNote": "オプトアウトしたい場合は、設定からいつでも現在のUIに戻すことができます。",
-    "joinBeta": "ベータに参加",
-    "maybeLater": "後で"
   },
   "workspacesGuide": {
     "welcome": {
@@ -427,34 +362,23 @@
     "noCommands": "このエージェントで利用可能なコマンドはありません。"
   },
   "kanban": {
-    "noStatusesFound": "このプロジェクトのステータスが見つかりません",
     "noVisibleStatuses": "すべてのステータスが非表示です。表示設定を使用するか、別のタブに切り替えて課題を表示してください。",
     "noProjectFound": "プロジェクトが見つかりません",
-    "noOrganizationFound": "組織が見つかりません",
     "unassigned": "未割り当て",
     "noTagsAvailable": "利用可能なタグがありません",
     "createNewIssue": "新しい課題を作成",
-    "createNewTag": "新しいタグを作成",
     "searchTags": "タグを検索...",
     "selectColorFor": "色を選択:",
     "createTag": "作成",
-    "filesCount": "{{count}}ファイル",
-    "attachmentsTitle": "添付ファイル ({{count}})",
-    "deleteAttachmentAria": "{{filename}} を削除",
     "noPrCreated": "PRが作成されていません",
     "noCommentsYet": "コメントはまだありません",
     "createdBy": "作成者",
     "comments": "コメント",
     "enterCommentPlaceholder": "コメントを入力してください...",
-    "attachImage": "画像を添付",
     "attachFile": "ファイルを添付",
     "attachFileHint": "ファイルを添付（1ファイル最大20MB）",
-    "attach": "添付",
-    "dropImagesHere": "ここに画像をドロップ",
     "dropFilesHere": "ここにファイルをドロップ",
-    "imageDropHint": "PNG、JPG、GIF、最大20MB",
     "fileDropHint": "任意のファイル形式、最大20MB",
-    "unknownFile": "不明なファイル",
     "unknownUser": "不明なユーザー",
     "deletedUser": "削除済みユーザー",
     "replyQuotePrefix": "が書きました:",
@@ -474,20 +398,16 @@
     "previewFileWithName": "[ファイル: {{name}}]",
     "imageAttachmentNameFallback": "添付ファイル",
     "removeImage": "画像を削除",
-    "maxImagesAtOnce": "一度に最大 {{count}} 枚までアップロードできます",
     "maxFilesAtOnce": "一度に最大 {{count}} 個までアップロードできます",
-    "fileNotImage": "{{filename}} は画像ではありません",
     "fileExceedsLimit": "{{filename}} は20MBの上限を超えています",
     "unknownError": "不明なエラー",
     "failedToUploadFile": "{{filename}} のアップロードに失敗しました: {{message}}",
     "downloadAttachment": "添付ファイルをダウンロード",
-    "downloadAttachmentAria": "{{filename}} をダウンロード",
     "subIssues": "サブ課題",
     "noSubIssues": "サブ課題なし",
     "markIndependentIssue": "独立した課題としてマーク",
     "parentIssue": "親",
     "subIssueIndicator": "↳",
-    "showSubIssues": "サブ課題を表示",
     "viewTabs": {
       "active": "アクティブ",
       "all": "すべて"
@@ -595,11 +515,9 @@
     "permissionAuto": "自動",
     "permissionAsk": "確認",
     "permissionPlan": "計画",
-    "nextTurn": "次のターン",
     "agent": "エージェント",
     "default": "デフォルト",
-    "model": "モデル",
-    "providers": "プロバイダー"
+    "model": "モデル"
   },
   "syncError": {
     "networkErrors": "ネットワークエラー",
@@ -634,12 +552,6 @@
     "generic": "An unexpected error occurred"
   },
   "personal": "Personal",
-  "changeStatus": {
-    "title": "Change Status",
-    "descriptionSingle": "Change status for \"{{title}}\"",
-    "descriptionMultiple": "Change status for {{count}} issues",
-    "action": "Change Status"
-  },
   "askQuestion": {
     "title": "エージェントが質問しています",
     "selectMultiple": "複数選択",

@@ -50,8 +50,6 @@
     "output": "Sortie",
     "result": "Résultat",
     "deniedByUser": "{{toolName}} refusé par l'utilisateur",
-    "taskCompleted": "Tâche terminée",
-    "ran": "Exécuté",
     "tool": "Outil",
     "thinking": "Réflexion",
     "toolSummary": {
@@ -86,36 +84,15 @@
     },
     "currentDisabled": "Impossible de sélectionner la branche actuelle"
   },
-  "breadcrumb": {
-    "more": "Plus"
-  },
-  "orgMembers": {
-    "moreCount": "+{{count}} autres"
-  },
   "orgSwitcher": {
-    "title": "Changer d'organisation",
-    "description": "Sélectionnez une organisation vers laquelle basculer.",
-    "loadError": "Échec du chargement des organisations. Veuillez réessayer.",
-    "noOrganizations": "Vous n'êtes membre d'aucune organisation.",
-    "menuItem": "Organisation",
-    "loadingPlaceholder": "Chargement des organisations...",
-    "selectPlaceholder": "Sélectionner une organisation",
-    "currentBadge": " (actuelle)",
     "organizations": "Organisations",
     "createOrganization": "Créer une organisation",
-    "orgSettings": "Paramètres de l'organisation",
-    "migrate": "Migrer"
-  },
-  "navbar": {
-    "tryNewUI": "essayer la nouvelle interface"
+    "orgSettings": "Paramètres de l'organisation"
   },
   "ok": "OK",
   "error": "Erreur",
   "signIn": "Se connecter",
   "signOut": "Se déconnecter",
-  "devMode": {
-    "banner": "Mode développement - Ceci est une version de développement"
-  },
   "oauth": {
     "title": "Se connecter à Vibe Kanban",
     "description": "Connectez-vous pour rejoindre des organisations et partager des tâches avec votre équipe",
@@ -220,20 +197,8 @@
     "placeholder": "Ajouter des notes sur cet espace de travail...",
     "selectWorkspace": "Sélectionnez un espace de travail pour voir les notes"
   },
-  "repos": {
-    "loading": "Chargement des dépôts...",
-    "noRecentRepos": "Aucun dépôt récent trouvé",
-    "noReposAdded": "Aucun dépôt ajouté",
-    "noReposAddedHint": "Ajoutez un ou plusieurs dépôts à cet espace de travail depuis les options ci-dessous"
-  },
   "actions": {
-    "browseRepos": "Parcourir les dépôts sur le disque",
-    "createNewRepo": "Créer un nouveau dépôt sur le disque",
-    "viewInChangesPanel": "Voir dans le panneau des modifications",
     "copyPath": "Copier le chemin",
-    "copyWorktreePath": "Copier le chemin du worktree",
-    "openInIde": "Ouvrir dans l'IDE",
-    "repoSettings": "Paramètres du dépôt",
     "cancel": "Annuler",
     "saveChanges": "Enregistrer les modifications",
     "copied": "Copié",
@@ -262,36 +227,6 @@
     "defaultPlaceholder": "Tapez une commande ou recherchez...",
     "selectBranch": "Select Branch",
     "selectBranchFor": "Select Branch for {{repoName}}"
-  },
-  "chatBox": {
-    "variants": "Variantes",
-    "customise": "Personnaliser"
-  },
-  "projects": {
-    "noProjectFound": "Aucun projet trouvé",
-    "createFirstPrompt": "Créez d'abord un projet pour commencer à travailler sur des tâches.",
-    "createNew": "Créer un nouveau projet",
-    "noProjectsFound": "Aucun projet trouvé"
-  },
-  "betaWorkspaces": {
-    "title": "Essayer la nouvelle interface",
-    "intro": "Nous avons reconstruit l'interface de Vibe Kanban de A à Z, et vous êtes invité à l'essayer.",
-    "newUiDescription": "La nouvelle interface est optimisée pour le travail quotidien : jongler avec les agents, prévisualiser les modifications et réviser le code. Elle débloque également des fonctionnalités non disponibles dans l'ancienne interface :",
-    "newFeatures": {
-      "multiRepo": "Modifier plusieurs dépôts en même temps",
-      "multiAgent": "Exécuter plusieurs conversations d'agents (même avec différents agents) dans un seul espace de travail",
-      "commandBar": "Navigation plus rapide avec la barre de commandes"
-    },
-    "oldUiDescription": "Pour l'instant, quelques éléments restent dans l'interface actuelle :",
-    "oldFeatures": {
-      "kanban": "Gestion des tâches sur le tableau kanban",
-      "settings": "Modification des paramètres",
-      "projects": "Gestion des projets"
-    },
-    "transition": "Pendant la transition au cours des prochaines semaines, vous passerez d'une interface à l'autre.",
-    "optOutNote": "Vous souhaitez vous désinscrire ? Vous pouvez revenir à l'interface actuelle à tout moment dans les Paramètres.",
-    "joinBeta": "Rejoindre la bêta",
-    "maybeLater": "Peut-être plus tard"
   },
   "workspacesGuide": {
     "welcome": {
@@ -427,34 +362,23 @@
     "noCommands": "Aucune commande disponible pour cet agent."
   },
   "kanban": {
-    "noStatusesFound": "Aucun statut trouvé pour ce projet",
     "noVisibleStatuses": "Tous les statuts sont masqués. Utilisez les paramètres d'affichage ou changez d'onglet pour voir les problèmes.",
     "noProjectFound": "Aucun projet trouvé",
-    "noOrganizationFound": "Aucune organisation trouvée",
     "unassigned": "Non assigné",
     "noTagsAvailable": "Aucun tag disponible",
     "createNewIssue": "Créer un nouveau ticket",
-    "createNewTag": "Créer un nouveau tag",
     "searchTags": "Rechercher des tags...",
     "selectColorFor": "Sélectionner la couleur pour",
     "createTag": "Créer",
-    "filesCount": "{{count}} Fichiers",
-    "attachmentsTitle": "Pièces jointes ({{count}})",
-    "deleteAttachmentAria": "Supprimer {{filename}}",
     "noPrCreated": "Aucune PR créée",
     "noCommentsYet": "Aucun commentaire",
     "createdBy": "Créé par",
     "comments": "Commentaires",
     "enterCommentPlaceholder": "Entrez votre commentaire ici...",
-    "attachImage": "Joindre une image",
     "attachFile": "Joindre un fichier",
     "attachFileHint": "Joindre des fichiers (20Mo max par fichier)",
-    "attach": "Joindre",
-    "dropImagesHere": "Déposez les images ici",
     "dropFilesHere": "Déposez les fichiers ici",
-    "imageDropHint": "PNG, JPG, GIF jusqu'à 20Mo",
     "fileDropHint": "Tout type de fichier jusqu'à 20Mo",
-    "unknownFile": "Fichier inconnu",
     "unknownUser": "Utilisateur inconnu",
     "deletedUser": "Utilisateur supprimé",
     "replyQuotePrefix": "a écrit :",
@@ -474,20 +398,16 @@
     "previewFileWithName": "[Fichier : {{name}}]",
     "imageAttachmentNameFallback": "Pièce jointe",
     "removeImage": "Supprimer l'image",
-    "maxImagesAtOnce": "Maximum {{count}} images à la fois",
     "maxFilesAtOnce": "Maximum {{count}} fichiers à la fois",
-    "fileNotImage": "Le fichier {{filename}} n'est pas une image",
     "fileExceedsLimit": "Le fichier {{filename}} dépasse la limite de 20Mo",
     "unknownError": "Erreur inconnue",
     "failedToUploadFile": "Échec de l'envoi de {{filename}} : {{message}}",
     "downloadAttachment": "Télécharger la pièce jointe",
-    "downloadAttachmentAria": "Télécharger {{filename}}",
     "subIssues": "Sous-tâches",
     "noSubIssues": "Aucune sous-tâche",
     "markIndependentIssue": "Marquer comme problème indépendant",
     "parentIssue": "Parent",
     "subIssueIndicator": "↳",
-    "showSubIssues": "Afficher les sous-tâches",
     "viewTabs": {
       "active": "Actif",
       "all": "Tout"
@@ -595,11 +515,9 @@
     "permissionAuto": "Auto",
     "permissionAsk": "Demander",
     "permissionPlan": "Plan",
-    "nextTurn": "Prochain tour",
     "agent": "Agent",
     "default": "Par défaut",
-    "model": "Modèle",
-    "providers": "Fournisseurs"
+    "model": "Modèle"
   },
   "syncError": {
     "networkErrors": "Erreurs réseau",
@@ -634,12 +552,6 @@
     "generic": "An unexpected error occurred"
   },
   "personal": "Personal",
-  "changeStatus": {
-    "title": "Change Status",
-    "descriptionSingle": "Change status for \"{{title}}\"",
-    "descriptionMultiple": "Change status for {{count}} issues",
-    "action": "Change Status"
-  },
   "askQuestion": {
     "title": "L'agent pose une question",
     "selectMultiple": "sélection multiple",

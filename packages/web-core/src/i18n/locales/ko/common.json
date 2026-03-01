@@ -21,9 +21,6 @@
     "placeholder": "브랜치 선택",
     "searchPlaceholder": "브랜치 검색..."
   },
-  "breadcrumb": {
-    "more": "More"
-  },
   "buttons": {
     "cancel": "취소",
     "close": "닫기",
@@ -61,8 +58,6 @@
       "hide": "세부 정보 숨기기",
       "show": "세부 정보 보기"
     },
-    "taskCompleted": "작업 완료",
-    "ran": "실행함",
     "tool": "도구",
     "thinking": "생각 중",
     "toolSummary": {
@@ -89,33 +84,15 @@
     "saving": "저장 중...",
     "success": "성공"
   },
-  "orgMembers": {
-    "moreCount": "+{{count}}명 더"
-  },
   "orgSwitcher": {
-    "title": "조직 전환",
-    "description": "전환할 조직을 선택하세요.",
-    "loadError": "조직을 불러오는데 실패했습니다. 다시 시도해주세요.",
-    "noOrganizations": "어떤 조직에도 소속되어 있지 않습니다.",
-    "menuItem": "조직",
-    "loadingPlaceholder": "조직 로딩 중...",
-    "selectPlaceholder": "조직 선택",
-    "currentBadge": " (현재)",
     "organizations": "조직",
     "createOrganization": "조직 만들기",
-    "orgSettings": "조직 설정",
-    "migrate": "마이그레이션"
-  },
-  "navbar": {
-    "tryNewUI": "새로운 UI 사용해보기"
+    "orgSettings": "조직 설정"
   },
   "ok": "확인",
   "error": "오류",
   "signIn": "로그인",
   "signOut": "로그아웃",
-  "devMode": {
-    "banner": "개발 모드 - 개발 빌드입니다"
-  },
   "oauth": {
     "title": "Vibe Kanban 로그인",
     "description": "로그인하여 조직에 참여하고 팀과 작업을 공유하세요",
@@ -220,20 +197,8 @@
     "placeholder": "이 워크스페이스에 대한 노트 추가...",
     "selectWorkspace": "노트를 보려면 워크스페이스를 선택하세요"
   },
-  "repos": {
-    "loading": "저장소 로딩 중...",
-    "noRecentRepos": "최근 저장소를 찾을 수 없습니다",
-    "noReposAdded": "저장소가 추가되지 않았습니다",
-    "noReposAddedHint": "아래 옵션에서 이 워크스페이스에 저장소를 추가하세요"
-  },
   "actions": {
-    "browseRepos": "디스크에서 저장소 찾아보기",
-    "createNewRepo": "디스크에 새 저장소 만들기",
-    "viewInChangesPanel": "변경사항 패널에서 보기",
     "copyPath": "워크트리 경로 복사",
-    "copyWorktreePath": "워크트리 경로 복사",
-    "openInIde": "IDE에서 열기",
-    "repoSettings": "저장소 설정",
     "cancel": "취소",
     "saveChanges": "변경사항 저장",
     "copied": "복사됨",
@@ -262,36 +227,6 @@
     "defaultPlaceholder": "명령어를 입력하거나 검색...",
     "selectBranch": "Select Branch",
     "selectBranchFor": "Select Branch for {{repoName}}"
-  },
-  "chatBox": {
-    "variants": "변형",
-    "customise": "사용자 지정"
-  },
-  "projects": {
-    "noProjectFound": "프로젝트를 찾을 수 없습니다",
-    "createFirstPrompt": "작업을 시작하려면 먼저 프로젝트를 만드세요.",
-    "createNew": "새 프로젝트 만들기",
-    "noProjectsFound": "프로젝트를 찾을 수 없습니다"
-  },
-  "betaWorkspaces": {
-    "title": "새로운 UI 사용해보기",
-    "intro": "Vibe Kanban의 UI를 처음부터 다시 구축했으며, 체험에 초대되었습니다.",
-    "newUiDescription": "새로운 UI는 일상 업무에 최적화되어 있습니다: 에이전트 관리, 변경 사항 미리보기, 코드 검토. 또한 기존 UI에서는 사용할 수 없는 기능도 제공합니다:",
-    "newFeatures": {
-      "multiRepo": "여러 저장소를 동시에 편집",
-      "multiAgent": "단일 워크스페이스에서 여러 에이전트 대화(다른 에이전트 간에도) 실행",
-      "commandBar": "명령 바로 더 빠른 탐색"
-    },
-    "oldUiDescription": "현재로서는 일부 기능이 기존 UI에 남아 있습니다:",
-    "oldFeatures": {
-      "kanban": "칸반 보드에서 작업 관리",
-      "settings": "설정 변경",
-      "projects": "프로젝트 관리"
-    },
-    "transition": "앞으로 몇 주 동안의 전환 기간 동안 두 UI를 오가게 됩니다.",
-    "optOutNote": "옵트아웃하시겠습니까? 설정에서 언제든지 기존 UI로 돌아갈 수 있습니다.",
-    "joinBeta": "베타 참여",
-    "maybeLater": "나중에"
   },
   "workspacesGuide": {
     "welcome": {
@@ -427,34 +362,23 @@
     "noCommands": "이 에이전트에 사용 가능한 명령어가 없습니다."
   },
   "kanban": {
-    "noStatusesFound": "이 프로젝트의 상태를 찾을 수 없습니다",
     "noVisibleStatuses": "모든 상태가 숨겨져 있습니다. 표시 설정을 사용하거나 다른 탭으로 전환하여 이슈를 확인하세요.",
     "noProjectFound": "프로젝트를 찾을 수 없습니다",
-    "noOrganizationFound": "조직을 찾을 수 없습니다",
     "unassigned": "미할당",
     "noTagsAvailable": "사용 가능한 태그 없음",
     "createNewIssue": "새 이슈 만들기",
-    "createNewTag": "새 태그 만들기",
     "searchTags": "태그 검색...",
     "selectColorFor": "색상 선택:",
     "createTag": "만들기",
-    "filesCount": "{{count}}개 파일",
-    "attachmentsTitle": "첨부파일 ({{count}})",
-    "deleteAttachmentAria": "{{filename}} 삭제",
     "noPrCreated": "PR이 생성되지 않음",
     "noCommentsYet": "아직 댓글이 없습니다",
     "createdBy": "작성자",
     "comments": "댓글",
     "enterCommentPlaceholder": "댓글을 입력하세요...",
-    "attachImage": "이미지 첨부",
     "attachFile": "파일 첨부",
     "attachFileHint": "파일 첨부 (파일당 최대 20MB)",
-    "attach": "첨부",
-    "dropImagesHere": "여기에 이미지를 놓으세요",
     "dropFilesHere": "여기에 파일을 놓으세요",
-    "imageDropHint": "PNG, JPG, GIF 최대 20MB",
     "fileDropHint": "모든 파일 형식, 최대 20MB",
-    "unknownFile": "알 수 없는 파일",
     "unknownUser": "알 수 없는 사용자",
     "deletedUser": "삭제된 사용자",
     "replyQuotePrefix": "님이 작성:",
@@ -474,20 +398,16 @@
     "previewFileWithName": "[파일: {{name}}]",
     "imageAttachmentNameFallback": "첨부파일",
     "removeImage": "이미지 제거",
-    "maxImagesAtOnce": "한 번에 최대 {{count}}개의 이미지만 업로드할 수 있습니다",
     "maxFilesAtOnce": "한 번에 최대 {{count}}개의 파일만 업로드할 수 있습니다",
-    "fileNotImage": "파일 {{filename}} 은(는) 이미지가 아닙니다",
     "fileExceedsLimit": "파일 {{filename}} 이(가) 20MB 제한을 초과했습니다",
     "unknownError": "알 수 없는 오류",
     "failedToUploadFile": "{{filename}} 업로드 실패: {{message}}",
     "downloadAttachment": "첨부파일 다운로드",
-    "downloadAttachmentAria": "{{filename}} 다운로드",
     "subIssues": "하위 이슈",
     "noSubIssues": "하위 이슈 없음",
     "markIndependentIssue": "독립 이슈로 표시",
     "parentIssue": "상위",
     "subIssueIndicator": "↳",
-    "showSubIssues": "하위 이슈 표시",
     "viewTabs": {
       "active": "활성",
       "all": "전체"
@@ -595,11 +515,9 @@
     "permissionAuto": "자동",
     "permissionAsk": "확인",
     "permissionPlan": "계획",
-    "nextTurn": "다음 턴",
     "agent": "에이전트",
     "default": "기본값",
-    "model": "모델",
-    "providers": "제공자"
+    "model": "모델"
   },
   "syncError": {
     "networkErrors": "네트워크 오류",
@@ -634,12 +552,6 @@
     "generic": "An unexpected error occurred"
   },
   "personal": "Personal",
-  "changeStatus": {
-    "title": "Change Status",
-    "descriptionSingle": "Change status for \"{{title}}\"",
-    "descriptionMultiple": "Change status for {{count}} issues",
-    "action": "Change Status"
-  },
   "askQuestion": {
     "title": "에이전트가 질문하고 있습니다",
     "selectMultiple": "복수 선택",
