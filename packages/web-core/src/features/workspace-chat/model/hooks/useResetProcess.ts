@@ -19,18 +19,17 @@ export function useResetProcess(): UseResetProcessResult {
   const resetMutation = useResetProcessMutation(selectedSessionId ?? '');
   const isResetPending = resetMutation.isPending;
 
-  const firstCodingProcessId = useMemo(
+  const hasCodingProcess = useMemo(
     () =>
-      processes.find(
+      processes.some(
         (process) => !process.dropped && isCodingAgent(process.run_reason)
-      )?.id,
+      ),
     [processes]
   );
 
   const canResetProcess = useCallback(
-    (executionProcessId: string) =>
-      !!firstCodingProcessId && executionProcessId !== firstCodingProcessId,
-    [firstCodingProcessId]
+    (executionProcessId: string) => hasCodingProcess && !!executionProcessId,
+    [hasCodingProcess]
   );
 
   const resetProcess = useCallback(
