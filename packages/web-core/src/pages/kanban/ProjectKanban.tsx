@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider } from '@/shared/providers/remote/OrgProvider';
@@ -22,8 +21,6 @@ import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-
-import type { ProjectSearch } from '@/project-routes/project-search';
 /**
  * Component that registers project mutations with ActionsContext.
  * Must be rendered inside both ActionsProvider and ProjectProvider.
@@ -243,16 +240,11 @@ function useFindProjectById(projectId: string | undefined) {
  */
 export function ProjectKanban() {
   const { projectId, hasInvalidWorkspaceCreateDraftId } = useKanbanNavigation();
-  const search = useSearch({ strict: false });
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
-  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
-  // One-time URL migrations:
-  // - /projects/:projectId?mode=create -> /projects/:projectId/issues/new
-  // - strip orgId after storing it
+  // Redirect invalid workspace-create draft URLs back to the closed project view.
   useEffect(() => {
     if (!projectId) return;
 
@@ -260,46 +252,8 @@ export function ProjectKanban() {
       appNavigation.navigate(appNavigation.toProject(projectId), {
         replace: true,
       });
-      return;
     }
-
-    const orgIdFromUrl = search.orgId;
-    if (orgIdFromUrl) {
-      setSelectedOrgId(orgIdFromUrl);
-    }
-
-    const isLegacyCreateMode = search.mode === 'create';
-    if (isLegacyCreateMode) {
-      const nextSearch = {
-        ...search,
-        mode: undefined,
-        orgId: undefined,
-      };
-      appNavigation.navigate(
-        appNavigation.toProjectIssueCreate(projectId, nextSearch),
-        { replace: true }
-      );
-      return;
-    }
-
-    if (orgIdFromUrl) {
-      navigate({
-        to: '.',
-        search: (prev: ProjectSearch) => ({
-          ...prev,
-          orgId: undefined,
-        }),
-        replace: true,
-      });
-    }
-  }, [
-    search,
-    projectId,
-    hasInvalidWorkspaceCreateDraftId,
-    setSelectedOrgId,
-    navigate,
-    appNavigation,
-  ]);
+  }, [projectId, hasInvalidWorkspaceCreateDraftId, appNavigation]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(

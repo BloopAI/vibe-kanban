@@ -1,9 +1,16 @@
-import { useCallback, useMemo } from 'react';
-import { useLocation, useSearch } from '@tanstack/react-router';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useLocation } from '@tanstack/react-router';
 import type { IssuePriority } from 'shared/remote-types';
 import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
-import { toProjectIssueCreateSearch } from '@/shared/lib/routes/appNavigation';
+import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import {
+  buildKanbanCreateDefaultsKey,
+  clearKanbanCreateDefaults,
+  patchKanbanCreateDefaults,
+  setKanbanCreateDefaults,
+  useKanbanCreateDefaults,
+} from '@/shared/stores/useKanbanCreateDefaultsStore';
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -18,14 +25,13 @@ function isValidUuid(value: string): boolean {
  * URL patterns:
  * - View issue: /projects/:projectId/issues/:issueId
  * - View issue workspace: /projects/:projectId/issues/:issueId/workspaces/:workspaceId
- * - Create issue: /projects/:projectId/issues/new?statusId=xxx&priority=high
+ * - Create issue: /projects/:projectId/issues/new
  * - Create workspace (linked): /projects/:projectId/issues/:issueId/workspaces/create/:draftId
  * - Create workspace (standalone): /projects/:projectId/workspaces/create/:draftId
  * - No issue: /projects/:projectId
  */
 export function useKanbanNavigation() {
   const location = useLocation();
-  const search = useSearch({ strict: false });
   const appNavigation = useAppNavigation();
 
   const routeState = useMemo(
@@ -34,6 +40,7 @@ export function useKanbanNavigation() {
   );
 
   const projectId = routeState?.projectId ?? null;
+  const hostId = routeState?.hostId ?? null;
   const issueId = useMemo(() => {
     if (!routeState) return null;
     if (routeState.type === 'issue') return routeState.issueId;
@@ -55,18 +62,36 @@ export function useKanbanNavigation() {
     routeState?.type === 'workspace-create' && draftId !== null;
   const isPanelOpen = !!routeState && routeState.type !== 'closed';
 
-  const createDefaultStatusId = search.statusId ?? null;
-  const createDefaultPriority = (search.priority as IssuePriority) ?? null;
-  const createDefaultAssigneeIds =
-    search.assignees?.split(',').filter(Boolean) ?? null;
-  const createDefaultParentIssueId = search.parentIssueId ?? null;
+  const createDefaultsKey = useMemo(() => {
+    if (!projectId) return null;
+    return buildKanbanCreateDefaultsKey(hostId, projectId);
+  }, [hostId, projectId]);
+  const createDefaults = useKanbanCreateDefaults(createDefaultsKey);
+
+  const previousDefaultsKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    const previousKey = previousDefaultsKeyRef.current;
+    if (previousKey && previousKey !== createDefaultsKey) {
+      clearKanbanCreateDefaults(previousKey);
+    }
+    previousDefaultsKeyRef.current = createDefaultsKey;
+  }, [createDefaultsKey]);
+
+  const createDefaultStatusId = createDefaults?.statusId ?? null;
+  const createDefaultPriority =
+    (createDefaults?.priority as IssuePriority | null | undefined) ?? null;
+  const createDefaultAssigneeIds = createDefaults?.assigneeIds ?? null;
+  const createDefaultParentIssueId = createDefaults?.parentIssueId ?? null;
 
   const openIssue = useCallback(
     (id: string) => {
       if (!projectId) return;
+      if (isCreateMode && createDefaultsKey) {
+        clearKanbanCreateDefaults(createDefaultsKey);
+      }
       appNavigation.navigate(appNavigation.toProjectIssue(projectId, id));
     },
-    [projectId, appNavigation]
+    [projectId, isCreateMode, createDefaultsKey, appNavigation]
   );
 
   const openIssueWorkspace = useCallback(
@@ -103,25 +128,25 @@ export function useKanbanNavigation() {
 
   const closePanel = useCallback(() => {
     if (!projectId) return;
+    if (isCreateMode && createDefaultsKey) {
+      clearKanbanCreateDefaults(createDefaultsKey);
+    }
     appNavigation.navigate(appNavigation.toProject(projectId));
-  }, [projectId, appNavigation]);
+  }, [projectId, isCreateMode, createDefaultsKey, appNavigation]);
 
   const startCreate = useCallback(
-    (options?: {
-      statusId?: string;
-      priority?: IssuePriority;
-      assigneeIds?: string[];
-      parentIssueId?: string;
-    }) => {
-      if (!projectId) return;
-      appNavigation.navigate(
-        appNavigation.toProjectIssueCreate(
-          projectId,
-          toProjectIssueCreateSearch(options)
-        )
-      );
+    (options?: ProjectIssueCreateOptions) => {
+      if (!projectId || !createDefaultsKey) return;
+
+      setKanbanCreateDefaults(createDefaultsKey, {
+        statusId: options?.statusId,
+        priority: options?.priority,
+        assigneeIds: options?.assigneeIds,
+        parentIssueId: options?.parentIssueId,
+      });
+      appNavigation.navigate(appNavigation.toProjectIssueCreate(projectId));
     },
-    [projectId, appNavigation]
+    [projectId, createDefaultsKey, appNavigation]
   );
 
   const updateCreateDefaults = useCallback(
@@ -129,31 +154,41 @@ export function useKanbanNavigation() {
       statusId?: string;
       priority?: IssuePriority | null;
       assigneeIds?: string[];
+      parentIssueId?: string;
     }) => {
-      if (!projectId || !isCreateMode) return;
+      if (!projectId || !isCreateMode || !createDefaultsKey) return;
 
-      appNavigation.navigate(
-        appNavigation.toProjectIssueCreate(projectId, {
-          ...search,
-          orgId: undefined,
-          statusId:
-            options.statusId !== undefined ? options.statusId : search.statusId,
-          priority:
-            options.priority !== undefined
-              ? (options.priority ?? undefined)
-              : search.priority,
-          assignees:
-            options.assigneeIds !== undefined
-              ? options.assigneeIds.join(',')
-              : search.assignees,
-        }),
-        { replace: true }
-      );
+      const patch: Partial<ProjectIssueCreateOptions> = {};
+      if (options.statusId !== undefined) {
+        patch.statusId = options.statusId;
+      }
+      if (options.priority !== undefined) {
+        patch.priority = options.priority ?? undefined;
+      }
+      if (options.assigneeIds !== undefined) {
+        patch.assigneeIds = options.assigneeIds;
+      }
+      if (options.parentIssueId !== undefined) {
+        patch.parentIssueId = options.parentIssueId;
+      }
+      if (Object.keys(patch).length === 0) {
+        return;
+      }
+
+      patchKanbanCreateDefaults(createDefaultsKey, patch);
     },
-    [projectId, appNavigation, isCreateMode, search]
+    [projectId, isCreateMode, createDefaultsKey]
   );
 
+  const resetCreateDefaults = useCallback(() => {
+    if (!createDefaultsKey) return;
+    clearKanbanCreateDefaults(createDefaultsKey);
+  }, [createDefaultsKey]);
+
+  const resolvedHostId = hostId;
+
   return {
+    hostId: resolvedHostId,
     projectId,
     issueId,
     workspaceId,
@@ -173,5 +208,6 @@ export function useKanbanNavigation() {
     closePanel,
     startCreate,
     updateCreateDefaults,
+    resetCreateDefaults,
   };
 }

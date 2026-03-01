@@ -1,15 +1,6 @@
 import type { IssuePriority } from 'shared/remote-types';
 import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
 
-export type ProjectKanbanSearch = {
-  statusId?: string;
-  priority?: string;
-  assignees?: string;
-  parentIssueId?: string;
-  mode?: string;
-  orgId?: string;
-};
-
 export type AppDestination =
   | { kind: 'root' }
   | { kind: 'onboarding' }
@@ -19,24 +10,13 @@ export type AppDestination =
   | { kind: 'workspaces-create'; hostId?: string }
   | { kind: 'workspace'; workspaceId: string; hostId?: string }
   | { kind: 'workspace-vscode'; workspaceId: string; hostId?: string }
-  | {
-      kind: 'project';
-      projectId: string;
-      hostId?: string;
-      search?: ProjectKanbanSearch;
-    }
-  | {
-      kind: 'project-issue-create';
-      projectId: string;
-      hostId?: string;
-      search?: ProjectKanbanSearch;
-    }
+  | { kind: 'project'; projectId: string; hostId?: string }
+  | { kind: 'project-issue-create'; projectId: string; hostId?: string }
   | {
       kind: 'project-issue';
       projectId: string;
       issueId: string;
       hostId?: string;
-      search?: ProjectKanbanSearch;
     }
   | {
       kind: 'project-issue-workspace';
@@ -44,7 +24,6 @@ export type AppDestination =
       issueId: string;
       workspaceId: string;
       hostId?: string;
-      search?: ProjectKanbanSearch;
     }
   | {
       kind: 'project-issue-workspace-create';
@@ -52,14 +31,12 @@ export type AppDestination =
       issueId: string;
       draftId: string;
       hostId?: string;
-      search?: ProjectKanbanSearch;
     }
   | {
       kind: 'project-workspace-create';
       projectId: string;
       draftId: string;
       hostId?: string;
-      search?: ProjectKanbanSearch;
     };
 
 export type NavigationTransition = {
@@ -83,33 +60,20 @@ export interface AppNavigation {
   toWorkspacesCreate(): AppDestination;
   toWorkspace(workspaceId: string): AppDestination;
   toWorkspaceVsCode(workspaceId: string): AppDestination;
-  toProject(projectId: string, search?: ProjectKanbanSearch): AppDestination;
-  toProjectIssueCreate(
-    projectId: string,
-    search?: ProjectKanbanSearch
-  ): AppDestination;
-  toProjectIssue(
-    projectId: string,
-    issueId: string,
-    search?: ProjectKanbanSearch
-  ): AppDestination;
+  toProject(projectId: string): AppDestination;
+  toProjectIssueCreate(projectId: string): AppDestination;
+  toProjectIssue(projectId: string, issueId: string): AppDestination;
   toProjectIssueWorkspace(
     projectId: string,
     issueId: string,
-    workspaceId: string,
-    search?: ProjectKanbanSearch
+    workspaceId: string
   ): AppDestination;
   toProjectIssueWorkspaceCreate(
     projectId: string,
     issueId: string,
-    draftId: string,
-    search?: ProjectKanbanSearch
+    draftId: string
   ): AppDestination;
-  toProjectWorkspaceCreate(
-    projectId: string,
-    draftId: string,
-    search?: ProjectKanbanSearch
-  ): AppDestination;
+  toProjectWorkspaceCreate(projectId: string, draftId: string): AppDestination;
 }
 
 export interface ProjectIssueCreateOptions {
@@ -117,20 +81,6 @@ export interface ProjectIssueCreateOptions {
   priority?: IssuePriority;
   assigneeIds?: string[];
   parentIssueId?: string;
-}
-
-export function toProjectIssueCreateSearch(
-  options?: ProjectIssueCreateOptions
-): ProjectKanbanSearch {
-  return {
-    statusId: options?.statusId,
-    priority: options?.priority,
-    assignees:
-      options?.assigneeIds && options.assigneeIds.length > 0
-        ? options.assigneeIds.join(',')
-        : undefined,
-    parentIssueId: options?.parentIssueId,
-  };
 }
 
 type HostAwareDestination = Exclude<

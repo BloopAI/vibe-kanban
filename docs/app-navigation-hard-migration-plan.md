@@ -1,11 +1,13 @@
 # App Navigation Hard Migration Plan
 
 ## Objective
+
 Eliminate the `any`-based navigation contract by replacing route-object-returning
 APIs with a router-agnostic semantic navigation interface, implemented by local
 and remote adapters.
 
 ## Design Principles
+
 1. `web-core` owns navigation semantics, not router targets.
 2. Local and remote own route mapping to TanStack route trees.
 3. No compatibility layer.
@@ -14,6 +16,7 @@ and remote adapters.
 6. No TanStack `Link` usage for app navigation in `web-core`.
 
 ## Target Architecture
+
 1. Shared semantic destination model in `web-core`.
 2. Shared path parsing from URL to semantic destination.
 3. App-specific adapters:
@@ -23,43 +26,44 @@ and remote adapters.
    instead of returning route objects.
 
 ## Shared Semantic Destination Model
+
 Define one destination union in
 `packages/web-core/src/shared/lib/routes/appNavigation.ts`:
 
 ```ts
 export type AppDestination =
-  | { kind: 'root' }
-  | { kind: 'onboarding' }
-  | { kind: 'onboarding-sign-in' }
-  | { kind: 'migrate' }
-  | { kind: 'workspaces'; hostId?: string }
-  | { kind: 'workspaces-create'; hostId?: string }
-  | { kind: 'workspace'; hostId?: string; workspaceId: string }
-  | { kind: 'workspace-vscode'; hostId?: string; workspaceId: string }
-  | { kind: 'project'; hostId?: string; projectId: string }
-  | { kind: 'project-issue-create'; hostId?: string; projectId: string }
+  | { kind: "root" }
+  | { kind: "onboarding" }
+  | { kind: "onboarding-sign-in" }
+  | { kind: "migrate" }
+  | { kind: "workspaces"; hostId?: string }
+  | { kind: "workspaces-create"; hostId?: string }
+  | { kind: "workspace"; hostId?: string; workspaceId: string }
+  | { kind: "workspace-vscode"; hostId?: string; workspaceId: string }
+  | { kind: "project"; hostId?: string; projectId: string }
+  | { kind: "project-issue-create"; hostId?: string; projectId: string }
   | {
-      kind: 'project-issue';
+      kind: "project-issue";
       hostId?: string;
       projectId: string;
       issueId: string;
     }
   | {
-      kind: 'project-issue-workspace';
+      kind: "project-issue-workspace";
       hostId?: string;
       projectId: string;
       issueId: string;
       workspaceId: string;
     }
   | {
-      kind: 'project-issue-workspace-create';
+      kind: "project-issue-workspace-create";
       hostId?: string;
       projectId: string;
       issueId: string;
       draftId: string;
     }
   | {
-      kind: 'project-workspace-create';
+      kind: "project-workspace-create";
       hostId?: string;
       projectId: string;
       draftId: string;
@@ -70,12 +74,16 @@ export type NavigationTransition = {
 };
 
 export interface AppNavigation {
-  navigate(destination: AppDestination, transition?: NavigationTransition): void;
+  navigate(
+    destination: AppDestination,
+    transition?: NavigationTransition,
+  ): void;
   resolveFromPath(path: string): AppDestination | null;
 }
 ```
 
 Notes:
+
 1. `AppDestination` has no router-specific fields (`to`, `params`, `search`
    objects tied to TanStack API shape).
 2. Host scope is part of semantic destination for host-aware routes via
@@ -89,7 +97,9 @@ Notes:
 7. `NavigationTransition` intentionally excludes `state`.
 
 ## Remote Host Resolution Rules
+
 For host-aware destination kinds:
+
 1. Compute `effectiveHostId = destination.hostId ?? currentHostId`.
 2. If `effectiveHostId` exists, always navigate to host-scoped routes
    (`/hosts/$hostId/...`).
@@ -99,12 +109,14 @@ For host-aware destination kinds:
    (`/`) and stop.
 
 404 policy:
+
 1. Direct browser requests to unscoped remote paths (`/projects/*`,
    `/workspaces/*`) must 404.
 2. Internal remote navigation requests for host-aware destinations with no
    resolvable host must route to `/` (not 404).
 
 Examples:
+
 1. Current route host `h1`, destination `{ kind: 'project', projectId: 'p1' }`
    => `/hosts/h1/projects/p1`
 2. Current route host `h1`, destination
@@ -114,8 +126,11 @@ Examples:
    => `/`
 
 ## Pre-Implementation Research Checklist
+
 ### 2) Hostless Remote Behavior (Spike Complete)
+
 Findings:
+
 1. Remote route tree only defines host-scoped project/workspace routes
    (`/hosts/$hostId/...`), plus standalone account/login/upgrade/invitation
    pages and `/`.
@@ -136,6 +151,7 @@ Findings:
    offline/unpaired-only states.
 
 Decisions locked for implementation:
+
 1. Remote navigation must never emit unscoped project/workspace paths.
 2. For host-aware destinations with no `effectiveHostId`, remote navigation
    must navigate to `/` and return (no hidden fallback path generation).
@@ -157,7 +173,9 @@ Decisions locked for implementation:
    project cards, app-shell project/workspace actions, host quick actions).
 
 ### 3) Hidden Direct Route Usage Outside `AppNavigation` (Spike Complete)
+
 Findings:
+
 1. `web-core` still has a small set of semantic route literals bypassing
    `AppNavigation`:
    - onboarding transitions in
@@ -172,6 +190,7 @@ Findings:
    upgrade) intentionally stay app-owned and are out of this shared migration.
 
 Decisions locked for implementation:
+
 1. Eliminate TanStack `Link` usage in `web-core` for app navigation.
 2. Eliminate absolute semantic route literals in `web-core` navigation code.
 3. Migrate the known bypass callsites in this phase:
@@ -182,10 +201,12 @@ Decisions locked for implementation:
    this migration (do not keep as raw router calls).
 
 ## Workspace Create Transport Rules (No Nav State)
+
 Create-workspace payloads are transported via scratch drafts, not router
 navigation state.
 
 Rules:
+
 1. Before navigating to a create-workspace route, persist payload into
    `ScratchType.DRAFT_WORKSPACE`.
 2. Navigate using a route that identifies the draft:
@@ -198,9 +219,11 @@ Rules:
    current screen.
 
 ## Kanban Create Defaults Rules (In-Memory Only)
+
 Kanban issue-create defaults are transported via local state only.
 
 Rules:
+
 1. Store create defaults in one shared `web-core` in-memory state container
    (not per-component local state), keyed by `hostId + projectId`
    (`statusId`, `priority`, `assigneeIds`, `parentIssueId`).
@@ -228,9 +251,11 @@ Rules:
 ## Migration Phases
 
 ### Phase 1: Shared Contract and Parsing
+
 Status: Completed (March 1, 2026)
 
 Completed:
+
 1. Introduced `AppDestination` and `NavigationTransition` in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
 2. Added semantic path parsing via `resolveAppDestinationFromPath(...)` and
@@ -243,14 +268,17 @@ Completed:
    `AppDestination` (single shared path parser source of truth).
 
 Plan adjustment:
+
 1. The original task “replace route-object API in
    `appNavigation.ts`” is moved to Phase 2 to avoid a half-migrated provider
    contract/type break between `web-core`, `local-web`, and `remote-web`.
 
 ### Phase 2: Provider Interface
+
 Status: Completed (March 1, 2026)
 
 Completed:
+
 1. Replace route-object API in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
 2. Update `packages/web-core/src/shared/hooks/useAppNavigation.ts` provider
@@ -262,9 +290,11 @@ Completed:
    cross-screen state transport used by current workspace-create flows.
 
 ### Phase 3: Local Adapter
+
 Status: Completed (March 1, 2026)
 
 Completed:
+
 1. Update `packages/local-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
 2. Keep local route mapping in local web (`AppDestination` -> local route
@@ -274,9 +304,11 @@ Completed:
 5. Keep the router-state type bridge localized to adapter boundary only.
 
 ### Phase 4: Remote Adapter
+
 Status: Completed (March 1, 2026)
 
 Completed:
+
 1. Update `packages/remote-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
 2. Keep host-scoped behavior in remote package and remove unscoped workspace/
@@ -291,9 +323,11 @@ Completed:
    `migrate`) to `/` in remote adapter.
 
 ### Phase 4.5: Remote Host UX Consolidation
+
 Status: Completed (March 1, 2026)
 
 Completed:
+
 1. Add a shared host-resolution helper in remote web and delete duplicated
    `preferredHostId` logic.
 2. Apply the helper in:
@@ -308,9 +342,11 @@ Completed:
    effective host for a host-aware destination, navigate to `/`.
 
 ### Phase 5: Consumer Migration
+
 Status: In Progress
 
 Completed so far:
+
 1. Migrated root, onboarding redirect, migration flow, workspace landing/layout,
    kanban/workspace sidebar entry points, and shared app shell/navbar entry
    points to `appNavigation.navigate(...)`.
@@ -322,11 +358,25 @@ Completed so far:
    objects).
 4. Removed remaining direct semantic routing primitives in `web-core`
    (`Link`/`Navigate`) for onboarding redirects and remote issue links.
+5. Removed project-search payload transport from the shared navigation
+   contract (`AppDestination`/`AppNavigation`) and both local/remote adapters;
+   project navigation is path-only.
+6. Completed Kanban create-default migration to in-memory state:
+   - emptied project route search schema for Kanban defaults
+   - added shared `useKanbanCreateDefaultsStore` keyed by
+     `effectiveHostId + projectId`
+   - rewired `useKanbanNavigation`, `ActionsProvider`, and
+     `AssigneeSelectionDialog` to use the in-memory defaults source
+   - removed legacy `mode/orgId` query migration in `ProjectKanban`
+   - made `isCreatingIssue` path-derived in `useActionVisibilityContext`
+7. Updated migration project entry points to set selected org in store before
+   project navigation (no `orgId` query transport).
 
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
 and spread patterns (`...appNavigation.toX()`) to imperative calls.
 
 Direct routing cleanup policy:
+
 1. Remove TanStack `Link` imports from `web-core` navigation surfaces.
 2. Replace semantic `<Navigate to="...">` and `navigate({ to: '...' })` route
    literals in `web-core` with `AppNavigation` destinations.
@@ -336,6 +386,7 @@ Direct routing cleanup policy:
    `web-core` after migration.
 
 Kanban create-default source migration policy:
+
 1. Remove `statusId`, `priority`, `assignees`, `parentIssueId`, `mode`, and
    `orgId` from project route search schema and parsing/serialization helpers.
 2. Add a web-core in-memory create-default state source keyed by
@@ -349,6 +400,8 @@ Kanban create-default source migration policy:
 8. Execute all query cleanup in one migration pass (no compatibility branch).
 
 Kanban default-state rollout order (locked):
+Status: Completed (March 1, 2026)
+
 1. Remove query schema/parser/serializer support for Kanban default fields.
 2. Add shared in-memory create-default state container and key helpers.
 3. Rewire `useKanbanNavigation` and create-mode dialogs/actions to state-only.
@@ -356,12 +409,14 @@ Kanban default-state rollout order (locked):
    consumers.
 
 Router state removal policy:
+
 1. Remove all `navigate(..., { state: ... })` and `state: (prev) => ...`
    patterns used for workspace-create initialization.
 2. Remove `location.state` reads in workspace create-mode initialization.
 3. Route workspace-create initialization through scratch draft helpers.
 
 Primary files for this sub-migration:
+
 - `packages/web-core/src/shared/actions/index.ts`
 - `packages/web-core/src/pages/kanban/IssueWorkspacesSectionContainer.tsx`
 - `packages/web-core/src/shared/dialogs/command-bar/WorkspaceSelectionDialog.tsx`
@@ -370,6 +425,7 @@ Primary files for this sub-migration:
 - `packages/web-core/src/shared/lib/workspaceCreateState.ts`
 
 Primary files:
+
 - `packages/web-core/src/pages/root/RootRedirectPage.tsx`
 - `packages/web-core/src/features/onboarding/ui/OnboardingSignInPage.tsx`
 - `packages/web-core/src/features/migration/ui/MigrateChooseProjectsContainer.tsx`
@@ -394,23 +450,28 @@ Primary files:
 - `packages/web-core/src/shared/types/actions.ts`
 
 ### Phase 6: Remove String Round-Trips
+
 1. Update `packages/web-core/src/shared/lib/firstProjectDestination.ts` to
    return semantic destination data instead of raw `'/projects/:id'` strings.
 2. Update callers in root/onboarding flows to avoid parse-then-resolve loops.
 
 ### Phase 7: Cleanup and Guardrails
+
 1. Delete legacy route-object helpers and any dead parser wrappers.
 2. Remove all `as any` navigation casts.
 3. Add lint/typing guardrails for navigation modules to prevent explicit `any`.
 
 ### Phase 8: Validation
+
 Run:
+
 1. `pnpm --filter @vibe/web-core run check`
 2. `pnpm --filter @vibe/local-web run check`
 3. `pnpm --filter @vibe/remote-web run check`
 4. `pnpm run format`
 
 ## Risk Areas to Verify During Migration
+
 1. `replace` behavior currently encoded via spread-to-navigate patterns.
 2. Create-default flow correctness after moving source-of-truth to in-memory
    local state.

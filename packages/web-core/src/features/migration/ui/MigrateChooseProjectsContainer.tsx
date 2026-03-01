@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useProjects } from '../model/hooks/useProjects';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { MigrateChooseProjects } from '@vibe/ui/components/MigrateChooseProjects';
 
 interface MigrateChooseProjectsContainerProps {
@@ -14,6 +15,9 @@ export function MigrateChooseProjectsContainer({
   onSkip,
 }: MigrateChooseProjectsContainerProps) {
   const appNavigation = useAppNavigation();
+  const setSelectedOrgIdInStore = useOrganizationStore(
+    (s) => s.setSelectedOrgId
+  );
   const { projects, isLoading: projectsLoading } = useProjects();
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
   const organizations = useMemo(
@@ -89,12 +93,10 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleViewMigratedProject = (projectId: string) => {
-    appNavigation.navigate(
-      appNavigation.toProject(
-        projectId,
-        selectedOrgId ? { orgId: selectedOrgId } : undefined
-      )
-    );
+    if (selectedOrgId) {
+      setSelectedOrgIdInStore(selectedOrgId);
+    }
+    appNavigation.navigate(appNavigation.toProject(projectId));
   };
 
   const migratedProjects = useMemo(

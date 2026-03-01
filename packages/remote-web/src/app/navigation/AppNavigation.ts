@@ -74,7 +74,6 @@ function destinationToRemoteTarget(
             hostId: effectiveHostId,
             projectId: destination.projectId,
           },
-          ...(destination.search ? { search: destination.search } : {}),
         } as const;
       }
       return { to: "/" } as const;
@@ -86,7 +85,6 @@ function destinationToRemoteTarget(
             hostId: effectiveHostId,
             projectId: destination.projectId,
           },
-          ...(destination.search ? { search: destination.search } : {}),
         } as const;
       }
       return { to: "/" } as const;
@@ -99,7 +97,6 @@ function destinationToRemoteTarget(
             projectId: destination.projectId,
             issueId: destination.issueId,
           },
-          ...(destination.search ? { search: destination.search } : {}),
         } as const;
       }
       return { to: "/" } as const;
@@ -113,7 +110,6 @@ function destinationToRemoteTarget(
             issueId: destination.issueId,
             workspaceId: destination.workspaceId,
           },
-          ...(destination.search ? { search: destination.search } : {}),
         } as const;
       }
       return { to: "/" } as const;
@@ -127,7 +123,6 @@ function destinationToRemoteTarget(
             issueId: destination.issueId,
             draftId: destination.draftId,
           },
-          ...(destination.search ? { search: destination.search } : {}),
         } as const;
       }
       return { to: "/" } as const;
@@ -140,7 +135,6 @@ function destinationToRemoteTarget(
             projectId: destination.projectId,
             draftId: destination.draftId,
           },
-          ...(destination.search ? { search: destination.search } : {}),
         } as const;
       }
       return { to: "/" } as const;
@@ -175,47 +169,41 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
       hostId,
       workspaceId,
     }),
-    toProject: (projectId, search) => ({
+    toProject: (projectId) => ({
       kind: "project",
       hostId,
       projectId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueCreate: (projectId, search) => ({
+    toProjectIssueCreate: (projectId) => ({
       kind: "project-issue-create",
       hostId,
       projectId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssue: (projectId, issueId, search) => ({
+    toProjectIssue: (projectId, issueId) => ({
       kind: "project-issue",
       hostId,
       projectId,
       issueId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueWorkspace: (projectId, issueId, workspaceId, search) => ({
+    toProjectIssueWorkspace: (projectId, issueId, workspaceId) => ({
       kind: "project-issue-workspace",
       hostId,
       projectId,
       issueId,
       workspaceId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId, search) => ({
+    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId) => ({
       kind: "project-issue-workspace-create",
       hostId,
       projectId,
       issueId,
       draftId,
-      ...(search ? { search } : {}),
     }),
-    toProjectWorkspaceCreate: (projectId, draftId, search) => ({
+    toProjectWorkspaceCreate: (projectId, draftId) => ({
       kind: "project-workspace-create",
       hostId,
       projectId,
       draftId,
-      ...(search ? { search } : {}),
     }),
   };
 
@@ -249,41 +237,35 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
       kind: "workspace-vscode",
       workspaceId,
     }),
-    toProject: (projectId, search) => ({
+    toProject: (projectId) => ({
       kind: "project",
       projectId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueCreate: (projectId, search) => ({
+    toProjectIssueCreate: (projectId) => ({
       kind: "project-issue-create",
       projectId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssue: (projectId, issueId, search) => ({
+    toProjectIssue: (projectId, issueId) => ({
       kind: "project-issue",
       projectId,
       issueId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueWorkspace: (projectId, issueId, workspaceId, search) => ({
+    toProjectIssueWorkspace: (projectId, issueId, workspaceId) => ({
       kind: "project-issue-workspace",
       projectId,
       issueId,
       workspaceId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId, search) => ({
+    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId) => ({
       kind: "project-issue-workspace-create",
       projectId,
       issueId,
       draftId,
-      ...(search ? { search } : {}),
     }),
-    toProjectWorkspaceCreate: (projectId, draftId, search) => ({
+    toProjectWorkspaceCreate: (projectId, draftId) => ({
       kind: "project-workspace-create",
       projectId,
       draftId,
-      ...(search ? { search } : {}),
     }),
   };
 

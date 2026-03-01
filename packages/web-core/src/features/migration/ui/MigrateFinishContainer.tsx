@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useProjects } from '../model/hooks/useProjects';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import {
   MigrateFinish,
   type MigrateFinishProject,
@@ -18,6 +19,7 @@ export function MigrateFinishContainer({
   onMigrateMore,
 }: MigrateFinishContainerProps) {
   const appNavigation = useAppNavigation();
+  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const { projects } = useProjects();
 
   const migratedProjects = useMemo(() => {
@@ -33,9 +35,8 @@ export function MigrateFinishContainer({
 
   const handleViewProject = (project: MigrateFinishProject) => {
     if (project.remoteId) {
-      appNavigation.navigate(
-        appNavigation.toProject(project.remoteId, { orgId })
-      );
+      setSelectedOrgId(orgId);
+      appNavigation.navigate(appNavigation.toProject(project.remoteId));
       return;
     }
 

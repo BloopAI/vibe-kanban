@@ -79,6 +79,7 @@ export function KanbanIssuePanelContainer({
     openIssue,
     closePanel,
     updateCreateDefaults,
+    resetCreateDefaults,
   } = useKanbanNavigation();
 
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
@@ -197,7 +198,7 @@ export function KanbanIssuePanelContainer({
   const defaultStatusId =
     kanbanCreateDefaultStatusId ?? sortedStatuses[0]?.id ?? '';
 
-  // Default create form values for the current URL defaults + project context
+  // Default create form values for the current create-default state + project context
   const createModeDefaults = useMemo<IssueFormData>(
     () => ({
       title: '',
@@ -483,7 +484,7 @@ export function KanbanIssuePanelContainer({
           hasRestoredFromScratch = true;
           nextCreateFormData = restoreFromScratch(scratchData);
         } else {
-          // Priority 2: Seed from URL defaults (read once), then empty form
+          // Priority 2: Seed from in-memory defaults (read once), then empty form
           nextCreateFormData = createModeDefaults;
         }
       }
@@ -537,7 +538,7 @@ export function KanbanIssuePanelContainer({
         hasRestoredFromScratch: true,
       });
     } else if (createFormData === null) {
-      // Scratch loaded but no data — seed from URL defaults
+      // Scratch loaded but no data — seed from in-memory defaults.
       dispatchFormState({
         type: 'setCreateFormData',
         createFormData: createModeDefaults,
@@ -670,6 +671,7 @@ export function KanbanIssuePanelContainer({
             isCreateMode: true,
             createModeAssigneeIds: createFormData?.assigneeIds ?? [],
             onCreateModeAssigneesChange: (assigneeIds: string[]) => {
+              updateCreateDefaults({ assigneeIds });
               dispatchFormState({
                 type: 'setCreateAssigneeIds',
                 assigneeIds,
@@ -837,6 +839,8 @@ export function KanbanIssuePanelContainer({
         }
 
         // Navigate to workspace creation if requested
+        resetCreateDefaults();
+
         if (displayData.createDraftWorkspace) {
           const initialPrompt = buildWorkspaceCreatePrompt(
             displayData.title,
@@ -901,6 +905,7 @@ export function KanbanIssuePanelContainer({
     closeKanbanIssuePanel,
     cancelDebouncedDraftIssue,
     deleteDraftIssueScratch,
+    resetCreateDefaults,
     getAttachmentIds,
     clearAttachments,
     onExpectIssueOpen,

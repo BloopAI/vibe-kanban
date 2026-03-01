@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useLocation } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
@@ -17,8 +17,12 @@ import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
-
-import type { ProjectSearch } from '@/project-routes/project-search';
+import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import {
+  buildKanbanCreateDefaultsKey,
+  patchKanbanCreateDefaults,
+  useKanbanCreateDefaults,
+} from '@/shared/stores/useKanbanCreateDefaultsStore';
 export interface AssigneeSelectionDialogProps {
   projectId: string;
   issueIds: string[];
@@ -41,12 +45,14 @@ const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
 
 /** Inner component that uses contexts to render the selection UI */
 function AssigneeSelectionContent({
+  projectId,
   issueIds,
   isCreateMode,
   createModeAssigneeIds,
   onCreateModeAssigneesChange,
   additionalOptions,
 }: {
+  projectId: string;
   issueIds: string[];
   isCreateMode: boolean;
   createModeAssigneeIds?: string[];
@@ -57,8 +63,18 @@ function AssigneeSelectionContent({
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const hasCreateCallback = onCreateModeAssigneesChange != null;
-  const navigate = useNavigate();
-  const routeSearch = useSearch({ strict: false });
+  const location = useLocation();
+  const routeState = useMemo(
+    () => parseProjectSidebarRoute(location.pathname),
+    [location.pathname]
+  );
+  const resolvedProjectId = projectId || routeState?.projectId || null;
+  const createDefaultsKey = useMemo(() => {
+    if (!resolvedProjectId) return null;
+    const hostId = routeState?.hostId ?? null;
+    return buildKanbanCreateDefaultsKey(hostId, resolvedProjectId);
+  }, [resolvedProjectId, routeState?.hostId]);
+  const createDefaults = useKanbanCreateDefaults(createDefaultsKey);
 
   // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
   const { membersWithProfilesById } = useOrgContext();
@@ -83,24 +99,15 @@ function AssigneeSelectionContent({
     setLocalCreateAssignees(createModeAssigneeIds ?? []);
   }, [hasCreateCallback, createModeAssigneeIds, modal.visible]);
 
-  // Fallback: Get/set create mode defaults from URL (for callers without callback)
-  const kanbanCreateDefaultAssigneeIds = useMemo(() => {
-    const assigneesParam = routeSearch.assignees;
-    return assigneesParam ? assigneesParam.split(',').filter(Boolean) : [];
-  }, [routeSearch.assignees]);
+  // Fallback: get/set create mode defaults from shared in-memory state.
+  const kanbanCreateDefaultAssigneeIds = createDefaults?.assigneeIds ?? [];
 
   const setKanbanCreateDefaultAssigneeIds = useCallback(
     (assigneeIds: string[]) => {
-      navigate({
-        to: '.',
-        search: (prev: ProjectSearch) => ({
-          ...prev,
-          assignees: assigneeIds.length > 0 ? assigneeIds.join(',') : undefined,
-        }),
-        replace: true,
-      });
+      if (!createDefaultsKey) return;
+      patchKanbanCreateDefaults(createDefaultsKey, { assigneeIds });
     },
-    [navigate]
+    [createDefaultsKey]
   );
 
   // Derive selected assignee IDs based on mode and callback availability
@@ -234,23 +241,30 @@ function AssigneeSelectionWithContext({
   onCreateModeAssigneesChange,
   additionalOptions,
 }: AssigneeSelectionDialogProps) {
+  const location = useLocation();
+  const routeState = useMemo(
+    () => parseProjectSidebarRoute(location.pathname),
+    [location.pathname]
+  );
+  const resolvedProjectId = projectId || routeState?.projectId;
   // Get organization ID from store (set when navigating to project)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
 
   // Fallback: try to find org from projects if not in store
   const { data: projects = [] } = useOrganizationProjects(selectedOrgId);
-  const project = projects.find((p: Project) => p.id === projectId);
+  const project = projects.find((p: Project) => p.id === resolvedProjectId);
   const organizationId = project?.organization_id ?? selectedOrgId;
 
   // If we don't have the required IDs, render nothing
-  if (!organizationId || !projectId) {
+  if (!organizationId || !resolvedProjectId) {
     return null;
   }
 
   return (
     <OrgProvider organizationId={organizationId}>
-      <ProjectProvider projectId={projectId}>
+      <ProjectProvider projectId={resolvedProjectId}>
         <AssigneeSelectionContent
+          projectId={resolvedProjectId}
           issueIds={issueIds}
           isCreateMode={isCreateMode}
           createModeAssigneeIds={createModeAssigneeIds}

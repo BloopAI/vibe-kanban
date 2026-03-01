@@ -39,13 +39,11 @@ function destinationToLocalTarget(destination: AppDestination) {
       return {
         to: '/projects/$projectId',
         params: { projectId: destination.projectId },
-        ...(destination.search ? { search: destination.search } : {}),
       } as const;
     case 'project-issue-create':
       return {
         to: '/projects/$projectId/issues/new',
         params: { projectId: destination.projectId },
-        ...(destination.search ? { search: destination.search } : {}),
       } as const;
     case 'project-issue':
       return {
@@ -54,7 +52,6 @@ function destinationToLocalTarget(destination: AppDestination) {
           projectId: destination.projectId,
           issueId: destination.issueId,
         },
-        ...(destination.search ? { search: destination.search } : {}),
       } as const;
     case 'project-issue-workspace':
       return {
@@ -64,7 +61,6 @@ function destinationToLocalTarget(destination: AppDestination) {
           issueId: destination.issueId,
           workspaceId: destination.workspaceId,
         },
-        ...(destination.search ? { search: destination.search } : {}),
       } as const;
     case 'project-issue-workspace-create':
       return {
@@ -74,7 +70,6 @@ function destinationToLocalTarget(destination: AppDestination) {
           issueId: destination.issueId,
           draftId: destination.draftId,
         },
-        ...(destination.search ? { search: destination.search } : {}),
       } as const;
     case 'project-workspace-create':
       return {
@@ -83,7 +78,6 @@ function destinationToLocalTarget(destination: AppDestination) {
           projectId: destination.projectId,
           draftId: destination.draftId,
         },
-        ...(destination.search ? { search: destination.search } : {}),
       } as const;
   }
 }
@@ -113,41 +107,35 @@ export function createLocalAppNavigation(): AppNavigation {
       kind: 'workspace-vscode',
       workspaceId,
     }),
-    toProject: (projectId, search) => ({
+    toProject: (projectId) => ({
       kind: 'project',
       projectId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueCreate: (projectId, search) => ({
+    toProjectIssueCreate: (projectId) => ({
       kind: 'project-issue-create',
       projectId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssue: (projectId, issueId, search) => ({
+    toProjectIssue: (projectId, issueId) => ({
       kind: 'project-issue',
       projectId,
       issueId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueWorkspace: (projectId, issueId, workspaceId, search) => ({
+    toProjectIssueWorkspace: (projectId, issueId, workspaceId) => ({
       kind: 'project-issue-workspace',
       projectId,
       issueId,
       workspaceId,
-      ...(search ? { search } : {}),
     }),
-    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId, search) => ({
+    toProjectIssueWorkspaceCreate: (projectId, issueId, draftId) => ({
       kind: 'project-issue-workspace-create',
       projectId,
       issueId,
       draftId,
-      ...(search ? { search } : {}),
     }),
-    toProjectWorkspaceCreate: (projectId, draftId, search) => ({
+    toProjectWorkspaceCreate: (projectId, draftId) => ({
       kind: 'project-workspace-create',
       projectId,
       draftId,
-      ...(search ? { search } : {}),
     }),
   };
 

@@ -5,15 +5,17 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useParams } from '@tanstack/react-router';
+import { useLocation, useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
+import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
+import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
 import {
-  toProjectIssueCreateSearch,
-  type ProjectIssueCreateOptions,
-} from '@/shared/lib/routes/appNavigation';
+  buildKanbanCreateDefaultsKey,
+  setKanbanCreateDefaults,
+} from '@/shared/stores/useKanbanCreateDefaultsStore';
 import {
   type ActionDefinition,
   type ActionExecutorContext,
@@ -38,6 +40,11 @@ interface ActionsProviderProps {
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
+  const location = useLocation();
+  const { hostId } = useMemo(
+    () => parseAppPathname(location.pathname),
+    [location.pathname]
+  );
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
@@ -69,15 +76,19 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Navigate to create issue mode (URL-based navigation)
   const navigateToCreateIssue = useCallback(
     (options?: ProjectIssueCreateOptions) => {
-      if (!projectId) return;
-      appNavigation.navigate(
-        appNavigation.toProjectIssueCreate(
-          projectId,
-          toProjectIssueCreateSearch(options)
-        )
-      );
+      if (!projectId) {
+        return;
+      }
+
+      setKanbanCreateDefaults(buildKanbanCreateDefaultsKey(hostId, projectId), {
+        statusId: options?.statusId,
+        priority: options?.priority,
+        assigneeIds: options?.assigneeIds,
+        parentIssueId: options?.parentIssueId,
+      });
+      appNavigation.navigate(appNavigation.toProjectIssueCreate(projectId));
     },
-    [projectId, appNavigation]
+    [projectId, hostId, appNavigation]
   );
 
   // Get logs panel state
