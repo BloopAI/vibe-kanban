@@ -175,21 +175,23 @@ export const Actions = {
             }
           : undefined;
 
-        ctx.navigate({
-          ...ctx.appNavigation.toWorkspacesCreate(),
-          state: (prev) => ({
-            ...prev,
-            initialPrompt: firstMessage,
-            preferredRepos: repos.map((r) => ({
-              repo_id: r.id,
-              target_branch: r.target_branch,
-            })),
-            linkedIssue,
-          }),
+        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate(), {
+          state: (prev) => {
+            const previousState = (prev ?? {}) as Record<string, unknown>;
+            return {
+              ...previousState,
+              initialPrompt: firstMessage,
+              preferredRepos: repos.map((r) => ({
+                repo_id: r.id,
+                target_branch: r.target_branch,
+              })),
+              linkedIssue,
+            };
+          },
         });
       } catch {
         // Fallback to creating without the prompt/repos
-        ctx.navigate(ctx.appNavigation.toWorkspacesCreate());
+        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
       }
     },
   },
@@ -308,7 +310,7 @@ export const Actions = {
           if (nextWorkspaceId) {
             ctx.selectWorkspace(nextWorkspaceId);
           } else {
-            ctx.navigate(ctx.appNavigation.toWorkspacesCreate());
+            ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
           }
         }
       }
@@ -350,19 +352,21 @@ export const Actions = {
               remoteProjectId: remoteWs.project_id,
             }
           : undefined;
-        ctx.navigate({
-          ...ctx.appNavigation.toWorkspacesCreate(),
-          state: (prev) => ({
-            ...prev,
-            preferredRepos: repos.map((r) => ({
-              repo_id: r.id,
-              target_branch: workspace.branch,
-            })),
-            linkedIssue,
-          }),
+        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate(), {
+          state: (prev) => {
+            const previousState = (prev ?? {}) as Record<string, unknown>;
+            return {
+              ...previousState,
+              preferredRepos: repos.map((r) => ({
+                repo_id: r.id,
+                target_branch: workspace.branch,
+              })),
+              linkedIssue,
+            };
+          },
         });
       } catch {
-        ctx.navigate(ctx.appNavigation.toWorkspacesCreate());
+        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
       }
     },
   },
@@ -375,7 +379,7 @@ export const Actions = {
     shortcut: 'G N',
     requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
-      ctx.navigate(ctx.appNavigation.toWorkspacesCreate());
+      ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
     },
   },
 
@@ -452,7 +456,7 @@ export const Actions = {
       ctx.queryClient.removeQueries({ queryKey: organizationKeys.all });
       // Invalidate user-system query to update loginStatus/useAuth state
       await ctx.queryClient.invalidateQueries({ queryKey: ['user-system'] });
-      ctx.navigate(ctx.appNavigation.toWorkspaces());
+      ctx.appNavigation.navigate(ctx.appNavigation.toWorkspaces());
     },
   } satisfies GlobalActionDefinition,
 

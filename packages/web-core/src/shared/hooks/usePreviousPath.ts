@@ -1,11 +1,10 @@
 import { useCallback, useEffect } from 'react';
-import { useLocation, useNavigate } from '@tanstack/react-router';
+import { useLocation } from '@tanstack/react-router';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 const globalVisited: string[] = [];
 
 export function usePreviousPath() {
-  const navigate = useNavigate();
   const location = useLocation();
   const appNavigation = useAppNavigation();
 
@@ -27,12 +26,13 @@ export function usePreviousPath() {
       .find((p) => !p.startsWith('/settings'));
 
     if (!lastNonSettingsPath) {
-      navigate(appNavigation.toRoot());
+      appNavigation.navigate(appNavigation.toRoot());
       return;
     }
 
-    navigate(
-      appNavigation.fromPath(lastNonSettingsPath) ?? appNavigation.toRoot()
+    appNavigation.navigate(
+      appNavigation.resolveFromPath(lastNonSettingsPath) ??
+        appNavigation.toRoot()
     );
-  }, [navigate, appNavigation]);
+  }, [appNavigation]);
 }

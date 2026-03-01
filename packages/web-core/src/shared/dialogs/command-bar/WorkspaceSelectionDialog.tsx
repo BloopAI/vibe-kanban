@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
@@ -66,7 +65,6 @@ function WorkspaceSelectionContent({
 }) {
   const { t } = useTranslation('common');
   const modal = useModal();
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -200,12 +198,14 @@ function WorkspaceSelectionContent({
         issueId,
       });
       if (!draftId) {
-        navigate({
-          ...appNavigation.toWorkspacesCreate(),
-          state: (prev) => ({
-            ...prev,
-            ...createState,
-          }),
+        appNavigation.navigate(appNavigation.toWorkspacesCreate(), {
+          state: (prev) => {
+            const previousState = (prev ?? {}) as Record<string, unknown>;
+            return {
+              ...previousState,
+              ...createState,
+            };
+          },
         });
       }
     } finally {
@@ -213,7 +213,6 @@ function WorkspaceSelectionContent({
     }
   }, [
     modal,
-    navigate,
     openWorkspaceCreateFromState,
     getIssue,
     issueId,

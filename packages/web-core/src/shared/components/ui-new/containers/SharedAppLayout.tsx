@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Outlet, useLocation, useNavigate } from '@tanstack/react-router';
+import { Outlet, useLocation } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
 import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
@@ -40,7 +40,6 @@ import {
 } from 'shared/remote-types';
 
 export function SharedAppLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
   const appNavigation = useAppNavigation();
   const isMigrateRoute = location.pathname.startsWith('/migrate');
@@ -138,15 +137,15 @@ export function SharedAppLayout() {
       !isLoading
     ) {
       if (sortedProjects.length > 0) {
-        navigate(appNavigation.toProject(sortedProjects[0].id));
+        appNavigation.navigate(appNavigation.toProject(sortedProjects[0].id));
       } else {
-        navigate(appNavigation.toWorkspaces());
+        appNavigation.navigate(appNavigation.toWorkspaces());
       }
       prevOrgIdRef.current = selectedOrgId;
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
       prevOrgIdRef.current = selectedOrgId;
     }
-  }, [selectedOrgId, sortedProjects, isLoading, navigate, isMigrateRoute]);
+  }, [selectedOrgId, sortedProjects, isLoading, isMigrateRoute, appNavigation]);
 
   // Navigation state for AppBar active indicators
   const isWorkspacesActive = isWorkspacesPathname(location.pathname);
@@ -166,23 +165,23 @@ export function SharedAppLayout() {
   }, [location.pathname, location.searchStr]);
 
   const handleWorkspacesClick = useCallback(() => {
-    navigate(appNavigation.toWorkspaces());
-  }, [navigate, appNavigation]);
+    appNavigation.navigate(appNavigation.toWorkspaces());
+  }, [appNavigation]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
       const rememberedPath = projectLastPathRef.current[projectId];
       if (rememberedPath) {
-        const resolvedPath = appNavigation.fromPath(rememberedPath);
+        const resolvedPath = appNavigation.resolveFromPath(rememberedPath);
         if (resolvedPath) {
-          navigate(resolvedPath);
+          appNavigation.navigate(resolvedPath);
           return;
         }
       }
 
-      navigate(appNavigation.toProject(projectId));
+      appNavigation.navigate(appNavigation.toProject(projectId));
     },
-    [navigate, appNavigation]
+    [appNavigation]
   );
 
   const handleProjectsDragEnd = useCallback(
@@ -244,12 +243,12 @@ export function SharedAppLayout() {
         await CreateRemoteProjectDialog.show({ organizationId: selectedOrgId });
 
       if (result.action === 'created' && result.project) {
-        navigate(appNavigation.toProject(result.project.id));
+        appNavigation.navigate(appNavigation.toProject(result.project.id));
       }
     } catch {
       // Dialog cancelled
     }
-  }, [navigate, selectedOrgId, appNavigation]);
+  }, [selectedOrgId, appNavigation]);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -264,15 +263,15 @@ export function SharedAppLayout() {
       try {
         const profile = await OAuthDialog.show({});
         if (profile) {
-          navigate(appNavigation.toMigrate());
+          appNavigation.navigate(appNavigation.toMigrate());
         }
       } catch {
         // Dialog cancelled
       }
     } else {
-      navigate(appNavigation.toMigrate());
+      appNavigation.navigate(appNavigation.toMigrate());
     }
-  }, [isSignedIn, navigate, appNavigation]);
+  }, [isSignedIn, appNavigation]);
 
   return (
     <SyncErrorProvider>
@@ -338,7 +337,7 @@ export function SharedAppLayout() {
             <button
               type="button"
               onClick={() => {
-                navigate(appNavigation.toWorkspaces());
+                appNavigation.navigate(appNavigation.toWorkspaces());
                 setIsDrawerOpen(false);
               }}
               className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"

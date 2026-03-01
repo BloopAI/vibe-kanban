@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -161,7 +160,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const sessionId = session?.id;
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
 
   const { executeAction } = useActions();
@@ -179,8 +177,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const handleOpenWorkspace = useCallback(() => {
     if (!workspaceId) return;
-    navigate(appNavigation.toWorkspace(workspaceId));
-  }, [navigate, appNavigation, workspaceId]);
+    appNavigation.navigate(appNavigation.toWorkspace(workspaceId));
+  }, [appNavigation, workspaceId]);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();

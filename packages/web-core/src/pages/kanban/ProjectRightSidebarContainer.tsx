@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownIcon, ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
@@ -135,7 +134,6 @@ function WorkspaceSessionPanel({
   workspaceId,
   onClose,
 }: WorkspaceSessionPanelProps) {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { issueId: routeIssueId, openIssue } = useKanbanNavigation();
   const { projectId, getIssue } = useProjectContext();
@@ -193,8 +191,8 @@ function WorkspaceSessionPanel({
   }, [breadcrumbIssueId, openIssue, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
-    navigate(appNavigation.toWorkspace(workspaceId));
-  }, [navigate, appNavigation, workspaceId]);
+    appNavigation.navigate(appNavigation.toWorkspace(workspaceId));
+  }, [appNavigation, workspaceId]);
 
   const breadcrumbButtonClass =
     'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
@@ -339,7 +337,6 @@ function WorkspaceSessionPanel({
 }
 
 export function ProjectRightSidebarContainer() {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const {
     getIssue,
@@ -451,9 +448,9 @@ export function ProjectRightSidebarContainer() {
         return;
       }
 
-      navigate(appNavigation.toWorkspace(createdWorkspaceId));
+      appNavigation.navigate(appNavigation.toWorkspace(createdWorkspaceId));
     },
-    [issueId, openIssueWorkspace, navigate, appNavigation]
+    [issueId, openIssueWorkspace, appNavigation]
   );
 
   useEffect(() => {

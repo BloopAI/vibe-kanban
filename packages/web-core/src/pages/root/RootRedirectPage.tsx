@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Navigate } from '@tanstack/react-router';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
@@ -47,6 +46,20 @@ export function RootRedirectPage() {
     };
   }, [config, loading, loginStatus?.status, setSelectedOrgId]);
 
+  useEffect(() => {
+    if (loading || !config || !destination) {
+      return;
+    }
+
+    const resolvedDestination =
+      appNavigation.resolveFromPath(destination) ??
+      (destination === '/onboarding'
+        ? appNavigation.toOnboarding()
+        : appNavigation.toWorkspacesCreate());
+
+    appNavigation.navigate(resolvedDestination, { replace: true });
+  }, [appNavigation, config, destination, loading]);
+
   if (loading || !config || !destination) {
     return (
       <div className="h-screen bg-primary flex items-center justify-center">
@@ -55,11 +68,5 @@ export function RootRedirectPage() {
     );
   }
 
-  const resolvedDestination =
-    appNavigation.fromPath(destination) ??
-    (destination === '/onboarding'
-      ? appNavigation.toOnboarding()
-      : appNavigation.toWorkspacesCreate());
-
-  return <Navigate {...resolvedDestination} replace />;
+  return null;
 }

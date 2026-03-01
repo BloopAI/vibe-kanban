@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useLocation, useNavigate } from '@tanstack/react-router';
+import { useLocation } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useActions } from '@/shared/hooks/useActions';
@@ -127,7 +127,6 @@ export function NavbarContainer({
   const projectId = currentProjectRoute?.projectId ?? null;
   const isOnProjectSubRoute =
     currentProjectRoute !== null && currentProjectRoute.type !== 'closed';
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
@@ -207,19 +206,19 @@ export function NavbarContainer({
   const handleNavigateBack = useCallback(() => {
     if (isOnProjectPage && projectId) {
       // On project sub-route: go back to project root (kanban board)
-      navigate(appNavigation.toProject(projectId));
+      appNavigation.navigate(appNavigation.toProject(projectId));
     } else {
       // Non-project page: go to workspaces
-      navigate(appNavigation.toWorkspaces());
+      appNavigation.navigate(appNavigation.toWorkspaces());
     }
-  }, [navigate, isOnProjectPage, projectId, appNavigation]);
+  }, [isOnProjectPage, projectId, appNavigation]);
 
   const handleNavigateToBoard = useMemo(() => {
     if (!isOnProjectPage || !projectId) return null;
     return () => {
-      navigate(appNavigation.toProject(projectId));
+      appNavigation.navigate(appNavigation.toProject(projectId));
     };
-  }, [isOnProjectPage, projectId, navigate, appNavigation]);
+  }, [isOnProjectPage, projectId, appNavigation]);
 
   // Build user popover slot for mobile mode
   const userPopoverSlot = useMemo(() => {

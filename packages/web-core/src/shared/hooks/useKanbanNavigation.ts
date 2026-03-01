@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
+import { useLocation, useSearch } from '@tanstack/react-router';
 import type { IssuePriority } from 'shared/remote-types';
 import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
 import { toProjectIssueCreateSearch } from '@/shared/lib/routes/appNavigation';
@@ -24,7 +24,6 @@ function isValidUuid(value: string): boolean {
  * - No issue: /projects/:projectId
  */
 export function useKanbanNavigation() {
-  const navigate = useNavigate();
   const location = useLocation();
   const search = useSearch({ strict: false });
   const appNavigation = useAppNavigation();
@@ -65,19 +64,19 @@ export function useKanbanNavigation() {
   const openIssue = useCallback(
     (id: string) => {
       if (!projectId) return;
-      navigate(appNavigation.toProjectIssue(projectId, id));
+      appNavigation.navigate(appNavigation.toProjectIssue(projectId, id));
     },
-    [navigate, projectId, appNavigation]
+    [projectId, appNavigation]
   );
 
   const openIssueWorkspace = useCallback(
     (id: string, workspaceAttemptId: string) => {
       if (!projectId) return;
-      navigate(
+      appNavigation.navigate(
         appNavigation.toProjectIssueWorkspace(projectId, id, workspaceAttemptId)
       );
     },
-    [navigate, projectId, appNavigation]
+    [projectId, appNavigation]
   );
 
   const openWorkspaceCreate = useCallback(
@@ -85,7 +84,7 @@ export function useKanbanNavigation() {
       if (!projectId) return;
       const targetIssueId = options?.issueId ?? issueId;
       if (targetIssueId) {
-        navigate(
+        appNavigation.navigate(
           appNavigation.toProjectIssueWorkspaceCreate(
             projectId,
             targetIssueId,
@@ -95,17 +94,17 @@ export function useKanbanNavigation() {
         return;
       }
 
-      navigate(
+      appNavigation.navigate(
         appNavigation.toProjectWorkspaceCreate(projectId, workspaceDraftId)
       );
     },
-    [navigate, projectId, issueId, appNavigation]
+    [projectId, issueId, appNavigation]
   );
 
   const closePanel = useCallback(() => {
     if (!projectId) return;
-    navigate(appNavigation.toProject(projectId));
-  }, [navigate, projectId, appNavigation]);
+    appNavigation.navigate(appNavigation.toProject(projectId));
+  }, [projectId, appNavigation]);
 
   const startCreate = useCallback(
     (options?: {
@@ -115,14 +114,14 @@ export function useKanbanNavigation() {
       parentIssueId?: string;
     }) => {
       if (!projectId) return;
-      navigate(
+      appNavigation.navigate(
         appNavigation.toProjectIssueCreate(
           projectId,
           toProjectIssueCreateSearch(options)
         )
       );
     },
-    [navigate, projectId, appNavigation]
+    [projectId, appNavigation]
   );
 
   const updateCreateDefaults = useCallback(
@@ -133,9 +132,8 @@ export function useKanbanNavigation() {
     }) => {
       if (!projectId || !isCreateMode) return;
 
-      navigate({
-        ...appNavigation.toProjectIssueCreate(projectId),
-        search: {
+      appNavigation.navigate(
+        appNavigation.toProjectIssueCreate(projectId, {
           ...search,
           orgId: undefined,
           statusId:
@@ -148,11 +146,11 @@ export function useKanbanNavigation() {
             options.assigneeIds !== undefined
               ? options.assigneeIds.join(',')
               : search.assignees,
-        },
-        replace: true,
-      });
+        }),
+        { replace: true }
+      );
     },
-    [navigate, projectId, appNavigation, isCreateMode, search]
+    [projectId, appNavigation, isCreateMode, search]
   );
 
   return {

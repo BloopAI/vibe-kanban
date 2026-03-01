@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '../model/hooks/useProjects';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
@@ -14,7 +13,6 @@ export function MigrateChooseProjectsContainer({
   onContinue,
   onSkip,
 }: MigrateChooseProjectsContainerProps) {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { projects, isLoading: projectsLoading } = useProjects();
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
@@ -87,11 +85,11 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleGoToCreateWorkspace = () => {
-    navigate(appNavigation.toWorkspacesCreate());
+    appNavigation.navigate(appNavigation.toWorkspacesCreate());
   };
 
   const handleViewMigratedProject = (projectId: string) => {
-    navigate(
+    appNavigation.navigate(
       appNavigation.toProject(
         projectId,
         selectedOrgId ? { orgId: selectedOrgId } : undefined
@@ -106,10 +104,10 @@ export function MigrateChooseProjectsContainer({
 
   const handleSkip = () => {
     if (migratedProjects.length > 0 && migratedProjects[0].remote_project_id) {
-      navigate({
-        ...appNavigation.toProject(migratedProjects[0].remote_project_id),
-        replace: true,
-      });
+      appNavigation.navigate(
+        appNavigation.toProject(migratedProjects[0].remote_project_id),
+        { replace: true }
+      );
     } else {
       onSkip();
     }

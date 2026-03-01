@@ -1,8 +1,6 @@
 import type { IssuePriority } from 'shared/remote-types';
 import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
 
-type AppNavigationTarget = ReturnType<AppNavigation['toRoot']>;
-
 export type ProjectKanbanSearch = {
   statusId?: string;
   priority?: string;
@@ -21,13 +19,24 @@ export type AppDestination =
   | { kind: 'workspaces-create'; hostId?: string }
   | { kind: 'workspace'; workspaceId: string; hostId?: string }
   | { kind: 'workspace-vscode'; workspaceId: string; hostId?: string }
-  | { kind: 'project'; projectId: string; hostId?: string }
-  | { kind: 'project-issue-create'; projectId: string; hostId?: string }
+  | {
+      kind: 'project';
+      projectId: string;
+      hostId?: string;
+      search?: ProjectKanbanSearch;
+    }
+  | {
+      kind: 'project-issue-create';
+      projectId: string;
+      hostId?: string;
+      search?: ProjectKanbanSearch;
+    }
   | {
       kind: 'project-issue';
       projectId: string;
       issueId: string;
       hostId?: string;
+      search?: ProjectKanbanSearch;
     }
   | {
       kind: 'project-issue-workspace';
@@ -35,6 +44,7 @@ export type AppDestination =
       issueId: string;
       workspaceId: string;
       hostId?: string;
+      search?: ProjectKanbanSearch;
     }
   | {
       kind: 'project-issue-workspace-create';
@@ -42,52 +52,64 @@ export type AppDestination =
       issueId: string;
       draftId: string;
       hostId?: string;
+      search?: ProjectKanbanSearch;
     }
   | {
       kind: 'project-workspace-create';
       projectId: string;
       draftId: string;
       hostId?: string;
+      search?: ProjectKanbanSearch;
     };
 
 export type NavigationTransition = {
   replace?: boolean;
+  state?:
+    | Record<string, unknown>
+    | ((previous: unknown) => Record<string, unknown>);
 };
 
 export interface AppNavigation {
-  toRoot(): any;
-  toOnboarding(): any;
-  toOnboardingSignIn(): any;
-  toMigrate(): any;
-  toWorkspaces(): any;
-  toWorkspacesCreate(): any;
-  toWorkspace(workspaceId: string): any;
-  toWorkspaceVsCode(workspaceId: string): any;
-  toProject(projectId: string, search?: ProjectKanbanSearch): any;
-  toProjectIssueCreate(projectId: string, search?: ProjectKanbanSearch): any;
+  navigate(
+    destination: AppDestination,
+    transition?: NavigationTransition
+  ): void;
+  resolveFromPath(path: string): AppDestination | null;
+  toRoot(): AppDestination;
+  toOnboarding(): AppDestination;
+  toOnboardingSignIn(): AppDestination;
+  toMigrate(): AppDestination;
+  toWorkspaces(): AppDestination;
+  toWorkspacesCreate(): AppDestination;
+  toWorkspace(workspaceId: string): AppDestination;
+  toWorkspaceVsCode(workspaceId: string): AppDestination;
+  toProject(projectId: string, search?: ProjectKanbanSearch): AppDestination;
+  toProjectIssueCreate(
+    projectId: string,
+    search?: ProjectKanbanSearch
+  ): AppDestination;
   toProjectIssue(
     projectId: string,
     issueId: string,
     search?: ProjectKanbanSearch
-  ): any;
+  ): AppDestination;
   toProjectIssueWorkspace(
     projectId: string,
     issueId: string,
     workspaceId: string,
     search?: ProjectKanbanSearch
-  ): any;
+  ): AppDestination;
   toProjectIssueWorkspaceCreate(
     projectId: string,
     issueId: string,
     draftId: string,
     search?: ProjectKanbanSearch
-  ): any;
+  ): AppDestination;
   toProjectWorkspaceCreate(
     projectId: string,
     draftId: string,
     search?: ProjectKanbanSearch
-  ): any;
-  fromPath(path: string): AppNavigationTarget | null;
+  ): AppDestination;
 }
 
 export interface ProjectIssueCreateOptions {
@@ -235,82 +257,4 @@ export function resolveAppDestinationFromPath(
   }
 
   return null;
-}
-
-function getDestinationHostId(destination: AppDestination): string | null {
-  return 'hostId' in destination ? (destination.hostId ?? null) : null;
-}
-
-export function resolveAppNavigationFromPath(
-  path: string,
-  navigation: AppNavigation,
-  options?: {
-    resolveHostNavigation?: (hostId: string) => AppNavigation | null;
-  }
-): AppNavigationTarget | null {
-  const destination = resolveAppDestinationFromPath(path);
-  if (!destination) {
-    return null;
-  }
-
-  const destinationHostId = getDestinationHostId(destination);
-  if (destinationHostId && options?.resolveHostNavigation) {
-    const hostScopedNavigation =
-      options.resolveHostNavigation(destinationHostId);
-    if (hostScopedNavigation) {
-      return resolveDestination(destination, hostScopedNavigation);
-    }
-  }
-
-  return resolveDestination(destination, navigation);
-}
-
-function resolveDestination(
-  destination: AppDestination,
-  navigation: AppNavigation
-): AppNavigationTarget {
-  switch (destination.kind) {
-    case 'root':
-      return navigation.toRoot();
-    case 'onboarding':
-      return navigation.toOnboarding();
-    case 'onboarding-sign-in':
-      return navigation.toOnboardingSignIn();
-    case 'migrate':
-      return navigation.toMigrate();
-    case 'workspaces':
-      return navigation.toWorkspaces();
-    case 'workspaces-create':
-      return navigation.toWorkspacesCreate();
-    case 'workspace':
-      return navigation.toWorkspace(destination.workspaceId);
-    case 'workspace-vscode':
-      return navigation.toWorkspaceVsCode(destination.workspaceId);
-    case 'project':
-      return navigation.toProject(destination.projectId);
-    case 'project-issue-create':
-      return navigation.toProjectIssueCreate(destination.projectId);
-    case 'project-issue':
-      return navigation.toProjectIssue(
-        destination.projectId,
-        destination.issueId
-      );
-    case 'project-issue-workspace':
-      return navigation.toProjectIssueWorkspace(
-        destination.projectId,
-        destination.issueId,
-        destination.workspaceId
-      );
-    case 'project-issue-workspace-create':
-      return navigation.toProjectIssueWorkspaceCreate(
-        destination.projectId,
-        destination.issueId,
-        destination.draftId
-      );
-    case 'project-workspace-create':
-      return navigation.toProjectWorkspaceCreate(
-        destination.projectId,
-        destination.draftId
-      );
-  }
 }

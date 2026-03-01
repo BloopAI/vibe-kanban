@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   MigrateSidebar,
@@ -16,7 +15,6 @@ interface MigrationData {
 }
 
 export function MigrateLayout() {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const [currentStep, setCurrentStep] = useState<MigrationStep>('introduction');
   const [migrationData, setMigrationData] = useState<MigrationData | null>(
@@ -24,7 +22,9 @@ export function MigrateLayout() {
   );
 
   const handleSkip = () => {
-    navigate({ ...appNavigation.toWorkspacesCreate(), replace: true });
+    appNavigation.navigate(appNavigation.toWorkspacesCreate(), {
+      replace: true,
+    });
   };
 
   const handleChooseProjectsContinue = (

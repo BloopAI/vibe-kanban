@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
+import { useParams, useLocation } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
@@ -22,7 +22,6 @@ interface WorkspaceProviderProps {
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams({ strict: false });
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -125,16 +124,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           // Silently fail - this is not critical
           console.warn('Failed to mark workspace as seen:', error);
         });
-      navigate(appNavigation.toWorkspace(id));
+      appNavigation.navigate(appNavigation.toWorkspace(id));
     },
-    [navigate, queryClient, appNavigation]
+    [queryClient, appNavigation]
   );
 
   const navigateToCreate = useMemo(
     () => () => {
-      navigate(appNavigation.toWorkspacesCreate());
+      appNavigation.navigate(appNavigation.toWorkspacesCreate());
     },
-    [navigate, appNavigation]
+    [appNavigation]
   );
 
   const value = useMemo(

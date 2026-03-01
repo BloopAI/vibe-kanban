@@ -1,5 +1,4 @@
 import type { Icon } from '@phosphor-icons/react';
-import type { NavigateFn } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type {
   EditorType,
@@ -55,7 +54,6 @@ interface SidebarWorkspace {
 
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
-  navigate: NavigateFn;
   appNavigation: AppNavigation;
   queryClient: QueryClient;
   selectWorkspace: (workspaceId: string) => void;

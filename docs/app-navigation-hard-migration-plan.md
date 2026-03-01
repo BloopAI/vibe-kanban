@@ -248,32 +248,47 @@ Plan adjustment:
    contract/type break between `web-core`, `local-web`, and `remote-web`.
 
 ### Phase 2: Provider Interface
+Status: Completed (March 1, 2026)
+
+Completed:
 1. Replace route-object API in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
 2. Update `packages/web-core/src/shared/hooks/useAppNavigation.ts` provider
    types to the new imperative contract.
-3. Remove legacy `toX()` route-object signatures and keep only semantic
-   methods (`navigate`, `resolveFromPath`, optional typed convenience wrappers
-   returning `AppDestination`).
+3. Remove legacy route-object navigation signatures and keep semantic methods
+   (`navigate`, `resolveFromPath`) plus destination builders returning
+   `AppDestination`.
+4. Add explicit transition support on `navigate(...)` for `replace` and
+   cross-screen state transport used by current workspace-create flows.
 
 ### Phase 3: Local Adapter
+Status: Completed (March 1, 2026)
+
+Completed:
 1. Update `packages/local-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
-2. Use local typed TanStack route mapping without casts.
+2. Keep local route mapping in local web (`AppDestination` -> local route
+   target).
 3. Keep `packages/local-web/src/app/entry/App.tsx` as wiring only.
 4. Enforce exhaustive `switch(destination.kind)` in local adapter.
+5. Keep the router-state type bridge localized to adapter boundary only.
 
 ### Phase 4: Remote Adapter
+Status: Completed (March 1, 2026)
+
+Completed:
 1. Update `packages/remote-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
 2. Keep host-scoped behavior in remote package and remove unscoped workspace/
    project fallback routes from navigation resolution.
 3. Keep `packages/remote-web/src/routes/__root.tsx` as wiring only.
-4. Enforce exhaustive `switch(destination.kind)` in remote adapter.
+4. Keep exhaustive `switch(destination.kind)` in remote adapter.
 5. Add explicit host precedence behavior:
    - destination includes hostId: navigate to that host
    - destination omits hostId: navigate in current host context
    - no current host and host-aware destination: redirect to `/`
+6. Map non-remote destinations (`onboarding`, `onboarding-sign-in`,
+   `migrate`) to `/` in remote adapter.
 
 ### Phase 4.5: Remote Host UX Consolidation
 1. Add a shared host-resolution helper in remote web and delete duplicated
@@ -290,6 +305,19 @@ Plan adjustment:
    effective host for a host-aware destination, navigate to `/`.
 
 ### Phase 5: Consumer Migration
+Status: In Progress
+
+Completed so far:
+1. Migrated root, onboarding redirect, migration flow, workspace landing/layout,
+   kanban/workspace sidebar entry points, and shared app shell/navbar entry
+   points to `appNavigation.navigate(...)`.
+2. Migrated action flows to the new navigation contract and removed
+   `ActionExecutorContext.navigate` (router `NavigateFn`) from shared action
+   context.
+3. Migrated workspace-create state transport callsites to pass transition
+   `state` through `appNavigation.navigate(...)` (no direct spread of route
+   objects).
+
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
 and spread patterns (`...appNavigation.toX()`) to imperative calls.
 

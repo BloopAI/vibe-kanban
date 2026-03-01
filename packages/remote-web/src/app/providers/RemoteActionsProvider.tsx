@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Workspace } from "shared/types";
 import {
@@ -37,7 +37,6 @@ function noOpSelection(name: string) {
 export function RemoteActionsProvider({
   children,
 }: RemoteActionsProviderProps) {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
   const { projectId } = useParams({ strict: false });
@@ -58,8 +57,8 @@ export function RemoteActionsProvider({
 
   const navigateToCreateIssue = useCallback(() => {
     if (!projectId) return;
-    navigate(appNavigation.toProjectIssueCreate(projectId));
-  }, [navigate, projectId, appNavigation]);
+    appNavigation.navigate(appNavigation.toProjectIssueCreate(projectId));
+  }, [projectId, appNavigation]);
 
   const openStatusSelection = useCallback(async () => {
     noOpSelection("Status selection");
@@ -88,7 +87,6 @@ export function RemoteActionsProvider({
 
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
-      navigate,
       appNavigation,
       queryClient,
       selectWorkspace: () => {
@@ -120,7 +118,6 @@ export function RemoteActionsProvider({
       remoteWorkspaces: userCtx?.workspaces ?? [],
     }),
     [
-      navigate,
       queryClient,
       openStatusSelection,
       openPrioritySelection,

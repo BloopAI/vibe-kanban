@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { Navigate, useNavigate } from '@tanstack/react-router';
+import { Navigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
 import {
   OAuthDialog,
@@ -64,7 +64,6 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 }
 
 export function OnboardingSignInPage() {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const { theme } = useTheme();
@@ -158,11 +157,11 @@ export function OnboardingSignInPage() {
       method: options.method,
       destination,
     });
-    navigate({
-      ...(appNavigation.fromPath(destination) ??
-        appNavigation.toWorkspacesCreate()),
-      replace: true,
-    });
+    appNavigation.navigate(
+      appNavigation.resolveFromPath(destination) ??
+        appNavigation.toWorkspacesCreate(),
+      { replace: true }
+    );
   };
 
   const handleProviderSignIn = async (provider: OAuthProvider) => {

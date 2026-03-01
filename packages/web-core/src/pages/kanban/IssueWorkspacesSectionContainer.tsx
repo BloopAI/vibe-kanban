@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
@@ -36,7 +36,6 @@ export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const { openIssueWorkspace } = useKanbanNavigation();
@@ -157,16 +156,17 @@ export function IssueWorkspacesSectionContainer({
       issueId,
     });
     if (!draftId) {
-      navigate({
-        ...appNavigation.toWorkspacesCreate(),
-        state: (prev) => ({
-          ...prev,
-          ...createState,
-        }),
+      appNavigation.navigate(appNavigation.toWorkspacesCreate(), {
+        state: (prev) => {
+          const previousState = (prev ?? {}) as Record<string, unknown>;
+          return {
+            ...previousState,
+            ...createState,
+          };
+        },
       });
     }
   }, [
-    navigate,
     projectId,
     openWorkspaceCreateFromState,
     getIssue,

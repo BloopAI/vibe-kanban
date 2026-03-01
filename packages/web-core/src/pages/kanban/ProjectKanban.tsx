@@ -257,8 +257,7 @@ export function ProjectKanban() {
     if (!projectId) return;
 
     if (hasInvalidWorkspaceCreateDraftId) {
-      navigate({
-        ...appNavigation.toProject(projectId),
+      appNavigation.navigate(appNavigation.toProject(projectId), {
         replace: true,
       });
       return;
@@ -276,11 +275,10 @@ export function ProjectKanban() {
         mode: undefined,
         orgId: undefined,
       };
-      navigate({
-        ...appNavigation.toProjectIssueCreate(projectId),
-        search: nextSearch,
-        replace: true,
-      });
+      appNavigation.navigate(
+        appNavigation.toProjectIssueCreate(projectId, nextSearch),
+        { replace: true }
+      );
       return;
     }
 

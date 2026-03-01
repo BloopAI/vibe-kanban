@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
@@ -36,7 +36,6 @@ interface ActionsProviderProps {
 }
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
-  const navigate = useNavigate();
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const queryClient = useQueryClient();
@@ -71,14 +70,14 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigateToCreateIssue = useCallback(
     (options?: ProjectIssueCreateOptions) => {
       if (!projectId) return;
-      navigate(
+      appNavigation.navigate(
         appNavigation.toProjectIssueCreate(
           projectId,
           toProjectIssueCreateSearch(options)
         )
       );
     },
-    [navigate, projectId, appNavigation]
+    [projectId, appNavigation]
   );
 
   // Get logs panel state
@@ -195,7 +194,6 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(() => {
     return {
-      navigate,
       appNavigation,
       queryClient,
       selectWorkspace,
@@ -221,7 +219,6 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       remoteWorkspaces: userCtx?.workspaces ?? [],
     };
   }, [
-    navigate,
     queryClient,
     selectWorkspace,
     activeWorkspaces,
