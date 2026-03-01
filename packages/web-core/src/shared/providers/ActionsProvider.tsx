@@ -10,7 +10,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { buildIssueCreatePath } from '@/shared/lib/routes/projectSidebarRoutes';
+import {
+  toProjectIssueCreateSearch,
+  type ProjectIssueCreateOptions,
+} from '@/shared/lib/routes/appNavigation';
 import {
   type ActionDefinition,
   type ActionExecutorContext,
@@ -26,6 +29,7 @@ import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 interface ActionsProviderProps {
   children: ReactNode;
@@ -33,6 +37,7 @@ interface ActionsProviderProps {
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)
@@ -64,11 +69,16 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
 
   // Navigate to create issue mode (URL-based navigation)
   const navigateToCreateIssue = useCallback(
-    (options?: Parameters<typeof buildIssueCreatePath>[1]) => {
+    (options?: ProjectIssueCreateOptions) => {
       if (!projectId) return;
-      navigate(buildIssueCreatePath(projectId, options));
+      navigate(
+        appNavigation.toProjectIssueCreate(
+          projectId,
+          toProjectIssueCreateSearch(options)
+        )
+      );
     },
-    [navigate, projectId]
+    [navigate, projectId, appNavigation]
   );
 
   // Get logs panel state

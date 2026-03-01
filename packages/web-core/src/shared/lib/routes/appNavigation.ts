@@ -1,4 +1,5 @@
 import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
+import type { IssuePriority } from 'shared/remote-types';
 import {
   pruneUndefinedSearch,
   searchParamsToKanbanSearch,
@@ -94,6 +95,27 @@ export interface AppNavigation {
     search?: ProjectKanbanSearch
   ): any;
   fromPath(path: string): AppNavigationTarget | null;
+}
+
+export interface ProjectIssueCreateOptions {
+  statusId?: string;
+  priority?: IssuePriority;
+  assigneeIds?: string[];
+  parentIssueId?: string;
+}
+
+export function toProjectIssueCreateSearch(
+  options?: ProjectIssueCreateOptions
+): ProjectKanbanSearch {
+  return {
+    statusId: options?.statusId,
+    priority: options?.priority,
+    assignees:
+      options?.assigneeIds && options.assigneeIds.length > 0
+        ? options.assigneeIds.join(',')
+        : undefined,
+    parentIssueId: options?.parentIssueId,
+  };
 }
 
 function hasSearch(search: ProjectKanbanSearch): boolean {
@@ -275,7 +297,14 @@ function createLocalAppNavigation(): AppNavigation {
         params: { projectId, draftId },
         ...(search ? { search } : {}),
       }) as any,
-    fromPath: (path) => resolveNavigationPath(path, navigation),
+    fromPath: (path) => {
+      const intent = parseNavigationIntent(path);
+      if (!intent) {
+        return null;
+      }
+
+      return resolveNavigationIntent(intent, navigation);
+    },
   };
 
   return navigation;
@@ -341,21 +370,28 @@ function createRemoteAppNavigation(hostId: string): AppNavigation {
         params: { hostId, projectId, draftId },
         ...(search ? { search } : {}),
       }) as any,
-    fromPath: (path) => resolveNavigationPath(path, navigation),
+    fromPath: (path) => {
+      const intent = parseNavigationIntent(path);
+      if (!intent) {
+        return null;
+      }
+
+      const nextHostId = intent.hostId ?? hostId;
+      const hostScopedNavigation =
+        nextHostId === hostId
+          ? navigation
+          : createRemoteAppNavigation(nextHostId);
+      return resolveNavigationIntent(intent, hostScopedNavigation);
+    },
   };
 
   return navigation;
 }
 
-function resolveNavigationPath(
-  path: string,
+function resolveNavigationIntent(
+  intent: NavigationIntent,
   navigation: AppNavigation
 ): AppNavigationTarget | null {
-  const intent = parseNavigationIntent(path);
-  if (!intent) {
-    return null;
-  }
-
   switch (intent.type) {
     case 'root':
       return navigation.toRoot();

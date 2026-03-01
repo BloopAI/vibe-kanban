@@ -18,10 +18,7 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import {
-  buildProjectRootPath,
-  parseProjectSidebarRoute,
-} from '@/shared/lib/routes/projectSidebarRoutes';
+import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -183,7 +180,7 @@ export function SharedAppLayout() {
         }
       }
 
-      navigate(buildProjectRootPath(projectId));
+      navigate(appNavigation.toProject(projectId));
     },
     [navigate, appNavigation]
   );

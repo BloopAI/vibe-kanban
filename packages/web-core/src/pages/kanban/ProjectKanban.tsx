@@ -21,10 +21,7 @@ import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects'
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import {
-  buildIssueCreatePath,
-  buildProjectRootPath,
-} from '@/shared/lib/routes/projectSidebarRoutes';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 import type { ProjectSearch } from '@/project-routes/project-search';
 /**
@@ -248,6 +245,7 @@ export function ProjectKanban() {
   const { projectId, hasInvalidWorkspaceCreateDraftId } = useKanbanNavigation();
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
@@ -260,7 +258,7 @@ export function ProjectKanban() {
 
     if (hasInvalidWorkspaceCreateDraftId) {
       navigate({
-        ...buildProjectRootPath(projectId),
+        ...appNavigation.toProject(projectId),
         replace: true,
       });
       return;
@@ -279,7 +277,7 @@ export function ProjectKanban() {
         orgId: undefined,
       };
       navigate({
-        ...buildIssueCreatePath(projectId),
+        ...appNavigation.toProjectIssueCreate(projectId),
         search: nextSearch,
         replace: true,
       });
@@ -302,6 +300,7 @@ export function ProjectKanban() {
     hasInvalidWorkspaceCreateDraftId,
     setSelectedOrgId,
     navigate,
+    appNavigation,
   ]);
 
   // Find the project and get its organization

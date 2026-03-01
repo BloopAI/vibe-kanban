@@ -30,11 +30,8 @@ import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityCo
 import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
-import { toWorkspaces } from '@/shared/lib/routes/navigation';
-import {
-  buildProjectRootPath,
-  parseProjectSidebarRoute,
-} from '@/shared/lib/routes/projectSidebarRoutes';
+import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 /**
  * Check if a NavbarItem is a divider
@@ -131,6 +128,7 @@ export function NavbarContainer({
   const isOnProjectSubRoute =
     currentProjectRoute !== null && currentProjectRoute.type !== 'closed';
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
   // Find remote workspace linked to current local workspace
@@ -209,19 +207,19 @@ export function NavbarContainer({
   const handleNavigateBack = useCallback(() => {
     if (isOnProjectPage && projectId) {
       // On project sub-route: go back to project root (kanban board)
-      navigate(buildProjectRootPath(projectId));
+      navigate(appNavigation.toProject(projectId));
     } else {
       // Non-project page: go to workspaces
-      navigate(toWorkspaces());
+      navigate(appNavigation.toWorkspaces());
     }
-  }, [navigate, isOnProjectPage, projectId]);
+  }, [navigate, isOnProjectPage, projectId, appNavigation]);
 
   const handleNavigateToBoard = useMemo(() => {
     if (!isOnProjectPage || !projectId) return null;
     return () => {
-      navigate(buildProjectRootPath(projectId));
+      navigate(appNavigation.toProject(projectId));
     };
-  }, [isOnProjectPage, projectId, navigate]);
+  }, [isOnProjectPage, projectId, navigate, appNavigation]);
 
   // Build user popover slot for mobile mode
   const userPopoverSlot = useMemo(() => {

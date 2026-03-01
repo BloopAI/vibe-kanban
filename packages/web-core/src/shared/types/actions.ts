@@ -11,7 +11,7 @@ import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
-import type { IssueCreateRouteOptions } from '@/shared/lib/routes/projectSidebarRoutes';
+import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
 
 // Portable type aliases (avoid importing from component containers)
 export type LogEntry = Extract<
@@ -88,7 +88,7 @@ export interface ActionExecutorContext {
     direction: 'forward' | 'reverse'
   ) => Promise<void>;
   // Kanban navigation (URL-based)
-  navigateToCreateIssue: (options?: IssueCreateRouteOptions) => void;
+  navigateToCreateIssue: (options?: ProjectIssueCreateOptions) => void;
   // Default status for issue creation based on current kanban tab
   defaultCreateStatusId?: string;
   // Current kanban context (for project settings action)

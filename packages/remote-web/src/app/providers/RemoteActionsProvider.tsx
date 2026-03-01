@@ -22,7 +22,7 @@ import {
   type ProjectMutations,
 } from "@/shared/types/actions";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
-import { buildIssueCreatePath } from "@/shared/lib/routes/projectSidebarRoutes";
+import { useAppNavigation } from "@/shared/hooks/useAppNavigation";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
@@ -38,6 +38,7 @@ export function RemoteActionsProvider({
   children,
 }: RemoteActionsProviderProps) {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
   const { projectId } = useParams({ strict: false });
   const userCtx = useContext(UserContext);
@@ -57,8 +58,8 @@ export function RemoteActionsProvider({
 
   const navigateToCreateIssue = useCallback(() => {
     if (!projectId) return;
-    navigate(buildIssueCreatePath(projectId));
-  }, [navigate, projectId]);
+    navigate(appNavigation.toProjectIssueCreate(projectId));
+  }, [navigate, projectId, appNavigation]);
 
   const openStatusSelection = useCallback(async () => {
     noOpSelection("Status selection");

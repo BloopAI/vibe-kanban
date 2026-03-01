@@ -1,14 +1,9 @@
 import { useCallback, useMemo } from 'react';
 import { useLocation, useNavigate, useSearch } from '@tanstack/react-router';
 import type { IssuePriority } from 'shared/remote-types';
-import {
-  buildIssueCreatePath,
-  buildIssuePath,
-  buildIssueWorkspacePath,
-  buildProjectRootPath,
-  buildWorkspaceCreatePath,
-  parseProjectSidebarRoute,
-} from '@/shared/lib/routes/projectSidebarRoutes';
+import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import { toProjectIssueCreateSearch } from '@/shared/lib/routes/appNavigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 function isValidUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -32,6 +27,7 @@ export function useKanbanNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
   const search = useSearch({ strict: false });
+  const appNavigation = useAppNavigation();
 
   const routeState = useMemo(
     () => parseProjectSidebarRoute(location.pathname),
@@ -39,8 +35,6 @@ export function useKanbanNavigation() {
   );
 
   const projectId = routeState?.projectId ?? null;
-  const hostId = routeState?.hostId ?? null;
-
   const issueId = useMemo(() => {
     if (!routeState) return null;
     if (routeState.type === 'issue') return routeState.issueId;
@@ -71,41 +65,47 @@ export function useKanbanNavigation() {
   const openIssue = useCallback(
     (id: string) => {
       if (!projectId) return;
-      navigate(buildIssuePath(projectId, id, hostId));
+      navigate(appNavigation.toProjectIssue(projectId, id));
     },
-    [navigate, projectId, hostId]
+    [navigate, projectId, appNavigation]
   );
 
   const openIssueWorkspace = useCallback(
     (id: string, workspaceAttemptId: string) => {
       if (!projectId) return;
       navigate(
-        buildIssueWorkspacePath(projectId, id, workspaceAttemptId, hostId)
+        appNavigation.toProjectIssueWorkspace(projectId, id, workspaceAttemptId)
       );
     },
-    [navigate, projectId, hostId]
+    [navigate, projectId, appNavigation]
   );
 
   const openWorkspaceCreate = useCallback(
     (workspaceDraftId: string, options?: { issueId?: string | null }) => {
       if (!projectId) return;
       const targetIssueId = options?.issueId ?? issueId;
+      if (targetIssueId) {
+        navigate(
+          appNavigation.toProjectIssueWorkspaceCreate(
+            projectId,
+            targetIssueId,
+            workspaceDraftId
+          )
+        );
+        return;
+      }
+
       navigate(
-        buildWorkspaceCreatePath(
-          projectId,
-          workspaceDraftId,
-          targetIssueId,
-          hostId
-        )
+        appNavigation.toProjectWorkspaceCreate(projectId, workspaceDraftId)
       );
     },
-    [navigate, projectId, issueId, hostId]
+    [navigate, projectId, issueId, appNavigation]
   );
 
   const closePanel = useCallback(() => {
     if (!projectId) return;
-    navigate(buildProjectRootPath(projectId, hostId));
-  }, [navigate, projectId, hostId]);
+    navigate(appNavigation.toProject(projectId));
+  }, [navigate, projectId, appNavigation]);
 
   const startCreate = useCallback(
     (options?: {
@@ -115,9 +115,14 @@ export function useKanbanNavigation() {
       parentIssueId?: string;
     }) => {
       if (!projectId) return;
-      navigate(buildIssueCreatePath(projectId, options, hostId));
+      navigate(
+        appNavigation.toProjectIssueCreate(
+          projectId,
+          toProjectIssueCreateSearch(options)
+        )
+      );
     },
-    [navigate, projectId, hostId]
+    [navigate, projectId, appNavigation]
   );
 
   const updateCreateDefaults = useCallback(
@@ -129,7 +134,7 @@ export function useKanbanNavigation() {
       if (!projectId || !isCreateMode) return;
 
       navigate({
-        ...buildIssueCreatePath(projectId, undefined, hostId),
+        ...appNavigation.toProjectIssueCreate(projectId),
         search: {
           ...search,
           orgId: undefined,
@@ -147,7 +152,7 @@ export function useKanbanNavigation() {
         replace: true,
       });
     },
-    [navigate, projectId, hostId, isCreateMode, search]
+    [navigate, projectId, appNavigation, isCreateMode, search]
   );
 
   return {
