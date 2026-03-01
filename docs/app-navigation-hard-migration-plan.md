@@ -161,7 +161,7 @@ Findings:
    - issue link rendering in
      `shared/components/ui-new/containers/RemoteIssueLink.tsx`
 2. Route-local URL maintenance calls using `navigate({ to: '.' ... })` remain
-   in place for query/state cleanup and are not semantic destination bypasses.
+   in place for query/state cleanup.
 3. App-specific routes in `local-web` and `remote-web` (e.g. account/login/
    upgrade) intentionally stay app-owned and are out of this shared migration.
 
@@ -172,7 +172,8 @@ Decisions locked for implementation:
    - `packages/web-core/src/features/onboarding/ui/LandingPage.tsx`
    - `packages/web-core/src/features/onboarding/ui/OnboardingSignInPage.tsx`
    - `packages/web-core/src/shared/components/ui-new/containers/RemoteIssueLink.tsx`
-4. Keep `navigate({ to: '.' ... })` query/state normalization patterns for now.
+4. Refactor `navigate({ to: '.' ... })` query/state normalization patterns in
+   this migration (do not keep as raw router calls).
 
 ## Workspace Create Transport Rules (No Nav State)
 Create-workspace payloads are transported via scratch drafts, not router
@@ -239,8 +240,10 @@ Direct routing cleanup policy:
 1. Remove TanStack `Link` imports from `web-core` navigation surfaces.
 2. Replace semantic `<Navigate to="...">` and `navigate({ to: '...' })` route
    literals in `web-core` with `AppNavigation` destinations.
-3. Keep route-local normalization (`to: '.'`) where destination semantics are
-   not changing.
+3. Replace route-local normalization (`to: '.'`) with explicit typed helpers in
+   `web-core` (for query/state cleanup on current route).
+4. Add guardrails to block new `navigate({ to: '.' ... })` usage in
+   `web-core` after migration.
 
 `KanbanSearch` migration policy:
 1. Move create defaults (`statusId`, `priority`, `assignees`, `parentIssueId`)
