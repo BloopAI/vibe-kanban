@@ -313,7 +313,7 @@ type State = {
   isTerminalVisible: boolean;
   previewRefreshKey: number;
   // Note: Kanban issue panel state (selectedKanbanIssueId, createMode, etc.)
-  // is now derived from URL via useKanbanNavigation hook
+  // is derived from URL via app navigation route state
 
   // Workspace-specific panel state
   workspacePanelStates: Record<string, WorkspacePanelState>;
@@ -360,7 +360,7 @@ type State = {
   toggleTerminal: () => void;
   setTerminalVisible: (value: boolean) => void;
   // Note: Kanban panel actions (openKanbanIssuePanel, closeKanbanIssuePanel, etc.)
-  // are now handled by navigation via useKanbanNavigation hook
+  // are handled by app navigation
   toggleRightMainPanelMode: (
     mode: RightMainPanelMode,
     workspaceId?: string

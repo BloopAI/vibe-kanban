@@ -1,10 +1,12 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import { useLocation } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
@@ -21,9 +23,17 @@ import {
   bulkUpdateIssues,
   type BulkUpdateIssueItem,
 } from '@/shared/lib/remoteApi';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
+import {
+  type ProjectIssueCreateOptions,
+  resolveKanbanRouteState,
+} from '@/shared/lib/routes/appNavigation';
+import {
+  buildKanbanCreateDefaultsKey,
+  clearKanbanCreateDefaults,
+  setKanbanCreateDefaults,
+} from '@/shared/stores/useKanbanCreateDefaultsStore';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import {
   KanbanProvider,
@@ -104,6 +114,8 @@ function LoadingState() {
  */
 export function KanbanContainer() {
   const { t } = useTranslation('common');
+  const location = useLocation();
+  const appNavigation = useAppNavigation();
 
   // Get data from contexts (set up by WorkspacesLayout)
   const {
@@ -137,14 +149,51 @@ export function KanbanContainer() {
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
-  // Apply filters
-  // Navigation hook for opening issues and create mode
-  const {
-    issueId: selectedKanbanIssueId,
-    openIssue,
-    openIssueWorkspace,
-    startCreate,
-  } = useKanbanNavigation();
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [appNavigation, location.pathname]
+  );
+  const routeState = useMemo(
+    () => resolveKanbanRouteState(destination),
+    [destination]
+  );
+  const selectedKanbanIssueId = routeState.issueId;
+  const createDefaultsKey = useMemo(
+    () => buildKanbanCreateDefaultsKey(routeState.hostId, projectId),
+    [routeState.hostId, projectId]
+  );
+  const openIssue = useCallback(
+    (issueId: string) => {
+      if (routeState.isCreateMode) {
+        clearKanbanCreateDefaults(createDefaultsKey);
+      }
+
+      appNavigation.goToProjectIssue(projectId, issueId);
+    },
+    [routeState.isCreateMode, createDefaultsKey, appNavigation, projectId]
+  );
+  const openIssueWorkspace = useCallback(
+    (issueId: string, workspaceAttemptId: string) => {
+      appNavigation.goToProjectIssueWorkspace(
+        projectId,
+        issueId,
+        workspaceAttemptId
+      );
+    },
+    [appNavigation, projectId]
+  );
+  const startCreate = useCallback(
+    (options?: ProjectIssueCreateOptions) => {
+      setKanbanCreateDefaults(createDefaultsKey, {
+        statusId: options?.statusId,
+        priority: options?.priority,
+        assigneeIds: options?.assigneeIds,
+        parentIssueId: options?.parentIssueId,
+      });
+      appNavigation.goToProjectIssueCreate(projectId);
+    },
+    [createDefaultsKey, appNavigation, projectId]
+  );
 
   // Get setter and executor from ActionsContext
   const {

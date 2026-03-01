@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react';
+import { useParams } from '@tanstack/react-router';
 import {
   PlusIcon,
   ArrowBendUpRightIcon,
@@ -8,7 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useActions } from '@/shared/hooks/useActions';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { resolveRelationshipsForIssue } from '@/shared/lib/resolveRelationships';
 import { IssueRelationshipsSection } from '@vibe/ui/components/IssueRelationshipsSection';
 import {
@@ -25,7 +26,8 @@ interface IssueRelationshipsSectionContainerProps {
 export function IssueRelationshipsSectionContainer({
   issueId,
 }: IssueRelationshipsSectionContainerProps) {
-  const { projectId, openIssue } = useKanbanNavigation();
+  const { projectId } = useParams({ strict: false });
+  const appNavigation = useAppNavigation();
   const { openRelationshipSelection } = useActions();
 
   const {
@@ -47,9 +49,13 @@ export function IssueRelationshipsSectionContainer({
 
   const handleRelationshipClick = useCallback(
     (relatedIssueId: string) => {
-      openIssue(relatedIssueId);
+      if (!projectId) {
+        return;
+      }
+
+      appNavigation.goToProjectIssue(projectId, relatedIssueId);
     },
-    [openIssue]
+    [projectId, appNavigation]
   );
 
   const handleRemoveRelationship = useCallback(

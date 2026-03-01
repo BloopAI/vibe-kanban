@@ -6,6 +6,7 @@ import {
   useReducer,
   useRef,
 } from 'react';
+import { useLocation } from '@tanstack/react-router';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -13,7 +14,6 @@ import type { IssuePriority } from 'shared/remote-types';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { SearchableTagDropdownContainer } from '@/shared/components/SearchableTagDropdownContainer';
@@ -51,6 +51,14 @@ import {
 } from '@/shared/lib/remoteApi';
 import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { resolveKanbanRouteState } from '@/shared/lib/routes/appNavigation';
+import {
+  buildKanbanCreateDefaultsKey,
+  clearKanbanCreateDefaults,
+  patchKanbanCreateDefaults,
+  useKanbanCreateDefaults,
+} from '@/shared/stores/useKanbanCreateDefaultsStore';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
@@ -69,19 +77,8 @@ export function KanbanIssuePanelContainer({
   onExpectIssueOpen,
 }: KanbanIssuePanelContainerProps) {
   const { t } = useTranslation('common');
-  // Navigation hook - URL is single source of truth
-  const {
-    issueId: selectedKanbanIssueId,
-    isCreateMode: kanbanCreateMode,
-    createDefaultStatusId: kanbanCreateDefaultStatusId,
-    createDefaultPriority: kanbanCreateDefaultPriority,
-    createDefaultAssigneeIds: kanbanCreateDefaultAssigneeIds,
-    createDefaultParentIssueId: kanbanCreateDefaultParentIssueId,
-    openIssue,
-    closePanel,
-    updateCreateDefaults,
-    resetCreateDefaults,
-  } = useKanbanNavigation();
+  const location = useLocation();
+  const appNavigation = useAppNavigation();
 
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { workspaces } = useUserContext();
@@ -115,15 +112,88 @@ export function KanbanIssuePanelContainer({
     getPullRequestsForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [appNavigation, location.pathname]
+  );
+  const routeState = useMemo(
+    () => resolveKanbanRouteState(destination),
+    [destination]
+  );
+  const selectedKanbanIssueId = routeState.issueId;
+  const kanbanCreateMode = routeState.isCreateMode;
+  const createDefaultsKey = useMemo(
+    () => buildKanbanCreateDefaultsKey(routeState.hostId, projectId),
+    [routeState.hostId, projectId]
+  );
+  const createDefaults = useKanbanCreateDefaults(createDefaultsKey);
+  const kanbanCreateDefaultStatusId = createDefaults?.statusId ?? null;
+  const kanbanCreateDefaultPriority = createDefaults?.priority ?? null;
+  const kanbanCreateDefaultAssigneeIds = createDefaults?.assigneeIds ?? null;
+  const kanbanCreateDefaultParentIssueId =
+    createDefaults?.parentIssueId ?? null;
+  const openIssue = useCallback(
+    (issueId: string) => {
+      if (kanbanCreateMode) {
+        clearKanbanCreateDefaults(createDefaultsKey);
+      }
+      appNavigation.goToProjectIssue(projectId, issueId);
+    },
+    [kanbanCreateMode, createDefaultsKey, appNavigation, projectId]
+  );
+  const closeKanbanIssuePanel = useCallback(() => {
+    if (kanbanCreateMode) {
+      clearKanbanCreateDefaults(createDefaultsKey);
+    }
+    appNavigation.goToProject(projectId);
+  }, [kanbanCreateMode, createDefaultsKey, appNavigation, projectId]);
+  const updateCreateDefaults = useCallback(
+    (options: {
+      statusId?: string;
+      priority?: IssuePriority | null;
+      assigneeIds?: string[];
+      parentIssueId?: string;
+    }) => {
+      if (!kanbanCreateMode) {
+        return;
+      }
+
+      const patch: {
+        statusId?: string;
+        priority?: IssuePriority | null;
+        assigneeIds?: string[];
+        parentIssueId?: string;
+      } = {};
+      if (options.statusId !== undefined) {
+        patch.statusId = options.statusId;
+      }
+      if (options.priority !== undefined) {
+        patch.priority = options.priority ?? undefined;
+      }
+      if (options.assigneeIds !== undefined) {
+        patch.assigneeIds = options.assigneeIds;
+      }
+      if (options.parentIssueId !== undefined) {
+        patch.parentIssueId = options.parentIssueId;
+      }
+
+      if (Object.keys(patch).length === 0) {
+        return;
+      }
+
+      patchKanbanCreateDefaults(createDefaultsKey, patch);
+    },
+    [kanbanCreateMode, createDefaultsKey]
+  );
+  const resetCreateDefaults = useCallback(() => {
+    clearKanbanCreateDefaults(createDefaultsKey);
+  }, [createDefaultsKey]);
 
   const { isLoading: orgLoading, membersWithProfilesById } = useOrgContext();
 
   // Get action methods from actions context
   const { openStatusSelection, openPrioritySelection, openAssigneeSelection } =
     useActions();
-
-  // Close panel by navigating to project URL (URL is single source of truth)
-  const closeKanbanIssuePanel = closePanel;
 
   // Find selected issue if in edit mode
   const selectedIssue = useMemo(() => {

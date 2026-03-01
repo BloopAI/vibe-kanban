@@ -115,6 +115,26 @@ export type WorkspaceDestination = Extract<
   { kind: WorkspaceDestinationKind }
 >;
 
+export type KanbanSidebarMode =
+  | 'closed'
+  | 'issue-create'
+  | 'issue'
+  | 'issue-workspace'
+  | 'workspace-create';
+
+export interface KanbanRouteState {
+  hostId: string | null;
+  projectId: string | null;
+  issueId: string | null;
+  workspaceId: string | null;
+  draftId: string | null;
+  sidebarMode: KanbanSidebarMode | null;
+  isCreateMode: boolean;
+  isWorkspaceCreateMode: boolean;
+  hasInvalidWorkspaceCreateDraftId: boolean;
+  isPanelOpen: boolean;
+}
+
 export function getDestinationHostId(
   destination: AppDestination | null
 ): string | null {
@@ -167,4 +187,90 @@ export function getProjectDestination(
   destination: AppDestination | null
 ): ProjectDestination | null {
   return isProjectDestination(destination) ? destination : null;
+}
+
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
+export function resolveKanbanRouteState(
+  destination: AppDestination | null
+): KanbanRouteState {
+  const projectDestination = getProjectDestination(destination);
+  const projectId = projectDestination?.projectId ?? null;
+  const hostId = getDestinationHostId(projectDestination);
+
+  const issueId = (() => {
+    if (!projectDestination) {
+      return null;
+    }
+
+    switch (projectDestination.kind) {
+      case 'project-issue':
+      case 'project-issue-workspace':
+      case 'project-issue-workspace-create':
+        return projectDestination.issueId;
+      default:
+        return null;
+    }
+  })();
+
+  const workspaceId =
+    projectDestination?.kind === 'project-issue-workspace'
+      ? projectDestination.workspaceId
+      : null;
+
+  const rawDraftId =
+    projectDestination?.kind === 'project-issue-workspace-create' ||
+    projectDestination?.kind === 'project-workspace-create'
+      ? projectDestination.draftId
+      : null;
+  const draftId = rawDraftId && isValidUuid(rawDraftId) ? rawDraftId : null;
+
+  const hasInvalidWorkspaceCreateDraftId =
+    (projectDestination?.kind === 'project-issue-workspace-create' ||
+      projectDestination?.kind === 'project-workspace-create') &&
+    rawDraftId !== null &&
+    !draftId;
+
+  const isCreateMode = projectDestination?.kind === 'project-issue-create';
+  const isWorkspaceCreateMode =
+    (projectDestination?.kind === 'project-issue-workspace-create' ||
+      projectDestination?.kind === 'project-workspace-create') &&
+    draftId !== null;
+
+  const sidebarMode = (() => {
+    if (!projectDestination) {
+      return null;
+    }
+
+    switch (projectDestination.kind) {
+      case 'project':
+        return 'closed';
+      case 'project-issue-create':
+        return 'issue-create';
+      case 'project-issue':
+        return 'issue';
+      case 'project-issue-workspace':
+        return 'issue-workspace';
+      case 'project-issue-workspace-create':
+      case 'project-workspace-create':
+        return 'workspace-create';
+    }
+  })();
+
+  return {
+    hostId,
+    projectId,
+    issueId,
+    workspaceId,
+    draftId,
+    sidebarMode,
+    isCreateMode,
+    isWorkspaceCreateMode,
+    hasInvalidWorkspaceCreateDraftId,
+    isPanelOpen: !!projectDestination && projectDestination.kind !== 'project',
+  };
 }

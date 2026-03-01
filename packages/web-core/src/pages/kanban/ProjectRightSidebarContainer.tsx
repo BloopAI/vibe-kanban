@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
+import { useLocation } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownIcon, ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
@@ -18,7 +19,6 @@ import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/Me
 import { CreateModeProvider } from '@/integrations/CreateModeProvider';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import { useAttempt } from '@/shared/hooks/useAttempt';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from './KanbanIssuePanelContainer';
@@ -29,6 +29,11 @@ import {
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { resolveKanbanRouteState } from '@/shared/lib/routes/appNavigation';
+import {
+  buildKanbanCreateDefaultsKey,
+  clearKanbanCreateDefaults,
+} from '@/shared/stores/useKanbanCreateDefaultsStore';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
@@ -134,9 +139,17 @@ function WorkspaceSessionPanel({
   workspaceId,
   onClose,
 }: WorkspaceSessionPanelProps) {
+  const location = useLocation();
   const appNavigation = useAppNavigation();
-  const { issueId: routeIssueId, openIssue } = useKanbanNavigation();
   const { projectId, getIssue } = useProjectContext();
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [appNavigation, location.pathname]
+  );
+  const routeState = useMemo(
+    () => resolveKanbanRouteState(destination),
+    [destination]
+  );
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const conversationListRef = useRef<ConversationListHandle>(null);
@@ -173,7 +186,7 @@ function WorkspaceSessionPanel({
   );
 
   const linkedIssueId = linkedWorkspace?.issue_id ?? null;
-  const breadcrumbIssueId = routeIssueId ?? linkedIssueId;
+  const breadcrumbIssueId = routeState.issueId ?? linkedIssueId;
 
   const issueSimpleId = useMemo(() => {
     if (!breadcrumbIssueId) return null;
@@ -183,12 +196,12 @@ function WorkspaceSessionPanel({
   const workspaceBranch = workspace?.branch ?? workspaceSummary?.branch ?? null;
 
   const handleOpenIssuePanel = useCallback(() => {
-    if (breadcrumbIssueId) {
-      openIssue(breadcrumbIssueId);
+    if (projectId && breadcrumbIssueId) {
+      appNavigation.goToProjectIssue(projectId, breadcrumbIssueId);
       return;
     }
     onClose();
-  }, [breadcrumbIssueId, openIssue, onClose]);
+  }, [projectId, breadcrumbIssueId, appNavigation, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
     appNavigation.goToWorkspace(workspaceId);
@@ -337,22 +350,76 @@ function WorkspaceSessionPanel({
 }
 
 export function ProjectRightSidebarContainer() {
+  const location = useLocation();
   const appNavigation = useAppNavigation();
   const {
+    projectId,
     getIssue,
     isLoading: isProjectLoading,
     issuesById,
   } = useProjectContext();
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [appNavigation, location.pathname]
+  );
+  const routeState = useMemo(
+    () => resolveKanbanRouteState(destination),
+    [destination]
+  );
   const {
     issueId,
     workspaceId,
     draftId,
     isCreateMode,
     isWorkspaceCreateMode,
-    openIssue,
-    openIssueWorkspace,
-    closePanel,
-  } = useKanbanNavigation();
+    hostId,
+  } = routeState;
+  const createDefaultsKey = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+
+    return buildKanbanCreateDefaultsKey(hostId, projectId);
+  }, [hostId, projectId]);
+  const openIssue = useCallback(
+    (targetIssueId: string) => {
+      if (!projectId) {
+        return;
+      }
+
+      if (isCreateMode && createDefaultsKey) {
+        clearKanbanCreateDefaults(createDefaultsKey);
+      }
+
+      appNavigation.goToProjectIssue(projectId, targetIssueId);
+    },
+    [projectId, isCreateMode, createDefaultsKey, appNavigation]
+  );
+  const openIssueWorkspace = useCallback(
+    (targetIssueId: string, targetWorkspaceId: string) => {
+      if (!projectId) {
+        return;
+      }
+
+      appNavigation.goToProjectIssueWorkspace(
+        projectId,
+        targetIssueId,
+        targetWorkspaceId
+      );
+    },
+    [projectId, appNavigation]
+  );
+  const closePanel = useCallback(() => {
+    if (!projectId) {
+      return;
+    }
+
+    if (isCreateMode && createDefaultsKey) {
+      clearKanbanCreateDefaults(createDefaultsKey);
+    }
+
+    appNavigation.goToProject(projectId);
+  }, [projectId, isCreateMode, createDefaultsKey, appNavigation]);
   const [expectedIssueId, setExpectedIssueId] = useState<string | null>(null);
 
   const markExpectedIssue = useCallback((nextIssueId: string) => {

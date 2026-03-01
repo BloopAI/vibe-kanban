@@ -7,7 +7,7 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
@@ -36,7 +36,7 @@ export function IssueWorkspacesSectionContainer({
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
   const { projectId } = useParams({ strict: false });
-  const { openIssueWorkspace } = useKanbanNavigation();
+  const appNavigation = useAppNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { userId } = useAuth();
   const { workspaces } = useUserContext();
@@ -190,11 +190,15 @@ export function IssueWorkspacesSectionContainer({
   // Handle clicking a workspace card to open it
   const handleWorkspaceClick = useCallback(
     (localWorkspaceId: string | null) => {
-      if (localWorkspaceId) {
-        openIssueWorkspace(issueId, localWorkspaceId);
+      if (projectId && localWorkspaceId) {
+        appNavigation.goToProjectIssueWorkspace(
+          projectId,
+          issueId,
+          localWorkspaceId
+        );
       }
     },
-    [openIssueWorkspace, issueId]
+    [projectId, issueId, appNavigation]
   );
 
   // Handle unlinking a workspace from the issue
