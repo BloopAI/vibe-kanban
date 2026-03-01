@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { sessionsApi } from '@/shared/lib/api';
 import type { Session } from 'shared/types';
 
@@ -38,6 +38,7 @@ export function useWorkspaceSessions(
   const [selection, setSelection] = useState<SessionSelection | undefined>(
     undefined
   );
+  const prevWorkspaceIdRef = useRef(workspaceId);
 
   const { data: sessions = [], isLoading } = useQuery<Session[]>({
     queryKey: ['workspaceSessions', workspaceId],
@@ -49,12 +50,15 @@ export function useWorkspaceSessions(
   // This replaces two separate effects that had a race condition where the reset
   // effect would fire after auto-select when sessions were cached, undoing the selection.
   useEffect(() => {
+    const workspaceChanged = prevWorkspaceIdRef.current !== workspaceId;
+    prevWorkspaceIdRef.current = workspaceId;
+
     if (sessions.length > 0) {
       // Sessions are ordered by most recently used, so first is the most recently used
       // Always select first session when sessions are available for this workspace
-      // Only auto-select if not in new session mode
+      // Only preserve new session mode within the same workspace
       setSelection((prev) => {
-        if (prev?.mode === 'new') return prev;
+        if (prev?.mode === 'new' && !workspaceChanged) return prev;
         return { mode: 'existing', sessionId: sessions[0].id };
       });
     } else {
