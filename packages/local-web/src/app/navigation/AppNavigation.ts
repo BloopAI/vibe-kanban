@@ -91,7 +91,6 @@ export function createLocalAppNavigation(): AppNavigation {
   };
 
   const navigation: AppNavigation = {
-    navigate: navigateTo,
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
     goToRoot: (transition) => navigateTo({ kind: 'root' }, transition),
     goToOnboarding: (transition) =>

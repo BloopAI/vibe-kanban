@@ -3,7 +3,10 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import type { AppDestination } from '@/shared/lib/routes/appNavigation';
+import {
+  goToAppDestination,
+  type AppDestination,
+} from '@/shared/lib/routes/appNavigation';
 const DEFAULT_DESTINATION: AppDestination = { kind: 'workspaces-create' };
 
 export function RootRedirectPage() {
@@ -49,7 +52,7 @@ export function RootRedirectPage() {
       return;
     }
 
-    appNavigation.navigate(destination, { replace: true });
+    goToAppDestination(appNavigation, destination, { replace: true });
   }, [appNavigation, config, destination, loading]);
 
   if (loading || !config || !destination) {

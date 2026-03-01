@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useLocation } from '@tanstack/react-router';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { goToAppDestination } from '@/shared/lib/routes/appNavigation';
 
 const globalVisited: string[] = [];
 
@@ -30,9 +31,12 @@ export function usePreviousPath() {
       return;
     }
 
-    appNavigation.navigate(
-      appNavigation.resolveFromPath(lastNonSettingsPath) ??
-        ({ kind: 'root' } as const)
-    );
+    const resolvedPath = appNavigation.resolveFromPath(lastNonSettingsPath);
+    if (!resolvedPath) {
+      appNavigation.goToRoot();
+      return;
+    }
+
+    goToAppDestination(appNavigation, resolvedPath);
   }, [appNavigation]);
 }

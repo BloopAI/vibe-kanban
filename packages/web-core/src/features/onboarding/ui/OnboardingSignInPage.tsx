@@ -14,7 +14,10 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import type { AppDestination } from '@/shared/lib/routes/appNavigation';
+import {
+  goToAppDestination,
+  type AppDestination,
+} from '@/shared/lib/routes/appNavigation';
 
 const COMPARISON_ROWS = [
   {
@@ -172,7 +175,7 @@ export function OnboardingSignInPage() {
       destination_project_id:
         destination.kind === 'project' ? destination.projectId : null,
     });
-    appNavigation.navigate(destination, { replace: true });
+    goToAppDestination(appNavigation, destination, { replace: true });
   };
 
   const handleProviderSignIn = async (provider: OAuthProvider) => {

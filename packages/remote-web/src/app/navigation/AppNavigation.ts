@@ -152,7 +152,6 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
   };
 
   const navigation: AppNavigation = {
-    navigate: navigateTo,
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
     goToRoot: (transition) => navigateTo({ kind: "root" }, transition),
     goToOnboarding: (transition) =>
@@ -233,7 +232,6 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
   };
 
   const navigation: AppNavigation = {
-    navigate: navigateTo,
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
     goToRoot: (transition) => navigateTo({ kind: "root" }, transition),
     goToOnboarding: (transition) =>

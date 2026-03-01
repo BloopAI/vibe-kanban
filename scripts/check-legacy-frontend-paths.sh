@@ -94,3 +94,22 @@ if [ -n "$dot_navigation_hits" ]; then
 fi
 
 echo "✅ No navigate({ to: '.' ... }) usage in web-core."
+
+echo "▶️  Checking web-core for direct appNavigation.navigate(...) usage..."
+
+app_navigation_navigate_hits="$(
+  find "$REPO_ROOT/packages/web-core/src" \
+    -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    -print0 |
+    xargs -0 grep -nE 'appNavigation[[:space:]]*\.[[:space:]]*navigate[[:space:]]*\(' || true
+)"
+
+if [ -n "$app_navigation_navigate_hits" ]; then
+  echo "❌ Found direct appNavigation.navigate(...) usage in web-core:"
+  printf '%s\n' "$app_navigation_navigate_hits"
+  echo ""
+  echo "Use goTo* methods or goToAppDestination(...) instead."
+  exit 1
+fi
+
+echo "✅ No direct appNavigation.navigate(...) usage in web-core."

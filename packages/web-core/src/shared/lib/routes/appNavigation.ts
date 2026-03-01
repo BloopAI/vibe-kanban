@@ -44,10 +44,6 @@ export type NavigationTransition = {
 };
 
 export interface AppNavigation {
-  navigate(
-    destination: AppDestination,
-    transition?: NavigationTransition
-  ): void;
   resolveFromPath(path: string): AppDestination | null;
   goToRoot(transition?: NavigationTransition): void;
   goToOnboarding(transition?: NavigationTransition): void;
@@ -220,4 +216,73 @@ export function resolveAppDestinationFromPath(
   }
 
   return null;
+}
+
+export function goToAppDestination(
+  appNavigation: AppNavigation,
+  destination: AppDestination,
+  transition?: NavigationTransition
+): void {
+  switch (destination.kind) {
+    case 'root':
+      appNavigation.goToRoot(transition);
+      return;
+    case 'onboarding':
+      appNavigation.goToOnboarding(transition);
+      return;
+    case 'onboarding-sign-in':
+      appNavigation.goToOnboardingSignIn(transition);
+      return;
+    case 'migrate':
+      appNavigation.goToMigrate(transition);
+      return;
+    case 'workspaces':
+      appNavigation.goToWorkspaces(transition);
+      return;
+    case 'workspaces-create':
+      appNavigation.goToWorkspacesCreate(transition);
+      return;
+    case 'workspace':
+      appNavigation.goToWorkspace(destination.workspaceId, transition);
+      return;
+    case 'workspace-vscode':
+      appNavigation.goToWorkspaceVsCode(destination.workspaceId, transition);
+      return;
+    case 'project':
+      appNavigation.goToProject(destination.projectId, transition);
+      return;
+    case 'project-issue-create':
+      appNavigation.goToProjectIssueCreate(destination.projectId, transition);
+      return;
+    case 'project-issue':
+      appNavigation.goToProjectIssue(
+        destination.projectId,
+        destination.issueId,
+        transition
+      );
+      return;
+    case 'project-issue-workspace':
+      appNavigation.goToProjectIssueWorkspace(
+        destination.projectId,
+        destination.issueId,
+        destination.workspaceId,
+        transition
+      );
+      return;
+    case 'project-issue-workspace-create':
+      appNavigation.goToProjectIssueWorkspaceCreate(
+        destination.projectId,
+        destination.issueId,
+        destination.draftId,
+        transition
+      );
+      return;
+    case 'project-workspace-create':
+      appNavigation.goToProjectWorkspaceCreate(
+        destination.projectId,
+        destination.draftId,
+        transition
+      );
+      return;
+  }
 }

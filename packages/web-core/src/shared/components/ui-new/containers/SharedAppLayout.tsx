@@ -19,6 +19,7 @@ import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import { goToAppDestination } from '@/shared/lib/routes/appNavigation';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -174,7 +175,7 @@ export function SharedAppLayout() {
       if (rememberedPath) {
         const resolvedPath = appNavigation.resolveFromPath(rememberedPath);
         if (resolvedPath) {
-          appNavigation.navigate(resolvedPath);
+          goToAppDestination(appNavigation, resolvedPath);
           return;
         }
       }

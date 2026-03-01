@@ -388,6 +388,11 @@ Completed so far:
 10. Added guardrail for route-local normalization patterns:
     - `scripts/check-legacy-frontend-paths.sh` now fails when
       `navigate({ to: '.' ... })` is found in `packages/web-core/src`.
+11. Removed direct destination-based navigation calls from `web-core`:
+    - migrated remaining `appNavigation.navigate(destination, ...)` usage to
+      `goToAppDestination(...)`.
+    - added a guardrail to fail on direct `appNavigation.navigate(...)`
+      usage in `packages/web-core/src`.
 
 Completed:
 
