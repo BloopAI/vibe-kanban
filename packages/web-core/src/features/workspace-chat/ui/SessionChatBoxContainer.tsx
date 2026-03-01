@@ -486,7 +486,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       if (!isSlashCommand) {
         reviewContext?.clearComments();
       }
-      onScrollToBottom();
     }
   }, [
     send,
@@ -498,7 +497,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isNewSessionMode,
     clearDraft,
     reviewContext,
-    onScrollToBottom,
   ]);
 
   // Track previous process count for queue refresh
