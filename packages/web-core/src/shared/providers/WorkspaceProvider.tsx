@@ -14,6 +14,7 @@ import {
   toWorkspace,
   toWorkspacesCreate,
 } from '@/shared/lib/routes/navigation';
+import { isWorkspacesCreatePathname } from '@/shared/lib/routes/pathResolution';
 import type { DiffStats } from 'shared/types';
 
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -29,7 +30,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const queryClient = useQueryClient();
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
-  const isCreateMode = location.pathname === '/workspaces/create';
+  const isCreateMode = isWorkspacesCreatePathname(location.pathname);
 
   // Fetch workspaces for sidebar display
   const {

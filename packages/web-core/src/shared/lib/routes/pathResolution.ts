@@ -39,28 +39,88 @@ function hasSearch(search: ProjectKanbanSearch): boolean {
   return Object.keys(search).length > 0;
 }
 
+function decodePathSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+export interface ParsedAppPathname {
+  hostId: string | null;
+  segments: string[];
+  offset: number;
+}
+
+export function parseAppPathname(pathname: string): ParsedAppPathname {
+  const segments = pathname.split('/').filter(Boolean).map(decodePathSegment);
+  const hostId = segments[0] === 'hosts' && segments[1] ? segments[1] : null;
+  const offset = hostId ? 2 : 0;
+
+  return { hostId, segments, offset };
+}
+
+export function isProjectPathname(pathname: string): boolean {
+  const { segments, offset } = parseAppPathname(pathname);
+  return segments[offset] === 'projects' && Boolean(segments[offset + 1]);
+}
+
+export function getProjectIdFromPathname(pathname: string): string | null {
+  const { segments, offset } = parseAppPathname(pathname);
+  if (segments[offset] !== 'projects' || !segments[offset + 1]) {
+    return null;
+  }
+
+  return segments[offset + 1];
+}
+
+export function isWorkspacesPathname(pathname: string): boolean {
+  const { segments, offset } = parseAppPathname(pathname);
+  return segments[offset] === 'workspaces';
+}
+
+export function isWorkspacesCreatePathname(pathname: string): boolean {
+  const { segments, offset } = parseAppPathname(pathname);
+  return (
+    segments.length === offset + 2 &&
+    segments[offset] === 'workspaces' &&
+    segments[offset + 1] === 'create'
+  );
+}
+
 export function resolveAppPath(path: string): RouteTarget | null {
   const url = new URL(path, 'http://localhost');
   const pathname = url.pathname;
-  const segments = pathname.split('/').filter(Boolean);
+  const { segments, hostId, offset } = parseAppPathname(pathname);
 
   if (pathname === '/') return toRoot();
   if (pathname === '/onboarding') return toOnboarding();
   if (pathname === '/onboarding/sign-in') return toOnboardingSignIn();
   if (pathname === '/migrate') return toMigrate();
-  if (pathname === '/workspaces') return toWorkspaces();
-  if (pathname === '/workspaces/create') return toWorkspacesCreate();
-
   if (
-    segments.length === 3 &&
-    segments[0] === 'workspaces' &&
-    segments[2] === 'vscode'
+    (offset === 0 && pathname === '/workspaces') ||
+    (hostId && pathname === `/hosts/${hostId}/workspaces`)
   ) {
-    return toWorkspaceVsCode(segments[1]);
+    return toWorkspaces(hostId);
+  }
+  if (
+    (offset === 0 && pathname === '/workspaces/create') ||
+    (hostId && pathname === `/hosts/${hostId}/workspaces/create`)
+  ) {
+    return toWorkspacesCreate(hostId);
   }
 
-  if (segments.length === 2 && segments[0] === 'workspaces') {
-    return toWorkspace(segments[1]);
+  if (
+    segments.length === offset + 3 &&
+    segments[offset] === 'workspaces' &&
+    segments[offset + 2] === 'vscode'
+  ) {
+    return toWorkspaceVsCode(segments[offset + 1], hostId);
+  }
+
+  if (segments.length === offset + 2 && segments[offset] === 'workspaces') {
+    return toWorkspace(segments[offset + 1], hostId);
   }
 
   const kanbanSearch = pruneUndefinedSearch(
@@ -68,56 +128,68 @@ export function resolveAppPath(path: string): RouteTarget | null {
   );
   const projectSearch = hasSearch(kanbanSearch) ? kanbanSearch : undefined;
 
-  if (segments[0] === 'projects' && segments[1]) {
-    const projectId = segments[1];
+  if (segments[offset] === 'projects' && segments[offset + 1]) {
+    const projectId = segments[offset + 1];
 
-    if (segments.length === 2) {
-      return toProject(projectId, projectSearch);
+    if (segments.length === offset + 2) {
+      return toProject(projectId, projectSearch, hostId);
     }
 
-    if (segments[2] === 'issues' && segments[3] === 'new') {
-      return toProjectIssueCreate(projectId, projectSearch);
+    if (segments[offset + 2] === 'issues' && segments[offset + 3] === 'new') {
+      return toProjectIssueCreate(projectId, projectSearch, hostId);
     }
 
     if (
-      segments[2] === 'issues' &&
-      segments[3] &&
-      segments[4] === 'workspaces' &&
-      segments[5] === 'create' &&
-      segments[6]
+      segments[offset + 2] === 'issues' &&
+      segments[offset + 3] &&
+      segments[offset + 4] === 'workspaces' &&
+      segments[offset + 5] === 'create' &&
+      segments[offset + 6]
     ) {
       return toProjectIssueWorkspaceCreate(
         projectId,
-        segments[3],
-        segments[6],
-        projectSearch
+        segments[offset + 3],
+        segments[offset + 6],
+        projectSearch,
+        hostId
       );
     }
 
     if (
-      segments[2] === 'issues' &&
-      segments[3] &&
-      segments[4] === 'workspaces' &&
-      segments[5]
+      segments[offset + 2] === 'issues' &&
+      segments[offset + 3] &&
+      segments[offset + 4] === 'workspaces' &&
+      segments[offset + 5]
     ) {
       return toProjectIssueWorkspace(
         projectId,
-        segments[3],
-        segments[5],
-        projectSearch
+        segments[offset + 3],
+        segments[offset + 5],
+        projectSearch,
+        hostId
       );
     }
 
-    if (segments[2] === 'issues' && segments[3]) {
-      return toProjectIssue(projectId, segments[3], projectSearch);
+    if (segments[offset + 2] === 'issues' && segments[offset + 3]) {
+      return toProjectIssue(
+        projectId,
+        segments[offset + 3],
+        projectSearch,
+        hostId
+      );
     }
 
     if (
-      segments[2] === 'workspaces' &&
-      segments[3] === 'create' &&
-      segments[4]
+      segments[offset + 2] === 'workspaces' &&
+      segments[offset + 3] === 'create' &&
+      segments[offset + 4]
     ) {
-      return toProjectWorkspaceCreate(projectId, segments[4], projectSearch);
+      return toProjectWorkspaceCreate(
+        projectId,
+        segments[offset + 4],
+        projectSearch,
+        hostId
+      );
     }
   }
 

@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import { siDiscord, siGithub } from "simple-icons";
 import { AppBar, type AppBarHostStatus } from "@vibe/ui/components/AppBar";
 import { XIcon, PlusIcon, HouseIcon, KanbanIcon } from "@phosphor-icons/react";
@@ -36,11 +36,6 @@ import {
   CreateRemoteProjectDialog,
   type CreateRemoteProjectResult,
 } from "@/shared/dialogs/org/CreateRemoteProjectDialog";
-import {
-  getActiveRelayHostId,
-  parseRelayHostIdFromSearch,
-  setActiveRelayHostId,
-} from "@remote/shared/lib/activeRelayHost";
 
 interface RemoteAppShellProps {
   children: ReactNode;
@@ -59,6 +54,7 @@ function getHostInitials(name: string): string {
 export function RemoteAppShell({ children }: RemoteAppShellProps) {
   const navigate = useNavigate();
   const location = useLocation();
+  const { hostId: routeHostId } = useParams({ strict: false });
   const { isSignedIn } = useAuth();
   const isWorkspaceContextRoute = location.pathname.includes("/workspaces");
 
@@ -130,48 +126,62 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     organizations.find((organization) => organization.id === selectedOrgId)
       ?.name ?? null;
 
-  const isWorkspacesActive = location.pathname.startsWith("/workspaces");
-  const hostIdFromSearch = useMemo(
-    () => parseRelayHostIdFromSearch(location.searchStr),
-    [location.searchStr],
-  );
-
-  useEffect(() => {
-    if (hostIdFromSearch) {
-      setActiveRelayHostId(hostIdFromSearch);
+  const isWorkspacesActive = location.pathname.includes("/workspaces");
+  const activeHostId = routeHostId ?? null;
+  const preferredHostId = useMemo(() => {
+    if (routeHostId) {
+      return routeHostId;
     }
-  }, [hostIdFromSearch]);
 
-  const activeHostId = useMemo(() => {
-    if (!isWorkspacesActive) {
+    const onlineHost = relayHosts.find((host) => host.status === "online");
+    if (onlineHost) {
+      return onlineHost.id;
+    }
+
+    return relayHosts[0]?.id ?? null;
+  }, [relayHosts, routeHostId]);
+
+  const activeProjectId = useMemo(() => {
+    const segments = location.pathname.split("/").filter(Boolean);
+    const projectSegmentIndex = segments.indexOf("projects");
+    if (projectSegmentIndex === -1) {
       return null;
     }
 
-    return hostIdFromSearch ?? getActiveRelayHostId();
-  }, [hostIdFromSearch, isWorkspacesActive]);
-
-  const activeProjectId = location.pathname.startsWith("/projects/")
-    ? (location.pathname.split("/")[2] ?? null)
-    : null;
+    return segments[projectSegmentIndex + 1] ?? null;
+  }, [location.pathname]);
 
   const handleWorkspacesClick = useCallback(() => {
-    const currentHostId = getActiveRelayHostId();
-    if (currentHostId) {
-      navigate({ to: "/workspaces", search: { hostId: currentHostId } });
+    if (preferredHostId) {
+      navigate({
+        to: "/hosts/$hostId/workspaces",
+        params: { hostId: preferredHostId },
+      });
       return;
     }
 
-    navigate({ to: "/workspaces" });
-  }, [navigate]);
+    void SettingsDialog.show({
+      initialSection: "relay",
+      sections: REMOTE_SETTINGS_SECTIONS,
+    });
+  }, [navigate, preferredHostId]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
+      if (!preferredHostId) {
+        void SettingsDialog.show({
+          initialSection: "relay",
+          sections: REMOTE_SETTINGS_SECTIONS,
+        });
+        return;
+      }
+
       navigate({
-        to: "/projects/$projectId",
-        params: { projectId },
+        to: "/hosts/$hostId/projects/$projectId",
+        params: { hostId: preferredHostId, projectId },
       });
     },
-    [navigate],
+    [navigate, preferredHostId],
   );
 
   const handleCreateProject = useCallback(async () => {
@@ -187,15 +197,21 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
 
       if (result.action === "created" && result.project) {
         void projectsQuery.refetch();
+        if (!preferredHostId) {
+          return;
+        }
         navigate({
-          to: "/projects/$projectId",
-          params: { projectId: result.project.id },
+          to: "/hosts/$hostId/projects/$projectId",
+          params: {
+            hostId: preferredHostId,
+            projectId: result.project.id,
+          },
         });
       }
     } catch {
       // Dialog cancelled
     }
-  }, [activeOrganizationId, navigate, projectsQuery]);
+  }, [activeOrganizationId, navigate, preferredHostId, projectsQuery]);
 
   const handleCreateOrg = useCallback(async () => {
     try {
@@ -213,10 +229,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
   const handleHostClick = useCallback(
     (hostId: string, status: AppBarHostStatus) => {
       if (status === "online") {
-        setActiveRelayHostId(hostId);
         navigate({
-          to: "/workspaces",
-          search: { hostId },
+          to: "/hosts/$hostId/workspaces",
+          params: { hostId },
         });
         return;
       }

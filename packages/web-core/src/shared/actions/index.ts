@@ -71,6 +71,10 @@ import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
+import {
+  toWorkspaces,
+  toWorkspacesCreate,
+} from '@/shared/lib/routes/navigation';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -176,7 +180,7 @@ export const Actions = {
           : undefined;
 
         ctx.navigate({
-          to: '/workspaces/create',
+          ...toWorkspacesCreate(),
           state: (prev) => ({
             ...prev,
             initialPrompt: firstMessage,
@@ -189,7 +193,7 @@ export const Actions = {
         });
       } catch {
         // Fallback to creating without the prompt/repos
-        ctx.navigate({ to: '/workspaces/create' });
+        ctx.navigate(toWorkspacesCreate());
       }
     },
   },
@@ -308,7 +312,7 @@ export const Actions = {
           if (nextWorkspaceId) {
             ctx.selectWorkspace(nextWorkspaceId);
           } else {
-            ctx.navigate({ to: '/workspaces/create' });
+            ctx.navigate(toWorkspacesCreate());
           }
         }
       }
@@ -351,7 +355,7 @@ export const Actions = {
             }
           : undefined;
         ctx.navigate({
-          to: '/workspaces/create',
+          ...toWorkspacesCreate(),
           state: (prev) => ({
             ...prev,
             preferredRepos: repos.map((r) => ({
@@ -362,7 +366,7 @@ export const Actions = {
           }),
         });
       } catch {
-        ctx.navigate({ to: '/workspaces/create' });
+        ctx.navigate(toWorkspacesCreate());
       }
     },
   },
@@ -375,7 +379,7 @@ export const Actions = {
     shortcut: 'G N',
     requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
-      ctx.navigate({ to: '/workspaces/create' });
+      ctx.navigate(toWorkspacesCreate());
     },
   },
 
@@ -452,7 +456,7 @@ export const Actions = {
       ctx.queryClient.removeQueries({ queryKey: organizationKeys.all });
       // Invalidate user-system query to update loginStatus/useAuth state
       await ctx.queryClient.invalidateQueries({ queryKey: ['user-system'] });
-      ctx.navigate({ to: '/workspaces' });
+      ctx.navigate(toWorkspaces());
     },
   } satisfies GlobalActionDefinition,
 

@@ -39,6 +39,7 @@ export function useKanbanNavigation() {
   );
 
   const projectId = routeState?.projectId ?? null;
+  const hostId = routeState?.hostId ?? null;
 
   const issueId = useMemo(() => {
     if (!routeState) return null;
@@ -70,17 +71,19 @@ export function useKanbanNavigation() {
   const openIssue = useCallback(
     (id: string) => {
       if (!projectId) return;
-      navigate(buildIssuePath(projectId, id));
+      navigate(buildIssuePath(projectId, id, hostId));
     },
-    [navigate, projectId]
+    [navigate, projectId, hostId]
   );
 
   const openIssueWorkspace = useCallback(
     (id: string, workspaceAttemptId: string) => {
       if (!projectId) return;
-      navigate(buildIssueWorkspacePath(projectId, id, workspaceAttemptId));
+      navigate(
+        buildIssueWorkspacePath(projectId, id, workspaceAttemptId, hostId)
+      );
     },
-    [navigate, projectId]
+    [navigate, projectId, hostId]
   );
 
   const openWorkspaceCreate = useCallback(
@@ -88,16 +91,21 @@ export function useKanbanNavigation() {
       if (!projectId) return;
       const targetIssueId = options?.issueId ?? issueId;
       navigate(
-        buildWorkspaceCreatePath(projectId, workspaceDraftId, targetIssueId)
+        buildWorkspaceCreatePath(
+          projectId,
+          workspaceDraftId,
+          targetIssueId,
+          hostId
+        )
       );
     },
-    [navigate, projectId, issueId]
+    [navigate, projectId, issueId, hostId]
   );
 
   const closePanel = useCallback(() => {
     if (!projectId) return;
-    navigate(buildProjectRootPath(projectId));
-  }, [navigate, projectId]);
+    navigate(buildProjectRootPath(projectId, hostId));
+  }, [navigate, projectId, hostId]);
 
   const startCreate = useCallback(
     (options?: {
@@ -107,9 +115,9 @@ export function useKanbanNavigation() {
       parentIssueId?: string;
     }) => {
       if (!projectId) return;
-      navigate(buildIssueCreatePath(projectId, options));
+      navigate(buildIssueCreatePath(projectId, options, hostId));
     },
-    [navigate, projectId]
+    [navigate, projectId, hostId]
   );
 
   const updateCreateDefaults = useCallback(
@@ -121,7 +129,7 @@ export function useKanbanNavigation() {
       if (!projectId || !isCreateMode) return;
 
       navigate({
-        ...buildIssueCreatePath(projectId),
+        ...buildIssueCreatePath(projectId, undefined, hostId),
         search: {
           ...search,
           orgId: undefined,
@@ -139,7 +147,7 @@ export function useKanbanNavigation() {
         replace: true,
       });
     },
-    [navigate, projectId, isCreateMode, search]
+    [navigate, projectId, hostId, isCreateMode, search]
   );
 
   return {

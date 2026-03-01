@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '../model/hooks/useProjects';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
+import { toProject, toWorkspacesCreate } from '@/shared/lib/routes/navigation';
 import { MigrateChooseProjects } from '@vibe/ui/components/MigrateChooseProjects';
 
 interface MigrateChooseProjectsContainerProps {
@@ -85,15 +86,13 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleGoToCreateWorkspace = () => {
-    navigate({ to: '/workspaces/create' });
+    navigate(toWorkspacesCreate());
   };
 
   const handleViewMigratedProject = (projectId: string) => {
-    navigate({
-      to: '/projects/$projectId',
-      params: { projectId },
-      ...(selectedOrgId ? { search: { orgId: selectedOrgId } } : {}),
-    });
+    navigate(
+      toProject(projectId, selectedOrgId ? { orgId: selectedOrgId } : undefined)
+    );
   };
 
   const migratedProjects = useMemo(
@@ -104,8 +103,7 @@ export function MigrateChooseProjectsContainer({
   const handleSkip = () => {
     if (migratedProjects.length > 0 && migratedProjects[0].remote_project_id) {
       navigate({
-        to: '/projects/$projectId',
-        params: { projectId: migratedProjects[0].remote_project_id },
+        ...toProject(migratedProjects[0].remote_project_id),
         replace: true,
       });
     } else {

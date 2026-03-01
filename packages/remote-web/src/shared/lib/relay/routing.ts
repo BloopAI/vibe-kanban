@@ -1,29 +1,36 @@
-import {
-  getActiveRelayHostId,
-  parseRelayHostIdFromSearch,
-  setActiveRelayHostId,
-} from "@remote/shared/lib/activeRelayHost";
-
 export function isWorkspaceRoutePath(pathname: string): boolean {
-  if (pathname === "/workspaces" || pathname.startsWith("/workspaces/")) {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] !== "hosts" || !segments[1]) {
+    return false;
+  }
+
+  if (segments[2] === "workspaces") {
     return true;
   }
 
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] !== "projects" || !segments[1]) {
+  if (segments[2] !== "projects" || !segments[3]) {
     return false;
   }
 
   const isIssueWorkspacePath =
-    segments[2] === "issues" &&
-    !!segments[3] &&
-    segments[4] === "workspaces" &&
-    !!segments[5];
+    segments[4] === "issues" &&
+    !!segments[5] &&
+    segments[6] === "workspaces" &&
+    !!segments[7];
 
   const isProjectWorkspaceCreatePath =
-    segments[2] === "workspaces" && segments[3] === "create" && !!segments[4];
+    segments[4] === "workspaces" && segments[5] === "create" && !!segments[6];
 
   return isIssueWorkspacePath || isProjectWorkspaceCreatePath;
+}
+
+export function parseRelayHostIdFromPathname(pathname: string): string | null {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] !== "hosts" || !segments[1]) {
+    return null;
+  }
+
+  return segments[1];
 }
 
 export function resolveRelayHostIdForCurrentPage(): string | null {
@@ -31,13 +38,7 @@ export function resolveRelayHostIdForCurrentPage(): string | null {
     return null;
   }
 
-  const hostIdFromSearch = parseRelayHostIdFromSearch(window.location.search);
-  if (hostIdFromSearch) {
-    setActiveRelayHostId(hostIdFromSearch);
-    return hostIdFromSearch;
-  }
-
-  return getActiveRelayHostId();
+  return parseRelayHostIdFromPathname(window.location.pathname);
 }
 
 export function shouldRelayApiPath(pathAndQuery: string): boolean {

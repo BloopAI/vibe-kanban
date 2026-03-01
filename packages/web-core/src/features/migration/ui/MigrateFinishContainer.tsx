@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '../model/hooks/useProjects';
+import { toProject, toWorkspaces } from '@/shared/lib/routes/navigation';
 import {
   MigrateFinish,
   type MigrateFinishProject,
@@ -33,15 +34,11 @@ export function MigrateFinishContainer({
 
   const handleViewProject = (project: MigrateFinishProject) => {
     if (project.remoteId) {
-      navigate({
-        to: '/projects/$projectId',
-        params: { projectId: project.remoteId },
-        search: { orgId },
-      });
+      navigate(toProject(project.remoteId, { orgId }));
       return;
     }
 
-    navigate({ to: '/workspaces' });
+    navigate(toWorkspaces());
   };
 
   return (

@@ -17,6 +17,7 @@ import { useShape } from '@/shared/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { isProjectPathname } from '@/shared/lib/routes/pathResolution';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 import type {
@@ -83,7 +84,7 @@ export function useActionVisibilityContext(
 
   // Derive layoutMode from current route instead of persisted state
   const location = useLocation();
-  const layoutMode: LayoutMode = location.pathname.startsWith('/projects')
+  const layoutMode: LayoutMode = isProjectPathname(location.pathname)
     ? 'kanban'
     : location.pathname.startsWith('/migrate')
       ? 'migrate'

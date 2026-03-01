@@ -8,6 +8,7 @@ import {
   ActionTargetType,
 } from '@/shared/types/actions';
 import { Scope } from '@/shared/keyboard/registry';
+import { isProjectPathname } from '@/shared/lib/routes/pathResolution';
 
 const SEQUENCE_TIMEOUT_MS = 1500;
 
@@ -21,7 +22,7 @@ export function useIssueShortcuts() {
   const { projectId, issueId } = useParams({ strict: false });
   const location = useLocation();
 
-  const isKanban = location.pathname.startsWith('/projects');
+  const isKanban = isProjectPathname(location.pathname);
   // Detect create mode from the URL path (e.g. /projects/:id/issues/new)
   // NOT from ?mode=create searchParam which is a legacy format
   const isCreatingIssue = location.pathname.endsWith('/issues/new');

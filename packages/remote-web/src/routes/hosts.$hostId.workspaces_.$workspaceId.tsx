@@ -3,14 +3,16 @@ import { requireAuthenticated } from "@remote/shared/lib/route-auth";
 import { Workspaces } from "@/pages/workspaces/Workspaces";
 import { RemoteWorkspacesPageShell } from "@remote/pages/RemoteWorkspacesPageShell";
 
-export const Route = createFileRoute("/workspaces_/create")({
-  beforeLoad: async ({ location }) => {
-    await requireAuthenticated(location);
+export const Route = createFileRoute("/hosts/$hostId/workspaces_/$workspaceId")(
+  {
+    beforeLoad: async ({ location }) => {
+      await requireAuthenticated(location);
+    },
+    component: WorkspaceRouteComponent,
   },
-  component: WorkspacesCreateRouteComponent,
-});
+);
 
-function WorkspacesCreateRouteComponent() {
+function WorkspaceRouteComponent() {
   return (
     <RemoteWorkspacesPageShell>
       <Workspaces />

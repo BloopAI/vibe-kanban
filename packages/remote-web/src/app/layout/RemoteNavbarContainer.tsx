@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, type ReactNode } from "react";
-import { useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate, useParams } from "@tanstack/react-router";
 import {
   MOBILE_TABS,
   Navbar,
@@ -24,6 +24,7 @@ export function RemoteNavbarContainer({
   mobileUserSlot,
 }: RemoteNavbarContainerProps) {
   const location = useLocation();
+  const { hostId } = useParams({ strict: false });
   const mobileWorkspaceTitle = useMobileWorkspaceTitle((s) => s.title);
 
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
@@ -34,9 +35,12 @@ export function RemoteNavbarContainer({
     [],
   );
 
-  const isOnWorkspaceView = /^\/workspaces\/[^/]+/.test(location.pathname);
-  const isOnWorkspaceList =
-    location.pathname === "/workspaces" || location.pathname === "/workspaces/";
+  const isOnWorkspaceView = /^\/hosts\/[^/]+\/workspaces\/[^/]+/.test(
+    location.pathname,
+  );
+  const isOnWorkspaceList = /^\/hosts\/[^/]+\/workspaces\/?$/.test(
+    location.pathname,
+  );
 
   useEffect(() => {
     if (isOnWorkspaceView) {
@@ -45,8 +49,15 @@ export function RemoteNavbarContainer({
   }, [isOnWorkspaceView, setMobileActiveTab]);
   const navigate = useNavigate();
 
-  const isOnProjectPage = location.pathname.startsWith("/projects/");
-  const projectId = isOnProjectPage ? location.pathname.split("/")[2] : null;
+  const isOnProjectPage = /^\/hosts\/[^/]+\/projects\/[^/]+/.test(
+    location.pathname,
+  );
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const projectSegmentIndex = pathSegments.indexOf("projects");
+  const projectId =
+    projectSegmentIndex === -1
+      ? null
+      : (pathSegments[projectSegmentIndex + 1] ?? null);
   const isOnProjectSubRoute =
     isOnProjectPage &&
     (location.pathname.includes("/issues/") ||
@@ -73,19 +84,23 @@ export function RemoteNavbarContainer({
   const mobileShowBack = isOnWorkspaceView || isOnWorkspaceList;
 
   const handleNavigateBack = useCallback(() => {
-    if (isOnProjectPage && projectId) {
+    if (isOnProjectPage && hostId && projectId) {
       navigate({
-        to: "/projects/$projectId",
-        params: { projectId },
+        to: "/hosts/$hostId/projects/$projectId",
+        params: { hostId, projectId },
       });
     } else if (isOnWorkspaceView) {
       // Inside workspace: go back to workspace list
-      navigate({ to: "/workspaces" });
+      if (!hostId) {
+        navigate({ to: "/" });
+        return;
+      }
+      navigate({ to: "/hosts/$hostId/workspaces", params: { hostId } });
     } else {
       // Workspace list or other: go home
       navigate({ to: "/" });
     }
-  }, [navigate, isOnProjectPage, projectId, isOnWorkspaceView]);
+  }, [navigate, hostId, isOnProjectPage, projectId, isOnWorkspaceView]);
 
   const handleOpenSettings = useCallback(() => {
     SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });

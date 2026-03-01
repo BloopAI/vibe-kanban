@@ -1,5 +1,6 @@
 import { ReactNode, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useParams } from "@tanstack/react-router";
 import type {
   BaseAgentCapability,
   Config,
@@ -13,7 +14,6 @@ import {
   UserSystemContext,
   type UserSystemContextType,
 } from "@/shared/hooks/useUserSystem";
-import { useResolvedRelayWorkspaceHostId } from "@remote/shared/hooks/useResolvedRelayWorkspaceHostId";
 
 interface RemoteUserSystemProviderProps {
   children: ReactNode;
@@ -24,16 +24,16 @@ export function RemoteUserSystemProvider({
 }: RemoteUserSystemProviderProps) {
   const queryClient = useQueryClient();
   const { isSignedIn, isLoaded } = useAuth();
-  const resolvedHostId = useResolvedRelayWorkspaceHostId();
+  const { hostId } = useParams({ strict: false });
   const userSystemQueryKey = useMemo(
-    () => ["remote-workspace-user-system", resolvedHostId] as const,
-    [resolvedHostId],
+    () => ["remote-workspace-user-system", hostId] as const,
+    [hostId],
   );
 
   const { data: userSystemInfo, isLoading } = useQuery({
     queryKey: userSystemQueryKey,
     queryFn: configApi.getConfig,
-    enabled: isLoaded && isSignedIn && !!resolvedHostId,
+    enabled: isLoaded && isSignedIn && !!hostId,
     staleTime: 5 * 60 * 1000,
   });
 

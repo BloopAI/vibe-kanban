@@ -34,7 +34,10 @@ import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog'
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
-import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
+import {
+  isWorkspacesPathname,
+  resolveAppPath,
+} from '@/shared/lib/routes/pathResolution';
 import {
   PROJECT_MUTATION,
   PROJECTS_SHAPE,
@@ -155,10 +158,9 @@ export function SharedAppLayout() {
   }, [selectedOrgId, sortedProjects, isLoading, navigate, isMigrateRoute]);
 
   // Navigation state for AppBar active indicators
-  const isWorkspacesActive = location.pathname.startsWith('/workspaces');
-  const activeProjectId = location.pathname.startsWith('/projects/')
-    ? location.pathname.split('/')[2]
-    : null;
+  const isWorkspacesActive = isWorkspacesPathname(location.pathname);
+  const activeProjectId =
+    parseProjectSidebarRoute(location.pathname)?.projectId ?? null;
 
   // Remember the last visited route for each project so AppBar clicks can
   // reopen the previous issue/workspace selection.

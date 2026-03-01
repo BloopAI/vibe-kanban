@@ -3,7 +3,6 @@ import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { Provider as NiceModalProvider } from "@ebay/nice-modal-react";
 import { useSystemTheme } from "@remote/shared/hooks/useSystemTheme";
 import { RemoteActionsProvider } from "@remote/app/providers/RemoteActionsProvider";
-import { RemoteWorkspaceProvider } from "@remote/app/providers/RemoteWorkspaceProvider";
 import { RemoteUserSystemProvider } from "@remote/app/providers/RemoteUserSystemProvider";
 import { RemoteAppShell } from "@remote/app/layout/RemoteAppShell";
 import { UserProvider } from "@/shared/providers/remote/UserProvider";
@@ -56,7 +55,7 @@ function RootLayout() {
     location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/upgrade") ||
     location.pathname.startsWith("/invitations");
-  const isWorkspaceRoute = location.pathname.includes("/workspaces");
+  const isHostScopedRoute = location.pathname.startsWith("/hosts/");
 
   const pageContent = isStandaloneRoute ? (
     <Outlet />
@@ -66,7 +65,7 @@ function RootLayout() {
     </RemoteAppShell>
   );
 
-  const content = isWorkspaceRoute ? (
+  const content = isHostScopedRoute ? (
     <WorkspaceRouteProviders>
       <NiceModalProvider>{pageContent}</NiceModalProvider>
     </WorkspaceRouteProviders>
@@ -76,11 +75,9 @@ function RootLayout() {
 
   return (
     <UserProvider>
-      <RemoteWorkspaceProvider>
-        <RemoteActionsProvider>
-          <RemoteUserSystemProvider>{content}</RemoteUserSystemProvider>
-        </RemoteActionsProvider>
-      </RemoteWorkspaceProvider>
+      <RemoteActionsProvider>
+        <RemoteUserSystemProvider>{content}</RemoteUserSystemProvider>
+      </RemoteActionsProvider>
     </UserProvider>
   );
 }

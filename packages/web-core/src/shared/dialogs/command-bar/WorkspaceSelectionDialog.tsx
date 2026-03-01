@@ -8,6 +8,7 @@ import { ApiError, attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
+import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
@@ -199,7 +200,7 @@ function WorkspaceSelectionContent({
       });
       if (!draftId) {
         navigate({
-          to: '/workspaces/create',
+          ...toWorkspacesCreate(),
           state: (prev) => ({
             ...prev,
             ...createState,

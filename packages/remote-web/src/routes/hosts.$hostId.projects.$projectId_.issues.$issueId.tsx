@@ -3,7 +3,9 @@ import { requireAuthenticated } from "@remote/shared/lib/route-auth";
 import { ProjectKanban } from "@/pages/kanban/ProjectKanban";
 import { projectSearchValidator } from "@vibe/web-core/project-search";
 
-export const Route = createFileRoute("/projects/$projectId")({
+export const Route = createFileRoute(
+  "/hosts/$hostId/projects/$projectId_/issues/$issueId",
+)({
   beforeLoad: async ({ location }) => {
     await requireAuthenticated(location);
   },

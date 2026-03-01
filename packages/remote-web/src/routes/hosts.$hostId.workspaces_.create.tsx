@@ -1,19 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { requireAuthenticated } from "@remote/shared/lib/route-auth";
-import { VSCodeWorkspacePage } from "@/pages/workspaces/VSCodeWorkspacePage";
+import { Workspaces } from "@/pages/workspaces/Workspaces";
 import { RemoteWorkspacesPageShell } from "@remote/pages/RemoteWorkspacesPageShell";
 
-export const Route = createFileRoute("/workspaces/$workspaceId/vscode")({
+export const Route = createFileRoute("/hosts/$hostId/workspaces_/create")({
   beforeLoad: async ({ location }) => {
     await requireAuthenticated(location);
   },
-  component: WorkspaceVSCodeRouteComponent,
+  component: WorkspacesCreateRouteComponent,
 });
 
-function WorkspaceVSCodeRouteComponent() {
+function WorkspacesCreateRouteComponent() {
   return (
     <RemoteWorkspacesPageShell>
-      <VSCodeWorkspacePage />
+      <Workspaces />
     </RemoteWorkspacesPageShell>
   );
 }

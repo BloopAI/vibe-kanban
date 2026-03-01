@@ -31,7 +31,10 @@ import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { toWorkspaces } from '@/shared/lib/routes/navigation';
-import { buildProjectRootPath } from '@/shared/lib/routes/projectSidebarRoutes';
+import {
+  buildProjectRootPath,
+  parseProjectSidebarRoute,
+} from '@/shared/lib/routes/projectSidebarRoutes';
 
 /**
  * Check if a NavbarItem is a divider
@@ -122,12 +125,11 @@ export function NavbarContainer({
   const { workspaces } = useUserContext();
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
-  const isOnProjectPage = location.pathname.startsWith('/projects/');
-  const projectId = isOnProjectPage ? location.pathname.split('/')[2] : null;
+  const currentProjectRoute = parseProjectSidebarRoute(location.pathname);
+  const isOnProjectPage = currentProjectRoute !== null;
+  const projectId = currentProjectRoute?.projectId ?? null;
   const isOnProjectSubRoute =
-    isOnProjectPage &&
-    (location.pathname.includes('/issues/') ||
-      location.pathname.includes('/workspaces/'));
+    currentProjectRoute !== null && currentProjectRoute.type !== 'closed';
   const navigate = useNavigate();
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 

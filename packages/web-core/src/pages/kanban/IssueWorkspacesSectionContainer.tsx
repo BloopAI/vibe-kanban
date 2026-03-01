@@ -11,6 +11,7 @@ import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
+import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
@@ -156,7 +157,7 @@ export function IssueWorkspacesSectionContainer({
     });
     if (!draftId) {
       navigate({
-        to: '/workspaces/create',
+        ...toWorkspacesCreate(),
         state: (prev) => ({
           ...prev,
           ...createState,

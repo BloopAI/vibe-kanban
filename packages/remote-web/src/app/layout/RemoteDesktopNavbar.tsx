@@ -104,7 +104,9 @@ export function RemoteDesktopNavbar() {
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
 
-  const isOnProjectPage = location.pathname.startsWith("/projects/");
+  const isOnProjectPage = /^\/hosts\/[^/]+\/projects\/[^/]+/.test(
+    location.pathname,
+  );
 
   const actionCtx = useActionVisibilityContext();
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearch } from "@tanstack/react-router";
 import type { Project } from "shared/remote-types";
 import type { OrganizationWithRole } from "shared/types";
@@ -43,6 +43,13 @@ export default function HomePage() {
   const { isSignedIn } = useAuth();
   const { hosts } = useRelayAppBarHosts(isSignedIn);
   const isMobile = useIsMobile();
+  const preferredHostId = useMemo(() => {
+    const onlineHost = hosts.find((host) => host.status === "online");
+    if (onlineHost) {
+      return onlineHost.id;
+    }
+    return hosts[0]?.id ?? null;
+  }, [hosts]);
 
   useEffect(() => {
     const legacyOrgId = search.legacyOrgSettingsOrgId;
@@ -203,8 +210,8 @@ export default function HomePage() {
                       onClick={() => {
                         if (isOnline) {
                           navigate({
-                            to: "/workspaces",
-                            search: { hostId: host.id },
+                            to: "/hosts/$hostId/workspaces",
+                            params: { hostId: host.id },
                           });
                         } else if (isUnpaired) {
                           void SettingsDialog.show({
@@ -276,6 +283,7 @@ export default function HomePage() {
                 key={organization.id}
                 organization={organization}
                 projects={projects}
+                hostId={preferredHostId}
               />
             ))}
           </div>
@@ -298,7 +306,8 @@ function CenteredCard({ children }: { children: ReactNode }) {
 function OrganizationSection({
   organization,
   projects,
-}: OrganizationWithProjects) {
+  hostId,
+}: OrganizationWithProjects & { hostId: string | null }) {
   return (
     <section className="space-y-base">
       <header className="flex items-center justify-between gap-base">
@@ -318,7 +327,7 @@ function OrganizationSection({
         <ul className="grid gap-base sm:grid-cols-2">
           {projects.map((project) => (
             <li key={project.id}>
-              <ProjectCard project={project} />
+              <ProjectCard project={project} hostId={hostId} />
             </li>
           ))}
           {projects.length % 2 === 1 ? (
@@ -332,13 +341,28 @@ function OrganizationSection({
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({
+  project,
+  hostId,
+}: {
+  project: Project;
+  hostId: string | null;
+}) {
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+
+  if (!hostId) {
+    return (
+      <div className="group flex h-[61px] flex-col justify-center rounded-sm border border-border bg-primary px-base py-base opacity-70">
+        <p className="text-sm font-medium text-high">{project.name}</p>
+        <p className="mt-half text-xs text-low">Link a host to open project</p>
+      </div>
+    );
+  }
 
   return (
     <Link
-      to="/projects/$projectId"
-      params={{ projectId: project.id }}
+      to="/hosts/$hostId/projects/$projectId"
+      params={{ hostId, projectId: project.id }}
       onClick={() => {
         setSelectedOrgId(project.organization_id);
       }}
