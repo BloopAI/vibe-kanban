@@ -75,7 +75,6 @@ export type AppDestination =
 
 export type NavigationTransition = {
   replace?: boolean;
-  state?: unknown;
 };
 
 export interface AppNavigation {
@@ -92,9 +91,10 @@ Notes:
 3. Remote adapter rule: use `destination.hostId ?? currentHostId` when mapping
    host-aware routes.
 4. Local adapter ignores `hostId`.
-5. `KanbanSearch` values move to transition/local state, not query params.
+5. `KanbanSearch` values move to local/scratch state, not query params.
 6. Destination construction helpers may be added, but they must return
    `AppDestination` only.
+7. `NavigationTransition` intentionally excludes `state`.
 
 ## Remote Host Resolution Rules
 For host-aware destination kinds:
@@ -115,12 +115,29 @@ Examples:
 3. No current host, destination `{ kind: 'workspace', workspaceId: 'w1' }`
    => `/`
 
+## Workspace Create Transport Rules (No Nav State)
+Create-workspace payloads are transported via scratch drafts, not router
+navigation state.
+
+Rules:
+1. Before navigating to a create-workspace route, persist payload into
+   `ScratchType.DRAFT_WORKSPACE`.
+2. Navigate using a route that identifies the draft:
+   - linked create flows use existing draft-id routes
+   - generic create flow uses a deterministic default draft id
+3. `useCreateModeState` initializes from scratch only (plus explicit
+   `initialState` prop when provided by non-router callers).
+4. Remove all router `state` writes/reads for create payload transport.
+5. If draft persistence fails, do not navigate; show an error and keep user on
+   current screen.
+
 ## Migration Phases
 
 ### Phase 1: Shared Contract and Parsing
 1. Replace route-object API in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
-2. Introduce `AppDestination`, `KanbanSearch`, and `NavigationTransition`.
+2. Introduce `AppDestination`, `KanbanSearch`, and `NavigationTransition`
+   (replace only; no `state`).
 3. Replace `resolveAppNavigationFromPath` to return semantic destination only
    (no query-derived `KanbanSearch`), including `hostId` when path is
    host-scoped.
@@ -161,9 +178,23 @@ and spread patterns (`...appNavigation.toX()`) to imperative calls.
 
 `KanbanSearch` migration policy:
 1. Move create defaults (`statusId`, `priority`, `assignees`, `parentIssueId`)
-   into transition `state`.
+   into draft payload state (`DraftWorkspaceData`) for create flows.
 2. Stop encoding those values in URL query params.
 3. Remove query-to-state synchronization logic related to these fields.
+
+Router state removal policy:
+1. Remove all `navigate(..., { state: ... })` and `state: (prev) => ...`
+   patterns used for create initialization.
+2. Remove `location.state` reads in create-mode initialization.
+3. Route all create initialization through scratch draft helpers.
+
+Primary files for this sub-migration:
+- `packages/web-core/src/shared/actions/index.ts`
+- `packages/web-core/src/pages/kanban/IssueWorkspacesSectionContainer.tsx`
+- `packages/web-core/src/shared/dialogs/command-bar/WorkspaceSelectionDialog.tsx`
+- `packages/web-core/src/integrations/useCreateModeState.ts`
+- `packages/web-core/src/shared/hooks/useProjectWorkspaceCreateDraft.ts`
+- `packages/web-core/src/shared/lib/workspaceCreateState.ts`
 
 Primary files:
 - `packages/web-core/src/pages/root/RootRedirectPage.tsx`
@@ -207,12 +238,12 @@ Run:
 4. `pnpm run format`
 
 ## Risk Areas to Verify During Migration
-1. `replace` and `state` behavior currently encoded via spread-to-navigate
-   patterns.
-2. Create-default flow correctness after moving query payloads to transition
-   state.
+1. `replace` behavior currently encoded via spread-to-navigate patterns.
+2. Create-default flow correctness after moving payload transport to scratch
+   drafts.
 3. Remembered-path restoration in `SharedAppLayout`.
 4. Host-scoped routing behavior in remote when switching host context.
 5. Onboarding/root redirect flows that currently rely on string destinations.
 6. Project sidebar route derivation after parser consolidation.
 7. Host precedence correctness for explicit-host vs current-host navigation.
+8. Draft persistence failure handling (must not silently drop payload).
