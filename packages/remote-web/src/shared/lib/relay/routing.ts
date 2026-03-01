@@ -31,10 +31,6 @@ export function resolveRelayHostIdForCurrentPage(): string | null {
     return null;
   }
 
-  if (!isWorkspaceRoutePath(window.location.pathname)) {
-    return null;
-  }
-
   const hostIdFromSearch = parseRelayHostIdFromSearch(window.location.search);
   if (hostIdFromSearch) {
     setActiveRelayHostId(hostIdFromSearch);

@@ -13,6 +13,7 @@ import {
   UserSystemContext,
   type UserSystemContextType,
 } from "@/shared/hooks/useUserSystem";
+import { useResolvedRelayWorkspaceHostId } from "@remote/shared/hooks/useResolvedRelayWorkspaceHostId";
 
 interface RemoteUserSystemProviderProps {
   children: ReactNode;
@@ -23,11 +24,16 @@ export function RemoteUserSystemProvider({
 }: RemoteUserSystemProviderProps) {
   const queryClient = useQueryClient();
   const { isSignedIn, isLoaded } = useAuth();
+  const resolvedHostId = useResolvedRelayWorkspaceHostId();
+  const userSystemQueryKey = useMemo(
+    () => ["remote-workspace-user-system", resolvedHostId] as const,
+    [resolvedHostId],
+  );
 
   const { data: userSystemInfo, isLoading } = useQuery({
-    queryKey: ["remote-workspace-user-system"],
+    queryKey: userSystemQueryKey,
     queryFn: configApi.getConfig,
-    enabled: isLoaded && isSignedIn,
+    enabled: isLoaded && isSignedIn && !!resolvedHostId,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -47,18 +53,15 @@ export function RemoteUserSystemProvider({
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
-      queryClient.setQueryData<UserSystemInfo>(
-        ["remote-workspace-user-system"],
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            config: { ...old.config, ...updates },
-          };
-        },
-      );
+      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          config: { ...old.config, ...updates },
+        };
+      });
     },
-    [queryClient],
+    [queryClient, userSystemQueryKey],
   );
 
   const saveConfig = useCallback(async (): Promise<boolean> => {
@@ -82,74 +85,62 @@ export function RemoteUserSystemProvider({
 
       try {
         const saved = await configApi.saveConfig(newConfig);
-        queryClient.setQueryData<UserSystemInfo>(
-          ["remote-workspace-user-system"],
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              config: saved,
-            };
-          },
-        );
+        queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+          if (!old) return old;
+          return {
+            ...old,
+            config: saved,
+          };
+        });
         return true;
       } catch (err) {
         console.error("Error saving config:", err);
         queryClient.invalidateQueries({
-          queryKey: ["remote-workspace-user-system"],
+          queryKey: userSystemQueryKey,
         });
         return false;
       }
     },
-    [config, queryClient, updateConfig],
+    [config, queryClient, updateConfig, userSystemQueryKey],
   );
 
   const reloadSystem = useCallback(async () => {
     await queryClient.invalidateQueries({
-      queryKey: ["remote-workspace-user-system"],
+      queryKey: userSystemQueryKey,
     });
-  }, [queryClient]);
+  }, [queryClient, userSystemQueryKey]);
 
   const setEnvironment = useCallback(
     (env: Environment | null) => {
-      queryClient.setQueryData<UserSystemInfo>(
-        ["remote-workspace-user-system"],
-        (old) => {
-          if (!old || !env) return old;
-          return { ...old, environment: env };
-        },
-      );
+      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+        if (!old || !env) return old;
+        return { ...old, environment: env };
+      });
     },
-    [queryClient],
+    [queryClient, userSystemQueryKey],
   );
 
   const setProfiles = useCallback(
     (newProfiles: Record<string, ExecutorProfile> | null) => {
-      queryClient.setQueryData<UserSystemInfo>(
-        ["remote-workspace-user-system"],
-        (old) => {
-          if (!old || !newProfiles) return old;
-          return {
-            ...old,
-            executors: newProfiles as unknown as UserSystemInfo["executors"],
-          };
-        },
-      );
+      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+        if (!old || !newProfiles) return old;
+        return {
+          ...old,
+          executors: newProfiles as unknown as UserSystemInfo["executors"],
+        };
+      });
     },
-    [queryClient],
+    [queryClient, userSystemQueryKey],
   );
 
   const setCapabilities = useCallback(
     (newCapabilities: Record<string, BaseAgentCapability[]> | null) => {
-      queryClient.setQueryData<UserSystemInfo>(
-        ["remote-workspace-user-system"],
-        (old) => {
-          if (!old || !newCapabilities) return old;
-          return { ...old, capabilities: newCapabilities };
-        },
-      );
+      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+        if (!old || !newCapabilities) return old;
+        return { ...old, capabilities: newCapabilities };
+      });
     },
-    [queryClient],
+    [queryClient, userSystemQueryKey],
   );
 
   const value = useMemo<UserSystemContextType>(
