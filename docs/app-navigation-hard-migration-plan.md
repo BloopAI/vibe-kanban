@@ -96,6 +96,25 @@ Notes:
 6. Destination construction helpers may be added, but they must return
    `AppDestination` only.
 
+## Remote Host Resolution Rules
+For host-aware destination kinds:
+1. Compute `effectiveHostId = destination.hostId ?? currentHostId`.
+2. If `effectiveHostId` exists, always navigate to host-scoped routes
+   (`/hosts/$hostId/...`).
+3. If `effectiveHostId` does not exist, do not navigate to unscoped project or
+   workspace routes (no backward compatibility path).
+4. When no host is available for a host-aware destination, redirect to root
+   (`/`) and stop.
+
+Examples:
+1. Current route host `h1`, destination `{ kind: 'project', projectId: 'p1' }`
+   => `/hosts/h1/projects/p1`
+2. Current route host `h1`, destination
+   `{ kind: 'project', hostId: 'h2', projectId: 'p1' }`
+   => `/hosts/h2/projects/p1`
+3. No current host, destination `{ kind: 'workspace', workspaceId: 'w1' }`
+   => `/`
+
 ## Migration Phases
 
 ### Phase 1: Shared Contract and Parsing
@@ -127,13 +146,14 @@ Notes:
 ### Phase 4: Remote Adapter
 1. Update `packages/remote-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
-2. Keep host-scoped and fallback behavior in remote package.
+2. Keep host-scoped behavior in remote package and remove unscoped workspace/
+   project fallback routes from navigation resolution.
 3. Keep `packages/remote-web/src/routes/__root.tsx` as wiring only.
 4. Enforce exhaustive `switch(destination.kind)` in remote adapter.
 5. Add explicit host precedence behavior:
    - destination includes hostId: navigate to that host
    - destination omits hostId: navigate in current host context
-   - no current host and host-aware destination: use remote fallback behavior
+   - no current host and host-aware destination: redirect to `/`
 
 ### Phase 5: Consumer Migration
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
