@@ -89,6 +89,7 @@ export function RemoteActionsProvider({
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
       navigate,
+      appNavigation,
       queryClient,
       selectWorkspace: () => {
         noOpSelection("Workspace actions");

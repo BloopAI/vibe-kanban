@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '../model/hooks/useProjects';
-import { toProject, toWorkspaces } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   MigrateFinish,
   type MigrateFinishProject,
@@ -19,6 +19,7 @@ export function MigrateFinishContainer({
   onMigrateMore,
 }: MigrateFinishContainerProps) {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { projects } = useProjects();
 
   const migratedProjects = useMemo(() => {
@@ -34,11 +35,11 @@ export function MigrateFinishContainer({
 
   const handleViewProject = (project: MigrateFinishProject) => {
     if (project.remoteId) {
-      navigate(toProject(project.remoteId, { orgId }));
+      navigate(appNavigation.toProject(project.remoteId, { orgId }));
       return;
     }
 
-    navigate(toWorkspaces());
+    navigate(appNavigation.toWorkspaces());
   };
 
   return (

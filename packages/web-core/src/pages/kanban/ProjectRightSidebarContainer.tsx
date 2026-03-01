@@ -29,7 +29,7 @@ import {
 } from '@/features/workspace-chat/ui/ConversationListContainer';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
-import { toWorkspace } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
@@ -136,6 +136,7 @@ function WorkspaceSessionPanel({
   onClose,
 }: WorkspaceSessionPanelProps) {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { issueId: routeIssueId, openIssue } = useKanbanNavigation();
   const { projectId, getIssue } = useProjectContext();
   const { workspaces: remoteWorkspaces } = useUserContext();
@@ -192,8 +193,8 @@ function WorkspaceSessionPanel({
   }, [breadcrumbIssueId, openIssue, onClose]);
 
   const handleOpenWorkspaceView = useCallback(() => {
-    navigate(toWorkspace(workspaceId));
-  }, [navigate, workspaceId]);
+    navigate(appNavigation.toWorkspace(workspaceId));
+  }, [navigate, appNavigation, workspaceId]);
 
   const breadcrumbButtonClass =
     'min-w-0 text-sm text-normal truncate rounded-sm px-1 py-0.5 hover:bg-panel hover:text-high transition-colors';
@@ -339,6 +340,7 @@ function WorkspaceSessionPanel({
 
 export function ProjectRightSidebarContainer() {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const {
     getIssue,
     isLoading: isProjectLoading,
@@ -449,9 +451,9 @@ export function ProjectRightSidebarContainer() {
         return;
       }
 
-      navigate(toWorkspace(createdWorkspaceId));
+      navigate(appNavigation.toWorkspace(createdWorkspaceId));
     },
-    [issueId, openIssueWorkspace, navigate]
+    [issueId, openIssueWorkspace, navigate, appNavigation]
   );
 
   useEffect(() => {

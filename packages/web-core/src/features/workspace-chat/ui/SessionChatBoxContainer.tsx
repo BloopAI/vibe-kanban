@@ -47,7 +47,6 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
-import { toWorkspace } from '@/shared/lib/routes/navigation';
 import { useInspectModeStore } from '../model/store/useInspectModeStore';
 import { Actions } from '@/shared/actions';
 import {
@@ -61,6 +60,7 @@ import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityContext';
 import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -162,6 +162,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const sessionId = session?.id;
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
 
   const { executeAction } = useActions();
   const actionCtx = useActionVisibilityContext();
@@ -178,8 +179,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   const handleOpenWorkspace = useCallback(() => {
     if (!workspaceId) return;
-    navigate(toWorkspace(workspaceId));
-  }, [navigate, workspaceId]);
+    navigate(appNavigation.toWorkspace(workspaceId));
+  }, [navigate, appNavigation, workspaceId]);
 
   // Get entries early to extract pending approval for scratch key
   const { entries } = useEntries();

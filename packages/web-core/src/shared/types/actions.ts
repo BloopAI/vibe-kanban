@@ -11,7 +11,10 @@ import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
-import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
+import type {
+  AppNavigation,
+  ProjectIssueCreateOptions,
+} from '@/shared/lib/routes/appNavigation';
 
 // Portable type aliases (avoid importing from component containers)
 export type LogEntry = Extract<
@@ -53,6 +56,7 @@ interface SidebarWorkspace {
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
   navigate: NavigateFn;
+  appNavigation: AppNavigation;
   queryClient: QueryClient;
   selectWorkspace: (workspaceId: string) => void;
   activeWorkspaces: SidebarWorkspace[];

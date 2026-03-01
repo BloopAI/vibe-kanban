@@ -8,7 +8,7 @@ import { ApiError, attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
-import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
@@ -67,6 +67,7 @@ function WorkspaceSelectionContent({
   const { t } = useTranslation('common');
   const modal = useModal();
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -200,7 +201,7 @@ function WorkspaceSelectionContent({
       });
       if (!draftId) {
         navigate({
-          ...toWorkspacesCreate(),
+          ...appNavigation.toWorkspacesCreate(),
           state: (prev) => ({
             ...prev,
             ...createState,
@@ -221,6 +222,7 @@ function WorkspaceSelectionContent({
     isLinking,
     activeWorkspaces,
     archivedWorkspaces,
+    appNavigation,
   ]);
 
   // Restore focus when dialog closes

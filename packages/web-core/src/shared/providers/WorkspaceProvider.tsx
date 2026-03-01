@@ -10,12 +10,9 @@ import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
-import {
-  toWorkspace,
-  toWorkspacesCreate,
-} from '@/shared/lib/routes/navigation';
 import { isWorkspacesCreatePathname } from '@/shared/lib/routes/pathResolution';
 import type { DiffStats } from 'shared/types';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
@@ -26,6 +23,7 @@ interface WorkspaceProviderProps {
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams({ strict: false });
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const location = useLocation();
   const queryClient = useQueryClient();
 
@@ -127,16 +125,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           // Silently fail - this is not critical
           console.warn('Failed to mark workspace as seen:', error);
         });
-      navigate(toWorkspace(id));
+      navigate(appNavigation.toWorkspace(id));
     },
-    [navigate, queryClient]
+    [navigate, queryClient, appNavigation]
   );
 
   const navigateToCreate = useMemo(
     () => () => {
-      navigate(toWorkspacesCreate());
+      navigate(appNavigation.toWorkspacesCreate());
     },
-    [navigate]
+    [navigate, appNavigation]
   );
 
   const value = useMemo(

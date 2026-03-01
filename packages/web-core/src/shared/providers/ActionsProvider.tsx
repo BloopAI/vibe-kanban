@@ -196,6 +196,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const executorContext = useMemo<ActionExecutorContext>(() => {
     return {
       navigate,
+      appNavigation,
       queryClient,
       selectWorkspace,
       activeWorkspaces,

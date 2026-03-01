@@ -1,13 +1,17 @@
 import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
 import type { IssuePriority } from 'shared/remote-types';
-import {
-  pruneUndefinedSearch,
-  searchParamsToKanbanSearch,
-  type ProjectKanbanSearch,
-} from '@/shared/lib/routes/navigation';
 import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
 
 type AppNavigationTarget = ReturnType<AppNavigation['toRoot']>;
+
+export type ProjectKanbanSearch = {
+  statusId?: string;
+  priority?: string;
+  assignees?: string;
+  parentIssueId?: string;
+  mode?: string;
+  orgId?: string;
+};
 
 type NavigationIntent =
   | { type: 'root'; hostId: string | null }
@@ -116,6 +120,25 @@ export function toProjectIssueCreateSearch(
         : undefined,
     parentIssueId: options?.parentIssueId,
   };
+}
+
+export function pruneUndefinedSearch(search: ProjectKanbanSearch) {
+  return Object.fromEntries(
+    Object.entries(search).filter(([, value]) => value !== undefined)
+  ) as ProjectKanbanSearch;
+}
+
+export function searchParamsToKanbanSearch(
+  params: URLSearchParams
+): ProjectKanbanSearch {
+  return pruneUndefinedSearch({
+    statusId: params.get('statusId') ?? undefined,
+    priority: params.get('priority') ?? undefined,
+    assignees: params.get('assignees') ?? undefined,
+    parentIssueId: params.get('parentIssueId') ?? undefined,
+    mode: params.get('mode') ?? undefined,
+    orgId: params.get('orgId') ?? undefined,
+  });
 }
 
 function hasSearch(search: ProjectKanbanSearch): boolean {

@@ -1,6 +1,7 @@
 import { Navigate } from '@tanstack/react-router';
-import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 export function WorkspacesLanding() {
-  return <Navigate {...toWorkspacesCreate()} replace />;
+  const appNavigation = useAppNavigation();
+  return <Navigate {...appNavigation.toWorkspacesCreate()} replace />;
 }

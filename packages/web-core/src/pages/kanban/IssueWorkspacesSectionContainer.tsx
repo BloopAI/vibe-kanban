@@ -11,7 +11,7 @@ import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
-import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
@@ -37,6 +37,7 @@ export function IssueWorkspacesSectionContainer({
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const { openIssueWorkspace } = useKanbanNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
@@ -157,7 +158,7 @@ export function IssueWorkspacesSectionContainer({
     });
     if (!draftId) {
       navigate({
-        ...toWorkspacesCreate(),
+        ...appNavigation.toWorkspacesCreate(),
         state: (prev) => ({
           ...prev,
           ...createState,
@@ -173,6 +174,7 @@ export function IssueWorkspacesSectionContainer({
     activeWorkspaces,
     archivedWorkspaces,
     workspaces,
+    appNavigation,
   ]);
 
   // Handle clicking link action to link an existing workspace

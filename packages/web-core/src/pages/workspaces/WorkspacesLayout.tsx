@@ -30,12 +30,13 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
-import { toWorkspace } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
 export function WorkspacesLayout() {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const {
     workspaceId,
     workspace: selectedWorkspace,
@@ -65,9 +66,9 @@ export function WorkspacesLayout() {
 
   const handleWorkspaceCreated = useCallback(
     (workspaceId: string) => {
-      navigate(toWorkspace(workspaceId));
+      navigate(appNavigation.toWorkspace(workspaceId));
     },
-    [navigate]
+    [navigate, appNavigation]
   );
 
   // Use workspace-specific panel state (pass undefined when in create mode)
