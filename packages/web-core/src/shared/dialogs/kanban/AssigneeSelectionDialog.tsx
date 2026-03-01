@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { useLocation } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
@@ -17,7 +16,7 @@ import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
-import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import {
   getDestinationHostId,
   getProjectDestination,
@@ -67,12 +66,7 @@ function AssigneeSelectionContent({
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const hasCreateCallback = onCreateModeAssigneesChange != null;
-  const appNavigation = useAppNavigation();
-  const location = useLocation();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [location.pathname, appNavigation]
-  );
+  const destination = useCurrentAppDestination();
   const projectDestination = useMemo(
     () => getProjectDestination(destination),
     [destination]
@@ -250,12 +244,7 @@ function AssigneeSelectionWithContext({
   onCreateModeAssigneesChange,
   additionalOptions,
 }: AssigneeSelectionDialogProps) {
-  const appNavigation = useAppNavigation();
-  const location = useLocation();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [location.pathname, appNavigation]
-  );
+  const destination = useCurrentAppDestination();
   const projectDestination = useMemo(
     () => getProjectDestination(destination),
     [destination]

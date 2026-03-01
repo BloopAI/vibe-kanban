@@ -1,5 +1,4 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
-import { useLocation } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
@@ -7,6 +6,7 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
   useUiPreferencesStore,
   resolveKanbanProjectState,
@@ -25,10 +25,7 @@ import {
 } from '@/shared/lib/remoteApi';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
-import {
-  type ProjectIssueCreateOptions,
-  resolveKanbanRouteState,
-} from '@/shared/lib/routes/appNavigation';
+import { type ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
 import {
   buildKanbanCreateDefaultsKey,
   clearKanbanCreateDefaults,
@@ -114,8 +111,8 @@ function LoadingState() {
  */
 export function KanbanContainer() {
   const { t } = useTranslation('common');
-  const location = useLocation();
   const appNavigation = useAppNavigation();
+  const routeState = useCurrentKanbanRouteState();
 
   // Get data from contexts (set up by WorkspacesLayout)
   const {
@@ -149,14 +146,6 @@ export function KanbanContainer() {
   // Get project name by finding the project matching current projectId
   const projectName = projects.find((p) => p.id === projectId)?.name ?? '';
 
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [appNavigation, location.pathname]
-  );
-  const routeState = useMemo(
-    () => resolveKanbanRouteState(destination),
-    [destination]
-  );
   const selectedKanbanIssueId = routeState.issueId;
   const createDefaultsKey = useMemo(
     () => buildKanbanCreateDefaultsKey(routeState.hostId, projectId),

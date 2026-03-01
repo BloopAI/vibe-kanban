@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Outlet, useLocation } from '@tanstack/react-router';
+import { Outlet } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
 import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
@@ -18,6 +18,7 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import {
   getProjectDestination,
   isWorkspacesDestination,
@@ -42,9 +43,9 @@ import {
 } from 'shared/remote-types';
 
 export function SharedAppLayout() {
-  const location = useLocation();
   const appNavigation = useAppNavigation();
-  const isMigrateRoute = location.pathname.startsWith('/migrate');
+  const currentDestination = useCurrentAppDestination();
+  const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
   const { isSignedIn } = useAuth();
@@ -149,10 +150,6 @@ export function SharedAppLayout() {
   }, [selectedOrgId, sortedProjects, isLoading, isMigrateRoute, appNavigation]);
 
   // Navigation state for AppBar active indicators
-  const currentDestination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [location.pathname, appNavigation]
-  );
   const projectDestination = useMemo(
     () => getProjectDestination(currentDestination),
     [currentDestination]

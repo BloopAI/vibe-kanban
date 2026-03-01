@@ -1,23 +1,14 @@
-import { useCallback, useMemo } from 'react';
-import { useLocation } from '@tanstack/react-router';
+import { useCallback } from 'react';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import type { CreateModeInitialState } from '@/shared/types/createMode';
 import { persistWorkspaceCreateDraft } from '@/shared/lib/workspaceCreateState';
-import { resolveKanbanRouteState } from '@/shared/lib/routes/appNavigation';
 
 export function useProjectWorkspaceCreateDraft() {
   const { projectId } = useProjectContext();
-  const location = useLocation();
   const appNavigation = useAppNavigation();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [appNavigation, location.pathname]
-  );
-  const routeState = useMemo(
-    () => resolveKanbanRouteState(destination),
-    [destination]
-  );
+  const routeState = useCurrentKanbanRouteState();
 
   const openWorkspaceCreateFromState = useCallback(
     async (

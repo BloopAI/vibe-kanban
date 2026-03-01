@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useLocation, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
@@ -34,6 +34,7 @@ import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 interface ActionsProviderProps {
   children: ReactNode;
@@ -42,11 +43,10 @@ interface ActionsProviderProps {
 export function ActionsProvider({ children }: ActionsProviderProps) {
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
-  const location = useLocation();
+  const currentDestination = useCurrentAppDestination();
   const hostId = useMemo(
-    () =>
-      getDestinationHostId(appNavigation.resolveFromPath(location.pathname)),
-    [location.pathname, appNavigation]
+    () => getDestinationHostId(currentDestination),
+    [currentDestination]
   );
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)

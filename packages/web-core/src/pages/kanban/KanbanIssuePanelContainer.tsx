@@ -1,12 +1,11 @@
 import {
   useState,
-  useMemo,
   useCallback,
   useEffect,
   useReducer,
   useRef,
+  useMemo,
 } from 'react';
-import { useLocation } from '@tanstack/react-router';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -52,7 +51,7 @@ import {
 import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { resolveKanbanRouteState } from '@/shared/lib/routes/appNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
   buildKanbanCreateDefaultsKey,
   clearKanbanCreateDefaults,
@@ -77,8 +76,8 @@ export function KanbanIssuePanelContainer({
   onExpectIssueOpen,
 }: KanbanIssuePanelContainerProps) {
   const { t } = useTranslation('common');
-  const location = useLocation();
   const appNavigation = useAppNavigation();
+  const routeState = useCurrentKanbanRouteState();
 
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { workspaces } = useUserContext();
@@ -112,14 +111,6 @@ export function KanbanIssuePanelContainer({
     getPullRequestsForIssue,
     isLoading: projectLoading,
   } = useProjectContext();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [appNavigation, location.pathname]
-  );
-  const routeState = useMemo(
-    () => resolveKanbanRouteState(destination),
-    [destination]
-  );
   const selectedKanbanIssueId = routeState.issueId;
   const kanbanCreateMode = routeState.isCreateMode;
   const createDefaultsKey = useMemo(

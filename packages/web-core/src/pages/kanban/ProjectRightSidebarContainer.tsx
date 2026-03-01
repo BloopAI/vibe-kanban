@@ -6,7 +6,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useLocation } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ArrowDownIcon, ArrowsOutIcon, XIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
@@ -29,7 +28,7 @@ import {
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { resolveKanbanRouteState } from '@/shared/lib/routes/appNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
   buildKanbanCreateDefaultsKey,
   clearKanbanCreateDefaults,
@@ -139,17 +138,9 @@ function WorkspaceSessionPanel({
   workspaceId,
   onClose,
 }: WorkspaceSessionPanelProps) {
-  const location = useLocation();
   const appNavigation = useAppNavigation();
   const { projectId, getIssue } = useProjectContext();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [appNavigation, location.pathname]
-  );
-  const routeState = useMemo(
-    () => resolveKanbanRouteState(destination),
-    [destination]
-  );
+  const routeState = useCurrentKanbanRouteState();
   const { workspaces: remoteWorkspaces } = useUserContext();
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const conversationListRef = useRef<ConversationListHandle>(null);
@@ -350,7 +341,6 @@ function WorkspaceSessionPanel({
 }
 
 export function ProjectRightSidebarContainer() {
-  const location = useLocation();
   const appNavigation = useAppNavigation();
   const {
     projectId,
@@ -358,14 +348,7 @@ export function ProjectRightSidebarContainer() {
     isLoading: isProjectLoading,
     issuesById,
   } = useProjectContext();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [appNavigation, location.pathname]
-  );
-  const routeState = useMemo(
-    () => resolveKanbanRouteState(destination),
-    [destination]
-  );
+  const routeState = useCurrentKanbanRouteState();
   const {
     issueId,
     workspaceId,

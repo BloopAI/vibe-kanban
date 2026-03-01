@@ -1,5 +1,4 @@
 import { useMemo, useCallback } from 'react';
-import { useLocation } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useActions } from '@/shared/hooks/useActions';
@@ -32,6 +31,7 @@ import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog'
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { getProjectDestination } from '@/shared/lib/routes/appNavigation';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 /**
  * Check if a NavbarItem is a divider
@@ -121,12 +121,8 @@ export function NavbarContainer({
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
   const syncErrorContext = useSyncErrorContext();
-  const location = useLocation();
   const appNavigation = useAppNavigation();
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [location.pathname, appNavigation]
-  );
+  const destination = useCurrentAppDestination();
   const projectDestination = useMemo(
     () => getProjectDestination(destination),
     [destination]

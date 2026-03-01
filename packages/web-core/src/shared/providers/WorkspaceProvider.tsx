@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useLocation } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
@@ -12,6 +12,7 @@ import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import type { DiffStats } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
@@ -22,13 +23,11 @@ interface WorkspaceProviderProps {
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams({ strict: false });
   const appNavigation = useAppNavigation();
-  const location = useLocation();
+  const currentDestination = useCurrentAppDestination();
   const queryClient = useQueryClient();
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
-  const isCreateMode =
-    appNavigation.resolveFromPath(location.pathname)?.kind ===
-    'workspaces-create';
+  const isCreateMode = currentDestination?.kind === 'workspaces-create';
 
   // Fetch workspaces for sidebar display
   const {

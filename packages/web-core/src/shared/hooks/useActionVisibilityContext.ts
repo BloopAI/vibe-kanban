@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useLocation, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import {
   useUiPreferencesStore,
   useWorkspacePanelState,
@@ -17,11 +17,8 @@ import { useShape } from '@/shared/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import {
-  isProjectDestination,
-  type AppDestination,
-} from '@/shared/lib/routes/appNavigation';
-import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { isProjectDestination } from '@/shared/lib/routes/appNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 import type {
@@ -55,12 +52,7 @@ export function useActionVisibilityContext(
   const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
     strict: false,
   });
-  const appNavigation = useAppNavigation();
-  const location = useLocation();
-  const destination = useMemo<AppDestination | null>(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [location.pathname, appNavigation]
-  );
+  const destination = useCurrentAppDestination();
   const kanbanCreateMode = destination?.kind === 'project-issue-create';
   const effectiveProjectId = options?.projectId ?? routeProjectId;
   const optionIssueIds = options?.issueIds;
@@ -94,7 +86,7 @@ export function useActionVisibilityContext(
   // Derive layoutMode from current route instead of persisted state
   const layoutMode: LayoutMode = isProjectDestination(destination)
     ? 'kanban'
-    : location.pathname.startsWith('/migrate')
+    : destination?.kind === 'migrate'
       ? 'migrate'
       : 'workspaces';
   const { config } = useUserSystem();

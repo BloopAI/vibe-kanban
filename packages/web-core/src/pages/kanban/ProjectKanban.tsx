@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useLocation } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider } from '@/shared/providers/remote/OrgProvider';
@@ -21,26 +20,11 @@ import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects'
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import {
-  resolveKanbanRouteState,
-  type KanbanRouteState,
-} from '@/shared/lib/routes/appNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
   buildKanbanCreateDefaultsKey,
   clearKanbanCreateDefaults,
 } from '@/shared/stores/useKanbanCreateDefaultsStore';
-
-function useProjectKanbanRouteState(): KanbanRouteState {
-  const location = useLocation();
-  const appNavigation = useAppNavigation();
-
-  const destination = useMemo(
-    () => appNavigation.resolveFromPath(location.pathname),
-    [appNavigation, location.pathname]
-  );
-
-  return useMemo(() => resolveKanbanRouteState(destination), [destination]);
-}
 /**
  * Component that registers project mutations with ActionsContext.
  * Must be rendered inside both ActionsProvider and ProjectProvider.
@@ -109,7 +93,7 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
 }
 
 function ProjectKanbanLayout({ projectName }: { projectName: string }) {
-  const { issueId, isPanelOpen } = useProjectKanbanRouteState();
+  const { issueId, isPanelOpen } = useCurrentKanbanRouteState();
   const isMobile = useIsMobile();
   const { getIssue } = useProjectContext();
   const issue = issueId ? getIssue(issueId) : undefined;
@@ -260,7 +244,7 @@ function useFindProjectById(projectId: string | undefined) {
  */
 export function ProjectKanban() {
   const { projectId, hostId, hasInvalidWorkspaceCreateDraftId } =
-    useProjectKanbanRouteState();
+    useCurrentKanbanRouteState();
   const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const { isSignedIn, isLoaded: authLoaded } = useAuth();

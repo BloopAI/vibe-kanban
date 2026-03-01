@@ -550,6 +550,28 @@ Completed:
 8. Added guardrail to block reintroduction of legacy parser imports in
    `scripts/check-legacy-frontend-paths.sh`.
 
+### Phase 10: Destination Consumption Consolidation
+
+Status: Completed (March 1, 2026)
+
+Completed:
+
+1. Added shared destination-consumption hooks in `web-core`:
+   - `packages/web-core/src/shared/hooks/useCurrentAppDestination.ts`
+   - `packages/web-core/src/shared/hooks/useCurrentKanbanRouteState.ts`
+2. Removed repeated `resolveFromPath(location.pathname)` callsites and switched
+   consumers to shared hooks:
+   - Kanban surfaces: `KanbanContainer`, `ProjectKanban`,
+     `ProjectRightSidebarContainer`, `KanbanIssuePanelContainer`,
+     `useProjectWorkspaceCreateDraft`
+   - Shared routing consumers: `ActionsProvider`, `WorkspaceProvider`,
+     `useActionVisibilityContext`, `useIssueShortcuts`, `NavbarContainer`,
+     `SharedAppLayout`, `AssigneeSelectionDialog`
+3. Consolidated migrate/workspaces/kanban mode derivation onto destination
+   kinds instead of ad-hoc pathname checks in shared consumers.
+4. Kept one pathname parser boundary in `web-core`: `useCurrentAppDestination`
+   now owns the `location.pathname -> AppDestination` conversion.
+
 ## Risk Areas to Verify During Migration
 
 1. `replace` behavior currently encoded via spread-to-navigate patterns.
