@@ -1,5 +1,10 @@
 import { type ReactNode, useMemo } from "react";
-import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
+import {
+  createRootRoute,
+  Outlet,
+  useLocation,
+  useParams,
+} from "@tanstack/react-router";
 import { Provider as NiceModalProvider } from "@ebay/nice-modal-react";
 import { useSystemTheme } from "@remote/shared/hooks/useSystemTheme";
 import { RemoteActionsProvider } from "@remote/app/providers/RemoteActionsProvider";
@@ -17,7 +22,6 @@ import {
   createRemoteHostAppNavigation,
   remoteFallbackAppNavigation,
 } from "@remote/app/navigation/AppNavigation";
-import { parseAppPathname } from "@/shared/lib/routes/pathResolution";
 import NotFoundPage from "../pages/NotFoundPage";
 
 export const Route = createRootRoute({
@@ -56,20 +60,21 @@ function WorkspaceRouteProviders({ children }: { children: ReactNode }) {
 function RootLayout() {
   useSystemTheme();
   const location = useLocation();
-  const { hostId } = parseAppPathname(location.pathname);
+  const { hostId } = useParams({ strict: false });
+  const resolvedHostId = hostId ?? null;
   const appNavigation = useMemo(
     () =>
-      hostId
-        ? createRemoteHostAppNavigation(hostId)
+      resolvedHostId
+        ? createRemoteHostAppNavigation(resolvedHostId)
         : remoteFallbackAppNavigation,
-    [hostId],
+    [resolvedHostId],
   );
   const isStandaloneRoute =
     location.pathname.startsWith("/account") ||
     location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/upgrade") ||
     location.pathname.startsWith("/invitations");
-  const isHostScopedRoute = location.pathname.startsWith("/hosts/");
+  const isHostScopedRoute = resolvedHostId !== null;
 
   const pageContent = isStandaloneRoute ? (
     <Outlet />

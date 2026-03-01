@@ -10,7 +10,6 @@ import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
-import { isWorkspacesCreatePathname } from '@/shared/lib/routes/pathResolution';
 import type { DiffStats } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
@@ -27,7 +26,9 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const queryClient = useQueryClient();
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
-  const isCreateMode = isWorkspacesCreatePathname(location.pathname);
+  const isCreateMode =
+    appNavigation.resolveFromPath(location.pathname)?.kind ===
+    'workspaces-create';
 
   // Fetch workspaces for sidebar display
   const {

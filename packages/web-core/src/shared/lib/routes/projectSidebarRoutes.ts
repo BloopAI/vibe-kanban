@@ -1,4 +1,4 @@
-import { resolveAppDestinationFromPath } from '@/shared/lib/routes/appNavigation';
+import type { AppDestination } from '@/shared/lib/routes/appNavigation';
 
 export type ProjectSidebarRouteState =
   | {
@@ -32,10 +32,9 @@ export type ProjectSidebarRouteState =
       issueId: string | null;
     };
 
-export function parseProjectSidebarRoute(
-  pathname: string
+export function parseProjectSidebarDestination(
+  destination: AppDestination | null
 ): ProjectSidebarRouteState | null {
-  const destination = resolveAppDestinationFromPath(pathname);
   if (!destination) {
     return null;
   }
@@ -87,4 +86,11 @@ export function parseProjectSidebarRoute(
     default:
       return null;
   }
+}
+
+export function parseProjectSidebarRoute(
+  pathname: string,
+  resolveFromPath: (path: string) => AppDestination | null
+): ProjectSidebarRouteState | null {
+  return parseProjectSidebarDestination(resolveFromPath(pathname));
 }

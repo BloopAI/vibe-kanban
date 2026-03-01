@@ -122,12 +122,15 @@ export function NavbarContainer({
   const { workspaces } = useUserContext();
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
-  const currentProjectRoute = parseProjectSidebarRoute(location.pathname);
+  const appNavigation = useAppNavigation();
+  const currentProjectRoute = parseProjectSidebarRoute(
+    location.pathname,
+    appNavigation.resolveFromPath
+  );
   const isOnProjectPage = currentProjectRoute !== null;
   const projectId = currentProjectRoute?.projectId ?? null;
   const isOnProjectSubRoute =
     currentProjectRoute !== null && currentProjectRoute.type !== 'closed';
-  const appNavigation = useAppNavigation();
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
   // Find remote workspace linked to current local workspace

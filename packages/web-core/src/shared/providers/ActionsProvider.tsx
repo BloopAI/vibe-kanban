@@ -10,8 +10,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
-import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
+import {
+  getDestinationHostId,
+  type ProjectIssueCreateOptions,
+} from '@/shared/lib/routes/appNavigation';
 import {
   buildKanbanCreateDefaultsKey,
   setKanbanCreateDefaults,
@@ -41,9 +43,10 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const location = useLocation();
-  const { hostId } = useMemo(
-    () => parseAppPathname(location.pathname),
-    [location.pathname]
+  const hostId = useMemo(
+    () =>
+      getDestinationHostId(appNavigation.resolveFromPath(location.pathname)),
+    [location.pathname, appNavigation]
   );
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)

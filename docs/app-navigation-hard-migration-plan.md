@@ -518,6 +518,38 @@ Completed:
 3. Ran `pnpm --filter @vibe/remote-web run check` (pass).
 4. Ran `pnpm run format` (pass).
 
+### Phase 9: App-Owned Path Resolution
+
+Status: Completed (March 1, 2026)
+
+Completed:
+
+1. Removed shared string path resolution from
+   `packages/web-core/src/shared/lib/routes/appNavigation.ts`:
+   - deleted `resolveAppDestinationFromPath(...)`
+   - added destination helpers (`getDestinationHostId`,
+     `isProjectDestination`, `isWorkspacesDestination`) for shared consumers.
+2. Implemented app-owned resolvers in adapters using typed route matching:
+   - `packages/local-web/src/app/navigation/AppNavigation.ts`
+   - `packages/remote-web/src/app/navigation/AppNavigation.ts`
+3. Refactored project sidebar route parsing to consume app resolver output
+   instead of shared pathname parsing:
+   - `packages/web-core/src/shared/lib/routes/projectSidebarRoutes.ts`
+4. Migrated `web-core` path-derived consumers to destination-based checks via
+   `appNavigation.resolveFromPath(...)`:
+   - `ActionsProvider`, `WorkspaceProvider`, `SharedAppLayout`,
+     `useActionVisibilityContext`, `useIssueShortcuts`,
+     `useKanbanNavigation`, `NavbarContainer`,
+     `AssigneeSelectionDialog`.
+5. Removed legacy path parsing usage in remote root wiring:
+   - `packages/remote-web/src/routes/__root.tsx` now derives host scope from
+     route params.
+6. Removed remaining ad-hoc project-id pathname parsing:
+   - `packages/web-core/src/project-routes/ProjectFallbackPage.tsx`
+7. Deleted `packages/web-core/src/shared/lib/routes/pathResolution.ts`.
+8. Added guardrail to block reintroduction of legacy parser imports in
+   `scripts/check-legacy-frontend-paths.sh`.
+
 ## Risk Areas to Verify During Migration
 
 1. `replace` behavior currently encoded via spread-to-navigate patterns.

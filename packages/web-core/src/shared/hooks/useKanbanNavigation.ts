@@ -35,8 +35,12 @@ export function useKanbanNavigation() {
   const appNavigation = useAppNavigation();
 
   const routeState = useMemo(
-    () => parseProjectSidebarRoute(location.pathname),
-    [location.pathname]
+    () =>
+      parseProjectSidebarRoute(
+        location.pathname,
+        appNavigation.resolveFromPath
+      ),
+    [location.pathname, appNavigation]
   );
 
   const projectId = routeState?.projectId ?? null;

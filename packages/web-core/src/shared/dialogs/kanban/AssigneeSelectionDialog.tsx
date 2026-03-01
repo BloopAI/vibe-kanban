@@ -18,6 +18,7 @@ import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
 import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   buildKanbanCreateDefaultsKey,
   patchKanbanCreateDefaults,
@@ -63,10 +64,15 @@ function AssigneeSelectionContent({
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const hasCreateCallback = onCreateModeAssigneesChange != null;
+  const appNavigation = useAppNavigation();
   const location = useLocation();
   const routeState = useMemo(
-    () => parseProjectSidebarRoute(location.pathname),
-    [location.pathname]
+    () =>
+      parseProjectSidebarRoute(
+        location.pathname,
+        appNavigation.resolveFromPath
+      ),
+    [location.pathname, appNavigation]
   );
   const resolvedProjectId = projectId || routeState?.projectId || null;
   const createDefaultsKey = useMemo(() => {
@@ -241,10 +247,15 @@ function AssigneeSelectionWithContext({
   onCreateModeAssigneesChange,
   additionalOptions,
 }: AssigneeSelectionDialogProps) {
+  const appNavigation = useAppNavigation();
   const location = useLocation();
   const routeState = useMemo(
-    () => parseProjectSidebarRoute(location.pathname),
-    [location.pathname]
+    () =>
+      parseProjectSidebarRoute(
+        location.pathname,
+        appNavigation.resolveFromPath
+      ),
+    [location.pathname, appNavigation]
   );
   const resolvedProjectId = projectId || routeState?.projectId;
   // Get organization ID from store (set when navigating to project)

@@ -113,3 +113,22 @@ if [ -n "$app_navigation_navigate_hits" ]; then
 fi
 
 echo "✅ No direct appNavigation.navigate(...) usage in web-core."
+
+echo "▶️  Checking web-core for legacy pathResolution imports..."
+
+path_resolution_import_hits="$(
+  find "$REPO_ROOT/packages/web-core/src" \
+    -type f \( -name '*.ts' -o -name '*.tsx' \) \
+    -print0 |
+    xargs -0 grep -nE '@/shared/lib/routes/pathResolution' || true
+)"
+
+if [ -n "$path_resolution_import_hits" ]; then
+  echo "❌ Found legacy pathResolution imports in web-core:"
+  printf '%s\n' "$path_resolution_import_hits"
+  echo ""
+  echo "Use appNavigation.resolveFromPath(...) and AppDestination helpers instead."
+  exit 1
+fi
+
+echo "✅ No legacy pathResolution imports in web-core."

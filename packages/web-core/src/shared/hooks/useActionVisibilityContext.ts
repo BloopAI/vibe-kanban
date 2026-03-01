@@ -17,8 +17,12 @@ import { useShape } from '@/shared/integrations/electric/hooks';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import { isProjectPathname } from '@/shared/lib/routes/pathResolution';
+import {
+  isProjectDestination,
+  type AppDestination,
+} from '@/shared/lib/routes/appNavigation';
 import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
 import type {
@@ -52,10 +56,19 @@ export function useActionVisibilityContext(
   const { projectId: routeProjectId, issueId: routeIssueId } = useParams({
     strict: false,
   });
+  const appNavigation = useAppNavigation();
   const location = useLocation();
+  const destination = useMemo<AppDestination | null>(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [location.pathname, appNavigation]
+  );
   const routeState = useMemo(
-    () => parseProjectSidebarRoute(location.pathname),
-    [location.pathname]
+    () =>
+      parseProjectSidebarRoute(
+        location.pathname,
+        appNavigation.resolveFromPath
+      ),
+    [location.pathname, appNavigation]
   );
   const kanbanCreateMode = routeState?.type === 'issue-create';
   const effectiveProjectId = options?.projectId ?? routeProjectId;
@@ -88,7 +101,7 @@ export function useActionVisibilityContext(
   }, [shouldResolveSelectedIssueParent, projectIssues, effectiveIssueIds]);
 
   // Derive layoutMode from current route instead of persisted state
-  const layoutMode: LayoutMode = isProjectPathname(location.pathname)
+  const layoutMode: LayoutMode = isProjectDestination(destination)
     ? 'kanban'
     : location.pathname.startsWith('/migrate')
       ? 'migrate'

@@ -1,5 +1,4 @@
 import type { IssuePriority } from 'shared/remote-types';
-import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
 
 export type AppDestination =
   | { kind: 'root' }
@@ -92,130 +91,52 @@ export interface ProjectIssueCreateOptions {
   parentIssueId?: string;
 }
 
-type HostAwareDestination = Exclude<
-  AppDestination,
-  | { kind: 'root' }
-  | { kind: 'onboarding' }
-  | { kind: 'onboarding-sign-in' }
-  | { kind: 'migrate' }
->;
-
-function withHost<T extends HostAwareDestination>(
-  hostId: string | null,
-  destination: T
-): T {
-  return hostId ? { ...destination, hostId } : destination;
-}
-
-export function resolveAppDestinationFromPath(
-  path: string
-): AppDestination | null {
-  const url = new URL(path, 'http://localhost');
-  const pathname = url.pathname;
-  const { hostId, segments, offset } = parseAppPathname(pathname);
-
-  if (pathname === '/') return { kind: 'root' };
-  if (pathname === '/onboarding') return { kind: 'onboarding' };
-  if (pathname === '/onboarding/sign-in') return { kind: 'onboarding-sign-in' };
-  if (pathname === '/migrate') return { kind: 'migrate' };
-
-  if (segments.length === offset + 1 && segments[offset] === 'workspaces') {
-    return withHost(hostId, { kind: 'workspaces' });
-  }
-
-  if (
-    segments.length === offset + 2 &&
-    segments[offset] === 'workspaces' &&
-    segments[offset + 1] === 'create'
-  ) {
-    return withHost(hostId, { kind: 'workspaces-create' });
-  }
-
-  if (
-    segments.length === offset + 3 &&
-    segments[offset] === 'workspaces' &&
-    segments[offset + 2] === 'vscode'
-  ) {
-    return withHost(hostId, {
-      kind: 'workspace-vscode',
-      workspaceId: segments[offset + 1],
-    });
-  }
-
-  if (segments.length === offset + 2 && segments[offset] === 'workspaces') {
-    return withHost(hostId, {
-      kind: 'workspace',
-      workspaceId: segments[offset + 1],
-    });
-  }
-
-  if (segments[offset] !== 'projects' || !segments[offset + 1]) {
+export function getDestinationHostId(
+  destination: AppDestination | null
+): string | null {
+  if (!destination || !('hostId' in destination)) {
     return null;
   }
 
-  const projectId = segments[offset + 1];
+  return destination.hostId ?? null;
+}
 
-  if (segments.length === offset + 2) {
-    return withHost(hostId, { kind: 'project', projectId });
+export function isProjectDestination(
+  destination: AppDestination | null
+): boolean {
+  if (!destination) {
+    return false;
   }
 
-  if (segments[offset + 2] === 'issues' && segments[offset + 3] === 'new') {
-    return withHost(hostId, {
-      kind: 'project-issue-create',
-      projectId,
-    });
+  switch (destination.kind) {
+    case 'project':
+    case 'project-issue-create':
+    case 'project-issue':
+    case 'project-issue-workspace':
+    case 'project-issue-workspace-create':
+    case 'project-workspace-create':
+      return true;
+    default:
+      return false;
+  }
+}
+
+export function isWorkspacesDestination(
+  destination: AppDestination | null
+): boolean {
+  if (!destination) {
+    return false;
   }
 
-  if (
-    segments[offset + 2] === 'issues' &&
-    segments[offset + 3] &&
-    segments[offset + 4] === 'workspaces' &&
-    segments[offset + 5] === 'create' &&
-    segments[offset + 6]
-  ) {
-    return withHost(hostId, {
-      kind: 'project-issue-workspace-create',
-      projectId,
-      issueId: segments[offset + 3],
-      draftId: segments[offset + 6],
-    });
+  switch (destination.kind) {
+    case 'workspaces':
+    case 'workspaces-create':
+    case 'workspace':
+    case 'workspace-vscode':
+      return true;
+    default:
+      return false;
   }
-
-  if (
-    segments[offset + 2] === 'issues' &&
-    segments[offset + 3] &&
-    segments[offset + 4] === 'workspaces' &&
-    segments[offset + 5]
-  ) {
-    return withHost(hostId, {
-      kind: 'project-issue-workspace',
-      projectId,
-      issueId: segments[offset + 3],
-      workspaceId: segments[offset + 5],
-    });
-  }
-
-  if (segments[offset + 2] === 'issues' && segments[offset + 3]) {
-    return withHost(hostId, {
-      kind: 'project-issue',
-      projectId,
-      issueId: segments[offset + 3],
-    });
-  }
-
-  if (
-    segments[offset + 2] === 'workspaces' &&
-    segments[offset + 3] === 'create' &&
-    segments[offset + 4]
-  ) {
-    return withHost(hostId, {
-      kind: 'project-workspace-create',
-      projectId,
-      draftId: segments[offset + 4],
-    });
-  }
-
-  return null;
 }
 
 export function goToAppDestination(

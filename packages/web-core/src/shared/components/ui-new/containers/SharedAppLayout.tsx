@@ -19,7 +19,10 @@ import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
-import { goToAppDestination } from '@/shared/lib/routes/appNavigation';
+import {
+  goToAppDestination,
+  isWorkspacesDestination,
+} from '@/shared/lib/routes/appNavigation';
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -33,7 +36,6 @@ import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog'
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
-import { isWorkspacesPathname } from '@/shared/lib/routes/pathResolution';
 import {
   PROJECT_MUTATION,
   PROJECTS_SHAPE,
@@ -149,21 +151,29 @@ export function SharedAppLayout() {
   }, [selectedOrgId, sortedProjects, isLoading, isMigrateRoute, appNavigation]);
 
   // Navigation state for AppBar active indicators
-  const isWorkspacesActive = isWorkspacesPathname(location.pathname);
+  const currentDestination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [location.pathname, appNavigation]
+  );
+  const isWorkspacesActive = isWorkspacesDestination(currentDestination);
   const activeProjectId =
-    parseProjectSidebarRoute(location.pathname)?.projectId ?? null;
+    parseProjectSidebarRoute(location.pathname, appNavigation.resolveFromPath)
+      ?.projectId ?? null;
 
   // Remember the last visited route for each project so AppBar clicks can
   // reopen the previous issue/workspace selection.
   useEffect(() => {
-    const route = parseProjectSidebarRoute(location.pathname);
+    const route = parseProjectSidebarRoute(
+      location.pathname,
+      appNavigation.resolveFromPath
+    );
     if (!route) {
       return;
     }
 
     const pathWithSearch = `${location.pathname}${location.searchStr}`;
     projectLastPathRef.current[route.projectId] = pathWithSearch;
-  }, [location.pathname, location.searchStr]);
+  }, [location.pathname, location.searchStr, appNavigation]);
 
   const handleWorkspacesClick = useCallback(() => {
     appNavigation.goToWorkspaces();

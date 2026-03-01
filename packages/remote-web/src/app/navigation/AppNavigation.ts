@@ -1,10 +1,123 @@
 import { router } from "@remote/app/router";
+import type { FileRouteTypes } from "@remote/routeTree.gen";
 import {
   type AppDestination,
   type AppNavigation,
   type NavigationTransition,
-  resolveAppDestinationFromPath,
 } from "@/shared/lib/routes/appNavigation";
+
+type RemoteRouteId = FileRouteTypes["id"];
+
+function getPathParam(
+  routeParams: Record<string, string>,
+  key: string,
+): string | null {
+  const value = routeParams[key];
+  return value ? value : null;
+}
+
+function resolveRemoteDestinationFromPath(path: string): AppDestination | null {
+  const { pathname } = new URL(path, "http://localhost");
+  const { foundRoute, routeParams } = router.getMatchedRoutes(pathname);
+
+  if (!foundRoute) {
+    return null;
+  }
+
+  switch (foundRoute.id as RemoteRouteId) {
+    case "/":
+      return { kind: "root" };
+    case "/hosts/$hostId/workspaces": {
+      const hostId = getPathParam(routeParams, "hostId");
+      return hostId ? { kind: "workspaces", hostId } : null;
+    }
+    case "/hosts/$hostId/workspaces_/create": {
+      const hostId = getPathParam(routeParams, "hostId");
+      return hostId ? { kind: "workspaces-create", hostId } : null;
+    }
+    case "/hosts/$hostId/workspaces_/$workspaceId": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const workspaceId = getPathParam(routeParams, "workspaceId");
+      return hostId && workspaceId
+        ? { kind: "workspace", hostId, workspaceId }
+        : null;
+    }
+    case "/hosts/$hostId/workspaces/$workspaceId/vscode": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const workspaceId = getPathParam(routeParams, "workspaceId");
+      return hostId && workspaceId
+        ? { kind: "workspace-vscode", hostId, workspaceId }
+        : null;
+    }
+    case "/hosts/$hostId/projects/$projectId": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const projectId = getPathParam(routeParams, "projectId");
+      return hostId && projectId
+        ? { kind: "project", hostId, projectId }
+        : null;
+    }
+    case "/hosts/$hostId/projects/$projectId_/issues/new": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const projectId = getPathParam(routeParams, "projectId");
+      return hostId && projectId
+        ? { kind: "project-issue-create", hostId, projectId }
+        : null;
+    }
+    case "/hosts/$hostId/projects/$projectId_/issues/$issueId": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const projectId = getPathParam(routeParams, "projectId");
+      const issueId = getPathParam(routeParams, "issueId");
+      return hostId && projectId && issueId
+        ? { kind: "project-issue", hostId, projectId, issueId }
+        : null;
+    }
+    case "/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/$workspaceId": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const projectId = getPathParam(routeParams, "projectId");
+      const issueId = getPathParam(routeParams, "issueId");
+      const workspaceId = getPathParam(routeParams, "workspaceId");
+      return hostId && projectId && issueId && workspaceId
+        ? {
+            kind: "project-issue-workspace",
+            hostId,
+            projectId,
+            issueId,
+            workspaceId,
+          }
+        : null;
+    }
+    case "/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/create/$draftId": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const projectId = getPathParam(routeParams, "projectId");
+      const issueId = getPathParam(routeParams, "issueId");
+      const draftId = getPathParam(routeParams, "draftId");
+      return hostId && projectId && issueId && draftId
+        ? {
+            kind: "project-issue-workspace-create",
+            hostId,
+            projectId,
+            issueId,
+            draftId,
+          }
+        : null;
+    }
+    case "/hosts/$hostId/projects/$projectId_/workspaces/create/$draftId": {
+      const hostId = getPathParam(routeParams, "hostId");
+      const projectId = getPathParam(routeParams, "projectId");
+      const draftId = getPathParam(routeParams, "draftId");
+      return hostId && projectId && draftId
+        ? {
+            kind: "project-workspace-create",
+            hostId,
+            projectId,
+            draftId,
+          }
+        : null;
+    }
+    default:
+      return null;
+  }
+}
 
 function destinationToRemoteTarget(
   destination: AppDestination,
@@ -152,7 +265,7 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
   };
 
   const navigation: AppNavigation = {
-    resolveFromPath: (path) => resolveAppDestinationFromPath(path),
+    resolveFromPath: (path) => resolveRemoteDestinationFromPath(path),
     goToRoot: (transition) => navigateTo({ kind: "root" }, transition),
     goToOnboarding: (transition) =>
       navigateTo({ kind: "onboarding" }, transition),
@@ -232,7 +345,7 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
   };
 
   const navigation: AppNavigation = {
-    resolveFromPath: (path) => resolveAppDestinationFromPath(path),
+    resolveFromPath: (path) => resolveRemoteDestinationFromPath(path),
     goToRoot: (transition) => navigateTo({ kind: "root" }, transition),
     goToOnboarding: (transition) =>
       navigateTo({ kind: "onboarding" }, transition),

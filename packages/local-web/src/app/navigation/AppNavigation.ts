@@ -1,10 +1,106 @@
 import { router } from '@web/app/router';
+import type { FileRouteTypes } from '@web/routeTree.gen';
 import {
   type AppDestination,
   type AppNavigation,
   type NavigationTransition,
-  resolveAppDestinationFromPath,
 } from '@/shared/lib/routes/appNavigation';
+
+type LocalRouteId = FileRouteTypes['id'];
+
+function getPathParam(
+  routeParams: Record<string, string>,
+  key: string
+): string | null {
+  const value = routeParams[key];
+  return value ? value : null;
+}
+
+function resolveLocalDestinationFromPath(path: string): AppDestination | null {
+  const { pathname } = new URL(path, 'http://localhost');
+  const { foundRoute, routeParams } = router.getMatchedRoutes(pathname);
+
+  if (!foundRoute) {
+    return null;
+  }
+
+  switch (foundRoute.id as LocalRouteId) {
+    case '/':
+      return { kind: 'root' };
+    case '/onboarding':
+      return { kind: 'onboarding' };
+    case '/onboarding_/sign-in':
+      return { kind: 'onboarding-sign-in' };
+    case '/_app/migrate':
+      return { kind: 'migrate' };
+    case '/_app/workspaces':
+      return { kind: 'workspaces' };
+    case '/_app/workspaces_/create':
+      return { kind: 'workspaces-create' };
+    case '/_app/workspaces_/$workspaceId': {
+      const workspaceId = getPathParam(routeParams, 'workspaceId');
+      return workspaceId ? { kind: 'workspace', workspaceId } : null;
+    }
+    case '/workspaces/$workspaceId/vscode': {
+      const workspaceId = getPathParam(routeParams, 'workspaceId');
+      return workspaceId ? { kind: 'workspace-vscode', workspaceId } : null;
+    }
+    case '/_app/projects/$projectId': {
+      const projectId = getPathParam(routeParams, 'projectId');
+      return projectId ? { kind: 'project', projectId } : null;
+    }
+    case '/_app/projects/$projectId_/issues/new': {
+      const projectId = getPathParam(routeParams, 'projectId');
+      return projectId ? { kind: 'project-issue-create', projectId } : null;
+    }
+    case '/_app/projects/$projectId_/issues/$issueId': {
+      const projectId = getPathParam(routeParams, 'projectId');
+      const issueId = getPathParam(routeParams, 'issueId');
+      return projectId && issueId
+        ? { kind: 'project-issue', projectId, issueId }
+        : null;
+    }
+    case '/_app/projects/$projectId_/issues/$issueId_/workspaces/$workspaceId': {
+      const projectId = getPathParam(routeParams, 'projectId');
+      const issueId = getPathParam(routeParams, 'issueId');
+      const workspaceId = getPathParam(routeParams, 'workspaceId');
+      return projectId && issueId && workspaceId
+        ? {
+            kind: 'project-issue-workspace',
+            projectId,
+            issueId,
+            workspaceId,
+          }
+        : null;
+    }
+    case '/_app/projects/$projectId_/issues/$issueId_/workspaces/create/$draftId': {
+      const projectId = getPathParam(routeParams, 'projectId');
+      const issueId = getPathParam(routeParams, 'issueId');
+      const draftId = getPathParam(routeParams, 'draftId');
+      return projectId && issueId && draftId
+        ? {
+            kind: 'project-issue-workspace-create',
+            projectId,
+            issueId,
+            draftId,
+          }
+        : null;
+    }
+    case '/_app/projects/$projectId_/workspaces/create/$draftId': {
+      const projectId = getPathParam(routeParams, 'projectId');
+      const draftId = getPathParam(routeParams, 'draftId');
+      return projectId && draftId
+        ? {
+            kind: 'project-workspace-create',
+            projectId,
+            draftId,
+          }
+        : null;
+    }
+    default:
+      return null;
+  }
+}
 
 function destinationToLocalTarget(destination: AppDestination) {
   switch (destination.kind) {
@@ -91,7 +187,7 @@ export function createLocalAppNavigation(): AppNavigation {
   };
 
   const navigation: AppNavigation = {
-    resolveFromPath: (path) => resolveAppDestinationFromPath(path),
+    resolveFromPath: (path) => resolveLocalDestinationFromPath(path),
     goToRoot: (transition) => navigateTo({ kind: 'root' }, transition),
     goToOnboarding: (transition) =>
       navigateTo({ kind: 'onboarding' }, transition),
