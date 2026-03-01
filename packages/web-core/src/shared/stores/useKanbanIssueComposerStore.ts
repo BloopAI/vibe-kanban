@@ -1,7 +1,13 @@
 import { useCallback } from 'react';
 import { create } from 'zustand';
 import type { IssuePriority } from 'shared/remote-types';
-import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
+
+export interface ProjectIssueCreateOptions {
+  statusId?: string;
+  priority?: IssuePriority;
+  assigneeIds?: string[];
+  parentIssueId?: string;
+}
 
 export interface KanbanIssueComposerDraft {
   title: string;

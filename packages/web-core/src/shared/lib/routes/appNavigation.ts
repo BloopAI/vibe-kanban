@@ -1,5 +1,3 @@
-import type { IssuePriority } from 'shared/remote-types';
-
 export type AppDestination =
   | { kind: 'root' }
   | { kind: 'onboarding' }
@@ -77,13 +75,6 @@ export interface AppNavigation {
     draftId: string,
     transition?: NavigationTransition
   ): void;
-}
-
-export interface ProjectIssueCreateOptions {
-  statusId?: string;
-  priority?: IssuePriority;
-  assigneeIds?: string[];
-  parentIssueId?: string;
 }
 
 type ProjectDestinationKind =

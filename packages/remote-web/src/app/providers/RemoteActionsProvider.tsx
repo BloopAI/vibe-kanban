@@ -21,13 +21,13 @@ import {
   resolveLabel,
   type ProjectMutations,
 } from "@/shared/types/actions";
-import type { ProjectIssueCreateOptions } from "@/shared/lib/routes/appNavigation";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useAppNavigation } from "@/shared/hooks/useAppNavigation";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import {
   buildKanbanIssueComposerKey,
   openKanbanIssueComposer,
+  type ProjectIssueCreateOptions,
 } from "@/shared/stores/useKanbanIssueComposerStore";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 

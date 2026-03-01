@@ -25,11 +25,11 @@ import {
 } from '@/shared/lib/remoteApi';
 import { PlusIcon, DotsThreeIcon } from '@phosphor-icons/react';
 import { Actions } from '@/shared/actions';
-import { type ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
 import {
   buildKanbanIssueComposerKey,
   closeKanbanIssueComposer,
   openKanbanIssueComposer,
+  type ProjectIssueCreateOptions,
   useKanbanIssueComposer,
 } from '@/shared/stores/useKanbanIssueComposerStore';
 import type { OrganizationMemberWithProfile } from 'shared/types';

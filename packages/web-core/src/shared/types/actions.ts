@@ -10,10 +10,8 @@ import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
-import type {
-  AppNavigation,
-  ProjectIssueCreateOptions,
-} from '@/shared/lib/routes/appNavigation';
+import type { AppNavigation } from '@/shared/lib/routes/appNavigation';
+import type { ProjectIssueCreateOptions } from '@/shared/stores/useKanbanIssueComposerStore';
 
 // Portable type aliases (avoid importing from component containers)
 export type LogEntry = Extract<

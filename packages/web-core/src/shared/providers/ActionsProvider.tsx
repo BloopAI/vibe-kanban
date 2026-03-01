@@ -10,13 +10,11 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import {
-  getDestinationHostId,
-  type ProjectIssueCreateOptions,
-} from '@/shared/lib/routes/appNavigation';
+import { getDestinationHostId } from '@/shared/lib/routes/appNavigation';
 import {
   buildKanbanIssueComposerKey,
   openKanbanIssueComposer,
+  type ProjectIssueCreateOptions,
 } from '@/shared/stores/useKanbanIssueComposerStore';
 import {
   type ActionDefinition,

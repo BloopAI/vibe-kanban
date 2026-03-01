@@ -28,7 +28,9 @@ current_files="$(
   git -C "$REPO_ROOT" ls-files "${LEGACY_PATHS[@]}" | LC_ALL=C sort
 )"
 allowed_files="$(
-  grep -v '^\s*#' "$ALLOWLIST_FILE" | sed '/^\s*$/d' | LC_ALL=C sort
+  { grep -v '^\s*#' "$ALLOWLIST_FILE" || true; } |
+    sed '/^\s*$/d' |
+    LC_ALL=C sort
 )"
 
 new_files="$(
