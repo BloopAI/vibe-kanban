@@ -44,33 +44,29 @@ export type AppDestination =
   | { kind: 'workspaces-create' }
   | { kind: 'workspace'; workspaceId: string }
   | { kind: 'workspace-vscode'; workspaceId: string }
-  | { kind: 'project'; projectId: string; search?: KanbanSearch }
-  | { kind: 'project-issue-create'; projectId: string; search?: KanbanSearch }
+  | { kind: 'project'; projectId: string }
+  | { kind: 'project-issue-create'; projectId: string }
   | {
       kind: 'project-issue';
       projectId: string;
       issueId: string;
-      search?: KanbanSearch;
     }
   | {
       kind: 'project-issue-workspace';
       projectId: string;
       issueId: string;
       workspaceId: string;
-      search?: KanbanSearch;
     }
   | {
       kind: 'project-issue-workspace-create';
       projectId: string;
       issueId: string;
       draftId: string;
-      search?: KanbanSearch;
     }
   | {
       kind: 'project-workspace-create';
       projectId: string;
       draftId: string;
-      search?: KanbanSearch;
     };
 
 export type NavigationTransition = {
@@ -88,7 +84,7 @@ Notes:
 1. `AppDestination` has no router-specific fields (`to`, `params`, `search`
    objects tied to TanStack API shape).
 2. Host scoping is adapter context in remote, not part of shared destination.
-3. URL parsing keeps query support (`KanbanSearch`) in shared code.
+3. `KanbanSearch` values move to transition/local state, not query params.
 4. Destination construction helpers may be added, but they must return
    `AppDestination` only.
 
@@ -98,7 +94,8 @@ Notes:
 1. Replace route-object API in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
 2. Introduce `AppDestination`, `KanbanSearch`, and `NavigationTransition`.
-3. Replace `resolveAppNavigationFromPath` to return semantic destination only.
+3. Replace `resolveAppNavigationFromPath` to return semantic destination only
+   (no query-derived `KanbanSearch`).
 4. Consolidate duplicate parsing between:
    - `packages/web-core/src/shared/lib/routes/appNavigation.ts`
    - `packages/web-core/src/shared/lib/routes/projectSidebarRoutes.ts`
@@ -128,6 +125,12 @@ Notes:
 ### Phase 5: Consumer Migration
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
 and spread patterns (`...appNavigation.toX()`) to imperative calls.
+
+`KanbanSearch` migration policy:
+1. Move create defaults (`statusId`, `priority`, `assignees`, `parentIssueId`)
+   into transition `state`.
+2. Stop encoding those values in URL query params.
+3. Remove query-to-state synchronization logic related to these fields.
 
 Primary files:
 - `packages/web-core/src/pages/root/RootRedirectPage.tsx`
@@ -173,7 +176,9 @@ Run:
 ## Risk Areas to Verify During Migration
 1. `replace` and `state` behavior currently encoded via spread-to-navigate
    patterns.
-2. Remembered-path restoration in `SharedAppLayout`.
-3. Host-scoped routing behavior in remote when switching host context.
-4. Onboarding/root redirect flows that currently rely on string destinations.
-5. Project sidebar route derivation after parser consolidation.
+2. Create-default flow correctness after moving query payloads to transition
+   state.
+3. Remembered-path restoration in `SharedAppLayout`.
+4. Host-scoped routing behavior in remote when switching host context.
+5. Onboarding/root redirect flows that currently rely on string destinations.
+6. Project sidebar route derivation after parser consolidation.
