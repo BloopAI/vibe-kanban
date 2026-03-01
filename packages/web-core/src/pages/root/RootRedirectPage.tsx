@@ -3,17 +3,22 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import {
-  goToAppDestination,
-  type AppDestination,
-} from '@/shared/lib/routes/appNavigation';
-const DEFAULT_DESTINATION: AppDestination = { kind: 'workspaces-create' };
+
+type RootRedirectDestination =
+  | { kind: 'onboarding' }
+  | { kind: 'workspaces-create' }
+  | { kind: 'project'; projectId: string };
+
+const DEFAULT_DESTINATION: RootRedirectDestination = {
+  kind: 'workspaces-create',
+};
 
 export function RootRedirectPage() {
   const { config, loading, loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const appNavigation = useAppNavigation();
-  const [destination, setDestination] = useState<AppDestination | null>(null);
+  const [destination, setDestination] =
+    useState<RootRedirectDestination | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -36,7 +41,11 @@ export function RootRedirectPage() {
       const firstProjectDestination =
         await getFirstProjectDestination(setSelectedOrgId);
       if (!cancelled) {
-        setDestination(firstProjectDestination ?? DEFAULT_DESTINATION);
+        setDestination(
+          firstProjectDestination?.kind === 'project'
+            ? firstProjectDestination
+            : DEFAULT_DESTINATION
+        );
       }
     };
 
@@ -52,7 +61,17 @@ export function RootRedirectPage() {
       return;
     }
 
-    goToAppDestination(appNavigation, destination, { replace: true });
+    switch (destination.kind) {
+      case 'onboarding':
+        appNavigation.goToOnboarding({ replace: true });
+        return;
+      case 'workspaces-create':
+        appNavigation.goToWorkspacesCreate({ replace: true });
+        return;
+      case 'project':
+        appNavigation.goToProject(destination.projectId, { replace: true });
+        return;
+    }
   }, [appNavigation, config, destination, loading]);
 
   if (loading || !config || !destination) {
