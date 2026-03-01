@@ -27,15 +27,6 @@ Define one destination union in
 `packages/web-core/src/shared/lib/routes/appNavigation.ts`:
 
 ```ts
-export type KanbanSearch = {
-  statusId?: string;
-  priority?: string;
-  assignees?: string;
-  parentIssueId?: string;
-  mode?: string;
-  orgId?: string;
-};
-
 export type AppDestination =
   | { kind: 'root' }
   | { kind: 'onboarding' }
@@ -92,7 +83,7 @@ Notes:
 3. Remote adapter rule: use `destination.hostId ?? currentHostId` when mapping
    host-aware routes.
 4. Local adapter ignores `hostId`.
-5. `KanbanSearch` values move to local/scratch state, not query params.
+5. Kanban create defaults move to local in-memory state, not query params.
 6. Destination construction helpers may be added, but they must return
    `AppDestination` only.
 7. `NavigationTransition` intentionally excludes `state`.
@@ -206,16 +197,36 @@ Rules:
 5. If draft persistence fails, do not navigate; show an error and keep user on
    current screen.
 
+## Kanban Create Defaults Rules (In-Memory Only)
+Kanban issue-create defaults are transported via local state only.
+
+Rules:
+1. Store create defaults in an in-memory state container keyed by
+   `hostId + projectId` (`statusId`, `priority`, `assigneeIds`,
+   `parentIssueId`).
+2. `startCreate(...)` writes defaults to local state and navigates to
+   `/issues/new` with no query payload.
+3. `updateCreateDefaults(...)` mutates local state only (no URL writes).
+4. `KanbanIssuePanelContainer` initialization order:
+   - draft issue scratch (if present for project)
+   - in-memory create defaults
+   - board-derived fallback defaults
+5. Create-mode detection is path-based only (`/issues/new`), never query-based.
+6. Remove query-based compatibility behavior for
+   `statusId/priority/assignees/parentIssueId/mode/orgId`.
+7. No persistence requirement for this state:
+   - refresh/new tab/deep link may drop defaults
+   - this is acceptable by design
+
 ## Migration Phases
 
 ### Phase 1: Shared Contract and Parsing
 1. Replace route-object API in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
-2. Introduce `AppDestination`, `KanbanSearch`, and `NavigationTransition`
-   (replace only; no `state`).
+2. Introduce `AppDestination` and `NavigationTransition` (replace only; no
+   `state`).
 3. Replace `resolveAppNavigationFromPath` to return semantic destination only
-   (no query-derived `KanbanSearch`), including `hostId` when path is
-   host-scoped.
+   (ignore Kanban query params), including `hostId` when path is host-scoped.
 4. Consolidate duplicate parsing between:
    - `packages/web-core/src/shared/lib/routes/appNavigation.ts`
    - `packages/web-core/src/shared/lib/routes/projectSidebarRoutes.ts`
@@ -269,22 +280,28 @@ Direct routing cleanup policy:
 1. Remove TanStack `Link` imports from `web-core` navigation surfaces.
 2. Replace semantic `<Navigate to="...">` and `navigate({ to: '...' })` route
    literals in `web-core` with `AppNavigation` destinations.
-3. Replace route-local normalization (`to: '.'`) with explicit typed helpers in
-   `web-core` (for query/state cleanup on current route).
+3. Remove route-local normalization for legacy Kanban query cleanup
+   (`navigate({ to: '.' ... })`) in favor of local-state updates.
 4. Add guardrails to block new `navigate({ to: '.' ... })` usage in
    `web-core` after migration.
 
-`KanbanSearch` migration policy:
-1. Move create defaults (`statusId`, `priority`, `assignees`, `parentIssueId`)
-   into draft payload state (`DraftWorkspaceData`) for create flows.
-2. Stop encoding those values in URL query params.
-3. Remove query-to-state synchronization logic related to these fields.
+Kanban create-default source migration policy:
+1. Remove `statusId`, `priority`, `assignees`, `parentIssueId`, `mode`, and
+   `orgId` from project route search schema and parsing/serialization helpers.
+2. Add a web-core in-memory create-default state source keyed by
+   `hostId + projectId`.
+3. Rewire `useKanbanNavigation` to read/write defaults via that local state.
+4. Rewire create-mode status/priority/assignee mutation paths to local state
+   only.
+5. Delete legacy query migration behavior in `ProjectKanban` (`mode`, `orgId`).
+6. Keep refresh/deep-link behavior non-persistent by design.
+7. Make `isCreatingIssue` path-derived in all action visibility/shortcut logic.
 
 Router state removal policy:
 1. Remove all `navigate(..., { state: ... })` and `state: (prev) => ...`
-   patterns used for create initialization.
-2. Remove `location.state` reads in create-mode initialization.
-3. Route all create initialization through scratch draft helpers.
+   patterns used for workspace-create initialization.
+2. Remove `location.state` reads in workspace create-mode initialization.
+3. Route workspace-create initialization through scratch draft helpers.
 
 Primary files for this sub-migration:
 - `packages/web-core/src/shared/actions/index.ts`
@@ -337,8 +354,8 @@ Run:
 
 ## Risk Areas to Verify During Migration
 1. `replace` behavior currently encoded via spread-to-navigate patterns.
-2. Create-default flow correctness after moving payload transport to scratch
-   drafts.
+2. Create-default flow correctness after moving source-of-truth to in-memory
+   local state.
 3. Remembered-path restoration in `SharedAppLayout`.
 4. Host-scoped routing behavior in remote when switching host context.
 5. Onboarding/root redirect flows that currently rely on string destinations.
