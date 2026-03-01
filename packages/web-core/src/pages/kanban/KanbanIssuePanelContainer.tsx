@@ -50,6 +50,7 @@ import {
   deleteAttachment,
 } from '@/shared/lib/remoteApi';
 import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
+import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 
 const DRAFT_ISSUE_ID = '00000000-0000-0000-0000-000000000002';
 
@@ -866,6 +867,15 @@ export function KanbanIssuePanelContainer({
             issueId: syncedIssue.id,
           });
           if (!draftId) {
+            await ConfirmDialog.show({
+              title: t('common:error'),
+              message: t(
+                'workspaces.createDraftError',
+                'Failed to prepare workspace draft. Please try again.'
+              ),
+              confirmText: t('common:ok'),
+              showCancelButton: false,
+            });
             onExpectIssueOpen?.(syncedIssue.id);
             openIssue(syncedIssue.id);
           }
@@ -909,6 +919,7 @@ export function KanbanIssuePanelContainer({
     getAttachmentIds,
     clearAttachments,
     onExpectIssueOpen,
+    t,
   ]);
 
   const handleCmdEnterSubmit = useCallback(() => {
