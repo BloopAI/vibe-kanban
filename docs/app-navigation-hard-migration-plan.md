@@ -11,6 +11,7 @@ and remote adapters.
 3. No compatibility layer.
 4. No explicit `any` in navigation code.
 5. One shared path parser source of truth.
+6. No TanStack `Link` usage for app navigation in `web-core`.
 
 ## Target Architecture
 1. Shared semantic destination model in `web-core`.
@@ -149,6 +150,30 @@ Decisions locked for implementation:
 5. Keep strict external URL behavior: unscoped remote project/workspace URLs
    remain invalid and should hit 404.
 
+### 3) Hidden Direct Route Usage Outside `AppNavigation` (Spike Complete)
+Findings:
+1. `web-core` still has a small set of semantic route literals bypassing
+   `AppNavigation`:
+   - onboarding transitions in
+     `features/onboarding/ui/LandingPage.tsx`
+   - root redirects in
+     `features/onboarding/ui/OnboardingSignInPage.tsx`
+   - issue link rendering in
+     `shared/components/ui-new/containers/RemoteIssueLink.tsx`
+2. Route-local URL maintenance calls using `navigate({ to: '.' ... })` remain
+   in place for query/state cleanup and are not semantic destination bypasses.
+3. App-specific routes in `local-web` and `remote-web` (e.g. account/login/
+   upgrade) intentionally stay app-owned and are out of this shared migration.
+
+Decisions locked for implementation:
+1. Eliminate TanStack `Link` usage in `web-core` for app navigation.
+2. Eliminate absolute semantic route literals in `web-core` navigation code.
+3. Migrate the known bypass callsites in this phase:
+   - `packages/web-core/src/features/onboarding/ui/LandingPage.tsx`
+   - `packages/web-core/src/features/onboarding/ui/OnboardingSignInPage.tsx`
+   - `packages/web-core/src/shared/components/ui-new/containers/RemoteIssueLink.tsx`
+4. Keep `navigate({ to: '.' ... })` query/state normalization patterns for now.
+
 ## Workspace Create Transport Rules (No Nav State)
 Create-workspace payloads are transported via scratch drafts, not router
 navigation state.
@@ -209,6 +234,13 @@ Rules:
 ### Phase 5: Consumer Migration
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
 and spread patterns (`...appNavigation.toX()`) to imperative calls.
+
+Direct routing cleanup policy:
+1. Remove TanStack `Link` imports from `web-core` navigation surfaces.
+2. Replace semantic `<Navigate to="...">` and `navigate({ to: '...' })` route
+   literals in `web-core` with `AppNavigation` destinations.
+3. Keep route-local normalization (`to: '.'`) where destination semantics are
+   not changing.
 
 `KanbanSearch` migration policy:
 1. Move create defaults (`statusId`, `priority`, `assignees`, `parentIssueId`)
