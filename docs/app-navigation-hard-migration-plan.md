@@ -460,6 +460,7 @@ Primary files:
 - `packages/web-core/src/shared/types/actions.ts`
 
 ### Phase 6: Remove String Round-Trips
+Status: Completed (March 1, 2026)
 
 1. Update `packages/web-core/src/shared/lib/firstProjectDestination.ts` to
    return semantic destination data instead of raw `'/projects/:id'` strings.

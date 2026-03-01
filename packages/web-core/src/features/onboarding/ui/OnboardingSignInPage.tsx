@@ -14,6 +14,7 @@ import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import type { AppDestination } from '@/shared/lib/routes/appNavigation';
 
 const COMPARISON_ROWS = [
   {
@@ -119,7 +120,7 @@ export function OnboardingSignInPage() {
     appNavigation.navigate(appNavigation.toRoot(), { replace: true });
   }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
-  const getOnboardingDestination = async (): Promise<string> => {
+  const getOnboardingDestination = async (): Promise<AppDestination> => {
     const firstProjectDestination =
       await getFirstProjectDestination(setSelectedOrgId);
     if (!firstProjectDestination) {
@@ -127,7 +128,7 @@ export function OnboardingSignInPage() {
         stage: 'sign_in',
         reason: 'destination_lookup_failed',
       });
-      return '/workspaces/create';
+      return appNavigation.toWorkspacesCreate();
     }
 
     return firstProjectDestination;
@@ -167,13 +168,11 @@ export function OnboardingSignInPage() {
     trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.STAGE_COMPLETED, {
       stage: 'sign_in',
       method: options.method,
-      destination,
+      destination_kind: destination.kind,
+      destination_project_id:
+        destination.kind === 'project' ? destination.projectId : null,
     });
-    appNavigation.navigate(
-      appNavigation.resolveFromPath(destination) ??
-        appNavigation.toWorkspacesCreate(),
-      { replace: true }
-    );
+    appNavigation.navigate(destination, { replace: true });
   };
 
   const handleProviderSignIn = async (provider: OAuthProvider) => {

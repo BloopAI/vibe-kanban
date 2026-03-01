@@ -3,14 +3,14 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-
-const DEFAULT_DESTINATION = '/workspaces/create';
+import type { AppDestination } from '@/shared/lib/routes/appNavigation';
+const DEFAULT_DESTINATION: AppDestination = { kind: 'workspaces-create' };
 
 export function RootRedirectPage() {
   const { config, loading, loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const appNavigation = useAppNavigation();
-  const [destination, setDestination] = useState<string | null>(null);
+  const [destination, setDestination] = useState<AppDestination | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,7 +21,7 @@ export function RootRedirectPage() {
       }
 
       if (!config.remote_onboarding_acknowledged) {
-        setDestination('/onboarding');
+        setDestination(appNavigation.toOnboarding());
         return;
       }
 
@@ -33,9 +33,7 @@ export function RootRedirectPage() {
       const firstProjectDestination =
         await getFirstProjectDestination(setSelectedOrgId);
       if (!cancelled) {
-        const resolvedDestination =
-          firstProjectDestination ?? DEFAULT_DESTINATION;
-        setDestination(resolvedDestination);
+        setDestination(firstProjectDestination ?? DEFAULT_DESTINATION);
       }
     };
 
@@ -44,20 +42,14 @@ export function RootRedirectPage() {
     return () => {
       cancelled = true;
     };
-  }, [config, loading, loginStatus?.status, setSelectedOrgId]);
+  }, [appNavigation, config, loading, loginStatus?.status, setSelectedOrgId]);
 
   useEffect(() => {
     if (loading || !config || !destination) {
       return;
     }
 
-    const resolvedDestination =
-      appNavigation.resolveFromPath(destination) ??
-      (destination === '/onboarding'
-        ? appNavigation.toOnboarding()
-        : appNavigation.toWorkspacesCreate());
-
-    appNavigation.navigate(resolvedDestination, { replace: true });
+    appNavigation.navigate(destination, { replace: true });
   }, [appNavigation, config, destination, loading]);
 
   if (loading || !config || !destination) {
