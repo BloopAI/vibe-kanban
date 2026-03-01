@@ -4,6 +4,7 @@ import { SequenceTrackerProvider } from '@/shared/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/shared/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/shared/keyboard/useWorkspaceShortcuts';
 import { useIssueShortcuts } from '@/shared/keyboard/useIssueShortcuts';
+import { useProjectShortcuts } from '@/shared/keyboard/useProjectShortcuts';
 import { useKeyShowHelp, Scope } from '@/shared/keyboard';
 import { KeyboardShortcutsDialog } from '@/shared/dialogs/shared/KeyboardShortcutsDialog';
 import { TerminalProvider } from '@/shared/providers/TerminalProvider';
@@ -18,6 +19,7 @@ function KeyboardShortcutsHandler() {
   );
   useWorkspaceShortcuts();
   useIssueShortcuts();
+  useProjectShortcuts();
   return null;
 }
 

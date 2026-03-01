@@ -3,6 +3,7 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/shared/hooks/useActions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { Actions } from '@/shared/actions';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import {
   type ActionDefinition,
   ActionTargetType,
@@ -50,6 +51,26 @@ export function useWorkspaceShortcuts() {
     }
   }, []);
 
+  const openChatAndFocusInput = useCallback(() => {
+    const currentWorkspaceId = workspaceIdRef.current;
+    if (!currentWorkspaceId) return;
+
+    useUiPreferencesStore
+      .getState()
+      .setLeftMainPanelVisible(true, currentWorkspaceId);
+
+    const focusEditor = () => {
+      const editor = document.querySelector(
+        '[aria-label="Markdown editor"]'
+      ) as HTMLElement | null;
+      editor?.focus();
+    };
+
+    // The panel/editor can mount asynchronously after opening.
+    window.setTimeout(focusEditor, 0);
+    window.setTimeout(focusEditor, 120);
+  }, []);
+
   useHotkeys('g>s', () => execute(Actions.Settings), OPTIONS);
   useHotkeys('g>n', () => execute(Actions.NewWorkspace), OPTIONS);
 
@@ -64,6 +85,7 @@ export function useWorkspaceShortcuts() {
   useHotkeys('v>p', () => execute(Actions.TogglePreviewMode), OPTIONS);
   useHotkeys('v>s', () => execute(Actions.ToggleLeftSidebar), OPTIONS);
   useHotkeys('v>h', () => execute(Actions.ToggleLeftMainPanel), OPTIONS);
+  useHotkeys('v>i', () => openChatAndFocusInput(), OPTIONS);
 
   useHotkeys('x>p', () => execute(Actions.GitCreatePR), OPTIONS);
   useHotkeys('x>m', () => execute(Actions.GitMerge), OPTIONS);
