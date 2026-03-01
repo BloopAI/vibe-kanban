@@ -40,31 +40,35 @@ export type AppDestination =
   | { kind: 'onboarding' }
   | { kind: 'onboarding-sign-in' }
   | { kind: 'migrate' }
-  | { kind: 'workspaces' }
-  | { kind: 'workspaces-create' }
-  | { kind: 'workspace'; workspaceId: string }
-  | { kind: 'workspace-vscode'; workspaceId: string }
-  | { kind: 'project'; projectId: string }
-  | { kind: 'project-issue-create'; projectId: string }
+  | { kind: 'workspaces'; hostId?: string }
+  | { kind: 'workspaces-create'; hostId?: string }
+  | { kind: 'workspace'; hostId?: string; workspaceId: string }
+  | { kind: 'workspace-vscode'; hostId?: string; workspaceId: string }
+  | { kind: 'project'; hostId?: string; projectId: string }
+  | { kind: 'project-issue-create'; hostId?: string; projectId: string }
   | {
       kind: 'project-issue';
+      hostId?: string;
       projectId: string;
       issueId: string;
     }
   | {
       kind: 'project-issue-workspace';
+      hostId?: string;
       projectId: string;
       issueId: string;
       workspaceId: string;
     }
   | {
       kind: 'project-issue-workspace-create';
+      hostId?: string;
       projectId: string;
       issueId: string;
       draftId: string;
     }
   | {
       kind: 'project-workspace-create';
+      hostId?: string;
       projectId: string;
       draftId: string;
     };
@@ -83,9 +87,13 @@ export interface AppNavigation {
 Notes:
 1. `AppDestination` has no router-specific fields (`to`, `params`, `search`
    objects tied to TanStack API shape).
-2. Host scoping is adapter context in remote, not part of shared destination.
-3. `KanbanSearch` values move to transition/local state, not query params.
-4. Destination construction helpers may be added, but they must return
+2. Host scope is part of semantic destination for host-aware routes via
+   optional `hostId`.
+3. Remote adapter rule: use `destination.hostId ?? currentHostId` when mapping
+   host-aware routes.
+4. Local adapter ignores `hostId`.
+5. `KanbanSearch` values move to transition/local state, not query params.
+6. Destination construction helpers may be added, but they must return
    `AppDestination` only.
 
 ## Migration Phases
@@ -95,7 +103,8 @@ Notes:
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
 2. Introduce `AppDestination`, `KanbanSearch`, and `NavigationTransition`.
 3. Replace `resolveAppNavigationFromPath` to return semantic destination only
-   (no query-derived `KanbanSearch`).
+   (no query-derived `KanbanSearch`), including `hostId` when path is
+   host-scoped.
 4. Consolidate duplicate parsing between:
    - `packages/web-core/src/shared/lib/routes/appNavigation.ts`
    - `packages/web-core/src/shared/lib/routes/projectSidebarRoutes.ts`
@@ -121,6 +130,10 @@ Notes:
 2. Keep host-scoped and fallback behavior in remote package.
 3. Keep `packages/remote-web/src/routes/__root.tsx` as wiring only.
 4. Enforce exhaustive `switch(destination.kind)` in remote adapter.
+5. Add explicit host precedence behavior:
+   - destination includes hostId: navigate to that host
+   - destination omits hostId: navigate in current host context
+   - no current host and host-aware destination: use remote fallback behavior
 
 ### Phase 5: Consumer Migration
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
@@ -182,3 +195,4 @@ Run:
 4. Host-scoped routing behavior in remote when switching host context.
 5. Onboarding/root redirect flows that currently rely on string destinations.
 6. Project sidebar route derivation after parser consolidation.
+7. Host precedence correctness for explicit-host vs current-host navigation.
