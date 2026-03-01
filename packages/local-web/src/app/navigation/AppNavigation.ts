@@ -5,12 +5,6 @@ import {
   resolveAppDestinationFromPath,
 } from '@/shared/lib/routes/appNavigation';
 
-type LocalRouterState = Parameters<typeof router.navigate>[0] extends {
-  state?: infer T;
-}
-  ? T
-  : never;
-
 function destinationToLocalTarget(destination: AppDestination) {
   switch (destination.kind) {
     case 'root':
@@ -89,9 +83,6 @@ export function createLocalAppNavigation(): AppNavigation {
         ...destinationToLocalTarget(destination),
         ...(transition?.replace !== undefined
           ? { replace: transition.replace }
-          : {}),
-        ...(transition?.state !== undefined
-          ? { state: transition.state as LocalRouterState }
           : {}),
       });
     },

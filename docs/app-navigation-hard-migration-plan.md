@@ -371,6 +371,15 @@ Completed so far:
    - made `isCreatingIssue` path-derived in `useActionVisibilityContext`
 7. Updated migration project entry points to set selected org in store before
    project navigation (no `orgId` query transport).
+8. Removed workspace-create router-state transport:
+   - replaced all `appNavigation.navigate(..., { state: ... })` workspace-create
+     initializers with scratch-draft persistence + plain navigation
+   - removed fallback route-state propagation in
+     `IssueWorkspacesSectionContainer` and `WorkspaceSelectionDialog`
+   - removed `location.state` initialization/cleanup logic in
+     `useCreateModeState` (explicit seed-state + scratch only)
+   - removed `state` from `NavigationTransition` and deleted adapter-level
+     router-state bridges in local/remote app navigation.
 
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
 and spread patterns (`...appNavigation.toX()`) to imperative calls.
@@ -409,6 +418,7 @@ Status: Completed (March 1, 2026)
    consumers.
 
 Router state removal policy:
+Status: Completed (March 1, 2026)
 
 1. Remove all `navigate(..., { state: ... })` and `state: (prev) => ...`
    patterns used for workspace-create initialization.

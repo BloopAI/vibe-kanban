@@ -5,12 +5,6 @@ import {
   resolveAppDestinationFromPath,
 } from "@/shared/lib/routes/appNavigation";
 
-type RemoteRouterState = Parameters<typeof router.navigate>[0] extends {
-  state?: infer T;
-}
-  ? T
-  : never;
-
 function destinationToRemoteTarget(
   destination: AppDestination,
   options: { currentHostId: string | null },
@@ -151,9 +145,6 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
         ...(transition?.replace !== undefined
           ? { replace: transition.replace }
           : {}),
-        ...(transition?.state !== undefined
-          ? { state: transition.state as RemoteRouterState }
-          : {}),
       });
     },
     resolveFromPath: (path) => resolveAppDestinationFromPath(path),
@@ -219,9 +210,6 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
         }),
         ...(transition?.replace !== undefined
           ? { replace: transition.replace }
-          : {}),
-        ...(transition?.state !== undefined
-          ? { state: transition.state as RemoteRouterState }
           : {}),
       });
     },

@@ -11,7 +11,6 @@ import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
-import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   buildLinkedIssueCreateState,
   buildLocalWorkspaceIdSet,
@@ -36,7 +35,6 @@ export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
-  const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const { openIssueWorkspace } = useKanbanNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
@@ -156,14 +154,14 @@ export function IssueWorkspacesSectionContainer({
       issueId,
     });
     if (!draftId) {
-      appNavigation.navigate(appNavigation.toWorkspacesCreate(), {
-        state: (prev) => {
-          const previousState = (prev ?? {}) as Record<string, unknown>;
-          return {
-            ...previousState,
-            ...createState,
-          };
-        },
+      await ConfirmDialog.show({
+        title: t('common:error'),
+        message: t(
+          'workspaces.createDraftError',
+          'Failed to prepare workspace draft. Please try again.'
+        ),
+        confirmText: t('common:ok'),
+        showCancelButton: false,
       });
     }
   }, [
@@ -174,7 +172,7 @@ export function IssueWorkspacesSectionContainer({
     activeWorkspaces,
     archivedWorkspaces,
     workspaces,
-    appNavigation,
+    t,
   ]);
 
   // Handle clicking link action to link an existing workspace

@@ -41,9 +41,6 @@ export type AppDestination =
 
 export type NavigationTransition = {
   replace?: boolean;
-  state?:
-    | Record<string, unknown>
-    | ((previous: unknown) => Record<string, unknown>);
 };
 
 export interface AppNavigation {

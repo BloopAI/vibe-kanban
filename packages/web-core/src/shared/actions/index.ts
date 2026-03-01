@@ -71,6 +71,10 @@ import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
+import {
+  buildWorkspaceCreateInitialState,
+  persistWorkspaceCreateDraft,
+} from '@/shared/lib/workspaceCreateState';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -175,20 +179,28 @@ export const Actions = {
             }
           : undefined;
 
-        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate(), {
-          state: (prev) => {
-            const previousState = (prev ?? {}) as Record<string, unknown>;
-            return {
-              ...previousState,
-              initialPrompt: firstMessage,
-              preferredRepos: repos.map((r) => ({
-                repo_id: r.id,
-                target_branch: r.target_branch,
-              })),
-              linkedIssue,
-            };
+        const createState = buildWorkspaceCreateInitialState({
+          prompt: firstMessage,
+          defaults: {
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: r.target_branch,
+            })),
           },
+          linkedIssue,
         });
+        const draftId = await persistWorkspaceCreateDraft(createState);
+        if (!draftId) {
+          await ConfirmDialog.show({
+            title: 'Error',
+            message: 'Failed to prepare workspace draft. Please try again.',
+            confirmText: 'OK',
+            showCancelButton: false,
+          });
+          return;
+        }
+
+        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
       } catch {
         // Fallback to creating without the prompt/repos
         ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
@@ -352,19 +364,29 @@ export const Actions = {
               remoteProjectId: remoteWs.project_id,
             }
           : undefined;
-        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate(), {
-          state: (prev) => {
-            const previousState = (prev ?? {}) as Record<string, unknown>;
-            return {
-              ...previousState,
-              preferredRepos: repos.map((r) => ({
-                repo_id: r.id,
-                target_branch: workspace.branch,
-              })),
-              linkedIssue,
-            };
+
+        const createState = buildWorkspaceCreateInitialState({
+          prompt: null,
+          defaults: {
+            preferredRepos: repos.map((r) => ({
+              repo_id: r.id,
+              target_branch: workspace.branch,
+            })),
           },
+          linkedIssue,
         });
+        const draftId = await persistWorkspaceCreateDraft(createState);
+        if (!draftId) {
+          await ConfirmDialog.show({
+            title: 'Error',
+            message: 'Failed to prepare workspace draft. Please try again.',
+            confirmText: 'OK',
+            showCancelButton: false,
+          });
+          return;
+        }
+
+        ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
       } catch {
         ctx.appNavigation.navigate(ctx.appNavigation.toWorkspacesCreate());
       }
