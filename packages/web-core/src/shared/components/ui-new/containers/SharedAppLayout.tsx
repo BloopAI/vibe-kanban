@@ -18,8 +18,8 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
 import {
+  getProjectDestination,
   goToAppDestination,
   isWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
@@ -155,25 +155,23 @@ export function SharedAppLayout() {
     () => appNavigation.resolveFromPath(location.pathname),
     [location.pathname, appNavigation]
   );
+  const projectDestination = useMemo(
+    () => getProjectDestination(currentDestination),
+    [currentDestination]
+  );
   const isWorkspacesActive = isWorkspacesDestination(currentDestination);
-  const activeProjectId =
-    parseProjectSidebarRoute(location.pathname, appNavigation.resolveFromPath)
-      ?.projectId ?? null;
+  const activeProjectId = projectDestination?.projectId ?? null;
 
   // Remember the last visited route for each project so AppBar clicks can
   // reopen the previous issue/workspace selection.
   useEffect(() => {
-    const route = parseProjectSidebarRoute(
-      location.pathname,
-      appNavigation.resolveFromPath
-    );
-    if (!route) {
+    if (!projectDestination) {
       return;
     }
 
     const pathWithSearch = `${location.pathname}${location.searchStr}`;
-    projectLastPathRef.current[route.projectId] = pathWithSearch;
-  }, [location.pathname, location.searchStr, appNavigation]);
+    projectLastPathRef.current[projectDestination.projectId] = pathWithSearch;
+  }, [location.pathname, location.searchStr, projectDestination]);
 
   const handleWorkspacesClick = useCallback(() => {
     appNavigation.goToWorkspaces();

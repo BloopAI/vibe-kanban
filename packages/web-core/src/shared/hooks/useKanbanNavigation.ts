@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from '@tanstack/react-router';
 import type { IssuePriority } from 'shared/remote-types';
-import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
-import type { ProjectIssueCreateOptions } from '@/shared/lib/routes/appNavigation';
+import {
+  getDestinationHostId,
+  getProjectDestination,
+  type ProjectIssueCreateOptions,
+} from '@/shared/lib/routes/appNavigation';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   buildKanbanCreateDefaultsKey,
@@ -34,37 +37,71 @@ export function useKanbanNavigation() {
   const location = useLocation();
   const appNavigation = useAppNavigation();
 
-  const routeState = useMemo(
-    () =>
-      parseProjectSidebarRoute(
-        location.pathname,
-        appNavigation.resolveFromPath
-      ),
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
     [location.pathname, appNavigation]
   );
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
 
-  const projectId = routeState?.projectId ?? null;
-  const hostId = routeState?.hostId ?? null;
+  const projectId = projectDestination?.projectId ?? null;
+  const hostId = getDestinationHostId(projectDestination);
   const issueId = useMemo(() => {
-    if (!routeState) return null;
-    if (routeState.type === 'issue') return routeState.issueId;
-    if (routeState.type === 'issue-workspace') return routeState.issueId;
-    if (routeState.type === 'workspace-create') return routeState.issueId;
-    return null;
-  }, [routeState]);
+    if (!projectDestination) return null;
+
+    switch (projectDestination.kind) {
+      case 'project-issue':
+      case 'project-issue-workspace':
+      case 'project-issue-workspace-create':
+        return projectDestination.issueId;
+      default:
+        return null;
+    }
+  }, [projectDestination]);
 
   const workspaceId =
-    routeState?.type === 'issue-workspace' ? routeState.workspaceId : null;
+    projectDestination?.kind === 'project-issue-workspace'
+      ? projectDestination.workspaceId
+      : null;
   const rawDraftId =
-    routeState?.type === 'workspace-create' ? routeState.draftId : null;
+    projectDestination?.kind === 'project-issue-workspace-create' ||
+    projectDestination?.kind === 'project-workspace-create'
+      ? projectDestination.draftId
+      : null;
   const draftId = rawDraftId && isValidUuid(rawDraftId) ? rawDraftId : null;
   const hasInvalidWorkspaceCreateDraftId =
-    routeState?.type === 'workspace-create' && rawDraftId !== null && !draftId;
+    (projectDestination?.kind === 'project-issue-workspace-create' ||
+      projectDestination?.kind === 'project-workspace-create') &&
+    rawDraftId !== null &&
+    !draftId;
 
-  const isCreateMode = routeState?.type === 'issue-create';
+  const isCreateMode = projectDestination?.kind === 'project-issue-create';
   const isWorkspaceCreateMode =
-    routeState?.type === 'workspace-create' && draftId !== null;
-  const isPanelOpen = !!routeState && routeState.type !== 'closed';
+    (projectDestination?.kind === 'project-issue-workspace-create' ||
+      projectDestination?.kind === 'project-workspace-create') &&
+    draftId !== null;
+  const isPanelOpen =
+    !!projectDestination && projectDestination.kind !== 'project';
+
+  const sidebarMode = useMemo(() => {
+    if (!projectDestination) return null;
+
+    switch (projectDestination.kind) {
+      case 'project':
+        return 'closed';
+      case 'project-issue-create':
+        return 'issue-create';
+      case 'project-issue':
+        return 'issue';
+      case 'project-issue-workspace':
+        return 'issue-workspace';
+      case 'project-issue-workspace-create':
+      case 'project-workspace-create':
+        return 'workspace-create';
+    }
+  }, [projectDestination]);
 
   const createDefaultsKey = useMemo(() => {
     if (!projectId) return null;
@@ -195,7 +232,7 @@ export function useKanbanNavigation() {
     issueId,
     workspaceId,
     draftId,
-    sidebarMode: routeState?.type ?? null,
+    sidebarMode,
     isCreateMode,
     isWorkspaceCreateMode,
     hasInvalidWorkspaceCreateDraftId,

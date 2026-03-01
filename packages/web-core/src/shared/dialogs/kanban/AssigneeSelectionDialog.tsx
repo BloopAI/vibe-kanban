@@ -17,8 +17,11 @@ import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
-import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import {
+  getDestinationHostId,
+  getProjectDestination,
+} from '@/shared/lib/routes/appNavigation';
 import {
   buildKanbanCreateDefaultsKey,
   patchKanbanCreateDefaults,
@@ -66,20 +69,20 @@ function AssigneeSelectionContent({
   const hasCreateCallback = onCreateModeAssigneesChange != null;
   const appNavigation = useAppNavigation();
   const location = useLocation();
-  const routeState = useMemo(
-    () =>
-      parseProjectSidebarRoute(
-        location.pathname,
-        appNavigation.resolveFromPath
-      ),
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
     [location.pathname, appNavigation]
   );
-  const resolvedProjectId = projectId || routeState?.projectId || null;
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
+  const resolvedProjectId = projectId || projectDestination?.projectId || null;
   const createDefaultsKey = useMemo(() => {
     if (!resolvedProjectId) return null;
-    const hostId = routeState?.hostId ?? null;
+    const hostId = getDestinationHostId(projectDestination);
     return buildKanbanCreateDefaultsKey(hostId, resolvedProjectId);
-  }, [resolvedProjectId, routeState?.hostId]);
+  }, [resolvedProjectId, projectDestination]);
   const createDefaults = useKanbanCreateDefaults(createDefaultsKey);
 
   // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
@@ -249,15 +252,15 @@ function AssigneeSelectionWithContext({
 }: AssigneeSelectionDialogProps) {
   const appNavigation = useAppNavigation();
   const location = useLocation();
-  const routeState = useMemo(
-    () =>
-      parseProjectSidebarRoute(
-        location.pathname,
-        appNavigation.resolveFromPath
-      ),
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
     [location.pathname, appNavigation]
   );
-  const resolvedProjectId = projectId || routeState?.projectId;
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
+  const resolvedProjectId = projectId || projectDestination?.projectId;
   // Get organization ID from store (set when navigating to project)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
 

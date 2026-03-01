@@ -21,7 +21,6 @@ import {
   isProjectDestination,
   type AppDestination,
 } from '@/shared/lib/routes/appNavigation';
-import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { PROJECT_ISSUES_SHAPE } from 'shared/remote-types';
 import type { Merge } from 'shared/types';
@@ -62,15 +61,7 @@ export function useActionVisibilityContext(
     () => appNavigation.resolveFromPath(location.pathname),
     [location.pathname, appNavigation]
   );
-  const routeState = useMemo(
-    () =>
-      parseProjectSidebarRoute(
-        location.pathname,
-        appNavigation.resolveFromPath
-      ),
-    [location.pathname, appNavigation]
-  );
-  const kanbanCreateMode = routeState?.type === 'issue-create';
+  const kanbanCreateMode = destination?.kind === 'project-issue-create';
   const effectiveProjectId = options?.projectId ?? routeProjectId;
   const optionIssueIds = options?.issueIds;
   const effectiveIssueIds = useMemo(

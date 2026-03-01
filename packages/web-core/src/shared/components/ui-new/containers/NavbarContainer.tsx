@@ -30,7 +30,7 @@ import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityCo
 import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
-import { parseProjectSidebarRoute } from '@/shared/lib/routes/projectSidebarRoutes';
+import { getProjectDestination } from '@/shared/lib/routes/appNavigation';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 /**
@@ -123,14 +123,18 @@ export function NavbarContainer({
   const syncErrorContext = useSyncErrorContext();
   const location = useLocation();
   const appNavigation = useAppNavigation();
-  const currentProjectRoute = parseProjectSidebarRoute(
-    location.pathname,
-    appNavigation.resolveFromPath
+  const destination = useMemo(
+    () => appNavigation.resolveFromPath(location.pathname),
+    [location.pathname, appNavigation]
   );
-  const isOnProjectPage = currentProjectRoute !== null;
-  const projectId = currentProjectRoute?.projectId ?? null;
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
+  const isOnProjectPage = projectDestination !== null;
+  const projectId = projectDestination?.projectId ?? null;
   const isOnProjectSubRoute =
-    currentProjectRoute !== null && currentProjectRoute.type !== 'closed';
+    projectDestination !== null && projectDestination.kind !== 'project';
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
   // Find remote workspace linked to current local workspace

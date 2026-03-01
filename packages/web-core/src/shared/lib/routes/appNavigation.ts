@@ -91,6 +91,30 @@ export interface ProjectIssueCreateOptions {
   parentIssueId?: string;
 }
 
+type ProjectDestinationKind =
+  | 'project'
+  | 'project-issue-create'
+  | 'project-issue'
+  | 'project-issue-workspace'
+  | 'project-issue-workspace-create'
+  | 'project-workspace-create';
+
+type WorkspaceDestinationKind =
+  | 'workspaces'
+  | 'workspaces-create'
+  | 'workspace'
+  | 'workspace-vscode';
+
+export type ProjectDestination = Extract<
+  AppDestination,
+  { kind: ProjectDestinationKind }
+>;
+
+export type WorkspaceDestination = Extract<
+  AppDestination,
+  { kind: WorkspaceDestinationKind }
+>;
+
 export function getDestinationHostId(
   destination: AppDestination | null
 ): string | null {
@@ -103,7 +127,7 @@ export function getDestinationHostId(
 
 export function isProjectDestination(
   destination: AppDestination | null
-): boolean {
+): destination is ProjectDestination {
   if (!destination) {
     return false;
   }
@@ -123,7 +147,7 @@ export function isProjectDestination(
 
 export function isWorkspacesDestination(
   destination: AppDestination | null
-): boolean {
+): destination is WorkspaceDestination {
   if (!destination) {
     return false;
   }
@@ -137,6 +161,12 @@ export function isWorkspacesDestination(
     default:
       return false;
   }
+}
+
+export function getProjectDestination(
+  destination: AppDestination | null
+): ProjectDestination | null {
+  return isProjectDestination(destination) ? destination : null;
 }
 
 export function goToAppDestination(
