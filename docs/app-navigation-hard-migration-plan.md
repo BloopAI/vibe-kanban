@@ -138,6 +138,11 @@ Findings:
 5. The current remote fallback adapter still emits unscoped
    `/workspaces` and `/projects/...` targets, which do not exist in remote
    routes. This is the core hostless dead-end risk.
+6. Host selection/gating logic is duplicated between `HomePage` and
+   `RemoteAppShell`, which risks behavior drift as the migration proceeds.
+7. Current `preferredHostId` fallback can select non-online hosts, but the
+   plan does not yet define explicit UI behavior for host-required actions in
+   offline/unpaired-only states.
 
 Decisions locked for implementation:
 1. Remote navigation must never emit unscoped project/workspace paths.
@@ -149,6 +154,16 @@ Decisions locked for implementation:
    layer handles routing correctness only.
 5. Keep strict external URL behavior: unscoped remote project/workspace URLs
    remain invalid and should hit 404.
+6. Introduce one shared remote host-resolution helper (used by both
+   `HomePage` and `RemoteAppShell`) to compute host candidates and avoid
+   duplicated selection logic.
+7. Define a single host-required UI action policy:
+   - route host available: use it
+   - otherwise online host available: use it
+   - otherwise do not navigate to host-scoped project/workspace routes from UI
+     affordances; open Relay Settings instead
+8. Apply the same host-required policy to all relevant entry points (home
+   project cards, app-shell project/workspace actions, host quick actions).
 
 ### 3) Hidden Direct Route Usage Outside `AppNavigation` (Spike Complete)
 Findings:
@@ -231,6 +246,20 @@ Rules:
    - destination includes hostId: navigate to that host
    - destination omits hostId: navigate in current host context
    - no current host and host-aware destination: redirect to `/`
+
+### Phase 4.5: Remote Host UX Consolidation
+1. Add a shared host-resolution helper in remote web and delete duplicated
+   `preferredHostId` logic.
+2. Apply the helper in:
+   - `packages/remote-web/src/pages/HomePage.tsx`
+   - `packages/remote-web/src/app/layout/RemoteAppShell.tsx`
+3. Enforce one host-required UI action policy across home/app-shell:
+   - route host if present
+   - else online host if present
+   - else open Relay Settings and do not navigate to host-scoped
+     project/workspace routes
+4. Keep adapter-level fallback behavior unchanged: when called without an
+   effective host for a host-aware destination, navigate to `/`.
 
 ### Phase 5: Consumer Migration
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
@@ -316,3 +345,4 @@ Run:
 6. Project sidebar route derivation after parser consolidation.
 7. Host precedence correctness for explicit-host vs current-host navigation.
 8. Draft persistence failure handling (must not silently drop payload).
+9. Host status transitions (online/offline/unpaired) while UI is open.
