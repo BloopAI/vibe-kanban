@@ -1,86 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
-type RootRedirectDestination =
-  | { kind: 'onboarding' }
-  | { kind: 'workspaces-create' }
-  | { kind: 'project'; projectId: string };
-
-const DEFAULT_DESTINATION: RootRedirectDestination = {
-  kind: 'workspaces-create',
-};
-
 export function RootRedirectPage() {
   const { config, loading, loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const appNavigation = useAppNavigation();
-  const [destination, setDestination] =
-    useState<RootRedirectDestination | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    if (loading || !config) {
+      return;
+    }
 
-    const resolveDestination = async () => {
-      if (loading || !config) {
-        return;
-      }
-
+    let isActive = true;
+    void (async () => {
       if (!config.remote_onboarding_acknowledged) {
-        setDestination({ kind: 'onboarding' });
+        appNavigation.goToOnboarding({ replace: true });
         return;
       }
 
       if (loginStatus?.status !== 'loggedin') {
-        setDestination(DEFAULT_DESTINATION);
+        appNavigation.goToWorkspacesCreate({ replace: true });
         return;
       }
 
-      const firstProjectDestination =
-        await getFirstProjectDestination(setSelectedOrgId);
-      if (!cancelled) {
-        setDestination(
-          firstProjectDestination?.kind === 'project'
-            ? firstProjectDestination
-            : DEFAULT_DESTINATION
-        );
+      const destination = await getFirstProjectDestination(setSelectedOrgId);
+      if (!isActive) {
+        return;
       }
-    };
 
-    void resolveDestination();
+      if (destination?.kind === 'project') {
+        appNavigation.goToProject(destination.projectId, { replace: true });
+        return;
+      }
+
+      appNavigation.goToWorkspacesCreate({ replace: true });
+    })();
 
     return () => {
-      cancelled = true;
+      isActive = false;
     };
   }, [appNavigation, config, loading, loginStatus?.status, setSelectedOrgId]);
 
-  useEffect(() => {
-    if (loading || !config || !destination) {
-      return;
-    }
-
-    switch (destination.kind) {
-      case 'onboarding':
-        appNavigation.goToOnboarding({ replace: true });
-        return;
-      case 'workspaces-create':
-        appNavigation.goToWorkspacesCreate({ replace: true });
-        return;
-      case 'project':
-        appNavigation.goToProject(destination.projectId, { replace: true });
-        return;
-    }
-  }, [appNavigation, config, destination, loading]);
-
-  if (loading || !config || !destination) {
-    return (
-      <div className="h-screen bg-primary flex items-center justify-center">
-        <p className="text-low">Loading...</p>
-      </div>
-    );
-  }
-
-  return null;
+  return (
+    <div className="h-screen bg-primary flex items-center justify-center">
+      <p className="text-low">Loading...</p>
+    </div>
+  );
 }
