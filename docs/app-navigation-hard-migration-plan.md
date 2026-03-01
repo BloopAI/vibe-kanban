@@ -21,12 +21,83 @@ and remote adapters.
 4. `useAppNavigation` exposes imperative methods (`goTo*`, `resolveFromPath`)
    instead of returning route objects.
 
+## Shared Semantic Destination Model
+Define one destination union in
+`packages/web-core/src/shared/lib/routes/appNavigation.ts`:
+
+```ts
+export type KanbanSearch = {
+  statusId?: string;
+  priority?: string;
+  assignees?: string;
+  parentIssueId?: string;
+  mode?: string;
+  orgId?: string;
+};
+
+export type AppDestination =
+  | { kind: 'root' }
+  | { kind: 'onboarding' }
+  | { kind: 'onboarding-sign-in' }
+  | { kind: 'migrate' }
+  | { kind: 'workspaces' }
+  | { kind: 'workspaces-create' }
+  | { kind: 'workspace'; workspaceId: string }
+  | { kind: 'workspace-vscode'; workspaceId: string }
+  | { kind: 'project'; projectId: string; search?: KanbanSearch }
+  | { kind: 'project-issue-create'; projectId: string; search?: KanbanSearch }
+  | {
+      kind: 'project-issue';
+      projectId: string;
+      issueId: string;
+      search?: KanbanSearch;
+    }
+  | {
+      kind: 'project-issue-workspace';
+      projectId: string;
+      issueId: string;
+      workspaceId: string;
+      search?: KanbanSearch;
+    }
+  | {
+      kind: 'project-issue-workspace-create';
+      projectId: string;
+      issueId: string;
+      draftId: string;
+      search?: KanbanSearch;
+    }
+  | {
+      kind: 'project-workspace-create';
+      projectId: string;
+      draftId: string;
+      search?: KanbanSearch;
+    };
+
+export type NavigationTransition = {
+  replace?: boolean;
+  state?: unknown;
+};
+
+export interface AppNavigation {
+  navigate(destination: AppDestination, transition?: NavigationTransition): void;
+  resolveFromPath(path: string): AppDestination | null;
+}
+```
+
+Notes:
+1. `AppDestination` has no router-specific fields (`to`, `params`, `search`
+   objects tied to TanStack API shape).
+2. Host scoping is adapter context in remote, not part of shared destination.
+3. URL parsing keeps query support (`KanbanSearch`) in shared code.
+4. Destination construction helpers may be added, but they must return
+   `AppDestination` only.
+
 ## Migration Phases
 
 ### Phase 1: Shared Contract and Parsing
 1. Replace route-object API in
    `packages/web-core/src/shared/lib/routes/appNavigation.ts`.
-2. Introduce semantic destination union and transition options.
+2. Introduce `AppDestination`, `KanbanSearch`, and `NavigationTransition`.
 3. Replace `resolveAppNavigationFromPath` to return semantic destination only.
 4. Consolidate duplicate parsing between:
    - `packages/web-core/src/shared/lib/routes/appNavigation.ts`
@@ -36,19 +107,23 @@ and remote adapters.
 ### Phase 2: Provider Interface
 1. Update `packages/web-core/src/shared/hooks/useAppNavigation.ts` provider
    types to the new imperative contract.
-2. Remove legacy `toX()` route-object signatures.
+2. Remove legacy `toX()` route-object signatures and keep only semantic
+   methods (`navigate`, `resolveFromPath`, optional typed convenience wrappers
+   returning `AppDestination`).
 
 ### Phase 3: Local Adapter
 1. Update `packages/local-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
 2. Use local typed TanStack route mapping without casts.
 3. Keep `packages/local-web/src/app/entry/App.tsx` as wiring only.
+4. Enforce exhaustive `switch(destination.kind)` in local adapter.
 
 ### Phase 4: Remote Adapter
 1. Update `packages/remote-web/src/app/navigation/AppNavigation.ts` to
    implement the new contract.
 2. Keep host-scoped and fallback behavior in remote package.
 3. Keep `packages/remote-web/src/routes/__root.tsx` as wiring only.
+4. Enforce exhaustive `switch(destination.kind)` in remote adapter.
 
 ### Phase 5: Consumer Migration
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
