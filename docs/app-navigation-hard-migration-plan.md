@@ -106,6 +106,12 @@ For host-aware destination kinds:
 4. When no host is available for a host-aware destination, redirect to root
    (`/`) and stop.
 
+404 policy:
+1. Direct browser requests to unscoped remote paths (`/projects/*`,
+   `/workspaces/*`) must 404.
+2. Internal remote navigation requests for host-aware destinations with no
+   resolvable host must route to `/` (not 404).
+
 Examples:
 1. Current route host `h1`, destination `{ kind: 'project', projectId: 'p1' }`
    => `/hosts/h1/projects/p1`
@@ -140,6 +146,8 @@ Decisions locked for implementation:
    destinations from `/hosts/$hostId/...` paths during normal operation.
 4. Root host selection UX remains in `HomePage`/`RemoteAppShell`; navigation
    layer handles routing correctness only.
+5. Keep strict external URL behavior: unscoped remote project/workspace URLs
+   remain invalid and should hit 404.
 
 ## Workspace Create Transport Rules (No Nav State)
 Create-workspace payloads are transported via scratch drafts, not router
