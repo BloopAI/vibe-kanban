@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckIcon, XIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
-import { Navigate } from '@tanstack/react-router';
 import { ThemeMode } from 'shared/types';
 import {
   OAuthDialog,
@@ -75,6 +74,7 @@ export function OnboardingSignInPage() {
   const [saving, setSaving] = useState(false);
   const isCompletingOnboardingRef = useRef(false);
   const hasTrackedStageViewRef = useRef(false);
+  const hasRedirectedToRootRef = useRef(false);
   const [pendingProvider, setPendingProvider] = useState<OAuthProvider | null>(
     null
   );
@@ -106,6 +106,18 @@ export function OnboardingSignInPage() {
     });
     hasTrackedStageViewRef.current = true;
   }, [config, isLoggedIn, loading, trackRemoteOnboardingEvent]);
+
+  useEffect(() => {
+    if (!config?.remote_onboarding_acknowledged) {
+      return;
+    }
+    if (isCompletingOnboardingRef.current || hasRedirectedToRootRef.current) {
+      return;
+    }
+
+    hasRedirectedToRootRef.current = true;
+    appNavigation.navigate(appNavigation.toRoot(), { replace: true });
+  }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
   const getOnboardingDestination = async (): Promise<string> => {
     const firstProjectDestination =
@@ -201,7 +213,7 @@ export function OnboardingSignInPage() {
     config.remote_onboarding_acknowledged &&
     !isCompletingOnboardingRef.current
   ) {
-    return <Navigate to="/" replace />;
+    return null;
   }
 
   return (

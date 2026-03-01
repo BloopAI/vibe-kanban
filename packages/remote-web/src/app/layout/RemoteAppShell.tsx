@@ -26,7 +26,10 @@ import { listOrganizationProjects } from "@remote/shared/lib/api";
 import { RemoteAppBarUserPopoverContainer } from "@remote/app/layout/RemoteAppBarUserPopoverContainer";
 import { RemoteNavbarContainer } from "@remote/app/layout/RemoteNavbarContainer";
 import { RemoteDesktopNavbar } from "@remote/app/layout/RemoteDesktopNavbar";
-import { useRelayAppBarHosts } from "@remote/shared/hooks/useRelayAppBarHosts";
+import {
+  resolveRelayNavigationHostId,
+  useRelayAppBarHosts,
+} from "@remote/shared/hooks/useRelayAppBarHosts";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import {
   CreateOrganizationDialog,
@@ -128,18 +131,10 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
 
   const isWorkspacesActive = location.pathname.includes("/workspaces");
   const activeHostId = routeHostId ?? null;
-  const preferredHostId = useMemo(() => {
-    if (routeHostId) {
-      return routeHostId;
-    }
-
-    const onlineHost = relayHosts.find((host) => host.status === "online");
-    if (onlineHost) {
-      return onlineHost.id;
-    }
-
-    return relayHosts[0]?.id ?? null;
-  }, [relayHosts, routeHostId]);
+  const preferredHostId = useMemo(
+    () => resolveRelayNavigationHostId(relayHosts, { routeHostId }),
+    [relayHosts, routeHostId],
+  );
 
   const activeProjectId = useMemo(() => {
     const segments = location.pathname.split("/").filter(Boolean);
@@ -151,6 +146,14 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     return segments[projectSegmentIndex + 1] ?? null;
   }, [location.pathname]);
 
+  const openRelaySettings = useCallback((hostId?: string) => {
+    void SettingsDialog.show({
+      initialSection: "relay",
+      ...(hostId ? { initialState: { hostId } } : {}),
+      sections: REMOTE_SETTINGS_SECTIONS,
+    });
+  }, []);
+
   const handleWorkspacesClick = useCallback(() => {
     if (preferredHostId) {
       navigate({
@@ -160,19 +163,13 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       return;
     }
 
-    void SettingsDialog.show({
-      initialSection: "relay",
-      sections: REMOTE_SETTINGS_SECTIONS,
-    });
-  }, [navigate, preferredHostId]);
+    openRelaySettings();
+  }, [navigate, openRelaySettings, preferredHostId]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
       if (!preferredHostId) {
-        void SettingsDialog.show({
-          initialSection: "relay",
-          sections: REMOTE_SETTINGS_SECTIONS,
-        });
+        openRelaySettings();
         return;
       }
 
@@ -181,7 +178,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         params: { hostId: preferredHostId, projectId },
       });
     },
-    [navigate, preferredHostId],
+    [navigate, openRelaySettings, preferredHostId],
   );
 
   const handleCreateProject = useCallback(async () => {
@@ -198,6 +195,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       if (result.action === "created" && result.project) {
         void projectsQuery.refetch();
         if (!preferredHostId) {
+          openRelaySettings();
           return;
         }
         navigate({
@@ -211,7 +209,13 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     } catch {
       // Dialog cancelled
     }
-  }, [activeOrganizationId, navigate, preferredHostId, projectsQuery]);
+  }, [
+    activeOrganizationId,
+    navigate,
+    openRelaySettings,
+    preferredHostId,
+    projectsQuery,
+  ]);
 
   const handleCreateOrg = useCallback(async () => {
     try {
@@ -240,21 +244,14 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         return;
       }
 
-      void SettingsDialog.show({
-        initialSection: "relay",
-        initialState: { hostId },
-        sections: REMOTE_SETTINGS_SECTIONS,
-      });
+      openRelaySettings(hostId);
     },
-    [navigate],
+    [navigate, openRelaySettings],
   );
 
   const handlePairHostClick = useCallback(() => {
-    void SettingsDialog.show({
-      initialSection: "relay",
-      sections: REMOTE_SETTINGS_SECTIONS,
-    });
-  }, []);
+    openRelaySettings();
+  }, [openRelaySettings]);
 
   const mobileUserSlot = useMemo(() => {
     if (!isMobile) return undefined;

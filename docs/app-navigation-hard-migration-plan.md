@@ -291,6 +291,9 @@ Completed:
    `migrate`) to `/` in remote adapter.
 
 ### Phase 4.5: Remote Host UX Consolidation
+Status: Completed (March 1, 2026)
+
+Completed:
 1. Add a shared host-resolution helper in remote web and delete duplicated
    `preferredHostId` logic.
 2. Apply the helper in:
@@ -317,6 +320,8 @@ Completed so far:
 3. Migrated workspace-create state transport callsites to pass transition
    `state` through `appNavigation.navigate(...)` (no direct spread of route
    objects).
+4. Removed remaining direct semantic routing primitives in `web-core`
+   (`Link`/`Navigate`) for onboarding redirects and remote issue links.
 
 Migrate all `useAppNavigation` consumers from `navigate(appNavigation.toX())`
 and spread patterns (`...appNavigation.toX()`) to imperative calls.

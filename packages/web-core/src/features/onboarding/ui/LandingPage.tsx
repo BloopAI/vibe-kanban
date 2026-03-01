@@ -22,7 +22,6 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 import type { IconProps } from '@phosphor-icons/react';
-import { Navigate, useNavigate } from '@tanstack/react-router';
 import { usePostHog } from 'posthog-js/react';
 import { siDiscord } from 'simple-icons';
 import {
@@ -38,6 +37,7 @@ import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
 import { cn } from '@/shared/lib/utils';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
 type SoundOption = {
@@ -146,7 +146,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 }
 
 export function LandingPage() {
-  const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { theme } = useTheme();
   const { config, profiles, updateAndSaveConfig, loading } = useUserSystem();
   const posthog = usePostHog();
@@ -161,6 +161,7 @@ export function LandingPage() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [soundFile, setSoundFile] = useState<SoundFile>(randomDefaultSoundFile);
   const hasTrackedStageViewRef = useRef(false);
+  const hasRedirectedToRootRef = useRef(false);
 
   const trackRemoteOnboardingEvent = useCallback(
     (eventName: string, properties: Record<string, unknown> = {}) => {
@@ -195,6 +196,18 @@ export function LandingPage() {
     });
     hasTrackedStageViewRef.current = true;
   }, [config, initialized, trackRemoteOnboardingEvent]);
+
+  useEffect(() => {
+    if (
+      !config?.remote_onboarding_acknowledged ||
+      hasRedirectedToRootRef.current
+    ) {
+      return;
+    }
+
+    hasRedirectedToRootRef.current = true;
+    appNavigation.navigate(appNavigation.toRoot(), { replace: true });
+  }, [appNavigation, config?.remote_onboarding_acknowledged]);
 
   const executorOptions = useMemo(() => {
     const compareAgents = (a: BaseCodingAgent, b: BaseCodingAgent) => {
@@ -288,7 +301,9 @@ export function LandingPage() {
         stage: 'landing',
         destination: '/onboarding/sign-in',
       });
-      navigate({ to: '/onboarding/sign-in', replace: true });
+      appNavigation.navigate(appNavigation.toOnboardingSignIn(), {
+        replace: true,
+      });
       return;
     }
 
@@ -307,7 +322,7 @@ export function LandingPage() {
   }
 
   if (config.remote_onboarding_acknowledged) {
-    return <Navigate to="/" replace />;
+    return null;
   }
 
   return (

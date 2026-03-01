@@ -16,6 +16,27 @@ interface UseRelayAppBarHostsResult {
   isLoading: boolean;
 }
 
+export interface ResolveRelayNavigationHostOptions {
+  routeHostId?: string | null;
+}
+
+export function resolveRelayNavigationHostId(
+  hosts: AppBarHost[],
+  options?: ResolveRelayNavigationHostOptions,
+): string | null {
+  const routeHostId = options?.routeHostId ?? null;
+  if (routeHostId) {
+    return routeHostId;
+  }
+
+  const onlineHost = hosts.find((host) => host.status === "online");
+  if (onlineHost) {
+    return onlineHost.id;
+  }
+
+  return null;
+}
+
 function mapRelayHostStatus(
   host: RelayHost,
   pairedHostIds: Set<string>,
