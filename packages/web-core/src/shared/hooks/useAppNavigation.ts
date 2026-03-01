@@ -1,16 +1,30 @@
-import { useMemo } from 'react';
-import { useLocation } from '@tanstack/react-router';
-import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
-import { createAppNavigation } from '@/shared/lib/routes/appNavigation';
-import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
+import { createElement, type ReactNode, useContext } from 'react';
+import { createHmrContext } from '@/shared/lib/hmrContext';
+import type { AppNavigation } from '@/shared/lib/routes/appNavigation';
 
-export function useAppNavigation() {
-  const runtime = useAppRuntime();
-  const location = useLocation();
-  const { hostId } = parseAppPathname(location.pathname);
+const AppNavigationContext = createHmrContext<AppNavigation | undefined>(
+  'AppNavigationContext',
+  undefined
+);
 
-  return useMemo(
-    () => createAppNavigation({ runtime, hostId }),
-    [runtime, hostId]
-  );
+export function AppNavigationProvider({
+  value,
+  children,
+}: {
+  value: AppNavigation;
+  children: ReactNode;
+}) {
+  return createElement(AppNavigationContext.Provider, { value }, children);
+}
+
+export function useAppNavigation(): AppNavigation {
+  const appNavigation = useContext(AppNavigationContext);
+
+  if (!appNavigation) {
+    throw new Error(
+      'useAppNavigation must be used within an AppNavigationProvider'
+    );
+  }
+
+  return appNavigation;
 }

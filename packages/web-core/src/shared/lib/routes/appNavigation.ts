@@ -1,4 +1,3 @@
-import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
 import type { IssuePriority } from 'shared/remote-types';
 import { parseAppPathname } from '@/shared/lib/routes/pathResolution';
 
@@ -269,7 +268,7 @@ function parseNavigationIntent(path: string): NavigationIntent | null {
   return null;
 }
 
-function createLocalAppNavigation(): AppNavigation {
+export function createLocalAppNavigation(): AppNavigation {
   const navigation: AppNavigation = {
     toRoot: () => ({ to: '/' }) as any,
     toOnboarding: () => ({ to: '/onboarding' }) as any,
@@ -333,7 +332,7 @@ function createLocalAppNavigation(): AppNavigation {
   return navigation;
 }
 
-function createRemoteAppNavigation(hostId: string): AppNavigation {
+export function createRemoteAppNavigation(hostId: string): AppNavigation {
   const navigation: AppNavigation = {
     toRoot: () => ({ to: '/' }) as any,
     toOnboarding: () => ({ to: '/onboarding' }) as any,
@@ -465,24 +464,4 @@ function resolveNavigationIntent(
     default:
       return null;
   }
-}
-
-export function createAppNavigation(options: {
-  runtime: AppRuntime;
-  hostId?: string | null;
-}): AppNavigation {
-  if (options.runtime === 'local') {
-    return createLocalAppNavigation();
-  }
-
-  const resolvedHostId =
-    options.hostId ??
-    (typeof window !== 'undefined'
-      ? parseAppPathname(window.location.pathname).hostId
-      : null);
-  if (!resolvedHostId) {
-    return createLocalAppNavigation();
-  }
-
-  return createRemoteAppNavigation(resolvedHostId);
 }

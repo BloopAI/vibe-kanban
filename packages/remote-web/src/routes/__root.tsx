@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 import { createRootRoute, Outlet, useLocation } from "@tanstack/react-router";
 import { Provider as NiceModalProvider } from "@ebay/nice-modal-react";
 import { useSystemTheme } from "@remote/shared/hooks/useSystemTheme";
@@ -12,6 +12,12 @@ import { TerminalProvider } from "@/shared/providers/TerminalProvider";
 import { LogsPanelProvider } from "@/shared/providers/LogsPanelProvider";
 import { ActionsProvider } from "@/shared/providers/ActionsProvider";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
+import { AppNavigationProvider } from "@/shared/hooks/useAppNavigation";
+import {
+  createLocalAppNavigation,
+  createRemoteAppNavigation,
+} from "@/shared/lib/routes/appNavigation";
+import { parseAppPathname } from "@/shared/lib/routes/pathResolution";
 import NotFoundPage from "../pages/NotFoundPage";
 
 export const Route = createRootRoute({
@@ -50,6 +56,12 @@ function WorkspaceRouteProviders({ children }: { children: ReactNode }) {
 function RootLayout() {
   useSystemTheme();
   const location = useLocation();
+  const { hostId } = parseAppPathname(location.pathname);
+  const appNavigation = useMemo(
+    () =>
+      hostId ? createRemoteAppNavigation(hostId) : createLocalAppNavigation(),
+    [hostId],
+  );
   const isStandaloneRoute =
     location.pathname.startsWith("/account") ||
     location.pathname.startsWith("/login") ||
@@ -74,10 +86,12 @@ function RootLayout() {
   );
 
   return (
-    <UserProvider>
-      <RemoteActionsProvider>
-        <RemoteUserSystemProvider>{content}</RemoteUserSystemProvider>
-      </RemoteActionsProvider>
-    </UserProvider>
+    <AppNavigationProvider value={appNavigation}>
+      <UserProvider>
+        <RemoteActionsProvider>
+          <RemoteUserSystemProvider>{content}</RemoteUserSystemProvider>
+        </RemoteActionsProvider>
+      </UserProvider>
+    </AppNavigationProvider>
   );
 }
