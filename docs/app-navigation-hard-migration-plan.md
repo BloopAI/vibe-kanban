@@ -201,20 +201,27 @@ Rules:
 Kanban issue-create defaults are transported via local state only.
 
 Rules:
-1. Store create defaults in an in-memory state container keyed by
-   `hostId + projectId` (`statusId`, `priority`, `assigneeIds`,
-   `parentIssueId`).
-2. `startCreate(...)` writes defaults to local state and navigates to
+1. Store create defaults in one shared `web-core` in-memory state container
+   (not per-component local state), keyed by `hostId + projectId`
+   (`statusId`, `priority`, `assigneeIds`, `parentIssueId`).
+2. Local-web and remote-web use the same key model:
+   `effectiveHostId + projectId`, where local-web uses `null` host.
+3. `startCreate(...)` writes defaults to local state and navigates to
    `/issues/new` with no query payload.
-3. `updateCreateDefaults(...)` mutates local state only (no URL writes).
-4. `KanbanIssuePanelContainer` initialization order:
+4. `updateCreateDefaults(...)` mutates local state only (no URL writes).
+5. `KanbanIssuePanelContainer` initialization order:
    - draft issue scratch (if present for project)
    - in-memory create defaults
    - board-derived fallback defaults
-5. Create-mode detection is path-based only (`/issues/new`), never query-based.
-6. Remove query-based compatibility behavior for
-   `statusId/priority/assignees/parentIssueId/mode/orgId`.
-7. No persistence requirement for this state:
+6. Create-mode detection is path-based only (`/issues/new`), never query-based.
+7. Remove query-based compatibility behavior for
+   `statusId/priority/assignees/parentIssueId/mode/orgId` in one pass
+   (no dual-read/write transition).
+8. Reset defaults when:
+   - issue create is submitted successfully
+   - issue create is cancelled/closed
+   - `effectiveHostId` or `projectId` changes
+9. No persistence requirement for this state:
    - refresh/new tab/deep link may drop defaults
    - this is acceptable by design
 
@@ -289,13 +296,21 @@ Kanban create-default source migration policy:
 1. Remove `statusId`, `priority`, `assignees`, `parentIssueId`, `mode`, and
    `orgId` from project route search schema and parsing/serialization helpers.
 2. Add a web-core in-memory create-default state source keyed by
-   `hostId + projectId`.
+   `effectiveHostId + projectId`.
 3. Rewire `useKanbanNavigation` to read/write defaults via that local state.
 4. Rewire create-mode status/priority/assignee mutation paths to local state
    only.
 5. Delete legacy query migration behavior in `ProjectKanban` (`mode`, `orgId`).
 6. Keep refresh/deep-link behavior non-persistent by design.
 7. Make `isCreatingIssue` path-derived in all action visibility/shortcut logic.
+8. Execute all query cleanup in one migration pass (no compatibility branch).
+
+Kanban default-state rollout order (locked):
+1. Remove query schema/parser/serializer support for Kanban default fields.
+2. Add shared in-memory create-default state container and key helpers.
+3. Rewire `useKanbanNavigation` and create-mode dialogs/actions to state-only.
+4. Delete legacy cleanup/migration code paths in `ProjectKanban` and related
+   consumers.
 
 Router state removal policy:
 1. Remove all `navigate(..., { state: ... })` and `state: (prev) => ...`
