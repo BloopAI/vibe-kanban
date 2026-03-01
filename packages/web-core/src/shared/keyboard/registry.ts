@@ -87,6 +87,20 @@ export const sequentialBindings: SequentialBinding[] = [
     group: 'Navigation',
     actionId: 'new-workspace',
   },
+  {
+    id: 'seq-go-new-project',
+    keys: ['g', 'c'],
+    description: 'Create Project',
+    group: 'Navigation',
+    actionId: 'create-project',
+  },
+  {
+    id: 'seq-go-open-project',
+    keys: ['g', 'p'],
+    description: 'Open Project',
+    group: 'Navigation',
+    actionId: 'open-project',
+  },
 
   // Workspace (W)
   {
@@ -160,6 +174,13 @@ export const sequentialBindings: SequentialBinding[] = [
     description: 'Toggle Chat panel',
     group: 'View',
     actionId: 'toggle-left-main-panel',
+  },
+  {
+    id: 'seq-view-chat-input',
+    keys: ['v', 'i'],
+    description: 'Open chat and focus input',
+    group: 'View',
+    actionId: 'open-chat-focus-input',
   },
 
   // Git (X = eXecute)
@@ -314,6 +335,27 @@ export const sequentialBindings: SequentialBinding[] = [
     description: 'Link Workspace',
     group: 'Issue',
     actionId: 'link-workspace',
+  },
+  {
+    id: 'seq-issue-open-workspace',
+    keys: ['i', 'o'],
+    description: 'Open linked workspace',
+    group: 'Issue',
+    actionId: 'open-linked-workspace',
+  },
+  {
+    id: 'seq-issue-next-workspace',
+    keys: ['i', 'j'],
+    description: 'Next linked workspace',
+    group: 'Issue',
+    actionId: 'next-linked-workspace',
+  },
+  {
+    id: 'seq-issue-prev-workspace',
+    keys: ['i', 'k'],
+    description: 'Previous linked workspace',
+    group: 'Issue',
+    actionId: 'previous-linked-workspace',
   },
   {
     id: 'seq-issue-duplicate',
