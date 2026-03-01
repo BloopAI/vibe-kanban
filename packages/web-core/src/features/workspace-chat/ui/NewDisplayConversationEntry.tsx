@@ -243,6 +243,7 @@ function renderToolUseEntry(
     return (
       <ScriptEntryWithFix
         title={entryType.tool_name}
+        command={action_type.command}
         processId={executionProcessId ?? ''}
         exitCode={exitCode}
         status={status}
@@ -903,6 +904,7 @@ function SystemMessageEntry({
  */
 function ScriptEntryWithFix({
   title,
+  command,
   processId,
   exitCode,
   status,
@@ -910,6 +912,7 @@ function ScriptEntryWithFix({
   sessionId,
 }: {
   title: string;
+  command?: string;
   processId: string;
   exitCode: number | null;
   status: ToolStatus;
@@ -959,6 +962,7 @@ function ScriptEntryWithFix({
   return (
     <ChatScriptEntry
       title={title}
+      command={command}
       processId={processId}
       exitCode={exitCode}
       status={status}
