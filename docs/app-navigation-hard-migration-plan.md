@@ -115,6 +115,32 @@ Examples:
 3. No current host, destination `{ kind: 'workspace', workspaceId: 'w1' }`
    => `/`
 
+## Pre-Implementation Research Checklist
+### 2) Hostless Remote Behavior (Spike Complete)
+Findings:
+1. Remote route tree only defines host-scoped project/workspace routes
+   (`/hosts/$hostId/...`), plus standalone account/login/upgrade/invitation
+   pages and `/`.
+2. Root (`/`) in remote renders `HomePage`, not `RootRedirectPage`; the
+   onboarding/root redirect flow in `web-core` is currently local-web scoped.
+3. `RemoteUserSystemProvider` already guards hostless config fetches with
+   `enabled: ... && !!hostId`, so hostless pages do not execute the
+   `remote-workspace-user-system` query.
+4. `HomePage` and `RemoteAppShell` are mostly host-safe today: they use
+   `preferredHostId` and open relay settings when no host is available.
+5. The current remote fallback adapter still emits unscoped
+   `/workspaces` and `/projects/...` targets, which do not exist in remote
+   routes. This is the core hostless dead-end risk.
+
+Decisions locked for implementation:
+1. Remote navigation must never emit unscoped project/workspace paths.
+2. For host-aware destinations with no `effectiveHostId`, remote navigation
+   must navigate to `/` and return (no hidden fallback path generation).
+3. Remote `resolveFromPath` should only produce navigable host-aware
+   destinations from `/hosts/$hostId/...` paths during normal operation.
+4. Root host selection UX remains in `HomePage`/`RemoteAppShell`; navigation
+   layer handles routing correctness only.
+
 ## Workspace Create Transport Rules (No Nav State)
 Create-workspace payloads are transported via scratch drafts, not router
 navigation state.
