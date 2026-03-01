@@ -20,7 +20,6 @@ import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   getProjectDestination,
-  goToAppDestination,
   isWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
@@ -82,7 +81,6 @@ export function SharedAppLayout() {
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const prevOrgIdRef = useRef<string | null>(null);
-  const projectLastPathRef = useRef<Record<string, string>>({});
 
   // Auto-select first org if none selected or selection is invalid
   useEffect(() => {
@@ -162,32 +160,12 @@ export function SharedAppLayout() {
   const isWorkspacesActive = isWorkspacesDestination(currentDestination);
   const activeProjectId = projectDestination?.projectId ?? null;
 
-  // Remember the last visited route for each project so AppBar clicks can
-  // reopen the previous issue/workspace selection.
-  useEffect(() => {
-    if (!projectDestination) {
-      return;
-    }
-
-    const pathWithSearch = `${location.pathname}${location.searchStr}`;
-    projectLastPathRef.current[projectDestination.projectId] = pathWithSearch;
-  }, [location.pathname, location.searchStr, projectDestination]);
-
   const handleWorkspacesClick = useCallback(() => {
     appNavigation.goToWorkspaces();
   }, [appNavigation]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
-      const rememberedPath = projectLastPathRef.current[projectId];
-      if (rememberedPath) {
-        const resolvedPath = appNavigation.resolveFromPath(rememberedPath);
-        if (resolvedPath) {
-          goToAppDestination(appNavigation, resolvedPath);
-          return;
-        }
-      }
-
       appNavigation.goToProject(projectId);
     },
     [appNavigation]
