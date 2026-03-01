@@ -10,6 +10,13 @@ LEGACY_PATHS=(
   "packages/local-web/src/components/dialogs"
 )
 
+NAVIGATION_FILES=(
+  "packages/web-core/src/shared/lib/routes/appNavigation.ts"
+  "packages/web-core/src/shared/hooks/useAppNavigation.ts"
+  "packages/local-web/src/app/navigation/AppNavigation.ts"
+  "packages/remote-web/src/app/navigation/AppNavigation.ts"
+)
+
 echo "▶️  Checking for net-new files in legacy frontend paths..."
 
 if [ ! -f "$ALLOWLIST_FILE" ]; then
@@ -45,3 +52,20 @@ if [ -n "$removed_files" ]; then
 fi
 
 echo "✅ No net-new files in legacy frontend paths."
+
+echo "▶️  Checking navigation modules for explicit any..."
+
+any_hits="$(
+  grep \
+    -nE \
+    '(as[[:space:]]+any([^[:alnum:]_]|$)|:[[:space:]]*any([^[:alnum:]_]|$)|<any>)' \
+    "${NAVIGATION_FILES[@]}" || true
+)"
+
+if [ -n "$any_hits" ]; then
+  echo "❌ Explicit any found in navigation modules:"
+  printf '%s\n' "$any_hits"
+  exit 1
+fi
+
+echo "✅ No explicit any in navigation modules."

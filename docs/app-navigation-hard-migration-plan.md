@@ -468,11 +468,25 @@ Status: Completed (March 1, 2026)
 
 ### Phase 7: Cleanup and Guardrails
 
-1. Delete legacy route-object helpers and any dead parser wrappers.
-2. Remove all `as any` navigation casts.
-3. Add lint/typing guardrails for navigation modules to prevent explicit `any`.
+Status: Completed (March 1, 2026)
+
+Completed:
+
+1. Removed legacy route-object helpers and dead parser wrappers as part of the
+   semantic destination migration.
+2. Removed explicit `any` usage from active app-navigation modules.
+3. Added a repo guardrail in `scripts/check-legacy-frontend-paths.sh` that
+   fails on explicit `any` patterns in:
+   - `packages/web-core/src/shared/lib/routes/appNavigation.ts`
+   - `packages/web-core/src/shared/hooks/useAppNavigation.ts`
+   - `packages/local-web/src/app/navigation/AppNavigation.ts`
+   - `packages/remote-web/src/app/navigation/AppNavigation.ts`
+4. Wired the guardrail into root `pnpm run check` via
+   `local-web:legacy-path-guard`.
 
 ### Phase 8: Validation
+
+Status: Completed (March 1, 2026)
 
 Run:
 
@@ -480,6 +494,13 @@ Run:
 2. `pnpm --filter @vibe/local-web run check`
 3. `pnpm --filter @vibe/remote-web run check`
 4. `pnpm run format`
+
+Completed:
+
+1. Ran `pnpm --filter @vibe/web-core run check` (pass).
+2. Ran `pnpm --filter @vibe/local-web run check` (pass).
+3. Ran `pnpm --filter @vibe/remote-web run check` (pass).
+4. Ran `pnpm run format` (pass).
 
 ## Risk Areas to Verify During Migration
 
