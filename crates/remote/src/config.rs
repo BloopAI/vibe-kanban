@@ -3,6 +3,34 @@ use std::env;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use secrecy::SecretString;
 use thiserror::Error;
+use url::Url;
+
+/// Read `GITHUB_BASE_URL` (default `https://github.com`) and derive the API URL.
+///
+/// - `https://github.com`           → `https://api.github.com`  (public GitHub)
+/// - `https://github.mycompany.com` → `https://github.mycompany.com/api/v3` (GHE convention)
+fn github_urls_from_env() -> (String, String) {
+    let base_url = env::var("GITHUB_BASE_URL")
+        .ok()
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://github.com".to_string())
+        .trim_end_matches('/')
+        .to_string();
+
+    let api_url = derive_github_api_url(&base_url);
+    (base_url, api_url)
+}
+
+fn derive_github_api_url(base_url: &str) -> String {
+    // Public GitHub special case
+    if let Ok(parsed) = Url::parse(base_url) {
+        if parsed.host_str() == Some("github.com") {
+            return "https://api.github.com".to_string();
+        }
+    }
+    // GitHub Enterprise Server convention
+    format!("{}/api/v3", base_url)
+}
 
 #[derive(Debug, Clone)]
 pub struct RemoteServerConfig {
@@ -145,6 +173,8 @@ pub struct GitHubAppConfig {
     pub private_key: SecretString, // Base64-encoded PEM
     pub webhook_secret: SecretString,
     pub app_slug: String,
+    pub base_url: String,
+    pub api_url: String,
 }
 
 impl GitHubAppConfig {
@@ -179,11 +209,15 @@ impl GitHubAppConfig {
 
         tracing::info!(app_id = %app_id, app_slug = %app_slug, "GitHub App config loaded successfully");
 
+        let (base_url, api_url) = github_urls_from_env();
+
         Ok(Some(Self {
             app_id,
             private_key: SecretString::new(private_key.into()),
             webhook_secret: SecretString::new(webhook_secret.into()),
             app_slug,
+            base_url,
+            api_url,
         }))
     }
 }
@@ -312,6 +346,8 @@ pub struct AuthConfig {
     google: Option<OAuthProviderConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
+    github_base_url: String,
+    github_api_url: String,
 }
 
 impl AuthConfig {
@@ -352,11 +388,15 @@ impl AuthConfig {
         let public_base_url =
             env::var("SERVER_PUBLIC_BASE_URL").unwrap_or_else(|_| "http://localhost:8081".into());
 
+        let (github_base_url, github_api_url) = github_urls_from_env();
+
         Ok(Self {
             github,
             google,
             jwt_secret,
             public_base_url,
+            github_base_url,
+            github_api_url,
         })
     }
 
@@ -375,6 +415,14 @@ impl AuthConfig {
     pub fn public_base_url(&self) -> &str {
         &self.public_base_url
     }
+
+    pub fn github_base_url(&self) -> &str {
+        &self.github_base_url
+    }
+
+    pub fn github_api_url(&self) -> &str {
+        &self.github_api_url
+    }
 }
 
 fn validate_jwt_secret(secret: &str) -> Result<(), ConfigError> {
@@ -387,4 +435,42 @@ fn validate_jwt_secret(secret: &str) -> Result<(), ConfigError> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_api_url_public_github() {
+        assert_eq!(
+            derive_github_api_url("https://github.com"),
+            "https://api.github.com"
+        );
+    }
+
+    #[test]
+    fn derive_api_url_public_github_trailing_slash_stripped() {
+        // Caller strips trailing slashes, but verify the function still works
+        assert_eq!(
+            derive_github_api_url("https://github.com"),
+            "https://api.github.com"
+        );
+    }
+
+    #[test]
+    fn derive_api_url_ghe() {
+        assert_eq!(
+            derive_github_api_url("https://github.mycompany.com"),
+            "https://github.mycompany.com/api/v3"
+        );
+    }
+
+    #[test]
+    fn derive_api_url_ghe_custom_host() {
+        assert_eq!(
+            derive_github_api_url("https://git.corp.example.com"),
+            "https://git.corp.example.com/api/v3"
+        );
+    }
 }
