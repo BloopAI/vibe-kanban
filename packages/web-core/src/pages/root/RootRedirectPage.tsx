@@ -3,17 +3,14 @@ import { Navigate } from '@tanstack/react-router';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
-import {
-  toOnboarding,
-  toWorkspacesCreate,
-} from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 const DEFAULT_DESTINATION = '/workspaces/create';
 
 export function RootRedirectPage() {
   const { config, loading, loginStatus } = useUserSystem();
   const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
+  const appNavigation = useAppNavigation();
   const [destination, setDestination] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,8 +56,10 @@ export function RootRedirectPage() {
   }
 
   const resolvedDestination =
-    resolveAppPath(destination) ??
-    (destination === '/onboarding' ? toOnboarding() : toWorkspacesCreate());
+    appNavigation.fromPath(destination) ??
+    (destination === '/onboarding'
+      ? appNavigation.toOnboarding()
+      : appNavigation.toWorkspacesCreate());
 
   return <Navigate {...resolvedDestination} replace />;
 }

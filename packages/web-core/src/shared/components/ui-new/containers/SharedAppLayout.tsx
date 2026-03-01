@@ -17,6 +17,7 @@ import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import {
   buildProjectRootPath,
   parseProjectSidebarRoute,
@@ -34,24 +35,17 @@ import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog'
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
-import {
-  isWorkspacesPathname,
-  resolveAppPath,
-} from '@/shared/lib/routes/pathResolution';
+import { isWorkspacesPathname } from '@/shared/lib/routes/pathResolution';
 import {
   PROJECT_MUTATION,
   PROJECTS_SHAPE,
   type Project as RemoteProject,
 } from 'shared/remote-types';
-import {
-  toMigrate,
-  toProject,
-  toWorkspaces,
-} from '@/shared/lib/routes/navigation';
 
 export function SharedAppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const appNavigation = useAppNavigation();
   const isMigrateRoute = location.pathname.startsWith('/migrate');
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
@@ -147,9 +141,9 @@ export function SharedAppLayout() {
       !isLoading
     ) {
       if (sortedProjects.length > 0) {
-        navigate(toProject(sortedProjects[0].id));
+        navigate(appNavigation.toProject(sortedProjects[0].id));
       } else {
-        navigate(toWorkspaces());
+        navigate(appNavigation.toWorkspaces());
       }
       prevOrgIdRef.current = selectedOrgId;
     } else if (prevOrgIdRef.current === null && selectedOrgId) {
@@ -175,14 +169,14 @@ export function SharedAppLayout() {
   }, [location.pathname, location.searchStr]);
 
   const handleWorkspacesClick = useCallback(() => {
-    navigate(toWorkspaces());
-  }, [navigate]);
+    navigate(appNavigation.toWorkspaces());
+  }, [navigate, appNavigation]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
       const rememberedPath = projectLastPathRef.current[projectId];
       if (rememberedPath) {
-        const resolvedPath = resolveAppPath(rememberedPath);
+        const resolvedPath = appNavigation.fromPath(rememberedPath);
         if (resolvedPath) {
           navigate(resolvedPath);
           return;
@@ -191,7 +185,7 @@ export function SharedAppLayout() {
 
       navigate(buildProjectRootPath(projectId));
     },
-    [navigate]
+    [navigate, appNavigation]
   );
 
   const handleProjectsDragEnd = useCallback(
@@ -253,12 +247,12 @@ export function SharedAppLayout() {
         await CreateRemoteProjectDialog.show({ organizationId: selectedOrgId });
 
       if (result.action === 'created' && result.project) {
-        navigate(toProject(result.project.id));
+        navigate(appNavigation.toProject(result.project.id));
       }
     } catch {
       // Dialog cancelled
     }
-  }, [navigate, selectedOrgId]);
+  }, [navigate, selectedOrgId, appNavigation]);
 
   const handleSignIn = useCallback(async () => {
     try {
@@ -273,15 +267,15 @@ export function SharedAppLayout() {
       try {
         const profile = await OAuthDialog.show({});
         if (profile) {
-          navigate(toMigrate());
+          navigate(appNavigation.toMigrate());
         }
       } catch {
         // Dialog cancelled
       }
     } else {
-      navigate(toMigrate());
+      navigate(appNavigation.toMigrate());
     }
-  }, [isSignedIn, navigate]);
+  }, [isSignedIn, navigate, appNavigation]);
 
   return (
     <SyncErrorProvider>
@@ -347,7 +341,7 @@ export function SharedAppLayout() {
             <button
               type="button"
               onClick={() => {
-                navigate(toWorkspaces());
+                navigate(appNavigation.toWorkspaces());
                 setIsDrawerOpen(false);
               }}
               className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"

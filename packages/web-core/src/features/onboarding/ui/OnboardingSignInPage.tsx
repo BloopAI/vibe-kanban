@@ -14,8 +14,7 @@ import { OAuthSignInButton } from '@vibe/ui/components/OAuthButtons';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { getFirstProjectDestination } from '@/shared/lib/firstProjectDestination';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { resolveAppPath } from '@/shared/lib/routes/pathResolution';
-import { toWorkspacesCreate } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 const COMPARISON_ROWS = [
   {
@@ -66,6 +65,7 @@ function resolveTheme(theme: ThemeMode): 'light' | 'dark' {
 
 export function OnboardingSignInPage() {
   const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
   const { theme } = useTheme();
   const posthog = usePostHog();
@@ -159,7 +159,8 @@ export function OnboardingSignInPage() {
       destination,
     });
     navigate({
-      ...(resolveAppPath(destination) ?? toWorkspacesCreate()),
+      ...(appNavigation.fromPath(destination) ??
+        appNavigation.toWorkspacesCreate()),
       replace: true,
     });
   };
