@@ -206,8 +206,7 @@ impl LocalContainerService {
                 });
         }
 
-        // Clear container_ref so this workspace won't be picked up again
-        let _ = Workspace::clear_container_ref(&db.pool, workspace.id).await;
+        let _ = Workspace::mark_worktree_deleted(&db.pool, workspace.id).await;
     }
 
     pub async fn cleanup_expired_workspaces(db: &DBService) -> Result<(), DeploymentError> {
@@ -1134,6 +1133,10 @@ impl ContainerService for LocalContainerService {
                 &workspace_dir.to_string_lossy(),
             )
             .await?;
+        }
+
+        if workspace.worktree_deleted {
+            Workspace::clear_worktree_deleted(&self.db.pool, workspace.id).await?;
         }
 
         // Copy project files and images (fast no-op if already exist)

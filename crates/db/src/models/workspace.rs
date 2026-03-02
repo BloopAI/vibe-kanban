@@ -44,6 +44,7 @@ pub struct Workspace {
     pub archived: bool,
     pub pinned: bool,
     pub name: Option<String>,
+    pub worktree_deleted: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -101,7 +102,8 @@ impl Workspace {
                           updated_at AS "updated_at!: DateTime<Utc>",
                           archived AS "archived!: bool",
                           pinned AS "pinned!: bool",
-                          name
+                          name,
+                          worktree_deleted AS "worktree_deleted!: bool"
                    FROM workspaces
                    ORDER BY created_at DESC"#
         )
@@ -148,12 +150,25 @@ impl Workspace {
         Ok(())
     }
 
-    pub async fn clear_container_ref(
+    pub async fn mark_worktree_deleted(
         pool: &SqlitePool,
         workspace_id: Uuid,
     ) -> Result<(), sqlx::Error> {
         sqlx::query!(
-            "UPDATE workspaces SET container_ref = NULL, updated_at = datetime('now') WHERE id = ?",
+            "UPDATE workspaces SET worktree_deleted = TRUE, updated_at = datetime('now') WHERE id = ?",
+            workspace_id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn clear_worktree_deleted(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            "UPDATE workspaces SET worktree_deleted = FALSE, updated_at = datetime('now') WHERE id = ?",
             workspace_id
         )
         .execute(pool)
@@ -186,7 +201,8 @@ impl Workspace {
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       worktree_deleted  AS "worktree_deleted!: bool"
                FROM    workspaces
                WHERE   id = $1"#,
             id
@@ -208,7 +224,8 @@ impl Workspace {
                        updated_at        AS "updated_at!: DateTime<Utc>",
                        archived          AS "archived!: bool",
                        pinned            AS "pinned!: bool",
-                       name
+                       name,
+                       worktree_deleted  AS "worktree_deleted!: bool"
                FROM    workspaces
                WHERE   rowid = $1"#,
             rowid
@@ -251,11 +268,13 @@ impl Workspace {
                 w.updated_at as "updated_at!: DateTime<Utc>",
                 w.archived as "archived!: bool",
                 w.pinned as "pinned!: bool",
-                w.name
+                w.name,
+                w.worktree_deleted as "worktree_deleted!: bool"
             FROM workspaces w
             LEFT JOIN sessions s ON w.id = s.workspace_id
             LEFT JOIN execution_processes ep ON s.id = ep.session_id AND ep.completed_at IS NOT NULL
             WHERE w.container_ref IS NOT NULL
+                AND w.worktree_deleted = FALSE
                 AND w.id NOT IN (
                     SELECT DISTINCT s2.workspace_id
                     FROM sessions s2
@@ -298,7 +317,7 @@ impl Workspace {
             Workspace,
             r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
                VALUES ($1, $2, $3, $4, $5, $6)
-               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name"#,
+               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, worktree_deleted as "worktree_deleted!: bool""#,
             id,
             Option::<Uuid>::None,
             Option::<String>::None,
@@ -493,6 +512,7 @@ impl Workspace {
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.worktree_deleted AS "worktree_deleted!: bool",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -535,6 +555,7 @@ impl Workspace {
                     archived: rec.archived,
                     pinned: rec.pinned,
                     name: rec.name,
+                    worktree_deleted: rec.worktree_deleted,
                 },
                 is_running: rec.is_running != 0,
                 is_errored: rec.is_errored != 0,
@@ -594,6 +615,7 @@ impl Workspace {
                 w.archived AS "archived!: bool",
                 w.pinned AS "pinned!: bool",
                 w.name,
+                w.worktree_deleted AS "worktree_deleted!: bool",
 
                 CASE WHEN EXISTS (
                     SELECT 1
@@ -639,6 +661,7 @@ impl Workspace {
                 archived: rec.archived,
                 pinned: rec.pinned,
                 name: rec.name,
+                worktree_deleted: rec.worktree_deleted,
             },
             is_running: rec.is_running != 0,
             is_errored: rec.is_errored != 0,

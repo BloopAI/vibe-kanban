@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name\n               FROM    workspaces\n               WHERE   id = $1",
+  "query": "INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               RETURNING id as \"id!: Uuid\", task_id as \"task_id: Uuid\", container_ref, branch, agent_working_dir, setup_completed_at as \"setup_completed_at: DateTime<Utc>\", created_at as \"created_at!: DateTime<Utc>\", updated_at as \"updated_at!: DateTime<Utc>\", archived as \"archived!: bool\", pinned as \"pinned!: bool\", name, worktree_deleted as \"worktree_deleted!: bool\"",
   "describe": {
     "columns": [
       {
@@ -57,10 +57,15 @@
         "name": "name",
         "ordinal": 10,
         "type_info": "Text"
+      },
+      {
+        "name": "worktree_deleted!: bool",
+        "ordinal": 11,
+        "type_info": "Bool"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 6
     },
     "nullable": [
       true,
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "08ecee6680d027f444d684111a7c0c84a4ed5cab0c0d015e09ab2cf5b84271f0"
+  "hash": "2fe514a4480395863f88d38d9dbe220759174a2430e885c7ee10174e246ab17a"
 }
