@@ -207,7 +207,7 @@ pub fn fix_patch_ops(mut patch: Patch, sent_paths: &mut HashSet<String>) -> Patc
                     value: replace.value.clone(),
                 });
             }
-            _ => continue,
+            _ => {}
         };
         if !path_sent {
             sent_paths.insert(op.path().to_string());
