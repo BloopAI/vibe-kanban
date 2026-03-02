@@ -1,6 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeftIcon, FunnelIcon, MagnifyingGlassIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
+import {
+  ArrowLeftIcon,
+  FunnelIcon,
+  MagnifyingGlassIcon,
+  PlusIcon,
+  XIcon,
+} from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import type { PriorityLevel } from './PriorityIcon';
 import { InputField } from './InputField';
@@ -158,7 +164,12 @@ export function KanbanFilterBar<
           />
         </div>
       ) : (
-      <div className={cn('flex min-w-0 flex-wrap items-center', isMobile ? 'gap-half' : 'gap-base')}>
+        <div
+          className={cn(
+            'flex min-w-0 flex-wrap items-center',
+            isMobile ? 'gap-half' : 'gap-base'
+          )}
+        >
           <ButtonGroup className="flex-wrap">
             <ButtonGroupItem
               active={activeViewId === viewIds.TEAM}
@@ -242,7 +253,9 @@ export function KanbanFilterBar<
               value={t('kanban.newIssue', 'New issue')}
               actionIcon={PlusIcon}
               onClick={() => onCreateIssue()}
-            className={cn(shouldAnimateCreateButton && 'create-issue-attention')}
+              className={cn(
+                shouldAnimateCreateButton && 'create-issue-attention'
+              )}
             />
           )}
         </div>

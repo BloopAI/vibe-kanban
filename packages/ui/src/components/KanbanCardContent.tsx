@@ -215,7 +215,9 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
             onMouseDown={(e) => e.stopPropagation()}
             className={cn(
               'p-half -m-half rounded-sm text-low hover:text-normal hover:bg-secondary shrink-0',
-              isMobile ? '' : 'invisible opacity-0 group-hover:visible group-hover:opacity-100',
+              isMobile
+                ? ''
+                : 'invisible opacity-0 group-hover:visible group-hover:opacity-100',
               'transition-[opacity,color,background-color]'
             )}
             aria-label="More actions"
@@ -231,7 +233,14 @@ export function KanbanCardContent<TTag extends KanbanTag = KanbanTag>({
 
       {/* Row 3: Description (optional, truncated) */}
       {previewDescription && (
-        <p className={cn('text-sm text-low m-0', isMobile ? 'leading-tight line-clamp-2' : 'leading-relaxed line-clamp-4')}>
+        <p
+          className={cn(
+            'text-sm text-low m-0',
+            isMobile
+              ? 'leading-tight line-clamp-2'
+              : 'leading-relaxed line-clamp-4'
+          )}
+        >
           {previewDescription}
         </p>
       )}
