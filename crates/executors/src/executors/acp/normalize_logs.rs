@@ -24,19 +24,22 @@ use crate::{
     },
 };
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
-    normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[]);
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[])
 }
 
 pub fn normalize_logs_with_suppressed_stderr_patterns(
     msg_store: Arc<MsgStore>,
     worktree_path: &Path,
     suppressed_stderr_patterns: &[&str],
-) {
+) -> Vec<tokio::task::JoinHandle<()>> {
     // stderr normalization
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    if suppressed_stderr_patterns.is_empty() {
-        normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = if suppressed_stderr_patterns.is_empty() {
+        normalize_stderr_logs(msg_store.clone(), entry_index.clone())
     } else {
         normalize_acp_stderr_logs(
             msg_store.clone(),
@@ -45,13 +48,13 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
                 .iter()
                 .map(|pattern| pattern.to_string())
                 .collect(),
-        );
-    }
+        )
+    };
 
     // stdout normalization (main loop)
     let worktree_path = worktree_path.to_path_buf();
     // Type aliases to simplify complex state types and appease clippy
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         type ToolStates = std::collections::HashMap<String, PartialToolCallData>;
 
         let mut stored_session_id = false;
@@ -672,13 +675,15 @@ pub fn normalize_logs_with_suppressed_stderr_patterns(
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 fn normalize_acp_stderr_logs(
     msg_store: Arc<MsgStore>,
     entry_index_provider: EntryIndexProvider,
     suppressed_patterns: Vec<String>,
-) {
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
 
@@ -707,7 +712,7 @@ fn normalize_acp_stderr_logs(
                 msg_store.push_patch(patch);
             }
         }
-    });
+    })
 }
 
 struct PartialToolCallData {

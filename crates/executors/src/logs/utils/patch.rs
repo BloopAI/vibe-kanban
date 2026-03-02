@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashSet, sync::Arc};
 
 use json_patch::Patch;
 use serde::{Deserialize, Serialize};
@@ -178,6 +178,42 @@ pub fn replace_normalized_entry(
     normalized_entry: NormalizedEntry,
 ) {
     upsert_normalized_entry(msg_store, index, normalized_entry, false);
+}
+
+/// Extract the path string from a Patch (assumes single-operation patches).
+pub fn patch_entry_path(patch: &Patch) -> Option<String> {
+    patch.0.first().map(|op| op.path().to_string())
+}
+
+pub fn is_add_or_replace(patch: &Patch) -> bool {
+    use json_patch::PatchOperation::*;
+    patch.0.iter().all(|op| matches!(op, Add(..) | Replace(..)))
+}
+
+// Use the "replace" op for sent paths and "add" for new paths
+pub fn fix_patch_ops(mut patch: Patch, sent_paths: &mut HashSet<String>) -> Patch {
+    for op in &mut patch.0 {
+        let path_sent = sent_paths.contains(op.path().as_str());
+        match op {
+            json_patch::PatchOperation::Add(add) if path_sent => {
+                *op = json_patch::PatchOperation::Replace(json_patch::ReplaceOperation {
+                    path: add.path.clone(),
+                    value: add.value.clone(),
+                });
+            }
+            json_patch::PatchOperation::Replace(replace) if !path_sent => {
+                *op = json_patch::PatchOperation::Add(json_patch::AddOperation {
+                    path: replace.path.clone(),
+                    value: replace.value.clone(),
+                });
+            }
+            _ => continue,
+        };
+        if !path_sent {
+            sent_paths.insert(op.path().to_string());
+        }
+    }
+    patch
 }
 
 pub fn executor_discovered_options(options: ExecutorDiscoveredOptions) -> Patch {

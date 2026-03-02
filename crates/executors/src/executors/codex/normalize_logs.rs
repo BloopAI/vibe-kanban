@@ -483,7 +483,10 @@ const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
 ];
 
 /// Codex-specific stderr normalizer that filters noisy internal messages.
-fn normalize_codex_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
+fn normalize_codex_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
         let mut processor = PlainTextLogProcessor::builder()
@@ -511,15 +514,18 @@ fn normalize_codex_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: E
                 msg_store.push_patch(patch);
             }
         }
-    });
+    })
 }
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_codex_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = normalize_codex_stderr_logs(msg_store.clone(), entry_index.clone());
 
     let worktree_path_str = worktree_path.to_string_lossy().to_string();
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         let mut state = LogState::new(entry_index.clone());
         let mut stdout_lines = msg_store.stdout_lines_stream();
 
@@ -1294,6 +1300,8 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
 }
 
 fn handle_jsonrpc_response(

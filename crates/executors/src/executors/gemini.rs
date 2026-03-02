@@ -136,12 +136,16 @@ impl StandardCodingAgentExecutor for Gemini {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         super::acp::normalize_logs_with_suppressed_stderr_patterns(
             msg_store,
             worktree_path,
             SUPPRESSED_STDERR_PATTERNS,
-        );
+        )
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
