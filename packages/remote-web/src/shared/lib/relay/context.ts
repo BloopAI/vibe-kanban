@@ -17,18 +17,6 @@ import type { RelayHostContext } from "@remote/shared/lib/relay/types";
 
 const relaySessionBaseUrlCache = new Map<string, Promise<string>>();
 
-/** Dedup in-flight refresh calls per host so concurrent callers share one request. */
-const refreshInFlight = new Map<string, Promise<RelayHostContext | null>>();
-/** Timestamp of the last successful refresh per host — used for cooldown. */
-const lastRefreshAt = new Map<string, number>();
-/** Backoff until timestamp per host — set when we receive a 429. */
-let rateLimitedUntil = 0;
-
-/** Minimum interval between successful refreshes (ms). */
-const REFRESH_COOLDOWN_MS = 15_000;
-/** Backoff duration after a 429 response (ms). */
-const RATE_LIMIT_BACKOFF_MS = 65_000;
-
 subscribeRelayPairingChanges(({ hostId }) => {
   relaySessionBaseUrlCache.delete(hostId);
 });
@@ -68,38 +56,9 @@ export async function tryRefreshRelayHostSigningSession(
     return null;
   }
 
-  const hostId = context.pairedHost.host_id;
-
-  // Skip if we're in a rate-limit backoff window.
-  if (Date.now() < rateLimitedUntil) {
-    return null;
-  }
-
-  // Skip if we refreshed recently (cooldown).
-  const last = lastRefreshAt.get(hostId);
-  if (last && Date.now() - last < REFRESH_COOLDOWN_MS) {
-    return null;
-  }
-
-  // Dedup: if a refresh is already in flight for this host, piggyback on it.
-  const existing = refreshInFlight.get(hostId);
-  if (existing) {
-    return existing;
-  }
-
-  const promise = doRefresh(context, hostId);
-  refreshInFlight.set(hostId, promise);
-  promise.finally(() => refreshInFlight.delete(hostId));
-  return promise;
-}
-
-async function doRefresh(
-  context: RelayHostContext,
-  hostId: string,
-): Promise<RelayHostContext | null> {
   try {
     const payload = await buildRelaySigningSessionRefreshPayload(
-      context.pairedHost.client_id!,
+      clientId,
       context.pairedHost.private_key_jwk,
     );
     const refreshed = await refreshRelaySigningSession(
@@ -111,17 +70,12 @@ async function doRefresh(
       signing_session_id: refreshed.signing_session_id,
     };
     await savePairedRelayHost(updatedPairedHost);
-    lastRefreshAt.set(hostId, Date.now());
 
     return {
       ...context,
       pairedHost: updatedPairedHost,
     };
   } catch (error) {
-    // If the server returned 429, back off globally.
-    if (error instanceof Error && error.message.includes("429")) {
-      rateLimitedUntil = Date.now() + RATE_LIMIT_BACKOFF_MS;
-    }
     console.warn("Failed to refresh relay signing session", error);
     return null;
   }
