@@ -46,7 +46,8 @@ function WorkspacesRouteComponent() {
 function MobileWorkspacesList() {
   const navigate = useNavigate();
   const { hostId } = useParams({ from: "/hosts/$hostId/workspaces" });
-  const { activeWorkspaces, archivedWorkspaces, selectWorkspace } = useWorkspaceContext();
+  const { activeWorkspaces, archivedWorkspaces, selectWorkspace } =
+    useWorkspaceContext();
   const [showArchive, setShowArchive] = useState(false);
   const workspaces = showArchive ? archivedWorkspaces : activeWorkspaces;
 
@@ -66,7 +67,9 @@ function MobileWorkspacesList() {
     <div className="flex flex-col h-full bg-primary">
       {/* Header */}
       <div className="flex items-center justify-between px-base py-base border-b border-border">
-        <h1 className="text-lg font-semibold text-high">{showArchive ? "Archived" : "Workspaces"}</h1>
+        <h1 className="text-lg font-semibold text-high">
+          {showArchive ? "Archived" : "Workspaces"}
+        </h1>
         <button
           onClick={handleCreateWorkspace}
           className={cn(
@@ -84,7 +87,9 @@ function MobileWorkspacesList() {
       <div className="flex-1 overflow-y-auto">
         {workspaces.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-double text-center">
-            <p className="text-low text-sm">{showArchive ? "No archived workspaces" : "No workspaces yet"}</p>
+            <p className="text-low text-sm">
+              {showArchive ? "No archived workspaces" : "No workspaces yet"}
+            </p>
             {!showArchive && (
               <button
                 onClick={handleCreateWorkspace}
@@ -267,7 +272,6 @@ function MobileWorkspacesList() {
           )}
         </button>
       </div>
-
     </div>
   );
 }
