@@ -703,7 +703,7 @@ function UserMessageEntry({
     !!executionProcessId && !isInEditMode && !isResetPending;
   // Edit/retry/reset is not supported when the executor doesn't have the fork capability
   const canEdit = canShowActions && executorCanFork;
-  // Only show reset if we have a process ID, not in edit mode, not pending, and not first process
+  // Only show reset if we have a process ID, not in edit mode, and not pending
   const canReset = canEdit && canResetProcess(executionProcessId);
 
   return (
