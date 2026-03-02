@@ -5,6 +5,7 @@ import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
 
 interface ChatScriptEntryProps {
   title: string;
+  command?: string;
   processId: string;
   exitCode?: number | null;
   className?: string;
@@ -15,6 +16,7 @@ interface ChatScriptEntryProps {
 
 export function ChatScriptEntry({
   title,
+  command,
   processId,
   exitCode,
   className,
@@ -74,6 +76,11 @@ export function ChatScriptEntry({
       </span>
       <div className="flex flex-col min-w-0 flex-1">
         <span className="text-normal font-medium">{title}</span>
+        {command && (
+          <code className="text-low text-xs font-mono truncate block">
+            {command}
+          </code>
+        )}
         <span className="text-low text-xs">{getSubtitle()}</span>
       </div>
       {isFailed && onFix && (
