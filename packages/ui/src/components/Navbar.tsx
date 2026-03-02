@@ -292,7 +292,7 @@ export function Navbar({
 
           {/* Right side: sync indicator + action buttons + user slot */}
           <div className="flex items-center gap-1 shrink-0">
-            <SyncErrorIndicator errors={syncErrors} />
+            <SyncErrorIndicator />
             {onReload && (
               <button
                 type="button"

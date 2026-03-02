@@ -1,0 +1,47 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-cli/schema.json",
+  "productName": "Vibe Kanban",
+  "version": "0.1.13",
+  "identifier": "ai.bloop.vibe-kanban",
+  "build": {
+    "beforeDevCommand": {
+      "script": "concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev\"",
+      "cwd": "../.."
+    },
+    "beforeBuildCommand": {
+      "script": "pnpm run build",
+      "cwd": "../../frontend"
+    },
+    "devUrl": "http://localhost:3000",
+    "frontendDist": "./splash"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": "default-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: http://localhost:* http://127.0.0.1:*; connect-src 'self' http://localhost:* ws://localhost:* http://127.0.0.1:* ws://127.0.0.1:*"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "AI-powered development workspace",
+    "longDescription": "Vibe Kanban: Collaborative AI workspace for software development",
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMyN0ZCNDVCMDhFMDdEQjAKUldTd2ZlQUlXN1IvTWt1Z0ZmaWpsUUVGOHl3QUExRVVWL0crWkROSjViRUZSTXdUODN4WkFlQ1AK",
+      "endpoints": [
+        "__TAURI_UPDATE_ENDPOINT__"
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.1.21",
+  "version": "0.1.22-pthis.0",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
@@ -41,7 +41,9 @@
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose --env-file .env.remote down -v",
     "remote:dev:clean": "cd crates/remote && docker compose --env-file .env.remote down -v",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
-    "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check"
+    "remote:prepare-db:check": "cd crates/remote && bash scripts/prepare-db.sh --check",
+    "tauri:dev": "set -a && [ -f .env ] && . ./.env && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && cd crates/tauri-app && cargo tauri dev",
+    "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
   "devDependencies": {
     "bippy": "0.5.28",

@@ -1,0 +1,27 @@
+[package]
+name = "vibe-kanban-tauri"
+version = "0.1.22-pthis.0"
+edition = "2024"
+
+[[bin]]
+name = "vibe-kanban-tauri"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["devtools"] }
+tauri-plugin-shell = "2"
+tauri-plugin-opener = "2"
+tauri-plugin-updater = "2"
+
+server = { path = "../server" }
+
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+serde_json = { workspace = true }
+rustls = { workspace = true }

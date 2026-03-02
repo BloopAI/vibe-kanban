@@ -1,6 +1,6 @@
 [package]
 name = "local-deployment"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 edition = "2024"
 
 [dependencies]
@@ -27,6 +27,9 @@ futures = "0.3"
 tokio = { workspace = true }
 globwalk = "0.9"
 portable-pty = "0.8"
+
+[build-dependencies]
+dotenv = "0.15"
 
 [dev-dependencies]
 tempfile = "3.8"

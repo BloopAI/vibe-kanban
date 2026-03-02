@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for Vibe Kanban desktop app","local":true,"windows":["main"],"permissions":["core:default","core:webview:allow-set-webview-zoom","shell:allow-open","opener:default","updater:default"]}}
