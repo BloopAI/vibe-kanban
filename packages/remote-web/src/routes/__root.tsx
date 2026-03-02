@@ -1,4 +1,4 @@
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo } from "react";
 import {
   createRootRoute,
   Outlet,
@@ -16,6 +16,7 @@ import { ExecutionProcessesProvider } from "@/shared/providers/ExecutionProcesse
 import { TerminalProvider } from "@/shared/providers/TerminalProvider";
 import { LogsPanelProvider } from "@/shared/providers/LogsPanelProvider";
 import { ActionsProvider } from "@/shared/providers/ActionsProvider";
+import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { AppNavigationProvider } from "@/shared/hooks/useAppNavigation";
 import {
@@ -23,6 +24,11 @@ import {
   remoteFallbackAppNavigation,
   resolveRemoteDestinationFromPath,
 } from "@remote/app/navigation/AppNavigation";
+import {
+  resolveRelayNavigationHostId,
+  useRelayAppBarHosts,
+} from "@remote/shared/hooks/useRelayAppBarHosts";
+import { setActiveRelayHostId } from "@remote/shared/lib/relay/activeHostContext";
 import {
   isProjectDestination,
   isWorkspacesDestination,
@@ -64,15 +70,26 @@ function WorkspaceRouteProviders({ children }: { children: ReactNode }) {
 
 function RootLayout() {
   useSystemTheme();
+  const { isSignedIn } = useAuth();
   const location = useLocation();
   const { hostId } = useParams({ strict: false });
-  const resolvedHostId = hostId ?? null;
+  const routeHostId = hostId ?? null;
+  const { hosts: relayHosts } = useRelayAppBarHosts(isSignedIn);
+  const navigationHostId = useMemo(
+    () => resolveRelayNavigationHostId(relayHosts, { routeHostId }),
+    [relayHosts, routeHostId],
+  );
+
+  useEffect(() => {
+    setActiveRelayHostId(navigationHostId);
+  }, [navigationHostId]);
+
   const appNavigation = useMemo(
     () =>
-      resolvedHostId
-        ? createRemoteHostAppNavigation(resolvedHostId)
+      navigationHostId
+        ? createRemoteHostAppNavigation(navigationHostId)
         : remoteFallbackAppNavigation,
-    [resolvedHostId],
+    [navigationHostId],
   );
   const isStandaloneRoute =
     location.pathname.startsWith("/account") ||

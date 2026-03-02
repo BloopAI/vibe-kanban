@@ -16,7 +16,9 @@ function getPathParam(
   return value ? value : null;
 }
 
-export function resolveRemoteDestinationFromPath(path: string): AppDestination | null {
+export function resolveRemoteDestinationFromPath(
+  path: string,
+): AppDestination | null {
   const { pathname } = new URL(path, "http://localhost");
   const { foundRoute, routeParams } = router.getMatchedRoutes(pathname);
 

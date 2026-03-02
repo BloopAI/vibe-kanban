@@ -26,11 +26,12 @@ export function isWorkspaceRoutePath(pathname: string): boolean {
 
 export function parseRelayHostIdFromPathname(pathname: string): string | null {
   const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] !== "hosts" || !segments[1]) {
+  const hostsSegmentIndex = segments.indexOf("hosts");
+  if (hostsSegmentIndex === -1) {
     return null;
   }
 
-  return segments[1];
+  return segments[hostsSegmentIndex + 1] ?? null;
 }
 
 export function resolveRelayHostIdForCurrentPage(): string | null {
