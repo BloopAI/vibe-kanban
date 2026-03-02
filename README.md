@@ -19,13 +19,13 @@
   <a href="https://jobs.polymer.co/vibe-kanban?source=github"><strong>We're hiring!</strong></a>
 </h1>
 
-## Your Engineering Bottleneck Has Shifted
-
-Accelerate the human planning and review your coding agents are waiting on.
-
 ![](packages/public/vibe-kanban-screenshot-overview.png)
 
-Use kanban issues to plan work, either privately or with your team. When you're ready to begin, create workspaces where coding agents can execute.
+## Overview
+
+In a world where software engineers spend most of their time planning and reviewing coding agents, the most impactful way to ship more is to get faster at planning and review.
+
+Vibe Kanban is built for this. Use kanban issues to plan work, either privately or with your team. When you're ready to begin, create workspaces where coding agents can execute.
 
 - **Plan with kanban issues** — create, prioritise, and assign issues on a kanban board
 - **Run coding agents in workspaces** — each workspace gives an agent a branch, a terminal, and a dev server
@@ -42,7 +42,6 @@ One command. Describe the work, review the diff, ship it.
 npx vibe-kanban
 ```
 
-You can watch a video overview [here](https://youtu.be/TFT3KnZOOAk).
 
 ## Installation
 
