@@ -13,6 +13,10 @@ type MarkdownSyncPluginProps = {
   onEditorStateChange?: (state: EditorState) => void;
   editable: boolean;
   transformers: Transformer[];
+  /** When true, strip backslash-escapes from the exported markdown so that
+   *  literal markdown syntax typed by the user (e.g. **bold**) is preserved
+   *  rather than being escaped to \*\*bold\*\*. */
+  preserveMarkdownSyntax?: boolean;
 };
 
 /**
@@ -20,12 +24,18 @@ type MarkdownSyncPluginProps = {
  *
  * Uses an internal ref to prevent infinite update loops during bidirectional sync.
  */
+// Lexical escapes markdown-special characters (*, _, ~, etc.) when they
+// appear as literal text.  In plain-text editing mode the user *intends*
+// those characters so we strip the backslash escapes.
+const MARKDOWN_ESCAPE_RE = /\\([\\`*_{}[\]()#+\-.!~>|])/g;
+
 export function MarkdownSyncPlugin({
   value,
   onChange,
   onEditorStateChange,
   editable,
   transformers,
+  preserveMarkdownSyntax = false,
 }: MarkdownSyncPluginProps) {
   const [editor] = useLexicalComposerContext();
   const lastSerializedRef = useRef<string | undefined>(undefined);
@@ -70,15 +80,24 @@ export function MarkdownSyncPlugin({
       onEditorStateChange?.(editorState);
       if (!onChange) return;
 
-      const markdown = editorState.read(() =>
+      let markdown = editorState.read(() =>
         $convertToMarkdownString(transformers)
       );
+      if (preserveMarkdownSyntax) {
+        markdown = markdown.replace(MARKDOWN_ESCAPE_RE, '$1');
+      }
       if (markdown === lastSerializedRef.current) return;
 
       lastSerializedRef.current = markdown;
       onChange(markdown);
     });
-  }, [editor, onChange, onEditorStateChange, transformers]);
+  }, [
+    editor,
+    onChange,
+    onEditorStateChange,
+    transformers,
+    preserveMarkdownSyntax,
+  ]);
 
   return null;
 }

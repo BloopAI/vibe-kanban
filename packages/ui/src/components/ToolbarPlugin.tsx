@@ -8,7 +8,7 @@ import {
   SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
 } from 'lexical';
-import { Bold, Italic, Underline, Strikethrough, Code } from 'lucide-react';
+import { Bold, Italic, Strikethrough, Code } from 'lucide-react';
 import { cn } from '../lib/cn';
 
 const TOOLBAR_HEIGHT = 36;
@@ -16,12 +16,10 @@ const GAP = 8;
 const VIEWPORT_PADDING = 10;
 
 function ToolbarButton({
-  active,
   onClick,
   children,
   title,
 }: {
-  active?: boolean;
   onClick: (e: React.MouseEvent) => void;
   children: React.ReactNode;
   title: string;
@@ -37,8 +35,7 @@ function ToolbarButton({
       title={title}
       aria-label={title}
       className={cn(
-        'p-1.5 rounded hover:bg-accent transition-colors bg-secondary/40',
-        active && 'bg-accent'
+        'p-1.5 rounded hover:bg-accent transition-colors bg-secondary/40'
       )}
     >
       {children}
@@ -56,13 +53,6 @@ export function ToolbarPlugin() {
     left: number;
   } | null>(null);
 
-  // Text format state
-  const [isBold, setIsBold] = useState(false);
-  const [isItalic, setIsItalic] = useState(false);
-  const [isUnderline, setIsUnderline] = useState(false);
-  const [isStrikethrough, setIsStrikethrough] = useState(false);
-  const [isCode, setIsCode] = useState(false);
-
   const updateToolbar = useCallback(() => {
     const selection = $getSelection();
 
@@ -71,13 +61,6 @@ export function ToolbarPlugin() {
       setPosition(null);
       return;
     }
-
-    // Update text format state
-    setIsBold(selection.hasFormat('bold'));
-    setIsItalic(selection.hasFormat('italic'));
-    setIsUnderline(selection.hasFormat('underline'));
-    setIsStrikethrough(selection.hasFormat('strikethrough'));
-    setIsCode(selection.hasFormat('code'));
 
     // Check if selection has actual text content
     const text = selection.getTextContent();
@@ -109,7 +92,7 @@ export function ToolbarPlugin() {
     }
 
     // Calculate toolbar width (approximate)
-    const toolbarWidth = 180;
+    const toolbarWidth = 150;
 
     // Position above selection, centered
     let top = rect.top - TOOLBAR_HEIGHT - GAP + window.scrollY;
@@ -208,28 +191,18 @@ export function ToolbarPlugin() {
       }}
     >
       <ToolbarButton
-        active={isBold}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
         title="Bold (Cmd+B)"
       >
         <Bold size={iconSize} />
       </ToolbarButton>
       <ToolbarButton
-        active={isItalic}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
         title="Italic (Cmd+I)"
       >
         <Italic size={iconSize} />
       </ToolbarButton>
       <ToolbarButton
-        active={isUnderline}
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline')}
-        title="Underline (Cmd+U)"
-      >
-        <Underline size={iconSize} />
-      </ToolbarButton>
-      <ToolbarButton
-        active={isStrikethrough}
         onClick={() =>
           editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
         }
@@ -238,7 +211,6 @@ export function ToolbarPlugin() {
         <Strikethrough size={iconSize} />
       </ToolbarButton>
       <ToolbarButton
-        active={isCode}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
         title="Inline Code (Cmd+E)"
       >
