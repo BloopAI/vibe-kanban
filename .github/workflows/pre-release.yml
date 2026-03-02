@@ -697,6 +697,9 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest-m
             platform: linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest-arm64-l
+            platform: linux-aarch64
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             platform: windows-x86_64
@@ -868,7 +871,7 @@ jobs:
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
 
           # Upload individual platform artifacts
-          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 windows-x86_64; do
+          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 linux-aarch64 windows-x86_64; do
             if [ -d "tauri-artifacts/$platform" ]; then
               for file in tauri-artifacts/$platform/*; do
                 [ -f "$file" ] || continue
