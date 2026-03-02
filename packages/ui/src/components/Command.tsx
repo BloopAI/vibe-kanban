@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Command as CommandPrimitive } from 'cmdk';
 import { MagnifyingGlassIcon } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
-import { Dialog, DialogContent } from './Dialog';
+import { Dialog, DialogContent, DialogTitle } from './Dialog';
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -37,7 +37,9 @@ function CommandDialog({
         hideCloseButton
         onCloseAutoFocus={onCloseAutoFocus}
         onOpenAutoFocus={onOpenAutoFocus}
+        aria-describedby={undefined}
       >
+        <DialogTitle className="sr-only">Command Bar</DialogTitle>
         {children}
       </DialogContent>
     </Dialog>
