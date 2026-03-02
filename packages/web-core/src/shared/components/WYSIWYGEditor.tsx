@@ -54,7 +54,6 @@ import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from '@vibe/ui/components/ToolbarPlugin';
 import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
-import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
 import { MarkdownSyncPlugin } from '@vibe/ui/components/MarkdownSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -448,7 +447,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     );
 
     // Edit mode: custom elements + text format transformers (so asterisks
-    // aren't escaped during $convertToMarkdownString and preview can parse them)
+    // aren't escaped during $convertToMarkdownString and preview can parse them).
+    // CODE is excluded so triple-backtick fences stay as raw text.
     const editTransformers: Transformer[] = useMemo(
       () => [
         IMAGE_TRANSFORMER,
@@ -456,7 +456,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
-        CODE,
         ...TEXT_FORMAT_TRANSFORMERS,
       ],
       [IMAGE_TRANSFORMER]
@@ -655,7 +654,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   <ComponentInfoKeyboardPlugin
                     isTargetNode={$isComponentInfoNode}
                   />
-                  <CodeBlockShortcutPlugin />
                 </>
               )}
               {/* Link sanitization for read-only mode */}
