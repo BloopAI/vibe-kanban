@@ -74,7 +74,8 @@ function RootLayout() {
     location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/upgrade") ||
     location.pathname.startsWith("/invitations");
-  const isHostScopedRoute = resolvedHostId !== null;
+  const isWorkspaceProviderRoute =
+    resolvedHostId !== null || location.pathname.startsWith("/projects/");
 
   const pageContent = isStandaloneRoute ? (
     <Outlet />
@@ -84,7 +85,7 @@ function RootLayout() {
     </RemoteAppShell>
   );
 
-  const content = isHostScopedRoute ? (
+  const content = isWorkspaceProviderRoute ? (
     <WorkspaceRouteProviders>
       <NiceModalProvider>{pageContent}</NiceModalProvider>
     </WorkspaceRouteProviders>
