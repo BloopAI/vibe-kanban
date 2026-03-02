@@ -40,7 +40,6 @@
     "title": "Pending Invitations",
     "description": "View pending invitations for {{orgName}}",
     "loading": "Loading invitations...",
-    "none": "No pending invitations",
     "invited": "Invited {{date}}",
     "pending": "Pending"
   },
@@ -67,17 +66,6 @@
     "action": "로그인"
   },
   "confirmRemoveMember": "Are you sure you want to remove this member from the organization?",
-  "sharedProjects": {
-    "title": "공유 프로젝트",
-    "description": "{{orgName}}의 원격 프로젝트와 로컬 프로젝트 링크",
-    "loading": "프로젝트 로딩 중...",
-    "noProjects": "이 조직에서 공유 프로젝트를 찾을 수 없습니다",
-    "notLinked": "연결되지 않음",
-    "linkedTo": "연결됨: {{projectName}}",
-    "linked": "연결됨",
-    "linkProject": "프로젝트 연결...",
-    "noAvailableProjects": "사용 가능한 프로젝트 없음"
-  },
   "billing": {
     "title": "결제 및 구독",
     "description": "조직의 구독 및 결제 설정 관리",

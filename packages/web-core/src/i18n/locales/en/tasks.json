@@ -4,34 +4,18 @@
     "supportedFormats": "PNG, JPG, GIF, WebP, SVG supported"
   },
   "gitPanel": {
-    "create": {
-      "warnings": {
-        "noReposSelected": "Please select at least one repository to get started"
-      }
-    },
     "advanced": {
-      "workingBranch": "Working Branch",
       "placeholder": "e.g acme Corp"
     }
   },
   "loading": "Loading tasks...",
-  "empty": {
-    "noTasks": "No tasks found for this project.",
-    "createFirst": "Create First Task",
-    "noSearchResults": "No tasks match your search."
-  },
   "actions": {
     "addTask": "Add task"
-  },
-  "filters": {
-    "sharedToggleAria": "Toggle shared tasks",
-    "sharedToggleTooltip": "Show/hide shared content"
   },
   "rebase": {
     "common": {
       "action": "Rebase",
-      "inProgress": "Rebasing...",
-      "withTarget": "Rebase onto {{branch}}"
+      "inProgress": "Rebasing..."
     },
     "dialog": {
       "title": "Rebase Task Attempt",
@@ -41,11 +25,6 @@
       "targetLabel": "Target Branch",
       "targetPlaceholder": "Select a target branch",
       "advanced": "Advanced"
-    },
-    "status": {
-      "inProgress": "Rebase in progress{{counts}}",
-      "needed": "Rebase needed{{dirty}}{{counts}}",
-      "dirtyMarker": " (dirty)"
     }
   },
   "branches": {
@@ -60,74 +39,28 @@
     }
   },
   "repos": {
-    "changeRepo": {
-      "dialog": {
-        "title": "Change Repository",
-        "description": "Choose a repository for git operations.",
-        "label": "Repository",
-        "placeholder": "Select a repository",
-        "action": "Change Repository"
-      }
-    },
     "selector": {
       "placeholder": "Select repository",
       "empty": "No repositories available"
     }
   },
   "preview": {
-    "title": "Preview",
-    "selectAttempt": "Select an attempt to see preview",
-    "troubleAlert": {
-      "title": "We're having trouble previewing your application:",
-      "item1": "Did the dev server start successfully? There may be a bug you need to resolve, or perhaps dependencies need to be installed.",
-      "item2": "Did your dev server print the URL and port to the terminal in the format",
-      "item2Suffix": "? (this is how we know it's running)",
-      "item3": "Have you installed the Web Companion (required for click-to-edit)? If not, please",
-      "item3Link": "follow the installation instructions here",
-      "fixScript": "Fix Dev Script"
-    },
     "noServer": {
       "title": "No dev server running",
-      "startPrompt": "Please start a dev server to see the preview",
       "setupTitle": "You must set up a dev server script to use the preview feature",
       "setupPrompt": "To use the live preview and click-to-edit, please add a dev server script to this project.",
-      "companionPrompt": "For click-to-edit functionality, add the browser companion to your project.",
-      "companionLink": "View installation guide",
-      "startButton": "Start Dev Server",
-      "configureButton": "Configure",
-      "stopAndEditButton": "Stop Dev Server & Resolve Issues",
-      "fixScript": "Fix Dev Script",
       "editDevScript": "Edit Dev Server Script",
       "learnMore": "Learn more about testing applications"
     },
-    "devScript": {
-      "saveAndStart": "Save & Start",
-      "saveOnly": "Save Only",
-      "saveChanges": "Save Changes",
-      "cancel": "Cancel",
-      "errors": {
-        "notLoaded": "Project not loaded",
-        "empty": "Dev script cannot be empty"
-      }
-    },
     "logs": {
-      "title": "Dev Server Logs",
-      "hide": "Hide",
-      "show": "Show",
       "label": "Logs",
       "viewFull": "View full logs"
-    },
-    "noDevScript": "No dev script configured",
-    "noDevScriptHint": "Configure a dev script in project settings to use the preview",
-    "iframe": {
-      "title": "Dev server preview"
     },
     "toolbar": {
       "refresh": "Refresh preview",
       "copyUrl": "Copy URL",
       "openInTab": "Open in new tab",
       "stopDevServer": "Stop dev server",
-      "clickToEdit": "Click to edit URL",
       "resetUrl": "Reset to detected URL",
       "clearUrlOverride": "Clear URL override",
       "desktopView": "Desktop view",
@@ -146,36 +79,17 @@
     "browser": {
       "title": "Dev Server Preview",
       "devServerFallback": "Dev Server"
-    },
-    "urlInput": {
-      "placeholder": "Enter URL..."
     }
   },
   "diff": {
-    "viewModes": {
-      "inline": "Inline view",
-      "split": "Split view"
-    },
-    "ignoreWhitespace": "Ignore whitespace changes",
-    "errorLoadingDiff": "Failed to load diff: {{error}}",
-    "expandAll": "Expand all diffs",
-    "collapseAll": "Collapse all diffs",
     "filesChanged_one": "{{count}} file changed",
     "filesChanged_other": "{{count}} files changed",
-    "noChanges": "No changes have been made yet",
     "largeDiff": {
       "title": "Large file",
       "linesChanged": "{{count}} lines changed",
       "loadAnyway": "Load diff anyway",
       "warning": "Large diffs may slow down your browser."
     }
-  },
-  "taskPanel": {
-    "noTaskSelected": "No task selected",
-    "loadingAttempts": "Loading attempts...",
-    "errorLoadingAttempts": "Failed to load attempts",
-    "attemptsCount": "Attempts ({{count}})",
-    "noAttempts": "No attempts yet"
   },
   "processes": {
     "noLogsAvailable": "No logs available",
@@ -198,61 +112,13 @@
     "copyLogs": "Copy logs",
     "logsCopied": "Copied!"
   },
-  "taskHeader": {
-    "editTask": "Edit task",
-    "deleteTask": "Delete task",
-    "closePanel": "Close panel"
-  },
-  "navigateToParent": "Navigate to parent task attempt",
-  "toolbar": {
-    "actions": "Actions",
-    "noAttempts": "No attempts yet",
-    "startFirstAttempt": "Start your first attempt to begin working on this task",
-    "startAttempt": "Start Attempt"
-  },
   "followUp": {
-    "stop": "Stop",
-    "clearReviewComments": "Clear Review Comments",
-    "resolveConflicts": "Resolve conflicts",
-    "send": "Send",
-    "unqueuing": "Unqueuing…",
-    "edit": "Edit",
-    "queuing": "Queuing…",
-    "queueForNextTurn": "Queue for next turn",
-    "queue": "Queue",
-    "cancelQueue": "Cancel Queue",
-    "queuedMessage": "Message queued - will execute when current run finishes",
-    "runSetupScript": "Run setup script",
-    "runCleanupScript": "Run cleanup script",
-    "runArchiveScript": "Run archive script",
-    "noSetupScript": "No setup script configured for this project",
-    "noCleanupScript": "No cleanup script configured for this project",
-    "noArchiveScript": "No archive script configured for this project",
-    "scriptsDisabledWhileRunning": "Cannot run scripts while a process is running"
-  },
-  "todos": {
-    "title_one": "Todos ({{count}})",
-    "title_other": "Todos ({{count}})"
+    "queuedMessage": "Message queued - will execute when current run finishes"
   },
   "todoPopup": {
     "title": "Tasks",
     "progress": "{{completed}}/{{total}} completed",
     "noTasks": "No tasks"
-  },
-  "projects": {
-    "create": {
-      "dialog": {
-        "title": "Create Project",
-        "description": "Enter a name for your new project."
-      },
-      "form": {
-        "nameLabel": "Name",
-        "namePlaceholder": "My Project"
-      },
-      "errors": {
-        "createFailed": "Failed to create project"
-      }
-    }
   },
   "conversation": {
     "executors": "Executors",
@@ -333,39 +199,8 @@
   },
   "attempt": {
     "actions": {
-      "openInIde": "Open in IDE",
-      "openMenu": "Open menu",
-      "startDevServer": "Start dev server",
-      "stopDevServer": "Stop dev server"
-    },
-    "labels": {
-      "attempt": "Attempt",
-      "agent": "Agent",
-      "branch": "Branch",
-      "diffs": "Diffs",
-      "summaryAndActions": "Summary & Actions"
-    },
-    "agent": "Agent",
-    "path": "Path",
-    "openInEditor": "See changes in {{editor}}",
-    "copied": "Copied!",
-    "clickToCopy": "Copy worktree path",
-    "stopDev": "Stop Dev",
-    "pauseDev": "Pause Dev",
-    "startDev": "Start Dev",
-    "viewDevLogs": "View dev server logs",
-    "stopping": "Stopping...",
-    "stopAttempt": "Stop Attempt",
-    "newAttempt": "New Attempt",
-    "viewHistory": "View attempt history",
-    "createSubtask": "Create Subtask",
-    "preview": "Preview",
-    "diffs": "Diffs",
-    "gitActions": "Git Actions",
-    "tryAgain": "Try Again",
-    "runSetup": "Run Setup",
-    "setupHelpText": "{{agent}} isn't setup correctly. Click 'Run Setup' to install it and login.",
-    "devScriptMissingTooltip": "To start the dev server, add a dev script to this project"
+      "startDevServer": "Start dev server"
+    }
   },
   "git": {
     "labels": {
@@ -457,62 +292,11 @@
       }
     }
   },
-  "createAttemptDialog": {
-    "title": "Create Attempt",
-    "description": "Start a new attempt with a coding agent. A git worktree and task branch will be created.",
-    "baseBranch": "Base branch",
-    "loadingBranches": "Loading branches...",
-    "selectBranch": "Select branch",
-    "error": "Failed to create attempt. Please try again.",
-    "creating": "Creating...",
-    "start": "Start"
-  },
   "repoBranchSelector": {
     "label": "Base branch"
   },
-  "attemptRepoSelector": {
-    "label": "Repositories",
-    "addButton": "Add",
-    "empty": "No repositories selected. Add at least one repository.",
-    "selectBranch": "Select branch",
-    "addRepo": {
-      "title": "Select Git Repository",
-      "description": "Choose a git repository to add to this attempt"
-    }
-  },
   "viewProcessesDialog": {
     "title": "Execution processes"
-  },
-  "viewRelatedTasksDialog": {
-    "title": "Related tasks",
-    "empty": "No related tasks for this attempt",
-    "error": "Failed to load related tasks",
-    "tasksCount": "Tasks ({{count}})",
-    "columns": {
-      "title": "Title",
-      "description": "Description",
-      "status": "Status"
-    }
-  },
-  "attemptHeaderActions": {
-    "preview": "Preview",
-    "diffs": "Diffs",
-    "relatedTasks": "Related tasks",
-    "tryNewUI": "try the new UI"
-  },
-  "actionsMenu": {
-    "attempt": "Attempt",
-    "openInIde": "Open attempt in IDE",
-    "viewProcesses": "View processes",
-    "viewRelatedTasks": "View related tasks",
-    "createNewAttempt": "Create new attempt",
-    "createSubtask": "Create subtask",
-    "gitActions": "Git actions",
-    "editBranchName": "Edit branch name",
-    "startReview": "Start Review",
-    "startingReview": "Starting Review...",
-    "task": "Task",
-    "duplicate": "Duplicate"
   },
   "editBranchName": {
     "dialog": {
@@ -537,8 +321,6 @@
     "dialog": {
       "title": "Resolve Conflicts",
       "description": "Conflicts were detected. Choose how you want the agent to resolve them.",
-      "sessionLabel": "Session",
-      "existingSession": "Continue in current session",
       "newSession": "Start a new session",
       "resolve": "Resolve Conflicts",
       "resolving": "Starting...",
@@ -575,46 +357,10 @@
     "creating": "Creating...",
     "createButton": "Create PR",
     "errors": {
-      "insufficientPermissions": "Insufficient permissions. Please ensure the CLI has the necessary permissions.",
-      "repoNotFoundOrNoAccess": "Repository not found or no access. Please check your repository access and ensure you are authenticated.",
       "failedToCreate": "Failed to create PR",
       "gitCliNotLoggedIn": "Git is not authenticated. Run \"gh auth login\" (or configure Git credentials) and try again.",
       "gitCliNotInstalled": "Git CLI is not installed. Install Git to create a PR.",
       "targetBranchNotFound": "Target branch '{{branch}}' does not exist on remote. Please ensure the branch exists before creating a pull request."
-    },
-    "loginRequired": {
-      "title": "Sign in to create a pull request",
-      "description": "You need to sign in before you can open a pull request for this task. We'll take you to the sign-in page.",
-      "action": "Sign in"
-    }
-  },
-  "showcases": {
-    "taskPanel": {
-      "companion": {
-        "title": "Vibe Kanban Companion Point-and-Click",
-        "description": "Click any UI component in the preview window to select it precisely. The coding agent receives exact DOM selectors and component hierarchy, eliminating ambiguous feedback."
-      },
-      "installation": {
-        "title": "Dev Server & Companion Installation",
-        "description": "Set a dev server command for previews, with a setup script configurable in settings. Use a coding agent to automatically install the Vibe Kanban web companion."
-      },
-      "codeReview": {
-        "title": "Built-in Code Review",
-        "description": "Add line-specific comments directly in the diffs view with the plus icon. All feedback is collected and sent as a complete review to the coding agent."
-      },
-      "pullRequest": {
-        "title": "Create PR from Task",
-        "description": "Merge your changes or create pull requests directly from task attempts. The PR dialog pre-fills title and description from your task details for streamlined workflows."
-      },
-      "tags": {
-        "title": "Custom Prompt Tags",
-        "description": "Save custom prompts as tags and embed them within new tasks or follow-up messages. Reuse common instructions to maintain consistency across your workflow."
-      }
-    },
-    "buttons": {
-      "previous": "Previous",
-      "next": "Next",
-      "finish": "Finish"
     }
   },
   "prComments": {
@@ -659,9 +405,6 @@
       "discardChanges": "Discard Changes"
     }
   },
-  "terminal": {
-    "selectWorkspace": "Select a workspace to open terminal"
-  },
   "restoreLogsDialog": {
     "title": "Confirm Retry",
     "titleReset": "Confirm Reset",
@@ -694,8 +437,6 @@
       "disabled": "Disabled",
       "disabledUncommitted": "Disabled (uncommitted changes detected)",
       "restoreDescription": "Your worktree will be restored to this commit.",
-      "rollbackCommits_one": "Roll back {{count}} commit from current HEAD.",
-      "rollbackCommits_other": "Roll back {{count}} commits from current HEAD.",
       "discardChanges_one": "Discard {{count}} uncommitted change.",
       "discardChanges_other": "Discard {{count}} uncommitted changes.",
       "untrackedPresent_one": "{{count}} untracked file present (not affected by reset).",
@@ -710,7 +451,6 @@
     }
   },
   "scriptFixer": {
-    "title": "Fix Script",
     "setupScriptTitle": "Fix Setup Script",
     "cleanupScriptTitle": "Fix Cleanup Script",
     "archiveScriptTitle": "Fix Archive Script",
@@ -719,8 +459,6 @@
     "logsLabel": "Last Execution Logs",
     "saveButton": "Save",
     "saveAndTestButton": "Save and Test",
-    "saving": "Saving...",
-    "testing": "Testing...",
     "noLogs": "No execution logs available",
     "selectRepo": "Repository",
     "fixScript": "Fix Script",
@@ -763,7 +501,6 @@
       "unsupportedProvider": "Git provider not supported",
       "failedToLoadPrs": "Failed to load pull requests",
       "prNotFound": "Pull request not found",
-      "repoNotInProject": "Repository is not in any project",
       "failedToCreateWorkspace": "Failed to create workspace"
     }
   }

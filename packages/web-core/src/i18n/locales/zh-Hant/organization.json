@@ -40,7 +40,6 @@
     "title": "待處理邀請",
     "description": "查看 {{orgName}} 的待處理邀請",
     "loading": "載入邀請中...",
-    "none": "沒有待處理的邀請",
     "invited": "邀請於 {{date}}",
     "pending": "待處理"
   },
@@ -67,17 +66,6 @@
     "action": "登入"
   },
   "confirmRemoveMember": "您確定要從組織中移除此成員嗎？",
-  "sharedProjects": {
-    "title": "共享專案",
-    "description": "{{orgName}}中的遠端專案及其與本地專案的連結",
-    "loading": "正在載入專案...",
-    "noProjects": "此組織中未找到共享專案",
-    "notLinked": "未連結",
-    "linkedTo": "已連結至：{{projectName}}",
-    "linked": "已連結",
-    "linkProject": "連結專案...",
-    "noAvailableProjects": "沒有可用專案"
-  },
   "billing": {
     "title": "帳單與訂閱",
     "description": "管理您組織的訂閱與帳單設定",

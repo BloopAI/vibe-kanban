@@ -40,7 +40,6 @@
     "title": "待处理邀请",
     "description": "查看 {{orgName}} 的待处理邀请",
     "loading": "加载邀请中...",
-    "none": "没有待处理的邀请",
     "invited": "邀请于 {{date}}",
     "pending": "待处理"
   },
@@ -67,17 +66,6 @@
     "action": "登录"
   },
   "confirmRemoveMember": "您确定要从组织中移除此成员吗？",
-  "sharedProjects": {
-    "title": "共享项目",
-    "description": "{{orgName}}中的远程项目及其与本地项目的链接",
-    "loading": "正在加载项目...",
-    "noProjects": "此组织中未找到共享项目",
-    "notLinked": "未链接",
-    "linkedTo": "已链接到：{{projectName}}",
-    "linked": "已链接",
-    "linkProject": "链接项目...",
-    "noAvailableProjects": "没有可用项目"
-  },
   "billing": {
     "title": "账单与订阅",
     "description": "管理您组织的订阅和账单设置",
