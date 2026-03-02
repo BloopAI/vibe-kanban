@@ -21,7 +21,12 @@ import { AppNavigationProvider } from "@/shared/hooks/useAppNavigation";
 import {
   createRemoteHostAppNavigation,
   remoteFallbackAppNavigation,
+  resolveRemoteDestinationFromPath,
 } from "@remote/app/navigation/AppNavigation";
+import {
+  isProjectDestination,
+  isWorkspacesDestination,
+} from "@/shared/lib/routes/appNavigation";
 import NotFoundPage from "../pages/NotFoundPage";
 
 export const Route = createRootRoute({
@@ -74,8 +79,9 @@ function RootLayout() {
     location.pathname.startsWith("/login") ||
     location.pathname.startsWith("/upgrade") ||
     location.pathname.startsWith("/invitations");
+  const destination = resolveRemoteDestinationFromPath(location.pathname);
   const isWorkspaceProviderRoute =
-    resolvedHostId !== null || location.pathname.startsWith("/projects/");
+    isProjectDestination(destination) || isWorkspacesDestination(destination);
 
   const pageContent = isStandaloneRoute ? (
     <Outlet />
