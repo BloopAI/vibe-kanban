@@ -33,7 +33,7 @@ import {
   type MobileFontScale,
   useMobileFontScale,
 } from '@/shared/stores/useUiPreferencesStore';
-import { cn } from '@/shared/lib/utils';
+import { cn, playSound } from '@/shared/lib/utils';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { IconButton } from '@vibe/ui/components/IconButton';
 import {
@@ -168,10 +168,9 @@ export function GeneralSettingsSection() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasUnsavedChanges]);
 
-  const playSound = async (soundFile: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${soundFile}`);
+  const previewSound = async (soundFile: SoundFile) => {
     try {
-      await audio.play();
+      await playSound(`/api/sounds/${soundFile}`);
     } catch (err) {
       console.error('Failed to play sound:', err);
     }
@@ -738,7 +737,7 @@ export function GeneralSettingsSection() {
               </div>
               <IconButton
                 icon={SpeakerHighIcon}
-                onClick={() => playSound(draft.notifications.sound_file)}
+                onClick={() => previewSound(draft.notifications.sound_file)}
                 aria-label="Preview sound"
                 title="Preview sound"
               />

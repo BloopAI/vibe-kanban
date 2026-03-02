@@ -36,7 +36,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
-import { cn } from '@/shared/lib/utils';
+import { cn, playSound } from '@/shared/lib/utils';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
@@ -233,10 +233,9 @@ export function LandingPage() {
 
   const editorOptions = useMemo(() => Object.values(EditorType), []);
 
-  const playSound = async (value: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${value}`);
+  const previewSound = async (value: SoundFile) => {
     try {
-      await audio.play();
+      await playSound(`/api/sounds/${value}`);
     } catch (err) {
       console.error('Failed to play sound:', err);
     }
@@ -249,7 +248,7 @@ export function LandingPage() {
   const handleSoundSelect = (value: SoundFile) => {
     setSoundEnabled(true);
     setSoundFile(value);
-    void playSound(value);
+    void previewSound(value);
   };
 
   const isCustomEditorValid =
