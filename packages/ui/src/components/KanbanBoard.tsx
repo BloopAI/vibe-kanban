@@ -24,7 +24,7 @@ import {
   type Ref,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { PlusIcon } from '@phosphor-icons/react';
+import { DotsSixVerticalIcon, PlusIcon } from '@phosphor-icons/react';
 import { Button } from './Button';
 
 export type { DropResult } from '@hello-pangea/dnd';
@@ -72,6 +72,7 @@ export type KanbanCardProps = Pick<Feature, 'id' | 'name'> & {
   onKeyDown?: (e: KeyboardEvent) => void;
   isOpen?: boolean;
   dragDisabled?: boolean;
+  isMobile?: boolean;
 };
 
 export const KanbanCard = ({
@@ -86,6 +87,7 @@ export const KanbanCard = ({
   onKeyDown,
   isOpen,
   dragDisabled = false,
+  isMobile,
 }: KanbanCardProps) => {
   return (
     <Draggable draggableId={id} index={index} isDragDisabled={dragDisabled}>
@@ -111,12 +113,47 @@ export const KanbanCard = ({
             )}
             ref={setRefs}
             {...provided.draggableProps}
-            {...provided.dragHandleProps}
+            {...(isMobile ? {} : provided.dragHandleProps)}
             tabIndex={tabIndex}
-            onClick={onClick}
+            onClick={
+              isMobile
+                ? () => {
+                    if (!snapshot.isDragging) onClick?.();
+                  }
+                : undefined
+            }
+            onMouseUp={
+              !isMobile
+                ? (e) => {
+                    if (e.button === 0 && !snapshot.isDragging) {
+                      onClick?.();
+                    }
+                  }
+                : undefined
+            }
             onKeyDown={onKeyDown}
           >
-            {children ?? <p className="m-0 font-medium text-sm">{name}</p>}
+            {isMobile ? (
+              <div className="flex gap-half">
+                <div
+                  {...provided.dragHandleProps}
+                  className="flex items-start pt-half cursor-grab shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <DotsSixVerticalIcon
+                    className="size-icon-xs text-low"
+                    weight="bold"
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  {children ?? (
+                    <p className="m-0 font-medium text-sm">{name}</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              (children ?? <p className="m-0 font-medium text-sm">{name}</p>)
+            )}
           </Card>
         );
       }}

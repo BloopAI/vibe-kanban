@@ -1,0 +1,21 @@
+vadyms-macbook-pro.tail3de41b.ts.net:3001 {
+    tls vadyms-macbook-pro.tail3de41b.ts.net.crt vadyms-macbook-pro.tail3de41b.ts.net.key
+    handle /api/* {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle /v1/* {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle /shape/* {
+        reverse_proxy 127.0.0.1:3000
+    }
+    handle {
+        reverse_proxy localhost:3002 {
+            header_up Host localhost:3002
+        }
+    }
+}
+vadyms-macbook-pro.tail3de41b.ts.net:8443 {
+    tls vadyms-macbook-pro.tail3de41b.ts.net.crt vadyms-macbook-pro.tail3de41b.ts.net.key
+    reverse_proxy 127.0.0.1:8082
+}

@@ -6,6 +6,8 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useActions } from '@/shared/hooks/useActions';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useIsMobile } from '@/shared/hooks/useIsMobile';
+import { cn } from '@/shared/lib/utils';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
   useUiPreferencesStore,
@@ -111,6 +113,7 @@ function LoadingState() {
  * Must be rendered within both OrgProvider and ProjectProvider.
  */
 export function KanbanContainer() {
+  const isMobile = useIsMobile();
   const { t } = useTranslation('common');
   const appNavigation = useAppNavigation();
   const routeState = useCurrentKanbanRouteState();
@@ -788,9 +791,16 @@ export function KanbanContainer() {
 
   return (
     <div className="flex flex-col h-full space-y-base">
-      <div className="px-double pt-double space-y-base">
+      <div
+        className={cn(
+          'px-double pt-double space-y-base',
+          isMobile && 'px-base pt-base'
+        )}
+      >
         <div className="flex items-center gap-half">
-          <h2 className="text-2xl font-medium">{projectName}</h2>
+          <h2 className={cn('text-2xl font-medium', isMobile && 'text-lg')}>
+            {projectName}
+          </h2>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -815,7 +825,12 @@ export function KanbanContainer() {
           </DropdownMenu>
         </div>
 
-        <div className="flex flex-wrap items-start gap-base">
+        <div
+          className={cn(
+            'flex items-start gap-base',
+            isMobile ? 'flex-col' : 'flex-wrap'
+          )}
+        >
           <ViewNavTabs
             activeView={kanbanViewMode}
             onViewChange={setKanbanViewMode}
@@ -848,6 +863,7 @@ export function KanbanContainer() {
             onCreateIssue={handleAddTask}
             shouldAnimateCreateButton={shouldAnimateCreateButton}
             renderFiltersDialog={(props) => <KanbanFiltersDialog {...props} />}
+            isMobile={isMobile}
           />
         </div>
       </div>
@@ -914,6 +930,7 @@ export function KanbanContainer() {
                             className="group"
                             onClick={() => handleCardClick(issue.id)}
                             isOpen={selectedKanbanIssueId === issue.id}
+                            isMobile={isMobile}
                           >
                             <KanbanCardContent
                               displayId={issue.simple_id}
@@ -929,6 +946,7 @@ export function KanbanContainer() {
                                 issuesById
                               )}
                               isSubIssue={!!issue.parent_issue_id}
+                              isMobile={isMobile}
                               onPriorityClick={(e) => {
                                 e.stopPropagation();
                                 handleCardPriorityClick(issue.id);

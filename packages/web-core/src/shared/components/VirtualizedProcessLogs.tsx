@@ -156,7 +156,7 @@ export function VirtualizedProcessLogs({
   };
 
   return (
-    <div className="h-full overflow-hidden">
+    <div className="virtuoso-license-wrapper h-full overflow-hidden">
       <VirtuosoMessageListLicense
         licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
       >

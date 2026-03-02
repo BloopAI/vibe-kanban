@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDownIcon } from '@phosphor-icons/react';
+import { ArrowDownIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 
 export interface WorkspacesMainWorkspace {
@@ -45,7 +45,7 @@ export function WorkspacesMain({
       {/* Conversation content - conditional based on loading/workspace state */}
       {isLoading ? (
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-low">{t('common:workspaces.loading')}</p>
+          <SpinnerIcon className="size-6 animate-spin text-low" />
         </div>
       ) : !workspaceWithSession ? (
         <div className="flex-1 flex items-center justify-center">
