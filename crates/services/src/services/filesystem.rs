@@ -52,6 +52,17 @@ impl FilesystemService {
     }
 
     #[cfg(not(feature = "qa-mode"))]
+    fn normalize_path_for_dedupe(path: &Path) -> PathBuf {
+        // 1) Normalize known macOS aliases (/private/var -> /var, /private/tmp -> /tmp)
+        // 2) Canonicalize when possible to resolve symlinks/.. and produce a stable key for
+        //    dedupe (especially on case-insensitive filesystems common on macOS).
+        let normalized = utils::path::normalize_macos_private_alias(path);
+        // If canonicalize fails (e.g., path doesn't exist), use the normalized path
+        // rather than the original to ensure consistent /private/var handling
+        dunce::canonicalize(&normalized).unwrap_or(normalized)
+    }
+
+    #[cfg(not(feature = "qa-mode"))]
     fn get_directories_to_skip() -> HashSet<String> {
         let mut skip_dirs = HashSet::from(
             [
@@ -196,6 +207,11 @@ impl FilesystemService {
             {
                 paths.insert(0, cwd);
             }
+
+            // Deduplicate equivalent root paths (casing/symlinks/macOS /var alias) to avoid scanning the same tree multiple times.
+            let mut seen = HashSet::new();
+            paths.retain(|p| seen.insert(Self::normalize_path_for_dedupe(p)));
+
             self.list_git_repos_with_timeout(paths, timeout_ms, hard_timeout_ms, max_depth)
                 .await
         }
@@ -257,15 +273,19 @@ impl FilesystemService {
         for p in path.iter().skip(1) {
             walker_builder.add(p);
         }
+        // When scanning multiple (possibly overlapping) roots, the walker can yield the same
+        // directory more than once (casing differences, or /var vs /private/var on macOS).
+        // Deduplicate using a normalized + canonicalized key.
         let mut seen_dirs = HashSet::new();
         let mut git_repos: Vec<DirectoryEntry> = walker_builder
             .build()
             .filter_map(|entry| {
                 let entry = entry.ok()?;
-                if seen_dirs.contains(entry.path()) {
+                let key = Self::normalize_path_for_dedupe(entry.path());
+                if seen_dirs.contains(&key) {
                     return None;
                 }
-                seen_dirs.insert(entry.path().to_owned());
+                seen_dirs.insert(key);
                 let name = entry.file_name().to_str()?;
                 if !entry.path().join(".git").exists() {
                     return None;
