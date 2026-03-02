@@ -174,8 +174,8 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       }
 
       navigate({
-        to: "/hosts/$hostId/projects/$projectId",
-        params: { hostId: preferredHostId, projectId },
+        to: "/projects/$projectId",
+        params: { projectId },
       });
     },
     [navigate, openRelaySettings, preferredHostId],
@@ -199,9 +199,8 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
           return;
         }
         navigate({
-          to: "/hosts/$hostId/projects/$projectId",
+          to: "/projects/$projectId",
           params: {
-            hostId: preferredHostId,
             projectId: result.project.id,
           },
         });

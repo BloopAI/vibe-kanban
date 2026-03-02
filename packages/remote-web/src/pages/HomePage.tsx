@@ -380,8 +380,8 @@ function ProjectCard({
 
   return (
     <Link
-      to="/hosts/$hostId/projects/$projectId"
-      params={{ hostId, projectId: project.id }}
+      to="/projects/$projectId"
+      params={{ projectId: project.id }}
       onClick={() => {
         setSelectedOrgId(project.organization_id);
       }}

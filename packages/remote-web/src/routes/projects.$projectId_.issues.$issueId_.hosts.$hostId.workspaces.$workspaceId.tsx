@@ -4,7 +4,7 @@ import { projectSearchValidator } from "@vibe/web-core/project-search";
 import { RemoteProjectKanbanShell } from "@remote/pages/RemoteProjectKanbanShell";
 
 export const Route = createFileRoute(
-  "/hosts/$hostId/projects/$projectId_/issues/$issueId_/workspaces/create/$draftId",
+  "/projects/$projectId_/issues/$issueId_/hosts/$hostId/workspaces/$workspaceId",
 )({
   beforeLoad: async ({ location }) => {
     await requireAuthenticated(location);

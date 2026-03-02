@@ -49,9 +49,7 @@ export function RemoteNavbarContainer({
   }, [isOnWorkspaceView, setMobileActiveTab]);
   const navigate = useNavigate();
 
-  const isOnProjectPage = /^\/hosts\/[^/]+\/projects\/[^/]+/.test(
-    location.pathname,
-  );
+  const isOnProjectPage = /^\/projects\/[^/]+/.test(location.pathname);
   const pathSegments = location.pathname.split("/").filter(Boolean);
   const projectSegmentIndex = pathSegments.indexOf("projects");
   const projectId =
@@ -84,10 +82,10 @@ export function RemoteNavbarContainer({
   const mobileShowBack = isOnWorkspaceView || isOnWorkspaceList;
 
   const handleNavigateBack = useCallback(() => {
-    if (isOnProjectPage && hostId && projectId) {
+    if (isOnProjectPage && projectId) {
       navigate({
-        to: "/hosts/$hostId/projects/$projectId",
-        params: { hostId, projectId },
+        to: "/projects/$projectId",
+        params: { projectId },
       });
     } else if (isOnWorkspaceView) {
       // Inside workspace: go back to workspace list

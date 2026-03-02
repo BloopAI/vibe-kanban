@@ -7,12 +7,11 @@ export type AppDestination =
   | { kind: 'workspaces-create'; hostId?: string }
   | { kind: 'workspace'; workspaceId: string; hostId?: string }
   | { kind: 'workspace-vscode'; workspaceId: string; hostId?: string }
-  | { kind: 'project'; projectId: string; hostId?: string }
+  | { kind: 'project'; projectId: string }
   | {
       kind: 'project-issue';
       projectId: string;
       issueId: string;
-      hostId?: string;
     }
   | {
       kind: 'project-issue-workspace';
