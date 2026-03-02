@@ -559,6 +559,5 @@
     "submitting": "답변 제출 중...",
     "answeredCount": "{{count}}개의 질문에 답변함",
     "answeredCount_other": "{{count}}개의 질문에 답변함"
-  },
-  "kanban.board": "Board"
+  }
 }

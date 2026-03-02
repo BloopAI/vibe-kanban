@@ -559,6 +559,5 @@
     "submitting": "正在提交回答...",
     "answeredCount": "已回答{{count}}個問題",
     "answeredCount_other": "已回答{{count}}個問題"
-  },
-  "kanban.board": "Board"
+  }
 }

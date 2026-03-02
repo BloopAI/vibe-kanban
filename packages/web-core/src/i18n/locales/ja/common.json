@@ -559,6 +559,5 @@
     "submitting": "回答を送信中...",
     "answeredCount": "{{count}}件の質問に回答済み",
     "answeredCount_other": "{{count}}件の質問に回答済み"
-  },
-  "kanban.board": "Board"
+  }
 }
