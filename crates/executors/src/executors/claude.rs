@@ -1215,6 +1215,9 @@ impl ClaudeLogProcessor {
                             // this name matches the model names in the usage report in the result message
                             if let Some(model) = model {
                                 self.main_model_name = Some(model.clone());
+                                if model.contains("[1m]") {
+                                    self.main_model_context_window = 1_000_000;
+                                }
                             }
                         }
                         // Skip system init messages because it doesn't contain the actual model that will be used in assistant messages in case of claude-code-router.
