@@ -1,4 +1,9 @@
-import { forwardRef, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import {
+  forwardRef,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from 'react';
 import type { Icon } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import { Tooltip } from './Tooltip';
