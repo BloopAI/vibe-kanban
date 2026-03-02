@@ -211,7 +211,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -2333,7 +2333,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2411,7 +2411,7 @@ checksum = "26bf8fc351c5ed29b5c2f0cbbac1b209b74f60ecd62e675a998df72c49af5204"
 
 [[package]]
 name = "deployment"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -3098,7 +3098,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -3766,7 +3766,7 @@ dependencies = [
 
 [[package]]
 name = "git"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -3781,7 +3781,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "async-trait",
  "backon",
@@ -5219,7 +5219,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -5438,7 +5438,7 @@ checksum = "b3eede3bdf92f3b4f9dc04072a9ce5ab557d5ec9038773bf9ffcd5588b3cc05b"
 
 [[package]]
 name = "mcp"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -7881,7 +7881,7 @@ checksum = "a96887878f22d7bad8a3b6dc5b7440e0ada9a245242924394987b21cf2210a4c"
 
 [[package]]
 name = "relay-control"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -8008,7 +8008,7 @@ checksum = "1e061d1b48cb8d38042de4ae0a7a6401009d6143dc80d2e2d6f31f0bdd6470c7"
 
 [[package]]
 name = "review"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -8978,7 +8978,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -9036,14 +9036,14 @@ dependencies = [
 
 [[package]]
 name = "server-info"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "services"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -11060,7 +11060,7 @@ checksum = "009994f150cc0cd50ff54917d5bc8bffe8cad10ca10d81c34da2ec421ae61782"
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -11365,7 +11365,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 dependencies = [
  "api-types",
  "axum",
@@ -11442,7 +11442,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vibe-kanban-tauri"
-version = "0.1.20"
+version = "0.1.22-pthis.0"
 dependencies = [
  "anyhow",
  "rustls",

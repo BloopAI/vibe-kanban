@@ -1,6 +1,6 @@
 [package]
 name = "relay-control"
-version = "0.1.21"
+version = "0.1.22-pthis.0"
 edition = "2024"
 
 [dependencies]
