@@ -93,3 +93,4 @@ vibe-kanban-cloud/
 *.ts.net.crt
 *.ts.net.key
 Caddyfile
+Caddyfile.dev
