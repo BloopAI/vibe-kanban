@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id AS \"id!: Uuid\",\n                          task_id AS \"task_id: Uuid\",\n                          container_ref,\n                          branch,\n                          agent_working_dir,\n                          setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                          created_at AS \"created_at!: DateTime<Utc>\",\n                          updated_at AS \"updated_at!: DateTime<Utc>\",\n                          archived AS \"archived!: bool\",\n                          pinned AS \"pinned!: bool\",\n                          name\n                   FROM workspaces\n                   ORDER BY created_at DESC",
+  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name,\n                       worktree_deleted  AS \"worktree_deleted!: bool\"\n               FROM    workspaces\n               WHERE   rowid = $1",
   "describe": {
     "columns": [
       {
@@ -57,10 +57,15 @@
         "name": "name",
         "ordinal": 10,
         "type_info": "Text"
+      },
+      {
+        "name": "worktree_deleted!: bool",
+        "ordinal": 11,
+        "type_info": "Bool"
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       true,
@@ -73,8 +78,9 @@
       false,
       false,
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "72c04c3a56fc9dc0b08ada7c4260d7813f4c02005bc0a0935c8c7716c51c5047"
+  "hash": "1298f93b2ba442dc72cee0e1f51ba4e9c643ff45390be0aa163b63190a9e3375"
 }
