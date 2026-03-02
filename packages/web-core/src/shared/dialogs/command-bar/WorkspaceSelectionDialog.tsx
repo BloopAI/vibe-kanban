@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
@@ -65,7 +64,6 @@ function WorkspaceSelectionContent({
 }) {
   const { t } = useTranslation('common');
   const modal = useModal();
-  const navigate = useNavigate();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -198,12 +196,13 @@ function WorkspaceSelectionContent({
         issueId,
       });
       if (!draftId) {
-        navigate({
-          to: '/workspaces/create',
-          state: (prev) => ({
-            ...prev,
-            ...createState,
-          }),
+        await ErrorDialog.show({
+          title: t('common:error'),
+          message: t(
+            'workspaces.createDraftError',
+            'Failed to prepare workspace draft. Please try again.'
+          ),
+          buttonText: t('common:ok'),
         });
       }
     } finally {
@@ -211,7 +210,6 @@ function WorkspaceSelectionContent({
     }
   }, [
     modal,
-    navigate,
     openWorkspaceCreateFromState,
     getIssue,
     issueId,
@@ -220,6 +218,7 @@ function WorkspaceSelectionContent({
     isLinking,
     activeWorkspaces,
     archivedWorkspaces,
+    t,
   ]);
 
   // Restore focus when dialog closes

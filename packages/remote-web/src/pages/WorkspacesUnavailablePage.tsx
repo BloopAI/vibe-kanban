@@ -1,8 +1,7 @@
 import { useMemo } from "react";
-import { useLocation } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
-import { parseRelayHostIdFromSearch } from "@remote/shared/lib/activeRelayHost";
 
 interface BlockedHostState {
   id: string;
@@ -19,11 +18,11 @@ export default function WorkspacesUnavailablePage({
   blockedHost,
   isCheckingBlockedHost = false,
 }: WorkspacesUnavailablePageProps) {
-  const location = useLocation();
+  const { hostId } = useParams({ strict: false });
 
   const selectedHostId = useMemo(
-    () => blockedHost?.id ?? parseRelayHostIdFromSearch(location.searchStr),
-    [blockedHost?.id, location.searchStr],
+    () => blockedHost?.id ?? hostId ?? null,
+    [blockedHost?.id, hostId],
   );
 
   const selectedHostName = useMemo(

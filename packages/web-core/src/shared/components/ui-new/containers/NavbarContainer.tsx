@@ -1,5 +1,4 @@
 import { useMemo, useCallback } from 'react';
-import { useLocation, useNavigate } from '@tanstack/react-router';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useActions } from '@/shared/hooks/useActions';
@@ -30,8 +29,9 @@ import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityCo
 import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
-import { toWorkspaces } from '@/shared/lib/routes/navigation';
-import { buildProjectRootPath } from '@/shared/lib/routes/projectSidebarRoutes';
+import { getProjectDestination } from '@/shared/lib/routes/appNavigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 /**
  * Check if a NavbarItem is a divider
@@ -121,14 +121,16 @@ export function NavbarContainer({
   const { workspace: selectedWorkspace, isCreateMode } = useWorkspaceContext();
   const { workspaces } = useUserContext();
   const syncErrorContext = useSyncErrorContext();
-  const location = useLocation();
-  const isOnProjectPage = location.pathname.startsWith('/projects/');
-  const projectId = isOnProjectPage ? location.pathname.split('/')[2] : null;
+  const appNavigation = useAppNavigation();
+  const destination = useCurrentAppDestination();
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
+  const isOnProjectPage = projectDestination !== null;
+  const projectId = projectDestination?.projectId ?? null;
   const isOnProjectSubRoute =
-    isOnProjectPage &&
-    (location.pathname.includes('/issues/') ||
-      location.pathname.includes('/workspaces/'));
-  const navigate = useNavigate();
+    projectDestination !== null && projectDestination.kind !== 'project';
   const [mobileActiveTab, setMobileActiveTab] = useMobileActiveTab();
 
   // Find remote workspace linked to current local workspace
@@ -207,19 +209,19 @@ export function NavbarContainer({
   const handleNavigateBack = useCallback(() => {
     if (isOnProjectPage && projectId) {
       // On project sub-route: go back to project root (kanban board)
-      navigate(buildProjectRootPath(projectId));
+      appNavigation.goToProject(projectId);
     } else {
       // Non-project page: go to workspaces
-      navigate(toWorkspaces());
+      appNavigation.goToWorkspaces();
     }
-  }, [navigate, isOnProjectPage, projectId]);
+  }, [isOnProjectPage, projectId, appNavigation]);
 
   const handleNavigateToBoard = useMemo(() => {
     if (!isOnProjectPage || !projectId) return null;
     return () => {
-      navigate(buildProjectRootPath(projectId));
+      appNavigation.goToProject(projectId);
     };
-  }, [isOnProjectPage, projectId, navigate]);
+  }, [isOnProjectPage, projectId, appNavigation]);
 
   // Build user popover slot for mobile mode
   const userPopoverSlot = useMemo(() => {

@@ -41,7 +41,9 @@ export async function requestLocalApiViaRelay(
 
   const hostId = resolveRelayHostIdForCurrentPage();
   if (!hostId) {
-    return fetch(pathOrUrl, requestInit);
+    throw new Error(
+      "Host context is required for local API requests. Navigate under /hosts/{hostId}/...",
+    );
   }
 
   return requestRelayHostApi(hostId, pathAndQuery, requestInit);
@@ -58,7 +60,9 @@ export async function openLocalApiWebSocketViaRelay(
 
   const hostId = resolveRelayHostIdForCurrentPage();
   if (!hostId) {
-    return openBrowserWebSocket(pathOrUrl);
+    throw new Error(
+      "Host context is required for local API WebSocket requests. Navigate under /hosts/{hostId}/...",
+    );
   }
 
   return openRelayHostWebSocket(hostId, pathAndQuery);

@@ -3,6 +3,7 @@ import { type OrganizationWithRole } from 'shared/types';
 import { organizationsApi } from '@/shared/lib/api';
 import { createShapeCollection } from '@/shared/lib/electric/collections';
 import { getFirstProjectByOrder } from '@/shared/lib/projectOrder';
+import type { AppDestination } from '@/shared/lib/routes/appNavigation';
 
 const FIRST_PROJECT_LOOKUP_TIMEOUT_MS = 3000;
 
@@ -75,7 +76,7 @@ async function getFirstProjectInOrganization(
 
 export async function getFirstProjectDestination(
   setSelectedOrgId: (orgId: string | null) => void
-): Promise<string | null> {
+): Promise<AppDestination | null> {
   try {
     const organizationsResponse = await organizationsApi.getUserOrganizations();
     const firstOrganization = getFirstOrganization(
@@ -95,7 +96,7 @@ export async function getFirstProjectDestination(
       return null;
     }
 
-    return `/projects/${firstProject.id}`;
+    return { kind: 'project', projectId: firstProject.id };
   } catch (error) {
     console.error('Failed to resolve first project destination:', error);
     return null;

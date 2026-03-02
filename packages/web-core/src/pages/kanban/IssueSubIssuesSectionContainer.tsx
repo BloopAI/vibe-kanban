@@ -1,9 +1,10 @@
 import { useMemo, useCallback, useState } from 'react';
+import { useParams } from '@tanstack/react-router';
 import { DragDropContext, type DropResult } from '@hello-pangea/dnd';
 import { PlusIcon, LinkIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useActions } from '@/shared/hooks/useActions';
 import { Actions } from '@/shared/actions';
 import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
@@ -26,7 +27,8 @@ interface IssueSubIssuesSectionContainerProps {
 export function IssueSubIssuesSectionContainer({
   issueId,
 }: IssueSubIssuesSectionContainerProps) {
-  const { projectId, openIssue } = useKanbanNavigation();
+  const { projectId } = useParams({ strict: false });
+  const appNavigation = useAppNavigation();
   const {
     executeAction,
     openSubIssueSelection,
@@ -96,9 +98,13 @@ export function IssueSubIssuesSectionContainer({
   // Handle clicking on a sub-issue to navigate to it
   const handleSubIssueClick = useCallback(
     (subIssueId: string) => {
-      openIssue(subIssueId);
+      if (!projectId) {
+        return;
+      }
+
+      appNavigation.goToProjectIssue(projectId, subIssueId);
     },
-    [openIssue]
+    [projectId, appNavigation]
   );
 
   // Track reordering state for loading overlay

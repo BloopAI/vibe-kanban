@@ -1,5 +1,4 @@
 import type { Icon } from '@phosphor-icons/react';
-import type { NavigateFn } from '@tanstack/react-router';
 import type { QueryClient } from '@tanstack/react-query';
 import type {
   EditorType,
@@ -11,7 +10,8 @@ import type { Workspace as RemoteWorkspace } from 'shared/remote-types';
 import type { DiffViewMode } from '@/shared/stores/useDiffViewStore';
 import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
-import type { IssueCreateRouteOptions } from '@/shared/lib/routes/projectSidebarRoutes';
+import type { AppNavigation } from '@/shared/lib/routes/appNavigation';
+import type { ProjectIssueCreateOptions } from '@/shared/stores/useKanbanIssueComposerStore';
 
 // Portable type aliases (avoid importing from component containers)
 export type LogEntry = Extract<
@@ -52,7 +52,7 @@ interface SidebarWorkspace {
 
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
-  navigate: NavigateFn;
+  appNavigation: AppNavigation;
   queryClient: QueryClient;
   selectWorkspace: (workspaceId: string) => void;
   activeWorkspaces: SidebarWorkspace[];
@@ -88,7 +88,7 @@ export interface ActionExecutorContext {
     direction: 'forward' | 'reverse'
   ) => Promise<void>;
   // Kanban navigation (URL-based)
-  navigateToCreateIssue: (options?: IssueCreateRouteOptions) => void;
+  navigateToCreateIssue: (options?: ProjectIssueCreateOptions) => void;
   // Default status for issue creation based on current kanban tab
   defaultCreateStatusId?: string;
   // Current kanban context (for project settings action)

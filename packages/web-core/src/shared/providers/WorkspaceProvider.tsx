@@ -1,5 +1,5 @@
 import { ReactNode, useMemo, useCallback, useEffect } from 'react';
-import { useParams, useNavigate, useLocation } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
@@ -10,11 +10,9 @@ import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { attemptsApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
-import {
-  toWorkspace,
-  toWorkspacesCreate,
-} from '@/shared/lib/routes/navigation';
 import type { DiffStats } from 'shared/types';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
@@ -24,12 +22,12 @@ interface WorkspaceProviderProps {
 
 export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   const { workspaceId } = useParams({ strict: false });
-  const navigate = useNavigate();
-  const location = useLocation();
+  const appNavigation = useAppNavigation();
+  const currentDestination = useCurrentAppDestination();
   const queryClient = useQueryClient();
 
   // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
-  const isCreateMode = location.pathname === '/workspaces/create';
+  const isCreateMode = currentDestination?.kind === 'workspaces-create';
 
   // Fetch workspaces for sidebar display
   const {
@@ -126,16 +124,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
           // Silently fail - this is not critical
           console.warn('Failed to mark workspace as seen:', error);
         });
-      navigate(toWorkspace(id));
+      appNavigation.goToWorkspace(id);
     },
-    [navigate, queryClient]
+    [queryClient, appNavigation]
   );
 
   const navigateToCreate = useMemo(
     () => () => {
-      navigate(toWorkspacesCreate());
+      appNavigation.goToWorkspacesCreate();
     },
-    [navigate]
+    [appNavigation]
   );
 
   const value = useMemo(

@@ -1,6 +1,8 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
+import {
+  createFileRoute,
+  useNavigate,
+  useParams,
+} from "@tanstack/react-router";
 import { requireAuthenticated } from "@remote/shared/lib/route-auth";
 import { WorkspacesLanding } from "@/pages/workspaces/WorkspacesLanding";
 import { RemoteWorkspacesPageShell } from "@remote/pages/RemoteWorkspacesPageShell";
@@ -20,12 +22,7 @@ import {
 } from "@phosphor-icons/react";
 import { RunningDots } from "@vibe/ui/components/RunningDots";
 
-const searchSchema = z.object({
-  hostId: z.string().optional(),
-});
-
-export const Route = createFileRoute("/workspaces")({
-  validateSearch: zodValidator(searchSchema),
+export const Route = createFileRoute("/hosts/$hostId/workspaces")({
   beforeLoad: async ({ location }) => {
     await requireAuthenticated(location);
   },
@@ -43,15 +40,19 @@ function WorkspacesRouteComponent() {
 
 function MobileWorkspacesList() {
   const navigate = useNavigate();
+  const { hostId } = useParams({ from: "/hosts/$hostId/workspaces" });
   const { activeWorkspaces, selectWorkspace } = useWorkspaceContext();
 
   const handleSelectWorkspace = (id: string) => {
     selectWorkspace(id);
-    navigate({ to: "/workspaces/$workspaceId", params: { workspaceId: id } });
+    navigate({
+      to: "/hosts/$hostId/workspaces/$workspaceId",
+      params: { hostId, workspaceId: id },
+    });
   };
 
   const handleCreateWorkspace = () => {
-    navigate({ to: "/workspaces/create" });
+    navigate({ to: "/hosts/$hostId/workspaces/create", params: { hostId } });
   };
 
   return (

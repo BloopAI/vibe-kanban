@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef, useEffect, useState } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import type { Project } from 'shared/remote-types';
@@ -17,8 +16,16 @@ import { ProjectProvider } from '@/shared/providers/remote/ProjectProvider';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
-
-import type { ProjectSearch } from '@/project-routes/project-search';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+import {
+  getDestinationHostId,
+  getProjectDestination,
+} from '@/shared/lib/routes/appNavigation';
+import {
+  buildKanbanIssueComposerKey,
+  patchKanbanIssueComposer,
+  useKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 export interface AssigneeSelectionDialogProps {
   projectId: string;
   issueIds: string[];
@@ -41,12 +48,14 @@ const getUserDisplayName = (user: OrganizationMemberWithProfile): string => {
 
 /** Inner component that uses contexts to render the selection UI */
 function AssigneeSelectionContent({
+  projectId,
   issueIds,
   isCreateMode,
   createModeAssigneeIds,
   onCreateModeAssigneesChange,
   additionalOptions,
 }: {
+  projectId: string;
   issueIds: string[];
   isCreateMode: boolean;
   createModeAssigneeIds?: string[];
@@ -57,8 +66,18 @@ function AssigneeSelectionContent({
   const modal = useModal();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const hasCreateCallback = onCreateModeAssigneesChange != null;
-  const navigate = useNavigate();
-  const routeSearch = useSearch({ strict: false });
+  const destination = useCurrentAppDestination();
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
+  const resolvedProjectId = projectId || projectDestination?.projectId || null;
+  const issueComposerKey = useMemo(() => {
+    if (!resolvedProjectId) return null;
+    const hostId = getDestinationHostId(projectDestination);
+    return buildKanbanIssueComposerKey(hostId, resolvedProjectId);
+  }, [resolvedProjectId, projectDestination]);
+  const issueComposer = useKanbanIssueComposer(issueComposerKey);
 
   // Get users from OrgContext - use membersWithProfilesById for OrganizationMemberWithProfile
   const { membersWithProfilesById } = useOrgContext();
@@ -83,24 +102,15 @@ function AssigneeSelectionContent({
     setLocalCreateAssignees(createModeAssigneeIds ?? []);
   }, [hasCreateCallback, createModeAssigneeIds, modal.visible]);
 
-  // Fallback: Get/set create mode defaults from URL (for callers without callback)
-  const kanbanCreateDefaultAssigneeIds = useMemo(() => {
-    const assigneesParam = routeSearch.assignees;
-    return assigneesParam ? assigneesParam.split(',').filter(Boolean) : [];
-  }, [routeSearch.assignees]);
+  // Fallback: get/set create mode defaults from shared in-memory state.
+  const issueComposerAssigneeIds = issueComposer?.draft.assigneeIds ?? [];
 
-  const setKanbanCreateDefaultAssigneeIds = useCallback(
+  const setIssueComposerAssigneeIds = useCallback(
     (assigneeIds: string[]) => {
-      navigate({
-        to: '.',
-        search: (prev: ProjectSearch) => ({
-          ...prev,
-          assignees: assigneeIds.length > 0 ? assigneeIds.join(',') : undefined,
-        }),
-        replace: true,
-      });
+      if (!issueComposerKey) return;
+      patchKanbanIssueComposer(issueComposerKey, { assigneeIds });
     },
-    [navigate]
+    [issueComposerKey]
   );
 
   // Derive selected assignee IDs based on mode and callback availability
@@ -108,7 +118,7 @@ function AssigneeSelectionContent({
     if (isCreateMode) {
       return hasCreateCallback
         ? localCreateAssignees
-        : kanbanCreateDefaultAssigneeIds;
+        : issueComposerAssigneeIds;
     }
     return issueAssignees
       .filter((a) => issueIds.includes(a.issue_id))
@@ -119,7 +129,7 @@ function AssigneeSelectionContent({
     issueAssignees,
     hasCreateCallback,
     localCreateAssignees,
-    kanbanCreateDefaultAssigneeIds,
+    issueComposerAssigneeIds,
   ]);
 
   const [search, setSearch] = useState('');
@@ -164,7 +174,7 @@ function AssigneeSelectionContent({
           setLocalCreateAssignees(newIds);
           onCreateModeAssigneesChange(newIds);
         } else {
-          setKanbanCreateDefaultAssigneeIds(newIds);
+          setIssueComposerAssigneeIds(newIds);
         }
       } else {
         // Edit mode: apply mutation immediately for each issue
@@ -190,7 +200,7 @@ function AssigneeSelectionContent({
       issueIds,
       issueAssignees,
       onCreateModeAssigneesChange,
-      setKanbanCreateDefaultAssigneeIds,
+      setIssueComposerAssigneeIds,
       insertIssueAssignee,
       removeIssueAssignee,
     ]
@@ -234,23 +244,30 @@ function AssigneeSelectionWithContext({
   onCreateModeAssigneesChange,
   additionalOptions,
 }: AssigneeSelectionDialogProps) {
+  const destination = useCurrentAppDestination();
+  const projectDestination = useMemo(
+    () => getProjectDestination(destination),
+    [destination]
+  );
+  const resolvedProjectId = projectId || projectDestination?.projectId;
   // Get organization ID from store (set when navigating to project)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
 
   // Fallback: try to find org from projects if not in store
   const { data: projects = [] } = useOrganizationProjects(selectedOrgId);
-  const project = projects.find((p: Project) => p.id === projectId);
+  const project = projects.find((p: Project) => p.id === resolvedProjectId);
   const organizationId = project?.organization_id ?? selectedOrgId;
 
   // If we don't have the required IDs, render nothing
-  if (!organizationId || !projectId) {
+  if (!organizationId || !resolvedProjectId) {
     return null;
   }
 
   return (
     <OrgProvider organizationId={organizationId}>
-      <ProjectProvider projectId={projectId}>
+      <ProjectProvider projectId={resolvedProjectId}>
         <AssigneeSelectionContent
+          projectId={resolvedProjectId}
           issueIds={issueIds}
           isCreateMode={isCreateMode}
           createModeAssigneeIds={createModeAssigneeIds}

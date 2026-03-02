@@ -71,6 +71,10 @@ import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
+import {
+  buildWorkspaceCreateInitialState,
+  persistWorkspaceCreateDraft,
+} from '@/shared/lib/workspaceCreateState';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -175,21 +179,31 @@ export const Actions = {
             }
           : undefined;
 
-        ctx.navigate({
-          to: '/workspaces/create',
-          state: (prev) => ({
-            ...prev,
-            initialPrompt: firstMessage,
+        const createState = buildWorkspaceCreateInitialState({
+          prompt: firstMessage,
+          defaults: {
             preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: r.target_branch,
             })),
-            linkedIssue,
-          }),
+          },
+          linkedIssue,
         });
+        const draftId = await persistWorkspaceCreateDraft(createState);
+        if (!draftId) {
+          await ConfirmDialog.show({
+            title: 'Error',
+            message: 'Failed to prepare workspace draft. Please try again.',
+            confirmText: 'OK',
+            showCancelButton: false,
+          });
+          return;
+        }
+
+        ctx.appNavigation.goToWorkspacesCreate();
       } catch {
         // Fallback to creating without the prompt/repos
-        ctx.navigate({ to: '/workspaces/create' });
+        ctx.appNavigation.goToWorkspacesCreate();
       }
     },
   },
@@ -308,7 +322,7 @@ export const Actions = {
           if (nextWorkspaceId) {
             ctx.selectWorkspace(nextWorkspaceId);
           } else {
-            ctx.navigate({ to: '/workspaces/create' });
+            ctx.appNavigation.goToWorkspacesCreate();
           }
         }
       }
@@ -350,19 +364,31 @@ export const Actions = {
               remoteProjectId: remoteWs.project_id,
             }
           : undefined;
-        ctx.navigate({
-          to: '/workspaces/create',
-          state: (prev) => ({
-            ...prev,
+
+        const createState = buildWorkspaceCreateInitialState({
+          prompt: null,
+          defaults: {
             preferredRepos: repos.map((r) => ({
               repo_id: r.id,
               target_branch: workspace.branch,
             })),
-            linkedIssue,
-          }),
+          },
+          linkedIssue,
         });
+        const draftId = await persistWorkspaceCreateDraft(createState);
+        if (!draftId) {
+          await ConfirmDialog.show({
+            title: 'Error',
+            message: 'Failed to prepare workspace draft. Please try again.',
+            confirmText: 'OK',
+            showCancelButton: false,
+          });
+          return;
+        }
+
+        ctx.appNavigation.goToWorkspacesCreate();
       } catch {
-        ctx.navigate({ to: '/workspaces/create' });
+        ctx.appNavigation.goToWorkspacesCreate();
       }
     },
   },
@@ -375,7 +401,7 @@ export const Actions = {
     shortcut: 'G N',
     requiresTarget: ActionTargetType.NONE,
     execute: (ctx) => {
-      ctx.navigate({ to: '/workspaces/create' });
+      ctx.appNavigation.goToWorkspacesCreate();
     },
   },
 
@@ -452,7 +478,7 @@ export const Actions = {
       ctx.queryClient.removeQueries({ queryKey: organizationKeys.all });
       // Invalidate user-system query to update loginStatus/useAuth state
       await ctx.queryClient.invalidateQueries({ queryKey: ['user-system'] });
-      ctx.navigate({ to: '/workspaces' });
+      ctx.appNavigation.goToWorkspaces();
     },
   } satisfies GlobalActionDefinition,
 

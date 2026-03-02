@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
-import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { OrgProvider } from '@/shared/providers/remote/OrgProvider';
@@ -19,14 +18,13 @@ import {
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { useOrganizationProjects } from '@/shared/hooks/useOrganizationProjects';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import {
-  buildIssueCreatePath,
-  buildProjectRootPath,
-} from '@/shared/lib/routes/projectSidebarRoutes';
-
-import type { ProjectSearch } from '@/project-routes/project-search';
+  buildKanbanIssueComposerKey,
+  closeKanbanIssueComposer,
+} from '@/shared/stores/useKanbanIssueComposerStore';
 /**
  * Component that registers project mutations with ActionsContext.
  * Must be rendered inside both ActionsProvider and ProjectProvider.
@@ -95,7 +93,7 @@ function ProjectMutationsRegistration({ children }: { children: ReactNode }) {
 }
 
 function ProjectKanbanLayout({ projectName }: { projectName: string }) {
-  const { issueId, isPanelOpen } = useKanbanNavigation();
+  const { issueId, isPanelOpen } = useCurrentKanbanRouteState();
   const isMobile = useIsMobile();
   const { getIssue } = useProjectContext();
   const issue = issueId ? getIssue(issueId) : undefined;
@@ -238,71 +236,46 @@ function useFindProjectById(projectId: string | undefined) {
  * - /projects/:projectId - Kanban board with no issue selected
  * - /projects/:projectId/issues/:issueId - Kanban with issue panel open
  * - /projects/:projectId/issues/:issueId/workspaces/:workspaceId - Kanban with workspace session panel open
- * - /projects/:projectId/issues/new - Kanban with create issue panel
  * - /projects/:projectId/issues/:issueId/workspaces/create/:draftId - Kanban with workspace create panel
+ *
+ * Note: issue creation is composer-store state on top of /projects/:projectId.
  *
  * Note: This component is rendered inside SharedAppLayout which provides
  * NavbarContainer, AppBar, and SyncErrorProvider.
  */
 export function ProjectKanban() {
-  const { projectId, hasInvalidWorkspaceCreateDraftId } = useKanbanNavigation();
-  const search = useSearch({ strict: false });
-  const navigate = useNavigate();
+  const { projectId, hostId, hasInvalidWorkspaceCreateDraftId } =
+    useCurrentKanbanRouteState();
+  const appNavigation = useAppNavigation();
   const { t } = useTranslation('common');
-  const setSelectedOrgId = useOrganizationStore((s) => s.setSelectedOrgId);
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const issueComposerKey = useMemo(() => {
+    if (!projectId) {
+      return null;
+    }
+    return buildKanbanIssueComposerKey(hostId, projectId);
+  }, [hostId, projectId]);
+  const previousIssueComposerKeyRef = useRef<string | null>(null);
 
-  // One-time URL migrations:
-  // - /projects/:projectId?mode=create -> /projects/:projectId/issues/new
-  // - strip orgId after storing it
+  useEffect(() => {
+    const previousKey = previousIssueComposerKeyRef.current;
+    if (previousKey && previousKey !== issueComposerKey) {
+      closeKanbanIssueComposer(previousKey);
+    }
+
+    previousIssueComposerKeyRef.current = issueComposerKey;
+  }, [issueComposerKey]);
+
+  // Redirect invalid workspace-create draft URLs back to the closed project view.
   useEffect(() => {
     if (!projectId) return;
 
     if (hasInvalidWorkspaceCreateDraftId) {
-      navigate({
-        ...buildProjectRootPath(projectId),
-        replace: true,
-      });
-      return;
-    }
-
-    const orgIdFromUrl = search.orgId;
-    if (orgIdFromUrl) {
-      setSelectedOrgId(orgIdFromUrl);
-    }
-
-    const isLegacyCreateMode = search.mode === 'create';
-    if (isLegacyCreateMode) {
-      const nextSearch = {
-        ...search,
-        mode: undefined,
-        orgId: undefined,
-      };
-      navigate({
-        ...buildIssueCreatePath(projectId),
-        search: nextSearch,
-        replace: true,
-      });
-      return;
-    }
-
-    if (orgIdFromUrl) {
-      navigate({
-        to: '.',
-        search: (prev: ProjectSearch) => ({
-          ...prev,
-          orgId: undefined,
-        }),
+      appNavigation.goToProject(projectId, {
         replace: true,
       });
     }
-  }, [
-    search,
-    projectId,
-    hasInvalidWorkspaceCreateDraftId,
-    setSelectedOrgId,
-    navigate,
-  ]);
+  }, [projectId, hasInvalidWorkspaceCreateDraftId, appNavigation]);
 
   // Find the project and get its organization
   const { organizationId, isLoading } = useFindProjectById(

@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Workspace } from "shared/types";
 import {
@@ -22,8 +22,13 @@ import {
   type ProjectMutations,
 } from "@/shared/types/actions";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
-import { buildIssueCreatePath } from "@/shared/lib/routes/projectSidebarRoutes";
+import { useAppNavigation } from "@/shared/hooks/useAppNavigation";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
+import {
+  buildKanbanIssueComposerKey,
+  openKanbanIssueComposer,
+  type ProjectIssueCreateOptions,
+} from "@/shared/stores/useKanbanIssueComposerStore";
 import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteActionsProviderProps {
@@ -37,9 +42,9 @@ function noOpSelection(name: string) {
 export function RemoteActionsProvider({
   children,
 }: RemoteActionsProviderProps) {
-  const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
-  const { projectId } = useParams({ strict: false });
+  const { projectId, hostId } = useParams({ strict: false });
   const userCtx = useContext(UserContext);
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const [defaultCreateStatusId, setDefaultCreateStatusId] = useState<
@@ -55,10 +60,16 @@ export function RemoteActionsProvider({
     [],
   );
 
-  const navigateToCreateIssue = useCallback(() => {
-    if (!projectId) return;
-    navigate(buildIssueCreatePath(projectId));
-  }, [navigate, projectId]);
+  const navigateToCreateIssue = useCallback(
+    (options?: ProjectIssueCreateOptions) => {
+      if (!projectId) return;
+      openKanbanIssueComposer(
+        buildKanbanIssueComposerKey(hostId ?? null, projectId),
+        options,
+      );
+    },
+    [hostId, projectId],
+  );
 
   const openStatusSelection = useCallback(async () => {
     noOpSelection("Status selection");
@@ -87,7 +98,7 @@ export function RemoteActionsProvider({
 
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
-      navigate,
+      appNavigation,
       queryClient,
       selectWorkspace: () => {
         noOpSelection("Workspace actions");
@@ -118,7 +129,6 @@ export function RemoteActionsProvider({
       remoteWorkspaces: userCtx?.workspaces ?? [],
     }),
     [
-      navigate,
       queryClient,
       openStatusSelection,
       openPrioritySelection,

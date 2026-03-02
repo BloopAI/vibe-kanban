@@ -1,5 +1,5 @@
 import { useCallback, useRef, useEffect, useMemo } from 'react';
-import { useParams, useLocation } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { useActions } from '@/shared/hooks/useActions';
 import { Actions } from '@/shared/actions';
@@ -8,6 +8,9 @@ import {
   ActionTargetType,
 } from '@/shared/types/actions';
 import { Scope } from '@/shared/keyboard/registry';
+import { isProjectDestination } from '@/shared/lib/routes/appNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 
 const SEQUENCE_TIMEOUT_MS = 1500;
 
@@ -19,12 +22,10 @@ const OPTIONS = {
 export function useIssueShortcuts() {
   const { executeAction } = useActions();
   const { projectId, issueId } = useParams({ strict: false });
-  const location = useLocation();
+  const destination = useCurrentAppDestination();
+  const { isCreateMode: isCreatingIssue } = useCurrentKanbanRouteState();
 
-  const isKanban = location.pathname.startsWith('/projects');
-  // Detect create mode from the URL path (e.g. /projects/:id/issues/new)
-  // NOT from ?mode=create searchParam which is a legacy format
-  const isCreatingIssue = location.pathname.endsWith('/issues/new');
+  const isKanban = isProjectDestination(destination);
 
   const executeActionRef = useRef(executeAction);
   const projectIdRef = useRef(projectId);

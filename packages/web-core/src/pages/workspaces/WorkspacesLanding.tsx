@@ -1,5 +1,14 @@
-import { Navigate } from '@tanstack/react-router';
+import { useEffect } from 'react';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 export function WorkspacesLanding() {
-  return <Navigate to="/workspaces/create" replace />;
+  const appNavigation = useAppNavigation();
+
+  useEffect(() => {
+    appNavigation.goToWorkspacesCreate({
+      replace: true,
+    });
+  }, [appNavigation]);
+
+  return null;
 }

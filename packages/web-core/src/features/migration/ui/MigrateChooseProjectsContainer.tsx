@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from '@tanstack/react-router';
 import { useProjects } from '../model/hooks/useProjects';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { MigrateChooseProjects } from '@vibe/ui/components/MigrateChooseProjects';
 
 interface MigrateChooseProjectsContainerProps {
@@ -13,7 +14,10 @@ export function MigrateChooseProjectsContainer({
   onContinue,
   onSkip,
 }: MigrateChooseProjectsContainerProps) {
-  const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
+  const setSelectedOrgIdInStore = useOrganizationStore(
+    (s) => s.setSelectedOrgId
+  );
   const { projects, isLoading: projectsLoading } = useProjects();
   const { data: orgsData, isLoading: orgsLoading } = useUserOrganizations();
   const organizations = useMemo(
@@ -85,15 +89,14 @@ export function MigrateChooseProjectsContainer({
   };
 
   const handleGoToCreateWorkspace = () => {
-    navigate({ to: '/workspaces/create' });
+    appNavigation.goToWorkspacesCreate();
   };
 
   const handleViewMigratedProject = (projectId: string) => {
-    navigate({
-      to: '/projects/$projectId',
-      params: { projectId },
-      ...(selectedOrgId ? { search: { orgId: selectedOrgId } } : {}),
-    });
+    if (selectedOrgId) {
+      setSelectedOrgIdInStore(selectedOrgId);
+    }
+    appNavigation.goToProject(projectId);
   };
 
   const migratedProjects = useMemo(
@@ -103,9 +106,7 @@ export function MigrateChooseProjectsContainer({
 
   const handleSkip = () => {
     if (migratedProjects.length > 0 && migratedProjects[0].remote_project_id) {
-      navigate({
-        to: '/projects/$projectId',
-        params: { projectId: migratedProjects[0].remote_project_id },
+      appNavigation.goToProject(migratedProjects[0].remote_project_id, {
         replace: true,
       });
     } else {

@@ -12,7 +12,7 @@
   "scripts": {
     "lint": "pnpm run local-web:lint && pnpm run ui:lint && pnpm run backend:lint && node scripts/check-unused-i18n-keys.mjs",
     "format": "cargo fmt --all && pnpm run web-core:format && pnpm run local-web:format && pnpm run remote-web:format",
-    "check": "pnpm run local-web:check && pnpm run ui:check && pnpm run backend:check",
+    "check": "pnpm run local-web:legacy-path-guard && pnpm run local-web:check && pnpm run ui:check && pnpm run backend:check",
     "dev": "export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export PREVIEW_PROXY_PORT=$(node scripts/setup-dev-environment.js preview_proxy) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && concurrently \"pnpm run backend:dev:watch\" \"pnpm run local-web:dev\"",
     "test:npm": "./test-npm-package.sh",
     "local-web:lint": "pnpm --filter @vibe/local-web run lint",

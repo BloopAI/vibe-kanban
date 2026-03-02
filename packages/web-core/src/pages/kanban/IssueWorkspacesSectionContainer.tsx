@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import { useNavigate, useParams } from '@tanstack/react-router';
+import { useParams } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { LinkIcon, PlusIcon } from '@phosphor-icons/react';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
@@ -7,7 +7,7 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useOrgContext } from '@/shared/hooks/useOrgContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
 import { attemptsApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
@@ -35,9 +35,8 @@ export function IssueWorkspacesSectionContainer({
   issueId,
 }: IssueWorkspacesSectionContainerProps) {
   const { t } = useTranslation('common');
-  const navigate = useNavigate();
   const { projectId } = useParams({ strict: false });
-  const { openIssueWorkspace } = useKanbanNavigation();
+  const appNavigation = useAppNavigation();
   const { openWorkspaceCreateFromState } = useProjectWorkspaceCreateDraft();
   const { userId } = useAuth();
   const { workspaces } = useUserContext();
@@ -155,16 +154,17 @@ export function IssueWorkspacesSectionContainer({
       issueId,
     });
     if (!draftId) {
-      navigate({
-        to: '/workspaces/create',
-        state: (prev) => ({
-          ...prev,
-          ...createState,
-        }),
+      await ConfirmDialog.show({
+        title: t('common:error'),
+        message: t(
+          'workspaces.createDraftError',
+          'Failed to prepare workspace draft. Please try again.'
+        ),
+        confirmText: t('common:ok'),
+        showCancelButton: false,
       });
     }
   }, [
-    navigate,
     projectId,
     openWorkspaceCreateFromState,
     getIssue,
@@ -172,6 +172,7 @@ export function IssueWorkspacesSectionContainer({
     activeWorkspaces,
     archivedWorkspaces,
     workspaces,
+    t,
   ]);
 
   // Handle clicking link action to link an existing workspace
@@ -189,11 +190,15 @@ export function IssueWorkspacesSectionContainer({
   // Handle clicking a workspace card to open it
   const handleWorkspaceClick = useCallback(
     (localWorkspaceId: string | null) => {
-      if (localWorkspaceId) {
-        openIssueWorkspace(issueId, localWorkspaceId);
+      if (projectId && localWorkspaceId) {
+        appNavigation.goToProjectIssueWorkspace(
+          projectId,
+          issueId,
+          localWorkspaceId
+        );
       }
     },
-    [openIssueWorkspace, issueId]
+    [projectId, issueId, appNavigation]
   );
 
   // Handle unlinking a workspace from the issue

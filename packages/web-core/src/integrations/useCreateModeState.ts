@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
-import { useLocation, useNavigate } from '@tanstack/react-router';
 import type {
   DraftWorkspaceData,
   DraftWorkspaceImage,
@@ -206,7 +205,6 @@ function getLatestWorkspaceIdForRemoteProject({
 // ============================================================================
 
 interface UseCreateModeStateParams {
-  initialProjectId?: string;
   initialState?: CreateModeInitialState | null;
   draftId?: string | null;
   lastWorkspaceId: string | null;
@@ -239,7 +237,6 @@ interface UseCreateModeStateResult {
 }
 
 export function useCreateModeState({
-  initialProjectId,
   initialState,
   draftId,
   lastWorkspaceId,
@@ -248,8 +245,6 @@ export function useCreateModeState({
   localWorkspacesLoading,
   remoteWorkspacesLoading,
 }: UseCreateModeStateParams): UseCreateModeStateResult {
-  const location = useLocation();
-  const navigate = useNavigate();
   const { profiles } = useUserSystem();
   const scratchId = draftId ?? DRAFT_WORKSPACE_ID;
 
@@ -262,13 +257,9 @@ export function useCreateModeState({
 
   const [state, dispatch] = useReducer(draftReducer, draftInitialState);
 
-  // Capture navigation state once on mount
-  const navStateRef = useRef<CreateModeInitialState | null>(
-    initialState !== undefined
-      ? initialState
-      : draftId
-        ? null
-        : ((location.state as CreateModeInitialState | null) ?? null)
+  // Capture initial seed state once on mount.
+  const seedStateRef = useRef<CreateModeInitialState | null>(
+    initialState ?? null
   );
   const hasInitialized = useRef(false);
 
@@ -293,41 +284,16 @@ export function useCreateModeState({
     if (!profiles) return;
 
     hasInitialized.current = true;
-    const navState = navStateRef.current;
-
-    // Clear navigation state immediately to prevent re-initialization
-    if (
-      initialState === undefined &&
-      !draftId &&
-      (navState?.initialPrompt ||
-        navState?.linkedIssue ||
-        (navState?.preferredRepos?.length ?? 0) > 0 ||
-        navState?.project_id)
-    ) {
-      navigate({
-        to: '.',
-        replace: true,
-        state: {},
-      });
-    }
+    const seedState = seedStateRef.current;
 
     // Determine initialization source and execute
     initializeState({
-      navState,
+      seedState,
       scratch,
       isValidProfile,
       dispatch,
     });
-  }, [
-    scratchLoading,
-    profiles,
-    initialState,
-    draftId,
-    initialProjectId,
-    scratch,
-    isValidProfile,
-    navigate,
-  ]);
+  }, [scratchLoading, profiles, scratch, isValidProfile]);
 
   // ============================================================================
   // Auto-select project when none selected
@@ -578,7 +544,7 @@ export function useCreateModeState({
 // ============================================================================
 
 interface InitializeParams {
-  navState: CreateModeInitialState | null;
+  seedState: CreateModeInitialState | null;
   scratch: ReturnType<typeof useScratch>['scratch'];
   isValidProfile: (config: ExecutorConfig | null) => boolean;
   dispatch: React.Dispatch<DraftAction>;
@@ -625,51 +591,45 @@ async function resolveNavPreferredRepos(
 }
 
 async function initializeState({
-  navState,
+  seedState,
   scratch,
   isValidProfile,
   dispatch,
 }: InitializeParams): Promise<void> {
   try {
-    // Priority 1: Navigation state
-    const hasInitialPrompt = !!navState?.initialPrompt;
-    const hasLinkedIssue = !!navState?.linkedIssue;
-    const hasPreferredRepos = (navState?.preferredRepos?.length ?? 0) > 0;
-    const hasProjectId = !!navState?.project_id;
+    // Priority 1: Explicitly provided seed state
+    const hasInitialPrompt = !!seedState?.initialPrompt;
+    const hasLinkedIssue = !!seedState?.linkedIssue;
+    const hasPreferredRepos = (seedState?.preferredRepos?.length ?? 0) > 0;
 
-    if (
-      hasInitialPrompt ||
-      hasLinkedIssue ||
-      hasPreferredRepos ||
-      hasProjectId
-    ) {
+    if (hasInitialPrompt || hasLinkedIssue || hasPreferredRepos) {
       const data: Partial<DraftState> = {};
-      let appliedNavState = false;
+      let appliedSeedState = false;
 
       // Handle initial prompt
       if (hasInitialPrompt) {
-        data.message = navState!.initialPrompt!;
-        appliedNavState = true;
+        data.message = seedState!.initialPrompt!;
+        appliedSeedState = true;
       }
 
       // Handle linked issue
       if (hasLinkedIssue) {
-        data.linkedIssue = navState!.linkedIssue!;
-        appliedNavState = true;
+        data.linkedIssue = seedState!.linkedIssue!;
+        appliedSeedState = true;
       }
 
       // Handle preferred repos + target branches (e.g., from duplicate/spin-off)
-      if (navState?.preferredRepos && navState.preferredRepos.length > 0) {
+      if (seedState?.preferredRepos && seedState.preferredRepos.length > 0) {
         const resolvedRepos = await resolveNavPreferredRepos(
-          navState.preferredRepos
+          seedState.preferredRepos
         );
         if (resolvedRepos.length > 0) {
           data.repos = resolvedRepos;
-          appliedNavState = true;
+          appliedSeedState = true;
         }
       }
 
-      if (appliedNavState) {
+      if (appliedSeedState) {
         dispatch({ type: 'INIT_COMPLETE', data });
         return;
       }

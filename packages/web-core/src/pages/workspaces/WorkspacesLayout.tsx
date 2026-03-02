@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from '@tanstack/react-router';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
@@ -30,12 +29,12 @@ import {
   useWorkspacePanelState,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
-import { toWorkspace } from '@/shared/lib/routes/navigation';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
 export function WorkspacesLayout() {
-  const navigate = useNavigate();
+  const appNavigation = useAppNavigation();
   const {
     workspaceId,
     workspace: selectedWorkspace,
@@ -65,9 +64,9 @@ export function WorkspacesLayout() {
 
   const handleWorkspaceCreated = useCallback(
     (workspaceId: string) => {
-      navigate(toWorkspace(workspaceId));
+      appNavigation.goToWorkspace(workspaceId);
     },
-    [navigate]
+    [appNavigation]
   );
 
   // Use workspace-specific panel state (pass undefined when in create mode)

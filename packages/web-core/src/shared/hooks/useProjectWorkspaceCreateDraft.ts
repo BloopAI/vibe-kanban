@@ -1,11 +1,14 @@
 import { useCallback } from 'react';
-import { ScratchType, type DraftWorkspaceData } from 'shared/types';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
-import { scratchApi } from '@/shared/lib/api';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
+import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import type { CreateModeInitialState } from '@/shared/types/createMode';
+import { persistWorkspaceCreateDraft } from '@/shared/lib/workspaceCreateState';
 
 export function useProjectWorkspaceCreateDraft() {
-  const { projectId, openWorkspaceCreate } = useKanbanNavigation();
+  const { projectId } = useProjectContext();
+  const appNavigation = useAppNavigation();
+  const routeState = useCurrentKanbanRouteState();
 
   const openWorkspaceCreateFromState = useCallback(
     async (
@@ -14,46 +17,32 @@ export function useProjectWorkspaceCreateDraft() {
     ): Promise<string | null> => {
       if (!projectId) return null;
 
-      const draftId = crypto.randomUUID();
-
-      const draftData: DraftWorkspaceData = {
-        message: initialState.initialPrompt ?? '',
-        repos:
-          initialState.preferredRepos?.map((repo) => ({
-            repo_id: repo.repo_id,
-            target_branch: repo.target_branch ?? '',
-          })) ?? [],
-        executor_config: null,
-        linked_issue: initialState.linkedIssue
-          ? {
-              issue_id: initialState.linkedIssue.issueId,
-              simple_id: initialState.linkedIssue.simpleId ?? '',
-              title: initialState.linkedIssue.title ?? '',
-              remote_project_id: initialState.linkedIssue.remoteProjectId,
-            }
-          : null,
-        images: [],
-      };
-
-      try {
-        await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
-          payload: {
-            type: 'DRAFT_WORKSPACE',
-            data: draftData,
-          },
-        });
-      } catch (error) {
-        console.error('Failed to persist create-workspace draft:', error);
+      const draftId = await persistWorkspaceCreateDraft(
+        initialState,
+        crypto.randomUUID()
+      );
+      if (!draftId) {
         return null;
       }
 
-      openWorkspaceCreate(draftId, {
-        issueId: options?.issueId ?? initialState.linkedIssue?.issueId ?? null,
-      });
+      const issueId =
+        options?.issueId ??
+        initialState.linkedIssue?.issueId ??
+        routeState.issueId ??
+        null;
+      if (issueId) {
+        appNavigation.goToProjectIssueWorkspaceCreate(
+          projectId,
+          issueId,
+          draftId
+        );
+      } else {
+        appNavigation.goToProjectWorkspaceCreate(projectId, draftId);
+      }
 
       return draftId;
     },
-    [projectId, openWorkspaceCreate]
+    [projectId, appNavigation, routeState.issueId]
   );
 
   return {
