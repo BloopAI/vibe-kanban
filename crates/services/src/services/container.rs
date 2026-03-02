@@ -1247,8 +1247,13 @@ pub trait ContainerService {
 
         // Determine the run reason of the next action
         let next_run_reason = match (action.typ(), next_action.typ()) {
-            (ExecutorActionType::ScriptRequest(_), ExecutorActionType::ScriptRequest(_)) => {
-                ExecutionProcessRunReason::SetupScript
+            (ExecutorActionType::ScriptRequest(_), ExecutorActionType::ScriptRequest(next_script)) => {
+                match next_script.context {
+                    ScriptContext::CleanupScript => ExecutionProcessRunReason::CleanupScript,
+                    ScriptContext::SetupScript => ExecutionProcessRunReason::SetupScript,
+                    ScriptContext::DevServer => ExecutionProcessRunReason::DevServer,
+                    ScriptContext::ToolInstallScript => ExecutionProcessRunReason::SetupScript,
+                }
             }
             (
                 ExecutorActionType::CodingAgentInitialRequest(_)
