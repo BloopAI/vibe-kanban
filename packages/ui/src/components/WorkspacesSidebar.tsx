@@ -289,28 +289,6 @@ export function WorkspacesSidebar({
               </div>
             </CollapsibleSectionHeader>
 
-            {/* Idle section */}
-            <CollapsibleSectionHeader
-              title={t('common:workspaces.idle')}
-              persistKey={persistKeys.notRunning}
-              defaultExpanded={true}
-            >
-              <div className="flex flex-col gap-base py-half">
-                {idleWorkspaces.length === 0 ? (
-                  <span className="text-sm text-low opacity-60 pl-base">
-                    {t('common:workspaces.noWorkspaces')}
-                  </span>
-                ) : (
-                  <WorkspaceList
-                    workspaces={idleWorkspaces}
-                    selectedWorkspaceId={selectedWorkspaceId}
-                    onSelectWorkspace={onSelectWorkspace}
-                    onOpenWorkspaceActions={handleOpenWorkspaceActions}
-                  />
-                )}
-              </div>
-            </CollapsibleSectionHeader>
-
             {/* Running section */}
             <CollapsibleSectionHeader
               title={t('common:workspaces.running')}
@@ -325,6 +303,28 @@ export function WorkspacesSidebar({
                 ) : (
                   <WorkspaceList
                     workspaces={runningWorkspaces}
+                    selectedWorkspaceId={selectedWorkspaceId}
+                    onSelectWorkspace={onSelectWorkspace}
+                    onOpenWorkspaceActions={handleOpenWorkspaceActions}
+                  />
+                )}
+              </div>
+            </CollapsibleSectionHeader>
+
+            {/* Idle section */}
+            <CollapsibleSectionHeader
+              title={t('common:workspaces.idle')}
+              persistKey={persistKeys.notRunning}
+              defaultExpanded={true}
+            >
+              <div className="flex flex-col gap-base py-half">
+                {idleWorkspaces.length === 0 ? (
+                  <span className="text-sm text-low opacity-60 pl-base">
+                    {t('common:workspaces.noWorkspaces')}
+                  </span>
+                ) : (
+                  <WorkspaceList
+                    workspaces={idleWorkspaces}
                     selectedWorkspaceId={selectedWorkspaceId}
                     onSelectWorkspace={onSelectWorkspace}
                     onOpenWorkspaceActions={handleOpenWorkspaceActions}
