@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -67,6 +68,121 @@ interface MessageListContext {
   showCleanupPlaceholder: boolean;
   resetAction: UseResetProcessResult;
 }
+
+interface TimingMilestones {
+  firstEntriesUpdatedAtMs?: number;
+  firstDebounceFiredAtMs?: number;
+  firstChannelDataCommittedAtMs?: number;
+  firstPaintAfterContentAtMs?: number;
+}
+
+interface TimingDurations {
+  mountToFirstEntriesMs?: number;
+  mountToFirstCommitMs?: number;
+  mountToFirstPaintMs?: number;
+}
+
+interface QueueDelayMetric {
+  valueMs: number;
+  addType: AddEntryType;
+  entriesLen: number;
+}
+
+interface AggregateMetric {
+  valueMs: number;
+  entriesLen: number;
+}
+
+interface TimingAnomaly {
+  type: 'queue_delay' | 'aggregate';
+  valueMs: number;
+  addType?: AddEntryType;
+  entriesLen: number;
+}
+
+interface ConversationListTimingSnapshot {
+  attemptId: string;
+  sessionId?: string;
+  startedAtMs: number;
+  milestones: TimingMilestones;
+  durations: TimingDurations;
+  counters: {
+    entriesUpdatedCalls: number;
+    debounceCleared: number;
+  };
+  slowest: {
+    maxQueueDelayMs?: QueueDelayMetric;
+    maxAggregateMs?: AggregateMetric;
+  };
+  anomalies: TimingAnomaly[];
+}
+
+type ConversationTimingWindow = Window &
+  typeof globalThis & {
+    __vkEnableConversationTiming?: boolean;
+    __vkConversationTimings?: Record<string, ConversationListTimingSnapshot>;
+  };
+
+const QUEUE_DELAY_ANOMALY_MS = 300;
+const AGGREGATE_ANOMALY_MS = 50;
+const MAX_TIMING_ANOMALIES = 3;
+
+const getNowMs = (): number => performance.now();
+
+const getTimingWindow = (): ConversationTimingWindow | null => {
+  if (typeof window === 'undefined') return null;
+  return window as ConversationTimingWindow;
+};
+
+const createConversationTiming = (
+  attemptId: string,
+  sessionId?: string
+): ConversationListTimingSnapshot => ({
+  attemptId,
+  sessionId,
+  startedAtMs: getNowMs(),
+  milestones: {},
+  durations: {},
+  counters: {
+    entriesUpdatedCalls: 0,
+    debounceCleared: 0,
+  },
+  slowest: {},
+  anomalies: [],
+});
+
+const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
+  timing.durations.mountToFirstEntriesMs =
+    timing.milestones.firstEntriesUpdatedAtMs != null
+      ? timing.milestones.firstEntriesUpdatedAtMs - timing.startedAtMs
+      : undefined;
+  timing.durations.mountToFirstCommitMs =
+    timing.milestones.firstChannelDataCommittedAtMs != null
+      ? timing.milestones.firstChannelDataCommittedAtMs - timing.startedAtMs
+      : undefined;
+  timing.durations.mountToFirstPaintMs =
+    timing.milestones.firstPaintAfterContentAtMs != null
+      ? timing.milestones.firstPaintAfterContentAtMs - timing.startedAtMs
+      : undefined;
+};
+
+const setTimingMilestone = <K extends keyof TimingMilestones>(
+  timing: ConversationListTimingSnapshot,
+  key: K,
+  atMs: number
+) => {
+  if (timing.milestones[key] != null) return;
+  timing.milestones[key] = atMs;
+  updateTimingDurations(timing);
+};
+
+const pushTimingAnomaly = (
+  timing: ConversationListTimingSnapshot,
+  anomaly: TimingAnomaly
+) => {
+  if (timing.anomalies.length >= MAX_TIMING_ANOMALIES) return;
+  timing.anomalies.push(anomaly);
+};
 
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
@@ -183,8 +299,10 @@ export const ConversationList = forwardRef<
     entries: PatchTypeWithKey[];
     addType: AddEntryType;
     loading: boolean;
+    scheduledAtMs: number;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timingRef = useRef<ConversationListTimingSnapshot | null>(null);
 
   const lastAtBottomRef = useRef(true);
   const handleScroll = useCallback(
@@ -241,12 +359,27 @@ export const ConversationList = forwardRef<
 
   // Determine if configure buttons should be shown
   const canConfigure = repos.length > 0;
+  const attemptSessionId = attempt.session?.id;
 
   useEffect(() => {
     setLoading(true);
     setChannelData(null);
     reset();
-  }, [attempt.id, reset]);
+
+    const timingWindow = getTimingWindow();
+    const timingEnabled =
+      timingWindow &&
+      (timingWindow.__vkEnableConversationTiming ?? import.meta.env.DEV);
+    if (!timingEnabled || !timingWindow) {
+      timingRef.current = null;
+      return;
+    }
+
+    const timing = createConversationTiming(attempt.id, attemptSessionId);
+    timingWindow.__vkConversationTimings ??= {};
+    timingWindow.__vkConversationTimings[attempt.id] = timing;
+    timingRef.current = timing;
+  }, [attempt.id, attemptSessionId, reset]);
 
   useEffect(() => {
     return () => {
@@ -261,19 +394,58 @@ export const ConversationList = forwardRef<
     addType: AddEntryType,
     newLoading: boolean
   ) => {
+    const receivedAtMs = getNowMs();
+    const timing = timingRef.current;
+    if (timing) {
+      timing.counters.entriesUpdatedCalls += 1;
+      setTimingMilestone(timing, 'firstEntriesUpdatedAtMs', receivedAtMs);
+    }
+
     pendingUpdateRef.current = {
       entries: newEntries,
       addType,
       loading: newLoading,
+      scheduledAtMs: receivedAtMs,
     };
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
+      if (timing) {
+        timing.counters.debounceCleared += 1;
+      }
     }
 
     debounceTimeoutRef.current = setTimeout(() => {
       const pending = pendingUpdateRef.current;
       if (!pending) return;
+      const activeTiming = timingRef.current;
+      const debounceFiredAtMs = getNowMs();
+      const queueDelayMs = debounceFiredAtMs - pending.scheduledAtMs;
+      if (activeTiming) {
+        setTimingMilestone(
+          activeTiming,
+          'firstDebounceFiredAtMs',
+          debounceFiredAtMs
+        );
+        if (
+          !activeTiming.slowest.maxQueueDelayMs ||
+          queueDelayMs > activeTiming.slowest.maxQueueDelayMs.valueMs
+        ) {
+          activeTiming.slowest.maxQueueDelayMs = {
+            valueMs: queueDelayMs,
+            addType: pending.addType,
+            entriesLen: pending.entries.length,
+          };
+        }
+        if (queueDelayMs > QUEUE_DELAY_ANOMALY_MS) {
+          pushTimingAnomaly(activeTiming, {
+            type: 'queue_delay',
+            valueMs: queueDelayMs,
+            addType: pending.addType,
+            entriesLen: pending.entries.length,
+          });
+        }
+      }
 
       let scrollModifier: ScrollModifier;
 
@@ -289,7 +461,27 @@ export const ConversationList = forwardRef<
         scrollModifier = ScrollToBottomModifier;
       }
 
+      const aggregateStartAtMs = getNowMs();
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+      const aggregateMs = getNowMs() - aggregateStartAtMs;
+      if (activeTiming) {
+        if (
+          !activeTiming.slowest.maxAggregateMs ||
+          aggregateMs > activeTiming.slowest.maxAggregateMs.valueMs
+        ) {
+          activeTiming.slowest.maxAggregateMs = {
+            valueMs: aggregateMs,
+            entriesLen: pending.entries.length,
+          };
+        }
+        if (aggregateMs > AGGREGATE_ANOMALY_MS) {
+          pushTimingAnomaly(activeTiming, {
+            type: 'aggregate',
+            valueMs: aggregateMs,
+            entriesLen: pending.entries.length,
+          });
+        }
+      }
 
       setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);
@@ -398,6 +590,35 @@ export const ConversationList = forwardRef<
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
+
+  useLayoutEffect(() => {
+    if (!channelData) return;
+    const timing = timingRef.current;
+    if (!timing) return;
+
+    setTimingMilestone(timing, 'firstChannelDataCommittedAtMs', getNowMs());
+  }, [channelData]);
+
+  useEffect(() => {
+    if (!hasContent) return;
+    const timing = timingRef.current;
+    if (!timing || timing.milestones.firstPaintAfterContentAtMs != null) return;
+
+    const rafId = requestAnimationFrame(() => {
+      const activeTiming = timingRef.current;
+      if (!activeTiming) return;
+
+      setTimingMilestone(
+        activeTiming,
+        'firstPaintAfterContentAtMs',
+        getNowMs()
+      );
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+    };
+  }, [hasContent]);
 
   return (
     <ApprovalFormProvider>
