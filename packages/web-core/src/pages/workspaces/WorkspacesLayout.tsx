@@ -30,6 +30,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { markWorkspaceViewEntered } from '@/shared/lib/workspaceViewTiming';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -48,6 +49,11 @@ export function WorkspacesLayout() {
     isNewSessionMode,
     startNewSession,
   } = useWorkspaceContext();
+
+  useEffect(() => {
+    if (isCreateMode || !workspaceId) return;
+    markWorkspaceViewEntered(workspaceId);
+  }, [isCreateMode, workspaceId]);
 
   const { t } = useTranslation('common');
   usePageTitle(

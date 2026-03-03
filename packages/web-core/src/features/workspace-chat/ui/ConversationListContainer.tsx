@@ -49,6 +49,7 @@ import type { RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
+import { getWorkspaceViewEnteredAt } from '@/shared/lib/workspaceViewTiming';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -70,6 +71,7 @@ interface MessageListContext {
 }
 
 interface TimingMilestones {
+  workspaceRouteEnteredAtMs?: number;
   firstEntriesUpdatedAtMs?: number;
   firstDebounceFiredAtMs?: number;
   firstChannelDataCommittedAtMs?: number;
@@ -77,6 +79,8 @@ interface TimingMilestones {
 }
 
 interface TimingDurations {
+  routeToConversationMountMs?: number;
+  routeToFirstPaintMs?: number;
   mountToFirstEntriesMs?: number;
   mountToFirstCommitMs?: number;
   mountToFirstPaintMs?: number;
@@ -137,21 +141,43 @@ const getTimingWindow = (): ConversationTimingWindow | null => {
 const createConversationTiming = (
   attemptId: string,
   sessionId?: string
-): ConversationListTimingSnapshot => ({
-  attemptId,
-  sessionId,
-  startedAtMs: getNowMs(),
-  milestones: {},
-  durations: {},
-  counters: {
-    entriesUpdatedCalls: 0,
-    debounceCleared: 0,
-  },
-  slowest: {},
-  anomalies: [],
-});
+): ConversationListTimingSnapshot => {
+  const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(attemptId);
+
+  return {
+    attemptId,
+    sessionId,
+    startedAtMs: getNowMs(),
+    milestones: {
+      workspaceRouteEnteredAtMs,
+    },
+    durations: {},
+    counters: {
+      entriesUpdatedCalls: 0,
+      debounceCleared: 0,
+    },
+    slowest: {},
+    anomalies: [],
+  };
+};
 
 const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
+  timing.durations.routeToConversationMountMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null
+      ? Math.max(
+          0,
+          timing.startedAtMs - timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToFirstPaintMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.firstPaintAfterContentAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.firstPaintAfterContentAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
   timing.durations.mountToFirstEntriesMs =
     timing.milestones.firstEntriesUpdatedAtMs != null
       ? timing.milestones.firstEntriesUpdatedAtMs - timing.startedAtMs
@@ -164,6 +190,18 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
     timing.milestones.firstPaintAfterContentAtMs != null
       ? timing.milestones.firstPaintAfterContentAtMs - timing.startedAtMs
       : undefined;
+};
+
+const maybePopulateWorkspaceRouteMilestone = (
+  timing: ConversationListTimingSnapshot
+) => {
+  if (timing.milestones.workspaceRouteEnteredAtMs != null) return;
+
+  const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(timing.attemptId);
+  if (workspaceRouteEnteredAtMs == null) return;
+
+  timing.milestones.workspaceRouteEnteredAtMs = workspaceRouteEnteredAtMs;
+  updateTimingDurations(timing);
 };
 
 const setTimingMilestone = <K extends keyof TimingMilestones>(
@@ -397,6 +435,7 @@ export const ConversationList = forwardRef<
     const receivedAtMs = getNowMs();
     const timing = timingRef.current;
     if (timing) {
+      maybePopulateWorkspaceRouteMilestone(timing);
       timing.counters.entriesUpdatedCalls += 1;
       setTimingMilestone(timing, 'firstEntriesUpdatedAtMs', receivedAtMs);
     }
@@ -596,6 +635,7 @@ export const ConversationList = forwardRef<
     const timing = timingRef.current;
     if (!timing) return;
 
+    maybePopulateWorkspaceRouteMilestone(timing);
     setTimingMilestone(timing, 'firstChannelDataCommittedAtMs', getNowMs());
   }, [channelData]);
 
@@ -608,6 +648,7 @@ export const ConversationList = forwardRef<
       const activeTiming = timingRef.current;
       if (!activeTiming) return;
 
+      maybePopulateWorkspaceRouteMilestone(activeTiming);
       setTimingMilestone(
         activeTiming,
         'firstPaintAfterContentAtMs',

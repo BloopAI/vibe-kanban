@@ -1,7 +1,7 @@
 // VS Code webview integration - install keyboard/clipboard bridge
 import '@/integrations/vscode/bridge';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
 import { useStyleOverrideThemeSetter } from '@/shared/lib/StyleOverride';
@@ -19,6 +19,7 @@ import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/Me
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
+import { markWorkspaceViewEntered } from '@/shared/lib/workspaceViewTiming';
 
 export function VSCodeWorkspacePage() {
   const { t } = useTranslation('common');
@@ -27,6 +28,7 @@ export function VSCodeWorkspacePage() {
   const [isAtBottom, setIsAtBottom] = useState(true);
 
   const {
+    workspaceId,
     workspace,
     sessions,
     selectedSession,
@@ -36,6 +38,11 @@ export function VSCodeWorkspacePage() {
     isNewSessionMode,
     startNewSession,
   } = useWorkspaceContext();
+
+  useEffect(() => {
+    if (!workspaceId) return;
+    markWorkspaceViewEntered(workspaceId);
+  }, [workspaceId]);
 
   usePageTitle(workspace?.name);
 
