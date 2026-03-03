@@ -21,9 +21,12 @@ function ExecutionProcessesProviderWrapper({
 }: {
   children: ReactNode;
 }) {
-  const { selectedSessionId } = useWorkspaceContext();
+  const { workspaceId, selectedSessionId } = useWorkspaceContext();
+  // Session-scoped provider: remount on workspace/session change to avoid stale process state.
+  const providerKey = `${workspaceId ?? 'none'}:${selectedSessionId ?? 'new'}`;
+
   return (
-    <ExecutionProcessesProvider sessionId={selectedSessionId}>
+    <ExecutionProcessesProvider key={providerKey} sessionId={selectedSessionId}>
       {children}
     </ExecutionProcessesProvider>
   );
