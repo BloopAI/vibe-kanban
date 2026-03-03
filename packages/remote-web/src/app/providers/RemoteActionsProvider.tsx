@@ -127,6 +127,7 @@ export function RemoteActionsProvider({
       kanbanProjectId: projectId,
       projectMutations: projectMutations ?? undefined,
       remoteWorkspaces: userCtx?.workspaces ?? [],
+      runtime: "remote",
     }),
     [
       queryClient,
