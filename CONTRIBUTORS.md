@@ -13,7 +13,8 @@ A maintainer must review pull requests before they are merged into any productio
 1. Create a feature or fix branch from the base branch.
 2. Make changes and open a pull request.
 3. Obtain the required review and approval from a maintainer.
-4. Merge only after approval has been granted.
+4. All required CI checks must pass before merging.
+5. Merge only after approval has been granted and CI checks have passed.
 
 ## Separation of Duties
 
