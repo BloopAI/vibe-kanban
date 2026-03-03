@@ -94,6 +94,10 @@ import {
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
+  PairRelayHostRequest,
+  PairRelayHostResponse,
+  OpenFirstWorkspaceInRemoteEditorRequest,
+  OpenRemoteEditorResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -461,6 +465,15 @@ export const workspacesApi = {
       }
     );
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  getEditorPath: async (
+    attemptId: string
+  ): Promise<{ workspace_path: string }> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/editor-path`
+    );
+    return handleApiResponse<{ workspace_path: string }>(response);
   },
 
   getBranchStatus: async (workspaceId: string): Promise<RepoBranchStatus[]> => {
@@ -1502,6 +1515,29 @@ export const relayApi = {
       }
     );
     return handleApiResponse<RemoveRelayPairedClientResponse>(response);
+  },
+
+  pairRelayHost: async (
+    payload: PairRelayHostRequest
+  ): Promise<PairRelayHostResponse> => {
+    const response = await makeRequest('/api/relay-pairing/pair', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return handleApiResponse<PairRelayHostResponse>(response);
+  },
+
+  openFirstWorkspaceInRemoteEditor: async (
+    payload: OpenFirstWorkspaceInRemoteEditorRequest
+  ): Promise<OpenRemoteEditorResponse> => {
+    const response = await makeRequest(
+      '/api/open-remote-editor/first-workspace',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    return handleApiResponse<OpenRemoteEditorResponse>(response);
   },
 };
 

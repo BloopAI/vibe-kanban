@@ -178,6 +178,18 @@ impl RelaySigningService {
         Ok(())
     }
 
+    /// Check if any active signing session has the given Ed25519 public key.
+    /// Used by the embedded SSH server for public key authentication.
+    pub async fn has_active_session_with_key(&self, key_bytes: &[u8; 32]) -> bool {
+        let sessions = self.sessions.read().await;
+        let now = Instant::now();
+        sessions.values().any(|session| {
+            now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
+                && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
+                && session.browser_public_key.as_bytes() == key_bytes
+        })
+    }
+
     async fn get_valid_session(
         &self,
         signing_session_id: Uuid,

@@ -8,7 +8,10 @@ api-types = { path = "../api-types" }
 db = { path = "../db" }
 executors = { path="../executors" }
 deployment = { path = "../deployment" }
+desktop-bridge = { path = "../desktop-bridge" }
+embedded-ssh = { path = "../embedded-ssh" }
 relay-control = { path = "../relay-control" }
+russh = "0.48"
 server-info = { path = "../server-info" }
 services = { path = "../services" }
 worktree-manager = { path = "../worktree-manager" }
@@ -18,6 +21,7 @@ git = { path = "../git" }
 trusted-key-auth = { path = "../trusted-key-auth" }
 tokio-util = { version = "0.7", features = ["io"] }
 serde_json = { workspace = true }
+serde = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }

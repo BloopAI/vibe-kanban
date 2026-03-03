@@ -18,8 +18,9 @@ members = [
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",
+    "crates/embedded-ssh",
 ]
-exclude = ["crates/remote", "crates/relay-tunnel"]
+exclude = ["crates/remote", "crates/relay-tunnel", "crates/desktop-bridge"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
