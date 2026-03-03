@@ -20,6 +20,15 @@ import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useWorkspaceContext } from "@/shared/hooks/useWorkspaceContext";
 import { AppNavigationProvider } from "@/shared/hooks/useAppNavigation";
 import {
+  SequenceTrackerProvider,
+  SequenceIndicator,
+  useWorkspaceShortcuts,
+  useIssueShortcuts,
+  useKeyShowHelp,
+  Scope,
+} from "@/shared/keyboard";
+import { KeyboardShortcutsDialog } from "@/shared/dialogs/shared/KeyboardShortcutsDialog";
+import {
   createRemoteHostAppNavigation,
   remoteFallbackAppNavigation,
   resolveRemoteDestinationFromPath,
@@ -54,13 +63,40 @@ function ExecutionProcessesProviderWrapper({
   );
 }
 
+/**
+ * Global keyboard shortcut that doesn't require workspace/actions context.
+ * Renders inside HotkeysProvider (from App.tsx) but outside WorkspaceProvider.
+ */
+function GlobalKeyboardShortcuts() {
+  useKeyShowHelp(
+    () => {
+      KeyboardShortcutsDialog.show();
+    },
+    { scope: Scope.GLOBAL },
+  );
+  return null;
+}
+
+/**
+ * Workspace & issue keyboard shortcuts that require ActionsProvider + WorkspaceProvider.
+ * Must be rendered inside WorkspaceRouteProviders.
+ */
+function WorkspaceKeyboardShortcuts() {
+  useWorkspaceShortcuts();
+  useIssueShortcuts();
+  return null;
+}
+
 function WorkspaceRouteProviders({ children }: { children: ReactNode }) {
   return (
     <WorkspaceProvider>
       <ExecutionProcessesProviderWrapper>
         <TerminalProvider>
           <LogsPanelProvider>
-            <ActionsProvider>{children}</ActionsProvider>
+            <ActionsProvider>
+              <WorkspaceKeyboardShortcuts />
+              {children}
+            </ActionsProvider>
           </LogsPanelProvider>
         </TerminalProvider>
       </ExecutionProcessesProviderWrapper>
@@ -103,9 +139,13 @@ function RootLayout() {
   const pageContent = isStandaloneRoute ? (
     <Outlet />
   ) : (
-    <RemoteAppShell>
-      <Outlet />
-    </RemoteAppShell>
+    <SequenceTrackerProvider>
+      <SequenceIndicator />
+      <GlobalKeyboardShortcuts />
+      <RemoteAppShell>
+        <Outlet />
+      </RemoteAppShell>
+    </SequenceTrackerProvider>
   );
 
   const content = isWorkspaceProviderRoute ? (
