@@ -3,6 +3,9 @@ type WorkspaceViewTimingWindow = Window &
     __vkWorkspaceRouteEnteredAtMs?: Record<string, number>;
     __vkWorkspaceDataReadyAtMs?: Record<string, number>;
     __vkWorkspaceSessionsReadyAtMs?: Record<string, number>;
+    __vkHistoryInitialLoadStartAtMs?: Record<string, number>;
+    __vkHistoryInitialLoadDoneAtMs?: Record<string, number>;
+    __vkHistoryRemainingBatchesDoneAtMs?: Record<string, number>;
   };
 
 const getTimingWindow = (): WorkspaceViewTimingWindow | null => {
@@ -27,6 +30,15 @@ export const markWorkspaceViewEntered = (
   }
   if (timingWindow.__vkWorkspaceSessionsReadyAtMs) {
     delete timingWindow.__vkWorkspaceSessionsReadyAtMs[workspaceId];
+  }
+  if (timingWindow.__vkHistoryInitialLoadStartAtMs) {
+    delete timingWindow.__vkHistoryInitialLoadStartAtMs[workspaceId];
+  }
+  if (timingWindow.__vkHistoryInitialLoadDoneAtMs) {
+    delete timingWindow.__vkHistoryInitialLoadDoneAtMs[workspaceId];
+  }
+  if (timingWindow.__vkHistoryRemainingBatchesDoneAtMs) {
+    delete timingWindow.__vkHistoryRemainingBatchesDoneAtMs[workspaceId];
   }
 };
 
@@ -83,4 +95,75 @@ export const getWorkspaceSessionsReadyAt = (
 
   const timingWindow = getTimingWindow();
   return timingWindow?.__vkWorkspaceSessionsReadyAtMs?.[workspaceId];
+};
+
+export const markHistoryInitialLoadStart = (
+  attemptId: string | undefined | null
+): void => {
+  if (!attemptId) return;
+
+  const timingWindow = getTimingWindow();
+  if (!timingWindow) return;
+
+  timingWindow.__vkHistoryInitialLoadStartAtMs ??= {};
+  if (timingWindow.__vkHistoryInitialLoadStartAtMs[attemptId] != null) return;
+
+  timingWindow.__vkHistoryInitialLoadStartAtMs[attemptId] = performance.now();
+};
+
+export const getHistoryInitialLoadStartAt = (
+  attemptId: string | undefined | null
+): number | undefined => {
+  if (!attemptId) return undefined;
+
+  const timingWindow = getTimingWindow();
+  return timingWindow?.__vkHistoryInitialLoadStartAtMs?.[attemptId];
+};
+
+export const markHistoryInitialLoadDone = (
+  attemptId: string | undefined | null
+): void => {
+  if (!attemptId) return;
+
+  const timingWindow = getTimingWindow();
+  if (!timingWindow) return;
+
+  timingWindow.__vkHistoryInitialLoadDoneAtMs ??= {};
+  if (timingWindow.__vkHistoryInitialLoadDoneAtMs[attemptId] != null) return;
+
+  timingWindow.__vkHistoryInitialLoadDoneAtMs[attemptId] = performance.now();
+};
+
+export const getHistoryInitialLoadDoneAt = (
+  attemptId: string | undefined | null
+): number | undefined => {
+  if (!attemptId) return undefined;
+
+  const timingWindow = getTimingWindow();
+  return timingWindow?.__vkHistoryInitialLoadDoneAtMs?.[attemptId];
+};
+
+export const markHistoryRemainingBatchesDone = (
+  attemptId: string | undefined | null
+): void => {
+  if (!attemptId) return;
+
+  const timingWindow = getTimingWindow();
+  if (!timingWindow) return;
+
+  timingWindow.__vkHistoryRemainingBatchesDoneAtMs ??= {};
+  if (timingWindow.__vkHistoryRemainingBatchesDoneAtMs[attemptId] != null)
+    return;
+
+  timingWindow.__vkHistoryRemainingBatchesDoneAtMs[attemptId] =
+    performance.now();
+};
+
+export const getHistoryRemainingBatchesDoneAt = (
+  attemptId: string | undefined | null
+): number | undefined => {
+  if (!attemptId) return undefined;
+
+  const timingWindow = getTimingWindow();
+  return timingWindow?.__vkHistoryRemainingBatchesDoneAtMs?.[attemptId];
 };

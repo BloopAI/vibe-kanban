@@ -50,6 +50,9 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import {
+  getHistoryInitialLoadDoneAt,
+  getHistoryInitialLoadStartAt,
+  getHistoryRemainingBatchesDoneAt,
   getWorkspaceDataReadyAt,
   getWorkspaceSessionsReadyAt,
   getWorkspaceViewEnteredAt,
@@ -78,8 +81,12 @@ interface TimingMilestones {
   workspaceRouteEnteredAtMs?: number;
   workspaceDataReadyAtMs?: number;
   workspaceSessionsReadyAtMs?: number;
+  historyInitialLoadStartAtMs?: number;
+  historyInitialLoadDoneAtMs?: number;
+  historyRemainingBatchesDoneAtMs?: number;
   firstEntriesUpdatedAtMs?: number;
   firstNonEmptyEntriesUpdatedAtMs?: number;
+  firstMeaningfulLogEntryAtMs?: number;
   firstLoadingFalseEntriesUpdatedAtMs?: number;
   firstDebounceFiredAtMs?: number;
   firstChannelDataCommittedAtMs?: number;
@@ -90,11 +97,16 @@ interface TimingDurations {
   routeToConversationMountMs?: number;
   routeToWorkspaceDataReadyMs?: number;
   routeToWorkspaceSessionsReadyMs?: number;
+  routeToHistoryInitialLoadStartMs?: number;
+  routeToHistoryInitialLoadDoneMs?: number;
+  routeToHistoryRemainingBatchesDoneMs?: number;
   routeToFirstNonEmptyEntriesMs?: number;
+  routeToFirstMeaningfulLogEntryMs?: number;
   routeToFirstLoadingFalseEntriesMs?: number;
   routeToFirstPaintMs?: number;
   mountToFirstEntriesMs?: number;
   mountToFirstNonEmptyEntriesMs?: number;
+  mountToFirstMeaningfulLogEntryMs?: number;
   mountToFirstLoadingFalseEntriesMs?: number;
   mountToFirstCommitMs?: number;
   mountToFirstPaintMs?: number;
@@ -159,6 +171,10 @@ const createConversationTiming = (
   const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(attemptId);
   const workspaceDataReadyAtMs = getWorkspaceDataReadyAt(attemptId);
   const workspaceSessionsReadyAtMs = getWorkspaceSessionsReadyAt(attemptId);
+  const historyInitialLoadStartAtMs = getHistoryInitialLoadStartAt(attemptId);
+  const historyInitialLoadDoneAtMs = getHistoryInitialLoadDoneAt(attemptId);
+  const historyRemainingBatchesDoneAtMs =
+    getHistoryRemainingBatchesDoneAt(attemptId);
 
   return {
     attemptId,
@@ -168,6 +184,9 @@ const createConversationTiming = (
       workspaceRouteEnteredAtMs,
       workspaceDataReadyAtMs,
       workspaceSessionsReadyAtMs,
+      historyInitialLoadStartAtMs,
+      historyInitialLoadDoneAtMs,
+      historyRemainingBatchesDoneAtMs,
     },
     durations: {},
     counters: {
@@ -198,6 +217,33 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
             timing.milestones.workspaceRouteEnteredAtMs
         )
       : undefined;
+  timing.durations.routeToHistoryInitialLoadStartMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.historyInitialLoadStartAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.historyInitialLoadStartAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToHistoryInitialLoadDoneMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.historyInitialLoadDoneAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.historyInitialLoadDoneAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToHistoryRemainingBatchesDoneMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.historyRemainingBatchesDoneAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.historyRemainingBatchesDoneAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
   timing.durations.routeToConversationMountMs =
     timing.milestones.workspaceRouteEnteredAtMs != null
       ? Math.max(
@@ -223,6 +269,15 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
             timing.milestones.workspaceRouteEnteredAtMs
         )
       : undefined;
+  timing.durations.routeToFirstMeaningfulLogEntryMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.firstMeaningfulLogEntryAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.firstMeaningfulLogEntryAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
   timing.durations.routeToFirstLoadingFalseEntriesMs =
     timing.milestones.workspaceRouteEnteredAtMs != null &&
     timing.milestones.firstLoadingFalseEntriesUpdatedAtMs != null
@@ -239,6 +294,10 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
   timing.durations.mountToFirstNonEmptyEntriesMs =
     timing.milestones.firstNonEmptyEntriesUpdatedAtMs != null
       ? timing.milestones.firstNonEmptyEntriesUpdatedAtMs - timing.startedAtMs
+      : undefined;
+  timing.durations.mountToFirstMeaningfulLogEntryMs =
+    timing.milestones.firstMeaningfulLogEntryAtMs != null
+      ? timing.milestones.firstMeaningfulLogEntryAtMs - timing.startedAtMs
       : undefined;
   timing.durations.mountToFirstLoadingFalseEntriesMs =
     timing.milestones.firstLoadingFalseEntriesUpdatedAtMs != null
@@ -288,9 +347,50 @@ const maybePopulateWorkspaceMilestones = (
     }
   }
 
+  if (timing.milestones.historyInitialLoadStartAtMs == null) {
+    const historyInitialLoadStartAtMs = getHistoryInitialLoadStartAt(
+      timing.attemptId
+    );
+    if (historyInitialLoadStartAtMs != null) {
+      timing.milestones.historyInitialLoadStartAtMs =
+        historyInitialLoadStartAtMs;
+      changed = true;
+    }
+  }
+
+  if (timing.milestones.historyInitialLoadDoneAtMs == null) {
+    const historyInitialLoadDoneAtMs = getHistoryInitialLoadDoneAt(
+      timing.attemptId
+    );
+    if (historyInitialLoadDoneAtMs != null) {
+      timing.milestones.historyInitialLoadDoneAtMs = historyInitialLoadDoneAtMs;
+      changed = true;
+    }
+  }
+
+  if (timing.milestones.historyRemainingBatchesDoneAtMs == null) {
+    const historyRemainingBatchesDoneAtMs = getHistoryRemainingBatchesDoneAt(
+      timing.attemptId
+    );
+    if (historyRemainingBatchesDoneAtMs != null) {
+      timing.milestones.historyRemainingBatchesDoneAtMs =
+        historyRemainingBatchesDoneAtMs;
+      changed = true;
+    }
+  }
+
   if (changed) {
     updateTimingDurations(timing);
   }
+};
+
+const isMeaningfulLogEntry = (entry: PatchTypeWithKey): boolean => {
+  if (entry.type !== 'NORMALIZED_ENTRY') return true;
+
+  return (
+    entry.content.entry_type.type !== 'next_action' &&
+    entry.content.entry_type.type !== 'loading'
+  );
 };
 
 const setTimingMilestone = <K extends keyof TimingMilestones>(
@@ -533,6 +633,13 @@ export const ConversationList = forwardRef<
           'firstNonEmptyEntriesUpdatedAtMs',
           receivedAtMs
         );
+        if (newEntries.some(isMeaningfulLogEntry)) {
+          setTimingMilestone(
+            timing,
+            'firstMeaningfulLogEntryAtMs',
+            receivedAtMs
+          );
+        }
       }
       if (!newLoading) {
         setTimingMilestone(

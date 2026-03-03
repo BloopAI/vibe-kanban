@@ -11,6 +11,11 @@ import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcess
 import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
+import {
+  markHistoryInitialLoadDone,
+  markHistoryInitialLoadStart,
+  markHistoryRemainingBatchesDone,
+} from '@/shared/lib/workspaceViewTiming';
 import type {
   AddEntryType,
   ExecutionProcessStateStore,
@@ -630,6 +635,8 @@ export const useConversationHistory = ({
       )
         return;
 
+      markHistoryInitialLoadStart(attempt.id);
+
       // Initial entries
       const allInitialEntries = await loadInitialEntries();
       if (cancelled) return;
@@ -637,6 +644,7 @@ export const useConversationHistory = ({
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
+      markHistoryInitialLoadDone(attempt.id);
       loadedInitialEntries.current = true;
 
       // Then load the remaining in batches
@@ -648,6 +656,7 @@ export const useConversationHistory = ({
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
       emitEntries(displayedExecutionProcesses.current, 'historic', false);
+      markHistoryRemainingBatchesDone(attempt.id);
     })();
     return () => {
       cancelled = true;
