@@ -5,7 +5,6 @@ import {
   type AppNavigation,
   type NavigationTransition,
 } from "@/shared/lib/routes/appNavigation";
-import { markWorkspaceViewEntered } from "@/shared/lib/workspaceViewTiming";
 
 type RemoteRouteId = FileRouteTypes["id"];
 
@@ -238,25 +237,15 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
       navigateTo({ kind: "workspaces", hostId }, transition),
     goToWorkspacesCreate: (transition) =>
       navigateTo({ kind: "workspaces-create", hostId }, transition),
-    goToWorkspace: (workspaceId, transition) => {
-      markWorkspaceViewEntered(workspaceId);
-      navigateTo({ kind: "workspace", hostId, workspaceId }, transition);
-    },
-    goToWorkspaceVsCode: (workspaceId, transition) => {
-      markWorkspaceViewEntered(workspaceId);
-      navigateTo({ kind: "workspace-vscode", hostId, workspaceId }, transition);
-    },
+    goToWorkspace: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace", hostId, workspaceId }, transition),
+    goToWorkspaceVsCode: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace-vscode", hostId, workspaceId }, transition),
     goToProject: (projectId, transition) =>
       navigateTo({ kind: "project", projectId }, transition),
     goToProjectIssue: (projectId, issueId, transition) =>
       navigateTo({ kind: "project-issue", projectId, issueId }, transition),
-    goToProjectIssueWorkspace: (
-      projectId,
-      issueId,
-      workspaceId,
-      transition,
-    ) => {
-      markWorkspaceViewEntered(workspaceId);
+    goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>
       navigateTo(
         {
           kind: "project-issue-workspace",
@@ -266,8 +255,7 @@ export function createRemoteHostAppNavigation(hostId: string): AppNavigation {
           workspaceId,
         },
         transition,
-      );
-    },
+      ),
     goToProjectIssueWorkspaceCreate: (
       projectId,
       issueId,
@@ -321,30 +309,19 @@ function createRemoteFallbackAppNavigation(): AppNavigation {
       navigateTo({ kind: "workspaces" }, transition),
     goToWorkspacesCreate: (transition) =>
       navigateTo({ kind: "workspaces-create" }, transition),
-    goToWorkspace: (workspaceId, transition) => {
-      markWorkspaceViewEntered(workspaceId);
-      navigateTo({ kind: "workspace", workspaceId }, transition);
-    },
-    goToWorkspaceVsCode: (workspaceId, transition) => {
-      markWorkspaceViewEntered(workspaceId);
-      navigateTo({ kind: "workspace-vscode", workspaceId }, transition);
-    },
+    goToWorkspace: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace", workspaceId }, transition),
+    goToWorkspaceVsCode: (workspaceId, transition) =>
+      navigateTo({ kind: "workspace-vscode", workspaceId }, transition),
     goToProject: (projectId, transition) =>
       navigateTo({ kind: "project", projectId }, transition),
     goToProjectIssue: (projectId, issueId, transition) =>
       navigateTo({ kind: "project-issue", projectId, issueId }, transition),
-    goToProjectIssueWorkspace: (
-      projectId,
-      issueId,
-      workspaceId,
-      transition,
-    ) => {
-      markWorkspaceViewEntered(workspaceId);
+    goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>
       navigateTo(
         { kind: "project-issue-workspace", projectId, issueId, workspaceId },
         transition,
-      );
-    },
+      ),
     goToProjectIssueWorkspaceCreate: (
       projectId,
       issueId,

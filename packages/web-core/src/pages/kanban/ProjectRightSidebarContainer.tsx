@@ -34,7 +34,6 @@ import {
   closeKanbanIssueComposer,
   useKanbanIssueComposer,
 } from '@/shared/stores/useKanbanIssueComposerStore';
-import { markWorkspaceViewEntered } from '@/shared/lib/workspaceViewTiming';
 
 interface WorkspaceSessionPanelProps {
   workspaceId: string;
@@ -219,10 +218,6 @@ function WorkspaceSessionPanel({
   const handleAtBottomChange = useCallback((atBottom: boolean) => {
     setIsAtBottom(atBottom);
   }, []);
-
-  useEffect(() => {
-    markWorkspaceViewEntered(workspaceId);
-  }, [workspaceId]);
 
   return (
     <ExecutionProcessesProvider

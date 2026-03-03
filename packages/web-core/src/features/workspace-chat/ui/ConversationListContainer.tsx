@@ -12,7 +12,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -49,18 +48,6 @@ import type { RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
-import {
-  getExecutionProcessesFirstConversationAt,
-  getExecutionProcessesFirstVisibleAt,
-  getExecutionProcessesStreamConnectedAt,
-  getExecutionProcessesStreamReadyAt,
-  getHistoryInitialLoadDoneAt,
-  getHistoryInitialLoadStartAt,
-  getHistoryRemainingBatchesDoneAt,
-  getWorkspaceDataReadyAt,
-  getWorkspaceSessionsReadyAt,
-  getWorkspaceViewEnteredAt,
-} from '@/shared/lib/workspaceViewTiming';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -80,448 +67,6 @@ interface MessageListContext {
   showCleanupPlaceholder: boolean;
   resetAction: UseResetProcessResult;
 }
-
-interface TimingMilestones {
-  workspaceRouteEnteredAtMs?: number;
-  workspaceDataReadyAtMs?: number;
-  workspaceSessionsReadyAtMs?: number;
-  executionProcessesStreamConnectedAtMs?: number;
-  executionProcessesStreamReadyAtMs?: number;
-  executionProcessesFirstVisibleAtMs?: number;
-  executionProcessesFirstConversationAtMs?: number;
-  historyInitialLoadStartAtMs?: number;
-  historyInitialLoadDoneAtMs?: number;
-  historyRemainingBatchesDoneAtMs?: number;
-  firstEntriesUpdatedAtMs?: number;
-  firstNonEmptyEntriesUpdatedAtMs?: number;
-  firstMeaningfulLogEntryAtMs?: number;
-  firstLoadingFalseEntriesUpdatedAtMs?: number;
-  firstDebounceFiredAtMs?: number;
-  firstChannelDataCommittedAtMs?: number;
-  firstPaintAfterContentAtMs?: number;
-}
-
-interface TimingDurations {
-  routeToConversationMountMs?: number;
-  routeToWorkspaceDataReadyMs?: number;
-  routeToWorkspaceSessionsReadyMs?: number;
-  routeToExecutionProcessesStreamConnectedMs?: number;
-  routeToExecutionProcessesStreamReadyMs?: number;
-  routeToExecutionProcessesFirstVisibleMs?: number;
-  routeToExecutionProcessesFirstConversationMs?: number;
-  routeToHistoryInitialLoadStartMs?: number;
-  routeToHistoryInitialLoadDoneMs?: number;
-  routeToHistoryRemainingBatchesDoneMs?: number;
-  routeToFirstNonEmptyEntriesMs?: number;
-  routeToFirstMeaningfulLogEntryMs?: number;
-  routeToFirstLoadingFalseEntriesMs?: number;
-  routeToFirstPaintMs?: number;
-  mountToFirstEntriesMs?: number;
-  mountToFirstNonEmptyEntriesMs?: number;
-  mountToFirstMeaningfulLogEntryMs?: number;
-  mountToFirstLoadingFalseEntriesMs?: number;
-  mountToFirstCommitMs?: number;
-  mountToFirstPaintMs?: number;
-}
-
-interface QueueDelayMetric {
-  valueMs: number;
-  addType: AddEntryType;
-  entriesLen: number;
-}
-
-interface AggregateMetric {
-  valueMs: number;
-  entriesLen: number;
-}
-
-interface TimingAnomaly {
-  type: 'queue_delay' | 'aggregate';
-  valueMs: number;
-  addType?: AddEntryType;
-  entriesLen: number;
-}
-
-interface ConversationListTimingSnapshot {
-  attemptId: string;
-  sessionId?: string;
-  startedAtMs: number;
-  milestones: TimingMilestones;
-  durations: TimingDurations;
-  counters: {
-    entriesUpdatedCalls: number;
-    debounceCleared: number;
-  };
-  slowest: {
-    maxQueueDelayMs?: QueueDelayMetric;
-    maxAggregateMs?: AggregateMetric;
-  };
-  anomalies: TimingAnomaly[];
-}
-
-type ConversationTimingWindow = Window &
-  typeof globalThis & {
-    __vkEnableConversationTiming?: boolean;
-    __vkConversationTimings?: Record<string, ConversationListTimingSnapshot>;
-  };
-
-const QUEUE_DELAY_ANOMALY_MS = 300;
-const AGGREGATE_ANOMALY_MS = 50;
-const MAX_TIMING_ANOMALIES = 3;
-
-const getNowMs = (): number => performance.now();
-
-const getTimingWindow = (): ConversationTimingWindow | null => {
-  if (typeof window === 'undefined') return null;
-  return window as ConversationTimingWindow;
-};
-
-const createConversationTiming = (
-  attemptId: string,
-  sessionId?: string
-): ConversationListTimingSnapshot => {
-  const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(attemptId);
-  const workspaceDataReadyAtMs = getWorkspaceDataReadyAt(attemptId);
-  const workspaceSessionsReadyAtMs = getWorkspaceSessionsReadyAt(attemptId);
-  const executionProcessesStreamConnectedAtMs =
-    getExecutionProcessesStreamConnectedAt(sessionId);
-  const executionProcessesStreamReadyAtMs =
-    getExecutionProcessesStreamReadyAt(sessionId);
-  const executionProcessesFirstVisibleAtMs =
-    getExecutionProcessesFirstVisibleAt(sessionId);
-  const executionProcessesFirstConversationAtMs =
-    getExecutionProcessesFirstConversationAt(sessionId);
-  const historyInitialLoadStartAtMs = getHistoryInitialLoadStartAt(attemptId);
-  const historyInitialLoadDoneAtMs = getHistoryInitialLoadDoneAt(attemptId);
-  const historyRemainingBatchesDoneAtMs =
-    getHistoryRemainingBatchesDoneAt(attemptId);
-
-  return {
-    attemptId,
-    sessionId,
-    startedAtMs: getNowMs(),
-    milestones: {
-      workspaceRouteEnteredAtMs,
-      workspaceDataReadyAtMs,
-      workspaceSessionsReadyAtMs,
-      executionProcessesStreamConnectedAtMs,
-      executionProcessesStreamReadyAtMs,
-      executionProcessesFirstVisibleAtMs,
-      executionProcessesFirstConversationAtMs,
-      historyInitialLoadStartAtMs,
-      historyInitialLoadDoneAtMs,
-      historyRemainingBatchesDoneAtMs,
-    },
-    durations: {},
-    counters: {
-      entriesUpdatedCalls: 0,
-      debounceCleared: 0,
-    },
-    slowest: {},
-    anomalies: [],
-  };
-};
-
-const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
-  timing.durations.routeToWorkspaceDataReadyMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.workspaceDataReadyAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.workspaceDataReadyAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToWorkspaceSessionsReadyMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.workspaceSessionsReadyAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.workspaceSessionsReadyAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToExecutionProcessesStreamConnectedMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.executionProcessesStreamConnectedAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.executionProcessesStreamConnectedAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToExecutionProcessesStreamReadyMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.executionProcessesStreamReadyAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.executionProcessesStreamReadyAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToExecutionProcessesFirstVisibleMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.executionProcessesFirstVisibleAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.executionProcessesFirstVisibleAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToExecutionProcessesFirstConversationMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.executionProcessesFirstConversationAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.executionProcessesFirstConversationAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToHistoryInitialLoadStartMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.historyInitialLoadStartAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.historyInitialLoadStartAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToHistoryInitialLoadDoneMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.historyInitialLoadDoneAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.historyInitialLoadDoneAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToHistoryRemainingBatchesDoneMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.historyRemainingBatchesDoneAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.historyRemainingBatchesDoneAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToConversationMountMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null
-      ? Math.max(
-          0,
-          timing.startedAtMs - timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToFirstPaintMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.firstPaintAfterContentAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.firstPaintAfterContentAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToFirstNonEmptyEntriesMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.firstNonEmptyEntriesUpdatedAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.firstNonEmptyEntriesUpdatedAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToFirstMeaningfulLogEntryMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.firstMeaningfulLogEntryAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.firstMeaningfulLogEntryAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.routeToFirstLoadingFalseEntriesMs =
-    timing.milestones.workspaceRouteEnteredAtMs != null &&
-    timing.milestones.firstLoadingFalseEntriesUpdatedAtMs != null
-      ? Math.max(
-          0,
-          timing.milestones.firstLoadingFalseEntriesUpdatedAtMs -
-            timing.milestones.workspaceRouteEnteredAtMs
-        )
-      : undefined;
-  timing.durations.mountToFirstEntriesMs =
-    timing.milestones.firstEntriesUpdatedAtMs != null
-      ? timing.milestones.firstEntriesUpdatedAtMs - timing.startedAtMs
-      : undefined;
-  timing.durations.mountToFirstNonEmptyEntriesMs =
-    timing.milestones.firstNonEmptyEntriesUpdatedAtMs != null
-      ? timing.milestones.firstNonEmptyEntriesUpdatedAtMs - timing.startedAtMs
-      : undefined;
-  timing.durations.mountToFirstMeaningfulLogEntryMs =
-    timing.milestones.firstMeaningfulLogEntryAtMs != null
-      ? timing.milestones.firstMeaningfulLogEntryAtMs - timing.startedAtMs
-      : undefined;
-  timing.durations.mountToFirstLoadingFalseEntriesMs =
-    timing.milestones.firstLoadingFalseEntriesUpdatedAtMs != null
-      ? timing.milestones.firstLoadingFalseEntriesUpdatedAtMs -
-        timing.startedAtMs
-      : undefined;
-  timing.durations.mountToFirstCommitMs =
-    timing.milestones.firstChannelDataCommittedAtMs != null
-      ? timing.milestones.firstChannelDataCommittedAtMs - timing.startedAtMs
-      : undefined;
-  timing.durations.mountToFirstPaintMs =
-    timing.milestones.firstPaintAfterContentAtMs != null
-      ? timing.milestones.firstPaintAfterContentAtMs - timing.startedAtMs
-      : undefined;
-};
-
-const maybePopulateWorkspaceMilestones = (
-  timing: ConversationListTimingSnapshot
-) => {
-  let changed = false;
-
-  if (timing.milestones.workspaceRouteEnteredAtMs == null) {
-    const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(
-      timing.attemptId
-    );
-    if (workspaceRouteEnteredAtMs != null) {
-      timing.milestones.workspaceRouteEnteredAtMs = workspaceRouteEnteredAtMs;
-      changed = true;
-    }
-  }
-
-  if (timing.milestones.workspaceDataReadyAtMs == null) {
-    const workspaceDataReadyAtMs = getWorkspaceDataReadyAt(timing.attemptId);
-    if (workspaceDataReadyAtMs != null) {
-      timing.milestones.workspaceDataReadyAtMs = workspaceDataReadyAtMs;
-      changed = true;
-    }
-  }
-
-  if (timing.milestones.workspaceSessionsReadyAtMs == null) {
-    const workspaceSessionsReadyAtMs = getWorkspaceSessionsReadyAt(
-      timing.attemptId
-    );
-    if (workspaceSessionsReadyAtMs != null) {
-      timing.milestones.workspaceSessionsReadyAtMs = workspaceSessionsReadyAtMs;
-      changed = true;
-    }
-  }
-
-  if (
-    timing.sessionId &&
-    timing.milestones.executionProcessesStreamConnectedAtMs == null
-  ) {
-    const executionProcessesStreamConnectedAtMs =
-      getExecutionProcessesStreamConnectedAt(timing.sessionId);
-    if (executionProcessesStreamConnectedAtMs != null) {
-      timing.milestones.executionProcessesStreamConnectedAtMs =
-        executionProcessesStreamConnectedAtMs;
-      changed = true;
-    }
-  }
-
-  if (
-    timing.sessionId &&
-    timing.milestones.executionProcessesStreamReadyAtMs == null
-  ) {
-    const executionProcessesStreamReadyAtMs =
-      getExecutionProcessesStreamReadyAt(timing.sessionId);
-    if (executionProcessesStreamReadyAtMs != null) {
-      timing.milestones.executionProcessesStreamReadyAtMs =
-        executionProcessesStreamReadyAtMs;
-      changed = true;
-    }
-  }
-
-  if (
-    timing.sessionId &&
-    timing.milestones.executionProcessesFirstVisibleAtMs == null
-  ) {
-    const executionProcessesFirstVisibleAtMs =
-      getExecutionProcessesFirstVisibleAt(timing.sessionId);
-    if (executionProcessesFirstVisibleAtMs != null) {
-      timing.milestones.executionProcessesFirstVisibleAtMs =
-        executionProcessesFirstVisibleAtMs;
-      changed = true;
-    }
-  }
-
-  if (
-    timing.sessionId &&
-    timing.milestones.executionProcessesFirstConversationAtMs == null
-  ) {
-    const executionProcessesFirstConversationAtMs =
-      getExecutionProcessesFirstConversationAt(timing.sessionId);
-    if (executionProcessesFirstConversationAtMs != null) {
-      timing.milestones.executionProcessesFirstConversationAtMs =
-        executionProcessesFirstConversationAtMs;
-      changed = true;
-    }
-  }
-
-  if (timing.milestones.historyInitialLoadStartAtMs == null) {
-    const historyInitialLoadStartAtMs = getHistoryInitialLoadStartAt(
-      timing.attemptId
-    );
-    if (historyInitialLoadStartAtMs != null) {
-      timing.milestones.historyInitialLoadStartAtMs =
-        historyInitialLoadStartAtMs;
-      changed = true;
-    }
-  }
-
-  if (timing.milestones.historyInitialLoadDoneAtMs == null) {
-    const historyInitialLoadDoneAtMs = getHistoryInitialLoadDoneAt(
-      timing.attemptId
-    );
-    if (historyInitialLoadDoneAtMs != null) {
-      timing.milestones.historyInitialLoadDoneAtMs = historyInitialLoadDoneAtMs;
-      changed = true;
-    }
-  }
-
-  if (timing.milestones.historyRemainingBatchesDoneAtMs == null) {
-    const historyRemainingBatchesDoneAtMs = getHistoryRemainingBatchesDoneAt(
-      timing.attemptId
-    );
-    if (historyRemainingBatchesDoneAtMs != null) {
-      timing.milestones.historyRemainingBatchesDoneAtMs =
-        historyRemainingBatchesDoneAtMs;
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    updateTimingDurations(timing);
-  }
-};
-
-const isMeaningfulLogEntry = (entry: PatchTypeWithKey): boolean => {
-  if (entry.type !== 'NORMALIZED_ENTRY') return true;
-
-  return (
-    entry.content.entry_type.type !== 'next_action' &&
-    entry.content.entry_type.type !== 'loading'
-  );
-};
-
-const setTimingMilestone = <K extends keyof TimingMilestones>(
-  timing: ConversationListTimingSnapshot,
-  key: K,
-  atMs: number
-) => {
-  if (timing.milestones[key] != null) return;
-  timing.milestones[key] = atMs;
-  updateTimingDurations(timing);
-};
-
-const pushTimingAnomaly = (
-  timing: ConversationListTimingSnapshot,
-  anomaly: TimingAnomaly
-) => {
-  if (timing.anomalies.length >= MAX_TIMING_ANOMALIES) return;
-  timing.anomalies.push(anomaly);
-};
 
 const AutoScrollToBottom: ScrollModifier = {
   type: 'auto-scroll-to-bottom',
@@ -638,10 +183,8 @@ export const ConversationList = forwardRef<
     entries: PatchTypeWithKey[];
     addType: AddEntryType;
     loading: boolean;
-    scheduledAtMs: number;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const timingRef = useRef<ConversationListTimingSnapshot | null>(null);
 
   const lastAtBottomRef = useRef(true);
   const handleScroll = useCallback(
@@ -698,27 +241,12 @@ export const ConversationList = forwardRef<
 
   // Determine if configure buttons should be shown
   const canConfigure = repos.length > 0;
-  const attemptSessionId = attempt.session?.id;
 
   useEffect(() => {
     setLoading(true);
     setChannelData(null);
     reset();
-
-    const timingWindow = getTimingWindow();
-    const timingEnabled =
-      timingWindow &&
-      (timingWindow.__vkEnableConversationTiming ?? import.meta.env.DEV);
-    if (!timingEnabled || !timingWindow) {
-      timingRef.current = null;
-      return;
-    }
-
-    const timing = createConversationTiming(attempt.id, attemptSessionId);
-    timingWindow.__vkConversationTimings ??= {};
-    timingWindow.__vkConversationTimings[attempt.id] = timing;
-    timingRef.current = timing;
-  }, [attempt.id, attemptSessionId, reset]);
+  }, [attempt.id, reset]);
 
   useEffect(() => {
     return () => {
@@ -733,80 +261,19 @@ export const ConversationList = forwardRef<
     addType: AddEntryType,
     newLoading: boolean
   ) => {
-    const receivedAtMs = getNowMs();
-    const timing = timingRef.current;
-    if (timing) {
-      maybePopulateWorkspaceMilestones(timing);
-      timing.counters.entriesUpdatedCalls += 1;
-      setTimingMilestone(timing, 'firstEntriesUpdatedAtMs', receivedAtMs);
-      if (newEntries.length > 0) {
-        setTimingMilestone(
-          timing,
-          'firstNonEmptyEntriesUpdatedAtMs',
-          receivedAtMs
-        );
-        if (newEntries.some(isMeaningfulLogEntry)) {
-          setTimingMilestone(
-            timing,
-            'firstMeaningfulLogEntryAtMs',
-            receivedAtMs
-          );
-        }
-      }
-      if (!newLoading) {
-        setTimingMilestone(
-          timing,
-          'firstLoadingFalseEntriesUpdatedAtMs',
-          receivedAtMs
-        );
-      }
-    }
-
     pendingUpdateRef.current = {
       entries: newEntries,
       addType,
       loading: newLoading,
-      scheduledAtMs: receivedAtMs,
     };
 
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
-      if (timing) {
-        timing.counters.debounceCleared += 1;
-      }
     }
 
     debounceTimeoutRef.current = setTimeout(() => {
       const pending = pendingUpdateRef.current;
       if (!pending) return;
-      const activeTiming = timingRef.current;
-      const debounceFiredAtMs = getNowMs();
-      const queueDelayMs = debounceFiredAtMs - pending.scheduledAtMs;
-      if (activeTiming) {
-        setTimingMilestone(
-          activeTiming,
-          'firstDebounceFiredAtMs',
-          debounceFiredAtMs
-        );
-        if (
-          !activeTiming.slowest.maxQueueDelayMs ||
-          queueDelayMs > activeTiming.slowest.maxQueueDelayMs.valueMs
-        ) {
-          activeTiming.slowest.maxQueueDelayMs = {
-            valueMs: queueDelayMs,
-            addType: pending.addType,
-            entriesLen: pending.entries.length,
-          };
-        }
-        if (queueDelayMs > QUEUE_DELAY_ANOMALY_MS) {
-          pushTimingAnomaly(activeTiming, {
-            type: 'queue_delay',
-            valueMs: queueDelayMs,
-            addType: pending.addType,
-            entriesLen: pending.entries.length,
-          });
-        }
-      }
 
       let scrollModifier: ScrollModifier;
 
@@ -822,27 +289,7 @@ export const ConversationList = forwardRef<
         scrollModifier = ScrollToBottomModifier;
       }
 
-      const aggregateStartAtMs = getNowMs();
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
-      const aggregateMs = getNowMs() - aggregateStartAtMs;
-      if (activeTiming) {
-        if (
-          !activeTiming.slowest.maxAggregateMs ||
-          aggregateMs > activeTiming.slowest.maxAggregateMs.valueMs
-        ) {
-          activeTiming.slowest.maxAggregateMs = {
-            valueMs: aggregateMs,
-            entriesLen: pending.entries.length,
-          };
-        }
-        if (aggregateMs > AGGREGATE_ANOMALY_MS) {
-          pushTimingAnomaly(activeTiming, {
-            type: 'aggregate',
-            valueMs: aggregateMs,
-            entriesLen: pending.entries.length,
-          });
-        }
-      }
 
       setChannelData({ data: aggregatedEntries, scrollModifier });
       setEntries(pending.entries);
@@ -951,37 +398,6 @@ export const ConversationList = forwardRef<
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
-
-  useLayoutEffect(() => {
-    if (!channelData) return;
-    const timing = timingRef.current;
-    if (!timing) return;
-
-    maybePopulateWorkspaceMilestones(timing);
-    setTimingMilestone(timing, 'firstChannelDataCommittedAtMs', getNowMs());
-  }, [channelData]);
-
-  useEffect(() => {
-    if (!hasContent) return;
-    const timing = timingRef.current;
-    if (!timing || timing.milestones.firstPaintAfterContentAtMs != null) return;
-
-    const rafId = requestAnimationFrame(() => {
-      const activeTiming = timingRef.current;
-      if (!activeTiming) return;
-
-      maybePopulateWorkspaceMilestones(activeTiming);
-      setTimingMilestone(
-        activeTiming,
-        'firstPaintAfterContentAtMs',
-        getNowMs()
-      );
-    });
-
-    return () => {
-      cancelAnimationFrame(rafId);
-    };
-  }, [hasContent]);
 
   return (
     <ApprovalFormProvider>

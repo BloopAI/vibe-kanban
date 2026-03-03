@@ -12,11 +12,11 @@ import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import {
-  markExecutionProcessesFirstConversation,
-  markHistoryInitialLoadDone,
-  markHistoryInitialLoadStart,
-  markHistoryRemainingBatchesDone,
-} from '@/shared/lib/workspaceViewTiming';
+  makeLoadingPatch,
+  MIN_INITIAL_ENTRIES,
+  nextActionPatch,
+  REMAINING_BATCH_SIZE,
+} from '@/shared/hooks/useConversationHistory/constants';
 import type {
   AddEntryType,
   ExecutionProcessStateStore,
@@ -36,12 +36,6 @@ export interface UseConversationHistoryResult {
   /** Whether the conversation only has a single coding agent turn (no follow-ups) */
   isFirstTurn: boolean;
 }
-import {
-  makeLoadingPatch,
-  MIN_INITIAL_ENTRIES,
-  nextActionPatch,
-  REMAINING_BATCH_SIZE,
-} from '@/shared/hooks/useConversationHistory/constants';
 
 export const useConversationHistory = ({
   attempt,
@@ -96,11 +90,6 @@ export const useConversationHistory = ({
         ep.run_reason === 'archivescript' ||
         ep.run_reason === 'codingagent'
     );
-    if (executionProcesses.current.length > 0) {
-      markExecutionProcessesFirstConversation(
-        executionProcesses.current[0]?.session_id
-      );
-    }
   }, [executionProcessesRaw]);
 
   const loadEntriesForHistoricExecutionProcess = (
@@ -641,8 +630,6 @@ export const useConversationHistory = ({
       )
         return;
 
-      markHistoryInitialLoadStart(attempt.id);
-
       // Initial entries
       const allInitialEntries = await loadInitialEntries();
       if (cancelled) return;
@@ -650,7 +637,6 @@ export const useConversationHistory = ({
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
-      markHistoryInitialLoadDone(attempt.id);
       loadedInitialEntries.current = true;
 
       // Then load the remaining in batches
@@ -662,7 +648,6 @@ export const useConversationHistory = ({
       }
       await new Promise((resolve) => setTimeout(resolve, 100));
       emitEntries(displayedExecutionProcesses.current, 'historic', false);
-      markHistoryRemainingBatchesDone(attempt.id);
     })();
     return () => {
       cancelled = true;

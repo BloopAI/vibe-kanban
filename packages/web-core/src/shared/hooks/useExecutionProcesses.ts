@@ -1,12 +1,6 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import type { ExecutionProcess } from 'shared/types';
-import {
-  markExecutionProcessesFirstVisible,
-  markExecutionProcessesStreamConnected,
-  markExecutionProcessesStreamReady,
-  resetExecutionProcessesTiming,
-} from '@/shared/lib/workspaceViewTiming';
 
 type ExecutionProcessState = {
   execution_processes: Record<string, ExecutionProcess>;
@@ -68,25 +62,6 @@ export const useExecutionProcesses = (
       process.status === 'running'
   );
   const isLoading = !!sessionId && !isInitialized && !error; // until first snapshot
-
-  useEffect(() => {
-    resetExecutionProcessesTiming(sessionId);
-  }, [sessionId]);
-
-  useEffect(() => {
-    if (!sessionId || !isConnected) return;
-    markExecutionProcessesStreamConnected(sessionId);
-  }, [sessionId, isConnected]);
-
-  useEffect(() => {
-    if (!sessionId || !isInitialized) return;
-    markExecutionProcessesStreamReady(sessionId);
-  }, [sessionId, isInitialized]);
-
-  useEffect(() => {
-    if (!sessionId || executionProcesses.length === 0) return;
-    markExecutionProcessesFirstVisible(sessionId);
-  }, [sessionId, executionProcesses.length]);
 
   return {
     executionProcesses,
