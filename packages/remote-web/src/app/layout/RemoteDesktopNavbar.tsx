@@ -163,9 +163,7 @@ export function RemoteDesktopNavbar() {
     CommandBarDialog.show();
   }, []);
 
-  const navbarTitle = isOnProjectPage
-    ? orgName
-    : selectedWorkspace?.branch;
+  const navbarTitle = isOnProjectPage ? orgName : selectedWorkspace?.branch;
 
   return (
     <Navbar
