@@ -107,6 +107,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
         .min_inner_size(800.0, 600.0)
         .resizable(true)
         .zoom_hotkeys_enabled(true)
+        .disable_drag_drop_handler()
         .on_new_window(move |url, _features| {
             tracing::info!("New window requested for URL: {}", url);
             let url_str = url.to_string();
