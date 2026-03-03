@@ -1,14 +1,11 @@
 import { type ReactNode } from 'react';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { FORMAT_TEXT_COMMAND, UNDO_COMMAND } from 'lexical';
-import { INSERT_MARKDOWN_LIST_COMMAND } from './MarkdownInsertPlugin';
 import {
   TextB,
   TextItalic,
   TextStrikethrough,
   Code,
-  ListBullets,
-  ListNumbers,
   ArrowCounterClockwise,
   Eye,
   PencilSimple,
@@ -101,25 +98,6 @@ export function StaticToolbarPlugin({
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
         icon={Code}
         label="Inline Code"
-      />
-
-      {/* Separator */}
-      <div className="w-px h-4 bg-border mx-half" />
-
-      {/* List buttons — insert markdown list prefixes */}
-      <ToolbarButton
-        onClick={() =>
-          editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'bullet')
-        }
-        icon={ListBullets}
-        label="Bullet List"
-      />
-      <ToolbarButton
-        onClick={() =>
-          editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'number')
-        }
-        icon={ListNumbers}
-        label="Numbered List"
       />
 
       {/* Preview toggle */}
