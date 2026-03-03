@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useScratch } from '@/shared/hooks/useScratch';
+import { useRuntimeScratch } from '@/shared/hooks/useRuntimeScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import {
   ScratchType,
@@ -49,7 +49,7 @@ export function usePreviewSettings(
     updateScratch,
     deleteScratch,
     isLoading: isScratchLoading,
-  } = useScratch(ScratchType.PREVIEW_SETTINGS, workspaceId ?? '', {
+  } = useRuntimeScratch(ScratchType.PREVIEW_SETTINGS, workspaceId ?? '', {
     enabled,
   });
 

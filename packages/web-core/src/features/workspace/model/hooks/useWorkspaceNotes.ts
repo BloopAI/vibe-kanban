@@ -1,6 +1,6 @@
 import { useCallback, useState, useEffect, useRef } from 'react';
 import { ScratchType, type WorkspaceNotesData } from 'shared/types';
-import { useScratch } from '@/shared/hooks/useScratch';
+import { useRuntimeScratch } from '@/shared/hooks/useRuntimeScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 
 export interface UseWorkspaceNotesResult {
@@ -24,7 +24,7 @@ export function useWorkspaceNotes(
     isLoading: isScratchLoading,
     isConnected,
     error,
-  } = useScratch(ScratchType.WORKSPACE_NOTES, workspaceId ?? '', {
+  } = useRuntimeScratch(ScratchType.WORKSPACE_NOTES, workspaceId ?? '', {
     enabled: !!workspaceId,
   });
 

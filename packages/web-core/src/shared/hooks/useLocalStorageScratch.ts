@@ -1,0 +1,150 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ScratchType, Scratch, UpdateScratch } from 'shared/types';
+import type { UseScratchResult } from './useScratch';
+
+const STORAGE_PREFIX = 'vk-scratch';
+
+function buildStorageKey(scratchType: ScratchType, id: string): string {
+  return `${STORAGE_PREFIX}:${scratchType}:${id}`;
+}
+
+function readFromStorage(key: string): Scratch | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw) as Scratch;
+  } catch {
+    return null;
+  }
+}
+
+function writeToStorage(key: string, scratch: Scratch): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(scratch));
+  } catch {
+    // Quota exceeded or unavailable — silently drop the write
+  }
+}
+
+function removeFromStorage(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // Ignore errors
+  }
+}
+
+export function localStorageScratchUpdate(
+  scratchType: ScratchType,
+  id: string,
+  update: UpdateScratch
+): void {
+  const key = buildStorageKey(scratchType, id);
+  const now = new Date().toISOString();
+  const existing = readFromStorage(key);
+
+  const next: Scratch = {
+    id: existing?.id ?? id,
+    payload: update.payload,
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
+  };
+
+  writeToStorage(key, next);
+}
+
+export function localStorageScratchDelete(
+  scratchType: ScratchType,
+  id: string
+): void {
+  removeFromStorage(buildStorageKey(scratchType, id));
+}
+
+interface UseLocalStorageScratchOptions {
+  enabled?: boolean;
+}
+
+/**
+ * localStorage-backed scratch storage for remote-web.
+ * Mirrors the same interface as the WebSocket-based `useScratch` hook
+ * so consumers can swap between them transparently.
+ */
+export const useLocalStorageScratch = (
+  scratchType: ScratchType,
+  id: string,
+  options?: UseLocalStorageScratchOptions
+): UseScratchResult => {
+  const enabled = (options?.enabled ?? true) && id.length > 0;
+  const storageKey = buildStorageKey(scratchType, id);
+
+  const [scratch, setScratch] = useState<Scratch | null>(() =>
+    enabled ? readFromStorage(storageKey) : null
+  );
+  const [isInitialized, setIsInitialized] = useState(false);
+  const prevKeyRef = useRef(storageKey);
+
+  useEffect(() => {
+    if (!enabled) {
+      setScratch(null);
+      setIsInitialized(false);
+      return;
+    }
+
+    const stored = readFromStorage(storageKey);
+    setScratch(stored);
+    setIsInitialized(true);
+    prevKeyRef.current = storageKey;
+  }, [storageKey, enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    function onStorage(e: StorageEvent) {
+      if (e.key !== storageKey) return;
+      if (e.newValue === null) {
+        setScratch(null);
+      } else {
+        try {
+          setScratch(JSON.parse(e.newValue) as Scratch);
+        } catch {
+          // corrupt value — ignore
+        }
+      }
+    }
+
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [storageKey, enabled]);
+
+  const updateScratch = useCallback(
+    async (update: UpdateScratch) => {
+      const now = new Date().toISOString();
+      const existing = readFromStorage(storageKey);
+
+      const next: Scratch = {
+        id: existing?.id ?? id,
+        payload: update.payload,
+        created_at: existing?.created_at ?? now,
+        updated_at: now,
+      };
+
+      writeToStorage(storageKey, next);
+      setScratch(next);
+    },
+    [storageKey, id]
+  );
+
+  const deleteScratch = useCallback(async () => {
+    removeFromStorage(storageKey);
+    setScratch(null);
+  }, [storageKey]);
+
+  return {
+    scratch,
+    isLoading: !isInitialized && enabled,
+    isConnected: true,
+    error: null,
+    updateScratch,
+    deleteScratch,
+  };
+};
