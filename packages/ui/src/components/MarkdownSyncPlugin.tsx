@@ -88,7 +88,7 @@ export function MarkdownSyncPlugin({
       if (!onChange) return;
 
       let markdown = editorState.read(() =>
-        $convertToMarkdownString(transformers),
+        $convertToMarkdownString(transformers)
       );
       if (preserveMarkdownSyntax) {
         markdown = markdown.replace(MARKDOWN_ESCAPE_RE, '$1');

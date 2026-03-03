@@ -41,7 +41,7 @@ function ToolbarButton({
         'p-half rounded-sm transition-colors',
         active
           ? 'text-normal bg-panel'
-          : 'text-low hover:text-normal hover:bg-panel/50',
+          : 'text-low hover:text-normal hover:bg-panel/50'
       )}
     >
       <Icon className="size-icon-sm" weight="bold" />
@@ -125,7 +125,7 @@ export function StaticToolbarPlugin({
         <div
           className={cn(
             'ml-auto mr-base flex items-center transition-opacity duration-300',
-            saveStatus === 'idle' ? 'opacity-0' : 'opacity-100',
+            saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'
           )}
         >
           <CheckIcon className="size-icon-sm text-success" weight="bold" />
