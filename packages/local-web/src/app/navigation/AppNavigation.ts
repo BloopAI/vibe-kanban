@@ -5,6 +5,7 @@ import {
   type AppNavigation,
   type NavigationTransition,
 } from '@/shared/lib/routes/appNavigation';
+import { markWorkspaceViewEntered } from '@/shared/lib/workspaceViewTiming';
 
 type LocalRouteId = FileRouteTypes['id'];
 
@@ -189,19 +190,30 @@ export function createLocalAppNavigation(): AppNavigation {
       navigateTo({ kind: 'workspaces' }, transition),
     goToWorkspacesCreate: (transition) =>
       navigateTo({ kind: 'workspaces-create' }, transition),
-    goToWorkspace: (workspaceId, transition) =>
-      navigateTo({ kind: 'workspace', workspaceId }, transition),
-    goToWorkspaceVsCode: (workspaceId, transition) =>
-      navigateTo({ kind: 'workspace-vscode', workspaceId }, transition),
+    goToWorkspace: (workspaceId, transition) => {
+      markWorkspaceViewEntered(workspaceId);
+      navigateTo({ kind: 'workspace', workspaceId }, transition);
+    },
+    goToWorkspaceVsCode: (workspaceId, transition) => {
+      markWorkspaceViewEntered(workspaceId);
+      navigateTo({ kind: 'workspace-vscode', workspaceId }, transition);
+    },
     goToProject: (projectId, transition) =>
       navigateTo({ kind: 'project', projectId }, transition),
     goToProjectIssue: (projectId, issueId, transition) =>
       navigateTo({ kind: 'project-issue', projectId, issueId }, transition),
-    goToProjectIssueWorkspace: (projectId, issueId, workspaceId, transition) =>
+    goToProjectIssueWorkspace: (
+      projectId,
+      issueId,
+      workspaceId,
+      transition
+    ) => {
+      markWorkspaceViewEntered(workspaceId);
       navigateTo(
         { kind: 'project-issue-workspace', projectId, issueId, workspaceId },
         transition
-      ),
+      );
+    },
     goToProjectIssueWorkspaceCreate: (
       projectId,
       issueId,
