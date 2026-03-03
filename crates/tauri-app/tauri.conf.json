@@ -5,7 +5,7 @@
   "identifier": "ai.bloop.vibe-kanban",
   "build": {
     "beforeDevCommand": {
-      "script": "concurrently \"pnpm run backend:dev:watch\" \"pnpm run frontend:dev\"",
+      "script": "concurrently \"pnpm run backend:dev:watch\" \"pnpm run local-web:dev\"",
       "cwd": "../.."
     },
     "beforeBuildCommand": {
