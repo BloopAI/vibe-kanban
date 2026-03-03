@@ -560,6 +560,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
               hideActions
               className={className}
               taskAttemptId={taskAttemptId}
+              localImages={localImages}
             />
           </div>
         )}
