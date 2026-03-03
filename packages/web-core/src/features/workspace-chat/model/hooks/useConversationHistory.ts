@@ -11,12 +11,6 @@ import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcess
 import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
-import {
-  makeLoadingPatch,
-  MIN_INITIAL_ENTRIES,
-  nextActionPatch,
-  REMAINING_BATCH_SIZE,
-} from '@/shared/hooks/useConversationHistory/constants';
 import type {
   AddEntryType,
   ExecutionProcessStateStore,
@@ -36,6 +30,12 @@ export interface UseConversationHistoryResult {
   /** Whether the conversation only has a single coding agent turn (no follow-ups) */
   isFirstTurn: boolean;
 }
+import {
+  makeLoadingPatch,
+  MIN_INITIAL_ENTRIES,
+  nextActionPatch,
+  REMAINING_BATCH_SIZE,
+} from '@/shared/hooks/useConversationHistory/constants';
 
 export const useConversationHistory = ({
   attempt,

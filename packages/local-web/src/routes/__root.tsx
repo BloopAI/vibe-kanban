@@ -22,7 +22,6 @@ function ExecutionProcessesProviderWrapper({
   children: ReactNode;
 }) {
   const { selectedSessionId } = useWorkspaceContext();
-
   return (
     <ExecutionProcessesProvider sessionId={selectedSessionId}>
       {children}
