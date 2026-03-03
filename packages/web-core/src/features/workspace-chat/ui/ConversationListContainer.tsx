@@ -50,6 +50,10 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import {
+  getExecutionProcessesFirstConversationAt,
+  getExecutionProcessesFirstVisibleAt,
+  getExecutionProcessesStreamConnectedAt,
+  getExecutionProcessesStreamReadyAt,
   getHistoryInitialLoadDoneAt,
   getHistoryInitialLoadStartAt,
   getHistoryRemainingBatchesDoneAt,
@@ -81,6 +85,10 @@ interface TimingMilestones {
   workspaceRouteEnteredAtMs?: number;
   workspaceDataReadyAtMs?: number;
   workspaceSessionsReadyAtMs?: number;
+  executionProcessesStreamConnectedAtMs?: number;
+  executionProcessesStreamReadyAtMs?: number;
+  executionProcessesFirstVisibleAtMs?: number;
+  executionProcessesFirstConversationAtMs?: number;
   historyInitialLoadStartAtMs?: number;
   historyInitialLoadDoneAtMs?: number;
   historyRemainingBatchesDoneAtMs?: number;
@@ -97,6 +105,10 @@ interface TimingDurations {
   routeToConversationMountMs?: number;
   routeToWorkspaceDataReadyMs?: number;
   routeToWorkspaceSessionsReadyMs?: number;
+  routeToExecutionProcessesStreamConnectedMs?: number;
+  routeToExecutionProcessesStreamReadyMs?: number;
+  routeToExecutionProcessesFirstVisibleMs?: number;
+  routeToExecutionProcessesFirstConversationMs?: number;
   routeToHistoryInitialLoadStartMs?: number;
   routeToHistoryInitialLoadDoneMs?: number;
   routeToHistoryRemainingBatchesDoneMs?: number;
@@ -171,6 +183,14 @@ const createConversationTiming = (
   const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(attemptId);
   const workspaceDataReadyAtMs = getWorkspaceDataReadyAt(attemptId);
   const workspaceSessionsReadyAtMs = getWorkspaceSessionsReadyAt(attemptId);
+  const executionProcessesStreamConnectedAtMs =
+    getExecutionProcessesStreamConnectedAt(sessionId);
+  const executionProcessesStreamReadyAtMs =
+    getExecutionProcessesStreamReadyAt(sessionId);
+  const executionProcessesFirstVisibleAtMs =
+    getExecutionProcessesFirstVisibleAt(sessionId);
+  const executionProcessesFirstConversationAtMs =
+    getExecutionProcessesFirstConversationAt(sessionId);
   const historyInitialLoadStartAtMs = getHistoryInitialLoadStartAt(attemptId);
   const historyInitialLoadDoneAtMs = getHistoryInitialLoadDoneAt(attemptId);
   const historyRemainingBatchesDoneAtMs =
@@ -184,6 +204,10 @@ const createConversationTiming = (
       workspaceRouteEnteredAtMs,
       workspaceDataReadyAtMs,
       workspaceSessionsReadyAtMs,
+      executionProcessesStreamConnectedAtMs,
+      executionProcessesStreamReadyAtMs,
+      executionProcessesFirstVisibleAtMs,
+      executionProcessesFirstConversationAtMs,
       historyInitialLoadStartAtMs,
       historyInitialLoadDoneAtMs,
       historyRemainingBatchesDoneAtMs,
@@ -214,6 +238,42 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
       ? Math.max(
           0,
           timing.milestones.workspaceSessionsReadyAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToExecutionProcessesStreamConnectedMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.executionProcessesStreamConnectedAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.executionProcessesStreamConnectedAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToExecutionProcessesStreamReadyMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.executionProcessesStreamReadyAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.executionProcessesStreamReadyAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToExecutionProcessesFirstVisibleMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.executionProcessesFirstVisibleAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.executionProcessesFirstVisibleAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToExecutionProcessesFirstConversationMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.executionProcessesFirstConversationAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.executionProcessesFirstConversationAtMs -
             timing.milestones.workspaceRouteEnteredAtMs
         )
       : undefined;
@@ -343,6 +403,58 @@ const maybePopulateWorkspaceMilestones = (
     );
     if (workspaceSessionsReadyAtMs != null) {
       timing.milestones.workspaceSessionsReadyAtMs = workspaceSessionsReadyAtMs;
+      changed = true;
+    }
+  }
+
+  if (
+    timing.sessionId &&
+    timing.milestones.executionProcessesStreamConnectedAtMs == null
+  ) {
+    const executionProcessesStreamConnectedAtMs =
+      getExecutionProcessesStreamConnectedAt(timing.sessionId);
+    if (executionProcessesStreamConnectedAtMs != null) {
+      timing.milestones.executionProcessesStreamConnectedAtMs =
+        executionProcessesStreamConnectedAtMs;
+      changed = true;
+    }
+  }
+
+  if (
+    timing.sessionId &&
+    timing.milestones.executionProcessesStreamReadyAtMs == null
+  ) {
+    const executionProcessesStreamReadyAtMs =
+      getExecutionProcessesStreamReadyAt(timing.sessionId);
+    if (executionProcessesStreamReadyAtMs != null) {
+      timing.milestones.executionProcessesStreamReadyAtMs =
+        executionProcessesStreamReadyAtMs;
+      changed = true;
+    }
+  }
+
+  if (
+    timing.sessionId &&
+    timing.milestones.executionProcessesFirstVisibleAtMs == null
+  ) {
+    const executionProcessesFirstVisibleAtMs =
+      getExecutionProcessesFirstVisibleAt(timing.sessionId);
+    if (executionProcessesFirstVisibleAtMs != null) {
+      timing.milestones.executionProcessesFirstVisibleAtMs =
+        executionProcessesFirstVisibleAtMs;
+      changed = true;
+    }
+  }
+
+  if (
+    timing.sessionId &&
+    timing.milestones.executionProcessesFirstConversationAtMs == null
+  ) {
+    const executionProcessesFirstConversationAtMs =
+      getExecutionProcessesFirstConversationAt(timing.sessionId);
+    if (executionProcessesFirstConversationAtMs != null) {
+      timing.milestones.executionProcessesFirstConversationAtMs =
+        executionProcessesFirstConversationAtMs;
       changed = true;
     }
   }

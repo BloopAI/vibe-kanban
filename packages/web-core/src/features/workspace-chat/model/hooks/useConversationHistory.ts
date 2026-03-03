@@ -12,6 +12,7 @@ import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import {
+  markExecutionProcessesFirstConversation,
   markHistoryInitialLoadDone,
   markHistoryInitialLoadStart,
   markHistoryRemainingBatchesDone,
@@ -95,6 +96,11 @@ export const useConversationHistory = ({
         ep.run_reason === 'archivescript' ||
         ep.run_reason === 'codingagent'
     );
+    if (executionProcesses.current.length > 0) {
+      markExecutionProcessesFirstConversation(
+        executionProcesses.current[0]?.session_id
+      );
+    }
   }, [executionProcessesRaw]);
 
   const loadEntriesForHistoricExecutionProcess = (
