@@ -293,6 +293,27 @@ export function Navbar({
           {/* Right side: sync indicator + action buttons + user slot */}
           <div className="flex items-center gap-1 shrink-0">
             <SyncErrorIndicator errors={syncErrors} />
+            {isOnProjectPage &&
+              rightItems
+                .filter(
+                  (item): item is NavbarActionItem => !isDivider(item)
+                )
+                .map((item) => (
+                  <NavbarIconButton
+                    key={item.id}
+                    icon={item.icon}
+                    isActive={item.isActive}
+                    onClick={item.onClick}
+                    aria-label={item.tooltip}
+                    tooltip={item.tooltip}
+                    disabled={!!item.disabled}
+                    className={
+                      item.disabled
+                        ? 'opacity-40 cursor-not-allowed'
+                        : ''
+                    }
+                  />
+                ))}
             {onReload && (
               <button
                 type="button"
@@ -303,7 +324,7 @@ export function Navbar({
                 <ArrowClockwiseIcon className="size-icon-sm" />
               </button>
             )}
-            {onOpenSettings && (
+            {!isOnProjectPage && onOpenSettings && (
               <button
                 type="button"
                 className="flex items-center justify-center text-low hover:text-normal"
@@ -313,7 +334,7 @@ export function Navbar({
                 <GearIcon className="size-icon-sm" />
               </button>
             )}
-            {onOpenCommandBar && (
+            {!isOnProjectPage && onOpenCommandBar && (
               <button
                 type="button"
                 className="flex items-center justify-center text-low hover:text-normal"

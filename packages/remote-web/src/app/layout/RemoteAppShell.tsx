@@ -60,8 +60,12 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
   const { hostId: routeHostId } = useParams({ strict: false });
   const { isSignedIn } = useAuth();
   const isWorkspaceContextRoute = location.pathname.includes("/workspaces");
+  const isProjectRoute = /^\/projects\/[^/]+/.test(location.pathname);
 
-  useCommandBarShortcut(() => CommandBarDialog.show(), isWorkspaceContextRoute);
+  useCommandBarShortcut(
+    () => CommandBarDialog.show(),
+    isWorkspaceContextRoute || isProjectRoute,
+  );
   const isMobile = useIsMobile();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -486,7 +490,7 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
       </MobileDrawer>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {isMobile && (
+        {isMobile && (isWorkspaceContextRoute || isProjectRoute) && (
           <RemoteNavbarContainer
             organizationName={selectedOrgName}
             mobileMode={isMobile}
@@ -494,7 +498,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
             mobileUserSlot={mobileUserSlot}
           />
         )}
-        {!isMobile && isWorkspaceContextRoute && <RemoteDesktopNavbar />}
+        {!isMobile && (isWorkspaceContextRoute || isProjectRoute) && (
+          <RemoteDesktopNavbar />
+        )}
         <div className="min-h-0 flex-1">{children}</div>
       </div>
     </div>
