@@ -47,12 +47,28 @@ export const useExecutionProcesses = (
       initialData
     );
 
-  const executionProcessesById = data?.execution_processes ?? {};
-  const executionProcesses = Object.values(executionProcessesById).sort(
+  const streamedExecutionProcesses = Object.values(
+    data?.execution_processes ?? {}
+  ).sort(
     (a, b) =>
       new Date(a.created_at as unknown as string).getTime() -
       new Date(b.created_at as unknown as string).getTime()
   );
+
+  // Guard against stale buffered stream data when switching sessions quickly.
+  const executionProcesses = sessionId
+    ? streamedExecutionProcesses.filter(
+        (executionProcess) => executionProcess.session_id === sessionId
+      )
+    : streamedExecutionProcesses;
+
+  const executionProcessesById = executionProcesses.reduce<
+    Record<string, ExecutionProcess>
+  >((processesById, executionProcess) => {
+    processesById[executionProcess.id] = executionProcess;
+    return processesById;
+  }, {});
+
   const isAttemptRunning = executionProcesses.some(
     (process) =>
       (process.run_reason === 'codingagent' ||
