@@ -45,12 +45,13 @@ import {
 import { useConversationHistory } from '../model/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
-import type { RepoWithTargetBranch } from 'shared/types';
+import type { ExecutionProcess, RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import {
   getExecutionProcessesFirstConversationAt,
+  getExecutionProcessesFirstSnapshotSummary,
   getExecutionProcessesFirstVisibleAt,
   getExecutionProcessesStreamConnectedAt,
   getExecutionProcessesStreamReadyAt,
@@ -148,6 +149,11 @@ interface ConversationListTimingSnapshot {
   startedAtMs: number;
   milestones: TimingMilestones;
   durations: TimingDurations;
+  diagnostics: {
+    executionProcessesFirstSnapshotByRunReason?: Partial<
+      Record<ExecutionProcess['run_reason'], number>
+    >;
+  };
   counters: {
     entriesUpdatedCalls: number;
     debounceCleared: number;
@@ -191,6 +197,8 @@ const createConversationTiming = (
     getExecutionProcessesFirstVisibleAt(sessionId);
   const executionProcessesFirstConversationAtMs =
     getExecutionProcessesFirstConversationAt(sessionId);
+  const executionProcessesFirstSnapshotSummary =
+    getExecutionProcessesFirstSnapshotSummary(sessionId);
   const historyInitialLoadStartAtMs = getHistoryInitialLoadStartAt(attemptId);
   const historyInitialLoadDoneAtMs = getHistoryInitialLoadDoneAt(attemptId);
   const historyRemainingBatchesDoneAtMs =
@@ -213,6 +221,10 @@ const createConversationTiming = (
       historyRemainingBatchesDoneAtMs,
     },
     durations: {},
+    diagnostics: {
+      executionProcessesFirstSnapshotByRunReason:
+        executionProcessesFirstSnapshotSummary?.byRunReason,
+    },
     counters: {
       entriesUpdatedCalls: 0,
       debounceCleared: 0,
@@ -455,6 +467,19 @@ const maybePopulateWorkspaceMilestones = (
     if (executionProcessesFirstConversationAtMs != null) {
       timing.milestones.executionProcessesFirstConversationAtMs =
         executionProcessesFirstConversationAtMs;
+      changed = true;
+    }
+  }
+
+  if (
+    timing.sessionId &&
+    timing.diagnostics.executionProcessesFirstSnapshotByRunReason == null
+  ) {
+    const executionProcessesFirstSnapshotSummary =
+      getExecutionProcessesFirstSnapshotSummary(timing.sessionId);
+    if (executionProcessesFirstSnapshotSummary) {
+      timing.diagnostics.executionProcessesFirstSnapshotByRunReason =
+        executionProcessesFirstSnapshotSummary.byRunReason;
       changed = true;
     }
   }

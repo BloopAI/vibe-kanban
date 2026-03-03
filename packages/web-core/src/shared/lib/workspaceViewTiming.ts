@@ -1,3 +1,9 @@
+import type { ExecutionProcess } from 'shared/types';
+
+export interface ExecutionProcessesFirstSnapshotSummary {
+  byRunReason: Partial<Record<ExecutionProcess['run_reason'], number>>;
+}
+
 type WorkspaceViewTimingWindow = Window &
   typeof globalThis & {
     __vkWorkspaceRouteEnteredAtMs?: Record<string, number>;
@@ -10,6 +16,10 @@ type WorkspaceViewTimingWindow = Window &
     __vkExecutionProcessesStreamReadyAtMs?: Record<string, number>;
     __vkExecutionProcessesFirstVisibleAtMs?: Record<string, number>;
     __vkExecutionProcessesFirstConversationAtMs?: Record<string, number>;
+    __vkExecutionProcessesFirstSnapshotSummary?: Record<
+      string,
+      ExecutionProcessesFirstSnapshotSummary
+    >;
   };
 
 const getTimingWindow = (): WorkspaceViewTimingWindow | null => {
@@ -192,6 +202,9 @@ export const resetExecutionProcessesTiming = (
   if (timingWindow.__vkExecutionProcessesFirstConversationAtMs) {
     delete timingWindow.__vkExecutionProcessesFirstConversationAtMs[sessionId];
   }
+  if (timingWindow.__vkExecutionProcessesFirstSnapshotSummary) {
+    delete timingWindow.__vkExecutionProcessesFirstSnapshotSummary[sessionId];
+  }
 };
 
 export const markExecutionProcessesStreamConnected = (
@@ -294,4 +307,38 @@ export const getExecutionProcessesFirstConversationAt = (
 
   const timingWindow = getTimingWindow();
   return timingWindow?.__vkExecutionProcessesFirstConversationAtMs?.[sessionId];
+};
+
+export const markExecutionProcessesFirstSnapshotSummary = (
+  sessionId: string | undefined | null,
+  executionProcesses: ExecutionProcess[]
+): void => {
+  if (!sessionId) return;
+
+  const timingWindow = getTimingWindow();
+  if (!timingWindow) return;
+
+  timingWindow.__vkExecutionProcessesFirstSnapshotSummary ??= {};
+  if (timingWindow.__vkExecutionProcessesFirstSnapshotSummary[sessionId])
+    return;
+
+  const byRunReason: Partial<Record<ExecutionProcess['run_reason'], number>> =
+    {};
+  for (const process of executionProcesses) {
+    byRunReason[process.run_reason] =
+      (byRunReason[process.run_reason] ?? 0) + 1;
+  }
+
+  timingWindow.__vkExecutionProcessesFirstSnapshotSummary[sessionId] = {
+    byRunReason,
+  };
+};
+
+export const getExecutionProcessesFirstSnapshotSummary = (
+  sessionId: string | undefined | null
+): ExecutionProcessesFirstSnapshotSummary | undefined => {
+  if (!sessionId) return undefined;
+
+  const timingWindow = getTimingWindow();
+  return timingWindow?.__vkExecutionProcessesFirstSnapshotSummary?.[sessionId];
 };

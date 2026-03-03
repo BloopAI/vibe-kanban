@@ -3,6 +3,7 @@ import { useJsonPatchWsStream } from '@/shared/hooks/useJsonPatchWsStream';
 import type { ExecutionProcess } from 'shared/types';
 import {
   markExecutionProcessesFirstVisible,
+  markExecutionProcessesFirstSnapshotSummary,
   markExecutionProcessesStreamConnected,
   markExecutionProcessesStreamReady,
   resetExecutionProcessesTiming,
@@ -82,6 +83,11 @@ export const useExecutionProcesses = (
     if (!sessionId || !isInitialized) return;
     markExecutionProcessesStreamReady(sessionId);
   }, [sessionId, isInitialized]);
+
+  useEffect(() => {
+    if (!sessionId || !isInitialized) return;
+    markExecutionProcessesFirstSnapshotSummary(sessionId, executionProcesses);
+  }, [sessionId, isInitialized, executionProcesses]);
 
   useEffect(() => {
     if (!sessionId || executionProcesses.length === 0) return;
