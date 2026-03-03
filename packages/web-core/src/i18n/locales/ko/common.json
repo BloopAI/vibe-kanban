@@ -142,6 +142,7 @@
     "pin": "고정",
     "unpin": "고정 해제",
     "archive": "보관",
+    "unarchive": "보관 해제",
     "more": "더 많은 작업",
     "rename": {
       "title": "워크스페이스 이름 변경",

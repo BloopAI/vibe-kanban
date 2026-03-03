@@ -142,6 +142,7 @@
     "pin": "Fijar",
     "unpin": "Desfijar",
     "archive": "Archivar",
+    "unarchive": "Desarchivar",
     "more": "Más acciones",
     "rename": {
       "title": "Renombrar espacio de trabajo",
