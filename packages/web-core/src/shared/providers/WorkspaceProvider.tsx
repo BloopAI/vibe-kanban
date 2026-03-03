@@ -13,6 +13,10 @@ import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import type { DiffStats } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+import {
+  markWorkspaceDataReady,
+  markWorkspaceSessionsReady,
+} from '@/shared/lib/workspaceViewTiming';
 
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 
@@ -108,6 +112,16 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
     }),
     [diffs]
   );
+
+  useEffect(() => {
+    if (isCreateMode || !workspaceId || !workspace) return;
+    markWorkspaceDataReady(workspaceId);
+  }, [isCreateMode, workspaceId, workspace]);
+
+  useEffect(() => {
+    if (isCreateMode || !workspaceId || isSessionsLoading) return;
+    markWorkspaceSessionsReady(workspaceId);
+  }, [isCreateMode, workspaceId, isSessionsLoading]);
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 

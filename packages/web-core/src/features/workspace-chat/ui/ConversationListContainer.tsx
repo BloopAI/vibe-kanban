@@ -49,7 +49,11 @@ import type { RepoWithTargetBranch } from 'shared/types';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
-import { getWorkspaceViewEnteredAt } from '@/shared/lib/workspaceViewTiming';
+import {
+  getWorkspaceDataReadyAt,
+  getWorkspaceSessionsReadyAt,
+  getWorkspaceViewEnteredAt,
+} from '@/shared/lib/workspaceViewTiming';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -72,7 +76,11 @@ interface MessageListContext {
 
 interface TimingMilestones {
   workspaceRouteEnteredAtMs?: number;
+  workspaceDataReadyAtMs?: number;
+  workspaceSessionsReadyAtMs?: number;
   firstEntriesUpdatedAtMs?: number;
+  firstNonEmptyEntriesUpdatedAtMs?: number;
+  firstLoadingFalseEntriesUpdatedAtMs?: number;
   firstDebounceFiredAtMs?: number;
   firstChannelDataCommittedAtMs?: number;
   firstPaintAfterContentAtMs?: number;
@@ -80,8 +88,14 @@ interface TimingMilestones {
 
 interface TimingDurations {
   routeToConversationMountMs?: number;
+  routeToWorkspaceDataReadyMs?: number;
+  routeToWorkspaceSessionsReadyMs?: number;
+  routeToFirstNonEmptyEntriesMs?: number;
+  routeToFirstLoadingFalseEntriesMs?: number;
   routeToFirstPaintMs?: number;
   mountToFirstEntriesMs?: number;
+  mountToFirstNonEmptyEntriesMs?: number;
+  mountToFirstLoadingFalseEntriesMs?: number;
   mountToFirstCommitMs?: number;
   mountToFirstPaintMs?: number;
 }
@@ -143,6 +157,8 @@ const createConversationTiming = (
   sessionId?: string
 ): ConversationListTimingSnapshot => {
   const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(attemptId);
+  const workspaceDataReadyAtMs = getWorkspaceDataReadyAt(attemptId);
+  const workspaceSessionsReadyAtMs = getWorkspaceSessionsReadyAt(attemptId);
 
   return {
     attemptId,
@@ -150,6 +166,8 @@ const createConversationTiming = (
     startedAtMs: getNowMs(),
     milestones: {
       workspaceRouteEnteredAtMs,
+      workspaceDataReadyAtMs,
+      workspaceSessionsReadyAtMs,
     },
     durations: {},
     counters: {
@@ -162,6 +180,24 @@ const createConversationTiming = (
 };
 
 const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
+  timing.durations.routeToWorkspaceDataReadyMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.workspaceDataReadyAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.workspaceDataReadyAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToWorkspaceSessionsReadyMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.workspaceSessionsReadyAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.workspaceSessionsReadyAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
   timing.durations.routeToConversationMountMs =
     timing.milestones.workspaceRouteEnteredAtMs != null
       ? Math.max(
@@ -178,9 +214,36 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
             timing.milestones.workspaceRouteEnteredAtMs
         )
       : undefined;
+  timing.durations.routeToFirstNonEmptyEntriesMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.firstNonEmptyEntriesUpdatedAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.firstNonEmptyEntriesUpdatedAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
+  timing.durations.routeToFirstLoadingFalseEntriesMs =
+    timing.milestones.workspaceRouteEnteredAtMs != null &&
+    timing.milestones.firstLoadingFalseEntriesUpdatedAtMs != null
+      ? Math.max(
+          0,
+          timing.milestones.firstLoadingFalseEntriesUpdatedAtMs -
+            timing.milestones.workspaceRouteEnteredAtMs
+        )
+      : undefined;
   timing.durations.mountToFirstEntriesMs =
     timing.milestones.firstEntriesUpdatedAtMs != null
       ? timing.milestones.firstEntriesUpdatedAtMs - timing.startedAtMs
+      : undefined;
+  timing.durations.mountToFirstNonEmptyEntriesMs =
+    timing.milestones.firstNonEmptyEntriesUpdatedAtMs != null
+      ? timing.milestones.firstNonEmptyEntriesUpdatedAtMs - timing.startedAtMs
+      : undefined;
+  timing.durations.mountToFirstLoadingFalseEntriesMs =
+    timing.milestones.firstLoadingFalseEntriesUpdatedAtMs != null
+      ? timing.milestones.firstLoadingFalseEntriesUpdatedAtMs -
+        timing.startedAtMs
       : undefined;
   timing.durations.mountToFirstCommitMs =
     timing.milestones.firstChannelDataCommittedAtMs != null
@@ -192,16 +255,42 @@ const updateTimingDurations = (timing: ConversationListTimingSnapshot) => {
       : undefined;
 };
 
-const maybePopulateWorkspaceRouteMilestone = (
+const maybePopulateWorkspaceMilestones = (
   timing: ConversationListTimingSnapshot
 ) => {
-  if (timing.milestones.workspaceRouteEnteredAtMs != null) return;
+  let changed = false;
 
-  const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(timing.attemptId);
-  if (workspaceRouteEnteredAtMs == null) return;
+  if (timing.milestones.workspaceRouteEnteredAtMs == null) {
+    const workspaceRouteEnteredAtMs = getWorkspaceViewEnteredAt(
+      timing.attemptId
+    );
+    if (workspaceRouteEnteredAtMs != null) {
+      timing.milestones.workspaceRouteEnteredAtMs = workspaceRouteEnteredAtMs;
+      changed = true;
+    }
+  }
 
-  timing.milestones.workspaceRouteEnteredAtMs = workspaceRouteEnteredAtMs;
-  updateTimingDurations(timing);
+  if (timing.milestones.workspaceDataReadyAtMs == null) {
+    const workspaceDataReadyAtMs = getWorkspaceDataReadyAt(timing.attemptId);
+    if (workspaceDataReadyAtMs != null) {
+      timing.milestones.workspaceDataReadyAtMs = workspaceDataReadyAtMs;
+      changed = true;
+    }
+  }
+
+  if (timing.milestones.workspaceSessionsReadyAtMs == null) {
+    const workspaceSessionsReadyAtMs = getWorkspaceSessionsReadyAt(
+      timing.attemptId
+    );
+    if (workspaceSessionsReadyAtMs != null) {
+      timing.milestones.workspaceSessionsReadyAtMs = workspaceSessionsReadyAtMs;
+      changed = true;
+    }
+  }
+
+  if (changed) {
+    updateTimingDurations(timing);
+  }
 };
 
 const setTimingMilestone = <K extends keyof TimingMilestones>(
@@ -435,9 +524,23 @@ export const ConversationList = forwardRef<
     const receivedAtMs = getNowMs();
     const timing = timingRef.current;
     if (timing) {
-      maybePopulateWorkspaceRouteMilestone(timing);
+      maybePopulateWorkspaceMilestones(timing);
       timing.counters.entriesUpdatedCalls += 1;
       setTimingMilestone(timing, 'firstEntriesUpdatedAtMs', receivedAtMs);
+      if (newEntries.length > 0) {
+        setTimingMilestone(
+          timing,
+          'firstNonEmptyEntriesUpdatedAtMs',
+          receivedAtMs
+        );
+      }
+      if (!newLoading) {
+        setTimingMilestone(
+          timing,
+          'firstLoadingFalseEntriesUpdatedAtMs',
+          receivedAtMs
+        );
+      }
     }
 
     pendingUpdateRef.current = {
@@ -635,7 +738,7 @@ export const ConversationList = forwardRef<
     const timing = timingRef.current;
     if (!timing) return;
 
-    maybePopulateWorkspaceRouteMilestone(timing);
+    maybePopulateWorkspaceMilestones(timing);
     setTimingMilestone(timing, 'firstChannelDataCommittedAtMs', getNowMs());
   }, [channelData]);
 
@@ -648,7 +751,7 @@ export const ConversationList = forwardRef<
       const activeTiming = timingRef.current;
       if (!activeTiming) return;
 
-      maybePopulateWorkspaceRouteMilestone(activeTiming);
+      maybePopulateWorkspaceMilestones(activeTiming);
       setTimingMilestone(
         activeTiming,
         'firstPaintAfterContentAtMs',
