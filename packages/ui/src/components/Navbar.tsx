@@ -295,9 +295,7 @@ export function Navbar({
             <SyncErrorIndicator errors={syncErrors} />
             {isOnProjectPage &&
               rightItems
-                .filter(
-                  (item): item is NavbarActionItem => !isDivider(item)
-                )
+                .filter((item): item is NavbarActionItem => !isDivider(item))
                 .map((item) => (
                   <NavbarIconButton
                     key={item.id}
@@ -308,9 +306,7 @@ export function Navbar({
                     tooltip={item.tooltip}
                     disabled={!!item.disabled}
                     className={
-                      item.disabled
-                        ? 'opacity-40 cursor-not-allowed'
-                        : ''
+                      item.disabled ? 'opacity-40 cursor-not-allowed' : ''
                     }
                   />
                 ))}
