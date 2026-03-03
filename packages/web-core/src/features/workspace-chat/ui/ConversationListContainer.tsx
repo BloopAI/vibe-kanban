@@ -153,6 +153,10 @@ interface ConversationListTimingSnapshot {
     executionProcessesFirstSnapshotByRunReason?: Partial<
       Record<ExecutionProcess['run_reason'], number>
     >;
+    executionProcessesFirstSnapshotVisibleByRunReason?: Partial<
+      Record<ExecutionProcess['run_reason'], number>
+    >;
+    executionProcessesFirstSnapshotDroppedCount?: number;
   };
   counters: {
     entriesUpdatedCalls: number;
@@ -224,6 +228,10 @@ const createConversationTiming = (
     diagnostics: {
       executionProcessesFirstSnapshotByRunReason:
         executionProcessesFirstSnapshotSummary?.byRunReason,
+      executionProcessesFirstSnapshotVisibleByRunReason:
+        executionProcessesFirstSnapshotSummary?.visibleByRunReason,
+      executionProcessesFirstSnapshotDroppedCount:
+        executionProcessesFirstSnapshotSummary?.droppedCount,
     },
     counters: {
       entriesUpdatedCalls: 0,
@@ -473,13 +481,20 @@ const maybePopulateWorkspaceMilestones = (
 
   if (
     timing.sessionId &&
-    timing.diagnostics.executionProcessesFirstSnapshotByRunReason == null
+    (timing.diagnostics.executionProcessesFirstSnapshotByRunReason == null ||
+      timing.diagnostics.executionProcessesFirstSnapshotVisibleByRunReason ==
+        null ||
+      timing.diagnostics.executionProcessesFirstSnapshotDroppedCount == null)
   ) {
     const executionProcessesFirstSnapshotSummary =
       getExecutionProcessesFirstSnapshotSummary(timing.sessionId);
     if (executionProcessesFirstSnapshotSummary) {
       timing.diagnostics.executionProcessesFirstSnapshotByRunReason =
         executionProcessesFirstSnapshotSummary.byRunReason;
+      timing.diagnostics.executionProcessesFirstSnapshotVisibleByRunReason =
+        executionProcessesFirstSnapshotSummary.visibleByRunReason;
+      timing.diagnostics.executionProcessesFirstSnapshotDroppedCount =
+        executionProcessesFirstSnapshotSummary.droppedCount;
       changed = true;
     }
   }

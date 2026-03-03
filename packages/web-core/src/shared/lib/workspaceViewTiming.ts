@@ -2,6 +2,8 @@ import type { ExecutionProcess } from 'shared/types';
 
 export interface ExecutionProcessesFirstSnapshotSummary {
   byRunReason: Partial<Record<ExecutionProcess['run_reason'], number>>;
+  visibleByRunReason: Partial<Record<ExecutionProcess['run_reason'], number>>;
+  droppedCount: number;
 }
 
 type WorkspaceViewTimingWindow = Window &
@@ -324,13 +326,25 @@ export const markExecutionProcessesFirstSnapshotSummary = (
 
   const byRunReason: Partial<Record<ExecutionProcess['run_reason'], number>> =
     {};
+  const visibleByRunReason: Partial<
+    Record<ExecutionProcess['run_reason'], number>
+  > = {};
+  let droppedCount = 0;
   for (const process of executionProcesses) {
     byRunReason[process.run_reason] =
       (byRunReason[process.run_reason] ?? 0) + 1;
+    if (process.dropped) {
+      droppedCount += 1;
+      continue;
+    }
+    visibleByRunReason[process.run_reason] =
+      (visibleByRunReason[process.run_reason] ?? 0) + 1;
   }
 
   timingWindow.__vkExecutionProcessesFirstSnapshotSummary[sessionId] = {
     byRunReason,
+    visibleByRunReason,
+    droppedCount,
   };
 };
 
