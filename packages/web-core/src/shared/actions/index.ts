@@ -411,6 +411,7 @@ export const Actions = {
     icon: GitPullRequestIcon,
     keywords: ['pull request'],
     requiresTarget: ActionTargetType.NONE,
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     execute: async () => {
       await CreateWorkspaceFromPrDialog.show({});
     },

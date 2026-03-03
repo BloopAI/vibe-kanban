@@ -106,6 +106,7 @@ export const Pages: Record<StaticPageId, CommandBarPage> = {
     id: 'view-options',
     title: 'View Options',
     parent: 'root',
+    isVisible: (ctx) => ctx.layoutMode === 'workspaces',
     items: [
       {
         type: 'group',
