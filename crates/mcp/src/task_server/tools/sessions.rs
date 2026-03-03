@@ -288,7 +288,7 @@ impl TaskServer {
 mod tests {
     use super::*;
     use rmcp::handler::server::tool::Parameters;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_partial_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     async fn setup() -> (MockServer, TaskServer) {
@@ -414,6 +414,10 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path(format!("/api/sessions/{}/follow-up", sid)))
+            .and(body_partial_json(serde_json::json!({
+                "prompt": "Fix the tests",
+                "executor_config": { "executor": "CLAUDE_CODE" }
+            })))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "success": true,
@@ -481,6 +485,10 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path(format!("/api/sessions/{}/queue", sid)))
+            .and(body_partial_json(serde_json::json!({
+                "message": "Continue working",
+                "executor_config": { "executor": "CLAUDE_CODE" }
+            })))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "success": true,

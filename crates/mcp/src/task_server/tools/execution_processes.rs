@@ -94,12 +94,15 @@ impl TaskServer {
     ) -> Result<CallToolResult, ErrorData> {
         let url = self.url(&format!("/api/approvals/{}/respond", approval_id));
 
-        let status_value = match status.to_ascii_lowercase().as_str() {
+        let status_value = match status.trim().to_ascii_lowercase().as_str() {
             "approved" | "approve" => serde_json::json!({"status": "approved"}),
             "denied" | "deny" => {
                 let mut v = serde_json::json!({"status": "denied"});
-                if let Some(r) = &reason {
-                    v["reason"] = serde_json::json!(r);
+                if let Some(r) = reason {
+                    let trimmed = r.trim().to_string();
+                    if !trimmed.is_empty() {
+                        v["reason"] = serde_json::json!(trimmed);
+                    }
                 }
                 v
             }
@@ -135,7 +138,7 @@ impl TaskServer {
 mod tests {
     use super::*;
     use rmcp::handler::server::tool::Parameters;
-    use wiremock::matchers::{method, path};
+    use wiremock::matchers::{body_partial_json, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     async fn setup() -> (MockServer, TaskServer) {
@@ -272,6 +275,9 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path(format!("/api/approvals/{}/respond", approval_id)))
+            .and(body_partial_json(serde_json::json!({
+                "status": { "status": "approved" }
+            })))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "success": true,
@@ -301,6 +307,9 @@ mod tests {
 
         Mock::given(method("POST"))
             .and(path(format!("/api/approvals/{}/respond", approval_id)))
+            .and(body_partial_json(serde_json::json!({
+                "status": { "status": "denied", "reason": "Too risky" }
+            })))
             .respond_with(
                 ResponseTemplate::new(200).set_body_json(serde_json::json!({
                     "success": true,
