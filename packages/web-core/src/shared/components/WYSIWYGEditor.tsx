@@ -577,7 +577,9 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 transformers={activeTransformers}
                 preserveMarkdownSyntax={!disabled}
               />
-              {!disabled && !isPreviewMode && <ToolbarPlugin />}
+              {!disabled && !isPreviewMode && !showStaticToolbar && (
+                <ToolbarPlugin />
+              )}
 
               <div
                 className="relative"
