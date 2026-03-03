@@ -127,6 +127,7 @@
     "pin": "Épingler",
     "unpin": "Désépingler",
     "archive": "Archiver",
+    "unarchive": "Désarchiver",
     "more": "Plus d'actions",
     "rename": {
       "title": "Renommer l'espace de travail",
