@@ -111,22 +111,27 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
 
   const isLoading = isLoadingList || isLoadingWorkspace;
 
+  // Mark workspace as seen whenever the active workspaceId changes.
+  // This covers all navigation paths: sidebar clicks, kanban card clicks,
+  // direct URL navigation, and post-creation redirects.
+  useEffect(() => {
+    if (!workspaceId || isCreateMode) return;
+
+    attemptsApi
+      .markSeen(workspaceId)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      })
+      .catch((error) => {
+        console.warn('Failed to mark workspace as seen:', error);
+      });
+  }, [workspaceId, isCreateMode, queryClient]);
+
   const selectWorkspace = useCallback(
     (id: string) => {
-      // Fire-and-forget mark as seen (don't block navigation)
-      attemptsApi
-        .markSeen(id)
-        .then(() => {
-          // Invalidate summary cache to refresh unseen indicators
-          queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
-        })
-        .catch((error) => {
-          // Silently fail - this is not critical
-          console.warn('Failed to mark workspace as seen:', error);
-        });
       appNavigation.goToWorkspace(id);
     },
-    [queryClient, appNavigation]
+    [appNavigation]
   );
 
   const navigateToCreate = useMemo(
