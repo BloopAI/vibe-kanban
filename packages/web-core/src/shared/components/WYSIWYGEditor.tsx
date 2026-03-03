@@ -609,6 +609,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <StaticToolbarPlugin
                   saveStatus={saveStatus}
                   extraActions={staticToolbarActions}
+                  isPreviewMode={isPreviewMode}
+                  onTogglePreview={() => setIsPreviewMode((p) => !p)}
                 />
               )}
 

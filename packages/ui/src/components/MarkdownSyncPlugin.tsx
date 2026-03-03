@@ -7,6 +7,11 @@ import {
 } from '@lexical/markdown';
 import { $getRoot, type EditorState } from 'lexical';
 
+// Lexical escapes markdown-special characters (*, _, ~, etc.) when they
+// appear as literal text.  In plain-text editing mode the user *intends*
+// those characters so we strip the backslash escapes.
+const MARKDOWN_ESCAPE_RE = /\\([\\`*_{}[\]()#+\-.!~>|])/g;
+
 type MarkdownSyncPluginProps = {
   value: string;
   onChange?: (markdown: string) => void;
@@ -24,11 +29,6 @@ type MarkdownSyncPluginProps = {
  *
  * Uses an internal ref to prevent infinite update loops during bidirectional sync.
  */
-// Lexical escapes markdown-special characters (*, _, ~, etc.) when they
-// appear as literal text.  In plain-text editing mode the user *intends*
-// those characters so we strip the backslash escapes.
-const MARKDOWN_ESCAPE_RE = /\\([\\`*_{}[\]()#+\-.!~>|])/g;
-
 export function MarkdownSyncPlugin({
   value,
   onChange,
@@ -39,6 +39,13 @@ export function MarkdownSyncPlugin({
 }: MarkdownSyncPluginProps) {
   const [editor] = useLexicalComposerContext();
   const lastSerializedRef = useRef<string | undefined>(undefined);
+  const prevTransformersRef = useRef(transformers);
+
+  // Detect transformer changes (e.g., toggling preview mode) and force re-parse
+  if (transformers !== prevTransformersRef.current) {
+    prevTransformersRef.current = transformers;
+    lastSerializedRef.current = undefined;
+  }
 
   // Handle editable state
   useEffect(() => {
@@ -81,11 +88,12 @@ export function MarkdownSyncPlugin({
       if (!onChange) return;
 
       let markdown = editorState.read(() =>
-        $convertToMarkdownString(transformers)
+        $convertToMarkdownString(transformers),
       );
       if (preserveMarkdownSyntax) {
         markdown = markdown.replace(MARKDOWN_ESCAPE_RE, '$1');
       }
+
       if (markdown === lastSerializedRef.current) return;
 
       lastSerializedRef.current = markdown;

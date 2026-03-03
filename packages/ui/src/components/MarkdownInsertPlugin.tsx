@@ -77,7 +77,7 @@ export function MarkdownInsertPlugin() {
 
         return true;
       },
-      COMMAND_PRIORITY_HIGH
+      COMMAND_PRIORITY_HIGH,
     );
 
     const unregisterList = editor.registerCommand(
@@ -107,7 +107,7 @@ export function MarkdownInsertPlugin() {
 
         return true;
       },
-      COMMAND_PRIORITY_HIGH
+      COMMAND_PRIORITY_HIGH,
     );
 
     return () => {

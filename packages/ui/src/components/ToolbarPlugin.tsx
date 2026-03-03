@@ -35,7 +35,7 @@ function ToolbarButton({
       title={title}
       aria-label={title}
       className={cn(
-        'p-1.5 rounded hover:bg-accent transition-colors bg-secondary/40'
+        'p-1.5 rounded hover:bg-accent transition-colors bg-secondary/40',
       )}
     >
       {children}
@@ -106,7 +106,7 @@ export function ToolbarPlugin() {
     // Keep within viewport horizontally
     left = Math.max(
       VIEWPORT_PADDING,
-      Math.min(left, window.innerWidth - toolbarWidth - VIEWPORT_PADDING)
+      Math.min(left, window.innerWidth - toolbarWidth - VIEWPORT_PADDING),
     );
 
     setPosition({ top, left });
@@ -120,7 +120,7 @@ export function ToolbarPlugin() {
         updateToolbar();
         return false;
       },
-      COMMAND_PRIORITY_CRITICAL
+      COMMAND_PRIORITY_CRITICAL,
     );
   }, [editor, updateToolbar]);
 
@@ -217,6 +217,6 @@ export function ToolbarPlugin() {
         <Code size={iconSize} />
       </ToolbarButton>
     </div>,
-    document.body
+    document.body,
   );
 }
