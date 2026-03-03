@@ -8,6 +8,7 @@
     "core:webview:allow-set-webview-zoom",
     "shell:allow-open",
     "opener:default",
-    "updater:default"
+    "updater:default",
+    "core:tray:default"
   ]
 }
