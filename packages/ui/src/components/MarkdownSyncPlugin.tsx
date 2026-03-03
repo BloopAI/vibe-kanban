@@ -7,12 +7,16 @@ import {
 } from '@lexical/markdown';
 import { $getRoot, type EditorState } from 'lexical';
 
+const MARKDOWN_ESCAPE_RE = /\\([\\`*_{}[\]()#+\-.!~>|])/g;
+
 type MarkdownSyncPluginProps = {
   value: string;
   onChange?: (markdown: string) => void;
   onEditorStateChange?: (state: EditorState) => void;
   editable: boolean;
   transformers: Transformer[];
+  /** Strip backslash escapes from exported markdown (for edit mode where markdown syntax is literal text) */
+  preserveMarkdownSyntax?: boolean;
 };
 
 /**
@@ -26,9 +30,17 @@ export function MarkdownSyncPlugin({
   onEditorStateChange,
   editable,
   transformers,
+  preserveMarkdownSyntax = false,
 }: MarkdownSyncPluginProps) {
   const [editor] = useLexicalComposerContext();
   const lastSerializedRef = useRef<string | undefined>(undefined);
+  const prevTransformersRef = useRef(transformers);
+
+  // Detect transformer changes (e.g., toggling preview mode) and force re-parse
+  if (transformers !== prevTransformersRef.current) {
+    prevTransformersRef.current = transformers;
+    lastSerializedRef.current = undefined;
+  }
 
   // Handle editable state
   useEffect(() => {
@@ -70,15 +82,20 @@ export function MarkdownSyncPlugin({
       onEditorStateChange?.(editorState);
       if (!onChange) return;
 
-      const markdown = editorState.read(() =>
-        $convertToMarkdownString(transformers)
+      let markdown = editorState.read(() =>
+        $convertToMarkdownString(transformers),
       );
+
+      if (preserveMarkdownSyntax) {
+        markdown = markdown.replace(MARKDOWN_ESCAPE_RE, '$1');
+      }
+
       if (markdown === lastSerializedRef.current) return;
 
       lastSerializedRef.current = markdown;
       onChange(markdown);
     });
-  }, [editor, onChange, onEditorStateChange, transformers]);
+  }, [editor, onChange, onEditorStateChange, transformers, preserveMarkdownSyntax]);
 
   return null;
 }

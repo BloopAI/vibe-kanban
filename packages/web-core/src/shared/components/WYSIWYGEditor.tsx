@@ -15,8 +15,12 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
+import {
+  TRANSFORMERS,
+  TEXT_FORMAT_TRANSFORMERS,
+  CODE,
+  type Transformer,
+} from '@lexical/markdown';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
@@ -49,7 +53,7 @@ import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from '@vibe/ui/components/ToolbarPlugin';
 import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
-import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
+import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
 import { MarkdownSyncPlugin } from '@vibe/ui/components/MarkdownSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -426,8 +430,11 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [ImageNode]
     );
 
-    // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
-    const extendedTransformers: Transformer[] = useMemo(
+    // Preview mode state (toggle between raw markdown editing and rendered preview)
+    const [isPreviewMode, setIsPreviewMode] = useState(false);
+
+    // Display transformers: full set for read-only mode and preview
+    const displayTransformers: Transformer[] = useMemo(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
@@ -440,6 +447,23 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       ],
       [IMAGE_TRANSFORMER]
     );
+
+    // Edit transformers: only custom elements + text format (no CODE, no markdown-as-you-type)
+    const editTransformers: Transformer[] = useMemo(
+      () => [
+        IMAGE_TRANSFORMER,
+        PR_COMMENT_EXPORT_TRANSFORMER,
+        PR_COMMENT_TRANSFORMER,
+        COMPONENT_INFO_EXPORT_TRANSFORMER,
+        COMPONENT_INFO_TRANSFORMER,
+        ...TEXT_FORMAT_TRANSFORMERS,
+      ],
+      [IMAGE_TRANSFORMER]
+    );
+
+    // Active transformers based on mode
+    const activeTransformers =
+      disabled || isPreviewMode ? displayTransformers : editTransformers;
 
     // Memoized handlers for ContentEditable to prevent re-renders
     const handlePaste = useCallback(
@@ -496,9 +520,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 onChange={onChange}
                 onEditorStateChange={onEditorStateChange}
                 editable={!disabled}
-                transformers={extendedTransformers}
+                transformers={activeTransformers}
+                preserveMarkdownSyntax={!disabled && !isPreviewMode}
               />
-              {!disabled && <ToolbarPlugin />}
+              {!disabled && !isPreviewMode && <ToolbarPlugin />}
               <div className="relative">
                 <RichTextPlugin
                   contentEditable={
@@ -519,6 +544,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <StaticToolbarPlugin
                   saveStatus={saveStatus}
                   extraActions={staticToolbarActions}
+                  isPreviewMode={isPreviewMode}
+                  onTogglePreview={() => setIsPreviewMode((p) => !p)}
                 />
               )}
 
@@ -530,8 +557,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <>
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
-                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
-                  <PasteMarkdownPlugin transformers={extendedTransformers} />
+                  {!isPreviewMode && <MarkdownInsertPlugin />}
+                  <PasteMarkdownPlugin transformers={activeTransformers} />
                   <TypeaheadOpenProvider>
                     <FileTagTypeaheadPlugin
                       repoIds={repoIds}
@@ -556,7 +583,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       onCmdEnter={onCmdEnter}
                       onShiftCmdEnter={onShiftCmdEnter}
                       onChange={onChange}
-                      transformers={extendedTransformers}
+                      transformers={activeTransformers}
                       sendShortcut={sendShortcut}
                     />
                   </TypeaheadOpenProvider>
@@ -564,7 +591,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   <ComponentInfoKeyboardPlugin
                     isTargetNode={$isComponentInfoNode}
                   />
-                  <CodeBlockShortcutPlugin />
                 </>
               )}
               {/* Link sanitization for read-only mode */}
