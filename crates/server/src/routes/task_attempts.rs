@@ -664,6 +664,35 @@ pub async fn open_task_attempt_in_editor(
     }
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct EditorPathResponse {
+    pub workspace_path: String,
+}
+
+pub async fn get_task_attempt_editor_path(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<EditorPathResponse>>, ApiError> {
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+
+    let workspace_path = Path::new(&container_ref);
+
+    let workspace_repos =
+        WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
+    let resolved = if workspace_repos.len() == 1 {
+        workspace_path.join(&workspace_repos[0].name)
+    } else {
+        workspace_path.to_path_buf()
+    };
+
+    Ok(ResponseJson(ApiResponse::success(EditorPathResponse {
+        workspace_path: resolved.to_string_lossy().into_owned(),
+    })))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct BranchStatus {
     pub commits_behind: Option<usize>,
@@ -2066,6 +2095,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .route("/pr/attach", post(pr::attach_existing_pr))
                 .route("/pr/comments", get(pr::get_pr_comments))
                 .route("/open-editor", post(open_task_attempt_in_editor))
+                .route("/editor-path", get(get_task_attempt_editor_path))
                 .route("/stop", post(stop_task_attempt_execution))
                 .route("/change-target-branch", post(change_target_branch))
                 .route("/rename-branch", post(rename_branch))
