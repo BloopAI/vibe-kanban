@@ -3,7 +3,11 @@
 
 use std::sync::Arc;
 
-use tauri::Emitter;
+use tauri::{
+    Emitter, Manager,
+    menu::{MenuBuilder, MenuItemBuilder},
+    tray::TrayIconBuilder,
+};
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio_util::sync::CancellationToken;
@@ -23,7 +27,7 @@ fn main() {
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
     tracing_subscriber::fmt().with_env_filter(env_filter).init();
 
-    // Shared token so we can tell the server to shut down when the window closes.
+    // Shared token so we can tell the server to shut down when the app quits.
     let shutdown_token = Arc::new(CancellationToken::new());
     let shutdown_token_for_event = shutdown_token.clone();
 
@@ -39,6 +43,42 @@ fn main() {
 
     builder
         .setup(move |app| {
+            // --- System tray ---
+            let show_item = MenuItemBuilder::with_id("show", "Show Window").build(app)?;
+            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+            let tray_menu = MenuBuilder::new(app)
+                .item(&show_item)
+                .separator()
+                .item(&quit_item)
+                .build()?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().cloned().unwrap())
+                .menu(&tray_menu)
+                .tooltip("Vibe Kanban")
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    "quit" => {
+                        app.exit(0);
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
             if cfg!(debug_assertions) {
                 // Dev mode: frontend dev server (Vite) and backend are started
                 // externally. Create the window immediately pointing to devUrl.
@@ -87,9 +127,19 @@ fn main() {
 
             Ok(())
         })
-        .on_window_event(move |_window, event| {
-            if let tauri::WindowEvent::Destroyed = event {
-                shutdown_token_for_event.cancel();
+        .on_window_event(move |window, event| {
+            match event {
+                tauri::WindowEvent::CloseRequested { api, .. } => {
+                    // Hide the window instead of closing it so the app keeps
+                    // running in the background (agents/processes stay alive).
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+                tauri::WindowEvent::Destroyed => {
+                    // Only fires on actual app exit (e.g. tray Quit).
+                    shutdown_token_for_event.cancel();
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())
