@@ -17,7 +17,8 @@ use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
 
 /// Native push notifier using Tauri's notification plugin.
-/// Clicking a notification brings the app window to focus.
+/// On macOS/Windows, clicking the notification activates the app via the OS
+/// notification center — the `RunEvent::Reopen` handler then shows the window.
 struct TauriNotifier {
     app_handle: tauri::AppHandle,
 }
@@ -35,9 +36,6 @@ impl PushNotifier for TauriNotifier {
         {
             tracing::warn!("Failed to send Tauri notification: {}", e);
         }
-
-        // Bring the window to focus so the user can act on the notification
-        show_window(&self.app_handle);
     }
 }
 
