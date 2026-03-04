@@ -312,6 +312,10 @@ export type ChangeTargetBranchRequest = { repo_id: string, new_target_branch: st
 
 export type ChangeTargetBranchResponse = { repo_id: string, new_target_branch: string, status: [number, number], };
 
+export type AddWorkspaceRepoRequest = { repo_id: string, target_branch: string, };
+
+export type AddWorkspaceRepoResponse = { workspace: Workspace, repo: RepoWithTargetBranch, };
+
 export type MergeTaskAttemptRequest = { repo_id: string, };
 
 export type PushTaskAttemptRequest = { repo_id: string, };
