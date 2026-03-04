@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use db::models::{requests::UpdateWorkspace, workspace::Workspace};
 use rmcp::{
     ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
@@ -7,6 +9,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::McpServer;
+
+const DEFAULT_TIMEOUT_SECONDS: u64 = 1800;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -94,6 +98,32 @@ struct McpDeleteWorkspaceResponse {
     workspace_id: String,
     delete_remote: bool,
     delete_branches: bool,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct McpWaitForWorkspaceRequest {
+    #[schemars(
+        description = "One or more workspace IDs to wait on. When multiple IDs are provided, returns as soon as any one reaches a terminal state."
+    )]
+    workspace_ids: Vec<Uuid>,
+    #[schemars(
+        description = "Maximum time to wait in seconds before returning a timeout response (default: 1800)"
+    )]
+    timeout_seconds: Option<u64>,
+}
+
+#[derive(Debug, Serialize, Deserialize, schemars::JsonSchema)]
+struct McpWaitForWorkspaceResponse {
+    #[schemars(
+        description = "The workspace ID that reached a terminal state (or first ID on timeout)"
+    )]
+    completed_workspace_id: String,
+    #[schemars(description = "Terminal status: 'completed', 'failed', or 'timeout'")]
+    status: String,
+    #[schemars(description = "The branch name of the completed workspace")]
+    branch: String,
+    #[schemars(description = "Timestamp when the workspace completed (if available)")]
+    completed_at: Option<String>,
 }
 
 #[tool_router(router = workspaces_tools_router, vis = "pub")]
@@ -246,5 +276,46 @@ impl McpServer {
             delete_remote,
             delete_branches,
         })
+    }
+
+    #[tool(
+        description = "Block until a workspace session reaches a terminal state (completed or failed) or timeout elapses. When multiple workspace IDs are provided, returns as soon as any one reaches a terminal state — call again with the remaining IDs to wait for the next completion."
+    )]
+    async fn wait_for_workspace(
+        &self,
+        Parameters(McpWaitForWorkspaceRequest {
+            workspace_ids,
+            timeout_seconds,
+        }): Parameters<McpWaitForWorkspaceRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        if workspace_ids.is_empty() {
+            return Self::err("At least one workspace_id must be provided", None::<&str>);
+        }
+
+        let timeout_secs = timeout_seconds.unwrap_or(DEFAULT_TIMEOUT_SECONDS);
+        let url = self.url("/api/workspaces/wait");
+        let payload = serde_json::json!({
+            "workspace_ids": workspace_ids,
+            "timeout_seconds": timeout_secs,
+        });
+
+        // Use a per-request timeout slightly longer than the server-side timeout
+        // to allow the server to return its own timeout response cleanly.
+        let http_timeout = Duration::from_secs(timeout_secs + 30);
+
+        let response: McpWaitForWorkspaceResponse = match self
+            .send_json(
+                self.client
+                    .post(&url)
+                    .json(&payload)
+                    .timeout(http_timeout),
+            )
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => return Ok(e),
+        };
+
+        McpServer::success(&response)
     }
 }

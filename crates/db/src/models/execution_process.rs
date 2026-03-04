@@ -679,4 +679,29 @@ impl ExecutionProcess {
 
         Ok(rows.into_iter().collect())
     }
+
+    /// Returns the completed_at timestamp of the most recent non-devserver execution process
+    /// for a workspace, if any has completed.
+    pub async fn latest_completed_at_for_workspace(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+        let row: Option<DateTime<Utc>> = sqlx::query_scalar!(
+            r#"
+            SELECT ep.completed_at AS "completed_at!: DateTime<Utc>"
+            FROM execution_processes ep
+            JOIN sessions s ON ep.session_id = s.id
+            WHERE s.workspace_id = $1
+              AND ep.run_reason IN ('setupscript','cleanupscript','codingagent')
+              AND ep.completed_at IS NOT NULL
+            ORDER BY ep.created_at DESC
+            LIMIT 1
+            "#,
+            workspace_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(row)
+    }
 }

@@ -4,16 +4,18 @@ use axum::{
     http::StatusCode,
     response::Json as ResponseJson,
 };
+use chrono::{DateTime, Utc};
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessStatus},
     workspace::{Workspace, WorkspaceError},
 };
 use deployment::Deployment;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use services::services::{container::ContainerService, diff_stream, remote_sync};
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
+use uuid::Uuid;
 use workspace_manager::WorkspaceManager;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -190,4 +192,84 @@ pub async fn mark_seen(
     let pool = &deployment.db().pool;
     CodingAgentTurn::mark_seen_by_workspace_id(pool, workspace.id).await?;
     Ok(ResponseJson(ApiResponse::success(())))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WaitForWorkspaceRequest {
+    pub workspace_ids: Vec<Uuid>,
+    #[serde(default = "default_timeout_seconds")]
+    pub timeout_seconds: u64,
+}
+
+fn default_timeout_seconds() -> u64 {
+    1800
+}
+
+#[derive(Debug, Serialize)]
+pub struct WaitForWorkspaceResponse {
+    pub completed_workspace_id: Uuid,
+    pub status: String,
+    pub branch: String,
+    pub name: Option<String>,
+    pub completed_at: Option<DateTime<Utc>>,
+}
+
+/// Long-poll endpoint: holds the connection open until any of the requested workspaces
+/// reaches a terminal state (not running) or the timeout elapses.
+pub async fn wait_for_workspace(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<WaitForWorkspaceRequest>,
+) -> Result<ResponseJson<ApiResponse<WaitForWorkspaceResponse>>, ApiError> {
+    use std::time::Duration;
+
+    let pool = &deployment.db().pool;
+    let deadline =
+        tokio::time::Instant::now() + Duration::from_secs(request.timeout_seconds.min(3600));
+    let poll_interval = Duration::from_millis(500);
+
+    loop {
+        for id in &request.workspace_ids {
+            if let Some(ws) = Workspace::find_by_id_with_status(pool, *id).await? {
+                if !ws.is_running {
+                    let completed_at = ExecutionProcess::latest_completed_at_for_workspace(
+                        pool,
+                        ws.workspace.id,
+                    )
+                    .await?;
+
+                    let status = if ws.is_errored { "failed" } else { "completed" };
+
+                    return Ok(ResponseJson(ApiResponse::success(
+                        WaitForWorkspaceResponse {
+                            completed_workspace_id: ws.workspace.id,
+                            status: status.to_string(),
+                            branch: ws.workspace.branch.clone(),
+                            name: ws.workspace.name.clone(),
+                            completed_at,
+                        },
+                    )));
+                }
+            }
+        }
+
+        if tokio::time::Instant::now() + poll_interval > deadline {
+            let first_id = request.workspace_ids[0];
+            let branch = Workspace::find_by_id(pool, first_id)
+                .await?
+                .map(|w| w.branch.clone())
+                .unwrap_or_default();
+
+            return Ok(ResponseJson(ApiResponse::success(
+                WaitForWorkspaceResponse {
+                    completed_workspace_id: first_id,
+                    status: "timeout".to_string(),
+                    branch,
+                    name: None,
+                    completed_at: None,
+                },
+            )));
+        }
+
+        tokio::time::sleep(poll_interval).await;
+    }
 }
