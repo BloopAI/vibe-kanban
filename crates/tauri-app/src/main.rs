@@ -3,15 +3,43 @@
 
 use std::sync::Arc;
 
+use async_trait::async_trait;
+use services::services::notification::{PushNotifier, set_global_push_notifier};
 use tauri::{
     Emitter, Manager,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
 };
+use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
+
+/// Native push notifier using Tauri's notification plugin.
+/// Clicking a notification brings the app window to focus.
+struct TauriNotifier {
+    app_handle: tauri::AppHandle,
+}
+
+#[async_trait]
+impl PushNotifier for TauriNotifier {
+    async fn send(&self, title: &str, message: &str) {
+        if let Err(e) = self
+            .app_handle
+            .notification()
+            .builder()
+            .title(title)
+            .body(message)
+            .show()
+        {
+            tracing::warn!("Failed to send Tauri notification: {}", e);
+        }
+
+        // Bring the window to focus so the user can act on the notification
+        show_window(&self.app_handle);
+    }
+}
 
 fn main() {
     // Install rustls crypto provider before any TLS operations
@@ -33,7 +61,8 @@ fn main() {
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_opener::init());
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init());
 
     // Only register the updater plugin in release builds — dev builds have a
     // placeholder endpoint that fails config deserialization.
@@ -79,6 +108,12 @@ fn main() {
                 // Production: start the Axum server first, then open the window
                 // once it's ready so the user never sees a blank/error page.
                 let app_handle = app.handle().clone();
+
+                // Register native Tauri notifications before the server starts.
+                set_global_push_notifier(Arc::new(TauriNotifier {
+                    app_handle: app_handle.clone(),
+                }));
+
                 let token = shutdown_token.clone();
                 tauri::async_runtime::spawn(async move {
                     match server::startup::start().await {
