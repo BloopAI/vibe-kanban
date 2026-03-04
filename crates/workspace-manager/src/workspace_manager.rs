@@ -165,16 +165,6 @@ impl WorkspaceManager {
         Ok(workspace)
     }
 
-    pub async fn attach_repositories(
-        &self,
-        workspace_id: Uuid,
-        repos: &[CreateWorkspaceRepo],
-    ) -> Result<(), sqlx::Error> {
-        WorkspaceRepo::create_many(&self.db.pool, workspace_id, repos)
-            .await
-            .map(|_| ())
-    }
-
     pub async fn validate_workspace_repositories(
         &self,
         repos: &[CreateWorkspaceRepo],
