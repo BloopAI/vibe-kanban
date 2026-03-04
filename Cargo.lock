@@ -7662,7 +7662,9 @@ name = "workspace-manager"
 version = "0.1.23"
 dependencies = [
  "db",
+ "git",
  "services",
+ "sqlx",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

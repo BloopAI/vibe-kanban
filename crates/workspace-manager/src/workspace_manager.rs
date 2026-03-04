@@ -2,8 +2,18 @@ use std::path::{Path, PathBuf};
 
 use db::{
     DBService,
-    models::{repo::Repo, workspace::Workspace as DbWorkspace},
+    models::{
+        image::WorkspaceImage,
+        repo::{Repo, RepoError},
+        session::Session,
+        workspace::{
+            CreateWorkspace as DbCreateWorkspace, Workspace as DbWorkspace,
+            WorkspaceError as DbWorkspaceError,
+        },
+        workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
+    },
 };
+use git::GitService;
 use services::services::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
@@ -52,6 +62,16 @@ pub struct WorktreeContainer {
     pub worktrees: Vec<RepoWorktree>,
 }
 
+#[derive(Debug, Clone)]
+pub struct WorkspaceDeletionContext {
+    pub workspace_id: Uuid,
+    pub branch_name: String,
+    pub workspace_dir: Option<PathBuf>,
+    pub repositories: Vec<Repo>,
+    pub repo_paths: Vec<PathBuf>,
+    pub session_ids: Vec<Uuid>,
+}
+
 #[derive(Clone)]
 pub struct WorkspaceManager {
     db: DBService,
@@ -60,6 +80,178 @@ pub struct WorkspaceManager {
 impl WorkspaceManager {
     pub fn new(db: DBService) -> Self {
         Self { db }
+    }
+
+    /// Resolve the agent working directory for a workspace.
+    /// For single-repo workspaces, this is `{repo_name}/{default_working_dir?}`.
+    /// For multi-repo workspaces, this is `None`.
+    pub async fn resolve_agent_working_dir(
+        &self,
+        repos: &[CreateWorkspaceRepo],
+    ) -> Result<Option<String>, RepoError> {
+        let Some(repo_ref) = repos.first() else {
+            return Ok(None);
+        };
+
+        if repos.len() > 1 {
+            return Ok(None);
+        }
+
+        let repo = Repo::find_by_id(&self.db.pool, repo_ref.repo_id)
+            .await?
+            .ok_or(RepoError::NotFound)?;
+
+        let path = match repo.default_working_dir {
+            Some(subdir) => PathBuf::from(&repo.name).join(subdir),
+            None => PathBuf::from(&repo.name),
+        };
+
+        Ok(Some(path.to_string_lossy().to_string()))
+    }
+
+    /// Create the workspace DB record and apply optional display name.
+    pub async fn create_workspace_record(
+        &self,
+        workspace_id: Uuid,
+        branch_name: String,
+        agent_working_dir: Option<String>,
+        workspace_name: Option<&str>,
+    ) -> Result<DbWorkspace, DbWorkspaceError> {
+        let mut workspace = DbWorkspace::create(
+            &self.db.pool,
+            &DbCreateWorkspace {
+                branch: branch_name,
+                agent_working_dir,
+            },
+            workspace_id,
+        )
+        .await?;
+
+        if let Some(name) = workspace_name {
+            DbWorkspace::update(&self.db.pool, workspace.id, None, None, Some(name)).await?;
+            workspace.name = Some(name.to_string());
+        }
+
+        Ok(workspace)
+    }
+
+    pub async fn attach_repositories(
+        &self,
+        workspace_id: Uuid,
+        repos: &[CreateWorkspaceRepo],
+    ) -> Result<(), sqlx::Error> {
+        WorkspaceRepo::create_many(&self.db.pool, workspace_id, repos)
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn associate_images(
+        &self,
+        workspace_id: Uuid,
+        image_ids: &[Uuid],
+    ) -> Result<(), sqlx::Error> {
+        if image_ids.is_empty() {
+            return Ok(());
+        }
+
+        WorkspaceImage::associate_many_dedup(&self.db.pool, workspace_id, image_ids).await
+    }
+
+    pub async fn prepare_workspace_deletion(
+        &self,
+        workspace: &DbWorkspace,
+    ) -> Result<WorkspaceDeletionContext, sqlx::Error> {
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
+        let session_ids = Session::find_by_workspace_id(&self.db.pool, workspace.id)
+            .await?
+            .into_iter()
+            .map(|session| session.id)
+            .collect::<Vec<_>>();
+        let repo_paths = repositories
+            .iter()
+            .map(|repo| repo.path.clone())
+            .collect::<Vec<_>>();
+
+        Ok(WorkspaceDeletionContext {
+            workspace_id: workspace.id,
+            branch_name: workspace.branch.clone(),
+            workspace_dir: workspace.container_ref.clone().map(PathBuf::from),
+            repositories,
+            repo_paths,
+            session_ids,
+        })
+    }
+
+    pub async fn delete_workspace_record(&self, workspace_id: Uuid) -> Result<u64, sqlx::Error> {
+        DbWorkspace::delete(&self.db.pool, workspace_id).await
+    }
+
+    pub fn spawn_workspace_deletion_cleanup(
+        context: WorkspaceDeletionContext,
+        delete_branches: bool,
+    ) {
+        tokio::spawn(async move {
+            let WorkspaceDeletionContext {
+                workspace_id,
+                branch_name,
+                workspace_dir,
+                repositories,
+                repo_paths,
+                session_ids,
+            } = context;
+
+            for session_id in session_ids {
+                if let Err(e) =
+                    services::services::execution_process::remove_session_process_logs(session_id)
+                        .await
+                {
+                    warn!(
+                        "Failed to remove filesystem process logs for session {}: {}",
+                        session_id, e
+                    );
+                }
+            }
+
+            if let Some(workspace_dir) = workspace_dir {
+                info!(
+                    "Starting background cleanup for workspace {} at {}",
+                    workspace_id,
+                    workspace_dir.display()
+                );
+
+                if let Err(e) = Self::cleanup_workspace(&workspace_dir, &repositories).await {
+                    error!(
+                        "Background workspace cleanup failed for {} at {}: {}",
+                        workspace_id,
+                        workspace_dir.display(),
+                        e
+                    );
+                } else {
+                    info!(
+                        "Background cleanup completed for workspace {}",
+                        workspace_id
+                    );
+                }
+            }
+
+            if delete_branches {
+                let git_service = GitService::new();
+                for repo_path in repo_paths {
+                    match git_service.delete_branch(&repo_path, &branch_name) {
+                        Ok(()) => {
+                            info!("Deleted branch '{}' from repo {:?}", branch_name, repo_path);
+                        }
+                        Err(e) => {
+                            warn!(
+                                "Failed to delete branch '{}' from repo {:?}: {}",
+                                branch_name, repo_path, e
+                            );
+                        }
+                    }
+                }
+            }
+        });
     }
 
     /// Create a workspace with worktrees for all repositories.

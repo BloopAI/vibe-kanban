@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 db = { path = "../db" }
+git = { path = "../git" }
 services = { path = "../services" }
+sqlx = "0.8.6"
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
