@@ -88,8 +88,8 @@ pub struct WorkspaceDeletionContext {
 
 #[derive(Clone)]
 pub struct ManagedWorkspace {
-    workspace: DbWorkspace,
-    repos: Vec<RepoWithTargetBranch>,
+    pub workspace: DbWorkspace,
+    pub repos: Vec<RepoWithTargetBranch>,
     db: DBService,
 }
 
@@ -144,18 +144,6 @@ impl ManagedWorkspace {
         )
         .await?;
         Ok(())
-    }
-
-    pub fn workspace(&self) -> &DbWorkspace {
-        &self.workspace
-    }
-
-    pub fn repos(&self) -> &[RepoWithTargetBranch] {
-        &self.repos
-    }
-
-    pub fn into_workspace(self) -> DbWorkspace {
-        self.workspace
     }
 
     pub async fn add_repository(

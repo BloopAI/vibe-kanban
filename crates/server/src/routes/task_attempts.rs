@@ -1630,9 +1630,9 @@ pub async fn add_workspace_repo(
         .await
         .map_err(map_add_repo_error)?;
 
-    let workspace = managed_workspace.workspace().clone();
+    let workspace = managed_workspace.workspace.clone();
     let repo = managed_workspace
-        .repos()
+        .repos
         .iter()
         .find(|repo_with_target| repo_with_target.repo.id == repo_input.repo_id)
         .cloned()
@@ -2026,7 +2026,7 @@ pub async fn create_and_start_workspace(
         }
     }
 
-    let workspace = managed_workspace.into_workspace();
+    let workspace = managed_workspace.workspace.clone();
     tracing::info!("Created workspace {}", workspace.id);
 
     let execution_process = deployment
