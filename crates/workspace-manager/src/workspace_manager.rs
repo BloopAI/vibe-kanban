@@ -1,5 +1,4 @@
 use std::{
-    collections::HashSet,
     future::Future,
     path::{Path, PathBuf},
 };
@@ -68,8 +67,6 @@ pub enum AddRepoToWorkspaceError {
     WorkspaceNotFound,
     #[error("Repository already attached to workspace")]
     RepoAlreadyAttached,
-    #[error("Duplicate repository id in request")]
-    DuplicateRepoInRequest,
     #[error("Branch '{branch}' does not exist in repository '{repo_name}'")]
     BranchNotFound { repo_name: String, branch: String },
     #[error("Provisioning failed: {0}")]
@@ -165,36 +162,10 @@ impl WorkspaceManager {
         Ok(workspace)
     }
 
-    pub async fn validate_workspace_repositories(
-        &self,
-        repos: &[CreateWorkspaceRepo],
-        git: &GitService,
-    ) -> Result<(), AddRepoToWorkspaceError> {
-        let mut seen = HashSet::new();
-        for repo_ref in repos {
-            if !seen.insert(repo_ref.repo_id) {
-                return Err(AddRepoToWorkspaceError::DuplicateRepoInRequest);
-            }
-
-            let repo = Repo::find_by_id(&self.db.pool, repo_ref.repo_id)
-                .await?
-                .ok_or(RepoError::NotFound)?;
-
-            if !git.check_branch_exists(&repo.path, &repo_ref.target_branch)? {
-                return Err(AddRepoToWorkspaceError::BranchNotFound {
-                    repo_name: repo.name,
-                    branch: repo_ref.target_branch.clone(),
-                });
-            }
-        }
-
-        Ok(())
-    }
-
-    pub async fn add_repositories_to_workspace<F, Fut, E>(
+    pub async fn add_repository_to_workspace<F, Fut, E>(
         &self,
         workspace: &DbWorkspace,
-        repos: &[CreateWorkspaceRepo],
+        repo_ref: &CreateWorkspaceRepo,
         git: &GitService,
         ensure_workspace: F,
     ) -> Result<(), AddRepoToWorkspaceError>
@@ -203,33 +174,37 @@ impl WorkspaceManager {
         Fut: Future<Output = Result<(), E>>,
         E: std::fmt::Display,
     {
-        self.validate_workspace_repositories(repos, git).await?;
-
-        let mut attached_repo_ids = Vec::with_capacity(repos.len());
-        for repo_ref in repos {
-            if WorkspaceRepo::find_by_workspace_and_repo_id(
-                &self.db.pool,
-                workspace.id,
-                repo_ref.repo_id,
-            )
+        let repo = Repo::find_by_id(&self.db.pool, repo_ref.repo_id)
             .await?
-            .is_some()
-            {
-                return Err(AddRepoToWorkspaceError::RepoAlreadyAttached);
-            }
+            .ok_or(RepoError::NotFound)?;
 
-            self.attach_repository(workspace.id, repo_ref).await?;
-            attached_repo_ids.push(repo_ref.repo_id);
+        if !git.check_branch_exists(&repo.path, &repo_ref.target_branch)? {
+            return Err(AddRepoToWorkspaceError::BranchNotFound {
+                repo_name: repo.name,
+                branch: repo_ref.target_branch.clone(),
+            });
         }
 
+        if WorkspaceRepo::find_by_workspace_and_repo_id(
+            &self.db.pool,
+            workspace.id,
+            repo_ref.repo_id,
+        )
+        .await?
+        .is_some()
+        {
+            return Err(AddRepoToWorkspaceError::RepoAlreadyAttached);
+        }
+
+        self.attach_repository(workspace.id, repo_ref).await?;
+
         if let Err(err) = ensure_workspace().await {
-            for repo_id in &attached_repo_ids {
-                if let Err(rollback_err) = self.detach_repository(workspace.id, *repo_id).await {
-                    warn!(
-                        "Failed to rollback workspace repo mapping (workspace={}, repo={}): {}",
-                        workspace.id, repo_id, rollback_err
-                    );
-                }
+            if let Err(rollback_err) = self.detach_repository(workspace.id, repo_ref.repo_id).await
+            {
+                warn!(
+                    "Failed to rollback workspace repo mapping (workspace={}, repo={}): {}",
+                    workspace.id, repo_ref.repo_id, rollback_err
+                );
             }
 
             return Err(AddRepoToWorkspaceError::Provisioning(err.to_string()));
@@ -257,7 +232,7 @@ impl WorkspaceManager {
             target_branch,
         };
 
-        self.add_repositories_to_workspace(workspace, &[create_repo], git, ensure_workspace)
+        self.add_repository_to_workspace(workspace, &create_repo, git, ensure_workspace)
             .await?;
 
         let workspace = DbWorkspace::find_by_id(&self.db.pool, workspace.id)

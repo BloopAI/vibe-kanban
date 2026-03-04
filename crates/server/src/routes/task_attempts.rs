@@ -144,9 +144,6 @@ fn map_add_repo_error(err: AddRepoToWorkspaceError) -> ApiError {
         AddRepoToWorkspaceError::RepoAlreadyAttached => {
             ApiError::Conflict("Repository already attached to workspace".to_string())
         }
-        AddRepoToWorkspaceError::DuplicateRepoInRequest => {
-            ApiError::BadRequest("Duplicate repository id in request".to_string())
-        }
         AddRepoToWorkspaceError::BranchNotFound { repo_name, branch } => {
             ApiError::BadRequest(format!(
                 "Branch '{}' does not exist in repository '{}'",
@@ -1978,10 +1975,6 @@ pub async fn create_and_start_workspace(
             target_branch: r.target_branch.clone(),
         })
         .collect();
-    workspace_manager
-        .validate_workspace_repositories(&workspace_repos, deployment.git())
-        .await
-        .map_err(map_add_repo_error)?;
 
     let agent_working_dir = workspace_manager
         .resolve_agent_working_dir(&workspace_repos)
@@ -1997,16 +1990,18 @@ pub async fn create_and_start_workspace(
         )
         .await?;
 
-    workspace_manager
-        .add_repositories_to_workspace(&workspace, &workspace_repos, deployment.git(), || async {
-            deployment
-                .container()
-                .ensure_container_exists(&workspace)
-                .await
-                .map(|_| ())
-        })
-        .await
-        .map_err(map_add_repo_error)?;
+    for repo in &workspace_repos {
+        workspace_manager
+            .add_repository_to_workspace(&workspace, repo, deployment.git(), || async {
+                deployment
+                    .container()
+                    .ensure_container_exists(&workspace)
+                    .await
+                    .map(|_| ())
+            })
+            .await
+            .map_err(map_add_repo_error)?;
+    }
 
     // Associate user-uploaded images with the workspace
     if let Some(ids) = &image_ids {
