@@ -1,7 +1,4 @@
-use std::{
-    future::Future,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use db::{
     DBService,
@@ -66,8 +63,6 @@ pub enum AddRepoToWorkspaceError {
     RepoAlreadyAttached,
     #[error("Branch '{branch}' does not exist in repository '{repo_name}'")]
     BranchNotFound { repo_name: String, branch: String },
-    #[error("Provisioning failed: {0}")]
-    Provisioning(String),
 }
 
 /// Info about a single repo's worktree within a workspace
@@ -133,18 +128,12 @@ impl WorkspaceManager {
         Ok(Some(path.to_string_lossy().to_string()))
     }
 
-    pub async fn add_repository_to_workspace<F, Fut, E>(
+    pub async fn add_repository_to_workspace(
         &self,
         workspace: &DbWorkspace,
         repo_ref: &CreateWorkspaceRepo,
         git: &GitService,
-        ensure_workspace: F,
-    ) -> Result<(), AddRepoToWorkspaceError>
-    where
-        F: FnOnce() -> Fut,
-        Fut: Future<Output = Result<(), E>>,
-        E: std::fmt::Display,
-    {
+    ) -> Result<(), AddRepoToWorkspaceError> {
         let repo = Repo::find_by_id(&self.db.pool, repo_ref.repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
@@ -168,42 +157,23 @@ impl WorkspaceManager {
         }
 
         self.attach_repository(workspace.id, repo_ref).await?;
-
-        if let Err(err) = ensure_workspace().await {
-            if let Err(rollback_err) = self.detach_repository(workspace.id, repo_ref.repo_id).await
-            {
-                warn!(
-                    "Failed to rollback workspace repo mapping (workspace={}, repo={}): {}",
-                    workspace.id, repo_ref.repo_id, rollback_err
-                );
-            }
-
-            return Err(AddRepoToWorkspaceError::Provisioning(err.to_string()));
-        }
-
         self.sync_agent_working_dir(workspace.id).await?;
         Ok(())
     }
 
-    pub async fn add_repo_to_workspace<F, Fut, E>(
+    pub async fn add_repo_to_workspace(
         &self,
         workspace: &DbWorkspace,
         repo_id: Uuid,
         target_branch: String,
         git: &GitService,
-        ensure_workspace: F,
-    ) -> Result<AddRepoToWorkspaceResult, AddRepoToWorkspaceError>
-    where
-        F: FnOnce() -> Fut,
-        Fut: Future<Output = Result<(), E>>,
-        E: std::fmt::Display,
-    {
+    ) -> Result<AddRepoToWorkspaceResult, AddRepoToWorkspaceError> {
         let create_repo = CreateWorkspaceRepo {
             repo_id,
             target_branch,
         };
 
-        self.add_repository_to_workspace(workspace, &create_repo, git, ensure_workspace)
+        self.add_repository_to_workspace(workspace, &create_repo, git)
             .await?;
 
         let workspace = DbWorkspace::find_by_id(&self.db.pool, workspace.id)
@@ -270,19 +240,6 @@ impl WorkspaceManager {
         WorkspaceRepo::create_many(&self.db.pool, workspace_id, std::slice::from_ref(repo))
             .await
             .map(|_| ())
-    }
-
-    async fn detach_repository(
-        &self,
-        workspace_id: Uuid,
-        repo_id: Uuid,
-    ) -> Result<(), sqlx::Error> {
-        sqlx::query("DELETE FROM workspace_repos WHERE workspace_id = ? AND repo_id = ?")
-            .bind(workspace_id)
-            .bind(repo_id)
-            .execute(&self.db.pool)
-            .await?;
-        Ok(())
     }
 
     async fn sync_agent_working_dir(&self, workspace_id: Uuid) -> Result<(), sqlx::Error> {

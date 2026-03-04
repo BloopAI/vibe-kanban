@@ -150,9 +150,6 @@ fn map_add_repo_error(err: AddRepoToWorkspaceError) -> ApiError {
                 branch, repo_name
             ))
         }
-        AddRepoToWorkspaceError::Provisioning(message) => {
-            ApiError::Workspace(WorkspaceError::ValidationError(message))
-        }
     }
 }
 
@@ -1622,13 +1619,6 @@ pub async fn add_workspace_repo(
             payload.repo_id,
             payload.target_branch,
             deployment.git(),
-            || async {
-                deployment
-                    .container()
-                    .ensure_container_exists(&workspace)
-                    .await
-                    .map(|_| ())
-            },
         )
         .await
         .map_err(map_add_repo_error)?;
@@ -1993,13 +1983,7 @@ pub async fn create_and_start_workspace(
 
     for repo in &workspace_repos {
         workspace_manager
-            .add_repository_to_workspace(&workspace, repo, deployment.git(), || async {
-                deployment
-                    .container()
-                    .ensure_container_exists(&workspace)
-                    .await
-                    .map(|_| ())
-            })
+            .add_repository_to_workspace(&workspace, repo, deployment.git())
             .await
             .map_err(map_add_repo_error)?;
     }
