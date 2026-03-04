@@ -27,7 +27,7 @@ use db::models::{
     repo::{Repo, RepoError},
     requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, UpdateWorkspace},
     session::{CreateSession, Session},
-    workspace::{Workspace, WorkspaceError},
+    workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
 };
 use deployment::Deployment;
@@ -1979,16 +1979,17 @@ pub async fn create_and_start_workspace(
     let agent_working_dir = workspace_manager
         .resolve_agent_working_dir(&workspace_repos)
         .await?;
-    let workspace_name = name.as_deref();
 
-    let workspace = workspace_manager
-        .create_workspace_record(
-            workspace_id,
-            git_branch_name,
+    let workspace = Workspace::create(
+        &deployment.db().pool,
+        &CreateWorkspace {
+            branch: git_branch_name,
             agent_working_dir,
-            workspace_name,
-        )
-        .await?;
+            name: name.clone().filter(|n| !n.is_empty()),
+        },
+        workspace_id,
+    )
+    .await?;
 
     for repo in &workspace_repos {
         workspace_manager

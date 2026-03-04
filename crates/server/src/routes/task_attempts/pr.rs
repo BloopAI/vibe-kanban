@@ -710,14 +710,11 @@ pub async fn create_workspace_from_pr(
         &CreateWorkspace {
             branch: target_branch_ref.clone(),
             agent_working_dir,
+            name: Some(payload.pr_title.clone()),
         },
         workspace_id,
     )
     .await?;
-
-    // Set workspace name from PR title
-    Workspace::update(pool, workspace.id, None, None, Some(&payload.pr_title)).await?;
-    workspace.name = Some(payload.pr_title.clone());
 
     WorkspaceRepo::create_many(
         pool,

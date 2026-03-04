@@ -85,6 +85,7 @@ pub struct WorkspaceContext {
 pub struct CreateWorkspace {
     pub branch: String,
     pub agent_working_dir: Option<String>,
+    pub name: Option<String>,
 }
 
 impl Workspace {
@@ -315,15 +316,16 @@ impl Workspace {
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
-            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at)
-               VALUES ($1, $2, $3, $4, $5, $6)
+            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at, name)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)
                RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, worktree_deleted as "worktree_deleted!: bool""#,
             id,
             Option::<Uuid>::None,
             Option::<String>::None,
             data.branch,
             data.agent_working_dir,
-            Option::<DateTime<Utc>>::None
+            Option::<DateTime<Utc>>::None,
+            data.name
         )
         .fetch_one(pool)
         .await?)

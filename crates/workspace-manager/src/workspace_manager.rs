@@ -9,10 +9,7 @@ use db::{
         image::WorkspaceImage,
         repo::{Repo, RepoError},
         session::Session,
-        workspace::{
-            CreateWorkspace as DbCreateWorkspace, Workspace as DbWorkspace,
-            WorkspaceError as DbWorkspaceError,
-        },
+        workspace::Workspace as DbWorkspace,
         workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
     },
 };
@@ -134,32 +131,6 @@ impl WorkspaceManager {
         };
 
         Ok(Some(path.to_string_lossy().to_string()))
-    }
-
-    /// Create the workspace DB record and apply optional display name.
-    pub async fn create_workspace_record(
-        &self,
-        workspace_id: Uuid,
-        branch_name: String,
-        agent_working_dir: Option<String>,
-        workspace_name: Option<&str>,
-    ) -> Result<DbWorkspace, DbWorkspaceError> {
-        let mut workspace = DbWorkspace::create(
-            &self.db.pool,
-            &DbCreateWorkspace {
-                branch: branch_name,
-                agent_working_dir,
-            },
-            workspace_id,
-        )
-        .await?;
-
-        if let Some(name) = workspace_name {
-            DbWorkspace::update(&self.db.pool, workspace.id, None, None, Some(name)).await?;
-            workspace.name = Some(name.to_string());
-        }
-
-        Ok(workspace)
     }
 
     pub async fn add_repository_to_workspace<F, Fut, E>(
