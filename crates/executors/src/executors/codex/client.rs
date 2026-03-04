@@ -587,7 +587,11 @@ impl AppServerClient {
 
         match status {
             ApprovalStatus::Approved => {
-                self.spawn_turn_start(thread_id, "Implement the plan.".to_string(), None);
+                self.spawn_turn_start(
+                    thread_id,
+                    "Implement the plan.".to_string(),
+                    Some(self.collaboration_mode(ModeKind::Default)?),
+                );
                 Ok(false)
             }
             ApprovalStatus::Denied { reason } => {
