@@ -672,6 +672,20 @@ async function initializeState({
         restoredData.images = scratchData.images;
       }
 
+      // Restore repos + branches from scratch draft (e.g., spin-off/duplicate)
+      if (scratchData.repos?.length > 0) {
+        const restoredRepos = await resolveNavPreferredRepos(
+          scratchData.repos.map((repo) => ({
+            repo_id: repo.repo_id,
+            target_branch: repo.target_branch || null,
+          }))
+        );
+
+        if (restoredRepos.length > 0) {
+          restoredData.repos = restoredRepos;
+        }
+      }
+
       dispatch({ type: 'INIT_COMPLETE', data: restoredData });
       return;
     }
