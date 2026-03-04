@@ -317,6 +317,10 @@
     "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
     "newSession": "New Session"
   },
+  "actionsMenu": {
+    "startReview": "Start Review",
+    "startingReview": "Starting Review..."
+  },
   "resolveConflicts": {
     "dialog": {
       "title": "Resolve Conflicts",

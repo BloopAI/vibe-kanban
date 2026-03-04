@@ -317,6 +317,10 @@
     "includeGitContextDescription": "Indique à l'agent comment voir toutes les modifications effectuées sur cette branche",
     "newSession": "Nouvelle session"
   },
+  "actionsMenu": {
+    "startReview": "Démarrer la révision",
+    "startingReview": "Démarrage de la révision..."
+  },
   "resolveConflicts": {
     "dialog": {
       "title": "Résoudre les conflits",

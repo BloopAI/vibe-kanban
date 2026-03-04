@@ -240,6 +240,10 @@
     "includeGitContextDescription": "告诉代理如何查看此分支上的所有更改",
     "newSession": "新会话"
   },
+  "actionsMenu": {
+    "startReview": "开始审查",
+    "startingReview": "正在开始审查..."
+  },
   "resolveConflicts": {
     "dialog": {
       "title": "解决冲突",

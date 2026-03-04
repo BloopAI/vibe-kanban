@@ -30,6 +30,10 @@
     "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
     "newSession": "新しいセッション"
   },
+  "actionsMenu": {
+    "startReview": "レビューを開始",
+    "startingReview": "レビューを開始中..."
+  },
   "attempt": {
     "actions": {
       "startDevServer": "開発サーバーを開始"

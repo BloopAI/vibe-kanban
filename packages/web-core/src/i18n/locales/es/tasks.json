@@ -30,6 +30,10 @@
     "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
     "newSession": "Nueva sesión"
   },
+  "actionsMenu": {
+    "startReview": "Iniciar revisión",
+    "startingReview": "Iniciando revisión..."
+  },
   "attempt": {
     "actions": {
       "startDevServer": "Iniciar servidor de desarrollo"

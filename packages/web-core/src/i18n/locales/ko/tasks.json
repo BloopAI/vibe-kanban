@@ -30,6 +30,10 @@
     "includeGitContextDescription": "이 브랜치에서 수행된 모든 변경 사항을 확인하는 방법을 에이전트에게 알려줍니다",
     "newSession": "새 세션"
   },
+  "actionsMenu": {
+    "startReview": "리뷰 시작",
+    "startingReview": "리뷰 시작 중..."
+  },
   "attempt": {
     "actions": {
       "startDevServer": "개발 서버 시작"
