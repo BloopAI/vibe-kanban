@@ -505,7 +505,9 @@
         "recent": "Récents",
         "browse": "Parcourir",
         "create": "Créer"
-      }
+      },
+      "setupHint": "Astuce : Configurez les scripts d'installation pour ce dépôt dans Paramètres → Dépôts",
+      "setupHintDismiss": "Fermer"
     }
   },
   "modelSelector": {

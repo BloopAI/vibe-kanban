@@ -428,6 +428,12 @@
       "description": "Configure scripts that run when this repository is used in workspaces.",
       "loading": "Loading repositories...",
       "loadError": "Failed to load repositories.",
+      "addRepo": {
+        "button": "Add Repository",
+        "dialogTitle": "Select Git Repository",
+        "dialogDescription": "Choose an existing git repository to register.",
+        "error": "Failed to register repository"
+      },
       "selector": {
         "label": "Select Repository",
         "placeholder": "Choose a repository to configure",
@@ -486,6 +492,22 @@
           "label": "Dev Server Script",
           "helper": "Starts a development server for this repository. Scripts execute from within the repository's worktree directory."
         }
+      },
+      "linkedProjects": {
+        "title": "Linked Projects",
+        "description": "Projects that use this repository in their default workspace configuration.",
+        "loading": "Checking projects…",
+        "none": "No projects linked"
+      },
+      "remove": {
+        "title": "Remove Repository",
+        "description": "Unlink this repository from Vibe Kanban. Files on disk will not be deleted.",
+        "button": "Remove",
+        "confirm": "Remove Repository",
+        "dialogTitle": "Remove \"{{name}}\"?",
+        "dialogDescription": "This will unlink the repository from Vibe Kanban. Your files on disk will not be affected. You can re-add it later.",
+        "success": "Repository removed successfully.",
+        "error": "Failed to remove repository."
       },
       "save": {
         "button": "Save Repository Settings",

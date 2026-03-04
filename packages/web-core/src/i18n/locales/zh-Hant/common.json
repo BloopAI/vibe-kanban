@@ -505,7 +505,9 @@
         "recent": "最近",
         "browse": "瀏覽",
         "create": "建立"
-      }
+      },
+      "setupHint": "提示：在設定 → 儲存庫中為此儲存庫設定安裝腳本",
+      "setupHintDismiss": "關閉"
     }
   },
   "modelSelector": {

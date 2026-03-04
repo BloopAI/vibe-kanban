@@ -519,7 +519,9 @@
         "recent": "Recent",
         "browse": "Browse",
         "create": "Create"
-      }
+      },
+      "setupHint": "Tip: Configure setup scripts for this repository in Settings → Repositories",
+      "setupHintDismiss": "Dismiss"
     }
   },
   "modelSelector": {

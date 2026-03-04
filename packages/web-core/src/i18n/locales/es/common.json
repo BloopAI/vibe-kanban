@@ -505,7 +505,9 @@
         "recent": "Recientes",
         "browse": "Explorar",
         "create": "Crear"
-      }
+      },
+      "setupHint": "Consejo: Configura los scripts de instalación para este repositorio en Ajustes → Repositorios",
+      "setupHintDismiss": "Cerrar"
     }
   },
   "modelSelector": {

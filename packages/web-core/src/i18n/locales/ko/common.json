@@ -505,7 +505,9 @@
         "recent": "최근",
         "browse": "찾아보기",
         "create": "생성"
-      }
+      },
+      "setupHint": "팁: 이 저장소의 설정 스크립트를 설정 → 저장소에서 구성하세요",
+      "setupHintDismiss": "닫기"
     }
   },
   "modelSelector": {

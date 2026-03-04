@@ -505,7 +505,9 @@
         "recent": "最近",
         "browse": "浏览",
         "create": "创建"
-      }
+      },
+      "setupHint": "提示：在设置 → 仓库中为此仓库配置设置脚本",
+      "setupHintDismiss": "关闭"
     }
   },
   "modelSelector": {

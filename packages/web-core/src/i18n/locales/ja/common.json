@@ -505,7 +505,9 @@
         "recent": "最近",
         "browse": "参照",
         "create": "作成"
-      }
+      },
+      "setupHint": "ヒント: このリポジトリのセットアップスクリプトは設定 → リポジトリで構成できます",
+      "setupHintDismiss": "閉じる"
     }
   },
   "modelSelector": {

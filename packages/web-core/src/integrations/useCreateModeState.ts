@@ -16,6 +16,7 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { repoApi } from '@/shared/lib/api';
 import { useWorkspaceCreateDefaults } from '@/shared/hooks/useWorkspaceCreateDefaults';
+import { getValidProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import type {
   CreateModeInitialState,
   LinkedIssue,
@@ -372,6 +373,55 @@ export function useCreateModeState({
     state.repos.length,
     preferredRepos,
   ]);
+
+  // ============================================================================
+  // Scratch project-repo defaults (async, non-blocking)
+  // ============================================================================
+  const scratchDefaultsProjectRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const remoteProjectId = state.linkedIssue?.remoteProjectId;
+    if (!remoteProjectId) return;
+    if (state.repos.length > 0) return;
+    if (scratchDefaultsProjectRef.current === remoteProjectId) return;
+
+    scratchDefaultsProjectRef.current = remoteProjectId;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const allRepos = await repoApi.list();
+        if (cancelled) return;
+
+        const availableRepoIds = new Set(allRepos.map((r) => r.id));
+        const scratchDefaults = await getValidProjectRepoDefaults(
+          remoteProjectId,
+          availableRepoIds
+        );
+        if (cancelled || scratchDefaults.length === 0) return;
+
+        const reposById = new Map(allRepos.map((r) => [r.id, r]));
+        const selectedRepos = scratchDefaults.flatMap((d) => {
+          const repo = reposById.get(d.repo_id);
+          if (!repo) return [];
+          return [{ repo, targetBranch: d.target_branch || null }];
+        });
+
+        if (selectedRepos.length > 0) {
+          dispatch({ type: 'SET_REPOS_IF_EMPTY', repos: selectedRepos });
+        }
+      } catch (err) {
+        console.warn(
+          '[useCreateModeState] Scratch defaults lookup failed:',
+          err
+        );
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.linkedIssue?.remoteProjectId, state.repos.length]);
 
   // ============================================================================
   // Persistence to scratch (debounced)

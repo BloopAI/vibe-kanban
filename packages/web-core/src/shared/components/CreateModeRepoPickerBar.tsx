@@ -77,7 +77,18 @@ export function CreateModeRepoPickerBar({
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [branchRepoId, setBranchRepoId] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [setupHintDismissed, setSetupHintDismissed] = useState(false);
   const isBusy = pendingAction !== null;
+
+  const hasUnconfiguredRepo = useMemo(
+    () =>
+      repos.some(
+        (repo) =>
+          !repo.setup_script && !repo.cleanup_script && !repo.dev_server_script
+      ),
+    [repos]
+  );
+  const showSetupHint = hasUnconfiguredRepo && !setupHintDismissed;
 
   const selectedRepoIds = useMemo(
     () => new Set(repos.map((repo) => repo.id)),
@@ -346,6 +357,21 @@ export function CreateModeRepoPickerBar({
           </div>
         </div>
       </div>
+      {showSetupHint && (
+        <div className="mx-plusfifty mt-half flex items-start gap-half rounded-sm border border-brand/20 bg-brand/5 px-base py-half">
+          <p className="flex-1 text-xs text-low">
+            {t('createMode.repoPicker.setupHint')}
+          </p>
+          <button
+            type="button"
+            onClick={() => setSetupHintDismissed(true)}
+            className="shrink-0 text-low hover:text-normal"
+            aria-label={t('createMode.repoPicker.setupHintDismiss')}
+          >
+            <XIcon className="size-icon-2xs" weight="bold" />
+          </button>
+        </div>
+      )}
       {pickerError && (
         <div className="mt-half rounded-sm border border-error/30 bg-error/10 px-base py-half">
           <p className="text-xs text-error">{pickerError}</p>

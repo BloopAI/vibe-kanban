@@ -181,10 +181,10 @@ function WorkspaceSelectionContent({
       // Get defaults from most recent workspace
       const defaults = await getWorkspaceDefaults(
         workspaces,
-        localWorkspaceIds
+        localWorkspaceIds,
+        projectId
       );
 
-      // Navigate and close dialog
       const createState = buildWorkspaceCreateInitialState({
         prompt: initialPrompt,
         defaults,
