@@ -29,6 +29,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -333,10 +334,20 @@ export function WorkspacesLayout() {
   );
 
   return (
-    <div className="flex flex-1 min-h-0 h-full">
+    <div className="relative flex flex-1 min-h-0 h-full">
       {isLeftSidebarVisible && (
         <div className="w-[300px] shrink-0 h-full overflow-hidden">
           <WorkspacesSidebarContainer onScrollToBottom={handleScrollToBottom} />
+        </div>
+      )}
+
+      {!isLeftSidebarVisible && (
+        <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2">
+          <WorkspacesSidebarReopenTag
+            onOpen={() => setLeftSidebarVisible(true)}
+            label={t('workspaces.title')}
+            ariaLabel={t('workspaces.title')}
+          />
         </div>
       )}
 

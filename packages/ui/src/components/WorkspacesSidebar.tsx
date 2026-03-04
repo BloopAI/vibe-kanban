@@ -3,10 +3,12 @@ import { useCallback, useMemo, useRef } from 'react';
 import {
   PlusIcon,
   ArrowLeftIcon,
+  ArrowRightIcon,
   ArchiveIcon,
   StackIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/cn';
 import { InputField } from './InputField';
 import { WorkspaceSummary } from './WorkspaceSummary';
 import {
@@ -77,6 +79,36 @@ export interface WorkspacesSidebarProps {
   onOpenWorkspaceActions?: (workspaceId: string) => void;
   /** Persist keys for collapsible sections */
   persistKeys?: WorkspacesSidebarPersistKeys;
+}
+
+export interface WorkspacesSidebarReopenTagProps {
+  onOpen: () => void;
+  label?: string;
+  ariaLabel?: string;
+  className?: string;
+}
+
+export function WorkspacesSidebarReopenTag({
+  onOpen,
+  label = 'Workspaces',
+  ariaLabel,
+  className,
+}: WorkspacesSidebarReopenTagProps) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={ariaLabel ?? label}
+      title={ariaLabel ?? label}
+      className={cn(
+        'group inline-flex h-8 items-center gap-1.5 rounded-r-md border border-l-0 border-border bg-secondary px-2 text-low shadow-sm transition-colors hover:bg-secondary/95 hover:text-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+        className
+      )}
+    >
+      <ArrowRightIcon className="size-icon-sm shrink-0" />
+      <span className="text-xs font-medium whitespace-nowrap">{label}</span>
+    </button>
+  );
 }
 
 function WorkspaceList({
