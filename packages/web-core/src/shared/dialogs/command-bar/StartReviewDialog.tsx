@@ -275,8 +275,8 @@ const StartReviewDialogImpl = create<StartReviewDialogProps>(
               </div>
               <Button onClick={handleSubmit} disabled={!canSubmit}>
                 {isSubmitting
-                  ? t('startReviewDialog.starting')
-                  : t('startReviewDialog.title')}
+                  ? t('actionsMenu.startingReview')
+                  : t('actionsMenu.startReview')}
               </Button>
             </div>
           </DialogFooter>

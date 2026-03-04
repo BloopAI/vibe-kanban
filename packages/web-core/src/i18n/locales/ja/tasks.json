@@ -28,8 +28,11 @@
     "reviewComments": "レビューコメント（{{count}}）",
     "includeGitContext": "Gitコンテキストを含める",
     "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
-    "newSession": "新しいセッション",
-    "starting": "レビューを開始中..."
+    "newSession": "新しいセッション"
+  },
+  "actionsMenu": {
+    "startReview": "レビューを開始",
+    "startingReview": "レビューを開始中..."
   },
   "attempt": {
     "actions": {

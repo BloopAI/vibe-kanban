@@ -238,8 +238,11 @@
     "reviewComments": "審查評論（{{count}}）",
     "includeGitContext": "包含 Git 上下文",
     "includeGitContextDescription": "告訴代理如何查看此分支上的所有變更",
-    "newSession": "新工作階段",
-    "starting": "正在開始審查..."
+    "newSession": "新工作階段"
+  },
+  "actionsMenu": {
+    "startReview": "開始審查",
+    "startingReview": "正在開始審查..."
   },
   "resolveConflicts": {
     "dialog": {

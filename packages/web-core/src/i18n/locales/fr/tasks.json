@@ -315,8 +315,11 @@
     "reviewComments": "Commentaires de révision ({{count}})",
     "includeGitContext": "Inclure le contexte git",
     "includeGitContextDescription": "Indique à l'agent comment voir toutes les modifications effectuées sur cette branche",
-    "newSession": "Nouvelle session",
-    "starting": "Démarrage de la révision..."
+    "newSession": "Nouvelle session"
+  },
+  "actionsMenu": {
+    "startReview": "Démarrer la révision",
+    "startingReview": "Démarrage de la révision..."
   },
   "resolveConflicts": {
     "dialog": {
