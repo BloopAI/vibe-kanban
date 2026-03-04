@@ -218,7 +218,7 @@ export function Navbar({
                       <SidebarSimpleIcon className="size-icon-base" />
                     </button>
                   )}
-              <p className="text-base text-normal font-medium truncate">
+              <p className="text-base text-normal font-medium truncate cursor-default select-none">
                 {workspaceTitle}
               </p>
             </div>
@@ -352,7 +352,7 @@ export function Navbar({
           <div className="flex items-center justify-between px-base py-half border-t border-border">
             <div className="flex items-center gap-base flex-1 min-w-0">
               {leftSlot}
-              <p className="text-sm text-low truncate">{workspaceTitle}</p>
+              <p className="text-sm text-low truncate cursor-default select-none">{workspaceTitle}</p>
             </div>
           </div>
         )}
@@ -387,7 +387,7 @@ export function Navbar({
         data-tauri-drag-region
         className="flex-1 flex items-center justify-center"
       >
-        <p data-tauri-drag-region className="text-base text-low truncate">
+        <p data-tauri-drag-region className="text-base text-low truncate cursor-default select-none">
           {workspaceTitle ?? ''}
         </p>
       </div>
