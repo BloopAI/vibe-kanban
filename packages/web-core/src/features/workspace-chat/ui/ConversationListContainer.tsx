@@ -24,7 +24,7 @@ import {
   InitialDataScrollModifier,
   ScrollToBottomModifier,
 } from '@/shared/lib/virtuoso-modifiers';
-import NewDisplayConversationEntry from './NewDisplayConversationEntry';
+import DisplayConversationEntry from './DisplayConversationEntry';
 import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
 import { useEntries } from '../model/contexts/EntriesContext';
 import {
@@ -91,7 +91,7 @@ const ItemContent: VirtuosoMessageListProps<
   // Handle aggregated tool groups (file_read, search, web_fetch)
   if (isAggregatedGroup(data)) {
     return (
-      <NewDisplayConversationEntry
+      <DisplayConversationEntry
         expansionKey={data.patchKey}
         aggregatedGroup={data}
         aggregatedDiffGroup={null}
@@ -107,7 +107,7 @@ const ItemContent: VirtuosoMessageListProps<
   // Handle aggregated diff groups (file_edit by same path)
   if (isAggregatedDiffGroup(data)) {
     return (
-      <NewDisplayConversationEntry
+      <DisplayConversationEntry
         expansionKey={data.patchKey}
         aggregatedGroup={null}
         aggregatedDiffGroup={data}
@@ -123,7 +123,7 @@ const ItemContent: VirtuosoMessageListProps<
   // Handle aggregated thinking groups (thinking entries in previous turns)
   if (isAggregatedThinkingGroup(data)) {
     return (
-      <NewDisplayConversationEntry
+      <DisplayConversationEntry
         expansionKey={data.patchKey}
         aggregatedGroup={null}
         aggregatedDiffGroup={null}
@@ -144,7 +144,7 @@ const ItemContent: VirtuosoMessageListProps<
   }
   if (data.type === 'NORMALIZED_ENTRY' && attempt) {
     return (
-      <NewDisplayConversationEntry
+      <DisplayConversationEntry
         expansionKey={data.patchKey}
         entry={data.content}
         aggregatedGroup={null}

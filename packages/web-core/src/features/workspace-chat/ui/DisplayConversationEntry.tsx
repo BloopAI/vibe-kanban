@@ -280,7 +280,7 @@ function renderToolUseEntry(
   );
 }
 
-function NewDisplayConversationEntry(props: Props) {
+function DisplayConversationEntry(props: Props) {
   const { t } = useTranslation('common');
   const { capabilities } = useUserSystem();
   const {
@@ -1342,7 +1342,7 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   );
 }
 
-const NewDisplayConversationEntrySpaced = (props: Props) => {
+const DisplayConversationEntrySpaced = (props: Props) => {
   const { isEntryGreyed } = useMessageEditContext();
   const isGreyed = isEntryGreyed(props.expansionKey);
 
@@ -1353,9 +1353,9 @@ const NewDisplayConversationEntrySpaced = (props: Props) => {
         isGreyed && 'opacity-50 pointer-events-none'
       )}
     >
-      <NewDisplayConversationEntry {...props} />
+      <DisplayConversationEntry {...props} />
     </div>
   );
 };
 
-export default NewDisplayConversationEntrySpaced;
+export default DisplayConversationEntrySpaced;
