@@ -1,0 +1,175 @@
+---
+title: "Workspaces"
+description: "Create isolated coding environments, manage sessions, and organise your work"
+---
+
+A **workspace** is an isolated environment for completing a coding task. When you create one, Vibe Kanban sets up a git worktree on a fresh branch, launches your coding agent, and provides a dedicated space to chat, review changes, and iterate — all without touching your main branch.
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-overview.png" alt="Workspaces UI showing the four-panel layout with workspace sidebar, conversation, changes panel, and details sidebar" />
+</Frame>
+
+## 1. The workspace sidebar
+
+The sidebar on the left lists all your workspaces with live status indicators.
+
+<Frame>
+<img style={{maxHeight: "350px"}} src="/images/workspaces-sidebar.png" alt="Workspace sidebar showing workspaces with timestamps and change counts" />
+</Frame>
+
+| Indicator | Meaning |
+|-----------|---------|
+| **Running** | Agent is actively working |
+| **Idle** | Waiting for your input |
+| **Needs Attention** | Agent is waiting for approval (raised hand icon) |
+| **Dev Server** | Blue indicator when a dev server is running |
+| **PR Status** | Badge showing linked pull request status |
+
+You can switch between a **flat list** and an **accordion layout** (grouped by status) using the layout toggle at the top of the sidebar.
+
+<Frame>
+<img style={{maxHeight: "350px"}} src="/images/workspaces-sidebar-accordion.png" alt="Workspace sidebar in accordion layout grouped by Needs Attention, Idle, and Running" />
+</Frame>
+
+Use the search box to filter workspaces by name or branch.
+
+## 2. Create a workspace
+
+Click the **+** button at the top of the sidebar, or use the command bar (`Cmd/Ctrl + K` → **New Workspace**).
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-create-new.png" alt="Create workspace view showing project selection, repository list, and task input" />
+</Frame>
+
+<Steps>
+<Step title="Select a project">
+Choose a project from the **Project** dropdown. Projects group related repositories together.
+</Step>
+
+<Step title="Add repositories and set target branches">
+Select which repositories to include and set the **target branch** for each (e.g. `main` or `develop`). This is the branch your changes will eventually merge into.
+
+<Frame>
+<img style={{maxHeight: "350px"}} src="/images/workspaces-add-repo.png" alt="Repository selection showing selected repo with branch dropdown and list of available repositories" />
+</Frame>
+
+<Tip>
+You can add multiple repositories to a single workspace if your task spans multiple codebases. Each maintains independent git state.
+</Tip>
+</Step>
+
+<Step title="Describe your task and select an agent">
+Type a clear description of what you want to accomplish in the chat input. Choose a coding agent from the **Agent** dropdown, then click **Create**.
+</Step>
+</Steps>
+
+<Info>
+**What happens behind the scenes:** Vibe Kanban creates a git worktree (a separate working directory on a new branch), runs any configured setup scripts (e.g. `npm install`), and starts the agent with your prompt. Your original repository stays untouched.
+</Info>
+
+For the full guide, see [Creating Workspaces](/workspaces/creating-workspaces).
+
+## 3. Sessions
+
+A **session** is a single conversation thread with a coding agent. Each workspace can have multiple sessions — useful for working around token limits, trying alternative approaches, or running different agents in parallel.
+
+<Frame>
+<img style={{maxHeight: "300px"}} src="/images/workspaces-sessions.png" alt="Session dropdown showing multiple sessions with New Session option" />
+</Frame>
+
+- **Sessions share files** — changes from one session are visible to all others
+- **Sessions don't share conversation history** — each starts with a fresh context
+- **Sessions run independently** — one can be running while another is idle
+
+To create a new session, click the session dropdown in the chat toolbar and select **+ New Session**.
+
+<Tip>
+Watch the **context gauge** in the chat interface. When it turns orange or red, the agent's context window is nearly full — start a new session to give it a fresh start.
+</Tip>
+
+For more details, see [Sessions](/workspaces/sessions).
+
+## 4. Workspace actions
+
+Hover over a workspace in the sidebar and click **...** (More actions) to access workspace actions, or use the command bar (`Cmd/Ctrl + K` → **Workspace Actions**).
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-actions-menu.png" alt="Workspace Actions menu showing Rename, Duplicate, Pin, Archive, and Delete" />
+</Frame>
+
+| Action | What it does |
+|--------|-------------|
+| **Pin** | Keeps the workspace at the top of the sidebar |
+| **Rename** | Changes the workspace display name |
+| **Duplicate** | Creates a copy with the same repos and branches but a fresh conversation |
+| **Archive** | Hides the workspace but preserves everything (conversation, worktree, notes) |
+| **Delete** | Permanently removes the workspace and its worktree |
+
+<Info>
+**Archive vs Delete:** Archive when you might return later — everything is preserved and you can unarchive at any time. Delete when the task is done and merged and you want to free disk space.
+</Info>
+
+Archived workspaces can be viewed by clicking **View Archive** at the bottom of the sidebar.
+
+For full details, see [Managing Workspaces](/workspaces/managing-workspaces).
+
+## 5. The interface at a glance
+
+The workspace UI is a four-panel layout. Toggle panels on and off using the navbar buttons or the command bar.
+
+| Panel | Position | Purpose |
+|-------|----------|---------|
+| **Workspace Sidebar** | Left edge | List of all workspaces with status indicators |
+| **Conversation Panel** | Left main | Chat with coding agents, session management |
+| **Context Panel** | Right main | Changes, logs, or preview (toggleable) |
+| **Details Sidebar** | Right edge | Git status, terminal, notes |
+
+<Frame>
+<img style={{maxHeight: "400px"}} src="/images/workspaces-interface-overview.png" alt="Workspaces interface showing the four-panel layout with labels for each section" />
+</Frame>
+
+The **context bar** is a draggable floating toolbar for quick actions: open in your IDE, copy the workspace path, toggle the dev server, and toggle the changes or preview panels.
+
+For the complete interface reference, see [Interface Guide](/workspaces/interface).
+
+## Troubleshooting
+
+<AccordionGroup>
+<Accordion title="Workspace creation fails">
+- Commit or stash any uncommitted changes in your original repository — git worktree creation requires a clean state
+- Check available disk space (each worktree copies all tracked files)
+- Try a different target branch if there's a branch name conflict
+</Accordion>
+
+<Accordion title="Agent doesn't start after creating workspace">
+- Check that your coding agent is installed (try running the CLI command manually in terminal)
+- Verify API keys are configured in **Settings** → **Agents**
+- Check your internet connection
+</Accordion>
+
+<Accordion title="Workspace uses too much disk space">
+- Delete completed workspaces (not just archive) to remove the worktree from disk
+- Add cleanup scripts to remove large directories like `node_modules` when workspaces close
+- See [Managing Workspaces](/workspaces/managing-workspaces) for disk space details
+</Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+<Card title="Creating Workspaces" icon="plus" href="/workspaces/creating-workspaces">
+  Detailed guide covering projects, multi-repo setup, and workspace settings
+</Card>
+
+<Card title="Managing Workspaces" icon="folder-gear" href="/workspaces/managing-workspaces">
+  Pinning, archiving, deleting, and freeing up disk space
+</Card>
+
+<Card title="Sessions" icon="messages" href="/workspaces/sessions">
+  Create and manage multiple conversation sessions
+</Card>
+
+<Card title="Interface Guide" icon="table-columns" href="/workspaces/interface">
+  Full reference for the four-panel layout and navbar controls
+</Card>
+</CardGroup>
