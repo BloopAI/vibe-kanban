@@ -45,6 +45,7 @@ pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
     user_id: String,
     db: DBService,
+    workspace_manager: WorkspaceManager,
     analytics: Option<AnalyticsService>,
     container: LocalContainerService,
     git: GitService,
@@ -190,7 +191,7 @@ impl Deployment for LocalDeployment {
         let workspace_manager = WorkspaceManager::new(db.clone());
         let container = LocalContainerService::new(
             db.clone(),
-            workspace_manager,
+            workspace_manager.clone(),
             msg_stores.clone(),
             config.clone(),
             git.clone(),
@@ -222,6 +223,7 @@ impl Deployment for LocalDeployment {
             config,
             user_id,
             db,
+            workspace_manager,
             analytics,
             container,
             git,
@@ -324,6 +326,10 @@ impl Deployment for LocalDeployment {
 }
 
 impl LocalDeployment {
+    pub fn workspace_manager(&self) -> &WorkspaceManager {
+        &self.workspace_manager
+    }
+
     pub fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         self.remote_client.clone()
     }

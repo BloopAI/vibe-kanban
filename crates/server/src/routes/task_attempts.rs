@@ -1591,7 +1591,7 @@ pub async fn delete_workspace(
     Query(query): Query<DeleteWorkspaceQuery>,
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     let pool = &deployment.db().pool;
-    let workspace_manager = WorkspaceManager::new(deployment.db().clone());
+    let workspace_manager = deployment.workspace_manager();
 
     // Check for running execution processes
     if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
@@ -1882,7 +1882,7 @@ pub async fn create_and_start_workspace(
         ));
     }
 
-    let workspace_manager = WorkspaceManager::new(deployment.db().clone());
+    let workspace_manager = deployment.workspace_manager();
 
     let workspace_id = Uuid::new_v4();
     let branch_label = name.as_deref().unwrap_or("workspace");
