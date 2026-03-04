@@ -44,34 +44,37 @@ function writeStoredComposerState(
 /**
  * Syncs KanbanIssueComposerStore to localStorage on remote-web.
  * No-op on local runtime. Call once at the app root level.
+ *
+ * Hydration happens synchronously on first call (before any effects)
+ * to avoid race conditions with React StrictMode double-mounting.
  */
 export function useKanbanIssueComposerScratch() {
   const runtime = useAppRuntime();
   const isRemote = runtime === 'remote';
-  const hasInitializedRef = useRef(false);
   const isApplyingRef = useRef(false);
+  const hasHydratedRef = useRef(false);
 
-  useEffect(() => {
-    if (!isRemote || hasInitializedRef.current) return;
-
-    hasInitializedRef.current = true;
-
+  // Hydrate synchronously during render (not in an effect) to ensure
+  // the store has data before any child components mount.
+  // This avoids StrictMode double-mount issues where effects run,
+  // clean up, then run again — but refs persist across that cycle.
+  if (isRemote && !hasHydratedRef.current) {
+    hasHydratedRef.current = true;
     const stored = readStoredComposerState();
-    if (!stored) return;
-
-    isApplyingRef.current = true;
-    useKanbanIssueComposerStore.setState({ byKey: stored });
-
-    setTimeout(() => {
+    if (stored && Object.keys(stored).length > 0) {
+      const current = useKanbanIssueComposerStore.getState().byKey;
+      const merged = { ...stored, ...current };
+      isApplyingRef.current = true;
+      useKanbanIssueComposerStore.setState({ byKey: merged });
       isApplyingRef.current = false;
-    }, 100);
-  }, [isRemote]);
+    }
+  }
 
   useEffect(() => {
     if (!isRemote) return;
 
     const unsubscribe = useKanbanIssueComposerStore.subscribe((state) => {
-      if (isApplyingRef.current || !hasInitializedRef.current) return;
+      if (isApplyingRef.current) return;
       writeStoredComposerState(state.byKey);
     });
 
