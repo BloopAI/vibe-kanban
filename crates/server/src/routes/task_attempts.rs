@@ -1630,7 +1630,14 @@ pub async fn add_workspace_repo(
         .await
         .map_err(map_add_repo_error)?;
 
-    let workspace = managed_workspace.workspace.clone();
+    deployment
+        .container()
+        .ensure_container_exists(&managed_workspace.workspace)
+        .await?;
+
+    let workspace = Workspace::find_by_id(&deployment.db().pool, managed_workspace.workspace.id)
+        .await?
+        .ok_or(WorkspaceError::WorkspaceNotFound)?;
     let repo = managed_workspace
         .repos
         .iter()
