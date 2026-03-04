@@ -119,12 +119,20 @@ fn main() {
                     match server::startup::start().await {
                         Ok(server_handle) => {
                             let url = server_handle.url();
-                            let webview_url = tauri::WebviewUrl::External(url.parse().unwrap());
 
-                            match create_window(&app_handle, webview_url) {
-                                Ok(_) => tracing::info!("Window opened at {url}"),
-                                Err(e) => tracing::error!("Failed to create window: {e}"),
-                            }
+                            // Create the window on the main thread — macOS
+                            // silently drops windows created from async tasks.
+                            let url_clone = url.clone();
+                            let create_handle = app_handle.clone();
+                            let _ = app_handle.run_on_main_thread(move || {
+                                let webview_url =
+                                    tauri::WebviewUrl::External(url_clone.parse().unwrap());
+                                match create_window(&create_handle, webview_url) {
+                                    Ok(_) => {}
+                                    Err(e) => tracing::error!("Failed to create window: {e}"),
+                                }
+                            });
+                            tracing::info!("Window opened at {url}");
 
                             // Wait for either the server to exit on its own or
                             // the external shutdown token to be cancelled.
@@ -182,49 +190,10 @@ fn show_window(app: &tauri::AppHandle) {
     #[cfg(target_os = "macos")]
     {
         let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-        restore_dock_icon(app);
     }
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
-    }
-}
-
-/// Re-apply the app icon to the dock after switching back to Regular policy.
-/// macOS does not automatically restore the icon, so we set it via NSApplication.
-#[cfg(target_os = "macos")]
-fn restore_dock_icon(app: &tauri::AppHandle) {
-    use objc2::{AnyThread, MainThreadMarker};
-    use objc2_app_kit::{NSApplication, NSImage};
-    use objc2_foundation::NSData;
-
-    let Some(icon) = app.default_window_icon() else {
-        return;
-    };
-    let bytes = icon.rgba().as_ref();
-
-    // The icon from Tauri is raw RGBA — convert to PNG so NSImage can decode it.
-    let mut png_buf = Vec::new();
-    {
-        let mut encoder = png::Encoder::new(
-            std::io::Cursor::new(&mut png_buf),
-            icon.width(),
-            icon.height(),
-        );
-        encoder.set_color(png::ColorType::Rgba);
-        encoder.set_depth(png::BitDepth::Eight);
-        if let Ok(mut writer) = encoder.write_header() {
-            let _ = writer.write_image_data(bytes);
-        }
-    }
-
-    unsafe {
-        let mtm = MainThreadMarker::new_unchecked();
-        let ns_app = NSApplication::sharedApplication(mtm);
-        let data = NSData::with_bytes(&png_buf);
-        if let Some(ns_image) = NSImage::initWithData(NSImage::alloc(), &data) {
-            ns_app.setApplicationIconImage(Some(&ns_image));
-        }
     }
 }
 
