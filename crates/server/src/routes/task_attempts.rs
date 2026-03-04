@@ -28,7 +28,7 @@ use db::models::{
     requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, UpdateWorkspace},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
-    workspace_repo::{CreateWorkspaceRepo, RepoWithTargetBranch, WorkspaceRepo},
+    workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
 };
 use deployment::Deployment;
 use executors::{
@@ -53,7 +53,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_manager::{AddRepoToWorkspaceError, WorkspaceManager};
+use workspace_manager::{AddRepoToWorkspaceError, ManagedWorkspaceOps, WorkspaceManager};
 
 use crate::{
     DeploymentImpl,
@@ -1612,14 +1612,13 @@ pub async fn add_workspace_repo(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AddWorkspaceRepoRequest>,
 ) -> Result<ResponseJson<ApiResponse<AddWorkspaceRepoResponse>>, ApiError> {
-    let result = deployment
+    let mut managed_workspace = deployment
         .workspace_manager()
-        .add_repo_to_workspace(
-            &workspace,
-            payload.repo_id,
-            payload.target_branch,
-            deployment.git(),
-        )
+        .load_managed_workspace(workspace)
+        .await?;
+
+    let result = managed_workspace
+        .add_repo(payload.repo_id, payload.target_branch, deployment.git())
         .await
         .map_err(map_add_repo_error)?;
 
@@ -1659,9 +1658,10 @@ pub async fn delete_workspace(
 ) -> Result<(StatusCode, ResponseJson<ApiResponse<()>>), ApiError> {
     let pool = &deployment.db().pool;
     let workspace_manager = deployment.workspace_manager();
+    let workspace_id = workspace.id;
 
     // Check for running execution processes
-    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace_id)
         .await?
     {
         return Err(ApiError::Conflict(
@@ -1672,13 +1672,13 @@ pub async fn delete_workspace(
 
     // Stop any running dev servers for this workspace
     let dev_servers =
-        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace.id).await?;
+        ExecutionProcess::find_running_dev_servers_by_workspace(pool, workspace_id).await?;
 
     for dev_server in dev_servers {
         tracing::info!(
             "Stopping dev server {} before deleting workspace {}",
             dev_server.id,
-            workspace.id
+            workspace_id
         );
 
         if let Err(e) = deployment
@@ -1689,20 +1689,18 @@ pub async fn delete_workspace(
             tracing::error!(
                 "Failed to stop dev server {} for workspace {}: {}",
                 dev_server.id,
-                workspace.id,
+                workspace_id,
                 e
             );
         }
     }
 
-    let deletion_context = workspace_manager
-        .prepare_workspace_deletion(&workspace)
-        .await?;
+    let managed_workspace = workspace_manager.load_managed_workspace(workspace).await?;
+
+    let deletion_context = managed_workspace.prepare_deletion_context().await?;
 
     // Delete workspace from database (FK CASCADE will handle sessions, execution_processes, etc.)
-    let rows_affected = workspace_manager
-        .delete_workspace_record(workspace.id)
-        .await?;
+    let rows_affected = managed_workspace.delete_record().await?;
 
     if rows_affected == 0 {
         return Err(ApiError::Database(SqlxError::RowNotFound));
@@ -1712,7 +1710,7 @@ pub async fn delete_workspace(
         .track_if_analytics_allowed(
             "workspace_deleted",
             serde_json::json!({
-                "workspace_id": workspace.id.to_string(),
+                "workspace_id": workspace_id.to_string(),
             }),
         )
         .await;
@@ -1720,14 +1718,14 @@ pub async fn delete_workspace(
     // Attempt remote workspace deletion if requested
     if query.delete_remote {
         if let Ok(client) = deployment.remote_client() {
-            match client.delete_workspace(workspace.id).await {
+            match client.delete_workspace(workspace_id).await {
                 Ok(()) => {
-                    tracing::info!("Deleted remote workspace for {}", workspace.id);
+                    tracing::info!("Deleted remote workspace for {}", workspace_id);
                 }
                 Err(e) => {
                     tracing::warn!(
                         "Failed to delete remote workspace for {}: {}",
-                        workspace.id,
+                        workspace_id,
                         e
                     );
                 }
@@ -1735,7 +1733,7 @@ pub async fn delete_workspace(
         } else {
             tracing::debug!(
                 "Remote client not available, skipping remote deletion for {}",
-                workspace.id
+                workspace_id
             );
         }
     }
@@ -1958,17 +1956,7 @@ pub async fn create_and_start_workspace(
         .git_branch_from_workspace(&workspace_id, branch_label)
         .await;
 
-    let workspace_repos: Vec<CreateWorkspaceRepo> = repos
-        .iter()
-        .map(|r| CreateWorkspaceRepo {
-            repo_id: r.repo_id,
-            target_branch: r.target_branch.clone(),
-        })
-        .collect();
-
-    let agent_working_dir = workspace_manager
-        .resolve_agent_working_dir(&workspace_repos)
-        .await?;
+    let agent_working_dir = workspace_manager.resolve_agent_working_dir(&repos).await?;
 
     let workspace = Workspace::create(
         &deployment.db().pool,
@@ -1981,18 +1969,18 @@ pub async fn create_and_start_workspace(
     )
     .await?;
 
-    for repo in &workspace_repos {
-        workspace_manager
-            .add_repository_to_workspace(&workspace, repo, deployment.git())
+    let mut managed_workspace = workspace_manager.managed_workspace(workspace);
+
+    for repo in &repos {
+        managed_workspace
+            .add_repository(repo, deployment.git())
             .await
             .map_err(map_add_repo_error)?;
     }
 
     // Associate user-uploaded images with the workspace
     if let Some(ids) = &image_ids {
-        workspace_manager
-            .associate_images(workspace.id, ids)
-            .await?;
+        managed_workspace.associate_images(ids).await?;
     }
 
     // Import images from linked remote issue so they're available in the workspace
@@ -2002,10 +1990,7 @@ pub async fn create_and_start_workspace(
         match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await {
             Ok(imported) if !imported.is_empty() => {
                 let imported_ids: Vec<Uuid> = imported.iter().map(|i| i.image_id).collect();
-                if let Err(e) = workspace_manager
-                    .associate_images(workspace.id, &imported_ids)
-                    .await
-                {
+                if let Err(e) = managed_workspace.associate_images(&imported_ids).await {
                     tracing::warn!("Failed to associate imported images with workspace: {}", e);
                 }
 
@@ -2026,6 +2011,7 @@ pub async fn create_and_start_workspace(
         }
     }
 
+    let workspace = managed_workspace.workspace.clone();
     tracing::info!("Created workspace {}", workspace.id);
 
     let execution_process = deployment
