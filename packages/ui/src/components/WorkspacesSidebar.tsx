@@ -3,7 +3,6 @@ import { useCallback, useMemo, useRef } from 'react';
 import {
   PlusIcon,
   ArrowLeftIcon,
-  ArrowRightIcon,
   ArchiveIcon,
   StackIcon,
 } from '@phosphor-icons/react';
@@ -82,31 +81,41 @@ export interface WorkspacesSidebarProps {
 }
 
 export interface WorkspacesSidebarReopenTagProps {
-  onOpen: () => void;
-  label?: string;
+  active?: boolean;
+  onHoverStart?: () => void;
+  onHoverEnd?: () => void;
   ariaLabel?: string;
   className?: string;
 }
 
 export function WorkspacesSidebarReopenTag({
-  onOpen,
-  label = 'Workspaces',
+  active = false,
+  onHoverStart,
+  onHoverEnd,
   ariaLabel,
   className,
 }: WorkspacesSidebarReopenTagProps) {
   return (
     <button
       type="button"
-      onClick={onOpen}
-      aria-label={ariaLabel ?? label}
-      title={ariaLabel ?? label}
+      onMouseEnter={onHoverStart}
+      onMouseLeave={onHoverEnd}
+      aria-label={ariaLabel ?? 'Preview workspaces sidebar'}
+      title={ariaLabel ?? 'Preview workspaces sidebar'}
       className={cn(
-        'group inline-flex h-8 items-center gap-1.5 rounded-r-md border border-l-0 border-border bg-secondary px-2 text-low shadow-sm transition-colors hover:bg-secondary/95 hover:text-normal focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2',
+        'group inline-flex h-24 w-4 items-center justify-center rounded-r-md border border-l-0 border-border bg-secondary/95 shadow-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 cursor-e-resize',
+        active ? 'bg-panel text-normal' : 'text-low hover:text-normal',
         className
       )}
     >
-      <ArrowRightIcon className="size-icon-sm shrink-0" />
-      <span className="text-xs font-medium whitespace-nowrap">{label}</span>
+      <span className="grid grid-cols-2 gap-[2px]">
+        <span className="size-dot rounded-full bg-low/70 group-hover:bg-low" />
+        <span className="size-dot rounded-full bg-low/70 group-hover:bg-low" />
+        <span className="size-dot rounded-full bg-low/70 group-hover:bg-low" />
+        <span className="size-dot rounded-full bg-low/70 group-hover:bg-low" />
+        <span className="size-dot rounded-full bg-low/70 group-hover:bg-low" />
+        <span className="size-dot rounded-full bg-low/70 group-hover:bg-low" />
+      </span>
     </button>
   );
 }

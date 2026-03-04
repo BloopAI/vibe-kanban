@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -56,6 +56,10 @@ export function WorkspacesLayout() {
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
+  const [isSidebarHandleHovered, setIsSidebarHandleHovered] = useState(false);
+  const [isSidebarPreviewHovered, setIsSidebarPreviewHovered] = useState(false);
+  const isSidebarHoverPreviewOpen =
+    isSidebarHandleHovered || isSidebarPreviewHovered;
 
   const handleScrollToBottom = useCallback(() => {
     mainContainerRef.current?.scrollToBottom();
@@ -342,12 +346,32 @@ export function WorkspacesLayout() {
       )}
 
       {!isLeftSidebarVisible && (
-        <div className="absolute left-0 top-1/2 z-20 -translate-y-1/2">
+        <div className="absolute inset-y-0 left-0 z-20 flex items-center">
           <WorkspacesSidebarReopenTag
-            onOpen={() => setLeftSidebarVisible(true)}
-            label={t('workspaces.title')}
+            active={isSidebarHoverPreviewOpen}
+            onHoverStart={() => setIsSidebarHandleHovered(true)}
+            onHoverEnd={() => setIsSidebarHandleHovered(false)}
             ariaLabel={t('workspaces.title')}
           />
+        </div>
+      )}
+
+      {!isLeftSidebarVisible && (
+        <div
+          className={cn(
+            'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
+            isSidebarHoverPreviewOpen
+              ? 'translate-x-0 pointer-events-auto'
+              : '-translate-x-full pointer-events-none'
+          )}
+          onMouseEnter={() => setIsSidebarPreviewHovered(true)}
+          onMouseLeave={() => setIsSidebarPreviewHovered(false)}
+        >
+          <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
+            <WorkspacesSidebarContainer
+              onScrollToBottom={handleScrollToBottom}
+            />
+          </div>
         </div>
       )}
 
