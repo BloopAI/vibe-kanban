@@ -22,6 +22,7 @@ import {
   type Transformer,
 } from '@lexical/markdown';
 import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
+import { MarkdownListContinuePlugin } from '@vibe/ui/components/MarkdownListContinuePlugin';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
@@ -626,6 +627,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
                   <MarkdownInsertPlugin />
+                  <MarkdownListContinuePlugin />
                   <PasteMarkdownPlugin transformers={activeTransformers} />
                   <TypeaheadOpenProvider>
                     <FileTagTypeaheadPlugin
