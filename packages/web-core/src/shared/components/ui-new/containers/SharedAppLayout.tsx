@@ -7,6 +7,7 @@ import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
+import { isTauriMac } from '@/shared/lib/platform';
 
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
@@ -293,8 +294,12 @@ export function SharedAppLayout() {
       >
         {showAppBar && (
           <>
-            {/* Grid row 1, col 1: empty corner (blends AppBar + Navbar) */}
-            <div className="bg-secondary" />
+            {/* Grid row 1, col 1: empty corner (blends AppBar + Navbar) — drag region */}
+            <div
+              data-tauri-drag-region
+              className="bg-secondary"
+              style={isTauriMac() ? { minWidth: 78 } : undefined}
+            />
             {/* Grid row 1, col 2: Navbar */}
             <NavbarContainer
               onCreateOrg={handleCreateOrg}
