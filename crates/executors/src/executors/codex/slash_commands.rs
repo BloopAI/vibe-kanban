@@ -1,23 +1,13 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use codex_app_server_protocol::JSONRPCNotification;
-use codex_core::{
-    AuthManager, RolloutRecorder, ThreadManager,
-    config::{Config, ConfigOverrides},
-    protocol::{
-        AgentMessageEvent, ErrorEvent, Event, EventMsg, Op as CoreOp, RolloutItem, SessionSource,
-        TokenUsageInfo, TurnContextItem,
-    },
-};
-use codex_protocol::{
-    config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
-};
+use codex_protocol::protocol::{AgentMessageEvent, ErrorEvent, EventMsg};
 use serde_json::json;
 
 use super::{
-    AskForApproval, Codex, SandboxMode,
+    Codex,
     client::{AppServerClient, LogWriter},
-    session::SessionHandler,
+    codex_home, fork_params_from,
 };
 use crate::{
     env::ExecutionEnv,
@@ -85,9 +75,9 @@ impl Codex {
                         .await
                     }
                 }
-                CodexSlashCommand::Compact { instructions } => match session_id {
-                    Some(session_id) => {
-                        self.perform_compact(current_dir, session_id, instructions, env)
+                CodexSlashCommand::Compact { .. } => match session_id {
+                    Some(_) => {
+                        self.handle_app_server_slash_command(current_dir, command, session_id, env)
                             .await
                     }
                     None => {
@@ -99,16 +89,11 @@ impl Codex {
                     }
                 },
                 CodexSlashCommand::Status => {
-                    self.return_static_reply(
-                        current_dir,
-                        self.build_status_message(session_id)
-                            .await
-                            .map_err(|err| format!("Status unavailable: {err}")),
-                    )
-                    .await
+                    self.handle_app_server_slash_command(current_dir, command, session_id, env)
+                        .await
                 }
                 CodexSlashCommand::Mcp => {
-                    self.handle_app_server_slash_command(current_dir, command, env)
+                    self.handle_app_server_slash_command(current_dir, command, None, env)
                         .await
                 }
             };
@@ -137,106 +122,17 @@ impl Codex {
             .await
     }
 
-    async fn perform_compact(
-        &self,
-        current_dir: &Path,
-        session_id: &str,
-        instructions: Option<String>,
-        _env: &ExecutionEnv,
-    ) -> Result<SpawnedChild, ExecutorError> {
-        let (mut spawned, writer) = spawn_local_output_process()?;
-        let log_writer = LogWriter::new(writer);
-        let (exit_signal_tx, exit_signal_rx) = tokio::sync::oneshot::channel();
-
-        let codex = self.clone();
-        let session_id = session_id.to_string();
-        let current_dir = current_dir.to_path_buf();
-        tokio::spawn(async move {
-            let result = codex
-                .compact_inner(&current_dir, &session_id, instructions, &log_writer)
-                .await;
-            let exit_result = match result {
-                Ok(()) => ExecutorExitResult::Success,
-                Err(err) => {
-                    let message = format!("Compact failed: {err}");
-                    let _ = codex
-                        .log_event(
-                            &log_writer,
-                            EventMsg::Error(ErrorEvent {
-                                message,
-                                codex_error_info: None,
-                            }),
-                        )
-                        .await;
-                    ExecutorExitResult::Failure
-                }
-            };
-            let _ = exit_signal_tx.send(exit_result);
-        });
-
-        spawned.exit_signal = Some(exit_signal_rx);
-        Ok(spawned)
-    }
-
-    async fn compact_inner(
-        &self,
-        current_dir: &Path,
-        session_id: &str,
-        instructions: Option<String>,
-        log_writer: &LogWriter,
-    ) -> Result<(), ExecutorError> {
-        let rollout_path = SessionHandler::find_rollout_file_path(session_id)
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-        let config = self.build_core_config(current_dir, instructions).await?;
-        let auth_manager = AuthManager::shared(
-            config.codex_home.clone(),
-            true,
-            config.cli_auth_credentials_store_mode,
-        );
-        let thread_manager = ThreadManager::new(
-            config.codex_home.clone(),
-            auth_manager.clone(),
-            SessionSource::Exec,
-        );
-        let new_thread = thread_manager
-            .resume_thread_from_rollout(config, rollout_path, auth_manager)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-        let thread = new_thread.thread;
-        thread
-            .submit(CoreOp::Compact)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-
-        loop {
-            let event: Event = thread
-                .next_event()
-                .await
-                .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-            self.log_event(log_writer, event.msg.clone()).await?;
-            if matches!(event.msg, EventMsg::TurnComplete(_)) {
-                break;
-            }
-        }
-
-        let _ = thread.submit(CoreOp::Shutdown).await;
-        while let Ok(event) = thread.next_event().await {
-            if matches!(event.msg, EventMsg::ShutdownComplete) {
-                break;
-            }
-        }
-
-        Ok(())
-    }
-
     // Handle slash commands that require interaction with the app server
     async fn handle_app_server_slash_command(
         &self,
         current_dir: &Path,
         command: CodexSlashCommand,
+        session_id: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder()?.build_initial()?;
+        let session_id = session_id.map(|s| s.to_string());
+        let thread_start_params = self.build_thread_start_params(current_dir);
 
         self.spawn_app_server(
             current_dir,
@@ -244,9 +140,30 @@ impl Codex {
             env,
             move |client, exit_signal_tx| async move {
                 match command {
+                    CodexSlashCommand::Compact { .. } => {
+                        let old_thread_id = session_id.ok_or_else(|| {
+                            ExecutorError::Io(std::io::Error::other("No active session to compact"))
+                        })?;
+                        let fork_response = client
+                            .thread_fork(fork_params_from(old_thread_id, thread_start_params))
+                            .await?;
+                        let thread_id = fork_response.thread.id;
+                        tracing::debug!("forked thread for compact, new thread_id={thread_id}");
+                        client.thread_compact_start(thread_id).await?;
+                    }
+                    CodexSlashCommand::Status => {
+                        let message = fetch_status_message(&client, session_id.as_deref()).await?;
+                        log_event_raw(client.log_writer(), message).await?;
+                        exit_signal_tx
+                            .send_exit_signal(ExecutorExitResult::Success)
+                            .await;
+                    }
                     CodexSlashCommand::Mcp => {
                         let message = fetch_mcp_status_message(&client).await?;
                         log_event_raw(client.log_writer(), message).await?;
+                        exit_signal_tx
+                            .send_exit_signal(ExecutorExitResult::Success)
+                            .await;
                     }
                     _ => {
                         return Err(ExecutorError::Io(std::io::Error::other(
@@ -254,11 +171,6 @@ impl Codex {
                         )));
                     }
                 }
-
-                // singal completion because the app server doesn't produce codex/event/task_complete for these API calls
-                exit_signal_tx
-                    .send_exit_signal(ExecutorExitResult::Success)
-                    .await;
 
                 Ok(())
             },
@@ -274,7 +186,10 @@ impl Codex {
         self.spawn_static_reply_helper(
             current_dir,
             vec![match message {
-                Ok(message) => EventMsg::AgentMessage(AgentMessageEvent { message }),
+                Ok(message) => EventMsg::AgentMessage(AgentMessageEvent {
+                    message,
+                    phase: None,
+                }),
                 Err(message) => EventMsg::Error(ErrorEvent {
                     message,
                     codex_error_info: None,
@@ -309,178 +224,6 @@ impl Codex {
         spawned.exit_signal = Some(exit_signal_rx);
         Ok(spawned)
     }
-
-    pub async fn build_core_config(
-        &self,
-        current_dir: &Path,
-        compact_prompt_override: Option<String>,
-    ) -> Result<Config, ExecutorError> {
-        let approval_policy = match self.ask_for_approval.as_ref() {
-            Some(policy) => Some(Self::map_ask_for_approval(policy)),
-            None if matches!(self.sandbox.as_ref(), None | Some(SandboxMode::Auto)) => {
-                Some(CodexAskForApproval::OnRequest)
-            }
-            None => None,
-        };
-        let sandbox_mode = match self.sandbox.as_ref() {
-            None | Some(SandboxMode::Auto) => Some(CodexSandboxMode::WorkspaceWrite),
-            Some(SandboxMode::ReadOnly) => Some(CodexSandboxMode::ReadOnly),
-            Some(SandboxMode::WorkspaceWrite) => Some(CodexSandboxMode::WorkspaceWrite),
-            Some(SandboxMode::DangerFullAccess) => Some(CodexSandboxMode::DangerFullAccess),
-        };
-
-        let overrides = ConfigOverrides {
-            cwd: Some(current_dir.to_path_buf()),
-            model: self.model.clone(),
-            model_provider: self.model_provider.clone(),
-            config_profile: self.profile.clone(),
-            approval_policy,
-            sandbox_mode,
-            base_instructions: self.base_instructions.clone(),
-            developer_instructions: self.developer_instructions.clone(),
-            compact_prompt: compact_prompt_override.or_else(|| self.compact_prompt.clone()),
-            include_apply_patch_tool: self.include_apply_patch_tool,
-            ..Default::default()
-        };
-
-        Config::load_with_cli_overrides_and_harness_overrides(Vec::new(), overrides)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))
-    }
-
-    async fn build_status_message(
-        &self,
-        session_id: Option<&str>,
-    ) -> Result<String, ExecutorError> {
-        let mut model = self.model.clone();
-        let mut approval_policy = self
-            .ask_for_approval
-            .as_ref()
-            .map(|policy| policy.as_ref().to_string());
-        let mut sandbox = self.sandbox.as_ref().map(|mode| mode.as_ref().to_string());
-        let mut reasoning = None;
-        let mut token_usage = None;
-
-        if let Some(session_id) = session_id {
-            let items = Self::load_rollout_items(session_id).await?;
-            if let Some(context) = Self::latest_turn_context(&items) {
-                model = Some(context.model);
-                approval_policy = Some(context.approval_policy.to_string());
-                sandbox = Some(context.sandbox_policy.to_string());
-                reasoning = Some(format!(
-                    "effort: {} summary: {}",
-                    context
-                        .effort
-                        .map(|effort| effort.to_string())
-                        .unwrap_or_else(|| "default".to_string()),
-                    context.summary
-                ));
-            }
-            token_usage = Self::latest_token_usage(&items);
-        }
-
-        let mut lines = Vec::new();
-        lines.push("# Session Status\n".to_string());
-
-        // Configuration section
-        lines.push("## Configuration".to_string());
-        lines.push(format!(
-            "- **Model**: `{}`",
-            model.unwrap_or_else(|| "unknown".to_string())
-        ));
-        if let Some(approval_policy) = approval_policy {
-            lines.push(format!("- **Approvals**: `{approval_policy}`"));
-        }
-        if let Some(sandbox) = sandbox {
-            lines.push(format!("- **Sandbox**: `{sandbox}`"));
-        }
-        if let Some(reasoning) = reasoning {
-            lines.push(format!("- **Reasoning**: {reasoning}"));
-        }
-
-        // Token usage section
-        lines.push("\n## Token Usage".to_string());
-        if let Some(token_usage) = token_usage {
-            lines.extend(Self::format_token_usage(&token_usage));
-        } else {
-            lines.push("_Token usage unavailable_".to_string());
-        }
-
-        Ok(lines.join("\n"))
-    }
-
-    async fn load_rollout_items(session_id: &str) -> Result<Vec<RolloutItem>, ExecutorError> {
-        let rollout_path = SessionHandler::find_rollout_file_path(session_id)
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-        let history = RolloutRecorder::get_rollout_history(&rollout_path)
-            .await
-            .map_err(|err| ExecutorError::Io(std::io::Error::other(err.to_string())))?;
-        Ok(history.get_rollout_items())
-    }
-
-    fn latest_turn_context(items: &[RolloutItem]) -> Option<TurnContextItem> {
-        items.iter().rev().find_map(|item| match item {
-            RolloutItem::TurnContext(context) => Some(context.clone()),
-            _ => None,
-        })
-    }
-
-    fn latest_token_usage(items: &[RolloutItem]) -> Option<TokenUsageInfo> {
-        items.iter().rev().find_map(|item| match item {
-            RolloutItem::EventMsg(EventMsg::TokenCount(payload)) => payload.info.clone(),
-            _ => None,
-        })
-    }
-
-    fn format_token_usage(info: &TokenUsageInfo) -> Vec<String> {
-        let total = &info.total_token_usage;
-        let last = &info.last_token_usage;
-        let mut lines = Vec::new();
-
-        // Total tokens
-        lines.push(format!("**Total**: `{}`", total.total_tokens));
-        lines.push(format!(
-            "  - Input: `{}` | Output: `{}` | Reasoning: `{}` | Cached: `{}`",
-            total.input_tokens,
-            total.output_tokens,
-            total.reasoning_output_tokens,
-            total.cached_input_tokens,
-        ));
-
-        // Last turn tokens
-        lines.push(format!("\n**Last Turn**: `{}`", last.total_tokens));
-        lines.push(format!(
-            "  - Input: `{}` | Output: `{}` | Reasoning: `{}` | Cached: `{}`",
-            last.input_tokens,
-            last.output_tokens,
-            last.reasoning_output_tokens,
-            last.cached_input_tokens,
-        ));
-
-        // Context window
-        if let Some(window) = info.model_context_window {
-            lines.push(format!("\n**Context Window**: `{window}`"));
-        }
-
-        lines
-    }
-
-    fn map_ask_for_approval(value: &AskForApproval) -> CodexAskForApproval {
-        match value {
-            AskForApproval::UnlessTrusted => CodexAskForApproval::UnlessTrusted,
-            AskForApproval::OnFailure => CodexAskForApproval::OnFailure,
-            AskForApproval::OnRequest => CodexAskForApproval::OnRequest,
-            AskForApproval::Never => CodexAskForApproval::Never,
-        }
-    }
-
-    pub async fn log_event(
-        &self,
-        log_writer: &LogWriter,
-        event: EventMsg,
-    ) -> Result<(), ExecutorError> {
-        log_event_notification(log_writer, event).await
-    }
 }
 
 pub async fn log_event_notification(
@@ -506,9 +249,261 @@ pub async fn log_event_notification(
 pub async fn log_event_raw(log_writer: &LogWriter, message: String) -> Result<(), ExecutorError> {
     log_event_notification(
         log_writer,
-        EventMsg::AgentMessage(AgentMessageEvent { message }),
+        EventMsg::AgentMessage(AgentMessageEvent {
+            message,
+            phase: None,
+        }),
     )
     .await
+}
+
+async fn fetch_status_message(
+    client: &AppServerClient,
+    thread_id: Option<&str>,
+) -> Result<String, ExecutorError> {
+    let mut lines = vec!["# Session Status\n".to_string()];
+
+    let rollout = match thread_id {
+        Some(tid) => read_rollout_data(tid).await,
+        None => None,
+    };
+
+    lines.push("## Configuration".to_string());
+    if let Some(ctx) = rollout.as_ref().and_then(|r| r.turn_context.as_ref()) {
+        if let Some(model) = &ctx.model {
+            lines.push(format!("- **Model**: `{model}`"));
+        }
+        if let Some(policy) = &ctx.approval_policy {
+            lines.push(format!("- **Approvals**: `{policy}`"));
+        }
+        if let Some(sandbox) = &ctx.sandbox_policy {
+            let label = sandbox
+                .get("type")
+                .and_then(|v| v.as_str())
+                .unwrap_or("unknown");
+            lines.push(format!("- **Sandbox**: `{label}`"));
+        }
+        let effort = ctx.effort.as_deref().unwrap_or("default");
+        let summary = ctx.summary.as_deref().unwrap_or("auto");
+        lines.push(format!(
+            "- **Reasoning**: effort: `{effort}` summary: `{summary}`"
+        ));
+    } else {
+        match client.config_read(None).await {
+            Ok(config_resp) => {
+                let cfg = &config_resp.config;
+                if let Some(model) = &cfg.model {
+                    lines.push(format!("- **Model**: `{model}`"));
+                }
+                if let Some(provider) = &cfg.model_provider {
+                    lines.push(format!("- **Provider**: `{provider}`"));
+                }
+                if let Some(policy) = &cfg.approval_policy {
+                    lines.push(format!("- **Approvals**: `{policy:?}`"));
+                }
+                if let Some(sandbox) = &cfg.sandbox_mode {
+                    lines.push(format!("- **Sandbox**: `{sandbox:?}`"));
+                }
+                if let Some(effort) = &cfg.model_reasoning_effort {
+                    lines.push(format!("- **Reasoning effort**: `{effort}`"));
+                }
+                if let Some(summary) = &cfg.model_reasoning_summary {
+                    lines.push(format!("- **Reasoning summary**: `{summary:?}`"));
+                }
+            }
+            Err(err) => {
+                lines.push(format!("_Config unavailable: {err}_"));
+            }
+        }
+    }
+
+    // Thread info
+    if let Some(thread_id) = thread_id {
+        lines.push(String::new());
+        lines.push("## Thread".to_string());
+        match client.thread_read(thread_id.to_string()).await {
+            Ok(resp) => {
+                let thread = &resp.thread;
+                lines.push(format!("- **ID**: `{}`", thread.id));
+                if let Some(name) = &thread.name {
+                    lines.push(format!("- **Name**: {name}"));
+                }
+                lines.push(format!("- **CWD**: `{}`", thread.cwd.display()));
+                lines.push(format!("- **CLI version**: `{}`", thread.cli_version));
+                let source_label = format!("{:?}", thread.source).replace("VsCode", "Vibe Kanban");
+                lines.push(format!("- **Source**: `{source_label}`"));
+            }
+            Err(err) => {
+                lines.push(format!("_Thread info unavailable: {err}_"));
+            }
+        }
+    }
+
+    // Token usage (best-effort from rollout file)
+    if let Some(rollout) = &rollout {
+        lines.push(String::new());
+        lines.push("## Token Usage".to_string());
+        if let Some(info) = &rollout.token_usage {
+            let total = &info.total_token_usage;
+            let last = &info.last_token_usage;
+            lines.push(format!("**Total**: `{}`", total.total_tokens));
+            lines.push(format!(
+                "  - Input: `{}` | Output: `{}` | Reasoning: `{}` | Cached: `{}`",
+                total.input_tokens,
+                total.output_tokens,
+                total.reasoning_output_tokens,
+                total.cached_input_tokens,
+            ));
+            lines.push(format!("\n**Last Turn**: `{}`", last.total_tokens));
+            lines.push(format!(
+                "  - Input: `{}` | Output: `{}` | Reasoning: `{}` | Cached: `{}`",
+                last.input_tokens,
+                last.output_tokens,
+                last.reasoning_output_tokens,
+                last.cached_input_tokens,
+            ));
+            if let Some(window) = info.model_context_window {
+                lines.push(format!("\n**Context Window**: `{window}`"));
+            }
+        } else {
+            lines.push("_Token usage unavailable_".to_string());
+        }
+    }
+
+    match client.get_account_rate_limits().await {
+        Ok(resp) => {
+            let rl = &resp.rate_limits;
+            lines.push(String::new());
+            lines.push("## Rate Limits".to_string());
+            if let Some(plan) = &rl.plan_type {
+                lines.push(format!("- **Plan**: `{plan:?}`"));
+            }
+            if let Some(primary) = &rl.primary {
+                lines.push(format!("- **Primary**: `{}%` used", primary.used_percent));
+            }
+            if let Some(secondary) = &rl.secondary {
+                lines.push(format!(
+                    "- **Secondary**: `{}%` used",
+                    secondary.used_percent
+                ));
+            }
+            if let Some(credits) = &rl.credits {
+                let balance = credits.balance.as_deref().unwrap_or(if credits.unlimited {
+                    "unlimited"
+                } else {
+                    "none"
+                });
+                lines.push(format!("- **Credits**: `{balance}`"));
+            }
+        }
+        Err(err) => {
+            tracing::debug!("rate limits unavailable: {err}");
+        }
+    }
+
+    Ok(lines.join("\n"))
+}
+
+#[derive(serde::Deserialize)]
+struct RolloutEntry {
+    #[serde(rename = "type")]
+    entry_type: String,
+    #[serde(default)]
+    payload: serde_json::Value,
+}
+
+#[derive(serde::Deserialize)]
+struct TokenCountPayload {
+    info: Option<RolloutTokenUsageInfo>,
+}
+
+#[derive(serde::Deserialize)]
+struct RolloutTokenUsageInfo {
+    total_token_usage: RolloutTokenUsage,
+    last_token_usage: RolloutTokenUsage,
+    model_context_window: Option<u64>,
+}
+
+#[derive(serde::Deserialize)]
+struct RolloutTokenUsage {
+    input_tokens: u64,
+    cached_input_tokens: u64,
+    output_tokens: u64,
+    reasoning_output_tokens: u64,
+    total_tokens: u64,
+}
+
+#[derive(serde::Deserialize)]
+struct TurnContextPayload {
+    model: Option<String>,
+    approval_policy: Option<String>,
+    sandbox_policy: Option<serde_json::Value>,
+    effort: Option<String>,
+    summary: Option<String>,
+}
+
+struct RolloutData {
+    turn_context: Option<TurnContextPayload>,
+    token_usage: Option<RolloutTokenUsageInfo>,
+}
+
+async fn read_rollout_data(session_id: &str) -> Option<RolloutData> {
+    let sessions_dir = codex_home()?.join("sessions");
+    let rollout_path = find_rollout_file(&sessions_dir, session_id).await?;
+
+    let file = tokio::fs::File::open(&rollout_path).await.ok()?;
+    let reader = tokio::io::BufReader::new(file);
+
+    let mut last_turn_context: Option<TurnContextPayload> = None;
+    let mut last_token_usage: Option<RolloutTokenUsageInfo> = None;
+
+    use tokio::io::AsyncBufReadExt;
+    let mut lines = reader.lines();
+    while let Ok(Some(line)) = lines.next_line().await {
+        let entry: RolloutEntry = match serde_json::from_str(&line) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        match entry.entry_type.as_str() {
+            "turn_context" => {
+                if let Ok(ctx) = serde_json::from_value::<TurnContextPayload>(entry.payload) {
+                    last_turn_context = Some(ctx);
+                }
+            }
+            "event_msg" => {
+                if let Ok(tc) = serde_json::from_value::<TokenCountPayload>(entry.payload)
+                    && tc.info.is_some()
+                {
+                    last_token_usage = tc.info;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Some(RolloutData {
+        turn_context: last_turn_context,
+        token_usage: last_token_usage,
+    })
+}
+
+async fn find_rollout_file(dir: &Path, session_id: &str) -> Option<PathBuf> {
+    let mut entries = tokio::fs::read_dir(dir).await.ok()?;
+    while let Ok(Some(entry)) = entries.next_entry().await {
+        let path = entry.path();
+        if path.is_dir() {
+            if let Some(found) = Box::pin(find_rollout_file(&path, session_id)).await {
+                return Some(found);
+            }
+        } else if let Some(name) = path.file_name().and_then(|n| n.to_str())
+            && name.starts_with("rollout-")
+            && name.contains(session_id)
+            && name.ends_with(".jsonl")
+        {
+            return Some(path);
+        }
+    }
+    None
 }
 
 async fn fetch_mcp_status_message(client: &AppServerClient) -> Result<String, ExecutorError> {
