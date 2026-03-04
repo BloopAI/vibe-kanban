@@ -26,6 +26,7 @@ import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
+  useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
@@ -55,11 +56,12 @@ export function WorkspacesLayout() {
 
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
+  const isAppBarHovered = useUiPreferencesStore((s) => s.isAppBarHovered);
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
   const [isSidebarHandleHovered, setIsSidebarHandleHovered] = useState(false);
   const [isSidebarPreviewHovered, setIsSidebarPreviewHovered] = useState(false);
   const isSidebarHoverPreviewOpen =
-    isSidebarHandleHovered || isSidebarPreviewHovered;
+    isSidebarHandleHovered || isSidebarPreviewHovered || isAppBarHovered;
 
   const handleScrollToBottom = useCallback(() => {
     mainContainerRef.current?.scrollToBottom();

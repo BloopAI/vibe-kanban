@@ -48,6 +48,7 @@ export function SharedAppLayout() {
   const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
+  const setAppBarHovered = useUiPreferencesStore((s) => s.setAppBarHovered);
   const { isSignedIn } = useAuth();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
@@ -71,6 +72,13 @@ export function SharedAppLayout() {
       document.documentElement.style.removeProperty('--mobile-font-scale');
     };
   }, [isMobile, mobileFontScale]);
+
+  useEffect(
+    () => () => {
+      setAppBarHovered(false);
+    },
+    [setAppBarHovered]
+  );
 
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
@@ -281,6 +289,8 @@ export function SharedAppLayout() {
             isLoadingProjects={isLoading}
             onSignIn={handleSignIn}
             onMigrate={handleMigrate}
+            onHoverStart={() => setAppBarHovered(true)}
+            onHoverEnd={() => setAppBarHovered(false)}
             userPopover={
               <AppBarUserPopoverContainer
                 organizations={organizations}
