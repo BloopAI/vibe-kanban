@@ -128,7 +128,7 @@ export function AppBar({
   return (
     <div
       className={cn(
-        'flex flex-col items-center h-full p-base gap-base',
+        'flex flex-col items-center h-full min-h-0 overflow-y-auto p-base gap-base',
         'bg-secondary border-r border-border'
       )}
     >
