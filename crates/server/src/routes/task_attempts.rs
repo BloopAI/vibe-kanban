@@ -53,7 +53,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_manager::WorkspaceManager;
+use workspace_manager::{AddRepoToWorkspaceError, WorkspaceManager};
 
 use crate::{
     DeploymentImpl,
@@ -119,6 +119,44 @@ pub struct DeleteWorkspaceQuery {
 pub struct LinkWorkspaceRequest {
     pub project_id: Uuid,
     pub issue_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AddWorkspaceRepoRequest {
+    pub repo_id: Uuid,
+    pub target_branch: String,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct AddWorkspaceRepoResponse {
+    pub workspace: Workspace,
+    pub repo: RepoWithTargetBranch,
+}
+
+fn map_add_repo_error(err: AddRepoToWorkspaceError) -> ApiError {
+    match err {
+        AddRepoToWorkspaceError::Database(err) => ApiError::Database(err),
+        AddRepoToWorkspaceError::Repo(err) => ApiError::Repo(err),
+        AddRepoToWorkspaceError::GitService(err) => ApiError::GitService(err),
+        AddRepoToWorkspaceError::WorkspaceNotFound => {
+            ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
+        }
+        AddRepoToWorkspaceError::RepoAlreadyAttached => {
+            ApiError::Conflict("Repository already attached to workspace".to_string())
+        }
+        AddRepoToWorkspaceError::DuplicateRepoInRequest => {
+            ApiError::BadRequest("Duplicate repository id in request".to_string())
+        }
+        AddRepoToWorkspaceError::BranchNotFound { repo_name, branch } => {
+            ApiError::BadRequest(format!(
+                "Branch '{}' does not exist in repository '{}'",
+                branch, repo_name
+            ))
+        }
+        AddRepoToWorkspaceError::Provisioning(message) => {
+            ApiError::Workspace(WorkspaceError::ValidationError(message))
+        }
+    }
 }
 
 pub async fn get_task_attempts(
@@ -1574,6 +1612,48 @@ pub async fn get_task_attempt_repos(
     Ok(ResponseJson(ApiResponse::success(repos)))
 }
 
+#[axum::debug_handler]
+pub async fn add_workspace_repo(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<AddWorkspaceRepoRequest>,
+) -> Result<ResponseJson<ApiResponse<AddWorkspaceRepoResponse>>, ApiError> {
+    let result = deployment
+        .workspace_manager()
+        .add_repo_to_workspace(
+            &workspace,
+            payload.repo_id,
+            payload.target_branch,
+            deployment.git(),
+            || async {
+                deployment
+                    .container()
+                    .ensure_container_exists(&workspace)
+                    .await
+                    .map(|_| ())
+            },
+        )
+        .await
+        .map_err(map_add_repo_error)?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "task_attempt_repo_added",
+            serde_json::json!({
+                "workspace_id": result.workspace.id.to_string(),
+                "repo_id": result.repo.repo.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(
+        AddWorkspaceRepoResponse {
+            workspace: result.workspace,
+            repo: result.repo,
+        },
+    )))
+}
+
 pub async fn get_first_user_message(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -1898,6 +1978,11 @@ pub async fn create_and_start_workspace(
             target_branch: r.target_branch.clone(),
         })
         .collect();
+    workspace_manager
+        .validate_workspace_repositories(&workspace_repos, deployment.git())
+        .await
+        .map_err(map_add_repo_error)?;
+
     let agent_working_dir = workspace_manager
         .resolve_agent_working_dir(&workspace_repos)
         .await?;
@@ -1913,8 +1998,15 @@ pub async fn create_and_start_workspace(
         .await?;
 
     workspace_manager
-        .attach_repositories(workspace.id, &workspace_repos)
-        .await?;
+        .add_repositories_to_workspace(&workspace, &workspace_repos, deployment.git(), || async {
+            deployment
+                .container()
+                .ensure_container_exists(&workspace)
+                .await
+                .map(|_| ())
+        })
+        .await
+        .map_err(map_add_repo_error)?;
 
     // Associate user-uploaded images with the workspace
     if let Some(ids) = &image_ids {
@@ -2012,7 +2104,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .route("/stop", post(stop_task_attempt_execution))
                 .route("/change-target-branch", post(change_target_branch))
                 .route("/rename-branch", post(rename_branch))
-                .route("/repos", get(get_task_attempt_repos))
+                .route(
+                    "/repos",
+                    get(get_task_attempt_repos).post(add_workspace_repo),
+                )
                 .route("/first-message", get(get_first_user_message))
                 .route("/mark-seen", put(mark_seen))
                 .route("/link", post(link_workspace))
