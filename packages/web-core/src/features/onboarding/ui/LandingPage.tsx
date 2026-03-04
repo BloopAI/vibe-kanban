@@ -369,7 +369,7 @@ export function LandingPage() {
         </header>
 
         {/* 3-column grid */}
-        <div className="min-h-0 flex-1 overflow-y-auto px-double">
+        <div className="min-h-0 flex-1 overflow-y-auto px-double pb-double">
           <div className="grid grid-cols-3 gap-double">
             {/* Column 1: Coding Agent */}
             <section className="space-y-half">
