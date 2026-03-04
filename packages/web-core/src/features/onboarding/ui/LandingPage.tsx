@@ -325,18 +325,13 @@ export function LandingPage() {
   }
 
   return (
-    <div className="h-screen overflow-auto bg-primary">
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-base py-double">
-        <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
-          <header className="space-y-double">
-            <div className="flex justify-center">
-              <img
-                src={logoSrc}
-                alt="Vibe Kanban"
-                className="h-8 w-auto logo"
-              />
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
+    <div className="h-screen bg-primary flex items-center justify-center p-double">
+      <div className="flex max-h-full w-full max-w-3xl flex-col rounded-sm border border-border bg-secondary">
+        {/* Fixed header */}
+        <header className="shrink-0 space-y-base p-double pb-base">
+          <div className="flex items-center justify-between">
+            <img src={logoSrc} alt="Vibe Kanban" className="h-8 w-auto logo" />
+            <div className="flex flex-wrap items-center gap-2">
               {SOCIAL_LINKS.map((link) => (
                 <PrimaryButton
                   key={link.label}
@@ -347,44 +342,37 @@ export function LandingPage() {
                 />
               ))}
             </div>
-            <div className="rounded-sm border border-brand bg-brand/20 p-base">
-              <div className="flex items-start gap-base">
-                <WarningIcon
-                  className="size-icon-sm text-brand shrink-0 mt-[2px]"
-                  weight="fill"
-                />
-                <div className="space-y-half text-sm text-normal">
-                  <p>
-                    Vibe Kanban runs AI coding agents with{' '}
-                    <code>--dangerously-skip-permissions</code> /{' '}
-                    <code>--yolo</code> by default.
-                  </p>
-                  <p>
-                    Always review what agents are doing and keep backups of
-                    important work. Learn more at{' '}
-                    <a
-                      href="https://www.vibekanban.com/docs/getting-started#safety-notice"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand hover:underline"
-                    >
-                      the safety notice
-                    </a>
-                    .
-                  </p>
-                </div>
-              </div>
+          </div>
+          <div className="rounded-sm border border-brand bg-brand/20 p-base">
+            <div className="flex items-start gap-base">
+              <WarningIcon
+                className="size-icon-sm text-brand shrink-0 mt-[2px]"
+                weight="fill"
+              />
+              <p className="text-sm text-normal">
+                Vibe Kanban runs AI coding agents with{' '}
+                <code>--dangerously-skip-permissions</code> /{' '}
+                <code>--yolo</code> by default. Always review what agents are
+                doing.{' '}
+                <a
+                  href="https://www.vibekanban.com/docs/getting-started#safety-notice"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Learn more
+                </a>
+                .
+              </p>
             </div>
-          </header>
+          </div>
+        </header>
 
+        {/* Scrollable sections */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-double space-y-base">
           <section className="space-y-half">
-            <h2 className="text-base font-medium text-high">
-              Choose Your Coding Agent
-            </h2>
-            <p className="text-sm text-low">
-              Select the default coding agent configuration.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <h2 className="text-sm font-medium text-high">Coding Agent</h2>
+            <div className="grid gap-1.5 sm:grid-cols-2">
               {executorOptions.map((agent) => {
                 const selected = selectedAgent === agent;
 
@@ -420,13 +408,8 @@ export function LandingPage() {
           </section>
 
           <section className="space-y-half">
-            <h2 className="text-base font-medium text-high">
-              Choose Your Code Editor
-            </h2>
-            <p className="text-sm text-low">
-              This editor will be used when opening attempts and files.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <h2 className="text-sm font-medium text-high">Code Editor</h2>
+            <div className="grid gap-1.5 sm:grid-cols-2">
               {editorOptions.map((editor) => {
                 const selected = editorType === editor;
 
@@ -484,13 +467,10 @@ export function LandingPage() {
           </section>
 
           <section className="space-y-half">
-            <h2 className="text-base font-medium text-high">
+            <h2 className="text-sm font-medium text-high">
               Notification Sound
             </h2>
-            <p className="text-sm text-low">
-              Pick a sound for notifications, or disable sound.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-1.5 sm:grid-cols-2">
               {SOUND_OPTIONS.map((option) => {
                 const Icon = option.icon;
                 const selected = soundEnabled && soundFile === option.value;
@@ -553,35 +533,36 @@ export function LandingPage() {
               </button>
             </div>
           </section>
+        </div>
 
-          <div className="pt-base border-t border-border flex items-center justify-between gap-base">
-            <p className="text-xs text-low">
-              By continuing you agree to the{' '}
-              <a
-                href="https://www.vibekanban.com/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand hover:underline"
-              >
-                terms and conditions
-              </a>{' '}
-              and{' '}
-              <a
-                href="https://www.vibekanban.com/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand hover:underline"
-              >
-                privacy policy
-              </a>
-              .
-            </p>
-            <PrimaryButton
-              value={saving ? 'Saving...' : 'Continue'}
-              onClick={handleContinue}
-              disabled={!canContinue}
-            />
-          </div>
+        {/* Fixed footer */}
+        <div className="shrink-0 border-t border-border p-double pt-base flex items-center justify-between gap-base">
+          <p className="text-xs text-low">
+            By continuing you agree to the{' '}
+            <a
+              href="https://www.vibekanban.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand hover:underline"
+            >
+              terms and conditions
+            </a>{' '}
+            and{' '}
+            <a
+              href="https://www.vibekanban.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand hover:underline"
+            >
+              privacy policy
+            </a>
+            .
+          </p>
+          <PrimaryButton
+            value={saving ? 'Saving...' : 'Continue'}
+            onClick={handleContinue}
+            disabled={!canContinue}
+          />
         </div>
       </div>
     </div>
