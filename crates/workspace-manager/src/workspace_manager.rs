@@ -157,9 +157,7 @@ impl ManagedWorkspace {
     pub fn into_workspace(self) -> DbWorkspace {
         self.workspace
     }
-}
 
-impl ManagedWorkspace {
     pub async fn add_repository(
         &mut self,
         repo_ref: &WorkspaceRepoInput,
