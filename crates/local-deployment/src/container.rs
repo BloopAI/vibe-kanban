@@ -538,6 +538,14 @@ impl LocalContainerService {
                 }
 
                 if container.should_finalize(&ctx) {
+                    let has_chained_follow_up = ctx
+                        .execution_process
+                        .executor_action()
+                        .ok()
+                        .and_then(|action| action.next_action())
+                        .is_some();
+                    let mut started_queued_follow_up = false;
+
                     // Only execute queued messages if the execution succeeded
                     // If it failed or was killed, just clear the queue and finalize
                     let should_execute_queued = !matches!(
@@ -576,6 +584,8 @@ impl LocalContainerService {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
                                 container.finalize_task(&ctx).await;
+                            } else {
+                                started_queued_follow_up = true;
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -588,6 +598,26 @@ impl LocalContainerService {
                         }
                     } else {
                         container.finalize_task(&ctx).await;
+                    }
+
+                    let should_mark_turn_unseen = matches!(
+                        ctx.execution_process.run_reason,
+                        ExecutionProcessRunReason::CodingAgent
+                    ) && !has_chained_follow_up
+                        && !started_queued_follow_up;
+
+                    if should_mark_turn_unseen
+                        && let Err(e) = CodingAgentTurn::mark_unseen_by_execution_process_id(
+                            &db.pool,
+                            ctx.execution_process.id,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            "Failed to mark coding agent turn unseen for execution {}: {}",
+                            ctx.execution_process.id,
+                            e
+                        );
                     }
                 }
 

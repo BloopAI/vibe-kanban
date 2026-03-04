@@ -215,6 +215,26 @@ impl CodingAgentTurn {
         Ok(())
     }
 
+    /// Mark a coding agent turn as unseen by execution process ID.
+    pub async fn mark_unseen_by_execution_process_id(
+        pool: &SqlitePool,
+        execution_process_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now();
+        sqlx::query(
+            r#"UPDATE coding_agent_turns
+               SET seen = 0, updated_at = ?
+               WHERE execution_process_id = ?
+                 AND seen = 1"#,
+        )
+        .bind(now)
+        .bind(execution_process_id.to_string())
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     /// Mark all coding agent turns for a workspace as seen
     pub async fn mark_seen_by_workspace_id(
         pool: &SqlitePool,
@@ -276,5 +296,84 @@ impl CodingAgentTurn {
         .await?;
 
         Ok(result.into_iter().collect())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use sqlx::SqlitePool;
+    use uuid::Uuid;
+
+    use super::CodingAgentTurn;
+
+    #[tokio::test]
+    async fn mark_unseen_by_execution_process_id_sets_seen_to_zero_idempotently() {
+        let pool = SqlitePool::connect("sqlite::memory:")
+            .await
+            .expect("failed to create in-memory sqlite pool");
+
+        sqlx::query(
+            r#"CREATE TABLE coding_agent_turns (
+                id TEXT PRIMARY KEY NOT NULL,
+                execution_process_id TEXT NOT NULL,
+                agent_session_id TEXT,
+                agent_message_id TEXT,
+                prompt TEXT,
+                summary TEXT,
+                seen INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )"#,
+        )
+        .execute(&pool)
+        .await
+        .expect("failed to create coding_agent_turns table");
+
+        let execution_process_id = Uuid::new_v4();
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"INSERT INTO coding_agent_turns (
+                id,
+                execution_process_id,
+                seen,
+                created_at,
+                updated_at
+            ) VALUES (?, ?, 1, ?, ?)"#,
+        )
+        .bind(Uuid::new_v4().to_string())
+        .bind(execution_process_id.to_string())
+        .bind(&now)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .expect("failed to insert coding_agent_turn");
+
+        CodingAgentTurn::mark_unseen_by_execution_process_id(&pool, execution_process_id)
+            .await
+            .expect("failed to mark coding agent turn unseen");
+
+        let seen_after_first: i64 = sqlx::query_scalar(
+            "SELECT seen FROM coding_agent_turns WHERE execution_process_id = ?",
+        )
+        .bind(execution_process_id.to_string())
+        .fetch_one(&pool)
+        .await
+        .expect("failed to query seen after first update");
+        assert_eq!(seen_after_first, 0);
+
+        CodingAgentTurn::mark_unseen_by_execution_process_id(&pool, execution_process_id)
+            .await
+            .expect("failed to mark coding agent turn unseen again");
+
+        let seen_after_second: i64 = sqlx::query_scalar(
+            "SELECT seen FROM coding_agent_turns WHERE execution_process_id = ?",
+        )
+        .bind(execution_process_id.to_string())
+        .fetch_one(&pool)
+        .await
+        .expect("failed to query seen after second update");
+        assert_eq!(seen_after_second, 0);
     }
 }
