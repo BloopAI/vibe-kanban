@@ -322,6 +322,36 @@ impl Repo {
         .await
     }
 
+    /// Returns the names of active (non-archived) workspaces that reference this repo.
+    pub async fn active_workspace_names(
+        pool: &SqlitePool,
+        repo_id: Uuid,
+    ) -> Result<Vec<String>, sqlx::Error> {
+        let rows = sqlx::query_scalar!(
+            r#"SELECT w.name AS "name: String"
+               FROM workspaces w
+               JOIN workspace_repos wr ON wr.workspace_id = w.id
+               WHERE wr.repo_id = $1
+                 AND w.archived = FALSE"#,
+            repo_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(rows
+            .into_iter()
+            .map(|name| name.unwrap_or_else(|| "Unnamed workspace".to_string()))
+            .collect())
+    }
+
+    /// Delete a repo by ID. Relies on ON DELETE CASCADE for workspace_repos / project_repos.
+    pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<u64, sqlx::Error> {
+        let result = sqlx::query!("DELETE FROM repos WHERE id = $1", id)
+            .execute(pool)
+            .await?;
+        Ok(result.rows_affected())
+    }
+
     pub async fn update(
         pool: &SqlitePool,
         id: Uuid,

@@ -294,13 +294,47 @@ pub async fn list_open_prs(
     }
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct DeleteRepoConflict {
+    pub message: String,
+    pub workspaces: Vec<String>,
+}
+
+pub async fn delete_repo(
+    State(deployment): State<DeploymentImpl>,
+    Path(repo_id): Path<Uuid>,
+) -> Result<
+    (
+        StatusCode,
+        ResponseJson<ApiResponse<(), DeleteRepoConflict>>,
+    ),
+    ApiError,
+> {
+    let active = Repo::active_workspace_names(&deployment.db().pool, repo_id).await?;
+    if !active.is_empty() {
+        return Ok((
+            StatusCode::CONFLICT,
+            ResponseJson(ApiResponse::error_with_data(DeleteRepoConflict {
+                message: format!("Repository is used by {} active workspace(s)", active.len()),
+                workspaces: active,
+            })),
+        ));
+    }
+
+    Repo::delete(&deployment.db().pool, repo_id).await?;
+    Ok((StatusCode::OK, ResponseJson(ApiResponse::success(()))))
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/repos", get(get_repos).post(register_repo))
         .route("/repos/recent", get(get_recent_repos))
         .route("/repos/init", post(init_repo))
         .route("/repos/batch", post(get_repos_batch))
-        .route("/repos/{repo_id}", get(get_repo).put(update_repo))
+        .route(
+            "/repos/{repo_id}",
+            get(get_repo).put(update_repo).delete(delete_repo),
+        )
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
         .route("/repos/{repo_id}/remotes", get(get_repo_remotes))
         .route("/repos/{repo_id}/prs", get(list_open_prs))

@@ -178,6 +178,12 @@ pub struct DraftWorkspaceRepo {
     pub target_branch: String,
 }
 
+/// Data for project repo defaults scratch (default repos/branches per project)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectRepoDefaultsData {
+    pub repos: Vec<DraftWorkspaceRepo>,
+}
+
 /// Data for a draft issue scratch (issue creation on kanban board)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftIssueData {
@@ -219,6 +225,7 @@ pub enum ScratchPayload {
     PreviewSettings(PreviewSettingsData),
     WorkspaceNotes(WorkspaceNotesData),
     UiPreferences(UiPreferencesData),
+    ProjectRepoDefaults(ProjectRepoDefaultsData),
 }
 
 impl ScratchPayload {
