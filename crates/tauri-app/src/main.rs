@@ -181,10 +181,11 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
+        .run(|_app, _event| {
             // macOS: clicking the dock icon when the window is hidden should reopen it.
-            if let tauri::RunEvent::Reopen { .. } = event {
-                show_window(app);
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen { .. } = _event {
+                show_window(_app);
             }
         });
 }
