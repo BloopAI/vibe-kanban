@@ -47,6 +47,31 @@ impl PushNotifier for TauriNotifier {
     }
 }
 
+/// Native push notifier using Tauri's notification plugin.
+/// Clicking a notification brings the app window to focus.
+struct TauriNotifier {
+    app_handle: tauri::AppHandle,
+}
+
+#[async_trait]
+impl PushNotifier for TauriNotifier {
+    async fn send(&self, title: &str, message: &str) {
+        if let Err(e) = self
+            .app_handle
+            .notification()
+            .builder()
+            .title(title)
+            .body(message)
+            .show()
+        {
+            tracing::warn!("Failed to send Tauri notification: {}", e);
+        }
+
+        // Bring the window to focus so the user can act on the notification
+        show_window(&self.app_handle);
+    }
+}
+
 fn main() {
     // Install rustls crypto provider before any TLS operations
     rustls::crypto::aws_lc_rs::default_provider()
