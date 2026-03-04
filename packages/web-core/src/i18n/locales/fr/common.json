@@ -38,17 +38,7 @@
   },
   "conversation": {
     "plan": "Plan",
-    "planToggle": {
-      "show": "Afficher le plan",
-      "hide": "Masquer le plan"
-    },
-    "toolDetailsToggle": {
-      "show": "Afficher les détails",
-      "hide": "Masquer les détails"
-    },
-    "args": "Arguments",
     "output": "Sortie",
-    "result": "Résultat",
     "deniedByUser": "{{toolName}} refusé par l'utilisateur",
     "tool": "Outil",
     "thinking": "Réflexion",
@@ -60,7 +50,6 @@
       "createdTask": "Tâche créée : {{description}}",
       "todoOperation": "{{operation}} tâches à faire"
     },
-    "fixScript": "Corriger le script",
     "subagent": {
       "defaultType": "Sous-agent"
     }

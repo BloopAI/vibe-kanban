@@ -43,17 +43,7 @@
   },
   "conversation": {
     "plan": "Plan",
-    "planToggle": {
-      "show": "Show plan",
-      "hide": "Hide plan"
-    },
-    "toolDetailsToggle": {
-      "show": "Show details",
-      "hide": "Hide details"
-    },
-    "args": "Args",
     "output": "Output",
-    "result": "Result",
     "deniedByUser": "{{toolName}} denied by user",
     "tool": "Tool",
     "thinking": "Thinking",
@@ -65,7 +55,6 @@
       "createdTask": "Created task: {{description}}",
       "todoOperation": "{{operation}} todos"
     },
-    "fixScript": "Fix Script",
     "subagent": {
       "defaultType": "Subagent"
     }

@@ -38,17 +38,7 @@
   },
   "conversation": {
     "plan": "计划",
-    "planToggle": {
-      "show": "显示计划",
-      "hide": "隐藏计划"
-    },
-    "toolDetailsToggle": {
-      "show": "显示详情",
-      "hide": "隐藏详情"
-    },
-    "args": "参数",
     "output": "输出",
-    "result": "结果",
     "deniedByUser": "用户拒绝了 {{toolName}}",
     "tool": "工具",
     "thinking": "思考中",
@@ -60,7 +50,6 @@
       "createdTask": "创建任务：{{description}}",
       "todoOperation": "{{operation}} 待办事项"
     },
-    "fixScript": "修复脚本",
     "subagent": {
       "defaultType": "子代理"
     }

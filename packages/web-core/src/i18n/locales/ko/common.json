@@ -45,19 +45,9 @@
     "selectOption": "옵션 선택..."
   },
   "conversation": {
-    "args": "인자",
     "deniedByUser": "{{toolName}} 사용자에 의해 거부됨",
     "output": "출력",
     "plan": "계획",
-    "planToggle": {
-      "hide": "계획 숨기기",
-      "show": "계획 보기"
-    },
-    "result": "결과",
-    "toolDetailsToggle": {
-      "hide": "세부 정보 숨기기",
-      "show": "세부 정보 보기"
-    },
     "tool": "도구",
     "thinking": "생각 중",
     "toolSummary": {
@@ -68,7 +58,6 @@
       "createdTask": "작업 생성: {{description}}",
       "todoOperation": "{{operation}} 할 일"
     },
-    "fixScript": "스크립트 수정",
     "subagent": {
       "defaultType": "서브에이전트"
     }

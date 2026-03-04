@@ -45,19 +45,9 @@
     "selectOption": "Seleccionar una opción..."
   },
   "conversation": {
-    "args": "Argumentos",
     "deniedByUser": "{{toolName}} denegado por el usuario",
     "output": "Salida",
     "plan": "Plan",
-    "planToggle": {
-      "hide": "Ocultar plan",
-      "show": "Mostrar plan"
-    },
-    "result": "Resultado",
-    "toolDetailsToggle": {
-      "hide": "Ocultar detalles",
-      "show": "Mostrar detalles"
-    },
     "tool": "Herramienta",
     "thinking": "Pensando",
     "toolSummary": {
@@ -68,7 +58,6 @@
       "createdTask": "Creó tarea: {{description}}",
       "todoOperation": "{{operation}} tareas pendientes"
     },
-    "fixScript": "Corregir Script",
     "subagent": {
       "defaultType": "Subagente"
     }

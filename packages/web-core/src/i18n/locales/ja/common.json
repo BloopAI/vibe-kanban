@@ -45,19 +45,9 @@
     "selectOption": "オプションを選択..."
   },
   "conversation": {
-    "args": "引数",
     "deniedByUser": "{{toolName}} がユーザーによって拒否されました",
     "output": "出力",
     "plan": "計画",
-    "planToggle": {
-      "hide": "計画を非表示",
-      "show": "計画を表示"
-    },
-    "result": "結果",
-    "toolDetailsToggle": {
-      "hide": "詳細を非表示",
-      "show": "詳細を表示"
-    },
     "tool": "ツール",
     "thinking": "思考中",
     "toolSummary": {
@@ -68,7 +58,6 @@
       "createdTask": "タスクを作成: {{description}}",
       "todoOperation": "{{operation}} Todo"
     },
-    "fixScript": "スクリプトを修正",
     "subagent": {
       "defaultType": "サブエージェント"
     }

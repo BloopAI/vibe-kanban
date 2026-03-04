@@ -38,17 +38,7 @@
   },
   "conversation": {
     "plan": "計畫",
-    "planToggle": {
-      "show": "顯示計畫",
-      "hide": "隱藏計畫"
-    },
-    "toolDetailsToggle": {
-      "show": "顯示詳細資訊",
-      "hide": "隱藏詳細資訊"
-    },
-    "args": "參數",
     "output": "輸出",
-    "result": "結果",
     "deniedByUser": "使用者拒絕了 {{toolName}}",
     "tool": "工具",
     "thinking": "思考中",
@@ -60,7 +50,6 @@
       "createdTask": "建立任務：{{description}}",
       "todoOperation": "{{operation}} 待辦事項"
     },
-    "fixScript": "修復腳本",
     "subagent": {
       "defaultType": "子代理"
     }
