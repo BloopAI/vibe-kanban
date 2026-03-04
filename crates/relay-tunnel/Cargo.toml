@@ -61,4 +61,7 @@ tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs",
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"], optional = true }
 uuid = { version = "1", features = ["serde", "v4"], optional = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
+
 [workspace]
