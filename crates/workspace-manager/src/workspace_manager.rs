@@ -237,10 +237,6 @@ impl WorkspaceManager {
         Self { db }
     }
 
-    pub fn new_managed_workspace(&self, workspace: DbWorkspace) -> ManagedWorkspace {
-        ManagedWorkspace::new(self.db.clone(), workspace, Vec::new())
-    }
-
     pub async fn load_managed_workspace(
         &self,
         workspace: DbWorkspace,

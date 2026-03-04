@@ -1984,7 +1984,7 @@ pub async fn create_and_start_workspace(
     )
     .await?;
 
-    let mut managed_workspace = workspace_manager.new_managed_workspace(workspace);
+    let mut managed_workspace = workspace_manager.load_managed_workspace(workspace).await?;
 
     for repo in &repos {
         managed_workspace
