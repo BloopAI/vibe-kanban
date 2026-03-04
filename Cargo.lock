@@ -3261,6 +3261,7 @@ dependencies = [
  "trusted-key-auth",
  "utils",
  "uuid",
+ "workspace-manager",
 ]
 
 [[package]]
@@ -5399,6 +5400,7 @@ dependencies = [
  "url",
  "utils",
  "uuid",
+ "workspace-manager",
 ]
 
 [[package]]
@@ -7653,6 +7655,18 @@ dependencies = [
  "serde_json",
  "unicode-xid",
  "wasmparser",
+]
+
+[[package]]
+name = "workspace-manager"
+version = "0.1.23"
+dependencies = [
+ "db",
+ "services",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]

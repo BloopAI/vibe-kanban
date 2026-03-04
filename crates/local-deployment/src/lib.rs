@@ -32,6 +32,7 @@ use utils::{
     msg_store::MsgStore,
 };
 use uuid::Uuid;
+use workspace_manager::WorkspaceManager;
 
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
@@ -186,8 +187,10 @@ impl Deployment for LocalDeployment {
             user_id: user_id.clone(),
             analytics_service: s.clone(),
         });
+        let workspace_manager = WorkspaceManager::new(db.clone());
         let container = LocalContainerService::new(
             db.clone(),
+            workspace_manager,
             msg_stores.clone(),
             config.clone(),
             git.clone(),

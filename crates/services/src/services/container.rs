@@ -57,8 +57,7 @@ use utils::{
 use uuid::Uuid;
 
 use crate::services::{
-    execution_process, notification::NotificationService,
-    workspace_manager::WorkspaceError as WorkspaceManagerError, worktree_manager::WorktreeError,
+    execution_process, notification::NotificationService, worktree_manager::WorktreeError,
 };
 pub type ContainerRef = String;
 
@@ -74,8 +73,6 @@ pub enum ContainerError {
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
     Workspace(#[from] WorkspaceError),
-    #[error(transparent)]
-    WorkspaceManager(#[from] WorkspaceManagerError),
     #[error(transparent)]
     Session(#[from] SessionError),
     #[error(transparent)]

@@ -28,11 +28,11 @@ use git_host::{
 use serde::{Deserialize, Serialize};
 use services::services::{
     config::DEFAULT_PR_DESCRIPTION_PROMPT, container::ContainerService, remote_sync,
-    workspace_manager::WorkspaceManager,
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
+use workspace_manager::WorkspaceManager;
 
 use crate::{DeploymentImpl, error::ApiError};
 

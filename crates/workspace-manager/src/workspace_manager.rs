@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use db::models::{repo::Repo, workspace::Workspace as DbWorkspace};
-use sqlx::{Pool, Sqlite};
+use db::{
+    DBService,
+    models::{repo::Repo, workspace::Workspace as DbWorkspace},
+};
+use services::services::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
-
-use super::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 
 #[derive(Debug, Clone)]
 pub struct RepoWorkspaceInput {
@@ -51,9 +52,16 @@ pub struct WorktreeContainer {
     pub worktrees: Vec<RepoWorktree>,
 }
 
-pub struct WorkspaceManager;
+#[derive(Clone)]
+pub struct WorkspaceManager {
+    db: DBService,
+}
 
 impl WorkspaceManager {
+    pub fn new(db: DBService) -> Self {
+        Self { db }
+    }
+
     /// Create a workspace with worktrees for all repositories.
     /// On failure, rolls back any already-created worktrees.
     pub async fn create_workspace(
@@ -284,7 +292,7 @@ impl WorkspaceManager {
         }
     }
 
-    pub async fn cleanup_orphan_workspaces(db: &Pool<Sqlite>) {
+    pub async fn cleanup_orphan_workspaces(&self) {
         if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
             info!(
                 "Orphan workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
@@ -294,16 +302,16 @@ impl WorkspaceManager {
 
         // Always clean up the default directory
         let default_dir = WorktreeManager::get_default_worktree_base_dir();
-        Self::cleanup_orphans_in_directory(db, &default_dir).await;
+        self.cleanup_orphans_in_directory(&default_dir).await;
 
         // Also clean up custom directory if it's different from the default
         let current_dir = Self::get_workspace_base_dir();
         if current_dir != default_dir {
-            Self::cleanup_orphans_in_directory(db, &current_dir).await;
+            self.cleanup_orphans_in_directory(&current_dir).await;
         }
     }
 
-    async fn cleanup_orphans_in_directory(db: &Pool<Sqlite>, workspace_base_dir: &Path) {
+    async fn cleanup_orphans_in_directory(&self, workspace_base_dir: &Path) {
         if !workspace_base_dir.exists() {
             debug!(
                 "Workspace base directory {} does not exist, skipping orphan cleanup",
@@ -339,7 +347,9 @@ impl WorkspaceManager {
             }
 
             let workspace_path_str = path.to_string_lossy().to_string();
-            if let Ok(false) = DbWorkspace::container_ref_exists(db, &workspace_path_str).await {
+            if let Ok(false) =
+                DbWorkspace::container_ref_exists(&self.db.pool, &workspace_path_str).await
+            {
                 info!("Found orphaned workspace: {}", workspace_path_str);
                 if let Err(e) = Self::cleanup_workspace_without_repos(&path).await {
                     error!(
