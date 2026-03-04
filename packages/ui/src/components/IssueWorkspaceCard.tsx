@@ -5,6 +5,7 @@ import {
   DotsThreeIcon,
   LinkBreakIcon,
   TrashIcon,
+  ArchiveIcon,
   PlayIcon,
   HandIcon,
   TriangleIcon,
@@ -49,6 +50,7 @@ export interface IssueWorkspaceCardProps {
   workspace: WorkspaceWithStats;
   onClick?: () => void;
   onUnlink?: () => void;
+  onArchive?: () => void;
   onDelete?: () => void;
   showOwner?: boolean;
   showStatusBadge?: boolean;
@@ -111,6 +113,7 @@ export function IssueWorkspaceCard({
   workspace,
   onClick,
   onUnlink,
+  onArchive,
   onDelete,
   showOwner = true,
   showStatusBadge = true,
@@ -165,7 +168,7 @@ export function IssueWorkspaceCard({
               className="h-5 w-5 text-[10px] border-2 border-panel"
             />
           )}
-          {(onUnlink || onDelete) && (
+          {(onUnlink || onArchive || onDelete) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
@@ -189,6 +192,19 @@ export function IssueWorkspaceCard({
                   >
                     <LinkBreakIcon className="size-icon-xs" />
                     {t('workspaces.unlinkFromIssue')}
+                  </DropdownMenuItem>
+                )}
+                {onArchive && (
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onArchive();
+                    }}
+                  >
+                    <ArchiveIcon className="size-icon-xs" />
+                    {workspace.archived
+                      ? t('workspaces.unarchive')
+                      : t('workspaces.archive')}
                   </DropdownMenuItem>
                 )}
                 {onDelete && (
