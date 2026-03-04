@@ -122,8 +122,8 @@ export const KanbanCard = ({
             tabIndex={tabIndex}
             onClick={
               isMobile
-                ? () => {
-                    if (!snapshot.isDragging) onClick?.();
+                ? (e) => {
+                    if (!snapshot.isDragging) onClick?.(e);
                   }
                 : undefined
             }
@@ -131,7 +131,7 @@ export const KanbanCard = ({
               !isMobile
                 ? (e) => {
                     if (e.button === 0 && !snapshot.isDragging) {
-                      onClick?.();
+                      onClick?.(e);
                     }
                   }
                 : undefined

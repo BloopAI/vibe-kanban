@@ -1,6 +1,5 @@
 import { useCallback, type MouseEvent } from 'react';
 import { useIssueSelectionStore } from '@/shared/stores/useIssueSelectionStore';
-import { useKanbanNavigation } from '@/shared/hooks/useKanbanNavigation';
 
 export function useIssueMultiSelect() {
   const selectedIssueIds = useIssueSelectionStore((s) => s.selectedIssueIds);
@@ -8,7 +7,6 @@ export function useIssueMultiSelect() {
   const selectRange = useIssueSelectionStore((s) => s.selectRange);
   const clearSelection = useIssueSelectionStore((s) => s.clearSelection);
   const selectAll = useIssueSelectionStore((s) => s.selectAll);
-  const { openIssue } = useKanbanNavigation();
 
   const isMultiSelectActive = selectedIssueIds.size > 1;
 
@@ -25,15 +23,9 @@ export function useIssueMultiSelect() {
         // Shift+Click: range select from anchor to this issue
         event.preventDefault();
         selectRange(issueId);
-      } else {
-        // Plain click: clear multi-select, open single issue
-        if (selectedIssueIds.size > 0) {
-          clearSelection();
-        }
-        openIssue(issueId);
       }
     },
-    [toggleIssue, selectRange, clearSelection, selectedIssueIds.size, openIssue]
+    [toggleIssue, selectRange]
   );
 
   const handleCheckboxChange = useCallback(
