@@ -57,24 +57,15 @@ fn main() {
                 .menu(&tray_menu)
                 .tooltip("Vibe Kanban")
                 .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => {
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
-                    }
+                    "show" => show_window(app),
                     "quit" => {
                         app.exit(0);
                     }
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
-                        let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
-                            let _ = window.show();
-                            let _ = window.set_focus();
-                        }
+                    if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
+                        show_window(tray.app_handle());
                     }
                 })
                 .build(app)?;
@@ -134,6 +125,11 @@ fn main() {
                     // running in the background (agents/processes stay alive).
                     api.prevent_close();
                     let _ = window.hide();
+                    // Remove the dock icon on macOS so only the tray icon remains.
+                    #[cfg(target_os = "macos")]
+                    let _ = window
+                        .app_handle()
+                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
                 }
                 tauri::WindowEvent::Destroyed => {
                     // Only fires on actual app exit (e.g. tray Quit).
@@ -144,6 +140,16 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn show_window(app: &tauri::AppHandle) {
+    // Restore the dock icon on macOS before showing the window.
+    #[cfg(target_os = "macos")]
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
 fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
