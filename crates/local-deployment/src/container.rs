@@ -137,12 +137,49 @@ impl LocalContainerService {
     fn map_workspace_manager_error(err: WorkspaceManagerError) -> ContainerError {
         match err {
             WorkspaceManagerError::Worktree(err) => ContainerError::Worktree(err),
+            WorkspaceManagerError::GitService(err) => ContainerError::GitServiceError(err),
             WorkspaceManagerError::Io(err) => ContainerError::Io(err),
             WorkspaceManagerError::NoRepositories => {
                 ContainerError::Other(anyhow!("No repositories provided"))
             }
             WorkspaceManagerError::PartialCreation(msg) => ContainerError::Other(anyhow!(msg)),
         }
+    }
+
+    async fn workspace_repo_inputs(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(Vec<Repo>, Vec<RepoWorkspaceInput>), ContainerError> {
+        let workspace_repos =
+            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace_id).await?;
+        if workspace_repos.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Workspace has no repositories configured"
+            )));
+        }
+
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace_id).await?;
+        let target_branches: HashMap<_, _> = workspace_repos
+            .iter()
+            .map(|wr| (wr.repo_id, wr.target_branch.clone()))
+            .collect();
+
+        let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
+            .iter()
+            .map(|repo| {
+                let target_branch = target_branches.get(&repo.id).cloned().ok_or_else(|| {
+                    ContainerError::Other(anyhow!(
+                        "Missing target branch mapping for repo {} in workspace {}",
+                        repo.id,
+                        workspace_id
+                    ))
+                })?;
+                Ok(RepoWorkspaceInput::new(repo.clone(), target_branch))
+            })
+            .collect::<Result<_, ContainerError>>()?;
+
+        Ok((repositories, workspace_inputs))
     }
 
     pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
@@ -1094,29 +1131,7 @@ impl ContainerService for LocalContainerService {
             LocalContainerService::dir_name_from_workspace(&workspace.id, label);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
-        let workspace_repos =
-            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
-        if workspace_repos.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
-
-        let repositories =
-            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
-
-        let target_branches: HashMap<_, _> = workspace_repos
-            .iter()
-            .map(|wr| (wr.repo_id, wr.target_branch.clone()))
-            .collect();
-
-        let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
-            .iter()
-            .map(|repo| {
-                let target_branch = target_branches.get(&repo.id).cloned().unwrap_or_default();
-                RepoWorkspaceInput::new(repo.clone(), target_branch)
-            })
-            .collect();
+        let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
 
         let created_workspace = WorkspaceManager::create_workspace(
             &workspace_dir,
@@ -1157,14 +1172,7 @@ impl ContainerService for LocalContainerService {
         workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
         self.touch(workspace).await?;
-        let repositories =
-            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
-
-        if repositories.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
+        let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
 
         let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
             PathBuf::from(container_ref)
@@ -1175,9 +1183,13 @@ impl ContainerService for LocalContainerService {
             WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
         };
 
-        WorkspaceManager::ensure_workspace_exists(&workspace_dir, &repositories, &workspace.branch)
-            .await
-            .map_err(Self::map_workspace_manager_error)?;
+        WorkspaceManager::ensure_workspace_exists(
+            &workspace_dir,
+            &workspace_inputs,
+            &workspace.branch,
+        )
+        .await
+        .map_err(Self::map_workspace_manager_error)?;
 
         if workspace.container_ref.is_none() {
             Workspace::update_container_ref(

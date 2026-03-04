@@ -36,6 +36,8 @@ impl RepoWorkspaceInput {
 pub enum WorkspaceError {
     #[error(transparent)]
     Worktree(#[from] WorktreeError),
+    #[error(transparent)]
+    GitService(#[from] GitServiceError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
     #[error("No repositories provided")]
@@ -421,7 +423,7 @@ impl WorkspaceManager {
     /// Ensure all worktrees in a workspace exist (for cold restart scenarios)
     pub async fn ensure_workspace_exists(
         workspace_dir: &Path,
-        repos: &[Repo],
+        repos: &[RepoWorkspaceInput],
         branch_name: &str,
     ) -> Result<(), WorkspaceError> {
         if repos.is_empty() {
@@ -430,7 +432,7 @@ impl WorkspaceManager {
 
         // Try legacy migration first (single repo projects only)
         // Old layout had worktree directly at workspace_dir; new layout has it at workspace_dir/{repo_name}
-        if repos.len() == 1 && Self::migrate_legacy_worktree(workspace_dir, &repos[0]).await? {
+        if repos.len() == 1 && Self::migrate_legacy_worktree(workspace_dir, &repos[0].repo).await? {
             return Ok(());
         }
 
@@ -438,7 +440,10 @@ impl WorkspaceManager {
             tokio::fs::create_dir_all(workspace_dir).await?;
         }
 
-        for repo in repos {
+        let git = GitService::new();
+
+        for input in repos {
+            let repo = &input.repo;
             let worktree_path = workspace_dir.join(&repo.name);
 
             debug!(
@@ -447,8 +452,23 @@ impl WorkspaceManager {
                 worktree_path.display()
             );
 
-            WorktreeManager::ensure_worktree_exists(&repo.path, branch_name, &worktree_path)
+            if git.check_branch_exists(&repo.path, branch_name)? {
+                WorktreeManager::ensure_worktree_exists(&repo.path, branch_name, &worktree_path)
+                    .await?;
+            } else {
+                info!(
+                    "Workspace branch '{}' missing in repo '{}'; creating from target branch '{}'",
+                    branch_name, repo.name, input.target_branch
+                );
+                WorktreeManager::create_worktree(
+                    &repo.path,
+                    branch_name,
+                    &worktree_path,
+                    &input.target_branch,
+                    true,
+                )
                 .await?;
+            }
         }
 
         Ok(())
