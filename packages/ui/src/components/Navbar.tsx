@@ -346,6 +346,7 @@ export function Navbar({
   // ---- Desktop layout ----
   return (
     <nav
+      data-tauri-drag-region
       className={cn(
         'flex items-center justify-between px-base py-half bg-secondary border-b shrink-0',
         className
