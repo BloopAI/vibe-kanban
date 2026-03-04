@@ -23,7 +23,6 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
-    worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
@@ -33,6 +32,7 @@ use utils::{
 };
 use uuid::Uuid;
 use workspace_manager::WorkspaceManager;
+use worktree_manager::WorktreeManager;
 
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;

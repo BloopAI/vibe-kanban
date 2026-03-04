@@ -16,6 +16,7 @@ git = { path = "../git" }
 git-host = { path = "../git-host" }
 executors = { path = "../executors" }
 db = { path = "../db" }
+worktree-manager = { path = "../worktree-manager" }
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 serde = { workspace = true }
@@ -29,7 +30,6 @@ uuid = { version = "1.0", features = ["v4", "serde"] }
 ts-rs = { workspace = true }
 dirs = "5.0"
 git2 = { workspace = true }
-tempfile = "3.21"
 async-trait = { workspace = true }
 rust-embed = "8.2"
 ignore = "0.4"

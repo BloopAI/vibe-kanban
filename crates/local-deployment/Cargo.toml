@@ -11,6 +11,7 @@ deployment = { path = "../deployment" }
 relay-control = { path = "../relay-control" }
 server-info = { path = "../server-info" }
 services = { path = "../services" }
+worktree-manager = { path = "../worktree-manager" }
 workspace-manager = { path = "../workspace-manager" }
 utils = { path = "../utils" }
 git = { path = "../git" }

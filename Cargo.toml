@@ -8,6 +8,7 @@ members = [
     "crates/db",
     "crates/executors",
     "crates/services",
+    "crates/worktree-manager",
     "crates/workspace-manager",
     "crates/relay-control",
     "crates/server-info",

@@ -55,10 +55,9 @@ use utils::{
     text::{git_branch_id, short_uuid},
 };
 use uuid::Uuid;
+use worktree_manager::WorktreeError;
 
-use crate::services::{
-    execution_process, notification::NotificationService, worktree_manager::WorktreeError,
-};
+use crate::services::{execution_process, notification::NotificationService};
 pub type ContainerRef = String;
 
 #[derive(Debug, Error)]

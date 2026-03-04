@@ -1344,6 +1344,7 @@ dependencies = [
  "tracing",
  "trusted-key-auth",
  "utils",
+ "worktree-manager",
 ]
 
 [[package]]
@@ -3262,6 +3263,7 @@ dependencies = [
  "utils",
  "uuid",
  "workspace-manager",
+ "worktree-manager",
 ]
 
 [[package]]
@@ -5401,6 +5403,7 @@ dependencies = [
  "utils",
  "uuid",
  "workspace-manager",
+ "worktree-manager",
 ]
 
 [[package]]
@@ -5446,7 +5449,6 @@ dependencies = [
  "sqlx",
  "strum",
  "strum_macros",
- "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
@@ -5456,6 +5458,7 @@ dependencies = [
  "url",
  "utils",
  "uuid",
+ "worktree-manager",
 ]
 
 [[package]]
@@ -7663,12 +7666,27 @@ version = "0.1.23"
 dependencies = [
  "db",
  "git",
- "services",
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "utils",
  "uuid",
+ "worktree-manager",
+]
+
+[[package]]
+name = "worktree-manager"
+version = "0.1.24-main.0"
+dependencies = [
+ "dunce",
+ "git",
+ "git2",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "utils",
 ]
 
 [[package]]

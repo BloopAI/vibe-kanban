@@ -14,10 +14,10 @@ use db::{
     },
 };
 use git::GitService;
-use services::services::worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 use thiserror::Error;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
+use worktree_manager::{WorktreeCleanup, WorktreeError, WorktreeManager};
 
 #[derive(Debug, Clone)]
 pub struct RepoWorkspaceInput {
@@ -202,10 +202,7 @@ impl WorkspaceManager {
             } = context;
 
             for session_id in session_ids {
-                if let Err(e) =
-                    services::services::execution_process::remove_session_process_logs(session_id)
-                        .await
-                {
+                if let Err(e) = Self::remove_session_process_logs(session_id).await {
                     warn!(
                         "Failed to remove filesystem process logs for session {}: {}",
                         session_id, e
@@ -252,6 +249,15 @@ impl WorkspaceManager {
                 }
             }
         });
+    }
+
+    async fn remove_session_process_logs(session_id: Uuid) -> Result<(), std::io::Error> {
+        let dir = utils::execution_logs::process_logs_session_dir(session_id);
+        match tokio::fs::remove_dir_all(&dir).await {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     /// Create a workspace with worktrees for all repositories.

@@ -21,11 +21,11 @@ use services::services::{
     migration::MigrationError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
-    worktree_manager::WorktreeError,
 };
 use thiserror::Error;
 use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
+use worktree_manager::WorktreeError;
 
 #[derive(Debug, Error, ts_rs::TS)]
 #[ts(type = "string")]

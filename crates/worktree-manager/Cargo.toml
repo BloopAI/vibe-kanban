@@ -1,15 +1,16 @@
 [package]
-name = "workspace-manager"
-version = "0.1.23"
+name = "worktree-manager"
+version = "0.1.24-main.0"
 edition = "2024"
 
 [dependencies]
-db = { path = "../db" }
 git = { path = "../git" }
 utils = { path = "../utils" }
-worktree-manager = { path = "../worktree-manager" }
-sqlx = "0.8.6"
 tokio = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
-uuid = { version = "1.0", features = ["v4", "serde"] }
+git2 = { workspace = true }
+dunce = "1.0"
+
+[dev-dependencies]
+tempfile = "3.21"

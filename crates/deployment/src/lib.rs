@@ -25,13 +25,13 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
     repo::RepoService,
-    worktree_manager::WorktreeError,
 };
 use sqlx::Error as SqlxError;
 use thiserror::Error;
 use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::sentry as sentry_utils;
+use worktree_manager::WorktreeError;
 
 #[derive(Debug, Clone, Copy, Error)]
 #[error("Remote client not configured")]

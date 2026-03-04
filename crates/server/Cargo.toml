@@ -17,6 +17,7 @@ git = { path = "../git" }
 git-host = { path = "../git-host" }
 db = { path = "../db" }
 services = { path = "../services" }
+worktree-manager = { path = "../worktree-manager" }
 workspace-manager = { path = "../workspace-manager" }
 relay-tunnel = { path = "../relay-tunnel" }
 trusted-key-auth = { path = "../trusted-key-auth" }
