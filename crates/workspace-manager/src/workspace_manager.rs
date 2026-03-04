@@ -159,23 +159,8 @@ impl ManagedWorkspace {
     }
 }
 
-#[allow(async_fn_in_trait)]
-pub trait ManagedWorkspaceOps {
-    async fn add_repository(
-        &mut self,
-        repo_ref: &WorkspaceRepoInput,
-        git: &GitService,
-    ) -> Result<(), AddRepoToWorkspaceError>;
-
-    async fn associate_images(&self, image_ids: &[Uuid]) -> Result<(), sqlx::Error>;
-
-    async fn prepare_deletion_context(&self) -> Result<WorkspaceDeletionContext, sqlx::Error>;
-
-    async fn delete_record(&self) -> Result<u64, sqlx::Error>;
-}
-
-impl ManagedWorkspaceOps for ManagedWorkspace {
-    async fn add_repository(
+impl ManagedWorkspace {
+    pub async fn add_repository(
         &mut self,
         repo_ref: &WorkspaceRepoInput,
         git: &GitService,
@@ -208,7 +193,7 @@ impl ManagedWorkspaceOps for ManagedWorkspace {
         Ok(())
     }
 
-    async fn associate_images(&self, image_ids: &[Uuid]) -> Result<(), sqlx::Error> {
+    pub async fn associate_images(&self, image_ids: &[Uuid]) -> Result<(), sqlx::Error> {
         if image_ids.is_empty() {
             return Ok(());
         }
@@ -216,7 +201,7 @@ impl ManagedWorkspaceOps for ManagedWorkspace {
         WorkspaceImage::associate_many_dedup(&self.db.pool, self.workspace.id, image_ids).await
     }
 
-    async fn prepare_deletion_context(&self) -> Result<WorkspaceDeletionContext, sqlx::Error> {
+    pub async fn prepare_deletion_context(&self) -> Result<WorkspaceDeletionContext, sqlx::Error> {
         let repositories =
             WorkspaceRepo::find_repos_for_workspace(&self.db.pool, self.workspace.id).await?;
         let session_ids = Session::find_by_workspace_id(&self.db.pool, self.workspace.id)
@@ -239,7 +224,7 @@ impl ManagedWorkspaceOps for ManagedWorkspace {
         })
     }
 
-    async fn delete_record(&self) -> Result<u64, sqlx::Error> {
+    pub async fn delete_record(&self) -> Result<u64, sqlx::Error> {
         DbWorkspace::delete(&self.db.pool, self.workspace.id).await
     }
 }

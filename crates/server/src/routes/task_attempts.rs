@@ -56,7 +56,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_manager::{AddRepoToWorkspaceError, ManagedWorkspaceOps, WorkspaceManager};
+use workspace_manager::{AddRepoToWorkspaceError, WorkspaceManager};
 
 use crate::{
     DeploymentImpl,
