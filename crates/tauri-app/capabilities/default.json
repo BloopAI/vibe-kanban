@@ -3,6 +3,9 @@
   "identifier": "default",
   "description": "Default capabilities for Vibe Kanban desktop app",
   "windows": ["main"],
+  "remote": {
+    "urls": ["http://localhost:*", "http://127.0.0.1:*"]
+  },
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
