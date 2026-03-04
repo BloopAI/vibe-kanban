@@ -29,7 +29,7 @@
     "includeGitContext": "Incluir contexto de git",
     "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
     "newSession": "Nueva sesión",
-    "starting": "Iniciando..."
+    "starting": "Iniciando revisión..."
   },
   "attempt": {
     "actions": {

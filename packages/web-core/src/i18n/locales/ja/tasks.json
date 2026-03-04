@@ -29,7 +29,7 @@
     "includeGitContext": "Gitコンテキストを含める",
     "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
     "newSession": "新しいセッション",
-    "starting": "開始中..."
+    "starting": "レビューを開始中..."
   },
   "attempt": {
     "actions": {

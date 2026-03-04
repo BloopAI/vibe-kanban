@@ -239,7 +239,7 @@
     "includeGitContext": "包含 Git 上下文",
     "includeGitContextDescription": "告訴代理如何查看此分支上的所有變更",
     "newSession": "新工作階段",
-    "starting": "啟動中..."
+    "starting": "正在開始審查..."
   },
   "resolveConflicts": {
     "dialog": {

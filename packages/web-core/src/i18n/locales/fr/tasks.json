@@ -316,7 +316,7 @@
     "includeGitContext": "Inclure le contexte git",
     "includeGitContextDescription": "Indique à l'agent comment voir toutes les modifications effectuées sur cette branche",
     "newSession": "Nouvelle session",
-    "starting": "Démarrage..."
+    "starting": "Démarrage de la révision..."
   },
   "resolveConflicts": {
     "dialog": {
