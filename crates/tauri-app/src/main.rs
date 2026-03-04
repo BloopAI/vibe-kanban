@@ -198,13 +198,30 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
     url: tauri::WebviewUrl,
 ) -> Result<tauri::WebviewWindow<R>, tauri::Error> {
     let handle = manager.app_handle().clone();
-    tauri::WebviewWindowBuilder::new(manager, "main", url)
+    let mut builder = tauri::WebviewWindowBuilder::new(manager, "main", url)
         .title("Vibe Kanban")
         .inner_size(1280.0, 800.0)
         .min_inner_size(800.0, 600.0)
         .resizable(true)
         .zoom_hotkeys_enabled(true)
-        .disable_drag_drop_handler()
+        .disable_drag_drop_handler();
+
+    // macOS: overlay title bar keeps traffic lights but removes title bar chrome,
+    // letting web content extend to the top of the window.
+    #[cfg(target_os = "macos")]
+    {
+        builder = builder
+            .title_bar_style(tauri::TitleBarStyle::Overlay)
+            .hidden_title(true);
+    }
+
+    // Windows/Linux: remove native decorations entirely.
+    #[cfg(not(target_os = "macos"))]
+    {
+        builder = builder.decorations(false);
+    }
+
+    builder
         .on_new_window(move |url, _features| {
             tracing::info!("New window requested for URL: {}", url);
             let url_str = url.to_string();
