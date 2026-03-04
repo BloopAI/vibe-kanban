@@ -21,7 +21,6 @@ import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
-import DisplayConversationEntry from '@/shared/components/NormalizedConversation/DisplayConversationEntry';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
 import { useChangesView } from '@/shared/hooks/useChangesView';
@@ -62,6 +61,7 @@ import type {
   AggregatedThinkingGroup,
 } from '@/shared/hooks/useConversationHistory/types';
 import {
+  CaretDownIcon,
   FileTextIcon,
   ListMagnifyingGlassIcon,
   GlobeIcon,
@@ -392,17 +392,24 @@ function NewDisplayConversationEntry(props: Props) {
       return null;
 
     case 'user_feedback':
-    case 'user_answered_questions':
-    case 'loading':
-      // Fallback to legacy component for these entry types
       return (
-        <DisplayConversationEntry
-          entry={entry}
-          expansionKey={expansionKey}
-          executionProcessId={executionProcessId}
-          taskAttempt={taskAttempt}
+        <UserFeedbackEntry
+          content={entry.content}
+          deniedTool={entryType.denied_tool}
+          taskAttemptId={taskAttempt?.id}
         />
       );
+
+    case 'user_answered_questions':
+      return (
+        <UserAnsweredQuestionsEntry
+          answers={entryType.answers}
+          expansionKey={expansionKey}
+        />
+      );
+
+    case 'loading':
+      return <LoadingEntry />;
 
     default: {
       // Exhaustive check - TypeScript will error if a case is missing
@@ -725,6 +732,104 @@ function UserMessageEntry({
         />
       )}
     />
+  );
+}
+
+/**
+ * User feedback entry for denied tool calls
+ */
+function UserFeedbackEntry({
+  content,
+  deniedTool,
+  taskAttemptId,
+}: {
+  content: string;
+  deniedTool: string;
+  taskAttemptId: string | undefined;
+}) {
+  const { t } = useTranslation('common');
+
+  return (
+    <div className="py-2">
+      <div className="bg-background px-4 py-2 text-sm border-y border-dashed">
+        <div
+          className="text-xs mb-1 opacity-70"
+          style={{ color: 'hsl(var(--destructive))' }}
+        >
+          {t('conversation.deniedByUser', { toolName: deniedTool })}
+        </div>
+        <WYSIWYGEditor
+          value={content}
+          disabled
+          className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
+          taskAttemptId={taskAttemptId}
+        />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * User answered questions entry with expandable Q&A list
+ */
+function UserAnsweredQuestionsEntry({
+  answers,
+  expansionKey,
+}: {
+  answers: Extract<
+    NormalizedEntry['entry_type'],
+    { type: 'user_answered_questions' }
+  >['answers'];
+  expansionKey: string;
+}) {
+  const { t } = useTranslation('common');
+  const [expanded, toggle] = usePersistedExpanded(
+    `entry:${expansionKey}`,
+    false
+  );
+
+  return (
+    <div className="py-2">
+      <div className="bg-background px-4 py-2 text-sm border-y border-dashed">
+        <button
+          onClick={() => toggle()}
+          className="flex items-center gap-1 text-xs opacity-70 w-full cursor-pointer"
+        >
+          <CaretDownIcon
+            className={cn(
+              'size-3 transition-transform',
+              !expanded && '-rotate-90'
+            )}
+          />
+          <span>
+            {t('askQuestion.answeredCount', { count: answers.length })}
+          </span>
+        </button>
+        {expanded &&
+          answers.map((qa, i) => (
+            <div key={i} className="mt-2">
+              <div className="font-semibold text-sm">{qa.question}</div>
+              <div className="text-sm font-light">{qa.answer.join(', ')}</div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Loading placeholder entry
+ */
+function LoadingEntry() {
+  return (
+    <div className="px-4 py-2 text-sm">
+      <div className="flex animate-pulse space-x-2 items-center">
+        <div className="size-3 bg-foreground/10" />
+        <div className="flex-1 h-3 bg-foreground/10" />
+        <div className="flex-1 h-3" />
+        <div className="flex-1 h-3" />
+      </div>
+    </div>
   );
 }
 
