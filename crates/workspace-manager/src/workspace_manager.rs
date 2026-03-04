@@ -44,12 +44,6 @@ pub enum WorkspaceError {
     PartialCreation(String),
 }
 
-#[derive(Debug, Clone)]
-pub struct AddRepoToWorkspaceResult {
-    pub workspace: DbWorkspace,
-    pub repo: RepoWithTargetBranch,
-}
-
 #[derive(Debug, Error)]
 pub enum AddRepoToWorkspaceError {
     #[error(transparent)]
@@ -94,8 +88,8 @@ pub struct WorkspaceDeletionContext {
 
 #[derive(Clone)]
 pub struct ManagedWorkspace {
-    pub workspace: DbWorkspace,
-    pub repos: Vec<RepoWithTargetBranch>,
+    workspace: DbWorkspace,
+    repos: Vec<RepoWithTargetBranch>,
     db: DBService,
 }
 
@@ -151,6 +145,18 @@ impl ManagedWorkspace {
         .await?;
         Ok(())
     }
+
+    pub fn workspace(&self) -> &DbWorkspace {
+        &self.workspace
+    }
+
+    pub fn repos(&self) -> &[RepoWithTargetBranch] {
+        &self.repos
+    }
+
+    pub fn into_workspace(self) -> DbWorkspace {
+        self.workspace
+    }
 }
 
 #[allow(async_fn_in_trait)]
@@ -160,13 +166,6 @@ pub trait ManagedWorkspaceOps {
         repo_ref: &WorkspaceRepoInput,
         git: &GitService,
     ) -> Result<(), AddRepoToWorkspaceError>;
-
-    async fn add_repo(
-        &mut self,
-        repo_id: Uuid,
-        target_branch: String,
-        git: &GitService,
-    ) -> Result<AddRepoToWorkspaceResult, AddRepoToWorkspaceError>;
 
     async fn associate_images(&self, image_ids: &[Uuid]) -> Result<(), sqlx::Error>;
 
@@ -207,32 +206,6 @@ impl ManagedWorkspaceOps for ManagedWorkspace {
         self.sync_agent_working_dir().await?;
         self.refresh().await?;
         Ok(())
-    }
-
-    async fn add_repo(
-        &mut self,
-        repo_id: Uuid,
-        target_branch: String,
-        git: &GitService,
-    ) -> Result<AddRepoToWorkspaceResult, AddRepoToWorkspaceError> {
-        let repo_ref = WorkspaceRepoInput {
-            repo_id,
-            target_branch,
-        };
-
-        self.add_repository(&repo_ref, git).await?;
-
-        let repo = self
-            .repos
-            .iter()
-            .find(|repo_with_target| repo_with_target.repo.id == repo_id)
-            .cloned()
-            .ok_or(AddRepoToWorkspaceError::RepoAlreadyAttached)?;
-
-        Ok(AddRepoToWorkspaceResult {
-            workspace: self.workspace.clone(),
-            repo,
-        })
     }
 
     async fn associate_images(&self, image_ids: &[Uuid]) -> Result<(), sqlx::Error> {
@@ -281,7 +254,7 @@ impl WorkspaceManager {
         Self { db }
     }
 
-    pub fn managed_workspace(&self, workspace: DbWorkspace) -> ManagedWorkspace {
+    pub fn new_managed_workspace(&self, workspace: DbWorkspace) -> ManagedWorkspace {
         ManagedWorkspace::new(self.db.clone(), workspace, Vec::new())
     }
 

@@ -25,7 +25,10 @@ use db::models::{
     execution_process::{ExecutionProcess, ExecutionProcessRunReason, ExecutionProcessStatus},
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
-    requests::{CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, UpdateWorkspace},
+    requests::{
+        CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, UpdateWorkspace,
+        WorkspaceRepoInput,
+    },
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
@@ -1617,26 +1620,38 @@ pub async fn add_workspace_repo(
         .load_managed_workspace(workspace)
         .await?;
 
-    let result = managed_workspace
-        .add_repo(payload.repo_id, payload.target_branch, deployment.git())
+    let repo_input = WorkspaceRepoInput {
+        repo_id: payload.repo_id,
+        target_branch: payload.target_branch,
+    };
+
+    managed_workspace
+        .add_repository(&repo_input, deployment.git())
         .await
         .map_err(map_add_repo_error)?;
+
+    let workspace = managed_workspace.workspace().clone();
+    let repo = managed_workspace
+        .repos()
+        .iter()
+        .find(|repo_with_target| repo_with_target.repo.id == repo_input.repo_id)
+        .cloned()
+        .ok_or_else(|| {
+            ApiError::Conflict("Repository already attached to workspace".to_string())
+        })?;
 
     deployment
         .track_if_analytics_allowed(
             "task_attempt_repo_added",
             serde_json::json!({
-                "workspace_id": result.workspace.id.to_string(),
-                "repo_id": result.repo.repo.id.to_string(),
+                "workspace_id": workspace.id.to_string(),
+                "repo_id": repo.repo.id.to_string(),
             }),
         )
         .await;
 
     Ok(ResponseJson(ApiResponse::success(
-        AddWorkspaceRepoResponse {
-            workspace: result.workspace,
-            repo: result.repo,
-        },
+        AddWorkspaceRepoResponse { workspace, repo },
     )))
 }
 
@@ -1969,7 +1984,7 @@ pub async fn create_and_start_workspace(
     )
     .await?;
 
-    let mut managed_workspace = workspace_manager.managed_workspace(workspace);
+    let mut managed_workspace = workspace_manager.new_managed_workspace(workspace);
 
     for repo in &repos {
         managed_workspace
@@ -2011,7 +2026,7 @@ pub async fn create_and_start_workspace(
         }
     }
 
-    let workspace = managed_workspace.workspace.clone();
+    let workspace = managed_workspace.into_workspace();
     tracing::info!("Created workspace {}", workspace.id);
 
     let execution_process = deployment
