@@ -30,7 +30,6 @@ import {
   Wrench,
 } from 'lucide-react';
 import RawLogText from '@/shared/components/RawLogText';
-import UserMessage from './UserMessage';
 import PendingApprovalEntry from './PendingApprovalEntry';
 import { cn } from '@/shared/lib/utils';
 import { useRetryUi } from '@/shared/hooks/useRetryUi';
@@ -729,7 +728,6 @@ function DisplayConversationEntry({
   const isSystem = entryType.type === 'system_message';
   const isError = entryType.type === 'error_message';
   const isToolUse = entryType.type === 'tool_use';
-  const isUserMessage = entryType.type === 'user_message';
   const isUserFeedback = entryType.type === 'user_feedback';
   const isLoading = entryType.type === 'loading';
   const isTokenUsage = entryType.type === 'token_usage_info';
@@ -738,16 +736,6 @@ function DisplayConversationEntry({
 
   if (isTokenUsage) {
     return null;
-  }
-
-  if (isUserMessage) {
-    return (
-      <UserMessage
-        content={entry.content}
-        executionProcessId={executionProcessId}
-        taskAttempt={taskAttempt}
-      />
-    );
   }
 
   if (isUserFeedback) {
