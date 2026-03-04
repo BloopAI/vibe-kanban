@@ -56,7 +56,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_manager::{AddRepoToWorkspaceError, WorkspaceManager};
+use workspace_manager::{WorkspaceError as WorkspaceManagerError, WorkspaceManager};
 
 use crate::{
     DeploymentImpl,
@@ -136,23 +136,29 @@ pub struct AddWorkspaceRepoResponse {
     pub repo: RepoWithTargetBranch,
 }
 
-fn map_add_repo_error(err: AddRepoToWorkspaceError) -> ApiError {
+fn map_add_repo_error(err: WorkspaceManagerError) -> ApiError {
     match err {
-        AddRepoToWorkspaceError::Database(err) => ApiError::Database(err),
-        AddRepoToWorkspaceError::Repo(err) => ApiError::Repo(err),
-        AddRepoToWorkspaceError::GitService(err) => ApiError::GitService(err),
-        AddRepoToWorkspaceError::WorkspaceNotFound => {
+        WorkspaceManagerError::Database(err) => ApiError::Database(err),
+        WorkspaceManagerError::Repo(err) => ApiError::Repo(err),
+        WorkspaceManagerError::GitService(err) => ApiError::GitService(err),
+        WorkspaceManagerError::WorkspaceNotFound => {
             ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
         }
-        AddRepoToWorkspaceError::RepoAlreadyAttached => {
+        WorkspaceManagerError::RepoAlreadyAttached => {
             ApiError::Conflict("Repository already attached to workspace".to_string())
         }
-        AddRepoToWorkspaceError::BranchNotFound { repo_name, branch } => {
+        WorkspaceManagerError::BranchNotFound { repo_name, branch } => {
             ApiError::BadRequest(format!(
                 "Branch '{}' does not exist in repository '{}'",
                 branch, repo_name
             ))
         }
+        WorkspaceManagerError::Worktree(err) => ApiError::Worktree(err),
+        WorkspaceManagerError::Io(err) => ApiError::Io(err),
+        WorkspaceManagerError::NoRepositories => {
+            ApiError::BadRequest("Workspace has no repositories configured".to_string())
+        }
+        WorkspaceManagerError::PartialCreation(msg) => ApiError::Conflict(msg),
     }
 }
 

@@ -59,9 +59,7 @@ use utils::{
     text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
 use uuid::Uuid;
-use workspace_manager::{
-    RepoWorkspaceInput, WorkspaceError as WorkspaceManagerError, WorkspaceManager,
-};
+use workspace_manager::{RepoWorkspaceInput, WorkspaceError, WorkspaceManager};
 
 use crate::{command, copy};
 
@@ -134,15 +132,28 @@ impl LocalContainerService {
         container
     }
 
-    fn map_workspace_manager_error(err: WorkspaceManagerError) -> ContainerError {
+    fn map_workspace_manager_error(err: WorkspaceError) -> ContainerError {
         match err {
-            WorkspaceManagerError::Worktree(err) => ContainerError::Worktree(err),
-            WorkspaceManagerError::GitService(err) => ContainerError::GitServiceError(err),
-            WorkspaceManagerError::Io(err) => ContainerError::Io(err),
-            WorkspaceManagerError::NoRepositories => {
+            WorkspaceError::Database(err) => ContainerError::Sqlx(err),
+            WorkspaceError::Worktree(err) => ContainerError::Worktree(err),
+            WorkspaceError::GitService(err) => ContainerError::GitServiceError(err),
+            WorkspaceError::Io(err) => ContainerError::Io(err),
+            WorkspaceError::NoRepositories => {
                 ContainerError::Other(anyhow!("No repositories provided"))
             }
-            WorkspaceManagerError::PartialCreation(msg) => ContainerError::Other(anyhow!(msg)),
+            WorkspaceError::Repo(err) => ContainerError::Other(anyhow!(err)),
+            WorkspaceError::WorkspaceNotFound => {
+                ContainerError::Other(anyhow!("Workspace not found"))
+            }
+            WorkspaceError::RepoAlreadyAttached => {
+                ContainerError::Other(anyhow!("Repository already attached to workspace"))
+            }
+            WorkspaceError::BranchNotFound { repo_name, branch } => ContainerError::Other(anyhow!(
+                "Branch '{}' does not exist in repository '{}'",
+                branch,
+                repo_name
+            )),
+            WorkspaceError::PartialCreation(msg) => ContainerError::Other(anyhow!(msg)),
         }
     }
 

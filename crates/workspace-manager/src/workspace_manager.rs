@@ -35,31 +35,25 @@ impl RepoWorkspaceInput {
 #[derive(Debug, Error)]
 pub enum WorkspaceError {
     #[error(transparent)]
+    Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    Repo(#[from] RepoError),
+    #[error(transparent)]
     Worktree(#[from] WorktreeError),
     #[error(transparent)]
     GitService(#[from] GitServiceError),
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("No repositories provided")]
-    NoRepositories,
-    #[error("Partial workspace creation failed: {0}")]
-    PartialCreation(String),
-}
-
-#[derive(Debug, Error)]
-pub enum AddRepoToWorkspaceError {
-    #[error(transparent)]
-    Database(#[from] sqlx::Error),
-    #[error(transparent)]
-    Repo(#[from] RepoError),
-    #[error(transparent)]
-    GitService(#[from] GitServiceError),
     #[error("Workspace not found")]
     WorkspaceNotFound,
     #[error("Repository already attached to workspace")]
     RepoAlreadyAttached,
     #[error("Branch '{branch}' does not exist in repository '{repo_name}'")]
     BranchNotFound { repo_name: String, branch: String },
+    #[error("No repositories provided")]
+    NoRepositories,
+    #[error("Partial workspace creation failed: {0}")]
+    PartialCreation(String),
 }
 
 /// Info about a single repo's worktree within a workspace
@@ -136,10 +130,10 @@ impl ManagedWorkspace {
         Ok(())
     }
 
-    async fn refresh(&mut self) -> Result<(), AddRepoToWorkspaceError> {
+    async fn refresh(&mut self) -> Result<(), WorkspaceError> {
         self.workspace = DbWorkspace::find_by_id(&self.db.pool, self.workspace.id)
             .await?
-            .ok_or(AddRepoToWorkspaceError::WorkspaceNotFound)?;
+            .ok_or(WorkspaceError::WorkspaceNotFound)?;
         self.repos = WorkspaceRepo::find_repos_with_target_branch_for_workspace(
             &self.db.pool,
             self.workspace.id,
@@ -152,13 +146,13 @@ impl ManagedWorkspace {
         &mut self,
         repo_ref: &WorkspaceRepoInput,
         git: &GitService,
-    ) -> Result<(), AddRepoToWorkspaceError> {
+    ) -> Result<(), WorkspaceError> {
         let repo = Repo::find_by_id(&self.db.pool, repo_ref.repo_id)
             .await?
             .ok_or(RepoError::NotFound)?;
 
         if !git.check_branch_exists(&repo.path, &repo_ref.target_branch)? {
-            return Err(AddRepoToWorkspaceError::BranchNotFound {
+            return Err(WorkspaceError::BranchNotFound {
                 repo_name: repo.name,
                 branch: repo_ref.target_branch.clone(),
             });
@@ -172,7 +166,7 @@ impl ManagedWorkspace {
         .await?
         .is_some()
         {
-            return Err(AddRepoToWorkspaceError::RepoAlreadyAttached);
+            return Err(WorkspaceError::RepoAlreadyAttached);
         }
 
         self.attach_repository(repo_ref).await?;
