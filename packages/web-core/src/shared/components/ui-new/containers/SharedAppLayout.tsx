@@ -277,46 +277,79 @@ export function SharedAppLayout() {
     }
   }, [isSignedIn, appNavigation]);
 
+  const showAppBar = !isMobile && !isMigrateRoute;
+
   return (
     <SyncErrorProvider>
       <div
         className={cn(
-          'flex bg-primary',
+          'bg-primary',
           isMobile
-            ? 'fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : 'h-screen'
+            ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
+            : showAppBar
+              ? 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
+              : 'flex h-screen'
         )}
       >
-        {!isMobile && !isMigrateRoute && (
-          <AppBar
-            projects={orderedProjects}
-            onCreateProject={handleCreateProject}
-            onWorkspacesClick={handleWorkspacesClick}
-            onProjectClick={handleProjectClick}
-            onProjectsDragEnd={handleProjectsDragEnd}
-            isSavingProjectOrder={isSavingProjectOrder}
-            isWorkspacesActive={isWorkspacesActive}
-            activeProjectId={activeProjectId}
-            isSignedIn={isSignedIn}
-            isLoadingProjects={isLoading}
-            onSignIn={handleSignIn}
-            onMigrate={handleMigrate}
-            onHoverStart={() => setAppBarHovered(true)}
-            onHoverEnd={() => setAppBarHovered(false)}
-            userPopover={
-              <AppBarUserPopoverContainer
-                organizations={organizations}
-                selectedOrgId={selectedOrgId ?? ''}
-                onOrgSelect={setSelectedOrgId}
-                onCreateOrg={handleCreateOrg}
-              />
-            }
-            starCount={starCount}
-            onlineCount={onlineCount}
-            appVersion={appVersion}
-            githubIconPath={siGithub.path}
-            discordIconPath={siDiscord.path}
-          />
+        {showAppBar && (
+          <>
+            {/* Grid row 1, col 1: empty corner (blends AppBar + Navbar) */}
+            <div className="bg-secondary" />
+            {/* Grid row 1, col 2: Navbar */}
+            <NavbarContainer
+              onCreateOrg={handleCreateOrg}
+              onOrgSelect={setSelectedOrgId}
+              onOpenDrawer={() => setIsDrawerOpen(true)}
+            />
+            {/* Grid row 2, col 1: AppBar */}
+            <AppBar
+              projects={orderedProjects}
+              onCreateProject={handleCreateProject}
+              onWorkspacesClick={handleWorkspacesClick}
+              onProjectClick={handleProjectClick}
+              onProjectsDragEnd={handleProjectsDragEnd}
+              isSavingProjectOrder={isSavingProjectOrder}
+              isWorkspacesActive={isWorkspacesActive}
+              activeProjectId={activeProjectId}
+              isSignedIn={isSignedIn}
+              isLoadingProjects={isLoading}
+              onSignIn={handleSignIn}
+              onMigrate={handleMigrate}
+              onHoverStart={() => setAppBarHovered(true)}
+              onHoverEnd={() => setAppBarHovered(false)}
+              userPopover={
+                <AppBarUserPopoverContainer
+                  organizations={organizations}
+                  selectedOrgId={selectedOrgId ?? ''}
+                  onOrgSelect={setSelectedOrgId}
+                  onCreateOrg={handleCreateOrg}
+                />
+              }
+              starCount={starCount}
+              onlineCount={onlineCount}
+              appVersion={appVersion}
+              githubIconPath={siGithub.path}
+              discordIconPath={siDiscord.path}
+            />
+            {/* Grid row 2, col 2: Content */}
+            <div className="min-h-0 overflow-hidden">
+              <Outlet />
+            </div>
+          </>
+        )}
+
+        {!showAppBar && (
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <NavbarContainer
+              mobileMode={isMobile}
+              onCreateOrg={handleCreateOrg}
+              onOrgSelect={setSelectedOrgId}
+              onOpenDrawer={() => setIsDrawerOpen(true)}
+            />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <Outlet />
+            </div>
+          </div>
         )}
 
         {/* Mobile project navigation drawer */}
@@ -438,17 +471,6 @@ export function SharedAppLayout() {
             )}
           </div>
         </MobileDrawer>
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <NavbarContainer
-            mobileMode={isMobile}
-            onCreateOrg={handleCreateOrg}
-            onOrgSelect={setSelectedOrgId}
-            onOpenDrawer={() => setIsDrawerOpen(true)}
-          />
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <Outlet />
-          </div>
-        </div>
       </div>
     </SyncErrorProvider>
   );
