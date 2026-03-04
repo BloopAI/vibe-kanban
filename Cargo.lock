@@ -8870,10 +8870,6 @@ version = "0.1.20"
 dependencies = [
  "anyhow",
  "async-trait",
- "objc2",
- "objc2-app-kit",
- "objc2-foundation",
- "png 0.17.16",
  "rustls",
  "serde_json",
  "server",
