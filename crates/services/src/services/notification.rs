@@ -3,6 +3,7 @@ use std::sync::{Arc, OnceLock};
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 use utils;
+use uuid::Uuid;
 
 use crate::services::config::{Config, SoundFile};
 
@@ -10,7 +11,7 @@ use crate::services::config::{Config, SoundFile};
 /// platform-specific OS commands, Tauri's notification plugin, etc.
 #[async_trait]
 pub trait PushNotifier: Send + Sync + 'static {
-    async fn send(&self, title: &str, message: &str);
+    async fn send(&self, title: &str, message: &str, workspace_id: Option<Uuid>);
 }
 
 /// Global push notifier set before server startup (e.g., by the Tauri app).
@@ -41,7 +42,7 @@ static WSL_ROOT_PATH_CACHE: OnceLock<Option<String>> = OnceLock::new();
 
 #[async_trait]
 impl PushNotifier for DefaultPushNotifier {
-    async fn send(&self, title: &str, message: &str) {
+    async fn send(&self, title: &str, message: &str, _workspace_id: Option<Uuid>) {
         if cfg!(target_os = "macos") {
             send_macos_notification(title, message).await;
         } else if cfg!(target_os = "linux") && !utils::is_wsl2() {
@@ -85,8 +86,10 @@ impl NotificationService {
         }
     }
 
-    /// Send both sound and push notifications if enabled
-    pub async fn notify(&self, title: &str, message: &str) {
+    /// Send both sound and push notifications if enabled.
+    /// `workspace_id` is forwarded to the push notifier so Tauri can emit a
+    /// navigation event when the notification is clicked.
+    pub async fn notify(&self, title: &str, message: &str, workspace_id: Option<Uuid>) {
         let config = self.config.read().await.notifications.clone();
 
         if config.sound_enabled {
@@ -94,7 +97,7 @@ impl NotificationService {
         }
 
         if config.push_enabled {
-            self.push_notifier.send(title, message).await;
+            self.push_notifier.send(title, message, workspace_id).await;
         }
     }
 
