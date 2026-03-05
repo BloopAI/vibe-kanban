@@ -1,0 +1,77 @@
+[
+  {
+    "id": 1001,
+    "user": {
+      "login": "reviewer1"
+    },
+    "body": "Please fix this typo in the variable name",
+    "created_at": "2026-03-01T10:00:00Z",
+    "html_url": "https://github.com/test/repo/pull/1#discussion_r1001",
+    "path": "src/main.rs",
+    "line": 42,
+    "side": "RIGHT",
+    "diff_hunk": "@@ -40,6 +40,7 @@ impl Foo {\n+    let variabel = 5;",
+    "author_association": "CONTRIBUTOR",
+    "resolved": false
+  },
+  {
+    "id": 1002,
+    "user": {
+      "login": "reviewer2"
+    },
+    "body": "Good catch! Fixed in latest commit.",
+    "created_at": "2026-03-01T11:00:00Z",
+    "html_url": "https://github.com/test/repo/pull/1#discussion_r1002",
+    "path": "src/main.rs",
+    "line": 42,
+    "side": "RIGHT",
+    "diff_hunk": "@@ -40,6 +40,7 @@ impl Foo {\n+    let variabel = 5;",
+    "author_association": "CONTRIBUTOR",
+    "resolved": true
+  },
+  {
+    "id": 1003,
+    "user": {
+      "login": "reviewer1"
+    },
+    "body": "This function needs error handling",
+    "created_at": "2026-03-01T12:00:00Z",
+    "html_url": "https://github.com/test/repo/pull/1#discussion_r1003",
+    "path": "src/lib.rs",
+    "line": 100,
+    "side": "RIGHT",
+    "diff_hunk": "@@ -98,4 +98,6 @@ pub fn process() {\n+    data.parse().unwrap()",
+    "author_association": "MEMBER",
+    "resolved": false
+  },
+  {
+    "id": 1004,
+    "user": {
+      "login": "author"
+    },
+    "body": "Added Result type and proper error propagation",
+    "created_at": "2026-03-01T13:00:00Z",
+    "html_url": "https://github.com/test/repo/pull/1#discussion_r1004",
+    "path": "src/lib.rs",
+    "line": 100,
+    "side": "RIGHT",
+    "diff_hunk": "@@ -98,4 +98,6 @@ pub fn process() {\n+    data.parse().unwrap()",
+    "author_association": "CONTRIBUTOR",
+    "resolved": true
+  },
+  {
+    "id": 1005,
+    "user": {
+      "login": "reviewer3"
+    },
+    "body": "Consider using a constant here instead of magic number",
+    "created_at": "2026-03-01T14:00:00Z",
+    "html_url": "https://github.com/test/repo/pull/1#discussion_r1005",
+    "path": "src/config.rs",
+    "line": 15,
+    "side": "RIGHT",
+    "diff_hunk": "@@ -13,2 +13,3 @@ const CONFIG: Config = Config {\n+    timeout: 30,",
+    "author_association": "CONTRIBUTOR",
+    "resolved": false
+  }
+]
