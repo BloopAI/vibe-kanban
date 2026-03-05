@@ -97,9 +97,22 @@ export function RetryEditorInline({
   // Handle image paste - upload to container and insert markdown
   const handlePasteFiles = useCallback(
     async (files: File[]) => {
+      const sessionId = attempt.session?.id;
+      if (!sessionId) {
+        console.warn(
+          'Skipping retry image upload: missing session id for attempt',
+          attemptId
+        );
+        return;
+      }
+
       for (const file of files) {
         try {
-          const response = await imagesApi.uploadForAttempt(attemptId, file);
+          const response = await imagesApi.uploadForAttempt(
+            attemptId,
+            sessionId,
+            file
+          );
           const imageMarkdown = `![${response.original_name}](${response.file_path})`;
           setMessage((prev) =>
             prev ? `${prev}\n\n${imageMarkdown}` : imageMarkdown
@@ -109,7 +122,7 @@ export function RetryEditorInline({
         }
       }
     },
-    [attemptId]
+    [attempt.session?.id, attemptId]
   );
 
   // Attachment button handlers

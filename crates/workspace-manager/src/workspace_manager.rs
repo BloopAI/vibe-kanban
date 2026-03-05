@@ -113,23 +113,6 @@ impl ManagedWorkspace {
         .map(|_| ())
     }
 
-    async fn sync_agent_working_dir(&self) -> Result<(), sqlx::Error> {
-        let repo_count = WorkspaceRepo::find_by_workspace_id(&self.db.pool, self.workspace.id)
-            .await?
-            .len();
-
-        if repo_count > 1 {
-            sqlx::query(
-                "UPDATE workspaces SET agent_working_dir = NULL, updated_at = datetime('now') WHERE id = ?",
-            )
-            .bind(self.workspace.id)
-            .execute(&self.db.pool)
-            .await?;
-        }
-
-        Ok(())
-    }
-
     async fn refresh(&mut self) -> Result<(), WorkspaceError> {
         self.workspace = DbWorkspace::find_by_id(&self.db.pool, self.workspace.id)
             .await?
@@ -170,7 +153,6 @@ impl ManagedWorkspace {
         }
 
         self.attach_repository(repo_ref).await?;
-        self.sync_agent_working_dir().await?;
         self.refresh().await?;
         Ok(())
     }
@@ -229,33 +211,6 @@ impl WorkspaceManager {
             WorkspaceRepo::find_repos_with_target_branch_for_workspace(&self.db.pool, workspace.id)
                 .await?;
         Ok(ManagedWorkspace::new(self.db.clone(), workspace, repos))
-    }
-
-    /// Resolve the agent working directory for a workspace.
-    /// For single-repo workspaces, this is `{repo_name}/{default_working_dir?}`.
-    /// For multi-repo workspaces, this is `None`.
-    pub async fn resolve_agent_working_dir(
-        &self,
-        repos: &[WorkspaceRepoInput],
-    ) -> Result<Option<String>, RepoError> {
-        let Some(repo_ref) = repos.first() else {
-            return Ok(None);
-        };
-
-        if repos.len() > 1 {
-            return Ok(None);
-        }
-
-        let repo = Repo::find_by_id(&self.db.pool, repo_ref.repo_id)
-            .await?
-            .ok_or(RepoError::NotFound)?;
-
-        let path = match repo.default_working_dir {
-            Some(subdir) => PathBuf::from(&repo.name).join(subdir),
-            None => PathBuf::from(&repo.name),
-        };
-
-        Ok(Some(path.to_string_lossy().to_string()))
     }
 
     pub fn spawn_workspace_deletion_cleanup(
