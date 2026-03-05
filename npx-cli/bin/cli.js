@@ -4,7 +4,8 @@ const { execSync, spawn } = require("child_process");
 const AdmZip = require("adm-zip");
 const path = require("path");
 const fs = require("fs");
-const { ensureBinary, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, R2_BASE_URL, getLatestVersion } = require("./download");
+const { ensureBinary, ensureDesktopBundle, BINARY_TAG, CACHE_DIR, DESKTOP_CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, R2_BASE_URL, getLatestVersion } = require("./download");
+const { getTauriPlatform, installAndLaunch, cleanOldDesktopVersions } = require("./desktop");
 
 const CLI_VERSION = require("../package.json").version;
 
@@ -208,13 +209,33 @@ async function main() {
     });
   } else {
     const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
+    const browserMode = args.includes("--browser");
+    const tauriPlatform = getTauriPlatform(platformDir);
+
+    // Default: desktop app. Use --browser to fall back to headless server + browser.
+    if (!browserMode && tauriPlatform) {
+      try {
+        console.log(`Starting vibe-kanban desktop v${CLI_VERSION}${modeLabel}...`);
+        const bundleInfo = await ensureDesktopBundle(tauriPlatform, showProgress);
+        console.error(""); // newline after progress
+
+        // Clean old desktop versions after successful download
+        if (!LOCAL_DEV_MODE) {
+          cleanOldDesktopVersions(DESKTOP_CACHE_DIR, BINARY_TAG);
+        }
+
+        const exitCode = await installAndLaunch(bundleInfo, platform);
+        process.exit(exitCode);
+      } catch (err) {
+        console.error(`Desktop app not available: ${err.message}`);
+        console.error("Falling back to browser mode...");
+      }
+    }
+
+    // Browser mode fallback (headless server + opens browser)
     console.log(`Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`);
     await extractAndRun("vibe-kanban", (bin) => {
-      if (platform === "win32") {
-        execSync(`"${bin}"`, { stdio: "inherit" });
-      } else {
-        execSync(`"${bin}"`, { stdio: "inherit" });
-      }
+      execSync(`"${bin}"`, { stdio: "inherit" });
     });
   }
 }

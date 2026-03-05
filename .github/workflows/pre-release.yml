@@ -858,6 +858,15 @@ jobs:
           echo "Generated latest.json:"
           cat latest.json
 
+      - name: Generate desktop manifest for NPX CLI
+        run: |
+          node scripts/generate-desktop-manifest.js \
+            --version "${{ needs.bump-version.outputs.new_version }}" \
+            --artifacts-dir ./tauri-artifacts \
+            --output desktop-manifest.json
+          echo "Generated desktop-manifest.json:"
+          cat desktop-manifest.json
+
       - name: Configure AWS CLI for R2
         run: |
           aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
@@ -880,7 +889,7 @@ jobs:
                 filename=$(basename "$file")
                 echo "Uploading $filename for $platform..."
                 aws s3 cp "$file" \
-                  "s3://$BUCKET/binaries/$TAG/tauri/$filename" \
+                  "s3://$BUCKET/binaries/$TAG/tauri/$platform/$filename" \
                   --endpoint-url "$ENDPOINT"
               done
             fi
@@ -893,6 +902,14 @@ jobs:
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
           echo "Update manifest uploaded to: binaries/tauri-update/latest.json"
+
+          # Upload desktop manifest for NPX CLI auto-install
+          echo "Uploading desktop manifest..."
+          aws s3 cp desktop-manifest.json \
+            "s3://$BUCKET/binaries/$TAG/tauri/desktop-manifest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          echo "Desktop manifest uploaded to: binaries/$TAG/tauri/desktop-manifest.json"
 
   create-prerelease:
     needs: [bump-version, build-frontend, upload-to-r2, upload-tauri-update]

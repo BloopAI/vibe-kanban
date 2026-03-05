@@ -84,7 +84,7 @@ for (const [platformKey, subdir] of Object.entries(platformMap)) {
   const artifact = findArtifact(dir);
   if (artifact) {
     platforms[platformKey] = {
-      url: `${downloadBase}/${artifact.file}`,
+      url: `${downloadBase}/${subdir}/${artifact.file}`,
       signature: artifact.signature,
     };
     console.log(`Found artifact for ${platformKey}: ${artifact.file}`);
