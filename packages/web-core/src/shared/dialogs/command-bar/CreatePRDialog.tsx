@@ -51,7 +51,7 @@ export type CreatePRDialogResult = {
 const PR_TITLE_SUFFIX = ' (vibe-kanban)';
 const EMPTY_PR_PREFERENCE_KEY = 'vk-create-empty-pr';
 // GitHub/Azure APIs reject truly empty titles. Use a minimal placeholder.
-const EMPTY_PR_TITLE_PLACEHOLDER = ' ';
+const EMPTY_PR_TITLE_PLACEHOLDER = '-';
 
 const loadEmptyPrPreference = (): boolean => {
   try {
