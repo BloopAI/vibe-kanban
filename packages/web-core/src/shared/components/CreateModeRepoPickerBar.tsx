@@ -14,6 +14,7 @@ import { repoApi } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/shared/hooks/useCreateMode';
 import { FolderPickerDialog } from '@/shared/dialogs/shared/FolderPickerDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {
@@ -81,11 +82,7 @@ export function CreateModeRepoPickerBar({
   const isBusy = pendingAction !== null;
 
   const hasUnconfiguredRepo = useMemo(
-    () =>
-      repos.some(
-        (repo) =>
-          !repo.setup_script && !repo.cleanup_script && !repo.dev_server_script
-      ),
+    () => repos.some((repo) => !repo.setup_script),
     [repos]
   );
   const showSetupHint = hasUnconfiguredRepo && !setupHintDismissed;
@@ -360,7 +357,14 @@ export function CreateModeRepoPickerBar({
       {showSetupHint && (
         <div className="mx-plusfifty mt-half flex items-start gap-half rounded-sm border border-brand/20 bg-brand/5 px-base py-half">
           <p className="flex-1 text-xs text-low">
-            {t('createMode.repoPicker.setupHint')}
+            {t('createMode.repoPicker.setupHint')}{' '}
+            <button
+              type="button"
+              className="cursor-pointer text-brand underline hover:text-brand/80"
+              onClick={() => SettingsDialog.show({ initialSection: 'repos' })}
+            >
+              {t('createMode.repoPicker.setupHintLink')}
+            </button>
           </p>
           <button
             type="button"
