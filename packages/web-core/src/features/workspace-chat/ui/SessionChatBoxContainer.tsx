@@ -60,6 +60,7 @@ import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityCo
 import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { Scope, useKeyEditLastQueued } from '@/shared/keyboard';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -631,6 +632,26 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     setLocalMessage,
     setExecutorOverrides,
   ]);
+
+  const canEditLastQueued =
+    !!sessionId &&
+    !isQueueLoading &&
+    (isQueued || pendingCount > 0) &&
+    !isInFeedbackMode &&
+    !isInEditMode &&
+    !pendingApproval;
+
+  useKeyEditLastQueued(
+    () => {
+      void handleCancelQueue();
+    },
+    {
+      scope: Scope.KANBAN,
+      enabled: canEditLastQueued,
+      enableOnContentEditable: true,
+      preventDefault: true,
+    }
+  );
 
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {

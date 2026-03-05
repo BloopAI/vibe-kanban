@@ -7,6 +7,6 @@ edition = "2024"
 tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 base64 = "0.22"
-ed25519-dalek = "2.2.0"
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 rand = "0.8"
 uuid = { version = "1.0", features = ["v4"] }

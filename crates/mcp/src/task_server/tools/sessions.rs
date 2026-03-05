@@ -72,6 +72,10 @@ struct McpSessionGetQueueRequest {
 struct McpSessionCancelQueueRequest {
     #[schemars(description = "The session ID to cancel queued message for")]
     session_id: Uuid,
+    #[schemars(
+        description = "Optional cancel mode: 'latest' (default), 'all', 'queue', or 'steer'"
+    )]
+    mode: Option<String>,
 }
 
 /// Validate and normalize executor, returning the canonical name or an MCP error.
@@ -110,6 +114,29 @@ fn build_executor_config(
         }
     }
     config
+}
+
+fn validate_queue_cancel_mode(
+    mode: Option<String>,
+) -> Result<Option<String>, Result<CallToolResult, ErrorData>> {
+    let Some(mode) = mode else {
+        return Ok(None);
+    };
+
+    let normalized = mode.trim().to_ascii_lowercase();
+    if normalized.is_empty() {
+        return Ok(None);
+    }
+
+    match normalized.as_str() {
+        "latest" | "all" | "queue" | "steer" => Ok(Some(normalized)),
+        _ => Err(TaskServer::err(
+            format!(
+                "Unknown queue cancel mode '{mode}'. Expected one of: latest, all, queue, steer."
+            ),
+            None::<String>,
+        )),
+    }
 }
 
 #[tool_router(router = sessions_tools_router, vis = "pub")]
@@ -300,16 +327,27 @@ impl TaskServer {
     }
 
     #[tool(
-        description = "Pop the latest queued message for a session so it can be edited again. Returns cancelled_message when one is popped."
+        description = "Cancel queued messages for a session. mode='latest' pops one message for editor restore (returns cancelled_message). mode='all'|'queue'|'steer' clears that slice without restore."
     )]
     async fn session_cancel_queue(
         &self,
-        Parameters(McpSessionCancelQueueRequest { session_id }): Parameters<
+        Parameters(McpSessionCancelQueueRequest { session_id, mode }): Parameters<
             McpSessionCancelQueueRequest,
         >,
     ) -> Result<CallToolResult, ErrorData> {
+        let mode = match validate_queue_cancel_mode(mode) {
+            Ok(v) => v,
+            Err(err) => return err,
+        };
+
         let url = self.url(&format!("/api/sessions/{}/queue", session_id));
-        let status: serde_json::Value = match self.send_json(self.client.delete(&url)).await {
+        let request = if let Some(mode) = mode {
+            self.client.delete(&url).query(&[("mode", mode)])
+        } else {
+            self.client.delete(&url)
+        };
+
+        let status: serde_json::Value = match self.send_json(request).await {
             Ok(v) => v,
             Err(e) => return Ok(e),
         };
@@ -323,7 +361,7 @@ mod tests {
     use rmcp::handler::server::tool::Parameters;
     use wiremock::{
         Mock, MockServer, ResponseTemplate,
-        matchers::{body_partial_json, method, path},
+        matchers::{body_partial_json, method, path, query_param},
     };
 
     use super::*;
@@ -703,9 +741,55 @@ mod tests {
             .await;
 
         let result = server
-            .session_cancel_queue(Parameters(McpSessionCancelQueueRequest { session_id: sid }))
+            .session_cancel_queue(Parameters(McpSessionCancelQueueRequest {
+                session_id: sid,
+                mode: None,
+            }))
             .await;
 
         assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn session_cancel_queue_with_mode_forwards_query() {
+        let (mock, server) = setup().await;
+        let sid = Uuid::new_v4();
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/sessions/{}/queue", sid)))
+            .and(query_param("mode", "all"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": {
+                    "status": { "status": "empty" },
+                    "cancelled_message": null
+                }
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .session_cancel_queue(Parameters(McpSessionCancelQueueRequest {
+                session_id: sid,
+                mode: Some("all".to_string()),
+            }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn session_cancel_queue_rejects_invalid_mode() {
+        let (_mock, server) = setup().await;
+        let sid = Uuid::new_v4();
+
+        let result = server
+            .session_cancel_queue(Parameters(McpSessionCancelQueueRequest {
+                session_id: sid,
+                mode: Some("unknown".to_string()),
+            }))
+            .await;
+
+        assert_error(result);
     }
 }

@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queueApi } from '@/shared/lib/api';
+import type { QueueCancelMode } from '@/shared/lib/api';
 import type { ExecutorConfig, QueueStatus, QueuedMessage } from 'shared/types';
 
 interface UseSessionQueueInteractionOptions {
@@ -32,7 +33,7 @@ interface UseSessionQueueInteractionResult {
     executorConfig: ExecutorConfig
   ) => Promise<void>;
   /** Pop latest queued message so it can be edited */
-  cancelQueue: () => Promise<QueuedMessage | null>;
+  cancelQueue: (mode?: QueueCancelMode) => Promise<QueuedMessage | null>;
   /** Refresh queue status from server */
   refreshQueueStatus: () => Promise<void>;
 }
@@ -103,7 +104,7 @@ export function useSessionQueueInteraction({
 
   // Mutation for cancelling the queue
   const cancelMutation = useMutation({
-    mutationFn: () => queueApi.cancel(sessionId!),
+    mutationFn: (mode: QueueCancelMode = 'latest') => queueApi.cancel(sessionId!, mode),
     onSuccess: (response) => {
       queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], response.status);
     },
@@ -131,9 +132,9 @@ export function useSessionQueueInteraction({
     [sessionId, steerMutation]
   );
 
-  const cancelQueue = useCallback(async () => {
+  const cancelQueue = useCallback(async (mode: QueueCancelMode = 'latest') => {
     if (!sessionId) return null;
-    const result = await cancelMutation.mutateAsync();
+    const result = await cancelMutation.mutateAsync(mode);
     return result.cancelled_message ?? null;
   }, [sessionId, cancelMutation]);
 

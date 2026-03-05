@@ -28,6 +28,21 @@ pub enum QueuedMessageKind {
     Queue,
 }
 
+/// Which queue slice to clear when cancelling queued follow-up messages.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum QueueClearMode {
+    /// Pop only the most recently added message (buffered queue first, then steer).
+    #[default]
+    Latest,
+    /// Clear both steer and buffered queue messages.
+    All,
+    /// Clear only buffered queue messages.
+    Queue,
+    /// Clear only steer messages.
+    Steer,
+}
+
 #[derive(Debug, Clone, Default)]
 struct SessionQueueState {
     pending_steers: VecDeque<QueuedMessage>,
@@ -123,6 +138,27 @@ impl QueuedMessageService {
         cancelled
     }
 
+    /// Clear queue entries by mode.
+    /// - latest: pop a single latest message and return it for editor restore.
+    /// - all/queue/steer: clear matching entries, returning no cancelled message.
+    pub fn clear(&self, session_id: Uuid, mode: QueueClearMode) -> Option<QueuedMessage> {
+        match mode {
+            QueueClearMode::Latest => self.cancel_latest(session_id),
+            QueueClearMode::All => {
+                self.queue.remove(&session_id);
+                None
+            }
+            QueueClearMode::Queue => {
+                self.clear_buffered_queue(session_id);
+                None
+            }
+            QueueClearMode::Steer => {
+                self.clear_pending_steers(session_id);
+                None
+            }
+        }
+    }
+
     /// Take (remove and return) the next queued message for execution.
     /// Pending steers are consumed before buffered queue messages.
     pub fn take_next(&self, session_id: Uuid) -> Option<QueuedMessage> {
@@ -178,6 +214,32 @@ impl QueuedMessageService {
             next,
             pending_steers: state.pending_steers.iter().cloned().collect(),
             queued_messages: state.queued_messages.iter().cloned().collect(),
+        }
+    }
+
+    fn clear_buffered_queue(&self, session_id: Uuid) {
+        let Some(mut state) = self.queue.get_mut(&session_id) else {
+            return;
+        };
+        state.queued_messages.clear();
+        let should_remove = state.is_empty();
+        drop(state);
+
+        if should_remove {
+            self.queue.remove(&session_id);
+        }
+    }
+
+    fn clear_pending_steers(&self, session_id: Uuid) {
+        let Some(mut state) = self.queue.get_mut(&session_id) else {
+            return;
+        };
+        state.pending_steers.clear();
+        let should_remove = state.is_empty();
+        drop(state);
+
+        if should_remove {
+            self.queue.remove(&session_id);
         }
     }
 }
@@ -313,6 +375,55 @@ mod tests {
 
         assert_eq!(replayed.data.message, "q1");
         assert_eq!(second.data.message, "q2");
+        assert!(service.take_next(session_id).is_none());
+    }
+
+    #[test]
+    fn clear_queue_removes_only_buffered_messages() {
+        let service = QueuedMessageService::new();
+        let session_id = Uuid::new_v4();
+
+        service.queue_steer(session_id, draft("s1"));
+        service.queue_message(session_id, draft("q1"));
+        service.queue_message(session_id, draft("q2"));
+
+        assert!(service.clear(session_id, QueueClearMode::Queue).is_none());
+
+        let first = service.take_next(session_id).expect("steer should remain");
+        assert_eq!(first.data.message, "s1");
+        assert_eq!(first.kind, QueuedMessageKind::Steer);
+        assert!(service.take_next(session_id).is_none());
+    }
+
+    #[test]
+    fn clear_steer_removes_only_steer_messages() {
+        let service = QueuedMessageService::new();
+        let session_id = Uuid::new_v4();
+
+        service.queue_steer(session_id, draft("s1"));
+        service.queue_steer(session_id, draft("s2"));
+        service.queue_message(session_id, draft("q1"));
+
+        assert!(service.clear(session_id, QueueClearMode::Steer).is_none());
+
+        let first = service
+            .take_next(session_id)
+            .expect("buffered queue should remain");
+        assert_eq!(first.data.message, "q1");
+        assert_eq!(first.kind, QueuedMessageKind::Queue);
+        assert!(service.take_next(session_id).is_none());
+    }
+
+    #[test]
+    fn clear_all_removes_everything() {
+        let service = QueuedMessageService::new();
+        let session_id = Uuid::new_v4();
+
+        service.queue_steer(session_id, draft("s1"));
+        service.queue_message(session_id, draft("q1"));
+
+        assert!(service.clear(session_id, QueueClearMode::All).is_none());
+        assert!(matches!(service.get_status(session_id), QueueStatus::Empty));
         assert!(service.take_next(session_id).is_none());
     }
 }

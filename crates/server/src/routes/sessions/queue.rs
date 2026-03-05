@@ -1,6 +1,6 @@
 use axum::{
     Extension, Json, Router,
-    extract::State,
+    extract::{Query, State},
     middleware::from_fn_with_state,
     response::Json as ResponseJson,
     routing::{get, post},
@@ -9,7 +9,7 @@ use db::models::{scratch::DraftFollowUpData, session::Session};
 use deployment::Deployment;
 use executors::profile::ExecutorConfig;
 use serde::{Deserialize, Serialize};
-use services::services::queued_message::{QueueStatus, QueuedMessage};
+use services::services::queued_message::{QueueClearMode, QueueStatus, QueuedMessage};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
@@ -26,6 +26,14 @@ pub struct QueueMessageRequest {
 pub struct CancelQueueResponse {
     pub status: QueueStatus,
     pub cancelled_message: Option<QueuedMessage>,
+}
+
+/// Optional query for queue cancel mode.
+/// Default is latest pop behavior for backward compatibility.
+#[derive(Debug, Deserialize, TS)]
+pub struct CancelQueueRequest {
+    #[serde(default)]
+    pub mode: Option<QueueClearMode>,
 }
 
 /// Queue a follow-up message to be executed when the current execution finishes
@@ -96,10 +104,10 @@ pub async fn queue_steer_message(
 pub async fn cancel_queued_message(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<CancelQueueRequest>,
 ) -> Result<ResponseJson<ApiResponse<CancelQueueResponse>>, ApiError> {
-    let cancelled_message = deployment
-        .queued_message_service()
-        .cancel_latest(session.id);
+    let mode = query.mode.unwrap_or_default();
+    let cancelled_message = deployment.queued_message_service().clear(session.id, mode);
 
     deployment
         .track_if_analytics_allowed(
@@ -107,6 +115,7 @@ pub async fn cancel_queued_message(
             serde_json::json!({
                 "session_id": session.id.to_string(),
                 "workspace_id": session.workspace_id.to_string(),
+                "mode": mode,
             }),
         )
         .await;

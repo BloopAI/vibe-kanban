@@ -27,6 +27,7 @@ export enum Action {
   APPROVE_REQUEST = 'approve_request',
   DENY_APPROVAL = 'deny_approval',
   SUBMIT_FOLLOW_UP = 'submit_follow_up',
+  EDIT_LAST_QUEUED = 'edit_last_queued',
   SUBMIT_TASK = 'submit_task',
   SUBMIT_TASK_ALT = 'submit_task_alt',
   SUBMIT_COMMENT = 'submit_comment',
@@ -486,6 +487,13 @@ export const keyBindings: KeyBinding[] = [
     keys: 'meta+enter',
     scopes: [Scope.FOLLOW_UP_READY],
     description: 'Send or queue follow-up (depending on state)',
+    group: 'Follow-up',
+  },
+  {
+    action: Action.EDIT_LAST_QUEUED,
+    keys: 'alt+up',
+    scopes: [Scope.KANBAN],
+    description: 'Pop latest queued message back to editor',
     group: 'Follow-up',
   },
   {

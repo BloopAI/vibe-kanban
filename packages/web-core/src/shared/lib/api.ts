@@ -1404,6 +1404,8 @@ export const agentsApi = {
 };
 
 // Queue API for session follow-up messages
+export type QueueCancelMode = 'latest' | 'all' | 'queue' | 'steer';
+
 export const queueApi = {
   /**
    * Queue a follow-up message to be executed when current execution finishes
@@ -1439,10 +1441,21 @@ export const queueApi = {
   /**
    * Pop the latest queued follow-up message for editing
    */
-  cancel: async (sessionId: string): Promise<CancelQueueResponse> => {
-    const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
+  cancel: async (
+    sessionId: string,
+    mode: QueueCancelMode = 'latest'
+  ): Promise<CancelQueueResponse> => {
+    const params = new URLSearchParams();
+    if (mode !== 'latest') {
+      params.set('mode', mode);
+    }
+    const query = params.toString();
+    const response = await makeRequest(
+      `/api/sessions/${sessionId}/queue${query ? `?${query}` : ''}`,
+      {
       method: 'DELETE',
-    });
+      }
+    );
     return handleApiResponse<CancelQueueResponse>(response);
   },
 
