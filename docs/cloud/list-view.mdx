@@ -47,6 +47,22 @@ Each row in the list shows:
 
 Click any row to open the full [issue panel](/cloud/issues).
 
+## Multi-Select in List View
+
+List view supports multi-select for bulk operations. Each row has a checkbox that appears when you hover over its left edge.
+
+### Selection Methods
+
+- **Checkbox** - Hover over the left edge of a row to reveal the checkbox, then click to select
+- **Cmd/Ctrl + Click** a row to toggle it in or out of the selection
+- **Shift + Click** a row to select a range from the last selected row
+- **X** to toggle the currently open issue
+- **Shift + J / ↓** or **Shift + K / ↑** to extend the selection by one row
+- **Cmd/Ctrl + A** to select all visible issues
+- **Escape** to clear the selection
+
+Selected rows are highlighted. When two or more issues are selected, the **bulk action bar** appears at the bottom of the screen with options to change status, priority, assignees, or delete. See [Selecting Multiple Issues](/cloud/issues#selecting-multiple-issues) for full details.
+
 ## When to Use List View
 
 List view is best for:
@@ -60,8 +76,8 @@ List view is best for:
   Combined with search and filters, quickly locate issues across all statuses.
 </Card>
 
-<Card title="Bulk review" icon="clipboard-list">
-  Scan through many issues quickly without the visual overhead of columns.
+<Card title="Bulk operations" icon="clipboard-list">
+  Select multiple issues with checkboxes to change status, priority, or assignees in bulk.
 </Card>
 
 <Card title="Accessing hidden statuses" icon="eye">

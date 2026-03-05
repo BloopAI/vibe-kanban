@@ -1,5 +1,6 @@
 'use client';
 
+import type { MouseEvent } from 'react';
 import { cn } from '../lib/cn';
 import { Draggable } from '@hello-pangea/dnd';
 import { DotsSixVerticalIcon } from '@phosphor-icons/react';
@@ -11,6 +12,7 @@ import {
   RelationshipBadge,
   type RelationshipDisplayType,
 } from './RelationshipBadge';
+import { Checkbox } from './Checkbox';
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -64,8 +66,11 @@ export interface IssueListRowProps {
   tags: IssueListRowTag[];
   relationships?: IssueListRowRelationship[];
   assignees: KanbanAssigneeUser[];
-  onClick: () => void;
+  onClick: (e: MouseEvent) => void;
   isSelected: boolean;
+  isMultiSelectActive?: boolean;
+  isChecked?: boolean;
+  onCheckboxChange?: (checked: boolean) => void;
   className?: string;
 }
 
@@ -78,8 +83,12 @@ export function IssueListRow({
   assignees,
   onClick,
   isSelected,
+  isMultiSelectActive = false,
+  isChecked = false,
+  onCheckboxChange,
   className,
 }: IssueListRowProps) {
+  const showCheckbox = isMultiSelectActive || isChecked;
   const visibleTags = tags.slice(0, MAX_VISIBLE_TAGS);
 
   return (
@@ -94,29 +103,50 @@ export function IssueListRow({
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              onClick();
+              onClick(e as unknown as MouseEvent);
             }
           }}
           className={cn(
-            'flex items-center justify-between gap-double px-double py-half',
+            'group/row flex items-center justify-between gap-double px-double py-half',
             'transition-colors',
             'hover:bg-secondary',
-            isSelected && 'bg-secondary',
+            (isSelected || isChecked) && 'bg-secondary',
             snapshot.isDragging && 'bg-secondary shadow-lg cursor-grabbing',
             className
           )}
         >
-          {/* Left side: Drag handle, Priority, ID, Status, Title */}
+          {/* Left side: Checkbox/Drag handle, Priority, ID, Status, Title */}
           <div className="flex items-center gap-double flex-1 min-w-0">
-            <div
-              {...provided.dragHandleProps}
-              className="cursor-grab shrink-0"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <DotsSixVerticalIcon
-                className="size-icon-xs text-low"
-                weight="bold"
-              />
+            <div className="relative shrink-0 w-4 flex items-center justify-center">
+              {/* Drag handle — hidden when checkbox is shown */}
+              <div
+                {...provided.dragHandleProps}
+                className={cn(
+                  'cursor-grab',
+                  showCheckbox ? 'hidden' : 'flex group-hover/row:hidden'
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DotsSixVerticalIcon
+                  className="size-icon-xs text-low"
+                  weight="bold"
+                />
+              </div>
+              {/* Checkbox — shown on hover or when multi-select active */}
+              <div
+                className={cn(
+                  'items-center justify-center',
+                  showCheckbox ? 'flex' : 'hidden group-hover/row:flex'
+                )}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  checked={isChecked}
+                  onCheckedChange={(checked) => {
+                    onCheckboxChange?.(checked);
+                  }}
+                />
+              </div>
             </div>
             <PriorityIcon priority={issue.priority} />
             <span className="font-ibm-plex-mono text-sm text-normal shrink-0">
