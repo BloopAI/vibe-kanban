@@ -6,6 +6,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useTaskAttemptId,
+  useSessionId,
   useLocalImages,
   type LocalImageMetadata,
 } from './TaskAttemptContext';
@@ -116,6 +117,7 @@ function toMetadataFromLocalImage(
 
 function useImageMetadata(
   taskAttemptId: string | undefined,
+  sessionId: string | undefined,
   src: string,
   localImages: LocalImageMetadata[]
 ) {
@@ -134,17 +136,17 @@ function useImageMetadata(
   const shouldFetch = isVibeImage && !!taskAttemptId && !localImage;
 
   const query = useQuery({
-    queryKey: ['image-metadata', taskAttemptId, src],
+    queryKey: ['image-metadata', taskAttemptId, sessionId, src],
     queryFn: async (): Promise<ImageMetadataLike | null> => {
-      if (!taskAttemptId) return null;
+      if (!taskAttemptId || !sessionId) return null;
 
       const response = await fetch(
-        `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}`
+        `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
       );
       const payload = await response.json();
       return payload.data as ImageMetadataLike | null;
     },
-    enabled: shouldFetch,
+    enabled: shouldFetch && !!sessionId,
     staleTime: Infinity,
   });
 
@@ -185,6 +187,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const { t } = useTranslation('common');
     const { src, altText } = data;
     const taskAttemptId = useTaskAttemptId();
+    const sessionId = useSessionId();
     const localImages = useLocalImages();
     const [editor] = useLexicalComposerContext();
 
@@ -205,6 +208,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
 
     const { data: metadata, isLoading: loading } = useImageMetadata(
       taskAttemptId,
+      sessionId,
       src,
       localImages
     );

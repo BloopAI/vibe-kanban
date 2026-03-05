@@ -10,13 +10,14 @@ import type { ImageResponse } from 'shared/types';
  */
 export function useSessionAttachments(
   workspaceId: string | undefined,
+  sessionId: string | undefined,
   onInsertMarkdown: (markdown: string) => void
 ) {
   const [uploadedImages, setUploadedImages] = useState<ImageResponse[]>([]);
 
   const uploadFiles = useCallback(
     async (files: File[]) => {
-      if (!workspaceId) return;
+      if (!workspaceId || !sessionId) return;
 
       const imageFiles = files.filter((f) => f.type.startsWith('image/'));
       if (imageFiles.length === 0) return;
@@ -25,7 +26,11 @@ export function useSessionAttachments(
 
       for (const file of imageFiles) {
         try {
-          const response = await imagesApi.uploadForAttempt(workspaceId, file);
+          const response = await imagesApi.uploadForAttempt(
+            workspaceId,
+            sessionId,
+            file
+          );
           uploadResults.push(response);
         } catch (error) {
           console.error('Failed to upload image:', error);
@@ -40,7 +45,7 @@ export function useSessionAttachments(
         onInsertMarkdown(allMarkdown);
       }
     },
-    [workspaceId, onInsertMarkdown]
+    [workspaceId, sessionId, onInsertMarkdown]
   );
 
   const clearUploadedImages = useCallback(() => {

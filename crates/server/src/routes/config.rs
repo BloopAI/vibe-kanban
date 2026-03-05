@@ -553,6 +553,8 @@ async fn get_agent_preset_options(
 pub struct ExecutorDiscoveredOptionsStreamQuery {
     executor: BaseCodingAgent,
     #[serde(default)]
+    session_id: Option<Uuid>,
+    #[serde(default)]
     workspace_id: Option<Uuid>,
     #[serde(default)]
     repo_id: Option<Uuid>,
@@ -581,6 +583,7 @@ async fn handle_executor_discovered_options_ws(
         .container()
         .discover_executor_options(
             ExecutorProfileId::new(query.executor),
+            query.session_id,
             query.workspace_id,
             query.repo_id,
         )

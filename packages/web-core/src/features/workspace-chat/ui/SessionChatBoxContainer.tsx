@@ -394,7 +394,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   ]);
 
   const { uploadFiles, localImages, clearUploadedImages } =
-    useSessionAttachments(workspaceId, handleInsertMarkdown);
+    useSessionAttachments(workspaceId, sessionId, handleInsertMarkdown);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
@@ -862,19 +862,21 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         className="min-h-double max-h-[50vh] overflow-y-auto"
         repoIds={repoIds}
         executor={executor}
+        sessionId={sessionId}
         autoFocus
         onPasteFiles={onPasteFiles}
         localImages={localImages}
         sendShortcut={config?.send_message_shortcut}
       />
     ),
-    [config?.send_message_shortcut]
+    [config?.send_message_shortcut, sessionId]
   );
 
   const modelSelectorNode = effectiveExecutor ? (
     <ModelSelectorContainer
       agent={effectiveExecutor}
       workspaceId={workspaceId}
+      sessionId={sessionId}
       onAdvancedSettings={handleCustomise}
       presets={variantOptions}
       selectedPreset={selectedVariant}

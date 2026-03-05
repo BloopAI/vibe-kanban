@@ -101,11 +101,24 @@ pub trait ContainerService {
     async fn discover_executor_options(
         &self,
         executor_profile_id: ExecutorProfileId,
+        session_id: Option<Uuid>,
         workspace_id: Option<Uuid>,
         repo_id: Option<Uuid>,
     ) -> Result<Option<BoxStream<'static, Patch>>, ContainerError> {
-        let (workdir, repo_path) = if let Some(workspace_id) = workspace_id {
-            let workspace = Workspace::find_by_id(&self.db().pool, workspace_id)
+        let (workdir, repo_path) = if let Some(session_id) = session_id {
+            let session = Session::find_by_id(&self.db().pool, session_id)
+                .await?
+                .ok_or(SqlxError::RowNotFound)?;
+
+            if let Some(workspace_id) = workspace_id
+                && session.workspace_id != workspace_id
+            {
+                return Err(ContainerError::Other(anyhow!(
+                    "Session does not belong to workspace"
+                )));
+            }
+
+            let workspace = Workspace::find_by_id(&self.db().pool, session.workspace_id)
                 .await?
                 .ok_or(SqlxError::RowNotFound)?;
 
@@ -119,14 +132,15 @@ pub trait ContainerService {
             }
 
             let workspace_path = PathBuf::from(container_ref);
-            let workdir = match workspace.agent_working_dir.as_deref() {
+            let workdir = match session.agent_working_dir.as_deref() {
                 Some(dir) if !dir.is_empty() => Some(workspace_path.join(dir)),
                 _ => Some(workspace_path),
             };
 
-            let repos = WorkspaceRepo::find_repos_for_workspace(&self.db().pool, workspace_id)
-                .await
-                .unwrap_or_default();
+            let repos =
+                WorkspaceRepo::find_repos_for_workspace(&self.db().pool, session.workspace_id)
+                    .await
+                    .unwrap_or_default();
             let repo_path = if repos.len() == 1 {
                 Some(repos[0].path.clone())
             } else {
@@ -134,6 +148,10 @@ pub trait ContainerService {
             };
 
             (workdir, repo_path)
+        } else if workspace_id.is_some() {
+            return Err(ContainerError::Other(anyhow!(
+                "session_id is required when workspace_id is provided"
+            )));
         } else if let Some(repo_id) = repo_id {
             let repo = Repo::find_by_id(&self.db().pool, repo_id)
                 .await
@@ -1053,7 +1071,7 @@ pub trait ContainerService {
 
         let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
-        let working_dir = workspace
+        let working_dir = session
             .agent_working_dir
             .as_ref()
             .filter(|dir| !dir.is_empty())

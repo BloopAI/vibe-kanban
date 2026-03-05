@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT  id                AS \"id!: Uuid\",\n                       task_id           AS \"task_id: Uuid\",\n                       container_ref,\n                       branch,\n                       agent_working_dir,\n                       setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                       created_at        AS \"created_at!: DateTime<Utc>\",\n                       updated_at        AS \"updated_at!: DateTime<Utc>\",\n                       archived          AS \"archived!: bool\",\n                       pinned            AS \"pinned!: bool\",\n                       name,\n                       worktree_deleted  AS \"worktree_deleted!: bool\"\n               FROM    workspaces\n               WHERE   rowid = $1",
+  "query": "SELECT id AS \"id!: Uuid\",\n                          task_id AS \"task_id: Uuid\",\n                          container_ref,\n                          branch,\n                          setup_completed_at AS \"setup_completed_at: DateTime<Utc>\",\n                          created_at AS \"created_at!: DateTime<Utc>\",\n                          updated_at AS \"updated_at!: DateTime<Utc>\",\n                          archived AS \"archived!: bool\",\n                          pinned AS \"pinned!: bool\",\n                          name,\n                          worktree_deleted AS \"worktree_deleted!: bool\"\n                   FROM workspaces\n                   ORDER BY created_at DESC",
   "describe": {
     "columns": [
       {
@@ -24,55 +24,49 @@
         "type_info": "Text"
       },
       {
-        "name": "agent_working_dir",
+        "name": "setup_completed_at: DateTime<Utc>",
         "ordinal": 4,
         "type_info": "Text"
       },
       {
-        "name": "setup_completed_at: DateTime<Utc>",
+        "name": "created_at!: DateTime<Utc>",
         "ordinal": 5,
         "type_info": "Text"
       },
       {
-        "name": "created_at!: DateTime<Utc>",
+        "name": "updated_at!: DateTime<Utc>",
         "ordinal": 6,
         "type_info": "Text"
       },
       {
-        "name": "updated_at!: DateTime<Utc>",
-        "ordinal": 7,
-        "type_info": "Text"
-      },
-      {
         "name": "archived!: bool",
-        "ordinal": 8,
+        "ordinal": 7,
         "type_info": "Integer"
       },
       {
         "name": "pinned!: bool",
-        "ordinal": 9,
+        "ordinal": 8,
         "type_info": "Integer"
       },
       {
         "name": "name",
-        "ordinal": 10,
+        "ordinal": 9,
         "type_info": "Text"
       },
       {
         "name": "worktree_deleted!: bool",
-        "ordinal": 11,
+        "ordinal": 10,
         "type_info": "Bool"
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 0
     },
     "nullable": [
       true,
       true,
       true,
       false,
-      true,
       true,
       false,
       false,
@@ -82,5 +76,5 @@
       false
     ]
   },
-  "hash": "1298f93b2ba442dc72cee0e1f51ba4e9c643ff45390be0aa163b63190a9e3375"
+  "hash": "64f31710ab7ba14047f31cce44ad36c60a53624f9bcb03a5eaff5d61ca8cc9cf"
 }

@@ -160,7 +160,7 @@ pub async fn follow_up(
     let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
     let cleanup_action = deployment.container().cleanup_actions_for_repos(&repos);
 
-    let working_dir = workspace
+    let working_dir = session
         .agent_working_dir
         .as_ref()
         .filter(|dir| !dir.is_empty())

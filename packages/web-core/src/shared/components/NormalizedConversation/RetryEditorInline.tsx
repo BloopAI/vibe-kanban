@@ -142,6 +142,7 @@ export function RetryEditorInline({
           onPasteFiles={handlePasteFiles}
           className={cn('min-h-[40px]', 'bg-background')}
           taskAttemptId={attemptId}
+          sessionId={attempt.session?.id}
         />
         {isSending && (
           <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/60">

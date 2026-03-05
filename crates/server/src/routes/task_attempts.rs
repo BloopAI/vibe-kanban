@@ -1958,13 +1958,10 @@ pub async fn create_and_start_workspace(
         .git_branch_from_workspace(&workspace_id, branch_label)
         .await;
 
-    let agent_working_dir = workspace_manager.resolve_agent_working_dir(&repos).await?;
-
     let workspace = Workspace::create(
         &deployment.db().pool,
         &CreateWorkspace {
             branch: git_branch_name,
-            agent_working_dir,
             name: name.clone().filter(|n| !n.is_empty()),
         },
         workspace_id,

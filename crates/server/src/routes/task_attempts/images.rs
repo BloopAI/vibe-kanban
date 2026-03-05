@@ -9,7 +9,7 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
-use db::models::{image::Image, workspace::Workspace};
+use db::models::{image::Image, session::Session, workspace::Workspace};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::{container::ContainerService, image::ImageError};
@@ -29,6 +29,12 @@ use crate::{
 pub struct ImageMetadataQuery {
     /// Path relative to worktree root, e.g., ".vibe-images/screenshot.png"
     pub path: String,
+    pub session_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SessionScopedQuery {
+    pub session_id: Uuid,
 }
 
 /// List all images associated with a workspace.
@@ -46,20 +52,13 @@ pub async fn get_workspace_images(
 pub async fn upload_image(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<SessionScopedQuery>,
     multipart: Multipart,
 ) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
     // Process upload (store in cache, associate with workspace)
     let image_response = process_image_upload(&deployment, multipart, Some(workspace.id)).await?;
 
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-    let workspace_path = std::path::PathBuf::from(container_ref);
-    let base_path = match workspace.agent_working_dir.as_deref() {
-        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
-        _ => workspace_path,
-    };
+    let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
     deployment
         .image()
         .copy_images_by_ids_to_worktree(&base_path, &[image_response.id])
@@ -99,15 +98,7 @@ pub async fn get_image_metadata(
         })));
     }
 
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-    let workspace_path = std::path::PathBuf::from(container_ref);
-    let base_path = match workspace.agent_working_dir.as_deref() {
-        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
-        _ => workspace_path,
-    };
+    let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
     let full_path = base_path.join(&query.path);
 
     // Check if file exists
@@ -138,8 +129,8 @@ pub async fn get_image_metadata(
     // Build proxy URL - the path after .vibe-images/
     let image_path = query.path.strip_prefix(&vibe_images_prefix).unwrap_or("");
     let proxy_url = format!(
-        "/api/task-attempts/{}/images/file/{}",
-        workspace.id, image_path
+        "/api/task-attempts/{}/images/file/{}?session_id={}",
+        workspace.id, image_path, query.session_id
     );
 
     Ok(ResponseJson(ApiResponse::success(ImageMetadata {
@@ -157,20 +148,13 @@ pub async fn serve_image(
     axum::extract::Path((_id, path)): axum::extract::Path<(Uuid, String)>,
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<SessionScopedQuery>,
 ) -> Result<Response, ApiError> {
     // Reject paths with .. to prevent traversal
     if path.contains("..") {
         return Err(ApiError::Image(ImageError::NotFound));
     }
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-    let workspace_path = std::path::PathBuf::from(container_ref);
-    let base_path = match workspace.agent_working_dir.as_deref() {
-        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
-        _ => workspace_path,
-    };
+    let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
     let vibe_images_dir = base_path.join(utils::path::VIBE_IMAGES_DIR);
     let full_path = vibe_images_dir.join(&path);
 
@@ -225,6 +209,33 @@ pub async fn serve_image(
         .map_err(|e| ApiError::Image(ImageError::ResponseBuildError(e.to_string())))?;
 
     Ok(response)
+}
+
+async fn resolve_session_base_path(
+    deployment: &DeploymentImpl,
+    workspace: &Workspace,
+    session_id: Uuid,
+) -> Result<std::path::PathBuf, ApiError> {
+    let session = Session::find_by_id(&deployment.db().pool, session_id)
+        .await?
+        .ok_or_else(|| ApiError::BadRequest("Session not found".to_string()))?;
+
+    if session.workspace_id != workspace.id {
+        return Err(ApiError::BadRequest(
+            "Session does not belong to workspace".to_string(),
+        ));
+    }
+
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(workspace)
+        .await?;
+    let workspace_path = std::path::PathBuf::from(container_ref);
+    let base_path = match session.agent_working_dir.as_deref() {
+        Some(dir) if !dir.is_empty() => workspace_path.join(dir),
+        _ => workspace_path,
+    };
+    Ok(base_path)
 }
 
 /// Middleware to load Workspace for routes with wildcard path params.

@@ -5,6 +5,7 @@ import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext'
 
 export function useImageMetadata(
   taskAttemptId: string | undefined,
+  sessionId: string | undefined,
   src: string,
   localImages?: LocalImageMetadata[]
 ) {
@@ -36,18 +37,18 @@ export function useImageMetadata(
   const shouldFetch = isVibeImage && !!taskAttemptId && !localImage;
 
   const query = useQuery({
-    queryKey: ['imageMetadata', taskAttemptId, src],
+    queryKey: ['imageMetadata', taskAttemptId, sessionId, src],
     queryFn: async (): Promise<ImageMetadata | null> => {
-      if (taskAttemptId) {
+      if (taskAttemptId && sessionId) {
         const res = await fetch(
-          `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}`
+          `/api/task-attempts/${taskAttemptId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
         );
         const data = await res.json();
         return data.data as ImageMetadata | null;
       }
       return null;
     },
-    enabled: shouldFetch,
+    enabled: shouldFetch && !!sessionId,
     staleTime: Infinity,
   });
 

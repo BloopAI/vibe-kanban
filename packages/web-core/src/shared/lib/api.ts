@@ -1026,13 +1026,14 @@ export const imagesApi = {
    */
   uploadForAttempt: async (
     attemptId: string,
+    sessionId: string,
     file: File
   ): Promise<ImageResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
     const response = await makeLocalApiRequest(
-      `/api/task-attempts/${attemptId}/images/upload`,
+      `/api/task-attempts/${attemptId}/images/upload?session_id=${sessionId}`,
       {
         method: 'POST',
         body: formData,
@@ -1379,11 +1380,12 @@ export const scratchApi = {
 export const agentsApi = {
   getDiscoveredOptionsStreamUrl: (
     agent: BaseCodingAgent,
-    opts?: { workspaceId?: string; repoId?: string }
+    opts?: { workspaceId?: string; sessionId?: string; repoId?: string }
   ): string => {
     const params = new URLSearchParams();
     params.set('executor', agent);
     if (opts?.workspaceId) params.set('workspace_id', opts.workspaceId);
+    if (opts?.sessionId) params.set('session_id', opts.sessionId);
     if (opts?.repoId) params.set('repo_id', opts.repoId);
 
     return `/api/agents/discovered-options/ws?${params.toString()}`;

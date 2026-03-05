@@ -460,6 +460,7 @@ function AppChatMarkdown({
   maxWidth: string | undefined;
 }) {
   const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
+  const { selectedSessionId } = useWorkspaceContext();
 
   return (
     <ChatMarkdown
@@ -473,6 +474,7 @@ function AppChatMarkdown({
           disabled
           className={className}
           taskAttemptId={workspaceId}
+          sessionId={selectedSessionId}
           findMatchingDiffPath={findMatchingDiffPath}
           onCodeClick={viewFileInChanges}
         />
@@ -748,6 +750,7 @@ function UserFeedbackEntry({
   taskAttemptId: string | undefined;
 }) {
   const { t } = useTranslation('common');
+  const { selectedSessionId } = useWorkspaceContext();
 
   return (
     <div className="py-2">
@@ -763,6 +766,7 @@ function UserFeedbackEntry({
           disabled
           className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
           taskAttemptId={taskAttemptId}
+          sessionId={selectedSessionId}
         />
       </div>
     </div>

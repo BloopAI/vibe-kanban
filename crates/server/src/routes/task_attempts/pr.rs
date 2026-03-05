@@ -142,7 +142,7 @@ async fn trigger_pr_description_follow_up(
     let latest_session_info =
         CodingAgentTurn::find_latest_session_info(&deployment.db().pool, session.id).await?;
 
-    let working_dir = workspace
+    let working_dir = session
         .agent_working_dir
         .as_ref()
         .filter(|dir| !dir.is_empty())
@@ -701,15 +701,12 @@ pub async fn create_workspace_from_pr(
     // Use target branch initially - we'll switch to PR branch via gh pr checkout
     let target_branch_ref = format!("{}/{}", remote.name, payload.base_branch);
 
-    let agent_working_dir = Some(repo.name.clone());
-
     // Create workspace with target branch initially
     let workspace_id = Uuid::new_v4();
     let mut workspace = Workspace::create(
         pool,
         &CreateWorkspace {
             branch: target_branch_ref.clone(),
-            agent_working_dir,
             name: Some(payload.pr_title.clone()),
         },
         workspace_id,

@@ -37,7 +37,6 @@ pub struct Workspace {
     pub task_id: Option<Uuid>,
     pub container_ref: Option<String>,
     pub branch: String,
-    pub agent_working_dir: Option<String>,
     pub setup_completed_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -84,7 +83,6 @@ pub struct WorkspaceContext {
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateWorkspace {
     pub branch: String,
-    pub agent_working_dir: Option<String>,
     pub name: Option<String>,
 }
 
@@ -97,7 +95,6 @@ impl Workspace {
                           task_id AS "task_id: Uuid",
                           container_ref,
                           branch,
-                          agent_working_dir,
                           setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                           created_at AS "created_at!: DateTime<Utc>",
                           updated_at AS "updated_at!: DateTime<Utc>",
@@ -196,7 +193,6 @@ impl Workspace {
                        task_id           AS "task_id: Uuid",
                        container_ref,
                        branch,
-                       agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>",
@@ -219,7 +215,6 @@ impl Workspace {
                        task_id           AS "task_id: Uuid",
                        container_ref,
                        branch,
-                       agent_working_dir,
                        setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                        created_at        AS "created_at!: DateTime<Utc>",
                        updated_at        AS "updated_at!: DateTime<Utc>",
@@ -263,7 +258,6 @@ impl Workspace {
                 w.task_id as "task_id: Uuid",
                 w.container_ref,
                 w.branch as "branch!",
-                w.agent_working_dir,
                 w.setup_completed_at as "setup_completed_at: DateTime<Utc>",
                 w.created_at as "created_at!: DateTime<Utc>",
                 w.updated_at as "updated_at!: DateTime<Utc>",
@@ -316,14 +310,13 @@ impl Workspace {
     ) -> Result<Self, WorkspaceError> {
         Ok(sqlx::query_as!(
             Workspace,
-            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, agent_working_dir, setup_completed_at, name)
-               VALUES ($1, $2, $3, $4, $5, $6, $7)
-               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, agent_working_dir, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, worktree_deleted as "worktree_deleted!: bool""#,
+            r#"INSERT INTO workspaces (id, task_id, container_ref, branch, setup_completed_at, name)
+               VALUES ($1, $2, $3, $4, $5, $6)
+               RETURNING id as "id!: Uuid", task_id as "task_id: Uuid", container_ref, branch, setup_completed_at as "setup_completed_at: DateTime<Utc>", created_at as "created_at!: DateTime<Utc>", updated_at as "updated_at!: DateTime<Utc>", archived as "archived!: bool", pinned as "pinned!: bool", name, worktree_deleted as "worktree_deleted!: bool""#,
             id,
             Option::<Uuid>::None,
             Option::<String>::None,
             data.branch,
-            data.agent_working_dir,
             Option::<DateTime<Utc>>::None,
             data.name
         )
@@ -507,7 +500,6 @@ impl Workspace {
                 w.task_id AS "task_id: Uuid",
                 w.container_ref,
                 w.branch,
-                w.agent_working_dir,
                 w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                 w.created_at AS "created_at!: DateTime<Utc>",
                 w.updated_at AS "updated_at!: DateTime<Utc>",
@@ -550,7 +542,6 @@ impl Workspace {
                     task_id: rec.task_id,
                     container_ref: rec.container_ref,
                     branch: rec.branch,
-                    agent_working_dir: rec.agent_working_dir,
                     setup_completed_at: rec.setup_completed_at,
                     created_at: rec.created_at,
                     updated_at: rec.updated_at,
@@ -610,7 +601,6 @@ impl Workspace {
                 w.task_id AS "task_id: Uuid",
                 w.container_ref,
                 w.branch,
-                w.agent_working_dir,
                 w.setup_completed_at AS "setup_completed_at: DateTime<Utc>",
                 w.created_at AS "created_at!: DateTime<Utc>",
                 w.updated_at AS "updated_at!: DateTime<Utc>",
@@ -656,7 +646,6 @@ impl Workspace {
                 task_id: rec.task_id,
                 container_ref: rec.container_ref,
                 branch: rec.branch,
-                agent_working_dir: rec.agent_working_dir,
                 setup_completed_at: rec.setup_completed_at,
                 created_at: rec.created_at,
                 updated_at: rec.updated_at,

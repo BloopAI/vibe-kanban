@@ -47,6 +47,7 @@ import {
 interface ModelSelectorContainerProps {
   agent: BaseCodingAgent | null;
   workspaceId: string | undefined;
+  sessionId?: string;
   onAdvancedSettings: () => void;
   presets: string[];
   selectedPreset: string | null;
@@ -59,6 +60,7 @@ interface ModelSelectorContainerProps {
 export function ModelSelectorContainer({
   agent,
   workspaceId,
+  sessionId,
   onAdvancedSettings,
   presets,
   selectedPreset,
@@ -103,7 +105,10 @@ export function ModelSelectorContainer({
     config: streamConfig,
     loadingModels,
     error: streamError,
-  } = useModelSelectorConfig(agent, { workspaceId });
+  } = useModelSelectorConfig(agent, {
+    workspaceId: sessionId ? workspaceId : undefined,
+    sessionId,
+  });
 
   useEffect(() => {
     if (streamError) {

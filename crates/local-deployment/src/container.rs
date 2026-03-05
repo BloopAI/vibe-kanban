@@ -911,12 +911,16 @@ impl LocalContainerService {
             }
         }
 
+        let agent_working_dir = Session::find_latest_by_workspace_id(&self.db.pool, workspace.id)
+            .await?
+            .and_then(|session| session.agent_working_dir);
+
         if let Err(e) = self
             .image_service
             .copy_images_by_workspace_to_worktree(
                 workspace_dir,
                 workspace.id,
-                workspace.agent_working_dir.as_deref(),
+                agent_working_dir.as_deref(),
             )
             .await
         {
@@ -1022,7 +1026,7 @@ impl LocalContainerService {
         let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let working_dir = ctx
-            .workspace
+            .session
             .agent_working_dir
             .as_ref()
             .filter(|dir| !dir.is_empty())
