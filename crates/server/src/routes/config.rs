@@ -86,6 +86,7 @@ impl Environment {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
+    pub version: String,
     pub config: Config,
     pub analytics_user_id: String,
     pub login_status: LoginStatus,
@@ -112,6 +113,7 @@ async fn get_user_system_info(
     .unwrap_or(LoginStatus::LoggedOut);
 
     let user_system_info = UserSystemInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
         config: config.clone(),
         analytics_user_id: deployment.user_id().to_string(),
         login_status,

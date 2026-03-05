@@ -29,6 +29,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   });
 
   const config = userSystemInfo?.config || null;
+  const appVersion = userSystemInfo?.version || null;
   const environment = userSystemInfo?.environment || null;
   const analyticsUserId = userSystemInfo?.analytics_user_id || null;
   const loginStatus = userSystemInfo?.login_status || null;
@@ -143,6 +144,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const value = useMemo<UserSystemContextType>(
     () => ({
       system: {
+        appVersion,
         config,
         environment,
         profiles,
@@ -150,6 +152,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         analyticsUserId,
         loginStatus,
       },
+      appVersion,
       config,
       environment,
       profiles,
@@ -166,6 +169,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       loading: isLoading,
     }),
     [
+      appVersion,
       config,
       environment,
       profiles,

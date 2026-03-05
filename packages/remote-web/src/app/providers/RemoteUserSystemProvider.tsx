@@ -38,6 +38,7 @@ export function RemoteUserSystemProvider({
   });
 
   const config = userSystemInfo?.config || null;
+  const appVersion = userSystemInfo?.version || null;
   const environment = userSystemInfo?.environment || null;
   const analyticsUserId = userSystemInfo?.analytics_user_id || null;
   const loginStatus = userSystemInfo?.login_status || null;
@@ -146,6 +147,7 @@ export function RemoteUserSystemProvider({
   const value = useMemo<UserSystemContextType>(
     () => ({
       system: {
+        appVersion,
         config,
         environment,
         profiles,
@@ -153,6 +155,7 @@ export function RemoteUserSystemProvider({
         analyticsUserId,
         loginStatus,
       },
+      appVersion,
       config,
       environment,
       profiles,
@@ -169,6 +172,7 @@ export function RemoteUserSystemProvider({
       loading,
     }),
     [
+      appVersion,
       config,
       environment,
       profiles,

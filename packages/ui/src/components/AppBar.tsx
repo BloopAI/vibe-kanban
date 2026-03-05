@@ -67,6 +67,7 @@ interface AppBarProps {
   userPopover?: ReactNode;
   starCount?: number | null;
   onlineCount?: number | null;
+  appVersion?: string | null;
   githubIconPath: string;
   discordIconPath: string;
 }
@@ -122,6 +123,7 @@ export function AppBar({
   userPopover,
   starCount,
   onlineCount,
+  appVersion,
   githubIconPath,
   discordIconPath,
 }: AppBarProps) {
@@ -400,6 +402,11 @@ export function AppBar({
             onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
           }
         />
+        {appVersion && (
+          <p className="text-[9px] font-ibm-plex-mono text-low leading-none">
+            v{appVersion}
+          </p>
+        )}
       </div>
     </div>
   );

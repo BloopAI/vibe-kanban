@@ -17,6 +17,7 @@ import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import {
@@ -50,6 +51,7 @@ export function SharedAppLayout() {
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
   const setAppBarHovered = useUiPreferencesStore((s) => s.setAppBarHovered);
   const { isSignedIn } = useAuth();
+  const { appVersion } = useUserSystem();
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -311,6 +313,7 @@ export function SharedAppLayout() {
             }
             starCount={starCount}
             onlineCount={onlineCount}
+            appVersion={appVersion}
             githubIconPath={siGithub.path}
             discordIconPath={siDiscord.path}
           />
