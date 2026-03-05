@@ -239,13 +239,25 @@ impl StandardCodingAgentExecutor for Droid {
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
                 models: [
-                    ("gpt-5.1-codex", "GPT-5.1 Codex"),
-                    ("gpt-5.1", "GPT-5.1"),
-                    ("gemini-3-pro-preview", "Gemini 3 Pro Preview"),
+                    ("claude-opus-4-6", "Claude Opus 4.6"),
+                    ("claude-opus-4-6-fast", "Claude Opus 4.6 Fast Mode"),
+                    ("gemini-3.1-pro-preview", "Gemini 3.1 Pro"),
+                    ("glm-5", "GLM-5"),
+                    ("gpt-5.3-codex", "GPT 5.3 Codex"),
+                    ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
+                    ("kimi-k2.5", "Kimi K2.5"),
+                    ("minimax-m2.5", "MiniMax M2.5"),
+                    ("glm-4.7", "GLM-4.7"),
+                    ("claude-opus-4-5-20251101", "Claude Opus 4.5"),
                     ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
                     ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
-                    ("claude-opus-4-1-20250805", "Claude Opus 4.1"),
-                    ("glm-4.6", "GLM 4.6"),
+                    ("gpt-5.2-codex", "GPT 5.2 Codex"),
+                    ("gpt-5.2", "GPT 5.2"),
+                    ("gemini-3-pro-preview", "Gemini 3 Pro"),
+                    ("gemini-3-flash-preview", "Gemini 3 Flash"),
+                    ("gpt-5.1-codex", "GPT 5.1 Codex"),
+                    ("gpt-5.1-codex-max", "GPT 5.1 Codex Max"),
+                    ("gpt-5.1", "GPT 5.1"),
                 ]
                 .into_iter()
                 .map(|(id, name)| ModelInfo {
