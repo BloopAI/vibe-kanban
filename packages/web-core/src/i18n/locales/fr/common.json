@@ -508,7 +508,8 @@
         "create": "Créer"
       },
       "setupHint": "Astuce : Configurez les scripts d'installation pour ce dépôt dans Paramètres → Dépôts",
-      "setupHintDismiss": "Fermer"
+      "setupHintDismiss": "Fermer",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

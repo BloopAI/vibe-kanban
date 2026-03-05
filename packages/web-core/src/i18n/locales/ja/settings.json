@@ -563,6 +563,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {

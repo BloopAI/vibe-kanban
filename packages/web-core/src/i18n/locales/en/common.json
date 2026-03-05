@@ -522,7 +522,8 @@
         "create": "Create"
       },
       "setupHint": "Tip: Configure setup scripts for this repository in Settings → Repositories",
-      "setupHintDismiss": "Dismiss"
+      "setupHintDismiss": "Dismiss",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

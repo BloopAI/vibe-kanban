@@ -508,7 +508,8 @@
         "create": "作成"
       },
       "setupHint": "ヒント: このリポジトリのセットアップスクリプトは設定 → リポジトリで構成できます",
-      "setupHintDismiss": "閉じる"
+      "setupHintDismiss": "閉じる",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {
