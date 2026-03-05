@@ -65,6 +65,13 @@ use crate::{command, copy};
 
 const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_mins(2);
 
+fn should_execute_queued_follow_up(status: &ExecutionProcessStatus) -> bool {
+    !matches!(
+        status,
+        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+    )
+}
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -541,10 +548,8 @@ impl LocalContainerService {
                 if container.should_finalize(&ctx) {
                     // Only execute queued follow-ups if the execution succeeded.
                     // On failed/killed runs we preserve queued messages for manual recovery.
-                    let should_execute_queued = !matches!(
-                        ctx.execution_process.status,
-                        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
-                    );
+                    let should_execute_queued =
+                        should_execute_queued_follow_up(&ctx.execution_process.status);
 
                     if should_execute_queued {
                         if let Some(queued_msg) =
@@ -1501,5 +1506,27 @@ fn success_exit_status() -> std::process::ExitStatus {
     {
         use std::os::windows::process::ExitStatusExt;
         ExitStatusExt::from_raw(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn executes_queued_follow_up_for_completed_status() {
+        assert!(should_execute_queued_follow_up(
+            &ExecutionProcessStatus::Completed
+        ));
+    }
+
+    #[test]
+    fn preserves_queue_for_failed_or_killed_status() {
+        assert!(!should_execute_queued_follow_up(
+            &ExecutionProcessStatus::Failed
+        ));
+        assert!(!should_execute_queued_follow_up(
+            &ExecutionProcessStatus::Killed
+        ));
     }
 }

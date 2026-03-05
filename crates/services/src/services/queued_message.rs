@@ -268,4 +268,51 @@ mod tests {
             QueueStatus::Empty => panic!("expected queued status"),
         }
     }
+
+    #[test]
+    fn buffered_queue_executes_three_or_more_messages_in_fifo_order() {
+        let service = QueuedMessageService::new();
+        let session_id = Uuid::new_v4();
+
+        service.queue_message(session_id, draft("q1"));
+        service.queue_message(session_id, draft("q2"));
+        service.queue_message(session_id, draft("q3"));
+
+        let first = service.take_next(session_id).expect("first queued");
+        let second = service.take_next(session_id).expect("second queued");
+        let third = service.take_next(session_id).expect("third queued");
+
+        assert_eq!(first.data.message, "q1");
+        assert_eq!(second.data.message, "q2");
+        assert_eq!(third.data.message, "q3");
+        assert!(service.take_next(session_id).is_none());
+    }
+
+    #[test]
+    fn requeue_front_restores_message_after_follow_up_start_failure() {
+        let service = QueuedMessageService::new();
+        let session_id = Uuid::new_v4();
+
+        service.queue_message(session_id, draft("q1"));
+        service.queue_message(session_id, draft("q2"));
+
+        let first = service
+            .take_next(session_id)
+            .expect("first queued message should exist");
+        assert_eq!(first.data.message, "q1");
+        assert_eq!(first.kind, QueuedMessageKind::Queue);
+
+        service.requeue_front(first);
+
+        let replayed = service
+            .take_next(session_id)
+            .expect("requeued message should be replayed first");
+        let second = service
+            .take_next(session_id)
+            .expect("second queued message should still exist");
+
+        assert_eq!(replayed.data.message, "q1");
+        assert_eq!(second.data.message, "q2");
+        assert!(service.take_next(session_id).is_none());
+    }
 }
