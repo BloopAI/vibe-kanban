@@ -197,18 +197,22 @@ impl StandardCodingAgentExecutor for Copilot {
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
                 models: [
-                    ("gpt-5.2", "GPT-5.2"),
-                    ("gemini-3-pro-preview", "Gemini 3 Pro Preview"),
-                    ("claude-opus-4.5", "Claude Opus 4.5"),
-                    ("claude-sonnet-4.5", "Claude Sonnet 4.5"),
+                    ("claude-opus-4.6", "Claude Opus 4.6"),
+                    ("claude-opus-4.6-fast", "Claude Opus 4.6 Fast"),
+                    ("gpt-5.3-codex", "GPT-5.3 Codex"),
+                    ("claude-sonnet-4.6", "Claude Sonnet 4.6"),
                     ("claude-haiku-4.5", "Claude Haiku 4.5"),
+                    ("gemini-3-pro-preview", "Gemini 3 Pro Preview"),
+                    ("gpt-5.2-codex", "GPT-5.2 Codex"),
+                    ("gpt-5.2", "GPT-5.2"),
                     ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
                     ("gpt-5.1-codex", "GPT-5.1 Codex"),
-                    ("gpt-5", "GPT-5"),
                     ("gpt-5.1", "GPT-5.1"),
                     ("gpt-5.1-codex-mini", "GPT-5.1 Codex Mini"),
                     ("gpt-5-mini", "GPT-5 Mini"),
                     ("gpt-4.1", "GPT-4.1"),
+                    ("claude-opus-4.5", "Claude Opus 4.5"),
+                    ("claude-sonnet-4.5", "Claude Sonnet 4.5"),
                     ("claude-sonnet-4", "Claude Sonnet 4"),
                 ]
                 .into_iter()
