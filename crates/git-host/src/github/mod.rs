@@ -344,13 +344,23 @@ impl GitHostProvider for GitHubProvider {
                 line: c.line,
                 side: c.side,
                 diff_hunk: Some(c.diff_hunk),
+                resolved: c.resolved,
             });
         }
 
         // Sort by creation time
         unified.sort_by_key(|c| c.created_at());
 
-        Ok(unified)
+        // Filter out resolved review comments (keep all general comments)
+        let filtered_comments: Vec<UnifiedPrComment> = unified
+            .into_iter()
+            .filter(|comment| match comment {
+                UnifiedPrComment::Review { resolved, .. } => !resolved,
+                UnifiedPrComment::General { .. } => true,
+            })
+            .collect();
+
+        Ok(filtered_comments)
     }
 
     async fn list_open_prs(

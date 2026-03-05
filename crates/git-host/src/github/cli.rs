@@ -92,6 +92,8 @@ struct GhReviewCommentResponse {
     diff_hunk: String,
     #[serde(default)]
     author_association: String,
+    #[serde(default)]
+    resolved: bool,
 }
 
 #[derive(Deserialize)]
@@ -533,6 +535,7 @@ impl GhCli {
                 side: c.side,
                 diff_hunk: c.diff_hunk,
                 author_association: c.author_association,
+                resolved: c.resolved,
             })
             .collect())
     }

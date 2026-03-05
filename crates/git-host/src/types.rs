@@ -101,6 +101,7 @@ pub struct PrReviewComment {
     pub side: Option<String>,
     pub diff_hunk: String,
     pub author_association: String,
+    pub resolved: bool,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -126,6 +127,7 @@ pub enum UnifiedPrComment {
         line: Option<i64>,
         side: Option<String>,
         diff_hunk: Option<String>,
+        resolved: bool,
     },
 }
 
