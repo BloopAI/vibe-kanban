@@ -22,6 +22,7 @@ export function useIssueMultiSelect() {
       } else if (isShiftClick) {
         // Shift+Click: range select from anchor to this issue
         event.preventDefault();
+        window.getSelection()?.removeAllRanges();
         selectRange(issueId);
       }
     },
