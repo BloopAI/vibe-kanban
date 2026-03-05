@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { queueApi } from '@/shared/lib/api';
-import type { ExecutorConfig, QueueStatus } from 'shared/types';
+import type { ExecutorConfig, QueueStatus, QueuedMessage } from 'shared/types';
 
 interface UseSessionQueueInteractionOptions {
   /** Session ID for queue operations */
@@ -11,10 +11,14 @@ interface UseSessionQueueInteractionOptions {
 interface UseSessionQueueInteractionResult {
   /** Whether a message is currently queued */
   isQueued: boolean;
-  /** The queued message content, if any */
-  queuedMessage: string | null;
-  /** The executor config from the queued message, if any */
-  queuedConfig: ExecutorConfig | null;
+  /** Next queued message to execute */
+  nextQueuedMessage: QueuedMessage | null;
+  /** Pending steer messages (high priority) */
+  pendingSteers: QueuedMessage[];
+  /** Pending buffered queue messages */
+  queuedMessages: QueuedMessage[];
+  /** Total pending queued messages */
+  pendingCount: number;
   /** Whether a queue operation is in progress */
   isQueueLoading: boolean;
   /** Queue a message for later execution */
@@ -22,8 +26,13 @@ interface UseSessionQueueInteractionResult {
     message: string,
     executorConfig: ExecutorConfig
   ) => Promise<void>;
-  /** Cancel the queued message */
-  cancelQueue: () => Promise<void>;
+  /** Queue a high-priority steer message */
+  steerMessage: (
+    message: string,
+    executorConfig: ExecutorConfig
+  ) => Promise<void>;
+  /** Pop latest queued message so it can be edited */
+  cancelQueue: () => Promise<QueuedMessage | null>;
   /** Refresh queue status from server */
   refreshQueueStatus: () => Promise<void>;
 }
@@ -47,13 +56,15 @@ export function useSessionQueueInteraction({
       enabled: !!sessionId,
     });
 
-  const isQueued = queueStatus.status === 'queued';
-  const queuedMessageData = isQueued
-    ? (queueStatus as Extract<QueueStatus, { status: 'queued' }>).message
-    : null;
-  const queuedMessage = queuedMessageData?.data.message ?? null;
-  const queuedConfig: ExecutorConfig | null =
-    queuedMessageData?.data.executor_config ?? null;
+  const queuedData =
+    queueStatus.status === 'queued'
+      ? (queueStatus as Extract<QueueStatus, { status: 'queued' }>)
+      : null;
+  const isQueued = !!queuedData;
+  const nextQueuedMessage = queuedData?.next ?? null;
+  const pendingSteers = queuedData?.pending_steers ?? [];
+  const queuedMessages = queuedData?.queued_messages ?? [];
+  const pendingCount = pendingSteers.length + queuedMessages.length;
 
   // Mutation for queueing a message
   const queueMutation = useMutation({
@@ -73,11 +84,28 @@ export function useSessionQueueInteraction({
     },
   });
 
+  const steerMutation = useMutation({
+    mutationFn: ({
+      message,
+      executorConfig,
+    }: {
+      message: string;
+      executorConfig: ExecutorConfig;
+    }) =>
+      queueApi.steer(sessionId!, {
+        message,
+        executor_config: executorConfig,
+      }),
+    onSuccess: (status) => {
+      queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
+    },
+  });
+
   // Mutation for cancelling the queue
   const cancelMutation = useMutation({
     mutationFn: () => queueApi.cancel(sessionId!),
-    onSuccess: (status) => {
-      queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], status);
+    onSuccess: (response) => {
+      queryClient.setQueryData([QUEUE_STATUS_KEY, sessionId], response.status);
     },
   });
 
@@ -92,9 +120,21 @@ export function useSessionQueueInteraction({
     [sessionId, queueMutation]
   );
 
+  const steerMessage = useCallback(
+    async (message: string, executorConfig: ExecutorConfig) => {
+      if (!sessionId) return;
+      await steerMutation.mutateAsync({
+        message,
+        executorConfig,
+      });
+    },
+    [sessionId, steerMutation]
+  );
+
   const cancelQueue = useCallback(async () => {
-    if (!sessionId) return;
-    await cancelMutation.mutateAsync();
+    if (!sessionId) return null;
+    const result = await cancelMutation.mutateAsync();
+    return result.cancelled_message ?? null;
   }, [sessionId, cancelMutation]);
 
   const refreshQueueStatus = useCallback(async () => {
@@ -104,10 +144,16 @@ export function useSessionQueueInteraction({
 
   return {
     isQueued,
-    queuedMessage,
-    queuedConfig,
-    isQueueLoading: queueMutation.isPending || cancelMutation.isPending,
+    nextQueuedMessage,
+    pendingSteers,
+    queuedMessages,
+    pendingCount,
+    isQueueLoading:
+      queueMutation.isPending ||
+      steerMutation.isPending ||
+      cancelMutation.isPending,
     queueMessage,
+    steerMessage,
     cancelQueue,
     refreshQueueStatus,
   };

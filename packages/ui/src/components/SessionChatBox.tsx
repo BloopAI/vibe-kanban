@@ -46,10 +46,18 @@ export type ExecutionStatus =
 
 interface ActionsProps {
   onSend: () => void;
+  onSteer: () => void;
   onQueue: () => void;
   onCancelQueue: () => void;
   onStop: () => void;
   onPasteFiles: (files: File[]) => void;
+}
+
+interface QueueStateProps {
+  pendingCount: number;
+  pendingSteerCount: number;
+  bufferedQueueCount: number;
+  hasPendingMessages: boolean;
 }
 
 export interface SessionOption<TExecutor extends string = string> {
@@ -161,6 +169,7 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   askQuestionMode?: AskQuestionModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
+  queueState?: QueueStateProps;
   modelSelector?: ReactNode;
   error?: string | null;
   repoIds?: string[];
@@ -223,6 +232,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   askQuestionMode,
   reviewComments,
   toolbarActions,
+  queueState,
   modelSelector,
   error,
   repoIds,
@@ -278,9 +288,9 @@ export function SessionChatBox<TExecutor extends string = string>({
   const canSend =
     hasContent && !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
-  const isRunning = status === 'running' || status === 'queued';
+  const isRunning = status === 'running';
   const showRunningAnimation =
-    (status === 'running' || status === 'queued' || status === 'sending') &&
+    (status === 'running' || status === 'sending') &&
     !isInApprovalMode &&
     !isInAskQuestionMode &&
     editor.value.trim().length === 0;
@@ -319,7 +329,9 @@ export function SessionChatBox<TExecutor extends string = string>({
     } else if (isInEditMode && canSend) {
       editMode?.onSubmitEdit();
     } else if (status === 'running' && canSend) {
-      actions.onQueue();
+      actions.onSteer();
+    } else if (status === 'queued' && canSend) {
+      actions.onSend();
     } else if (status === 'idle' && canSend) {
       actions.onSend();
     }
@@ -508,10 +520,23 @@ export function SessionChatBox<TExecutor extends string = string>({
         return (
           <>
             <PrimaryButton
+              onClick={actions.onSteer}
+              disabled={!canSend}
+              value={t('conversation.actions.send')}
+            />
+            <PrimaryButton
               onClick={actions.onQueue}
               disabled={!canSend}
               value={t('conversation.actions.queue')}
             />
+            {queueState?.hasPendingMessages && (
+              <PrimaryButton
+                onClick={actions.onCancelQueue}
+                variant="secondary"
+                value={t('conversation.actions.cancelQueue')}
+                actionIcon={XIcon}
+              />
+            )}
             <PrimaryButton
               onClick={actions.onStop}
               variant="secondary"
@@ -530,10 +555,10 @@ export function SessionChatBox<TExecutor extends string = string>({
               actionIcon={XIcon}
             />
             <PrimaryButton
-              onClick={actions.onStop}
+              onClick={actions.onSend}
               variant="secondary"
-              value={t('conversation.actions.stop')}
-              actionIcon="spinner"
+              disabled={!canSend}
+              value={t('conversation.actions.send')}
             />
           </>
         );
@@ -604,7 +629,7 @@ export function SessionChatBox<TExecutor extends string = string>({
     }
 
     // Queued message banner
-    if (isQueued) {
+    if (isQueued || queueState?.hasPendingMessages) {
       banners.push(
         <div
           key="queued"
@@ -613,6 +638,7 @@ export function SessionChatBox<TExecutor extends string = string>({
           <ClockIcon className="h-4 w-4 text-low" />
           <span className="text-sm text-low">
             {t('followUp.queuedMessage')}
+            {queueState?.pendingCount ? ` (${queueState.pendingCount})` : ''}
           </span>
         </div>
       );

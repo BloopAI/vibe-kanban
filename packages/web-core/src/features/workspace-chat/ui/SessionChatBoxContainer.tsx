@@ -76,8 +76,8 @@ function computeExecutionStatus(params: {
   if (params.isStopping) return 'stopping';
   if (params.isQueueLoading) return 'queue-loading';
   if (params.isSendingFollowUp) return 'sending';
-  if (params.isQueued) return 'queued';
   if (params.isAttemptRunning) return 'running';
+  if (params.isQueued) return 'queued';
   return 'idle';
 }
 
@@ -449,10 +449,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Queue interaction
   const {
     isQueued,
-    queuedMessage,
-    queuedConfig,
+    pendingSteers,
+    queuedMessages,
+    pendingCount,
     isQueueLoading,
     queueMessage,
+    steerMessage,
     cancelQueue,
     refreshQueueStatus,
   } = useSessionQueueInteraction({ sessionId });
@@ -545,10 +547,34 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     reviewContext,
   ]);
 
+  // Steer message handler (high-priority queue while run is active)
+  const handleSteerMessage = useCallback(async () => {
+    if ((!localMessage.trim() && !reviewMarkdown) || !executorConfig) return;
+
+    const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
+
+    cancelDebouncedSave();
+    await saveToScratch(localMessage, executorConfig);
+    await steerMessage(prompt, executorConfig);
+
+    setLocalMessage('');
+    clearUploadedImages();
+    reviewContext?.clearComments();
+  }, [
+    localMessage,
+    reviewMarkdown,
+    executorConfig,
+    steerMessage,
+    cancelDebouncedSave,
+    saveToScratch,
+    setLocalMessage,
+    clearUploadedImages,
+    reviewContext,
+  ]);
+
   // Editor change handler
   const handleEditorChange = useCallback(
     (value: string) => {
-      if (isQueued) cancelQueue();
       if (executorConfig) {
         handleMessageChange(value, executorConfig);
       } else {
@@ -557,8 +583,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       if (sendError) clearError();
     },
     [
-      isQueued,
-      cancelQueue,
       handleMessageChange,
       executorConfig,
       sendError,
@@ -593,20 +617,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle cancel queue - restore message to editor
   const handleCancelQueue = useCallback(async () => {
-    if (queuedMessage) {
-      setLocalMessage(queuedMessage);
+    const cancelled = await cancelQueue();
+    if (cancelled) {
+      setLocalMessage(cancelled.data.message);
+      setExecutorOverrides(cancelled.data.executor_config);
     }
-    if (queuedConfig) {
-      setExecutorOverrides(queuedConfig);
-    }
-    await cancelQueue();
-  }, [
-    queuedMessage,
-    queuedConfig,
-    setLocalMessage,
-    setExecutorOverrides,
-    cancelQueue,
-  ]);
+  }, [cancelQueue, setLocalMessage, setExecutorOverrides]);
 
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
@@ -825,19 +841,23 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isAttemptRunning,
   });
 
+  const queueState =
+    pendingCount > 0
+      ? {
+          pendingCount,
+          pendingSteerCount: pendingSteers.length,
+          bufferedQueueCount: queuedMessages.length,
+          hasPendingMessages: true,
+        }
+      : undefined;
+
   // During loading, render with empty editor to preserve container UI
-  // In approval mode, don't show queued message - it's for follow-up, not approval response
+  // In approval mode, preserve local message for response editing.
   const editorValue = useMemo(() => {
     if (isScratchLoading || !hasInitialValue) return '';
     if (pendingApproval) return localMessage;
-    return queuedMessage ?? localMessage;
-  }, [
-    isScratchLoading,
-    hasInitialValue,
-    pendingApproval,
-    queuedMessage,
-    localMessage,
-  ]);
+    return localMessage;
+  }, [isScratchLoading, hasInitialValue, pendingApproval, localMessage]);
 
   const renderEditor = useCallback(
     ({
@@ -912,6 +932,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         }}
         actions={{
           onSend: () => {},
+          onSteer: () => {},
           onQueue: () => {},
           onCancelQueue: () => {},
           onStop: () => {},
@@ -964,11 +985,13 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }}
       actions={{
         onSend: handleSend,
+        onSteer: handleSteerMessage,
         onQueue: handleQueueMessage,
         onCancelQueue: handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
       }}
+      queueState={queueState}
       session={{
         sessions,
         selectedSessionId: sessionId,

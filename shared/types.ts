@@ -506,9 +506,17 @@ data: DraftFollowUpData,
 /**
  * Timestamp when the message was queued
  */
-queued_at: string, };
+queued_at: string, 
+/**
+ * Which queue this message belongs to
+ */
+kind: QueuedMessageKind, };
 
-export type QueueStatus = { "status": "empty" } | { "status": "queued", message: QueuedMessage, };
+export type QueuedMessageKind = "steer" | "queue";
+
+export type QueueStatus = { "status": "empty" } | { "status": "queued", next: QueuedMessage, pending_steers: Array<QueuedMessage>, queued_messages: Array<QueuedMessage>, };
+
+export type CancelQueueResponse = { status: QueueStatus, cancelled_message: QueuedMessage | null, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 

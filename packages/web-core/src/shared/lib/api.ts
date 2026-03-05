@@ -68,6 +68,7 @@ import {
   TokenResponse,
   CurrentUserResponse,
   QueueStatus,
+  CancelQueueResponse,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
   PushTaskAttemptRequest,
@@ -1419,13 +1420,30 @@ export const queueApi = {
   },
 
   /**
-   * Cancel a queued follow-up message
+   * Queue a high-priority steer message that runs before buffered queue messages
    */
-  cancel: async (sessionId: string): Promise<QueueStatus> => {
+  steer: async (
+    sessionId: string,
+    data: DraftFollowUpData
+  ): Promise<QueueStatus> => {
+    const response = await makeRequest(
+      `/api/sessions/${sessionId}/queue/steer`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
+    return handleApiResponse<QueueStatus>(response);
+  },
+
+  /**
+   * Pop the latest queued follow-up message for editing
+   */
+  cancel: async (sessionId: string): Promise<CancelQueueResponse> => {
     const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
       method: 'DELETE',
     });
-    return handleApiResponse<QueueStatus>(response);
+    return handleApiResponse<CancelQueueResponse>(response);
   },
 
   /**

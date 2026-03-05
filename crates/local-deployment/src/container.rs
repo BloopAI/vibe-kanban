@@ -539,20 +539,21 @@ impl LocalContainerService {
                 }
 
                 if container.should_finalize(&ctx) {
-                    // Only execute queued messages if the execution succeeded
-                    // If it failed or was killed, just clear the queue and finalize
+                    // Only execute queued follow-ups if the execution succeeded.
+                    // On failed/killed runs we preserve queued messages for manual recovery.
                     let should_execute_queued = !matches!(
                         ctx.execution_process.status,
                         ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
                     );
 
-                    if let Some(queued_msg) =
-                        container.queued_message_service.take_queued(ctx.session.id)
-                    {
-                        if should_execute_queued {
+                    if should_execute_queued {
+                        if let Some(queued_msg) =
+                            container.queued_message_service.take_next(ctx.session.id)
+                        {
                             tracing::info!(
-                                "Found queued message for session {}, starting follow-up execution",
-                                ctx.session.id
+                                "Found queued {:?} message for session {}, starting follow-up execution",
+                                queued_msg.kind,
+                                ctx.session.id,
                             );
 
                             // Delete the scratch since we're consuming the queued message
@@ -575,19 +576,22 @@ impl LocalContainerService {
                                 .await
                             {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
+                                // Put the message back so it can be retried/edited later.
+                                container.queued_message_service.requeue_front(queued_msg);
                                 // Fall back to finalization if follow-up fails
                                 container.finalize_task(&ctx).await;
                             }
                         } else {
-                            // Execution failed or was killed - discard the queued message and finalize
-                            tracing::info!(
-                                "Discarding queued message for session {} due to execution status {:?}",
-                                ctx.session.id,
-                                ctx.execution_process.status
-                            );
                             container.finalize_task(&ctx).await;
                         }
                     } else {
+                        if container.queued_message_service.has_queued(ctx.session.id) {
+                            tracing::info!(
+                                "Preserving queued follow-up messages for session {} due to execution status {:?}",
+                                ctx.session.id,
+                                ctx.execution_process.status
+                            );
+                        }
                         container.finalize_task(&ctx).await;
                     }
                 }
