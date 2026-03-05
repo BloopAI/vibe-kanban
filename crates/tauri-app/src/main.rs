@@ -15,17 +15,18 @@ use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::EnvFilter;
+use uuid::Uuid;
 
 /// Native push notifier using Tauri's notification plugin.
-/// On macOS/Windows, clicking the notification activates the app via the OS
-/// notification center — the `RunEvent::Reopen` handler then shows the window.
+/// Emits a `navigate-to-workspace` event so the frontend can navigate to the
+/// relevant workspace when the user clicks the notification and the app activates.
 struct TauriNotifier {
     app_handle: tauri::AppHandle,
 }
 
 #[async_trait]
 impl PushNotifier for TauriNotifier {
-    async fn send(&self, title: &str, message: &str) {
+    async fn send(&self, title: &str, message: &str, workspace_id: Option<Uuid>) {
         if let Err(e) = self
             .app_handle
             .notification()
@@ -35,6 +36,13 @@ impl PushNotifier for TauriNotifier {
             .show()
         {
             tracing::warn!("Failed to send Tauri notification: {}", e);
+        }
+
+        if let Some(id) = workspace_id {
+            let _ = self.app_handle.emit(
+                "navigate-to-workspace",
+                serde_json::json!({ "workspaceId": id.to_string() }),
+            );
         }
     }
 }
