@@ -723,6 +723,7 @@ export function KanbanContainer() {
   const setOrderedIssueIds = useIssueSelectionStore(
     (s) => s.setOrderedIssueIds
   );
+  const setAnchor = useIssueSelectionStore((s) => s.setAnchor);
 
   // Compute ordered issue IDs for range selection
   const orderedIssueIds = useMemo(() => {
@@ -749,10 +750,18 @@ export function KanbanContainer() {
         if (selectedIssueIds.size > 0) {
           clearSelection();
         }
+        // Set as anchor so Shift+Click from this issue works
+        setAnchor(issueId);
         openIssue(issueId);
       }
     },
-    [openIssue, handleIssueClick, selectedIssueIds.size, clearSelection]
+    [
+      openIssue,
+      handleIssueClick,
+      selectedIssueIds.size,
+      clearSelection,
+      setAnchor,
+    ]
   );
 
   const handleAddTask = useCallback(

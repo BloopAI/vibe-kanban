@@ -19,6 +19,8 @@ interface IssueSelectionState {
   ) => void;
   selectAll: () => void;
   clearSelection: () => void;
+  /** Set anchor for range selection without selecting the issue */
+  setAnchor: (issueId: string) => void;
   setOrderedIssueIds: (ids: string[]) => void;
 }
 
@@ -147,6 +149,10 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
         anchorIssueId: null,
         cursorIssueId: null,
       });
+    },
+
+    setAnchor: (issueId: string) => {
+      set({ anchorIssueId: issueId, cursorIssueId: issueId });
     },
 
     setOrderedIssueIds: (ids: string[]) => {
