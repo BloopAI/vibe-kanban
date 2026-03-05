@@ -936,6 +936,14 @@ jobs:
 
           echo "Desktop manifest uploaded to: binaries/$TAG/tauri/desktop-manifest.json"
 
+          # Upload desktop manifest for NPX CLI auto-install
+          echo "Uploading desktop manifest..."
+          aws s3 cp desktop-manifest.json \
+            "s3://$BUCKET/binaries/$TAG/tauri/desktop-manifest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          echo "Desktop manifest uploaded to: binaries/$TAG/tauri/desktop-manifest.json"
+
   create-prerelease:
     needs: [bump-version, build-frontend, upload-to-r2, upload-tauri-update]
     runs-on: ubuntu-latest-m
