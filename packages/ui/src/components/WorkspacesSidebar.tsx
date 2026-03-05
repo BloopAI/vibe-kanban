@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
 import { InputField } from './InputField';
 import { WorkspaceSummary } from './WorkspaceSummary';
+import type { AppBarHostStatus } from './AppBar';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
@@ -78,6 +79,11 @@ export interface WorkspacesSidebarProps {
   onOpenWorkspaceActions?: (workspaceId: string) => void;
   /** Persist keys for collapsible sections */
   persistKeys?: WorkspacesSidebarPersistKeys;
+  activeRemoteHost?: {
+    name: string;
+    status: AppBarHostStatus;
+  } | null;
+  onOpenRemoteHostSettings?: () => void;
 }
 
 export interface WorkspacesSidebarReopenTagProps {
@@ -179,6 +185,8 @@ export function WorkspacesSidebar({
   searchControls,
   onOpenWorkspaceActions,
   persistKeys = DEFAULT_PERSIST_KEYS,
+  activeRemoteHost = null,
+  onOpenRemoteHostSettings,
 }: WorkspacesSidebarProps) {
   const { t } = useTranslation(['tasks', 'common']);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -254,6 +262,47 @@ export function WorkspacesSidebar({
           </div>
           {searchControls}
         </div>
+
+        {activeRemoteHost && (
+          <div className="px-base">
+            <div className="rounded-sm border border-border bg-panel/60 px-base py-half flex items-center justify-between gap-base">
+              <div className="min-w-0">
+                <p className="text-xs text-low uppercase tracking-wide">
+                  {t('common:workspaces.remoteHostLabel', {
+                    defaultValue: 'Remote host',
+                  })}
+                </p>
+                <p className="text-sm text-high truncate">
+                  {activeRemoteHost.name}
+                </p>
+              </div>
+              <div className="flex items-center gap-half shrink-0">
+                <span
+                  className={cn(
+                    'inline-flex h-2.5 w-2.5 rounded-full',
+                    activeRemoteHost.status === 'online'
+                      ? 'bg-success'
+                      : activeRemoteHost.status === 'offline'
+                        ? 'bg-low'
+                        : 'bg-warning'
+                  )}
+                  aria-hidden="true"
+                />
+                {onOpenRemoteHostSettings && (
+                  <button
+                    type="button"
+                    onClick={onOpenRemoteHostSettings}
+                    className="text-xs text-brand hover:underline"
+                  >
+                    {t('common:workspaces.remoteHostManage', {
+                      defaultValue: 'Manage',
+                    })}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scrollable workspace list */}
