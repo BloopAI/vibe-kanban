@@ -129,9 +129,58 @@ async function ensureBinary(platform, binaryName, onProgress) {
   return zipPath;
 }
 
+const DESKTOP_CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "desktop");
+
+async function ensureDesktopBundle(tauriPlatform, onProgress) {
+  // In local dev mode, use Tauri bundle from npx-cli/dist/tauri/<platform>/
+  if (LOCAL_DEV_MODE) {
+    const localDir = path.join(LOCAL_DIST_DIR, "tauri", tauriPlatform);
+    if (fs.existsSync(localDir)) {
+      return { dir: localDir, archivePath: null, type: null };
+    }
+    throw new Error(
+      `Local desktop bundle not found: ${localDir}\n` +
+      `Run './local-build.sh --desktop' first to build the Tauri app.`
+    );
+  }
+
+  const cacheDir = path.join(DESKTOP_CACHE_DIR, BINARY_TAG, tauriPlatform);
+
+  // Check if already installed (sentinel file from previous run)
+  const sentinelPath = path.join(cacheDir, ".installed");
+  if (fs.existsSync(sentinelPath)) {
+    return { dir: cacheDir, archivePath: null, type: null };
+  }
+
+  fs.mkdirSync(cacheDir, { recursive: true });
+
+  // Fetch the desktop manifest
+  const manifest = await fetchJson(
+    `${R2_BASE_URL}/binaries/${BINARY_TAG}/tauri/desktop-manifest.json`
+  );
+  const platformInfo = manifest.platforms?.[tauriPlatform];
+  if (!platformInfo) {
+    throw new Error(`Desktop app not available for platform: ${tauriPlatform}`);
+  }
+
+  const destPath = path.join(cacheDir, platformInfo.file);
+
+  // Skip download if file already exists (e.g. previous failed install)
+  if (!fs.existsSync(destPath)) {
+    const url = `${R2_BASE_URL}/binaries/${BINARY_TAG}/tauri/${tauriPlatform}/${platformInfo.file}`;
+    await downloadFile(url, destPath, platformInfo.sha256, onProgress);
+  }
+
+  return {
+    archivePath: destPath,
+    dir: cacheDir,
+    type: platformInfo.type,
+  };
+}
+
 async function getLatestVersion() {
   const manifest = await fetchJson(`${R2_BASE_URL}/binaries/manifest.json`);
   return manifest.latest;
 }
 
-module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, ensureBinary, getLatestVersion };
+module.exports = { R2_BASE_URL, BINARY_TAG, CACHE_DIR, DESKTOP_CACHE_DIR, LOCAL_DEV_MODE, LOCAL_DIST_DIR, ensureBinary, ensureDesktopBundle, getLatestVersion };
