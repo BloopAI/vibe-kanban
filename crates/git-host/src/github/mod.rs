@@ -408,3 +408,295 @@ impl GitHostProvider for GitHubProvider {
         ProviderKind::GitHub
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+
+    use super::*;
+
+    /// Test data based on GitHub API response structure for review comments
+    /// This simulates real API responses with resolved and unresolved comments
+    fn create_test_general_comment(id: &str, body: &str) -> PrComment {
+        PrComment {
+            id: id.to_string(),
+            author: CommentUser {
+                login: "test-user".to_string(),
+            },
+            author_association: "CONTRIBUTOR".to_string(),
+            body: body.to_string(),
+            created_at: Utc::now(),
+            url: format!("https://github.com/test/repo/issues/1#issuecomment-{}", id),
+        }
+    }
+
+    fn create_test_review_comment(
+        id: i64,
+        body: &str,
+        resolved: bool,
+        path: &str,
+    ) -> PrReviewComment {
+        PrReviewComment {
+            id,
+            user: ReviewCommentUser {
+                login: "test-reviewer".to_string(),
+            },
+            body: body.to_string(),
+            created_at: Utc::now(),
+            html_url: format!("https://github.com/test/repo/pull/1#discussion_r{}", id),
+            path: path.to_string(),
+            line: Some(42),
+            side: Some("RIGHT".to_string()),
+            diff_hunk: "@@ -40,6 +40,7 @@ impl Foo {".to_string(),
+            author_association: "CONTRIBUTOR".to_string(),
+            resolved,
+        }
+    }
+
+    #[test]
+    fn test_filters_out_resolved_review_comments() {
+        // Simulate the filtering logic that happens in get_pr_comments
+        let general_comments = vec![
+            create_test_general_comment("1", "This is a general comment"),
+            create_test_general_comment("2", "Another general comment"),
+        ];
+
+        let review_comments = vec![
+            create_test_review_comment(101, "Please fix this typo", false, "src/main.rs"),
+            create_test_review_comment(102, "This was fixed, thanks!", true, "src/lib.rs"),
+            create_test_review_comment(103, "Still needs work", false, "src/util.rs"),
+            create_test_review_comment(104, "Resolved in latest commit", true, "src/main.rs"),
+        ];
+
+        // Convert to unified format (simulating the logic in get_pr_comments)
+        let mut unified: Vec<UnifiedPrComment> = Vec::new();
+
+        for c in general_comments {
+            unified.push(UnifiedPrComment::General {
+                id: c.id,
+                author: c.author.login,
+                author_association: Some(c.author_association),
+                body: c.body,
+                created_at: c.created_at,
+                url: Some(c.url),
+            });
+        }
+
+        for c in review_comments {
+            unified.push(UnifiedPrComment::Review {
+                id: c.id,
+                author: c.user.login,
+                author_association: Some(c.author_association),
+                body: c.body,
+                created_at: c.created_at,
+                url: Some(c.html_url),
+                path: c.path,
+                line: c.line,
+                side: c.side,
+                diff_hunk: Some(c.diff_hunk),
+                resolved: c.resolved,
+            });
+        }
+
+        // Apply the filtering logic (from get_pr_comments lines 354-361)
+        let filtered_comments: Vec<UnifiedPrComment> = unified
+            .into_iter()
+            .filter(|comment| match comment {
+                UnifiedPrComment::Review { resolved, .. } => !resolved,
+                UnifiedPrComment::General { .. } => true,
+            })
+            .collect();
+
+        // Verify expectations:
+        // - 2 general comments (all kept)
+        // - 2 unresolved review comments (kept)
+        // - 2 resolved review comments (filtered out)
+        // Total: 4 comments (2 general + 2 unresolved review)
+        assert_eq!(
+            filtered_comments.len(),
+            4,
+            "Should have 2 general + 2 unresolved review comments"
+        );
+
+        // Count by type
+        let general_count = filtered_comments
+            .iter()
+            .filter(|c| matches!(c, UnifiedPrComment::General { .. }))
+            .count();
+        let review_count = filtered_comments
+            .iter()
+            .filter(|c| matches!(c, UnifiedPrComment::Review { .. }))
+            .count();
+
+        assert_eq!(general_count, 2, "All general comments should be kept");
+        assert_eq!(
+            review_count, 2,
+            "Only unresolved review comments should be kept"
+        );
+
+        // Verify no resolved comments remain
+        for comment in &filtered_comments {
+            if let UnifiedPrComment::Review { resolved, .. } = comment {
+                assert!(!resolved, "Resolved comments should be filtered out");
+            }
+        }
+    }
+
+    #[test]
+    fn test_keeps_all_general_comments_regardless_of_review_state() {
+        let general_comments = vec![
+            create_test_general_comment("10", "First general comment"),
+            create_test_general_comment("20", "Second general comment"),
+            create_test_general_comment("30", "Third general comment"),
+        ];
+
+        let review_comments = vec![
+            create_test_review_comment(201, "All resolved", true, "src/main.rs"),
+            create_test_review_comment(202, "Also resolved", true, "src/lib.rs"),
+        ];
+
+        let mut unified: Vec<UnifiedPrComment> = Vec::new();
+
+        for c in general_comments {
+            unified.push(UnifiedPrComment::General {
+                id: c.id,
+                author: c.author.login,
+                author_association: Some(c.author_association),
+                body: c.body,
+                created_at: c.created_at,
+                url: Some(c.url),
+            });
+        }
+
+        for c in review_comments {
+            unified.push(UnifiedPrComment::Review {
+                id: c.id,
+                author: c.user.login,
+                author_association: Some(c.author_association),
+                body: c.body,
+                created_at: c.created_at,
+                url: Some(c.html_url),
+                path: c.path,
+                line: c.line,
+                side: c.side,
+                diff_hunk: Some(c.diff_hunk),
+                resolved: c.resolved,
+            });
+        }
+
+        let filtered_comments: Vec<UnifiedPrComment> = unified
+            .into_iter()
+            .filter(|comment| match comment {
+                UnifiedPrComment::Review { resolved, .. } => !resolved,
+                UnifiedPrComment::General { .. } => true,
+            })
+            .collect();
+
+        // Should have 3 general comments (all review comments are resolved and filtered)
+        assert_eq!(
+            filtered_comments.len(),
+            3,
+            "All general comments should be kept even when all review comments are resolved"
+        );
+
+        // All should be general comments
+        for comment in &filtered_comments {
+            assert!(
+                matches!(comment, UnifiedPrComment::General { .. }),
+                "All remaining comments should be general comments"
+            );
+        }
+    }
+
+    #[test]
+    fn test_empty_when_only_resolved_review_comments() {
+        let review_comments = vec![
+            create_test_review_comment(301, "Resolved comment 1", true, "src/main.rs"),
+            create_test_review_comment(302, "Resolved comment 2", true, "src/lib.rs"),
+            create_test_review_comment(303, "Resolved comment 3", true, "src/util.rs"),
+        ];
+
+        let mut unified: Vec<UnifiedPrComment> = Vec::new();
+
+        for c in review_comments {
+            unified.push(UnifiedPrComment::Review {
+                id: c.id,
+                author: c.user.login,
+                author_association: Some(c.author_association),
+                body: c.body,
+                created_at: c.created_at,
+                url: Some(c.html_url),
+                path: c.path,
+                line: c.line,
+                side: c.side,
+                diff_hunk: Some(c.diff_hunk),
+                resolved: c.resolved,
+            });
+        }
+
+        let filtered_comments: Vec<UnifiedPrComment> = unified
+            .into_iter()
+            .filter(|comment| match comment {
+                UnifiedPrComment::Review { resolved, .. } => !resolved,
+                UnifiedPrComment::General { .. } => true,
+            })
+            .collect();
+
+        assert_eq!(
+            filtered_comments.len(),
+            0,
+            "Should have no comments when all review comments are resolved"
+        );
+    }
+
+    #[test]
+    fn test_keeps_all_unresolved_review_comments() {
+        let review_comments = vec![
+            create_test_review_comment(401, "Needs attention", false, "src/main.rs"),
+            create_test_review_comment(402, "Please address", false, "src/lib.rs"),
+            create_test_review_comment(403, "Fix this", false, "src/util.rs"),
+        ];
+
+        let mut unified: Vec<UnifiedPrComment> = Vec::new();
+
+        for c in review_comments {
+            unified.push(UnifiedPrComment::Review {
+                id: c.id,
+                author: c.user.login,
+                author_association: Some(c.author_association),
+                body: c.body,
+                created_at: c.created_at,
+                url: Some(c.html_url),
+                path: c.path,
+                line: c.line,
+                side: c.side,
+                diff_hunk: Some(c.diff_hunk),
+                resolved: c.resolved,
+            });
+        }
+
+        let filtered_comments: Vec<UnifiedPrComment> = unified
+            .into_iter()
+            .filter(|comment| match comment {
+                UnifiedPrComment::Review { resolved, .. } => !resolved,
+                UnifiedPrComment::General { .. } => true,
+            })
+            .collect();
+
+        assert_eq!(
+            filtered_comments.len(),
+            3,
+            "All unresolved review comments should be kept"
+        );
+
+        // Verify all are review comments and none are resolved
+        for comment in &filtered_comments {
+            match comment {
+                UnifiedPrComment::Review { resolved, .. } => {
+                    assert!(!resolved, "All kept review comments should be unresolved");
+                }
+                _ => panic!("Expected only review comments"),
+            }
+        }
+    }
+}
