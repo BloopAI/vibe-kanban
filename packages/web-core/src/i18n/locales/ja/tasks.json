@@ -112,7 +112,9 @@
     }
   },
   "followUp": {
-    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます"
+    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます",
+    "pendingBreakdown": "Steer: {{steerCount}} ・ キュー: {{queueCount}}",
+    "cancelQueueHint": "キューをキャンセルすると最新のキュー済みメッセージがエディタに戻ります"
   },
   "git": {
     "branch": {
@@ -397,6 +399,7 @@
       "sending": "送信中",
       "queue": "キューに追加",
       "cancelQueue": "キューをキャンセル",
+      "cancelQueueHint": "最新のキュー済みメッセージを取り消してエディタに戻す",
       "requestChanges": "変更を依頼",
       "approve": "承認",
       "clearReviewComments": "レビューコメントをクリア",

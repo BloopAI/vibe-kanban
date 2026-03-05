@@ -113,7 +113,9 @@
     "logsCopied": "Copié !"
   },
   "followUp": {
-    "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée"
+    "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
+    "pendingBreakdown": "Steer : {{steerCount}} · File : {{queueCount}}",
+    "cancelQueueHint": "Annuler la file restaure le dernier message en file dans l'éditeur"
   },
   "todoPopup": {
     "title": "Tâches",
@@ -146,6 +148,7 @@
       "sending": "Envoi en cours",
       "queue": "File d'attente",
       "cancelQueue": "Annuler la file",
+      "cancelQueueHint": "Retire le dernier message en file et le restaure dans l'éditeur",
       "requestChanges": "Demander des modifications",
       "approve": "Approuver",
       "clearReviewComments": "Effacer les commentaires de révision",

@@ -534,6 +534,7 @@ export function SessionChatBox<TExecutor extends string = string>({
                 onClick={actions.onCancelQueue}
                 variant="secondary"
                 value={t('conversation.actions.cancelQueue')}
+                title={t('conversation.actions.cancelQueueHint')}
                 actionIcon={XIcon}
               />
             )}
@@ -552,6 +553,7 @@ export function SessionChatBox<TExecutor extends string = string>({
             <PrimaryButton
               onClick={actions.onCancelQueue}
               value={t('conversation.actions.cancelQueue')}
+              title={t('conversation.actions.cancelQueueHint')}
               actionIcon={XIcon}
             />
             <PrimaryButton
@@ -630,16 +632,31 @@ export function SessionChatBox<TExecutor extends string = string>({
 
     // Queued message banner
     if (isQueued || queueState?.hasPendingMessages) {
+      const pendingSteerCount = queueState?.pendingSteerCount ?? 0;
+      const bufferedQueueCount = queueState?.bufferedQueueCount ?? 0;
       banners.push(
         <div
           key="queued"
           className="bg-secondary border-b px-double py-base flex items-center gap-base"
         >
           <ClockIcon className="h-4 w-4 text-low" />
-          <span className="text-sm text-low">
-            {t('followUp.queuedMessage')}
-            {queueState?.pendingCount ? ` (${queueState.pendingCount})` : ''}
-          </span>
+          <div className="flex flex-col gap-half">
+            <span className="text-sm text-low">
+              {t('followUp.queuedMessage')}
+              {queueState?.pendingCount ? ` (${queueState.pendingCount})` : ''}
+            </span>
+            <span className="text-xs text-low opacity-80">
+              {t('followUp.pendingBreakdown', {
+                steerCount: pendingSteerCount,
+                queueCount: bufferedQueueCount,
+              })}
+            </span>
+            {queueState?.hasPendingMessages && (
+              <span className="text-xs text-low opacity-80">
+                {t('followUp.cancelQueueHint')}
+              </span>
+            )}
+          </div>
         </div>
       );
     }

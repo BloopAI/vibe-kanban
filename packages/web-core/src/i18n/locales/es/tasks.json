@@ -112,7 +112,9 @@
     }
   },
   "followUp": {
-    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual"
+    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
+    "pendingBreakdown": "Steer: {{steerCount}} · Cola: {{queueCount}}",
+    "cancelQueueHint": "Cancelar cola restaura el mensaje en cola más reciente en el editor"
   },
   "git": {
     "branch": {
@@ -397,6 +399,7 @@
       "sending": "Enviando",
       "queue": "Poner en cola",
       "cancelQueue": "Cancelar cola",
+      "cancelQueueHint": "Quita el último mensaje en cola y lo restaura en el editor",
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",

@@ -116,7 +116,9 @@
     "logsCopied": "已复制！"
   },
   "followUp": {
-    "queuedMessage": "消息已排队 - 将在当前运行完成时执行"
+    "queuedMessage": "消息已排队 - 将在当前运行完成时执行",
+    "pendingBreakdown": "即时指导：{{steerCount}} · 缓冲队列：{{queueCount}}",
+    "cancelQueueHint": "“取消队列”会将最近一条排队消息回填到输入框"
   },
   "todoPopup": {
     "title": "任务",
@@ -397,6 +399,7 @@
       "sending": "发送中",
       "queue": "加入队列",
       "cancelQueue": "取消队列",
+      "cancelQueueHint": "移除最近一条排队消息并恢复到输入框",
       "requestChanges": "请求更改",
       "approve": "批准",
       "clearReviewComments": "清除审查评论",

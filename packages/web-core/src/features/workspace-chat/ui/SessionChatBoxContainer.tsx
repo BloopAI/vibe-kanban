@@ -617,12 +617,20 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle cancel queue - restore message to editor
   const handleCancelQueue = useCallback(async () => {
+    if (isQueueLoading || (!isQueued && pendingCount === 0)) return;
     const cancelled = await cancelQueue();
     if (cancelled) {
       setLocalMessage(cancelled.data.message);
       setExecutorOverrides(cancelled.data.executor_config);
     }
-  }, [cancelQueue, setLocalMessage, setExecutorOverrides]);
+  }, [
+    isQueueLoading,
+    isQueued,
+    pendingCount,
+    cancelQueue,
+    setLocalMessage,
+    setExecutorOverrides,
+  ]);
 
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
