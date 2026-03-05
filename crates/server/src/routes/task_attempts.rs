@@ -56,7 +56,7 @@ use sqlx::Error as SqlxError;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
-use workspace_manager::{WorkspaceError as WorkspaceManagerError, WorkspaceManager};
+use workspace_manager::WorkspaceManager;
 
 use crate::{
     DeploymentImpl,
@@ -134,32 +134,6 @@ pub struct AddWorkspaceRepoRequest {
 pub struct AddWorkspaceRepoResponse {
     pub workspace: Workspace,
     pub repo: RepoWithTargetBranch,
-}
-
-fn map_add_repo_error(err: WorkspaceManagerError) -> ApiError {
-    match err {
-        WorkspaceManagerError::Database(err) => ApiError::Database(err),
-        WorkspaceManagerError::Repo(err) => ApiError::Repo(err),
-        WorkspaceManagerError::GitService(err) => ApiError::GitService(err),
-        WorkspaceManagerError::WorkspaceNotFound => {
-            ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
-        }
-        WorkspaceManagerError::RepoAlreadyAttached => {
-            ApiError::Conflict("Repository already attached to workspace".to_string())
-        }
-        WorkspaceManagerError::BranchNotFound { repo_name, branch } => {
-            ApiError::BadRequest(format!(
-                "Branch '{}' does not exist in repository '{}'",
-                branch, repo_name
-            ))
-        }
-        WorkspaceManagerError::Worktree(err) => ApiError::Worktree(err),
-        WorkspaceManagerError::Io(err) => ApiError::Io(err),
-        WorkspaceManagerError::NoRepositories => {
-            ApiError::BadRequest("Workspace has no repositories configured".to_string())
-        }
-        WorkspaceManagerError::PartialCreation(msg) => ApiError::Conflict(msg),
-    }
 }
 
 pub async fn get_task_attempts(
@@ -1634,7 +1608,7 @@ pub async fn add_workspace_repo(
     managed_workspace
         .add_repository(&repo_input, deployment.git())
         .await
-        .map_err(map_add_repo_error)?;
+        .map_err(ApiError::from)?;
 
     deployment
         .container()
@@ -2003,7 +1977,7 @@ pub async fn create_and_start_workspace(
         managed_workspace
             .add_repository(repo, deployment.git())
             .await
-            .map_err(map_add_repo_error)?;
+            .map_err(ApiError::from)?;
     }
 
     // Associate user-uploaded images with the workspace

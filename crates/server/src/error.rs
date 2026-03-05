@@ -25,6 +25,7 @@ use services::services::{
 use thiserror::Error;
 use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
+use workspace_manager::WorkspaceError as WorkspaceManagerError;
 use worktree_manager::WorktreeError;
 
 #[derive(Debug, Error, ts_rs::TS)]
@@ -99,6 +100,34 @@ impl From<Git2Error> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<WorkspaceManagerError> for ApiError {
+    fn from(err: WorkspaceManagerError) -> Self {
+        match err {
+            WorkspaceManagerError::Database(err) => ApiError::Database(err),
+            WorkspaceManagerError::Repo(err) => ApiError::Repo(err),
+            WorkspaceManagerError::Worktree(err) => ApiError::Worktree(err),
+            WorkspaceManagerError::GitService(err) => ApiError::GitService(err),
+            WorkspaceManagerError::Io(err) => ApiError::Io(err),
+            WorkspaceManagerError::WorkspaceNotFound => {
+                ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
+            }
+            WorkspaceManagerError::RepoAlreadyAttached => {
+                ApiError::Conflict("Repository already attached to workspace".to_string())
+            }
+            WorkspaceManagerError::BranchNotFound { repo_name, branch } => {
+                ApiError::BadRequest(format!(
+                    "Branch '{}' does not exist in repository '{}'",
+                    branch, repo_name
+                ))
+            }
+            WorkspaceManagerError::NoRepositories => {
+                ApiError::BadRequest("Workspace has no repositories configured".to_string())
+            }
+            WorkspaceManagerError::PartialCreation(msg) => ApiError::Conflict(msg),
+        }
     }
 }
 
