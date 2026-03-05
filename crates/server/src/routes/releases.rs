@@ -13,8 +13,10 @@ use crate::DeploymentImpl;
 const CACHE_TTL: Duration = Duration::from_secs(15 * 60);
 const GITHUB_API_URL: &str = "https://api.github.com/repos/BloopAI/vibe-kanban/releases";
 
+type ReleasesCache = RwLock<Option<(Vec<GitHubRelease>, Instant)>>;
+
 static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
-static RELEASES_CACHE: OnceLock<RwLock<Option<(Vec<GitHubRelease>, Instant)>>> = OnceLock::new();
+static RELEASES_CACHE: OnceLock<ReleasesCache> = OnceLock::new();
 
 fn client() -> &'static Client {
     HTTP_CLIENT.get_or_init(|| {
@@ -59,12 +61,12 @@ async fn get_releases() -> ResponseJson<utils::response::ApiResponse<ReleasesRes
     // Check cache
     {
         let guard = cache().read().await;
-        if let Some((releases, fetched_at)) = guard.as_ref() {
-            if fetched_at.elapsed() < CACHE_TTL {
-                return ResponseJson(utils::response::ApiResponse::success(ReleasesResponse {
-                    releases: releases.clone(),
-                }));
-            }
+        if let Some((releases, fetched_at)) = guard.as_ref()
+            && fetched_at.elapsed() < CACHE_TTL
+        {
+            return ResponseJson(utils::response::ApiResponse::success(ReleasesResponse {
+                releases: releases.clone(),
+            }));
         }
     }
 
