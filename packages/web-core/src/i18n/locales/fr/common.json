@@ -388,7 +388,7 @@
     "copyLink": "Copier le lien",
     "issueTitlePlaceholder": "Titre du ticket...",
     "issueDescriptionPlaceholder": "Entrez la description de la tâche...",
-    "createDraftWorkspaceImmediately": "Démarrer la configuration du workspace",
+    "createDraftWorkspaceImmediately": "Créer immédiatement un espace de travail brouillon",
     "createDraftWorkspaceDescription": "Après la création de l'issue, ouvrir le formulaire de création de workspace pré-rempli avec les détails de l'issue",
     "createIssue": "Créer la tâche",
     "newIssue": "Nouveau ticket",

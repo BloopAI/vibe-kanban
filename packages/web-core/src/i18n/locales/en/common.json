@@ -402,7 +402,7 @@
     "copyLink": "Copy link",
     "issueTitlePlaceholder": "Issue Title...",
     "issueDescriptionPlaceholder": "Enter task description here...",
-    "createDraftWorkspaceImmediately": "Start workspace setup",
+    "createDraftWorkspaceImmediately": "Create draft workspace immediately",
     "createDraftWorkspaceDescription": "After creating the issue, open the workspace creation form pre-filled with the issue details",
     "createIssue": "Create Issue",
     "newIssue": "New Issue",

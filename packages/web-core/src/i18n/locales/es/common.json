@@ -388,7 +388,7 @@
     "copyLink": "Copiar enlace",
     "issueTitlePlaceholder": "Título del issue...",
     "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
-    "createDraftWorkspaceImmediately": "Iniciar configuración del workspace",
+    "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
     "createDraftWorkspaceDescription": "Después de crear la incidencia, abrir el formulario de creación de workspace con los datos de la incidencia",
     "createIssue": "Crear tarea",
     "newIssue": "Nuevo issue",

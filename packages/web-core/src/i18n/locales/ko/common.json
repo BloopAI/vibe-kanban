@@ -388,7 +388,7 @@
     "copyLink": "링크 복사",
     "issueTitlePlaceholder": "이슈 제목...",
     "issueDescriptionPlaceholder": "작업 설명을 입력하세요...",
-    "createDraftWorkspaceImmediately": "워크스페이스 설정 시작",
+    "createDraftWorkspaceImmediately": "초안 워크스페이스를 즉시 생성",
     "createDraftWorkspaceDescription": "이슈를 생성한 후, 이슈 세부 정보가 미리 입력된 워크스페이스 생성 양식을 엽니다",
     "createIssue": "작업 생성",
     "newIssue": "새 이슈",

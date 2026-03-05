@@ -365,23 +365,23 @@ export function CreateModeRepoPickerBar({
               {t('createMode.repoPicker.setupHintTitle')}
             </p>
             <p className="mt-quarter text-sm text-low">
-              {t('createMode.repoPicker.setupHint')}{' '}
-              <button
-                type="button"
-                className="cursor-pointer font-medium text-brand underline hover:text-brand/80"
-                onClick={() => {
-                  const unconfiguredRepo = repos.find(
-                    (repo) => !repo.setup_script
-                  );
-                  SettingsDialog.show({
-                    initialSection: 'repos',
-                    initialState: { repoId: unconfiguredRepo?.id },
-                  });
-                }}
-              >
-                {t('createMode.repoPicker.setupHintLink')}
-              </button>
+              {t('createMode.repoPicker.setupHint')}
             </p>
+            <button
+              type="button"
+              className="mt-quarter cursor-pointer text-sm font-medium text-brand underline hover:text-brand/80"
+              onClick={() => {
+                const unconfiguredRepo = repos.find(
+                  (repo) => !repo.setup_script
+                );
+                SettingsDialog.show({
+                  initialSection: 'repos',
+                  initialState: { repoId: unconfiguredRepo?.id },
+                });
+              }}
+            >
+              {t('createMode.repoPicker.setupHintLink')}
+            </button>
           </div>
           <button
             type="button"
