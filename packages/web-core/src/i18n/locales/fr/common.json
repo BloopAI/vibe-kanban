@@ -19,7 +19,8 @@
     "discard": "Abandonner",
     "addItem": "Ajouter un élément",
     "reply": "Répondre",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Ajouter"
   },
   "form": {
     "notSpecified": "Non spécifié",

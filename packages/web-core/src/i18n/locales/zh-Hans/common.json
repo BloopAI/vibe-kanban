@@ -19,7 +19,8 @@
     "discard": "放弃",
     "addItem": "添加项目",
     "reply": "回复",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "添加"
   },
   "form": {
     "notSpecified": "未指定",

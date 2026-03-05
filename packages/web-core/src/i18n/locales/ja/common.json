@@ -38,7 +38,8 @@
     "send": "送信",
     "addItem": "項目を追加",
     "reply": "返信",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "追加"
   },
   "form": {
     "notSpecified": "指定なし",

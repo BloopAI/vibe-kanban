@@ -38,7 +38,8 @@
     "send": "Enviar",
     "addItem": "Añadir elemento",
     "reply": "Responder",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Agregar"
   },
   "form": {
     "notSpecified": "No especificado",

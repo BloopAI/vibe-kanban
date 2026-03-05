@@ -438,9 +438,9 @@ export function ReposSettingsSection({
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <PrimaryButton variant="tertiary" onClick={handleAddRepo}>
+            <PrimaryButton variant="default" onClick={handleAddRepo}>
               <PlusIcon className="size-icon-sm" weight="bold" />
-              {t('settings.repos.addRepo.button')}
+              {t('common:buttons.add')}
             </PrimaryButton>
           </div>
         </SettingsField>

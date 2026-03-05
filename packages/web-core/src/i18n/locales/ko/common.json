@@ -38,7 +38,8 @@
     "send": "보내기",
     "addItem": "항목 추가",
     "reply": "답장",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "추가"
   },
   "form": {
     "notSpecified": "지정되지 않음",

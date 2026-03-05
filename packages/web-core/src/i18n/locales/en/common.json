@@ -19,7 +19,8 @@
     "discard": "Discard",
     "addItem": "Add Item",
     "reply": "Reply",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Add"
   },
   "form": {
     "notSpecified": "Not specified",
