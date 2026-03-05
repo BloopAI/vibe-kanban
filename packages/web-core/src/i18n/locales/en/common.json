@@ -521,6 +521,7 @@
         "browse": "Browse",
         "create": "Create"
       },
+      "setupHintTitle": "Setup Scripts",
       "setupHint": "Tip: Configure setup scripts for this repository in Settings → Repositories",
       "setupHintDismiss": "Dismiss",
       "setupHintLink": "Configure in Settings"

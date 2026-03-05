@@ -507,6 +507,7 @@
         "browse": "参照",
         "create": "作成"
       },
+      "setupHintTitle": "セットアップスクリプト",
       "setupHint": "ヒント: このリポジトリのセットアップスクリプトは設定 → リポジトリで構成できます",
       "setupHintDismiss": "閉じる",
       "setupHintLink": "Configure in Settings"

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ClockCounterClockwiseIcon,
   GitBranchIcon,
@@ -73,6 +74,7 @@ export function CreateModeRepoPickerBar({
   onContinueToPrompt,
 }: CreateModeRepoPickerBarProps) {
   const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const { repos, targetBranches, addRepo, removeRepo, setTargetBranch } =
     useCreateMode();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
@@ -193,6 +195,7 @@ export function CreateModeRepoPickerBar({
         if (!selectedPath) return;
 
         const repo = await repoApi.register({ path: selectedPath });
+        queryClient.invalidateQueries({ queryKey: ['repos'] });
         await addRepoWithBranchSelection(repo);
       },
       'Failed to register repository'
@@ -215,6 +218,7 @@ export function CreateModeRepoPickerBar({
               parent_path: parentPath,
               folder_name: folderName,
             });
+            queryClient.invalidateQueries({ queryKey: ['repos'] });
             await addRepoWithBranchSelection(repo);
           },
         });
@@ -355,17 +359,30 @@ export function CreateModeRepoPickerBar({
         </div>
       </div>
       {showSetupHint && (
-        <div className="mx-plusfifty mt-half flex items-start gap-half rounded-sm border border-brand/20 bg-brand/5 px-base py-half">
-          <p className="flex-1 text-xs text-low">
-            {t('createMode.repoPicker.setupHint')}{' '}
-            <button
-              type="button"
-              className="cursor-pointer text-brand underline hover:text-brand/80"
-              onClick={() => SettingsDialog.show({ initialSection: 'repos' })}
-            >
-              {t('createMode.repoPicker.setupHintLink')}
-            </button>
-          </p>
+        <div className="mx-plusfifty mt-half flex items-start gap-half rounded-sm border border-brand/20 bg-brand/5 px-base py-base">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-normal">
+              {t('createMode.repoPicker.setupHintTitle')}
+            </p>
+            <p className="mt-quarter text-sm text-low">
+              {t('createMode.repoPicker.setupHint')}{' '}
+              <button
+                type="button"
+                className="cursor-pointer font-medium text-brand underline hover:text-brand/80"
+                onClick={() => {
+                  const unconfiguredRepo = repos.find(
+                    (repo) => !repo.setup_script
+                  );
+                  SettingsDialog.show({
+                    initialSection: 'repos',
+                    initialState: { repoId: unconfiguredRepo?.id },
+                  });
+                }}
+              >
+                {t('createMode.repoPicker.setupHintLink')}
+              </button>
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setSetupHintDismissed(true)}

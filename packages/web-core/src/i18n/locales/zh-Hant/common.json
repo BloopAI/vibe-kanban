@@ -507,6 +507,7 @@
         "browse": "瀏覽",
         "create": "建立"
       },
+      "setupHintTitle": "設定腳本",
       "setupHint": "提示：在設定 → 儲存庫中為此儲存庫設定安裝腳本",
       "setupHintDismiss": "關閉",
       "setupHintLink": "Configure in Settings"

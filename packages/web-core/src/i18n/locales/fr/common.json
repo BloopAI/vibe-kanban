@@ -507,6 +507,7 @@
         "browse": "Parcourir",
         "create": "Créer"
       },
+      "setupHintTitle": "Scripts de Configuration",
       "setupHint": "Astuce : Configurez les scripts d'installation pour ce dépôt dans Paramètres → Dépôts",
       "setupHintDismiss": "Fermer",
       "setupHintLink": "Configure in Settings"
