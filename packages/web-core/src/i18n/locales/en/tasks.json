@@ -357,6 +357,8 @@
     "loadingBranches": "Loading branches...",
     "selectBaseBranch": "Select base branch",
     "draftLabel": "Create as draft",
+    "emptyPrLabel": "Create empty PR",
+    "emptyPrDescription": "Create a PR with empty title and description (you can update it later)",
     "autoGenerateLabel": "Auto-generate PR description with AI",
     "creating": "Creating...",
     "createButton": "Create PR",
