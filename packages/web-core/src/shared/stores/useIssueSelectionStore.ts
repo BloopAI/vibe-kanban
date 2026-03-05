@@ -32,11 +32,16 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
     orderedIssueIds: [],
 
     toggleIssue: (issueId: string) => {
-      const { selectedIssueIds } = get();
+      const { selectedIssueIds, anchorIssueId } = get();
       const next = new Set(selectedIssueIds);
       if (next.has(issueId)) {
         next.delete(issueId);
       } else {
+        // When starting multi-select from an opened issue, include the
+        // anchor (the opened issue) so both end up selected.
+        if (next.size === 0 && anchorIssueId && anchorIssueId !== issueId) {
+          next.add(anchorIssueId);
+        }
         next.add(issueId);
       }
       set({
