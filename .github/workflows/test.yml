@@ -80,6 +80,7 @@ jobs:
               - '.github/actions/**'
             backend-remote:
               - 'crates/remote/**'
+              - 'crates/relay-tunnel/**'
               - 'crates/api-types/**'
               - 'crates/utils/**'
               - 'Cargo.toml'
@@ -180,6 +181,7 @@ jobs:
       - name: Check remote Cargo.lock is consistent
         run: |
           cargo metadata --locked --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null
+          cargo metadata --locked --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null
 
       - name: Check generated types
         run: npm run remote:generate-types:check
