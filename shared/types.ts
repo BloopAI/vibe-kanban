@@ -633,7 +633,7 @@ export type ReasoningSummary = "auto" | "concise" | "detailed" | "none";
 
 export type ReasoningSummaryFormat = "none" | "experimental";
 
-export type CursorAgent = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
+export type CursorAgent = { append_prompt: AppendPrompt, force?: boolean | null, model?: string | null, reasoning?: string | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 
 export type Copilot = { append_prompt: AppendPrompt, model?: string | null, allow_all_tools?: boolean | null, allow_tool?: string | null, deny_tool?: string | null, add_dir?: Array<string> | null, disable_mcp_server?: Array<string> | null, base_command_override?: string | null, additional_params?: Array<string> | null, env?: { [key in string]?: string } | null, };
 

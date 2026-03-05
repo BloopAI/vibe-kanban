@@ -31,7 +31,7 @@ use crate::{
             ConversationPatch, EntryIndexProvider, patch, shell_command_parsing::CommandCategory,
         },
     },
-    model_selector::{ModelInfo, ModelSelectorConfig},
+    model_selector::{ModelInfo, ModelSelectorConfig, ReasoningOption},
     profile::ExecutorConfig,
 };
 
@@ -47,16 +47,93 @@ pub struct CursorAgent {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
-        description = "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1, composer-1.5"
+        description = "auto, opus-4.6, opus-4.6-thinking, sonnet-4.6, sonnet-4.6-thinking, gpt-5.2, gpt-5.3-codex, grok, composer-1, composer-1.5, gemini-3.1-pro"
     )]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning: Option<String>,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
+}
+
+// get the model full name
+fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>) -> &'a str {
+    match (base_model, reasoning) {
+        ("gpt-5.3-codex", Some("low")) => "gpt-5.3-codex-low",
+        ("gpt-5.3-codex", Some("medium")) => "gpt-5.3-codex",
+        ("gpt-5.3-codex", Some("high") | None) => "gpt-5.3-codex-high",
+        ("gpt-5.3-codex", Some("xhigh")) => "gpt-5.3-codex-xhigh",
+
+        ("gpt-5.3-codex-fast", Some("low")) => "gpt-5.3-codex-low-fast",
+        ("gpt-5.3-codex-fast", Some("medium")) => "gpt-5.3-codex-fast",
+        ("gpt-5.3-codex-fast", Some("high") | None) => "gpt-5.3-codex-high-fast",
+        ("gpt-5.3-codex-fast", Some("xhigh")) => "gpt-5.3-codex-xhigh-fast",
+
+        ("gpt-5.2-codex", Some("low")) => "gpt-5.2-codex-low",
+        ("gpt-5.2-codex", Some("medium")) => "gpt-5.2-codex",
+        ("gpt-5.2-codex", Some("high") | None) => "gpt-5.2-codex-high",
+        ("gpt-5.2-codex", Some("xhigh")) => "gpt-5.2-codex-xhigh",
+
+        ("gpt-5.2-codex-fast", Some("low")) => "gpt-5.2-codex-low-fast",
+        ("gpt-5.2-codex-fast", Some("medium")) => "gpt-5.2-codex-fast",
+        ("gpt-5.2-codex-fast", Some("high") | None) => "gpt-5.2-codex-high-fast",
+        ("gpt-5.2-codex-fast", Some("xhigh")) => "gpt-5.2-codex-xhigh-fast",
+
+        ("gpt-5.2", Some("medium")) => "gpt-5.2",
+        ("gpt-5.2", Some("high") | None) => "gpt-5.2-high",
+
+        ("gpt-5.1-codex-max", Some("medium")) => "gpt-5.1-codex-max",
+        ("gpt-5.1-codex-max", Some("high") | None) => "gpt-5.1-codex-max-high",
+
+        ("gpt-5.1", Some("medium")) => "gpt-5.1",
+        ("gpt-5.1", Some("high") | None) => "gpt-5.1-high",
+
+        ("opus-4.6", Some("standard")) => "opus-4.6",
+        ("opus-4.6", Some("thinking") | None) => "opus-4.6-thinking",
+        ("sonnet-4.6", Some("standard")) => "sonnet-4.6",
+        ("sonnet-4.6", Some("thinking") | None) => "sonnet-4.6-thinking",
+        ("opus-4.5", Some("standard")) => "opus-4.5",
+        ("opus-4.5", Some("thinking") | None) => "opus-4.5-thinking",
+        ("sonnet-4.5", Some("standard")) => "sonnet-4.5",
+        ("sonnet-4.5", Some("thinking") | None) => "sonnet-4.5-thinking",
+
+        _ => base_model,
+    }
+}
+
+fn cursor_reasoning_options(base_model: &str) -> Vec<ReasoningOption> {
+    match base_model {
+        "gpt-5.3-codex" | "gpt-5.3-codex-fast" | "gpt-5.2-codex" | "gpt-5.2-codex-fast" => {
+            ReasoningOption::from_names(["low", "medium", "high", "xhigh"].map(String::from))
+        }
+        "gpt-5.2" | "gpt-5.1-codex-max" | "gpt-5.1" => {
+            ReasoningOption::from_names(["medium", "high"].map(String::from))
+        }
+        "opus-4.6" | "sonnet-4.6" | "opus-4.5" | "sonnet-4.5" => vec![
+            ReasoningOption {
+                id: "standard".to_string(),
+                label: "Standard".to_string(),
+                is_default: false,
+            },
+            ReasoningOption {
+                id: "thinking".to_string(),
+                label: "Thinking".to_string(),
+                is_default: true,
+            },
+        ],
+        _ => vec![],
+    }
 }
 
 impl CursorAgent {
     pub fn base_command() -> &'static str {
         "cursor-agent"
+    }
+
+    fn resolved_model(&self) -> Option<&str> {
+        self.model
+            .as_deref()
+            .map(|base| resolve_cursor_model_name(base, self.reasoning.as_deref()))
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -70,7 +147,7 @@ impl CursorAgent {
             builder = builder.extend_params(["--trust"]);
         }
 
-        if let Some(model) = &self.model {
+        if let Some(model) = self.resolved_model() {
             builder = builder.extend_params(["--model", model]);
         }
 
@@ -83,6 +160,9 @@ impl StandardCodingAgentExecutor for CursorAgent {
     fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
         if let Some(model_id) = &executor_config.model_id {
             self.model = Some(model_id.clone());
+        }
+        if let Some(reasoning_id) = &executor_config.reasoning_id {
+            self.reasoning = Some(reasoning_id.clone());
         }
         if let Some(permission_policy) = executor_config.permission_policy.clone() {
             self.force = Some(matches!(
@@ -545,7 +625,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
-            reasoning_id: None,
+            reasoning_id: self.reasoning.clone(),
             permission_policy: Some(crate::model_selector::PermissionPolicy::Auto),
         }
     }
@@ -555,32 +635,41 @@ impl StandardCodingAgentExecutor for CursorAgent {
         _workdir: Option<&std::path::Path>,
         _repo_path: Option<&std::path::Path>,
     ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let models: Vec<ModelInfo> = [
+            ("auto", "Auto"),
+            ("composer-1.5", "Composer 1.5"),
+            ("gemini-3.1-pro", "Gemini 3.1 Pro"),
+            ("opus-4.6", "Claude 4.6 Opus"),
+            ("sonnet-4.6", "Claude 4.6 Sonnet"),
+            ("gpt-5.3-codex", "GPT-5.3 Codex"),
+            ("gpt-5.3-codex-fast", "GPT-5.3 Codex Fast"),
+            ("gpt-5.3-codex-spark-preview", "GPT-5.3 Codex Spark"),
+            ("kimi-k2.5", "Kimi K2.5"),
+            ("opus-4.5", "Claude 4.5 Opus"),
+            ("sonnet-4.5", "Claude 4.5 Sonnet"),
+            ("gemini-3-pro", "Gemini 3 Pro"),
+            ("gemini-3-flash", "Gemini 3 Flash"),
+            ("gpt-5.2-codex", "GPT-5.2 Codex"),
+            ("gpt-5.2-codex-fast", "GPT-5.2 Codex Fast"),
+            ("gpt-5.2", "GPT-5.2"),
+            ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
+            ("gpt-5.1", "GPT-5.1"),
+            ("gpt-5.1-codex-mini", "GPT-5.1 Codex Mini"),
+            ("grok", "Grok"),
+            ("composer-1", "Composer 1"),
+        ]
+        .into_iter()
+        .map(|(id, name)| ModelInfo {
+            id: id.to_string(),
+            name: name.to_string(),
+            provider_id: None,
+            reasoning_options: cursor_reasoning_options(id),
+        })
+        .collect();
+
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
-                models: [
-                    ("auto", "Auto"),
-                    ("composer-1.5", "Composer 1.5"),
-                    ("gpt-5.1-codex-max", "GPT-5.1 Codex Max"),
-                    ("gpt-5.1-codex-max-high", "GPT-5.1 Codex Max High"),
-                    ("gpt-5.2", "GPT-5.2"),
-                    ("opus-4.5-thinking", "Opus 4.5 Thinking"),
-                    ("gpt-5.2-high", "GPT-5.2 High"),
-                    ("gemini-3-pro", "Gemini 3 Pro"),
-                    ("opus-4.5", "Opus 4.5"),
-                    ("sonnet-4.5", "Sonnet 4.5"),
-                    ("sonnet-4.5-thinking", "Sonnet 4.5 Thinking"),
-                    ("gemini-3-flash", "Gemini 3 Flash"),
-                    ("grok", "Grok"),
-                    ("composer-1", "Composer 1"),
-                ]
-                .into_iter()
-                .map(|(id, name)| ModelInfo {
-                    id: id.to_string(),
-                    name: name.to_string(),
-                    provider_id: None,
-                    reasoning_options: vec![],
-                })
-                .collect(),
+                models,
                 default_model: Some("auto".to_string()),
                 ..Default::default()
             },
@@ -1306,10 +1395,10 @@ mod tests {
     async fn test_cursor_streaming_patch_generation() {
         // Avoid relying on feature flag in tests; construct with a dummy command
         let executor = CursorAgent {
-            // No command field needed anymore
             append_prompt: AppendPrompt::default(),
             force: None,
             model: None,
+            reasoning: None,
             cmd: Default::default(),
         };
         let msg_store = Arc::new(MsgStore::new());
