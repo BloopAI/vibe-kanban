@@ -69,7 +69,7 @@ impl IssueCommentReactionRepository {
         user_id: Uuid,
         emoji: String,
     ) -> Result<MutationResponse<IssueCommentReaction>, IssueCommentReactionError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let id = id.unwrap_or_else(Uuid::new_v4);
         let created_at = Utc::now();
         let data = sqlx::query_as!(
@@ -105,7 +105,7 @@ impl IssueCommentReactionRepository {
         id: Uuid,
         emoji: Option<String>,
     ) -> Result<MutationResponse<IssueCommentReaction>, IssueCommentReactionError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let data = sqlx::query_as!(
             IssueCommentReaction,
             r#"
@@ -135,7 +135,7 @@ impl IssueCommentReactionRepository {
         pool: &PgPool,
         id: Uuid,
     ) -> Result<DeleteResponse, IssueCommentReactionError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM issue_comment_reactions WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;

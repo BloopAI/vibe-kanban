@@ -64,14 +64,16 @@ pub fn router(state: AppState) -> Router {
                     "http_request",
                     method = %request.method(),
                     uri = %request.uri(),
-                    request_id = field::Empty
+                    request_id = field::Empty,
+                    user_id = field::Empty
                 )
             } else {
                 tracing::debug_span!(
                     "http_request",
                     method = %request.method(),
                     uri = %request.uri(),
-                    request_id = field::Empty
+                    request_id = field::Empty,
+                    user_id = field::Empty
                 )
             };
             if let Some(request_id) = request_id {

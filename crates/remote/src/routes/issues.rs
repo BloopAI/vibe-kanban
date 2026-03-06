@@ -316,7 +316,7 @@ async fn update_issue(
     let organization_id =
         ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
@@ -471,7 +471,7 @@ async fn bulk_update_issues(
     let project_id = first_issue.project_id;
     let organization_id = ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
