@@ -12,7 +12,7 @@ on:
         type: string
 
 env:
-  NODE_VERSION: '18'
+  NODE_VERSION: '22'
   PNPM_VERSION: '10.13.1'
 
 jobs:
