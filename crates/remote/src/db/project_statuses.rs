@@ -95,7 +95,7 @@ impl ProjectStatusRepository {
         sort_order: i32,
         hidden: bool,
     ) -> Result<MutationResponse<ProjectStatus>, ProjectStatusError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let id = id.unwrap_or_else(Uuid::new_v4);
         let created_at = Utc::now();
         let data = sqlx::query_as!(
@@ -138,7 +138,7 @@ impl ProjectStatusRepository {
         sort_order: Option<i32>,
         hidden: Option<bool>,
     ) -> Result<MutationResponse<ProjectStatus>, ProjectStatusError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let data = sqlx::query_as!(
             ProjectStatus,
             r#"
@@ -173,7 +173,7 @@ impl ProjectStatusRepository {
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, ProjectStatusError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM project_statuses WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;

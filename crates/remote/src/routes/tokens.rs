@@ -10,6 +10,7 @@ use tracing::{info, warn};
 
 use crate::{
     AppState,
+    audit::{self, AuditAction, AuditEvent},
     auth::{JwtError, OAuthTokenValidationError},
     db::{
         auth::{AuthSessionError, AuthSessionRepository},
@@ -110,6 +111,13 @@ pub async fn refresh_token(
             revoked_sessions = revoked_count,
             "Refresh token reuse detected. Revoked all user sessions."
         );
+        audit::emit(
+            AuditEvent::system(AuditAction::AuthTokenReuseDetected)
+                .user(token_details.user_id, Some(token_details.session_id))
+                .resource("auth_session", Some(token_details.session_id))
+                .http("POST", "/v1/tokens/refresh", 401)
+                .description(format!("{revoked_count} sessions revoked")),
+        );
         return Err(TokenRefreshError::TokenReuseDetected);
     }
 
@@ -171,10 +179,26 @@ pub async fn refresh_token(
                 revoked_sessions = revoked_count,
                 "Detected concurrent refresh attempt; revoked all user sessions"
             );
+            audit::emit(
+                AuditEvent::system(AuditAction::AuthTokenReuseDetected)
+                    .user(token_details.user_id, Some(token_details.session_id))
+                    .resource("auth_session", Some(token_details.session_id))
+                    .http("POST", "/v1/tokens/refresh", 401)
+                    .description(format!(
+                        "{revoked_count} sessions revoked (concurrent reuse)"
+                    )),
+            );
             return Err(TokenRefreshError::TokenReuseDetected);
         }
         Err(error) => return Err(TokenRefreshError::SessionError(error)),
     }
+
+    audit::emit(
+        AuditEvent::system(AuditAction::AuthTokenRefresh)
+            .user(token_details.user_id, Some(token_details.session_id))
+            .resource("auth_session", Some(token_details.session_id))
+            .http("POST", "/v1/tokens/refresh", 200),
+    );
 
     Ok(Json(TokenRefreshResponse {
         access_token: tokens.access_token,

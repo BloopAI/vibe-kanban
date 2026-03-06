@@ -260,7 +260,7 @@ async fn bulk_update_project_statuses(
     let project_id = first_status.project_id;
     ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;

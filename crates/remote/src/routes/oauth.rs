@@ -18,6 +18,7 @@ use uuid::Uuid;
 
 use crate::{
     AppState,
+    audit::{self, AuditAction, AuditEvent},
     auth::{CallbackResult, HandoffError, RequestContext},
     db::{oauth::OAuthHandoffError, oauth_accounts::OAuthAccountRepository},
 };
@@ -67,7 +68,6 @@ pub async fn web_redeem(
     Json(payload): Json<HandoffRedeemRequest>,
 ) -> Response {
     let handoff = state.handoff();
-
     match handoff
         .redeem(payload.handoff_id, &payload.app_code, &payload.app_verifier)
         .await
@@ -80,6 +80,14 @@ pub async fn web_redeem(
                     serde_json::json!({ "email": result.email }),
                 );
             }
+
+            audit::emit(
+                AuditEvent::system(AuditAction::AuthLogin)
+                    .user(result.user_id, None)
+                    .resource("auth_session", None)
+                    .http("POST", "/v1/oauth/web/redeem", 200)
+                    .description("User logged in via OAuth"),
+            );
 
             (
                 StatusCode::OK,
@@ -222,17 +230,26 @@ pub async fn logout(
 
     let repo = AuthSessionRepository::new(state.pool());
 
-    match repo.revoke(ctx.session_id).await {
-        Ok(_) | Err(AuthSessionError::NotFound) => StatusCode::NO_CONTENT.into_response(),
+    let (response, status) = match repo.revoke(ctx.session_id).await {
+        Ok(_) | Err(AuthSessionError::NotFound) => (StatusCode::NO_CONTENT.into_response(), 204u16),
         Err(AuthSessionError::Database(error)) => {
             warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR.into_response(), 500u16)
         }
         Err(error) => {
             warn!(?error, session_id = %ctx.session_id, "failed to revoke auth session");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR.into_response(), 500u16)
         }
-    }
+    };
+
+    audit::emit(
+        AuditEvent::from_request(&ctx, AuditAction::AuthLogout)
+            .resource("auth_session", Some(ctx.session_id))
+            .http("POST", "/v1/oauth/logout", status)
+            .description("User logged out"),
+    );
+
+    response
 }
 
 fn init_error_response(error: HandoffError) -> Response {
