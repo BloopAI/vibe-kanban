@@ -2,6 +2,15 @@
 name = "mcp"
 version = "0.1.25"
 edition = "2024"
+autobins = false
+
+[[bin]]
+name = "mcp_task_server"
+path = "src/bin/mcp_task_server.rs"
+
+[[bin]]
+name = "workspace-mcp"
+path = "src/bin/workspace_mcp.rs"
 
 [lints.clippy]
 uninlined-format-args = "allow"
