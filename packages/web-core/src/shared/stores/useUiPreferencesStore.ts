@@ -311,7 +311,6 @@ type State = {
   isLeftSidebarVisible: boolean;
   isRightSidebarVisible: boolean;
   isTerminalVisible: boolean;
-  isAppBarHovered: boolean;
   previewRefreshKey: number;
   // Note: Kanban issue panel state (selectedKanbanIssueId, createMode, etc.)
   // is derived from URL via app navigation route state
@@ -420,7 +419,6 @@ type State = {
 
   // Mobile tab actions
   setMobileActiveTab: (tab: MobileTab) => void;
-  setAppBarHovered: (value: boolean) => void;
 
   // Mobile font scale actions
   setMobileFontScale: (scale: MobileFontScale) => void;
@@ -445,7 +443,6 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   isLeftSidebarVisible: true,
   isRightSidebarVisible: true,
   isTerminalVisible: true,
-  isAppBarHovered: false,
   previewRefreshKey: 0,
 
   // Workspace-specific panel state
@@ -781,7 +778,6 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
 
   // Mobile tab actions
   setMobileActiveTab: (tab) => set({ mobileActiveTab: tab }),
-  setAppBarHovered: (value) => set({ isAppBarHovered: value }),
 
   // Mobile font scale actions
   setMobileFontScale: (scale) => {

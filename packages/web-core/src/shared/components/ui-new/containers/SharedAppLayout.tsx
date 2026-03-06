@@ -35,6 +35,10 @@ import {
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
+import {
+  WorkspaceSidebarHoverProvider,
+  useWorkspaceSidebarHover,
+} from '@/shared/hooks/WorkspaceSidebarHoverContext';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
 import {
@@ -44,12 +48,20 @@ import {
 } from 'shared/remote-types';
 
 export function SharedAppLayout() {
+  return (
+    <WorkspaceSidebarHoverProvider>
+      <SharedAppLayoutContent />
+    </WorkspaceSidebarHoverProvider>
+  );
+}
+
+function SharedAppLayoutContent() {
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
   const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
-  const setAppBarHovered = useUiPreferencesStore((s) => s.setAppBarHovered);
+  const { setAppBarHovered } = useWorkspaceSidebarHover();
   const { isSignedIn } = useAuth();
   const { appVersion } = useUserSystem();
   const { data: onlineCount } = useDiscordOnlineCount();
@@ -74,13 +86,6 @@ export function SharedAppLayout() {
       document.documentElement.style.removeProperty('--mobile-font-scale');
     };
   }, [isMobile, mobileFontScale]);
-
-  useEffect(
-    () => () => {
-      setAppBarHovered(false);
-    },
-    [setAppBarHovered]
-  );
 
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
