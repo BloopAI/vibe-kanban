@@ -21,8 +21,8 @@ impl ServerHandler for McpServer {
             McpMode::Global => {
                 "A Vibe Kanban MCP server for task, issue, repository, workspace, and session management."
             }
-            McpMode::Workspace => {
-                "A workspace-scoped Vibe Kanban MCP server with tools limited to the configured workspace and attached session context."
+            McpMode::Orchestrator => {
+                "An orchestrator-scoped Vibe Kanban MCP server with tools limited to the configured workspace and attached session context."
             }
         };
         let mut instruction = format!(

@@ -14,7 +14,7 @@ use super::McpServer;
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct CreateSessionRequest {
     #[schemars(
-        description = "Workspace ID to create the session in. Optional when running inside a scoped workspace MCP."
+        description = "Workspace ID to create the session in. Optional when running inside a scoped orchestrator MCP."
     )]
     workspace_id: Option<Uuid>,
     #[schemars(description = "Optional executor to pin this session to")]
@@ -51,7 +51,7 @@ struct CreateSessionResponse {
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct ListSessionsRequest {
     #[schemars(
-        description = "Workspace ID to inspect. Optional when running inside a scoped workspace MCP."
+        description = "Workspace ID to inspect. Optional when running inside a scoped orchestrator MCP."
     )]
     workspace_id: Option<Uuid>,
 }

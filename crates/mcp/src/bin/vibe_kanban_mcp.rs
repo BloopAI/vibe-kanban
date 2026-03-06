@@ -16,23 +16,19 @@ fn main() -> anyhow::Result<()> {
             runtime::init_process_logging("vibe-kanban-mcp", version);
 
             let base_url = runtime::resolve_base_url("vibe-kanban-mcp").await?;
-            let LaunchConfig {
-                mode,
-                workspace_id,
-                session_id,
-            } = launch_config;
+            let LaunchConfig { mode, session_id } = launch_config;
 
             let server = match mode {
                 McpLaunchMode::Global => McpServer::new_global(&base_url),
-                McpLaunchMode::Workspace => McpServer::new_workspace(
-                    &base_url,
-                    workspace_id.ok_or_else(|| {
+                McpLaunchMode::Orchestrator => {
+                    let session_id = session_id.ok_or_else(|| {
                         anyhow::anyhow!(
-                            "workspace mode requires --workspace-id or VIBE_MCP_WORKSPACE_ID"
+                            "orchestrator mode requires --session-id or VIBE_MCP_SESSION_ID"
                         )
-                    })?,
-                    session_id,
-                ),
+                    })?;
+                    let session = runtime::resolve_session(&base_url, session_id).await?;
+                    McpServer::new_orchestrator(&base_url, session.workspace_id, Some(session.id))
+                }
             };
 
             let service = server.init().await.serve(stdio()).await.map_err(|error| {

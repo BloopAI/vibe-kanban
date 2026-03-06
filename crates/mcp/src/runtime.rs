@@ -1,3 +1,5 @@
+use db::models::session::Session;
+use serde::Deserialize;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     port_file::read_port_file,
@@ -6,41 +8,56 @@ use utils::{
 use uuid::Uuid;
 
 const MODE_ENV: &str = "VIBE_MCP_MODE";
-const WORKSPACE_ID_ENV: &str = "VIBE_MCP_WORKSPACE_ID";
 const SESSION_ID_ENV: &str = "VIBE_MCP_SESSION_ID";
 const BACKEND_URL_ENV: &str = "VIBE_MCP_BACKEND_URL";
 const HOST_ENV: &str = "VIBE_MCP_HOST";
 const PORT_ENV: &str = "VIBE_MCP_PORT";
 
+#[derive(Debug, Deserialize)]
+struct ApiResponseEnvelope<T> {
+    success: bool,
+    data: Option<T>,
+    message: Option<String>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum McpLaunchMode {
     Global,
-    Workspace,
+    Orchestrator,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LaunchConfig {
     pub mode: McpLaunchMode,
-    pub workspace_id: Option<Uuid>,
     pub session_id: Option<Uuid>,
 }
 
 pub fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
-    let mut args = std::env::args().skip(1);
-    let mut mode = std::env::var(MODE_ENV).ok();
-    let mut workspace_id = std::env::var(WORKSPACE_ID_ENV).ok();
-    let mut session_id = std::env::var(SESSION_ID_ENV).ok();
+    parse_launch_config(
+        std::env::args().skip(1),
+        std::env::var(MODE_ENV).ok(),
+        std::env::var(SESSION_ID_ENV).ok(),
+    )
+}
+
+fn parse_launch_config<I>(
+    args: I,
+    mode_env: Option<String>,
+    session_id_env: Option<String>,
+) -> anyhow::Result<LaunchConfig>
+where
+    I: IntoIterator,
+    I::Item: Into<String>,
+{
+    let mut args = args.into_iter().map(Into::into);
+    let mut mode = mode_env;
+    let mut session_id = session_id_env;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--mode" => {
                 mode = Some(args.next().ok_or_else(|| {
-                    anyhow::anyhow!("Missing value for --mode. Expected 'global' or 'workspace'")
-                })?);
-            }
-            "--workspace-id" => {
-                workspace_id = Some(args.next().ok_or_else(|| {
-                    anyhow::anyhow!("Missing value for --workspace-id. Expected a UUID")
+                    anyhow::anyhow!("Missing value for --mode. Expected 'global' or 'orchestrator'")
                 })?);
             }
             "--session-id" => {
@@ -50,13 +67,13 @@ pub fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
             }
             "-h" | "--help" => {
                 println!(
-                    "Usage: vibe-kanban-mcp --mode <global|workspace> [--workspace-id <UUID>] [--session-id <UUID>]"
+                    "Usage: vibe-kanban-mcp --mode <global|orchestrator> [--session-id <UUID>]"
                 );
                 std::process::exit(0);
             }
             _ => {
                 return Err(anyhow::anyhow!(
-                    "Unknown argument '{arg}'. Usage: vibe-kanban-mcp --mode <global|workspace> [--workspace-id <UUID>] [--session-id <UUID>]"
+                    "Unknown argument '{arg}'. Usage: vibe-kanban-mcp --mode <global|orchestrator> [--session-id <UUID>]"
                 ));
             }
         }
@@ -70,30 +87,21 @@ pub fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
         .as_str()
     {
         "global" => McpLaunchMode::Global,
-        "workspace" => McpLaunchMode::Workspace,
+        "orchestrator" => McpLaunchMode::Orchestrator,
         value => {
             return Err(anyhow::anyhow!(
-                "Invalid MCP mode '{value}'. Expected 'global' or 'workspace'"
+                "Invalid MCP mode '{value}'. Expected 'global' or 'orchestrator'"
             ));
         }
     };
 
-    let workspace_id = workspace_id
-        .as_deref()
-        .filter(|value| !value.trim().is_empty())
-        .map(parse_uuid_arg)
-        .transpose()?;
     let session_id = session_id
         .as_deref()
         .filter(|value| !value.trim().is_empty())
         .map(parse_uuid_arg)
         .transpose()?;
 
-    Ok(LaunchConfig {
-        mode,
-        workspace_id,
-        session_id,
-    })
+    Ok(LaunchConfig { mode, session_id })
 }
 
 fn parse_uuid_arg(value: &str) -> anyhow::Result<Uuid> {
@@ -137,6 +145,42 @@ pub async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
     Ok(url)
 }
 
+pub async fn resolve_session(base_url: &str, session_id: Uuid) -> anyhow::Result<Session> {
+    let url = format!(
+        "{}/api/sessions/{}",
+        base_url.trim_end_matches('/'),
+        session_id
+    );
+    let response = reqwest::Client::new().get(&url).send().await?;
+
+    if !response.status().is_success() {
+        return Err(anyhow::anyhow!(
+            "Failed to resolve session {}: backend returned {}",
+            session_id,
+            response.status()
+        ));
+    }
+
+    let api_response = response.json::<ApiResponseEnvelope<Session>>().await?;
+    if !api_response.success {
+        let message = api_response
+            .message
+            .unwrap_or_else(|| "Unknown error".to_string());
+        return Err(anyhow::anyhow!(
+            "Failed to resolve session {}: {}",
+            session_id,
+            message
+        ));
+    }
+
+    api_response.data.ok_or_else(|| {
+        anyhow::anyhow!(
+            "Failed to resolve session {}: response missing session data",
+            session_id
+        )
+    })
+}
+
 pub fn init_process_logging(log_prefix: &str, version: &str) {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
@@ -158,4 +202,94 @@ pub fn init_process_logging(log_prefix: &str, version: &str) {
         log_prefix,
         version
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use super::{LaunchConfig, McpLaunchMode, parse_launch_config};
+
+    #[test]
+    fn global_mode_defaults_without_session() {
+        let actual = parse_launch_config(Vec::<String>::new(), None, None).unwrap();
+
+        assert_eq!(actual.mode, McpLaunchMode::Global);
+        assert_eq!(actual.session_id, None);
+    }
+
+    #[test]
+    fn orchestrator_mode_accepts_session_id_flag() {
+        let session_id = Uuid::new_v4();
+        let actual = parse_launch_config(
+            vec![
+                "--mode".to_string(),
+                "orchestrator".to_string(),
+                "--session-id".to_string(),
+                session_id.to_string(),
+            ],
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            actual,
+            LaunchConfig {
+                mode: McpLaunchMode::Orchestrator,
+                session_id: Some(session_id),
+            }
+        );
+    }
+
+    #[test]
+    fn orchestrator_mode_accepts_session_id_env() {
+        let session_id = Uuid::new_v4();
+        let actual = parse_launch_config(
+            vec!["--mode".to_string(), "orchestrator".to_string()],
+            None,
+            Some(session_id.to_string()),
+        )
+        .unwrap();
+
+        assert_eq!(
+            actual,
+            LaunchConfig {
+                mode: McpLaunchMode::Orchestrator,
+                session_id: Some(session_id),
+            }
+        );
+    }
+
+    #[test]
+    fn workspace_mode_is_rejected() {
+        let error = parse_launch_config(
+            vec!["--mode".to_string(), "workspace".to_string()],
+            None,
+            None,
+        )
+        .unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("Expected 'global' or 'orchestrator'")
+        );
+    }
+
+    #[test]
+    fn workspace_id_flag_is_rejected() {
+        let error = parse_launch_config(
+            vec!["--workspace-id".to_string(), Uuid::new_v4().to_string()],
+            None,
+            None,
+        )
+        .unwrap_err();
+
+        assert!(
+            error
+                .to_string()
+                .contains("Unknown argument '--workspace-id'")
+        );
+    }
 }

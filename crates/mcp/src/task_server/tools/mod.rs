@@ -37,7 +37,7 @@ impl McpServer {
             + Self::session_tools_router()
     }
 
-    pub fn workspace_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
+    pub fn orchestrator_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
         let mut router = Self::context_tools_router()
             + Self::workspaces_tools_router()
             + Self::session_tools_router();
@@ -149,7 +149,7 @@ impl McpServer {
     }
 
     fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), CallToolResult> {
-        if matches!(self.mode(), McpMode::Workspace)
+        if matches!(self.mode(), McpMode::Orchestrator)
             && let Some(scoped_workspace_id) = self.workspace_id
             && scoped_workspace_id != workspace_id
         {
@@ -365,8 +365,8 @@ mod tests {
     }
 
     #[test]
-    fn workspace_mode_exposes_only_scoped_workflow_tools() {
-        let actual = tool_names(McpServer::workspace_mode_router());
+    fn orchestrator_mode_exposes_only_scoped_workflow_tools() {
+        let actual = tool_names(McpServer::orchestrator_mode_router());
         let expected = BTreeSet::from([
             "create_session".to_string(),
             "get_context".to_string(),

@@ -42,7 +42,7 @@ pub struct McpContext {
 #[derive(Debug, Clone)]
 pub enum McpMode {
     Global,
-    Workspace,
+    Orchestrator,
 }
 
 #[derive(Debug, Clone)]
@@ -71,7 +71,7 @@ impl McpServer {
         }
     }
 
-    pub fn new_workspace(
+    pub fn new_orchestrator(
         base_url: &str,
         workspace_id: Uuid,
         attached_session_id: Option<Uuid>,
@@ -79,9 +79,9 @@ impl McpServer {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
-            tool_router: Self::workspace_mode_router(),
+            tool_router: Self::orchestrator_mode_router(),
             context: None,
-            mode: McpMode::Workspace,
+            mode: McpMode::Orchestrator,
             workspace_id: Some(workspace_id),
             attached_session_id,
         }
@@ -156,7 +156,7 @@ impl McpServer {
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
 
-        if matches!(self.mode, McpMode::Workspace) && self.workspace_id != Some(workspace_id) {
+        if matches!(self.mode, McpMode::Orchestrator) && self.workspace_id != Some(workspace_id) {
             return None;
         }
 
