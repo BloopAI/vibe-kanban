@@ -651,21 +651,8 @@ pub fn normalize_logs(
             }
 
             if let Ok(server_notification) = serde_json::from_str::<ServerNotification>(&line) {
-                match server_notification {
-                    ServerNotification::SessionConfigured(session_configured) => {
-                        msg_store.push_session_id(session_configured.session_id.to_string());
-                        handle_model_params(
-                            Some(session_configured.model),
-                            session_configured.reasoning_effort,
-                            &msg_store,
-                            &entry_index,
-                            &mut state.model_params,
-                        );
-                    }
-                    ServerNotification::ThreadStarted(n) => {
-                        msg_store.push_session_id(n.thread.id);
-                    }
-                    _ => {}
+                if let ServerNotification::ThreadStarted(n) = server_notification {
+                    msg_store.push_session_id(n.thread.id);
                 }
                 continue;
             } else if let Some(session_id) = line
