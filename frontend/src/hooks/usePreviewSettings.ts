@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useScratch } from './useScratch';
 import { useDebouncedCallback } from './useDebouncedCallback';
 import {
@@ -58,7 +58,16 @@ export function usePreviewSettings(
   const scratchData: PreviewSettingsData | undefined =
     payload?.type === 'PREVIEW_SETTINGS' ? payload.data : undefined;
 
-  const overrideUrl = scratchData?.url ?? null;
+  // Optimistic local state: immediately reflects setOverrideUrl calls before
+  // the debounced scratch save completes. Without this, the 300ms debounce
+  // window causes hasOverride to stay false, letting effectiveUrl snap back
+  // to the auto-detected URL and overwrite what the user just typed.
+  const [optimisticUrl, setOptimisticUrl] = useState<string | null>(null);
+  const optimisticUrlRef = useRef<string | null>(null);
+
+  const scratchUrl = scratchData?.url ?? null;
+  // Use optimistic value while it's pending; fall back to persisted scratch value
+  const overrideUrl = optimisticUrl ?? scratchUrl;
   const hasOverride = overrideUrl !== null && overrideUrl.trim() !== '';
 
   const screenSize: ScreenSize =
@@ -110,6 +119,11 @@ export function usePreviewSettings(
   const { debounced: debouncedSaveUrl } = useDebouncedCallback(
     async (url: string) => {
       await saveSettings({ url });
+      // Clear optimistic state once the scratch has been persisted
+      if (optimisticUrlRef.current === url) {
+        optimisticUrlRef.current = null;
+        setOptimisticUrl(null);
+      }
     },
     300
   );
@@ -127,6 +141,11 @@ export function usePreviewSettings(
 
   const setOverrideUrl = useCallback(
     (url: string) => {
+      // Set optimistic state immediately so effectiveUrl reflects the new URL
+      // before the debounced scratch save completes (avoids 300ms race window
+      // where hasOverride is false and the input snaps back to the detected URL).
+      optimisticUrlRef.current = url;
+      setOptimisticUrl(url);
       debouncedSaveUrl(url);
     },
     [debouncedSaveUrl]
@@ -147,6 +166,8 @@ export function usePreviewSettings(
   );
 
   const clearOverride = useCallback(async () => {
+    optimisticUrlRef.current = null;
+    setOptimisticUrl(null);
     try {
       await deleteScratch();
     } catch (e) {
