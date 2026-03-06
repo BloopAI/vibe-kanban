@@ -1,10 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { createRelaySession, listRelayHosts } from '@/shared/lib/remoteApi';
+import { listRelayHosts } from '@/shared/lib/remoteApi';
 import {
-  createRelaySessionAuthCode,
-  establishRelaySessionBaseUrl,
+  createRemoteSession,
   finishRelaySpake2Enrollment,
-  getRelayApiUrl,
   startRelaySpake2Enrollment,
 } from '@/shared/lib/relayBackendApi';
 import {
@@ -44,22 +42,19 @@ async function pairRelayHost({
   hostName,
   normalizedCode,
 }: PairRelayHostInput): Promise<void> {
-  const relaySession = await createRelaySession(hostId);
-  const authCode = await createRelaySessionAuthCode(relaySession.id);
-
-  const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
-    getRelayApiUrl(),
-    hostId,
-    authCode.code
-  );
+  const authCode = await createRemoteSession(hostId);
 
   const { state, clientMessageB64 } =
     await startSpake2Enrollment(normalizedCode);
 
-  const startData = await startRelaySpake2Enrollment(relaySessionBaseUrl, {
-    enrollment_code: normalizedCode,
-    client_message_b64: clientMessageB64,
-  });
+  const startData = await startRelaySpake2Enrollment(
+    hostId,
+    authCode.session_id,
+    {
+      enrollment_code: normalizedCode,
+      client_message_b64: clientMessageB64,
+    }
+  );
 
   const sharedKey = await finishSpake2Enrollment(
     state,
@@ -75,16 +70,20 @@ async function pairRelayHost({
   );
   const relayClientIdentity = createRelayClientIdentity();
 
-  const finishData = await finishRelaySpake2Enrollment(relaySessionBaseUrl, {
-    enrollment_id: startData.enrollment_id,
-    client_id: relayClientIdentity.clientId,
-    client_name: relayClientIdentity.clientName,
-    client_browser: relayClientIdentity.clientBrowser,
-    client_os: relayClientIdentity.clientOs,
-    client_device: relayClientIdentity.clientDevice,
-    public_key_b64: publicKeyB64,
-    client_proof_b64: clientProofB64,
-  });
+  const finishData = await finishRelaySpake2Enrollment(
+    hostId,
+    authCode.session_id,
+    {
+      enrollment_id: startData.enrollment_id,
+      client_id: relayClientIdentity.clientId,
+      client_name: relayClientIdentity.clientName,
+      client_browser: relayClientIdentity.clientBrowser,
+      client_os: relayClientIdentity.clientOs,
+      client_device: relayClientIdentity.clientDevice,
+      public_key_b64: publicKeyB64,
+      client_proof_b64: clientProofB64,
+    }
+  );
 
   const serverProofValid = await verifyServerProof(
     sharedKey,

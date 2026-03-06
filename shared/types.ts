@@ -344,11 +344,11 @@ export type OpenEditorResponse = { url: string | null, };
 
 export type OpenRemoteEditorResponse = { url: string, local_port: number, ssh_alias: string, };
 
-export type OpenRemoteEditorRequest = { host_id: string, workspace_path: string, editor_type: string | null, relay_session_base_url: string, };
+export type OpenRemoteEditorRequest = { host_id: string, browser_session_id: string, workspace_path: string, editor_type: string | null, };
 
-export type OpenFirstWorkspaceInRemoteEditorRequest = { host_id: string, editor_type: string | null, relay_session_base_url: string, };
+export type OpenFirstWorkspaceInRemoteEditorRequest = { host_id: string, browser_session_id: string, editor_type: string | null, };
 
-export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, relay_session_base_url: string, };
+export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, };
 
 export type PairRelayHostResponse = { paired: boolean, };
 

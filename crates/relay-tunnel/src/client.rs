@@ -10,14 +10,11 @@ use hyper::{
 };
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
-use tokio_tungstenite::{Connector, tungstenite::client::IntoClientRequest};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_util::sync::CancellationToken;
 use tokio_yamux::{Config as YamuxConfig, Session};
 
-use crate::{
-    tls::ws_connector,
-    ws_io::{WsIoReadMessage, tungstenite_ws_stream_io},
-};
+use crate::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
 
 pub struct RelayClientConfig {
     pub ws_url: String,
@@ -42,14 +39,10 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
             .parse()
             .context("Invalid auth header")?,
     );
-
-    let mut tls_builder = native_tls::TlsConnector::builder();
-    if cfg!(debug_assertions) {
-        tls_builder.danger_accept_invalid_certs(true);
-    }
-    let tls_connector = tls_builder
-        .build()
-        .context("Failed to build TLS connector")?;
+    let (ws_stream, _response) =
+        tokio_tungstenite::connect_async_tls_with_config(request, None, false, ws_connector())
+            .await
+            .context("Failed to connect relay control channel")?;
 
     let ws_io = tungstenite_ws_stream_io(ws_stream);
     let mut session = Session::new_client(ws_io, YamuxConfig::default());

@@ -23,21 +23,24 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::DeploymentImpl;
+use super::types::{
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
+    StartSpake2EnrollmentResponse,
+};
+use crate::{DeploymentImpl, relay::client::RelayApiClient};
 
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/relay-pairing/pair", post(pair_relay_host))
+    Router::new().route("/relay-auth/client/pair", post(pair_relay_host))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PairRelayHostRequest {
-    pub host_id: String,
+    pub host_id: Uuid,
     pub host_name: String,
     pub enrollment_code: String,
-    pub relay_session_base_url: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -49,13 +52,15 @@ pub async fn pair_relay_host(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<PairRelayHostRequest>,
 ) -> Response {
-    let paired_credentials = match pair_relay_host_credentials(&req).await {
+    let paired_credentials = match pair_relay_host_credentials(&deployment, &req).await {
         Ok(credentials) => credentials,
         Err(error) => {
             tracing::warn!(?error, host_id = %req.host_id, "Failed to pair relay host");
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": error.to_string() })),
+                Json(ApiResponse::<PairRelayHostResponse>::error(
+                    &error.to_string(),
+                )),
             )
                 .into_response();
         }
@@ -69,14 +74,20 @@ pub async fn pair_relay_host(
         )
         .await
     {
-        Ok(()) => (StatusCode::OK, Json(PairRelayHostResponse { paired: true })).into_response(),
+        Ok(()) => (
+            StatusCode::OK,
+            Json(ApiResponse::<PairRelayHostResponse>::success(
+                PairRelayHostResponse { paired: true },
+            )),
+        )
+            .into_response(),
         Err(error) => {
             tracing::error!(?error, "Failed to persist paired relay host credentials");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Failed to persist paired relay host credentials"
-                })),
+                Json(ApiResponse::<PairRelayHostResponse>::error(
+                    "Failed to persist paired relay host credentials",
+                )),
             )
                 .into_response()
         }
@@ -89,40 +100,19 @@ struct PairedCredentials {
     private_key_jwk: serde_json::Value,
 }
 
-#[derive(Debug, Clone, Serialize)]
-struct StartSpake2EnrollmentRequest {
-    enrollment_code: String,
-    client_message_b64: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct StartSpake2EnrollmentResponse {
-    enrollment_id: Uuid,
-    server_message_b64: String,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct FinishSpake2EnrollmentRequest {
-    enrollment_id: Uuid,
-    client_id: Uuid,
-    client_name: String,
-    client_browser: String,
-    client_os: String,
-    client_device: String,
-    public_key_b64: String,
-    client_proof_b64: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct FinishSpake2EnrollmentResponse {
-    signing_session_id: Uuid,
-    server_public_key_b64: String,
-    server_proof_b64: String,
-}
-
 async fn pair_relay_host_credentials(
+    deployment: &DeploymentImpl,
     req: &PairRelayHostRequest,
 ) -> anyhow::Result<PairedCredentials> {
+    let remote_client = deployment.remote_client()?;
+    let relay_client = RelayApiClient::new(
+        remote_client
+            .access_token()
+            .await
+            .context("Failed to get access token for relay auth code")?,
+    );
+    let relay_browser_session = relay_client.create_session(req.host_id).await?;
+
     let normalized_code = normalize_enrollment_code(&req.enrollment_code)
         .map_err(|error| anyhow::anyhow!(error.to_string()))?;
 
@@ -132,15 +122,16 @@ async fn pair_relay_host_credentials(
     let (client_state, client_message) =
         Spake2::<Ed25519Group>::start_a_with_rng(&password, &id_a, &id_b, UnwrapErr(SysRng));
 
-    let start_response: StartSpake2EnrollmentResponse = post_relay_api(
-        &req.relay_session_base_url,
-        "/api/relay-auth/spake2/start",
-        &StartSpake2EnrollmentRequest {
-            enrollment_code: normalized_code,
-            client_message_b64: BASE64_STANDARD.encode(client_message),
-        },
-    )
-    .await?;
+    let start_response: StartSpake2EnrollmentResponse = relay_client
+        .post_session_api(
+            &relay_browser_session,
+            "/api/relay-auth/server/spake2/start",
+            &StartSpake2EnrollmentRequest {
+                enrollment_code: normalized_code,
+                client_message_b64: BASE64_STANDARD.encode(client_message),
+            },
+        )
+        .await?;
 
     let server_message = BASE64_STANDARD
         .decode(&start_response.server_message_b64)
@@ -161,21 +152,22 @@ async fn pair_relay_host_credentials(
     .map_err(|_| anyhow::anyhow!("Failed to build relay PAKE client proof"))?;
 
     let os = os_info::get();
-    let finish_response: FinishSpake2EnrollmentResponse = post_relay_api(
-        &req.relay_session_base_url,
-        "/api/relay-auth/spake2/finish",
-        &FinishSpake2EnrollmentRequest {
-            enrollment_id: start_response.enrollment_id,
-            client_id: Uuid::new_v4(),
-            client_name: format!("Vibe Kanban Relay Pairing ({})", req.host_name),
-            client_browser: "local-backend".to_string(),
-            client_os: format!("{} {}", os.os_type(), os.version()),
-            client_device: "desktop".to_string(),
-            public_key_b64: browser_public_key_b64,
-            client_proof_b64,
-        },
-    )
-    .await?;
+    let finish_response: FinishSpake2EnrollmentResponse = relay_client
+        .post_session_api(
+            &relay_browser_session,
+            "/api/relay-auth/server/spake2/finish",
+            &FinishSpake2EnrollmentRequest {
+                enrollment_id: start_response.enrollment_id,
+                client_id: Uuid::new_v4(),
+                client_name: format!("Vibe Kanban Relay Pairing ({})", req.host_name),
+                client_browser: "local-backend".to_string(),
+                client_os: format!("{} {}", os.os_type(), os.version()),
+                client_device: "desktop".to_string(),
+                public_key_b64: browser_public_key_b64,
+                client_proof_b64,
+            },
+        )
+        .await?;
 
     let server_public_key = parse_public_key_base64(&finish_response.server_public_key_b64)
         .map_err(|_| anyhow::anyhow!("Invalid server_public_key_b64 in relay PAKE response"))?;
@@ -193,44 +185,6 @@ async fn pair_relay_host_credentials(
         signing_session_id: finish_response.signing_session_id.to_string(),
         private_key_jwk: signing_key_to_jwk(&signing_key),
     })
-}
-
-async fn post_relay_api<TPayload, TData>(
-    relay_session_base_url: &str,
-    path: &str,
-    payload: &TPayload,
-) -> anyhow::Result<TData>
-where
-    TPayload: Serialize,
-    TData: for<'de> Deserialize<'de>,
-{
-    let relay_session_base_url = relay_session_base_url.trim_end_matches('/');
-    let url = format!("{relay_session_base_url}{path}");
-    let response = reqwest::Client::new()
-        .post(&url)
-        .json(payload)
-        .send()
-        .await
-        .with_context(|| format!("Relay request failed for '{path}'"))?;
-    let status = response.status();
-    let response_json = response
-        .json::<ApiResponse<TData>>()
-        .await
-        .with_context(|| format!("Failed to parse relay response for '{path}'"))?;
-
-    if !status.is_success() {
-        let message = response_json.message().unwrap_or("Relay request failed");
-        return Err(anyhow::anyhow!("{message} (status {status})"));
-    }
-
-    if !response_json.is_success() {
-        let message = response_json.message().unwrap_or("Relay request failed");
-        return Err(anyhow::anyhow!("{message}"));
-    }
-
-    response_json
-        .into_data()
-        .ok_or_else(|| anyhow::anyhow!("Relay response was missing data"))
 }
 
 fn signing_key_to_jwk(signing_key: &SigningKey) -> serde_json::Value {
