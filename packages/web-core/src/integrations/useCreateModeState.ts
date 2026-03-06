@@ -695,7 +695,12 @@ async function initializeState({
     const hasPreferredRepos = (seedState?.preferredRepos?.length ?? 0) > 0;
     const hasExecutorConfig = !!seedState?.executorConfig;
 
-    if (hasInitialPrompt || hasLinkedIssue || hasPreferredRepos || hasExecutorConfig) {
+    if (
+      hasInitialPrompt ||
+      hasLinkedIssue ||
+      hasPreferredRepos ||
+      hasExecutorConfig
+    ) {
       const data: Partial<DraftState> = {};
       let appliedSeedState = false;
 
