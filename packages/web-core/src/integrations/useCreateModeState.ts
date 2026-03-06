@@ -722,7 +722,10 @@ async function initializeState({
       }
 
       // Handle executor config (e.g., from duplicate workspace)
-      if (seedState?.executorConfig && isValidProfile(seedState.executorConfig)) {
+      if (
+        seedState?.executorConfig &&
+        isValidProfile(seedState.executorConfig)
+      ) {
         data.executorConfig = seedState.executorConfig;
         appliedSeedState = true;
       }
