@@ -16,7 +16,7 @@ use tokio_yamux::{Config as YamuxConfig, Session};
 
 use crate::{
     tls::ws_connector,
-    ws_io::{WsIoReadMessage, WsMessageStreamIo},
+    ws_io::{WsIoReadMessage, tungstenite_ws_stream_io},
 };
 
 pub struct RelayClientConfig {
@@ -48,7 +48,7 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
             .await
             .context("Failed to connect relay control channel")?;
 
-    let ws_io = WsMessageStreamIo::new(ws_stream, read_client_message, write_client_message);
+    let ws_io = tungstenite_ws_stream_io(ws_stream);
     let mut session = Session::new_client(ws_io, YamuxConfig::default());
     let mut control = session.control();
 
