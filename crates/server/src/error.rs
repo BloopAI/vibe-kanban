@@ -23,6 +23,7 @@ use services::services::{
     repo::RepoError as RepoServiceError,
 };
 use thiserror::Error;
+use tracing::{error, warn};
 use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
 use workspace_manager::WorkspaceError as WorkspaceManagerError;
@@ -274,6 +275,110 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
     }
 }
 
+fn executor_error_message(err: &ExecutorError) -> Option<String> {
+    match err {
+        ExecutorError::FollowUpNotSupported(_)
+        | ExecutorError::UnknownExecutorType(_)
+        | ExecutorError::ExecutableNotFound { .. }
+        | ExecutorError::SetupHelperNotSupported
+        | ExecutorError::AuthRequired(_) => Some(err.to_string()),
+        ExecutorError::SpawnError(_)
+        | ExecutorError::Io(_)
+        | ExecutorError::Json(_)
+        | ExecutorError::TomlSerialize(_)
+        | ExecutorError::TomlDeserialize(_)
+        | ExecutorError::ExecutorApprovalError(_)
+        | ExecutorError::CommandBuild(_) => None,
+    }
+}
+
+fn git_service_error_message(err: &GitServiceError) -> Option<String> {
+    match err {
+        GitServiceError::GitCLI(git::GitCliError::NotAvailable)
+        | GitServiceError::GitCLI(git::GitCliError::AuthFailed(_))
+        | GitServiceError::GitCLI(git::GitCliError::PushRejected(_))
+        | GitServiceError::GitCLI(git::GitCliError::RebaseInProgress)
+        | GitServiceError::InvalidRepository(_)
+        | GitServiceError::BranchNotFound(_)
+        | GitServiceError::MergeConflicts { .. }
+        | GitServiceError::BranchesDiverged(_)
+        | GitServiceError::WorktreeDirty(_, _)
+        | GitServiceError::RebaseInProgress => Some(err.to_string()),
+        GitServiceError::Git(_)
+        | GitServiceError::GitCLI(git::GitCliError::CommandFailed(_))
+        | GitServiceError::IoError(_) => None,
+    }
+}
+
+fn worktree_error_message(err: &WorktreeError) -> Option<String> {
+    match err {
+        WorktreeError::GitService(err) => git_service_error_message(err),
+        WorktreeError::GitCli(_)
+        | WorktreeError::InvalidPath(_)
+        | WorktreeError::BranchNotFound(_)
+        | WorktreeError::Repository(_) => Some(err.to_string()),
+        WorktreeError::Git(_) | WorktreeError::TaskJoin(_) | WorktreeError::Io(_) => None,
+    }
+}
+
+fn container_error_message(err: &ContainerError) -> Option<String> {
+    match err {
+        ContainerError::GitServiceError(err) => git_service_error_message(err),
+        ContainerError::ExecutorError(err) => executor_error_message(err),
+        ContainerError::Worktree(err) => worktree_error_message(err),
+        ContainerError::Workspace(WorkspaceError::ValidationError(msg)) => Some(msg.clone()),
+        ContainerError::Workspace(WorkspaceError::BranchNotFound(branch)) => {
+            Some(format!("Branch '{}' not found.", branch))
+        }
+        ContainerError::Session(SessionError::ExecutorMismatch { expected, actual }) => {
+            Some(format!(
+                "Executor mismatch: session uses {} but request specified {}.",
+                expected, actual
+            ))
+        }
+        ContainerError::Session(SessionError::NotFound) => Some("Session not found.".to_string()),
+        ContainerError::Session(SessionError::WorkspaceNotFound) => {
+            Some("Workspace not found.".to_string())
+        }
+        ContainerError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound) => {
+            Some("Execution process not found.".to_string())
+        }
+        ContainerError::ExecutionProcess(_) => None,
+        ContainerError::Sqlx(_)
+        | ContainerError::Workspace(WorkspaceError::Database(_))
+        | ContainerError::Workspace(WorkspaceError::WorkspaceNotFound)
+        | ContainerError::Session(SessionError::Database(_))
+        | ContainerError::Io(_)
+        | ContainerError::KillFailed(_)
+        | ContainerError::Other(_) => None,
+    }
+}
+
+fn deployment_error_message(err: &DeploymentError) -> Option<String> {
+    match err {
+        DeploymentError::RemoteClientNotConfigured => Some("Remote client not configured".into()),
+        DeploymentError::Container(err) => container_error_message(err),
+        DeploymentError::Executor(err) => executor_error_message(err),
+        DeploymentError::Worktree(err) => worktree_error_message(err),
+        DeploymentError::GitServiceError(err) => git_service_error_message(err),
+        DeploymentError::Workspace(WorkspaceError::ValidationError(msg)) => Some(msg.clone()),
+        DeploymentError::Workspace(WorkspaceError::BranchNotFound(branch)) => {
+            Some(format!("Branch '{}' not found.", branch))
+        }
+        DeploymentError::Sqlx(_)
+        | DeploymentError::Io(_)
+        | DeploymentError::Git2(_)
+        | DeploymentError::FilesystemWatcherError(_)
+        | DeploymentError::Workspace(WorkspaceError::Database(_))
+        | DeploymentError::Workspace(WorkspaceError::WorkspaceNotFound)
+        | DeploymentError::Image(_)
+        | DeploymentError::Filesystem(_)
+        | DeploymentError::Event(_)
+        | DeploymentError::Config(_)
+        | DeploymentError::Other(_) => None,
+    }
+}
+
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let info = match &self {
@@ -422,33 +527,32 @@ impl IntoResponse for ApiError {
                 ErrorInfo::with_status(StatusCode::GONE, "PtyError", "PTY session closed.")
             }
             ApiError::Pty(_) => ErrorInfo::internal("PtyError"),
-
-            ApiError::Unauthorized => ErrorInfo::with_status(
-                StatusCode::UNAUTHORIZED,
-                "Unauthorized",
-                "Unauthorized. Please sign in again.",
-            ),
-            ApiError::BadRequest(msg) => ErrorInfo::bad_request("BadRequest", msg.clone()),
-            ApiError::Conflict(msg) => ErrorInfo::conflict("ConflictError", msg.clone()),
-            ApiError::Forbidden(msg) => {
-                ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
-            }
-            ApiError::TooManyRequests(msg) => ErrorInfo::with_status(
-                StatusCode::TOO_MANY_REQUESTS,
-                "TooManyRequests",
-                msg.clone(),
-            ),
-            ApiError::Multipart(_) => ErrorInfo::bad_request(
-                "MultipartError",
-                "Failed to upload file. Please ensure the file is valid and try again.",
-            ),
-
-            ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
-            ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
-            ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
+            ApiError::Deployment(err) => deployment_error_message(err)
+                .map(|msg| {
+                    ErrorInfo::with_status(
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "DeploymentError",
+                        msg,
+                    )
+                })
+                .unwrap_or_else(|| ErrorInfo::internal("DeploymentError")),
+            ApiError::Container(err) => container_error_message(err)
+                .map(|msg| {
+                    ErrorInfo::with_status(StatusCode::INTERNAL_SERVER_ERROR, "ContainerError", msg)
+                })
+                .unwrap_or_else(|| ErrorInfo::internal("ContainerError")),
+            ApiError::Executor(err) => executor_error_message(err)
+                .map(|msg| {
+                    ErrorInfo::with_status(StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError", msg)
+                })
+                .unwrap_or_else(|| ErrorInfo::internal("ExecutorError")),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
-            ApiError::Worktree(_) => ErrorInfo::internal("WorktreeError"),
+            ApiError::Worktree(err) => worktree_error_message(err)
+                .map(|msg| {
+                    ErrorInfo::with_status(StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError", msg)
+                })
+                .unwrap_or_else(|| ErrorInfo::internal("WorktreeError")),
             ApiError::Config(_) => ErrorInfo::internal("ConfigError"),
             ApiError::Io(_) => ErrorInfo::internal("IoError"),
             ApiError::Migration(MigrationError::Database(_)) => {
@@ -492,7 +596,45 @@ impl IntoResponse for ApiError {
                 "MigrationError",
                 format!("Remote error: {}", msg),
             ),
+            ApiError::Unauthorized => ErrorInfo::with_status(
+                StatusCode::UNAUTHORIZED,
+                "Unauthorized",
+                "Unauthorized. Please sign in again.",
+            ),
+            ApiError::BadRequest(msg) => ErrorInfo::bad_request("BadRequest", msg.clone()),
+            ApiError::Conflict(msg) => ErrorInfo::conflict("ConflictError", msg.clone()),
+            ApiError::Forbidden(msg) => {
+                ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
+            }
+            ApiError::TooManyRequests(msg) => ErrorInfo::with_status(
+                StatusCode::TOO_MANY_REQUESTS,
+                "TooManyRequests",
+                msg.clone(),
+            ),
+            ApiError::Multipart(_) => ErrorInfo::bad_request(
+                "MultipartError",
+                "Failed to upload file. Please ensure the file is valid and try again.",
+            ),
         };
+
+        let log_message = format!("{}", self);
+        if info.status.is_server_error() {
+            error!(
+                status = %info.status,
+                error_type = info.error_type,
+                public_message = info.message.as_deref().unwrap_or(""),
+                internal_message = %log_message,
+                "API request failed"
+            );
+        } else {
+            warn!(
+                status = %info.status,
+                error_type = info.error_type,
+                public_message = info.message.as_deref().unwrap_or(""),
+                internal_message = %log_message,
+                "API request failed"
+            );
+        }
 
         let message = info
             .message
@@ -539,5 +681,49 @@ impl From<RepoServiceError> for ApiError {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::{body::to_bytes, http::StatusCode, response::IntoResponse};
+    use deployment::DeploymentError;
+    use executors::executors::ExecutorError;
+    use serde_json::Value;
+
+    use super::ApiError;
+
+    #[tokio::test]
+    async fn executor_errors_return_safe_messages() {
+        let response = ApiError::Executor(ExecutorError::ExecutableNotFound {
+            program: "codex".to_string(),
+        })
+        .into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("message").and_then(Value::as_str),
+            Some("Executable `codex` not found in PATH")
+        );
+    }
+
+    #[tokio::test]
+    async fn opaque_internal_errors_stay_generic() {
+        let response = ApiError::Deployment(DeploymentError::Other(anyhow::anyhow!(
+            "sensitive failure details"
+        )))
+        .into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        let json: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(
+            json.get("message").and_then(Value::as_str),
+            Some("An internal error occurred. Please try again.")
+        );
     }
 }

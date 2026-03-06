@@ -1953,6 +1953,15 @@ pub async fn create_and_start_workspace(
 
     let workspace_id = Uuid::new_v4();
     let branch_label = name.as_deref().unwrap_or("workspace");
+    tracing::info!(
+        workspace_id = %workspace_id,
+        executor = %executor_config.executor,
+        variant = executor_config.variant.as_deref().unwrap_or("DEFAULT"),
+        repo_count = repos.len(),
+        has_linked_issue = linked_issue.is_some(),
+        image_count = image_ids.as_ref().map_or(0, Vec::len),
+        "Starting create_and_start workspace request"
+    );
     let git_branch_name = deployment
         .container()
         .git_branch_from_workspace(&workspace_id, branch_label)
@@ -2011,12 +2020,22 @@ pub async fn create_and_start_workspace(
     }
 
     let workspace = managed_workspace.workspace.clone();
-    tracing::info!("Created workspace {}", workspace.id);
+    tracing::info!(workspace_id = %workspace.id, branch = %workspace.branch, "Created workspace");
 
     let execution_process = deployment
         .container()
         .start_workspace(&workspace, executor_config.clone(), workspace_prompt)
-        .await?;
+        .await
+        .map_err(|err| {
+            tracing::error!(
+                workspace_id = %workspace.id,
+                executor = %executor_config.executor,
+                variant = executor_config.variant.as_deref().unwrap_or("DEFAULT"),
+                error = %err,
+                "Failed to start workspace after creation"
+            );
+            ApiError::from(err)
+        })?;
 
     deployment
         .track_if_analytics_allowed(
@@ -2028,6 +2047,12 @@ pub async fn create_and_start_workspace(
             }),
         )
         .await;
+
+    tracing::info!(
+        workspace_id = %workspace.id,
+        execution_process_id = %execution_process.id,
+        "Workspace create_and_start completed"
+    );
 
     Ok(ResponseJson(ApiResponse::success(
         CreateAndStartWorkspaceResponse {
