@@ -209,6 +209,12 @@
           "label": "Send message with",
           "helper": "Choose the keyboard shortcut to send messages.",
           "enterLabel": "Enter (Shift+Enter for new line)"
+        },
+        "runningShortcuts": {
+          "label": "Running follow-up shortcuts",
+          "helper": "While an attempt is running, steer and queue use fixed shortcuts.",
+          "steerLabel": "Immediate steer",
+          "queueLabel": "Buffered queue"
         }
       },
       "privacy": {

@@ -209,6 +209,12 @@
           "label": "发送消息快捷键",
           "helper": "选择发送消息的键盘快捷键。",
           "enterLabel": "Enter（Shift+Enter 换行）"
+        },
+        "runningShortcuts": {
+          "label": "运行中跟进快捷键",
+          "helper": "当一次执行正在进行时，即时指导和缓冲队列使用固定快捷键。",
+          "steerLabel": "即时指导",
+          "queueLabel": "缓冲队列"
         }
       },
       "privacy": {

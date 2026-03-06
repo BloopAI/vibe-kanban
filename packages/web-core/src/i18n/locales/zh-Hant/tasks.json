@@ -118,7 +118,12 @@
   "followUp": {
     "queuedMessage": "訊息已加入佇列 - 會在目前執行完成後處理",
     "pendingBreakdown": "即時指導：{{steerCount}} · 緩衝佇列：{{queueCount}}",
-    "cancelQueueHint": "「取消佇列」會將最近一條排隊訊息回填到輸入框"
+    "cancelQueueHint": "「取消佇列」會將最近一條排隊訊息回填到輸入框",
+    "previewKinds": {
+      "steer": "即時指導",
+      "queue": "緩衝佇列"
+    },
+    "moreMessages": "還有 {{count}} 條"
   },
   "todoPopup": {
     "title": "任務",
@@ -397,9 +402,12 @@
       "loading": "載入中",
       "send": "傳送",
       "sending": "傳送中",
+      "steer": "即時指導",
       "queue": "加入佇列",
       "cancelQueue": "取消佇列",
       "cancelQueueHint": "移除最近一條排隊訊息並恢復到輸入框",
+      "steerHint": "作為即時指導傳送（{{shortcut}}）",
+      "queueHint": "加入緩衝佇列（{{shortcut}}）",
       "requestChanges": "請求變更",
       "approve": "核准",
       "clearReviewComments": "清除審查評論",

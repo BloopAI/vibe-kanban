@@ -105,6 +105,7 @@ type WysiwygProps = {
   /** Enables `/` command autocomplete (agent-specific). */
   executor?: BaseCodingAgent | null;
   onCmdEnter?: () => void;
+  onShiftEnter?: () => void;
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
@@ -252,6 +253,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       repoIds,
       executor = null,
       onCmdEnter,
+      onShiftEnter,
       onShiftCmdEnter,
       sendShortcut,
       taskAttemptId,
@@ -554,6 +556,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     )}
                     <KeyboardCommandsPlugin
                       onCmdEnter={onCmdEnter}
+                      onShiftEnter={onShiftEnter}
                       onShiftCmdEnter={onShiftCmdEnter}
                       onChange={onChange}
                       transformers={extendedTransformers}

@@ -58,6 +58,11 @@ interface QueueStateProps {
   pendingSteerCount: number;
   bufferedQueueCount: number;
   hasPendingMessages: boolean;
+  previewGroups?: Array<{
+    kind: 'steer' | 'queue';
+    previews: string[];
+    remainingCount: number;
+  }>;
 }
 
 export interface SessionOption<TExecutor extends string = string> {
@@ -147,6 +152,7 @@ export interface SessionChatBoxEditorRenderProps<
   value: string;
   onChange: (value: string) => void;
   onCmdEnter: () => void;
+  onShiftEnter?: () => void;
   disabled: boolean;
   repoIds?: string[];
   executor: TExecutor | null;
@@ -337,6 +343,12 @@ export function SessionChatBox<TExecutor extends string = string>({
     }
   };
 
+  const handleShiftEnter = () => {
+    if (status === 'running' && canSend) {
+      actions.onQueue();
+    }
+  };
+
   // File input handlers
   const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((f) =>
@@ -371,6 +383,8 @@ export function SessionChatBox<TExecutor extends string = string>({
   const filesChanged = stats?.filesChanged ?? 0;
   const linesAdded = stats?.linesAdded;
   const linesRemoved = stats?.linesRemoved;
+  const steerShortcut = 'Ctrl/Cmd+Enter';
+  const queueShortcut = 'Shift+Enter';
 
   // Render action buttons based on status
   const renderActionButtons = () => {
@@ -522,12 +536,19 @@ export function SessionChatBox<TExecutor extends string = string>({
             <PrimaryButton
               onClick={actions.onSteer}
               disabled={!canSend}
-              value={t('conversation.actions.send')}
+              value={t('conversation.actions.steer')}
+              title={t('conversation.actions.steerHint', {
+                shortcut: steerShortcut,
+              })}
             />
             <PrimaryButton
               onClick={actions.onQueue}
               disabled={!canSend}
+              variant="secondary"
               value={t('conversation.actions.queue')}
+              title={t('conversation.actions.queueHint', {
+                shortcut: queueShortcut,
+              })}
             />
             {queueState?.hasPendingMessages && (
               <PrimaryButton
@@ -651,6 +672,29 @@ export function SessionChatBox<TExecutor extends string = string>({
                 queueCount: bufferedQueueCount,
               })}
             </span>
+            {queueState?.previewGroups?.map((group) => (
+              <div key={group.kind} className="flex flex-col gap-half pt-half">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-low opacity-80">
+                  {t(`followUp.previewKinds.${group.kind}`)}
+                </span>
+                {group.previews.map((preview, index) => (
+                  <span
+                    key={`${group.kind}-${index}`}
+                    className="text-xs text-normal max-w-[40rem] truncate"
+                    title={preview}
+                  >
+                    {preview}
+                  </span>
+                ))}
+                {group.remainingCount > 0 && (
+                  <span className="text-xs text-low opacity-80">
+                    {t('followUp.moreMessages', {
+                      count: group.remainingCount,
+                    })}
+                  </span>
+                )}
+              </div>
+            ))}
             {queueState?.hasPendingMessages && (
               <span className="text-xs text-low opacity-80">
                 {t('followUp.cancelQueueHint')}
@@ -687,6 +731,7 @@ export function SessionChatBox<TExecutor extends string = string>({
         value: editor.value,
         onChange: editor.onChange,
         onCmdEnter: handleCmdEnter,
+        onShiftEnter: status === 'running' ? handleShiftEnter : undefined,
         disabled: isDisabled,
         repoIds,
         executor: agent || executor?.selected || null,

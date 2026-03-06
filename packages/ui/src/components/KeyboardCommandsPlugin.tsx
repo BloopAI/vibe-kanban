@@ -22,6 +22,7 @@ type SendMessageShortcut = 'ModifierEnter' | 'Enter';
 
 type Props = {
   onCmdEnter?: () => void;
+  onShiftEnter?: () => void;
   onShiftCmdEnter?: () => void;
   onChange?: (markdown: string) => void;
   transformers?: Transformer[];
@@ -30,6 +31,7 @@ type Props = {
 
 export function KeyboardCommandsPlugin({
   onCmdEnter,
+  onShiftEnter,
   onShiftCmdEnter,
   onChange,
   transformers,
@@ -134,11 +136,15 @@ export function KeyboardCommandsPlugin({
       COMMAND_PRIORITY_NORMAL
     );
 
-    if (!onCmdEnter && !onShiftCmdEnter) {
+    if (!onCmdEnter && !onShiftCmdEnter && !onShiftEnter) {
       return unregisterTab;
     }
 
-    const flushAndSubmit = () => {
+    const flushAndRun = (handler?: () => void) => {
+      if (!handler) {
+        return;
+      }
+
       if (onChange && transformers) {
         const markdown = editor
           .getEditorState()
@@ -147,7 +153,7 @@ export function KeyboardCommandsPlugin({
           onChange(markdown);
         });
       }
-      onCmdEnter?.();
+      handler();
     };
 
     const unregisterModifier = editor.registerCommand(
@@ -161,12 +167,12 @@ export function KeyboardCommandsPlugin({
         event.stopPropagation();
 
         if (event.shiftKey && onShiftCmdEnter) {
-          onShiftCmdEnter();
+          flushAndRun(onShiftCmdEnter);
           return true;
         }
 
         if (!event.shiftKey && onCmdEnter && sendShortcut === 'ModifierEnter') {
-          flushAndSubmit();
+          flushAndRun(onCmdEnter);
           return true;
         }
 
@@ -209,12 +215,19 @@ export function KeyboardCommandsPlugin({
           return false;
         }
 
+        if (event.shiftKey && !event.metaKey && !event.ctrlKey && onShiftEnter) {
+          event.preventDefault();
+          event.stopPropagation();
+          flushAndRun(onShiftEnter);
+          return true;
+        }
+
         if (sendShortcut === 'Enter') {
           if (event.shiftKey || event.metaKey || event.ctrlKey) {
             return false;
           }
           event.preventDefault();
-          flushAndSubmit();
+          flushAndRun(onCmdEnter);
           return true;
         }
 
@@ -236,6 +249,7 @@ export function KeyboardCommandsPlugin({
   }, [
     editor,
     onCmdEnter,
+    onShiftEnter,
     onShiftCmdEnter,
     onChange,
     transformers,

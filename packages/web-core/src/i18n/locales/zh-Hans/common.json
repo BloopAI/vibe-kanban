@@ -315,6 +315,8 @@
       "openCommandBar": "打开命令栏",
       "formatInlineCode": "Format inline code",
       "sendMessage": "发送消息",
+      "steerMessageDuringRun": "运行中发送即时指导",
+      "queueMessageDuringRun": "运行中加入缓冲队列",
       "settings": "前往设置",
       "new-workspace": "前往新工作区",
       "duplicate-workspace": "复制工作区",

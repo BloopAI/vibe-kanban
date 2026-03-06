@@ -7,6 +7,7 @@ import {
   type Session,
   type BaseCodingAgent,
   ExecutionProcessStatus,
+  type QueuedMessage,
 } from 'shared/types';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
@@ -80,6 +81,37 @@ function computeExecutionStatus(params: {
   if (params.isAttemptRunning) return 'running';
   if (params.isQueued) return 'queued';
   return 'idle';
+}
+
+const MAX_QUEUE_PREVIEW_ITEMS = 2;
+const MAX_QUEUE_PREVIEW_LENGTH = 72;
+
+function buildQueuePreview(message: string): string {
+  const normalized = message.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= MAX_QUEUE_PREVIEW_LENGTH) {
+    return normalized;
+  }
+
+  return `${normalized.slice(0, MAX_QUEUE_PREVIEW_LENGTH - 1).trimEnd()}…`;
+}
+
+function buildQueuePreviewGroup(
+  kind: 'steer' | 'queue',
+  messages: QueuedMessage[]
+) {
+  if (messages.length === 0) {
+    return null;
+  }
+
+  const previews = messages
+    .slice(0, MAX_QUEUE_PREVIEW_ITEMS)
+    .map((message) => buildQueuePreview(message.data.message));
+
+  return {
+    kind,
+    previews,
+    remainingCount: Math.max(0, messages.length - previews.length),
+  };
 }
 
 /** Shared props across all modes */
@@ -877,6 +909,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           pendingSteerCount: pendingSteers.length,
           bufferedQueueCount: queuedMessages.length,
           hasPendingMessages: true,
+          previewGroups: [
+            buildQueuePreviewGroup('steer', pendingSteers),
+            buildQueuePreviewGroup('queue', queuedMessages),
+          ].filter(
+            (group): group is NonNullable<typeof group> => group !== null
+          ),
         }
       : undefined;
 
@@ -895,6 +933,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       value,
       onChange,
       onCmdEnter,
+      onShiftEnter,
       disabled,
       repoIds,
       executor,
@@ -907,6 +946,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         value={value}
         onChange={onChange}
         onCmdEnter={onCmdEnter}
+        onShiftEnter={onShiftEnter}
         disabled={disabled}
         className="min-h-double max-h-[50vh] overflow-y-auto"
         repoIds={repoIds}
@@ -914,10 +954,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         autoFocus
         onPasteFiles={onPasteFiles}
         localImages={localImages}
-        sendShortcut={config?.send_message_shortcut}
+        sendShortcut={
+          isAttemptRunning ? 'ModifierEnter' : config?.send_message_shortcut
+        }
       />
     ),
-    [config?.send_message_shortcut]
+    [config?.send_message_shortcut, isAttemptRunning]
   );
 
   const modelSelectorNode = effectiveExecutor ? (

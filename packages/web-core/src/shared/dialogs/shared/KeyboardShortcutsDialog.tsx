@@ -81,6 +81,14 @@ function useShortcutGroups(): ShortcutGroup[] {
               description: t('shortcuts.actions.sendMessage'),
               useHintKey: true,
             },
+        {
+          keys: [mod, enterKey],
+          description: t('shortcuts.actions.steerMessageDuringRun'),
+        },
+        {
+          keys: ['Shift', enterKey],
+          description: t('shortcuts.actions.queueMessageDuringRun'),
+        },
       ],
     };
 

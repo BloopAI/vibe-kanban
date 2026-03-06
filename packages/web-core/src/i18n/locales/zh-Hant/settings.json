@@ -209,6 +209,12 @@
           "label": "傳送訊息快捷鍵",
           "helper": "選擇傳送訊息的鍵盤快捷鍵。",
           "enterLabel": "Enter（Shift+Enter 換行）"
+        },
+        "runningShortcuts": {
+          "label": "執行中跟進快捷鍵",
+          "helper": "當一次執行正在進行時，即時指導與緩衝佇列使用固定快捷鍵。",
+          "steerLabel": "即時指導",
+          "queueLabel": "緩衝佇列"
         }
       },
       "privacy": {

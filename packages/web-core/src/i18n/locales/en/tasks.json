@@ -115,7 +115,12 @@
   "followUp": {
     "queuedMessage": "Message queued - will execute when current run finishes",
     "pendingBreakdown": "Steer: {{steerCount}} · Queue: {{queueCount}}",
-    "cancelQueueHint": "Cancel Queue restores the latest queued message to the editor"
+    "cancelQueueHint": "Cancel Queue restores the latest queued message to the editor",
+    "previewKinds": {
+      "steer": "Immediate steer",
+      "queue": "Buffered queue"
+    },
+    "moreMessages": "+{{count}} more"
   },
   "todoPopup": {
     "title": "Tasks",
@@ -146,9 +151,12 @@
       "loading": "Loading",
       "send": "Send",
       "sending": "Sending",
+      "steer": "Steer",
       "queue": "Queue",
       "cancelQueue": "Cancel Queue",
       "cancelQueueHint": "Remove latest queued message and restore it to editor",
+      "steerHint": "Send as immediate steer ({{shortcut}})",
+      "queueHint": "Add to buffered queue ({{shortcut}})",
       "requestChanges": "Request Changes",
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",

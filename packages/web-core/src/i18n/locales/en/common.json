@@ -329,6 +329,8 @@
       "openCommandBar": "Open command bar",
       "formatInlineCode": "Format inline code",
       "sendMessage": "Send message",
+      "steerMessageDuringRun": "Send immediate steer during a run",
+      "queueMessageDuringRun": "Queue follow-up during a run",
       "settings": "Go to Settings",
       "new-workspace": "Go to New Workspace",
       "duplicate-workspace": "Duplicate workspace",

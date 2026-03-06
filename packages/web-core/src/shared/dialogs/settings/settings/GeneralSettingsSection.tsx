@@ -791,6 +791,31 @@ export function GeneralSettingsSection() {
             }
           />
         </SettingsField>
+        <SettingsField
+          label={t('settings.general.messageInput.runningShortcuts.label')}
+          description={t(
+            'settings.general.messageInput.runningShortcuts.helper'
+          )}
+        >
+          <div className="rounded-sm border border-border bg-panel px-base py-base space-y-2">
+            <div className="flex items-center justify-between gap-3 text-sm text-normal">
+              <span>
+                {t('settings.general.messageInput.runningShortcuts.steerLabel')}
+              </span>
+              <span className="font-ibm-plex-mono text-xs text-low">
+                {getModifierKey()}+Enter
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 text-sm text-normal">
+              <span>
+                {t('settings.general.messageInput.runningShortcuts.queueLabel')}
+              </span>
+              <span className="font-ibm-plex-mono text-xs text-low">
+                Shift+Enter
+              </span>
+            </div>
+          </div>
+        </SettingsField>
       </SettingsCard>
 
       {/* Privacy */}
