@@ -114,7 +114,6 @@
   "followUp": {
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
     "pendingBreakdown": "Steer: {{steerCount}} · Cola: {{queueCount}}",
-    "cancelQueueHint": "\"Extraer de la cola\" restaura el mensaje en cola más reciente en el editor",
     "steerLabel": "Steer",
     "queueLabel": "Cola"
   },

@@ -632,9 +632,9 @@ export function SessionChatBox<TExecutor extends string = string>({
         return null;
       }
 
-      const visible = normalized.slice(0, 2);
-      const hiddenCount = normalized.length - visible.length;
       const multiline = options?.multiline ?? false;
+      const visible = multiline ? normalized : normalized.slice(0, 2);
+      const hiddenCount = multiline ? 0 : normalized.length - visible.length;
       const renderedSummaries = multiline
         ? visible.join('\n')
         : visible.join(' | ');
@@ -718,11 +718,6 @@ export function SessionChatBox<TExecutor extends string = string>({
               t('followUp.queueLabel'),
               queueState?.bufferedQueueSummaries ?? [],
               { multiline: true }
-            )}
-            {queueState?.hasPendingMessages && (
-              <span className="text-xs text-low opacity-80">
-                {t('followUp.cancelQueueHint')}
-              </span>
             )}
           </div>
         </div>

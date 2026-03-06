@@ -115,7 +115,6 @@
   "followUp": {
     "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
     "pendingBreakdown": "Steer : {{steerCount}} · File : {{queueCount}}",
-    "cancelQueueHint": "\"Sortir de la file\" restaure le dernier message en file dans l'éditeur",
     "steerLabel": "Steer",
     "queueLabel": "File"
   },

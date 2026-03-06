@@ -114,7 +114,6 @@
   "followUp": {
     "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます",
     "pendingBreakdown": "Steer: {{steerCount}} ・ キュー: {{queueCount}}",
-    "cancelQueueHint": "「キューから取り出す」で最新のキュー済みメッセージがエディタに戻ります",
     "steerLabel": "Steer",
     "queueLabel": "キュー"
   },

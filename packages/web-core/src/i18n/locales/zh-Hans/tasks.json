@@ -118,7 +118,6 @@
   "followUp": {
     "queuedMessage": "消息已排队 - 将在当前运行完成时执行",
     "pendingBreakdown": "即时指导：{{steerCount}} · 缓冲队列：{{queueCount}}",
-    "cancelQueueHint": "“队列弹出”会将最近一条排队消息回填到输入框",
     "steerLabel": "即时指导",
     "queueLabel": "缓冲队列"
   },
