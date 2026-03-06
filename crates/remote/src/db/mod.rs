@@ -58,7 +58,7 @@ pub async fn begin_tx(pool: &PgPool) -> Result<Tx<'_>, sqlx::Error> {
     let ctx = TX_CONTEXT.try_with(|c| c.borrow().clone()).ok().flatten();
     if let Some(ctx) = ctx {
         let name = format!("vibe-kanban-remote u:{} r:{}", ctx.user_id, ctx.request_id);
-        sqlx::query("SET LOCAL application_name = $1")
+        sqlx::query("SELECT set_config('application_name', $1, true)")
             .bind(&name)
             .execute(&mut *tx)
             .await?;
