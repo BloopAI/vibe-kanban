@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useUserContext } from '@/shared/hooks/useUserContext';
-import { useRuntimeScratch } from '@/shared/hooks/useRuntimeScratch';
+import { useScratch } from '@/shared/hooks/useScratch';
 import { useAllOrganizationProjects } from '@/shared/hooks/useAllOrganizationProjects';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 import { ScratchType, type DraftWorkspaceData } from 'shared/types';
@@ -543,7 +543,7 @@ export function WorkspacesSidebarContainer({
   }, [isSearching, hasMoreWorkspaces]);
 
   // Read persisted draft for sidebar placeholder
-  const { scratch: draftScratch } = useRuntimeScratch(
+  const { scratch: draftScratch } = useScratch(
     ScratchType.DRAFT_WORKSPACE,
     DRAFT_WORKSPACE_ID
   );

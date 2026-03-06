@@ -4,7 +4,7 @@ import {
   type DraftFollowUpData,
   type ExecutorConfig,
 } from 'shared/types';
-import { useRuntimeScratch } from '@/shared/hooks/useRuntimeScratch';
+import { useScratch } from '@/shared/hooks/useScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 
 interface UseSessionMessageEditorOptions {
@@ -48,7 +48,7 @@ export function useSessionMessageEditor({
     updateScratch,
     deleteScratch,
     isLoading: isScratchLoading,
-  } = useRuntimeScratch(ScratchType.DRAFT_FOLLOW_UP, scratchId ?? '');
+  } = useScratch(ScratchType.DRAFT_FOLLOW_UP, scratchId ?? '');
 
   const scratchData: DraftFollowUpData | undefined =
     scratch?.payload?.type === 'DRAFT_FOLLOW_UP'

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { useRuntimeScratch } from '@/shared/hooks/useRuntimeScratch';
+import { useScratch } from '@/shared/hooks/useScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import {
   ScratchType,
@@ -146,7 +146,7 @@ function scratchDataToStore(data: UiPreferencesData): {
  * Should be used once at the app root level.
  */
 export function useUiPreferencesScratch() {
-  const { scratch, updateScratch, isLoading, isConnected } = useRuntimeScratch(
+  const { scratch, updateScratch, isLoading, isConnected } = useScratch(
     ScratchType.UI_PREFERENCES,
     UI_PREFERENCES_ID
   );

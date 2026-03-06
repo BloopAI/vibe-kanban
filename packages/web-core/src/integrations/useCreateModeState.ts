@@ -10,8 +10,7 @@ import {
   PROJECT_ISSUES_SHAPE,
   type Workspace as RemoteWorkspace,
 } from 'shared/remote-types';
-import { useRuntimeScratch } from '@/shared/hooks/useRuntimeScratch';
-import type { UseScratchResult } from '@/shared/hooks/useScratch';
+import { useScratch, type UseScratchResult } from '@/shared/hooks/useScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/shared/integrations/electric/hooks';
@@ -254,7 +253,7 @@ export function useCreateModeState({
     updateScratch,
     deleteScratch,
     isLoading: scratchLoading,
-  } = useRuntimeScratch(ScratchType.DRAFT_WORKSPACE, scratchId);
+  } = useScratch(ScratchType.DRAFT_WORKSPACE, scratchId);
 
   const [state, dispatch] = useReducer(draftReducer, draftInitialState);
 
