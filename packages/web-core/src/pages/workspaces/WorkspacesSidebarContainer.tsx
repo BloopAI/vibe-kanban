@@ -68,7 +68,7 @@ const PR_FILTER_OPTIONS: WorkspacePrFilter[] = ['all', 'has_pr', 'no_pr'];
 const SORT_BY_OPTIONS: WorkspaceSortBy[] = ['updated_at', 'created_at'];
 
 interface WorkspacesSidebarContainerProps {
-  onScrollToBottom: () => void;
+  onScrollToBottom?: () => void;
 }
 
 interface WorkspacesSortDialogProps {
@@ -249,7 +249,7 @@ function getWorkspaceSortTimestamp(
 }
 
 export function WorkspacesSidebarContainer({
-  onScrollToBottom,
+  onScrollToBottom = () => {},
 }: WorkspacesSidebarContainerProps) {
   const {
     workspaceId: selectedWorkspaceId,

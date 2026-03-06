@@ -37,6 +37,7 @@ import {
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
+import { useWorkspaceSidebarPreviewController } from '@/shared/hooks/useWorkspaceSidebarPreviewController';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
 import {
@@ -44,6 +45,8 @@ import {
   PROJECTS_SHAPE,
   type Project as RemoteProject,
 } from 'shared/remote-types';
+import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
+import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -51,7 +54,9 @@ export function SharedAppLayout() {
   const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
-  const setAppBarHovered = useUiPreferencesStore((s) => s.setAppBarHovered);
+  const isLeftSidebarVisible = useUiPreferencesStore(
+    (s) => s.isLeftSidebarVisible
+  );
   const { isSignedIn } = useAuth();
   const { appVersion } = useUserSystem();
   const updateVersion = useAppUpdateStore((s) => s.updateVersion);
@@ -59,6 +64,7 @@ export function SharedAppLayout() {
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isAppBarHovered, setIsAppBarHovered] = useState(false);
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -78,13 +84,6 @@ export function SharedAppLayout() {
       document.documentElement.style.removeProperty('--mobile-font-scale');
     };
   }, [isMobile, mobileFontScale]);
-
-  useEffect(
-    () => () => {
-      setAppBarHovered(false);
-    },
-    [setAppBarHovered]
-  );
 
   // AppBar state - organizations and projects
   const { data: orgsData } = useUserOrganizations();
@@ -169,7 +168,13 @@ export function SharedAppLayout() {
     [currentDestination]
   );
   const isWorkspacesActive = isWorkspacesDestination(currentDestination);
+  const isWorkspaceSidebarPreviewEnabled =
+    !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
+  const sidebarPreview = useWorkspaceSidebarPreviewController({
+    enabled: isWorkspaceSidebarPreviewEnabled,
+    isAppBarHovered,
+  });
 
   // Persist last selected project to scratch store
   const setSelectedProjectId = useUiPreferencesStore(
@@ -323,8 +328,8 @@ export function SharedAppLayout() {
               isLoadingProjects={isLoading}
               onSignIn={handleSignIn}
               onMigrate={handleMigrate}
-              onHoverStart={() => setAppBarHovered(true)}
-              onHoverEnd={() => setAppBarHovered(false)}
+              onHoverStart={() => setIsAppBarHovered(true)}
+              onHoverEnd={() => setIsAppBarHovered(false)}
               userPopover={
                 <AppBarUserPopoverContainer
                   organizations={organizations}
@@ -342,7 +347,35 @@ export function SharedAppLayout() {
               discordIconPath={siDiscord.path}
             />
             {/* Grid row 2, col 2: Content */}
-            <div className="min-h-0 overflow-hidden">
+            <div className="relative min-h-0 overflow-hidden">
+              {isWorkspaceSidebarPreviewEnabled && (
+                <div className="absolute inset-y-0 left-0 z-20 flex items-center">
+                  <WorkspacesSidebarReopenTag
+                    active={sidebarPreview.isPreviewOpen}
+                    onHoverStart={sidebarPreview.handleHandleHoverStart}
+                    onHoverEnd={sidebarPreview.handleHandleHoverEnd}
+                    ariaLabel="Workspaces"
+                  />
+                </div>
+              )}
+
+              {isWorkspaceSidebarPreviewEnabled && (
+                <div
+                  className={cn(
+                    'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
+                    sidebarPreview.isPreviewOpen
+                      ? 'translate-x-0 pointer-events-auto'
+                      : '-translate-x-full pointer-events-none'
+                  )}
+                  onMouseEnter={sidebarPreview.handlePreviewHoverStart}
+                  onMouseLeave={sidebarPreview.handlePreviewHoverEnd}
+                >
+                  <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
+                    <WorkspacesSidebarContainer />
+                  </div>
+                </div>
+              )}
+
               <Outlet />
             </div>
           </>

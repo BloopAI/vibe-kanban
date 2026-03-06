@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -26,11 +26,9 @@ import {
   PERSIST_KEYS,
   usePaneSize,
   useWorkspacePanelState,
-  useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
@@ -56,12 +54,7 @@ export function WorkspacesLayout() {
 
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
-  const isAppBarHovered = useUiPreferencesStore((s) => s.isAppBarHovered);
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
-  const [isSidebarHandleHovered, setIsSidebarHandleHovered] = useState(false);
-  const [isSidebarPreviewHovered, setIsSidebarPreviewHovered] = useState(false);
-  const isSidebarHoverPreviewOpen =
-    isSidebarHandleHovered || isSidebarPreviewHovered || isAppBarHovered;
 
   const handleScrollToBottom = useCallback(() => {
     mainContainerRef.current?.scrollToBottom();
@@ -340,40 +333,10 @@ export function WorkspacesLayout() {
   );
 
   return (
-    <div className="relative flex flex-1 min-h-0 h-full">
+    <div className="flex flex-1 min-h-0 h-full">
       {isLeftSidebarVisible && (
         <div className="w-[300px] shrink-0 h-full overflow-hidden">
           <WorkspacesSidebarContainer onScrollToBottom={handleScrollToBottom} />
-        </div>
-      )}
-
-      {!isLeftSidebarVisible && (
-        <div className="absolute inset-y-0 left-0 z-20 flex items-center">
-          <WorkspacesSidebarReopenTag
-            active={isSidebarHoverPreviewOpen}
-            onHoverStart={() => setIsSidebarHandleHovered(true)}
-            onHoverEnd={() => setIsSidebarHandleHovered(false)}
-            ariaLabel={t('workspaces.title')}
-          />
-        </div>
-      )}
-
-      {!isLeftSidebarVisible && (
-        <div
-          className={cn(
-            'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
-            isSidebarHoverPreviewOpen
-              ? 'translate-x-0 pointer-events-auto'
-              : '-translate-x-full pointer-events-none'
-          )}
-          onMouseEnter={() => setIsSidebarPreviewHovered(true)}
-          onMouseLeave={() => setIsSidebarPreviewHovered(false)}
-        >
-          <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
-            <WorkspacesSidebarContainer
-              onScrollToBottom={handleScrollToBottom}
-            />
-          </div>
         </div>
       )}
 
