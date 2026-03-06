@@ -3,6 +3,7 @@ pub mod middleware;
 pub mod preview_proxy;
 pub mod routes;
 pub mod tunnel;
+pub mod webrtc_runtime;
 
 // #[cfg(feature = "cloud")]
 // type DeploymentImpl = vibe_kanban_cloud::deployment::CloudDeployment;

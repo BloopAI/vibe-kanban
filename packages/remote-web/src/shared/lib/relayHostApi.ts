@@ -25,6 +25,7 @@ import {
   createRelaySignedWebSocket,
   createRelayWsSigningContext,
 } from "@remote/shared/lib/relay/ws";
+import { RelayWebRtcTransport } from "@remote/shared/lib/relay/webrtcTransport";
 
 const EMPTY_BYTES = new Uint8Array();
 const WEBRTC_NEGOTIATION_TIMEOUT_MS = 7000;
@@ -38,6 +39,7 @@ interface RelayTransportState {
 
 const hostTransportState = new Map<string, RelayTransportState>();
 const hostUpgradeAttempt = new Map<string, Promise<void>>();
+const hostWebRtcTransport = new Map<string, RelayWebRtcTransport>();
 
 export { isWorkspaceRoutePath };
 
@@ -88,7 +90,18 @@ export async function requestRelayHostApi(
   requestInit: RequestInit = {},
   options: { skipWebRtcAttempt?: boolean } = {},
 ): Promise<Response> {
-  if (!options.skipWebRtcAttempt) {
+  const webrtcTransport = hostWebRtcTransport.get(hostId);
+  if (webrtcTransport) {
+    try {
+      return await requestViaWebRtc(pathOrUrl, requestInit, webrtcTransport);
+    } catch (error) {
+      console.warn("WebRTC API request failed, falling back to relay", error);
+      hostWebRtcTransport.delete(hostId);
+      hostTransportState.set(hostId, { mode: "fallback", sessionId: null });
+    }
+  }
+
+  if (!options.skipWebRtcAttempt && !hostWebRtcTransport.has(hostId)) {
     void ensureWebRtcUpgradeAttempt(hostId);
   }
 
@@ -138,6 +151,22 @@ export async function openRelayHostWebSocket(
   hostId: string,
   pathOrUrl: string,
 ): Promise<WebSocket> {
+  const webrtcTransport = hostWebRtcTransport.get(hostId);
+  if (webrtcTransport) {
+    try {
+      return (await webrtcTransport.openVirtualWebSocket(
+        normalizePath(toPathAndQuery(pathOrUrl)),
+      )) as unknown as WebSocket;
+    } catch (error) {
+      console.warn(
+        "WebRTC websocket open failed, falling back to relay",
+        error,
+      );
+      hostWebRtcTransport.delete(hostId);
+      hostTransportState.set(hostId, { mode: "fallback", sessionId: null });
+    }
+  }
+
   void ensureWebRtcUpgradeAttempt(hostId);
   const baseContext = await resolveRelayHostContext(hostId);
   const context =
@@ -167,7 +196,7 @@ export async function openRelayHostWebSocket(
 
 async function ensureWebRtcUpgradeAttempt(hostId: string): Promise<void> {
   const current = hostTransportState.get(hostId);
-  if (current && current.mode !== "relay") {
+  if (current && (current.mode === "upgrading" || current.mode === "webrtc")) {
     return;
   }
 
@@ -190,10 +219,26 @@ async function ensureWebRtcUpgradeAttempt(hostId: string): Promise<void> {
 }
 
 async function attemptWebRtcUpgrade(hostId: string): Promise<void> {
+  const baseContext = await resolveRelayHostContext(hostId);
+  const context =
+    (await tryRefreshRelayHostSigningSession(baseContext)) ?? baseContext;
+
+  const signingSessionId = context.pairedHost.signing_session_id;
+  if (!signingSessionId) {
+    hostTransportState.set(hostId, {
+      mode: "fallback",
+      sessionId: null,
+    });
+    return;
+  }
+
+  const requestNonce = crypto.randomUUID().replace(/-/g, "");
   const peerConnection = new RTCPeerConnection({
     iceServers: parseIceServersFromEnv(),
   });
-  const dataChannel = peerConnection.createDataChannel("vk-transport");
+  const dataChannel = peerConnection.createDataChannel("vk-transport", {
+    ordered: true,
+  });
 
   const opened = new Promise<void>((resolve, reject) => {
     const timeout = window.setTimeout(() => {
@@ -221,6 +266,8 @@ async function attemptWebRtcUpgrade(hostId: string): Promise<void> {
       method: "POST",
       body: JSON.stringify({
         offer_sdp: peerConnection.localDescription?.sdp ?? "",
+        signing_session_id: signingSessionId,
+        request_nonce: requestNonce,
       }),
     },
     { skipWebRtcAttempt: true },
@@ -248,12 +295,15 @@ async function attemptWebRtcUpgrade(hostId: string): Promise<void> {
   }
 
   hostTransportState.set(hostId, {
-    mode: startData.status ?? "fallback",
+    mode: "upgrading",
     sessionId: startData.session_id,
   });
 
-  // Current host implementation may return fallback without SDP.
   if (!startData.answer_sdp) {
+    hostTransportState.set(hostId, {
+      mode: "fallback",
+      sessionId: startData.session_id,
+    });
     peerConnection.close();
     return;
   }
@@ -264,15 +314,16 @@ async function attemptWebRtcUpgrade(hostId: string): Promise<void> {
   });
   await opened;
 
-  // Placeholder: proxying HTTP/WS over data-channel is not wired yet, so we
-  // preserve relay transport despite successful channel establishment.
-  hostTransportState.set(hostId, {
-    mode: "fallback",
+  const transport = new RelayWebRtcTransport({
     sessionId: startData.session_id,
+    requestNonce,
+    dataChannel,
+    pairedHost: context.pairedHost,
   });
+  await transport.ping();
 
   try {
-    await requestRelayHostApi(
+    const finalizeResponse = await requestRelayHostApi(
       hostId,
       "/api/relay-webrtc/finalize",
       {
@@ -281,11 +332,63 @@ async function attemptWebRtcUpgrade(hostId: string): Promise<void> {
       },
       { skipWebRtcAttempt: true },
     );
+    if (!finalizeResponse.ok) {
+      throw new Error(`Finalize failed with status ${finalizeResponse.status}`);
+    }
+    const finalizeEnvelope = (await finalizeResponse.json()) as {
+      success?: boolean;
+      data?: {
+        status?: RelayTransportMode;
+      };
+    };
+    if (
+      !finalizeEnvelope.success ||
+      finalizeEnvelope.data?.status !== "webrtc"
+    ) {
+      throw new Error("Finalize response did not confirm webrtc mode");
+    }
+
+    hostWebRtcTransport.set(hostId, transport);
+    hostTransportState.set(hostId, {
+      mode: "webrtc",
+      sessionId: startData.session_id,
+    });
   } catch (error) {
     console.debug("WebRTC finalize request failed", error);
-  } finally {
+    hostTransportState.set(hostId, {
+      mode: "fallback",
+      sessionId: startData.session_id,
+    });
     peerConnection.close();
   }
+}
+
+async function requestViaWebRtc(
+  pathOrUrl: string,
+  requestInit: RequestInit,
+  transport: RelayWebRtcTransport,
+): Promise<Response> {
+  const pathAndQuery = toPathAndQuery(pathOrUrl);
+  const normalizedPath = normalizePath(pathAndQuery);
+  const method = (requestInit.method ?? "GET").toUpperCase();
+  const normalizedBody = await normalizeRequestBody(requestInit.body);
+  const headers = new Headers(requestInit.headers ?? {});
+
+  if (
+    normalizedBody.contentType &&
+    !headers.has("Content-Type") &&
+    method !== "GET" &&
+    method !== "HEAD"
+  ) {
+    headers.set("Content-Type", normalizedBody.contentType);
+  }
+
+  return transport.request(
+    method,
+    normalizedPath,
+    headers,
+    normalizedBody.bodyBytes,
+  );
 }
 
 function waitForIceGatheringComplete(

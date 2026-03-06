@@ -316,7 +316,7 @@ export type RefreshRelaySigningSessionResponse = { signing_session_id: string, }
 
 export type WebRtcTransportStatus = "relay" | "upgrading" | "webrtc" | "fallback";
 
-export type StartWebRtcUpgradeRequest = { offer_sdp: string, };
+export type StartWebRtcUpgradeRequest = { offer_sdp: string, signing_session_id: string, request_nonce: string, };
 
 export type StartWebRtcUpgradeResponse = { session_id: string, status: WebRtcTransportStatus, answer_sdp: string | null, reason: string | null, };
 
