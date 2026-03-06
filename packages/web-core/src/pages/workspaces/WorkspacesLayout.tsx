@@ -29,13 +29,18 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { useWorkspaceSidebarHover } from '@/shared/hooks/WorkspaceSidebarHoverContext';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useWorkspaceSidebarVisibilityController } from './useWorkspaceSidebarVisibilityController';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
-export function WorkspacesLayout() {
+interface WorkspacesLayoutProps {
+  isAppBarHovered?: boolean;
+}
+
+export function WorkspacesLayout({
+  isAppBarHovered = false,
+}: WorkspacesLayoutProps) {
   const appNavigation = useAppNavigation();
   const {
     workspaceId,
@@ -57,7 +62,6 @@ export function WorkspacesLayout() {
 
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
-  const { isAppBarHovered } = useWorkspaceSidebarHover();
   const mainContainerRef = useRef<WorkspacesMainContainerHandle>(null);
 
   const handleScrollToBottom = useCallback(() => {

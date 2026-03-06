@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
 import { Outlet } from '@tanstack/react-router';
+import type { ReactNode } from 'react';
 import { siDiscord, siGithub } from 'simple-icons';
 import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
@@ -35,10 +36,6 @@ import {
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
-import {
-  WorkspaceSidebarHoverProvider,
-  useWorkspaceSidebarHover,
-} from '@/shared/hooks/WorkspaceSidebarHoverContext';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { sortProjectsByOrder } from '@/shared/lib/projectOrder';
 import {
@@ -47,21 +44,25 @@ import {
   type Project as RemoteProject,
 } from 'shared/remote-types';
 
-export function SharedAppLayout() {
-  return (
-    <WorkspaceSidebarHoverProvider>
-      <SharedAppLayoutContent />
-    </WorkspaceSidebarHoverProvider>
-  );
+interface AppBarHoverHandlers {
+  onHoverStart: () => void;
+  onHoverEnd: () => void;
 }
 
-function SharedAppLayoutContent() {
+interface SharedAppLayoutProps {
+  appBarHoverHandlers?: AppBarHoverHandlers;
+  children?: ReactNode;
+}
+
+export function SharedAppLayout({
+  appBarHoverHandlers,
+  children,
+}: SharedAppLayoutProps = {}) {
   const appNavigation = useAppNavigation();
   const currentDestination = useCurrentAppDestination();
   const isMigrateRoute = currentDestination?.kind === 'migrate';
   const isMobile = useIsMobile();
   const mobileFontScale = useUiPreferencesStore((s) => s.mobileFontScale);
-  const { setAppBarHovered } = useWorkspaceSidebarHover();
   const { isSignedIn } = useAuth();
   const { appVersion } = useUserSystem();
   const { data: onlineCount } = useDiscordOnlineCount();
@@ -306,8 +307,8 @@ function SharedAppLayoutContent() {
             isLoadingProjects={isLoading}
             onSignIn={handleSignIn}
             onMigrate={handleMigrate}
-            onHoverStart={() => setAppBarHovered(true)}
-            onHoverEnd={() => setAppBarHovered(false)}
+            onHoverStart={appBarHoverHandlers?.onHoverStart}
+            onHoverEnd={appBarHoverHandlers?.onHoverEnd}
             userPopover={
               <AppBarUserPopoverContainer
                 organizations={organizations}
@@ -451,7 +452,7 @@ function SharedAppLayoutContent() {
             onOpenDrawer={() => setIsDrawerOpen(true)}
           />
           <div className="flex-1 min-h-0 overflow-hidden">
-            <Outlet />
+            {children ?? <Outlet />}
           </div>
         </div>
       </div>
