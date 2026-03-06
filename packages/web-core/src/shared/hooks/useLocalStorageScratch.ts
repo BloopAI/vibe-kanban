@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ScratchType, Scratch, UpdateScratch } from 'shared/types';
 import type { UseScratchResult } from './useScratch';
 
@@ -53,13 +53,6 @@ export function localStorageScratchUpdate(
   writeToStorage(key, next);
 }
 
-export function localStorageScratchDelete(
-  scratchType: ScratchType,
-  id: string
-): void {
-  removeFromStorage(buildStorageKey(scratchType, id));
-}
-
 interface UseLocalStorageScratchOptions {
   enabled?: boolean;
 }
@@ -81,7 +74,6 @@ export const useLocalStorageScratch = (
     enabled ? readFromStorage(storageKey) : null
   );
   const [isInitialized, setIsInitialized] = useState(false);
-  const prevKeyRef = useRef(storageKey);
 
   useEffect(() => {
     if (!enabled) {
@@ -93,7 +85,6 @@ export const useLocalStorageScratch = (
     const stored = readFromStorage(storageKey);
     setScratch(stored);
     setIsInitialized(true);
-    prevKeyRef.current = storageKey;
   }, [storageKey, enabled]);
 
   useEffect(() => {
