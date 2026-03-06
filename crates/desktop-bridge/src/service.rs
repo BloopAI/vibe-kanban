@@ -1,22 +1,13 @@
-//! Reusable desktop bridge service logic.
+//! Desktop editor integration.
 //!
-//! This module contains the core "open remote editor" workflow without HTTP
-//! server concerns so it can be embedded into other binaries (for example the
-//! main local server process).
+//! Sets up SSH config and builds editor URLs for remote-in-IDE workflows.
+//! Transport concerns (relay tunneling) live in the server crate.
 
+use ed25519_dalek::SigningKey;
 use serde::Serialize;
-use thiserror::Error;
 use ts_rs::TS;
 
-use crate::{signing::SigningContext, ssh_config, tunnel::TunnelManager};
-
-#[derive(Debug, Clone)]
-pub struct OpenRemoteEditorOptions {
-    pub workspace_path: String,
-    pub editor_type: Option<String>,
-    /// Relay proxy session URL (e.g. https://relay.example.com/relay/h/{host_id}/s/{session_id})
-    pub relay_session_base_url: String,
-}
+use crate::ssh_config;
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct OpenRemoteEditorResponse {
@@ -25,48 +16,26 @@ pub struct OpenRemoteEditorResponse {
     pub ssh_alias: String,
 }
 
-#[derive(Debug, Error)]
-pub enum OpenRemoteEditorError {
-    #[error(transparent)]
-    Internal(#[from] anyhow::Error),
-}
+/// Set up SSH config and build an editor URL for a tunneled remote session.
+///
+/// `local_port` is the local end of an already-established relay tunnel.
+pub fn open_remote_editor(
+    local_port: u16,
+    signing_key: &SigningKey,
+    workspace_path: &str,
+    editor_type: Option<&str>,
+) -> anyhow::Result<OpenRemoteEditorResponse> {
+    let (key_path, alias) = ssh_config::provision_ssh_key(signing_key)?;
+    ssh_config::update_ssh_config(&alias, local_port, &key_path)?;
+    ssh_config::ensure_ssh_include()?;
 
-#[derive(Default)]
-pub struct DesktopBridgeService {
-    tunnel_manager: TunnelManager,
-}
+    let url = build_editor_url(&alias, workspace_path, editor_type);
 
-impl DesktopBridgeService {
-    pub fn new(tunnel_manager: TunnelManager) -> Self {
-        Self { tunnel_manager }
-    }
-
-    pub async fn open_remote_editor(
-        &self,
-        options: OpenRemoteEditorOptions,
-        signing_ctx: SigningContext,
-    ) -> Result<OpenRemoteEditorResponse, OpenRemoteEditorError> {
-        let local_port = self
-            .tunnel_manager
-            .get_or_create_ssh_tunnel(&options.relay_session_base_url, &signing_ctx)
-            .await?;
-
-        let (key_path, alias) = ssh_config::provision_ssh_key(&signing_ctx.signing_key)?;
-        ssh_config::update_ssh_config(&alias, local_port, &key_path)?;
-        ssh_config::ensure_ssh_include()?;
-
-        let url = build_editor_url(
-            &alias,
-            &options.workspace_path,
-            options.editor_type.as_deref(),
-        );
-
-        Ok(OpenRemoteEditorResponse {
-            url,
-            local_port,
-            ssh_alias: alias,
-        })
-    }
+    Ok(OpenRemoteEditorResponse {
+        url,
+        local_port,
+        ssh_alias: alias,
+    })
 }
 
 fn build_editor_url(alias: &str, workspace_path: &str, editor_type: Option<&str>) -> String {

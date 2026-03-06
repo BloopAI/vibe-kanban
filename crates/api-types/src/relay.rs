@@ -22,20 +22,6 @@ pub struct ListRelayHostsResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RelaySessionAuthCodeResponse {
+pub struct CreateRemoteSessionResponse {
     pub session_id: Uuid,
-    pub code: String,
-    pub browser_session_id: Uuid,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-pub struct RelaySession {
-    pub id: Uuid,
-    pub host_id: Uuid,
-    pub request_user_id: Uuid,
-    pub state: String,
-    pub created_at: DateTime<Utc>,
-    pub expires_at: DateTime<Utc>,
-    pub claimed_at: Option<DateTime<Utc>>,
-    pub ended_at: Option<DateTime<Utc>>,
 }

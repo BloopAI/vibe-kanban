@@ -1,3 +1,4 @@
+import { buildRemoteSessionBaseUrl } from "@/shared/lib/relayBackendApi";
 import {
   buildSignedHeaders,
   CONTENT_TYPE_HEADER,
@@ -31,7 +32,12 @@ export async function sendRelayHostRequest(
     headers.set(CONTENT_TYPE_HEADER, params.contentType);
   }
 
-  return fetch(`${context.relaySessionBaseUrl}${params.normalizedPath}`, {
+  const baseUrl = buildRemoteSessionBaseUrl(
+    context.pairedHost.host_id,
+    context.sessionId,
+  );
+
+  return fetch(`${baseUrl}${params.normalizedPath}`, {
     ...params.requestInit,
     body: params.body,
     headers,

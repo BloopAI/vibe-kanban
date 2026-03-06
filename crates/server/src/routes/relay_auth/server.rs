@@ -19,6 +19,10 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
+use super::types::{
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
+    StartSpake2EnrollmentResponse,
+};
 use crate::{DeploymentImpl, error::ApiError};
 
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
@@ -30,37 +34,6 @@ const RELAY_HEADER: &str = "x-vk-relayed";
 #[derive(Debug, Serialize)]
 struct GenerateEnrollmentCodeResponse {
     enrollment_code: String,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct StartSpake2EnrollmentRequest {
-    enrollment_code: String,
-    client_message_b64: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct StartSpake2EnrollmentResponse {
-    enrollment_id: Uuid,
-    server_message_b64: String,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct FinishSpake2EnrollmentRequest {
-    enrollment_id: Uuid,
-    client_id: Uuid,
-    client_name: String,
-    client_browser: String,
-    client_os: String,
-    client_device: String,
-    public_key_b64: String,
-    client_proof_b64: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct FinishSpake2EnrollmentResponse {
-    signing_session_id: Uuid,
-    server_public_key_b64: String,
-    server_proof_b64: String,
 }
 
 #[derive(Debug, Serialize, TS)]

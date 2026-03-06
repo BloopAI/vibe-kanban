@@ -4,12 +4,16 @@ use crate::DeploymentImpl;
 
 pub mod client;
 pub mod server;
+mod types;
 
 pub use client::{PairRelayHostRequest, PairRelayHostResponse};
 pub use server::{
-    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, ListRelayPairedClientsResponse,
-    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayPairedClient,
-    RemoveRelayPairedClientResponse, StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
+    ListRelayPairedClientsResponse, RefreshRelaySigningSessionRequest,
+    RefreshRelaySigningSessionResponse, RelayPairedClient, RemoveRelayPairedClientResponse,
+};
+pub use types::{
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
+    StartSpake2EnrollmentResponse,
 };
 
 pub fn router() -> Router<DeploymentImpl> {

@@ -4,7 +4,7 @@ use api_types::LoginStatus;
 use async_trait::async_trait;
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
-use desktop_bridge::service::DesktopBridgeService;
+use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use relay_control::{RelayControl, signing::RelaySigningService};
@@ -70,8 +70,8 @@ pub struct LocalDeployment {
     server_info: Arc<ServerInfo>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
-    desktop_bridge: Arc<DesktopBridgeService>,
-    relay_host_credentials: Arc<RwLock<HashMap<String, RelayHostCredentials>>>,
+    tunnel_manager: Arc<TunnelManager>,
+    relay_host_credentials: Arc<RwLock<HashMap<Uuid, RelayHostCredentials>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -225,7 +225,7 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let pty = PtyService::new();
-        let desktop_bridge = Arc::new(DesktopBridgeService::default());
+        let tunnel_manager = Arc::new(TunnelManager::new());
         let relay_host_credentials = Arc::new(RwLock::new(load_relay_host_credentials_map().await));
         {
             let db = db.clone();
@@ -263,7 +263,7 @@ impl Deployment for LocalDeployment {
             server_info,
             ssh_config,
             pty,
-            desktop_bridge,
+            tunnel_manager,
             relay_host_credentials,
         };
 
@@ -417,13 +417,13 @@ impl LocalDeployment {
         &self.ssh_config
     }
 
-    pub fn desktop_bridge(&self) -> &Arc<DesktopBridgeService> {
-        &self.desktop_bridge
+    pub fn tunnel_manager(&self) -> &Arc<TunnelManager> {
+        &self.tunnel_manager
     }
 
     pub async fn upsert_relay_host_credentials(
         &self,
-        host_id: String,
+        host_id: Uuid,
         signing_session_id: String,
         private_key_jwk: serde_json::Value,
     ) -> anyhow::Result<()> {
@@ -441,22 +441,22 @@ impl LocalDeployment {
         persist_relay_host_credentials_map(&credentials).await
     }
 
-    pub async fn get_relay_host_credentials(&self, host_id: &str) -> Option<RelayHostCredentials> {
+    pub async fn get_relay_host_credentials(&self, host_id: Uuid) -> Option<RelayHostCredentials> {
         self.relay_host_credentials
             .read()
             .await
-            .get(host_id)
+            .get(&host_id)
             .cloned()
     }
 }
 
-async fn load_relay_host_credentials_map() -> HashMap<String, RelayHostCredentials> {
+async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {
     let path = relay_host_credentials_path();
     let Ok(raw) = tokio::fs::read_to_string(&path).await else {
         return HashMap::new();
     };
 
-    match serde_json::from_str::<HashMap<String, RelayHostCredentials>>(&raw) {
+    match serde_json::from_str::<HashMap<Uuid, RelayHostCredentials>>(&raw) {
         Ok(value) => value,
         Err(error) => {
             tracing::warn!(
@@ -470,7 +470,7 @@ async fn load_relay_host_credentials_map() -> HashMap<String, RelayHostCredentia
 }
 
 async fn persist_relay_host_credentials_map(
-    map: &HashMap<String, RelayHostCredentials>,
+    map: &HashMap<Uuid, RelayHostCredentials>,
 ) -> anyhow::Result<()> {
     let path = relay_host_credentials_path();
     let json = serde_json::to_string_pretty(map)?;

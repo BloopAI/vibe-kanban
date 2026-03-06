@@ -1,4 +1,4 @@
-import type { RelaySessionAuthCodeResponse } from 'shared/remote-types';
+import type { CreateRemoteSessionResponse } from 'shared/remote-types';
 import type {
   FinishSpake2EnrollmentRequest,
   FinishSpake2EnrollmentResponse,
@@ -37,12 +37,12 @@ export function syncRelayApiBaseWithRemote(base: string | null | undefined) {
   }
 }
 
-export async function createRelaySessionAuthCode(
-  sessionId: string
-): Promise<RelaySessionAuthCodeResponse> {
+export async function createRemoteSession(
+  hostId: string
+): Promise<CreateRemoteSessionResponse> {
   const response = await makeAuthenticatedRequest(
     getRelayApiUrl(),
-    `/v1/relay/sessions/${sessionId}/auth-code`,
+    `/v1/relay/create/${hostId}`,
     { method: 'POST' }
   );
   if (!response.ok) {
@@ -52,67 +52,73 @@ export async function createRelaySessionAuthCode(
     );
   }
 
-  return (await response.json()) as RelaySessionAuthCodeResponse;
+  return (await response.json()) as CreateRemoteSessionResponse;
 }
 
-export async function establishRelaySessionBaseUrl(
-  relayUrl: string,
+export function buildRemoteSessionBaseUrl(
   hostId: string,
   browserSessionId: string
-): Promise<string> {
-  const relayBase = relayUrl.replace(/\/+$/, '');
-  return `${relayBase}/relay/h/${hostId}/s/${browserSessionId}`;
+): string {
+  const relayBase = getRelayApiUrl().replace(/\/+$/, '');
+  return `${relayBase}/v1/relay/h/${hostId}/s/${browserSessionId}`;
 }
 
 export async function startRelaySpake2Enrollment(
-  relaySessionBaseUrl: string,
+  hostId: string,
+  sessionId: string,
   payload: StartSpake2EnrollmentRequest
 ): Promise<StartSpake2EnrollmentResponse> {
-  const response = await fetch(
-    `${relaySessionBaseUrl}/api/relay-auth/server/spake2/start`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }
+  const response = await makeAuthenticatedRelaySessionRequest(
+    hostId,
+    sessionId,
+    '/api/relay-auth/server/spake2/start',
+    { method: 'POST', body: JSON.stringify(payload) }
   );
 
   return parseLocalApiResponse(response, 'Failed to start pairing.');
 }
 
 export async function finishRelaySpake2Enrollment(
-  relaySessionBaseUrl: string,
+  hostId: string,
+  sessionId: string,
   payload: FinishSpake2EnrollmentRequest
 ): Promise<FinishSpake2EnrollmentResponse> {
-  const response = await fetch(
-    `${relaySessionBaseUrl}/api/relay-auth/server/spake2/finish`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }
+  const response = await makeAuthenticatedRelaySessionRequest(
+    hostId,
+    sessionId,
+    '/api/relay-auth/server/spake2/finish',
+    { method: 'POST', body: JSON.stringify(payload) }
   );
 
   return parseLocalApiResponse(response, 'Failed to finish pairing.');
 }
 
 export async function refreshRelaySigningSession(
-  relaySessionBaseUrl: string,
+  hostId: string,
+  sessionId: string,
   payload: RelaySigningSessionRefreshPayload
 ): Promise<RefreshRelaySigningSessionResponse> {
-  const response = await fetch(
-    `${relaySessionBaseUrl}/api/relay-auth/server/signing-session/refresh`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    }
+  const response = await makeAuthenticatedRelaySessionRequest(
+    hostId,
+    sessionId,
+    '/api/relay-auth/server/signing-session/refresh',
+    { method: 'POST', body: JSON.stringify(payload) }
   );
 
   return parseLocalApiResponse(
     response,
     'Failed to refresh relay signing session.'
   );
+}
+
+async function makeAuthenticatedRelaySessionRequest(
+  hostId: string,
+  sessionId: string,
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const baseUrl = buildRemoteSessionBaseUrl(hostId, sessionId);
+  return makeAuthenticatedRequest(baseUrl, path, options);
 }
 
 async function makeAuthenticatedRequest(

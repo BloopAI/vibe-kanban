@@ -13,12 +13,7 @@ import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
-import { createRelaySession } from '@/shared/lib/remoteApi';
-import {
-  createRelaySessionAuthCode,
-  getRelayApiUrl,
-  establishRelaySessionBaseUrl,
-} from '@/shared/lib/relayBackendApi';
+import { createRemoteSession } from '@/shared/lib/relayBackendApi';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
@@ -150,17 +145,11 @@ function LocalRelaySettingsSectionContent() {
 
   const openFirstWorkspaceMutation = useMutation({
     mutationFn: async (hostId: string) => {
-      const relaySession = await createRelaySession(hostId);
-      const authCode = await createRelaySessionAuthCode(relaySession.id);
-      const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
-        getRelayApiUrl(),
-        hostId,
-        authCode.browser_session_id
-      );
+      const createSessionResponse = await createRemoteSession(hostId);
       return relayApi.openFirstWorkspaceInRemoteEditor({
         host_id: hostId,
+        browser_session_id: createSessionResponse.session_id,
         editor_type: null,
-        relay_session_base_url: relaySessionBaseUrl,
       });
     },
   });

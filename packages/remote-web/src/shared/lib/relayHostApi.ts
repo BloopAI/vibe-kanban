@@ -1,6 +1,6 @@
 import {
-  invalidateRelaySessionBaseUrl,
-  resolveRelayHostContext,
+  invalidateRemoteSessionId,
+  resolveRemoteHostContext,
   tryRefreshRelayHostSigningSession,
 } from "@remote/shared/lib/relay/context";
 import { getActiveRelayHostId } from "@remote/shared/lib/relay/activeHostContext";
@@ -25,6 +25,7 @@ import {
   createRelaySignedWebSocket,
   createRelayWsSigningContext,
 } from "@remote/shared/lib/relay/ws";
+import { buildRemoteSessionBaseUrl } from "@/shared/lib/relayBackendApi";
 
 const EMPTY_BYTES = new Uint8Array();
 
@@ -82,7 +83,7 @@ export async function requestRelayHostApi(
     requestInit.body,
   );
 
-  const context = await resolveRelayHostContext(hostId);
+  const context = await resolveRemoteHostContext(hostId);
   const initialResponse = await sendRelayHostRequest(context, {
     normalizedPath,
     method,
@@ -95,7 +96,7 @@ export async function requestRelayHostApi(
     return initialResponse;
   }
 
-  invalidateRelaySessionBaseUrl(hostId);
+  invalidateRemoteSessionId(hostId);
   const refreshedContext = await tryRefreshRelayHostSigningSession(context);
   if (!refreshedContext) {
     return initialResponse;
@@ -110,7 +111,7 @@ export async function requestRelayHostApi(
     requestInit,
   });
   if (isAuthFailureStatus(retryResponse.status)) {
-    invalidateRelaySessionBaseUrl(hostId);
+    invalidateRemoteSessionId(hostId);
   }
 
   return retryResponse;
@@ -120,7 +121,7 @@ export async function openRelayHostWebSocket(
   hostId: string,
   pathOrUrl: string,
 ): Promise<WebSocket> {
-  const baseContext = await resolveRelayHostContext(hostId);
+  const baseContext = await resolveRemoteHostContext(hostId);
   const context =
     (await tryRefreshRelayHostSigningSession(baseContext)) ?? baseContext;
   const pathAndQuery = toPathAndQuery(pathOrUrl);
@@ -132,12 +133,13 @@ export async function openRelayHostWebSocket(
     normalizedPath,
     EMPTY_BYTES,
   );
+  const base_url = buildRemoteSessionBaseUrl(
+    context.pairedHost.host_id,
+    context.sessionId,
+  );
 
   const signedPath = appendSignatureToPath(normalizedPath, signature);
-  const wsUrl = `${context.relaySessionBaseUrl}${signedPath}`.replace(
-    /^http/i,
-    "ws",
-  );
+  const wsUrl = `${base_url}${signedPath}`.replace(/^http/i, "ws");
 
   const signingContext = await createRelayWsSigningContext(
     context.pairedHost,
