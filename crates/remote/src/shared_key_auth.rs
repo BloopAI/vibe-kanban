@@ -2,16 +2,15 @@
 // Only used for local development — production uses Entra ID.
 // Based on: https://github.com/Azure/azure-sdk-for-rust/issues/2975#issuecomment-3538764202
 
-use std::borrow::Cow;
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use async_trait::async_trait;
 use azure_core::{
     credentials::Secret,
     http::{
-        headers::{HeaderName, Headers, CONTENT_LENGTH},
-        policies::{Policy, PolicyResult},
         Context, Method, Request, Url,
+        headers::{CONTENT_LENGTH, HeaderName, Headers},
+        policies::{Policy, PolicyResult},
     },
 };
 use base64::prelude::*;

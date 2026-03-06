@@ -34,7 +34,11 @@ pub struct OAuthTokenValidator {
 }
 
 impl OAuthTokenValidator {
-    pub fn new(pool: PgPool, provider_registry: Arc<ProviderRegistry>, jwt: Arc<JwtService>) -> Self {
+    pub fn new(
+        pool: PgPool,
+        provider_registry: Arc<ProviderRegistry>,
+        jwt: Arc<JwtService>,
+    ) -> Self {
         Self {
             pool,
             provider_registry,

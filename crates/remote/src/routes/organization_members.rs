@@ -1,3 +1,7 @@
+use api_types::{
+    ListMembersResponse, MemberRole, OrganizationMemberWithProfile, RevokeInvitationRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+};
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -9,10 +13,6 @@ use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::warn;
-use api_types::{
-    ListMembersResponse, MemberRole, OrganizationMemberWithProfile, RevokeInvitationRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse,
-};
 use uuid::Uuid;
 
 use super::error::{ErrorResponse, membership_error};

@@ -70,25 +70,105 @@ struct ListWorkspacesResponse {
 pub fn all_shape_routes() -> Vec<ShapeRoute> {
     vec![
         // Organization-scoped
-        ShapeRoute::new(&shapes::PROJECTS_SHAPE, ShapeScope::Org, "/fallback/projects", fallback_list_projects),
-        ShapeRoute::new(&shapes::NOTIFICATIONS_SHAPE, ShapeScope::OrgWithUser, "/fallback/notifications", fallback_list_notifications),
-        ShapeRoute::new(&shapes::ORGANIZATION_MEMBERS_SHAPE, ShapeScope::Org, "/fallback/organization_members", fallback_list_organization_members),
-        ShapeRoute::new(&shapes::USERS_SHAPE, ShapeScope::Org, "/fallback/users", fallback_list_users),
+        ShapeRoute::new(
+            &shapes::PROJECTS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/projects",
+            fallback_list_projects,
+        ),
+        ShapeRoute::new(
+            &shapes::NOTIFICATIONS_SHAPE,
+            ShapeScope::OrgWithUser,
+            "/fallback/notifications",
+            fallback_list_notifications,
+        ),
+        ShapeRoute::new(
+            &shapes::ORGANIZATION_MEMBERS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/organization_members",
+            fallback_list_organization_members,
+        ),
+        ShapeRoute::new(
+            &shapes::USERS_SHAPE,
+            ShapeScope::Org,
+            "/fallback/users",
+            fallback_list_users,
+        ),
         // Project-scoped
-        ShapeRoute::new(&shapes::PROJECT_TAGS_SHAPE, ShapeScope::Project, "/fallback/tags", fallback_list_tags),
-        ShapeRoute::new(&shapes::PROJECT_PROJECT_STATUSES_SHAPE, ShapeScope::Project, "/fallback/project_statuses", fallback_list_project_statuses),
-        ShapeRoute::new(&shapes::PROJECT_ISSUES_SHAPE, ShapeScope::Project, "/fallback/issues", fallback_list_issues),
-        ShapeRoute::new(&shapes::USER_WORKSPACES_SHAPE, ShapeScope::User, "/fallback/user_workspaces", fallback_list_user_workspaces),
-        ShapeRoute::new(&shapes::PROJECT_WORKSPACES_SHAPE, ShapeScope::Project, "/fallback/project_workspaces", fallback_list_project_workspaces),
+        ShapeRoute::new(
+            &shapes::PROJECT_TAGS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/tags",
+            fallback_list_tags,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_PROJECT_STATUSES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/project_statuses",
+            fallback_list_project_statuses,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issues",
+            fallback_list_issues,
+        ),
+        ShapeRoute::new(
+            &shapes::USER_WORKSPACES_SHAPE,
+            ShapeScope::User,
+            "/fallback/user_workspaces",
+            fallback_list_user_workspaces,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_WORKSPACES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/project_workspaces",
+            fallback_list_project_workspaces,
+        ),
         // Project-scoped issue-related
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_ASSIGNEES_SHAPE, ShapeScope::Project, "/fallback/issue_assignees", fallback_list_issue_assignees),
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_FOLLOWERS_SHAPE, ShapeScope::Project, "/fallback/issue_followers", fallback_list_issue_followers),
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_TAGS_SHAPE, ShapeScope::Project, "/fallback/issue_tags", fallback_list_issue_tags),
-        ShapeRoute::new(&shapes::PROJECT_ISSUE_RELATIONSHIPS_SHAPE, ShapeScope::Project, "/fallback/issue_relationships", fallback_list_issue_relationships),
-        ShapeRoute::new(&shapes::PROJECT_PULL_REQUESTS_SHAPE, ShapeScope::Project, "/fallback/pull_requests", fallback_list_pull_requests),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_ASSIGNEES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_assignees",
+            fallback_list_issue_assignees,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_FOLLOWERS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_followers",
+            fallback_list_issue_followers,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_TAGS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_tags",
+            fallback_list_issue_tags,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_ISSUE_RELATIONSHIPS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/issue_relationships",
+            fallback_list_issue_relationships,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_PULL_REQUESTS_SHAPE,
+            ShapeScope::Project,
+            "/fallback/pull_requests",
+            fallback_list_pull_requests,
+        ),
         // Issue-scoped
-        ShapeRoute::new(&shapes::ISSUE_COMMENTS_SHAPE, ShapeScope::Issue, "/fallback/issue_comments", fallback_list_issue_comments),
-        ShapeRoute::new(&shapes::ISSUE_REACTIONS_SHAPE, ShapeScope::Issue, "/fallback/issue_comment_reactions", fallback_list_issue_comment_reactions),
+        ShapeRoute::new(
+            &shapes::ISSUE_COMMENTS_SHAPE,
+            ShapeScope::Issue,
+            "/fallback/issue_comments",
+            fallback_list_issue_comments,
+        ),
+        ShapeRoute::new(
+            &shapes::ISSUE_REACTIONS_SHAPE,
+            ShapeScope::Issue,
+            "/fallback/issue_comment_reactions",
+            fallback_list_issue_comment_reactions,
+        ),
     ]
 }
 

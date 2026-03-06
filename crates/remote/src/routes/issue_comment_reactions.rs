@@ -1,3 +1,8 @@
+use api_types::{
+    CreateIssueCommentReactionRequest, DeleteResponse, IssueCommentReaction,
+    ListIssueCommentReactionsQuery, ListIssueCommentReactionsResponse, MutationResponse,
+    UpdateIssueCommentReactionRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,7 +15,6 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
@@ -20,15 +24,13 @@ use crate::{
     },
     mutation_definition::MutationBuilder,
 };
-use api_types::{
-    CreateIssueCommentReactionRequest, IssueCommentReaction, ListIssueCommentReactionsQuery,
-    ListIssueCommentReactionsResponse, UpdateIssueCommentReactionRequest,
-};
 
 /// Mutation definition for IssueCommentReaction - provides both router and TypeScript metadata.
-pub fn mutation(
-) -> MutationBuilder<IssueCommentReaction, CreateIssueCommentReactionRequest, UpdateIssueCommentReactionRequest>
-{
+pub fn mutation() -> MutationBuilder<
+    IssueCommentReaction,
+    CreateIssueCommentReactionRequest,
+    UpdateIssueCommentReactionRequest,
+> {
     MutationBuilder::new("issue_comment_reactions")
         .list(list_issue_comment_reactions)
         .get(get_issue_comment_reaction)

@@ -4,6 +4,7 @@ use aes_gcm::{
     Aes256Gcm, Key, Nonce,
     aead::{Aead, AeadCore, KeyInit, OsRng},
 };
+use api_types::User;
 use base64::{
     Engine as _,
     engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD},
@@ -16,7 +17,6 @@ use sha2::{Digest, Sha256};
 use thiserror::Error;
 use uuid::Uuid;
 
-use api_types::User;
 use crate::{auth::provider::ProviderTokenDetails, db::auth::AuthSession};
 
 pub const ACCESS_TOKEN_TTL_SECONDS: i64 = 120;
@@ -155,7 +155,11 @@ impl JwtService {
         })
     }
 
-    pub fn generate_access_token(&self, user_id: Uuid, session_id: Uuid) -> Result<String, JwtError> {
+    pub fn generate_access_token(
+        &self,
+        user_id: Uuid,
+        session_id: Uuid,
+    ) -> Result<String, JwtError> {
         let now = Utc::now();
         let access_exp = now + ChronoDuration::seconds(ACCESS_TOKEN_TTL_SECONDS);
         let claims = AccessTokenClaims {
@@ -167,7 +171,11 @@ impl JwtService {
         };
 
         let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
-        Ok(encode(&Header::new(Algorithm::HS256), &claims, &encoding_key)?)
+        Ok(encode(
+            &Header::new(Algorithm::HS256),
+            &claims,
+            &encoding_key,
+        )?)
     }
 
     pub fn decode_access_token(&self, token: &str) -> Result<AccessTokenDetails, JwtError> {

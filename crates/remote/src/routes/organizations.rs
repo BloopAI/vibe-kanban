@@ -1,13 +1,13 @@
+use api_types::{
+    CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
+    ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
+};
 use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
     routing::{delete, get, patch, post},
-};
-use api_types::{
-    CreateOrganizationRequest, CreateOrganizationResponse, GetOrganizationResponse,
-    ListOrganizationsResponse, MemberRole, UpdateOrganizationRequest,
 };
 use uuid::Uuid;
 

@@ -6,12 +6,12 @@ use api_types::{
     CreateIssueRelationshipRequest, CreateIssueRequest, CreateIssueTagRequest,
     CreateNotificationRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
-    IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationType,
-    OrganizationMember, Project, ProjectStatus, PullRequest,
+    IssueRelationship, IssueRelationshipType, IssueTag, ListRelayHostsResponse, MemberRole,
+    Notification, NotificationType, OrganizationMember, Project, ProjectStatus, PullRequest,
     PullRequestStatus, RelayHost, RelaySession, RelaySessionAuthCodeResponse, Tag,
     UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-    UpdateTagRequest, User, UserData, Workspace, ListRelayHostsResponse,
+    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
+    User, UserData, Workspace,
 };
 use remote::{
     routes::{

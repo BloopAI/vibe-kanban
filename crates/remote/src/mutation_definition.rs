@@ -49,10 +49,7 @@ impl<A, B, C, D, T> HasJsonPayload<T> for (A, B, C, D, Json<T>) {}
 impl<A, B, C, D, E0, T> HasJsonPayload<T> for (A, B, C, D, E0, Json<T>) {}
 impl<A, B, C, D, E0, F, T> HasJsonPayload<T> for (A, B, C, D, E0, F, Json<T>) {}
 impl<A, B, C, D, E0, F, G, T> HasJsonPayload<T> for (A, B, C, D, E0, F, G, Json<T>) {}
-impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T>
-    for (A, B, C, D, E0, F, G, H, Json<T>)
-{
-}
+impl<A, B, C, D, E0, F, G, H, T> HasJsonPayload<T> for (A, B, C, D, E0, F, G, H, Json<T>) {}
 
 // =============================================================================
 // MutationDefinition - Metadata for TypeScript generation

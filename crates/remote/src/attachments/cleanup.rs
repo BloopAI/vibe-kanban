@@ -6,9 +6,10 @@ use tracing::{info, instrument, warn};
 
 use crate::{
     azure_blob::AzureBlobService,
-    db::attachments::AttachmentRepository,
-    db::blobs::BlobRepository,
-    db::pending_uploads::PendingUploadRepository,
+    db::{
+        attachments::AttachmentRepository, blobs::BlobRepository,
+        pending_uploads::PendingUploadRepository,
+    },
 };
 
 const EXPIRED_BATCH_SIZE: i64 = 100;

@@ -1,4 +1,4 @@
-use api_types::{Issue, IssuePriority, PullRequestStatus};
+use api_types::{DeleteResponse, Issue, IssuePriority, MutationResponse, PullRequestStatus};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
@@ -9,7 +9,6 @@ use super::{
     get_txid, issue_assignees::IssueAssigneeRepository, project_statuses::ProjectStatusRepository,
     pull_requests::PullRequestRepository, workspaces::WorkspaceRepository,
 };
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueError {
