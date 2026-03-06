@@ -34,22 +34,27 @@ function removeFromStorage(key: string): void {
   }
 }
 
+function buildScratchEntry(
+  id: string,
+  update: UpdateScratch,
+  existing: Scratch | null
+): Scratch {
+  const now = new Date().toISOString();
+  return {
+    id: existing?.id ?? id,
+    payload: update.payload,
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
+  };
+}
+
 export function localStorageScratchUpdate(
   scratchType: ScratchType,
   id: string,
   update: UpdateScratch
 ): void {
   const key = buildStorageKey(scratchType, id);
-  const now = new Date().toISOString();
-  const existing = readFromStorage(key);
-
-  const next: Scratch = {
-    id: existing?.id ?? id,
-    payload: update.payload,
-    created_at: existing?.created_at ?? now,
-    updated_at: now,
-  };
-
+  const next = buildScratchEntry(id, update, readFromStorage(key));
   writeToStorage(key, next);
 }
 
@@ -73,7 +78,10 @@ export const useLocalStorageScratch = (
   const [scratch, setScratch] = useState<Scratch | null>(() =>
     enabled ? readFromStorage(storageKey) : null
   );
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Start as `enabled` — when enabled, the useState initializer above already
+  // synchronously reads from localStorage, so data is available on the first
+  // render and there is no need for an extra "loading" cycle.
+  const [isInitialized, setIsInitialized] = useState(enabled);
 
   useEffect(() => {
     if (!enabled) {
@@ -109,16 +117,7 @@ export const useLocalStorageScratch = (
 
   const updateScratch = useCallback(
     async (update: UpdateScratch) => {
-      const now = new Date().toISOString();
-      const existing = readFromStorage(storageKey);
-
-      const next: Scratch = {
-        id: existing?.id ?? id,
-        payload: update.payload,
-        created_at: existing?.created_at ?? now,
-        updated_at: now,
-      };
-
+      const next = buildScratchEntry(id, update, readFromStorage(storageKey));
       writeToStorage(storageKey, next);
       setScratch(next);
     },
