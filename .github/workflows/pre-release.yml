@@ -132,7 +132,10 @@ jobs:
 
       - name: Update remote crate lockfile
         if: ${{ steps.ssh-setup.outcome == 'success' }}
-        run: cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
+        run: cargo metadata --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null
+
+      - name: Update relay-tunnel crate lockfile
+        run: cargo metadata --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null
 
       - name: Stop SSH agent
         if: ${{ steps.ssh-setup.outcome == 'success' }}
@@ -145,6 +148,7 @@ jobs:
           git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
           [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
+          [ -f crates/relay-tunnel/Cargo.lock ] && git add crates/relay-tunnel/Cargo.lock || true
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
