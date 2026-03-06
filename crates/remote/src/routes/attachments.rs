@@ -1,3 +1,6 @@
+use api_types::{
+    AttachmentUrlResponse, AttachmentWithBlob, AttachmentWithUrl, ListAttachmentsResponse,
+};
 use axum::{
     Json, Router,
     extract::{Extension, Path, State},
@@ -11,17 +14,19 @@ use tracing::instrument;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use super::organization_members::{ensure_comment_access, ensure_issue_access, ensure_project_access};
-use api_types::{AttachmentUrlResponse, AttachmentWithBlob, AttachmentWithUrl, ListAttachmentsResponse};
-
+use super::organization_members::{
+    ensure_comment_access, ensure_issue_access, ensure_project_access,
+};
 use crate::{
     AppState,
+    attachments::thumbnail::ThumbnailService,
     auth::RequestContext,
     azure_blob::AzureBlobError,
-    db::attachments::{AttachmentError, AttachmentRepository},
-    db::blobs::{BlobError, BlobRepository},
-    db::pending_uploads::{PendingUploadError, PendingUploadRepository},
-    attachments::thumbnail::ThumbnailService,
+    db::{
+        attachments::{AttachmentError, AttachmentRepository},
+        blobs::{BlobError, BlobRepository},
+        pending_uploads::{PendingUploadError, PendingUploadRepository},
+    },
 };
 
 pub fn router() -> Router<AppState> {
@@ -31,10 +36,22 @@ pub fn router() -> Router<AppState> {
         .route("/attachments/{id}/file", get(get_attachment_file))
         .route("/attachments/{id}/thumbnail", get(get_attachment_thumbnail))
         .route("/attachments/{id}", delete(delete_attachment))
-        .route("/issues/{issue_id}/attachments", get(list_issue_attachments))
-        .route("/issues/{issue_id}/attachments/commit", post(commit_issue_attachments))
-        .route("/comments/{comment_id}/attachments", get(list_comment_attachments))
-        .route("/comments/{comment_id}/attachments/commit", post(commit_comment_attachments))
+        .route(
+            "/issues/{issue_id}/attachments",
+            get(list_issue_attachments),
+        )
+        .route(
+            "/issues/{issue_id}/attachments/commit",
+            post(commit_issue_attachments),
+        )
+        .route(
+            "/comments/{comment_id}/attachments",
+            get(list_comment_attachments),
+        )
+        .route(
+            "/comments/{comment_id}/attachments/commit",
+            post(commit_comment_attachments),
+        )
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -86,8 +103,6 @@ pub struct CommitAttachmentsResponse {
     pub attachments: Vec<AttachmentWithBlob>,
 }
 
-
-
 #[derive(Debug, thiserror::Error)]
 pub enum RouteError {
     #[error("Azure Blob storage not configured")]
@@ -117,7 +132,10 @@ pub enum RouteError {
 impl IntoResponse for RouteError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
-            RouteError::NotConfigured => (StatusCode::SERVICE_UNAVAILABLE, "Attachment storage not available"),
+            RouteError::NotConfigured => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Attachment storage not available",
+            ),
             RouteError::AzureBlob(e) => {
                 tracing::error!(error = %e, "Azure Blob error");
                 (StatusCode::INTERNAL_SERVER_ERROR, "Storage error")
@@ -133,7 +151,9 @@ impl IntoResponse for RouteError {
             RouteError::NotFound => (StatusCode::NOT_FOUND, "Attachment not found"),
             RouteError::NoThumbnail => (StatusCode::NOT_FOUND, "No thumbnail available"),
             RouteError::AccessDenied => (StatusCode::FORBIDDEN, "Access denied"),
-            RouteError::FileTooLarge => (StatusCode::PAYLOAD_TOO_LARGE, "File too large (max 20MB)"),
+            RouteError::FileTooLarge => {
+                (StatusCode::PAYLOAD_TOO_LARGE, "File too large (max 20MB)")
+            }
             RouteError::UploadNotFound => (StatusCode::NOT_FOUND, "Upload not found or expired"),
             RouteError::PendingUpload(e) => {
                 tracing::error!(error = %e, "Pending upload error");
@@ -141,7 +161,10 @@ impl IntoResponse for RouteError {
             }
             RouteError::ThumbnailError(e) => {
                 tracing::error!(error = %e, "Thumbnail generation failed");
-                (StatusCode::INTERNAL_SERVER_ERROR, "Thumbnail generation failed")
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Thumbnail generation failed",
+                )
             }
         };
 
@@ -166,7 +189,9 @@ async fn init_upload(
         return Err(RouteError::FileTooLarge);
     }
 
-    if let Some(existing) = BlobRepository::find_by_hash(state.pool(), payload.project_id, &payload.hash).await? {
+    if let Some(existing) =
+        BlobRepository::find_by_hash(state.pool(), payload.project_id, &payload.hash).await?
+    {
         let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
         let read_url = azure.create_read_url(&existing.blob_path)?;
 
@@ -181,7 +206,12 @@ async fn init_upload(
 
     let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
     let sanitized_filename = sanitize_filename(&payload.filename);
-    let blob_path = format!("attachments/{}/{}_{}", payload.project_id, Uuid::new_v4(), sanitized_filename);
+    let blob_path = format!(
+        "attachments/{}/{}_{}",
+        payload.project_id,
+        Uuid::new_v4(),
+        sanitized_filename
+    );
     let upload = azure.create_upload_url(&blob_path)?;
 
     let pending = PendingUploadRepository::create(
@@ -225,7 +255,9 @@ async fn confirm_upload(
 
     let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
 
-    let blob = if let Some(existing) = BlobRepository::find_by_hash(state.pool(), payload.project_id, &payload.hash).await? {
+    let blob = if let Some(existing) =
+        BlobRepository::find_by_hash(state.pool(), payload.project_id, &payload.hash).await?
+    {
         existing
     } else {
         let pending = PendingUploadRepository::find_by_id(state.pool(), payload.upload_id)
@@ -241,16 +273,23 @@ async fn confirm_upload(
         }
 
         let blob_data = azure.download_blob(blob_path).await?;
-        let thumbnail_result = ThumbnailService::generate(&blob_data, payload.content_type.as_deref())
-            .map_err(|e| RouteError::ThumbnailError(e.to_string()))?;
+        let thumbnail_result =
+            ThumbnailService::generate(&blob_data, payload.content_type.as_deref())
+                .map_err(|e| RouteError::ThumbnailError(e.to_string()))?;
 
         let _ = PendingUploadRepository::delete(state.pool(), pending.id).await;
 
         let (thumbnail_blob_path, width, height) = match thumbnail_result {
             Some(thumb) => {
                 let thumb_path = format!("thumbnails/{}", blob_path);
-                azure.upload_blob(&thumb_path, thumb.bytes, thumb.mime_type).await?;
-                (Some(thumb_path), Some(thumb.original_width as i32), Some(thumb.original_height as i32))
+                azure
+                    .upload_blob(&thumb_path, thumb.bytes, thumb.mime_type)
+                    .await?;
+                (
+                    Some(thumb_path),
+                    Some(thumb.original_width as i32),
+                    Some(thumb.original_height as i32),
+                )
             }
             None => (None, None, None),
         };
@@ -305,7 +344,9 @@ async fn commit_issue_attachments(
         .await
         .map_err(|_| RouteError::AccessDenied)?;
 
-    let attachments = AttachmentRepository::commit_to_issue(state.pool(), &payload.attachment_ids, issue_id).await?;
+    let attachments =
+        AttachmentRepository::commit_to_issue(state.pool(), &payload.attachment_ids, issue_id)
+            .await?;
     Ok(Json(CommitAttachmentsResponse { attachments }))
 }
 
@@ -320,7 +361,9 @@ async fn commit_comment_attachments(
         .await
         .map_err(|_| RouteError::AccessDenied)?;
 
-    let attachments = AttachmentRepository::commit_to_comment(state.pool(), &payload.attachment_ids, comment_id).await?;
+    let attachments =
+        AttachmentRepository::commit_to_comment(state.pool(), &payload.attachment_ids, comment_id)
+            .await?;
     Ok(Json(CommitAttachmentsResponse { attachments }))
 }
 
@@ -340,7 +383,10 @@ async fn list_issue_attachments(
         .into_iter()
         .map(|a| {
             let file_url = azure.and_then(|az| az.create_read_url(&a.blob_path).ok());
-            AttachmentWithUrl { attachment: a, file_url }
+            AttachmentWithUrl {
+                attachment: a,
+                file_url,
+            }
         })
         .collect();
     Ok(Json(ListAttachmentsResponse { attachments }))
@@ -362,7 +408,10 @@ async fn list_comment_attachments(
         .into_iter()
         .map(|a| {
             let file_url = azure.and_then(|az| az.create_read_url(&a.blob_path).ok());
-            AttachmentWithUrl { attachment: a, file_url }
+            AttachmentWithUrl {
+                attachment: a,
+                file_url,
+            }
         })
         .collect();
     Ok(Json(ListAttachmentsResponse { attachments }))
@@ -397,7 +446,9 @@ async fn get_attachment_thumbnail(
 
     ensure_attachment_access(&state, ctx.user.id, &attachment).await?;
 
-    let thumbnail_path = attachment.thumbnail_blob_path.ok_or(RouteError::NoThumbnail)?;
+    let thumbnail_path = attachment
+        .thumbnail_blob_path
+        .ok_or(RouteError::NoThumbnail)?;
     let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
     let url = azure.create_read_url(&thumbnail_path)?;
     Ok(Json(AttachmentUrlResponse { url }))
@@ -436,7 +487,11 @@ async fn delete_attachment(
     Ok(StatusCode::NO_CONTENT)
 }
 
-async fn ensure_attachment_access(state: &AppState, user_id: Uuid, attachment: &AttachmentWithBlob) -> Result<(), RouteError> {
+async fn ensure_attachment_access(
+    state: &AppState,
+    user_id: Uuid,
+    attachment: &AttachmentWithBlob,
+) -> Result<(), RouteError> {
     if let Some(issue_id) = attachment.issue_id {
         ensure_issue_access(state.pool(), user_id, issue_id)
             .await
@@ -445,7 +500,9 @@ async fn ensure_attachment_access(state: &AppState, user_id: Uuid, attachment: &
         ensure_comment_access(state.pool(), user_id, comment_id)
             .await
             .map_err(|_| RouteError::AccessDenied)?;
-    } else if let Some(project_id) = AttachmentRepository::project_id(state.pool(), attachment.id).await? {
+    } else if let Some(project_id) =
+        AttachmentRepository::project_id(state.pool(), attachment.id).await?
+    {
         ensure_project_access(state.pool(), user_id, project_id)
             .await
             .map_err(|_| RouteError::AccessDenied)?;
@@ -458,7 +515,13 @@ async fn ensure_attachment_access(state: &AppState, user_id: Uuid, attachment: &
 fn sanitize_filename(filename: &str) -> String {
     filename
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '.' || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .take(100)
         .collect()
 }

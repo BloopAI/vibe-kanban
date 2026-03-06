@@ -1,11 +1,12 @@
 //! All shape constant instances for realtime streaming.
 
-use crate::shape_definition::ShapeDefinition;
 use api_types::{
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssueRelationship,
     IssueTag, Notification, OrganizationMember, Project, ProjectStatus, PullRequest, Tag, User,
     Workspace,
 };
+
+use crate::shape_definition::ShapeDefinition;
 
 // =============================================================================
 // Organization-scoped shapes
@@ -150,4 +151,3 @@ pub const ISSUE_REACTIONS_SHAPE: ShapeDefinition<IssueCommentReaction> = crate::
     url: "/shape/issue/{issue_id}/reactions",
     params: ["issue_id"],
 );
-

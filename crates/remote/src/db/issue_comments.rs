@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, IssueComment, MutationResponse};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::IssueComment;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueCommentError {

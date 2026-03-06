@@ -1,23 +1,23 @@
 mod analytics;
 mod app;
+pub mod attachments;
 mod auth;
 pub mod azure_blob;
-mod shared_key_auth;
 mod billing;
 pub mod config;
 pub mod db;
-pub mod mutation_definition;
 pub mod github_app;
 pub mod mail;
 mod middleware;
+pub mod mutation_definition;
 pub mod r2;
 pub mod routes;
 pub mod shape_definition;
 pub mod shape_route;
 pub mod shape_routes;
 pub mod shapes;
+mod shared_key_auth;
 mod state;
-pub mod attachments;
 
 use std::env;
 
@@ -30,7 +30,7 @@ use tracing_subscriber::{
     layer::{Layer as _, SubscriberExt},
     util::SubscriberInitExt,
 };
-pub use utils::sentry::{init_once as sentry_init_once, SentrySource};
+pub use utils::sentry::{SentrySource, init_once as sentry_init_once};
 
 pub fn init_tracing() {
     if tracing::dispatcher::has_been_set() {

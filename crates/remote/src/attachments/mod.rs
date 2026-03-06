@@ -1,2 +1,2 @@
-pub mod thumbnail;
 pub(crate) mod cleanup;
+pub mod thumbnail;

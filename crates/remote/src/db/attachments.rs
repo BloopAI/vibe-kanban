@@ -1,9 +1,8 @@
+use api_types::{Attachment, AttachmentWithBlob, Blob};
 use chrono::{DateTime, Utc};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
-
-use api_types::{Attachment, AttachmentWithBlob, Blob};
 
 #[derive(Debug, Error)]
 pub enum AttachmentError {
@@ -325,7 +324,10 @@ impl AttachmentRepository {
     }
 
     /// Get the blob data for an attachment.
-    pub async fn get_blob(pool: &PgPool, attachment_id: Uuid) -> Result<Option<Blob>, AttachmentError> {
+    pub async fn get_blob(
+        pool: &PgPool,
+        attachment_id: Uuid,
+    ) -> Result<Option<Blob>, AttachmentError> {
         let record = sqlx::query_as!(
             Blob,
             r#"

@@ -1,3 +1,4 @@
+use api_types::{Notification, UpdateNotificationRequest};
 use axum::{
     Json, Router,
     extract::{Extension, Path, Query, State},
@@ -10,10 +11,11 @@ use uuid::Uuid;
 
 use super::error::ErrorResponse;
 use crate::{
-    AppState, auth::RequestContext, db::notifications::NotificationRepository,
+    AppState,
+    auth::RequestContext,
+    db::notifications::NotificationRepository,
     mutation_definition::{MutationBuilder, NoCreate},
 };
-use api_types::{Notification, UpdateNotificationRequest};
 
 #[derive(Debug, Serialize)]
 pub struct ListNotificationsResponse {

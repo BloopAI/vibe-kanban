@@ -1,3 +1,7 @@
+use api_types::{
+    CreateIssueAssigneeRequest, DeleteResponse, IssueAssignee, ListIssueAssigneesQuery,
+    ListIssueAssigneesResponse, MutationResponse,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,15 +14,11 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::issue_assignees::IssueAssigneeRepository,
     mutation_definition::{MutationBuilder, NoUpdate},
-};
-use api_types::{
-    CreateIssueAssigneeRequest, IssueAssignee, ListIssueAssigneesQuery, ListIssueAssigneesResponse,
 };
 
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.

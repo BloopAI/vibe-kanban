@@ -1,9 +1,8 @@
+pub use api_types::AuthSession;
 use chrono::Duration;
 use sqlx::{PgPool, query_as};
 use thiserror::Error;
 use uuid::Uuid;
-
-pub use api_types::AuthSession;
 
 #[derive(Debug, Error)]
 pub enum AuthSessionError {

@@ -1,3 +1,4 @@
+use api_types::User;
 use axum::{
     body::Body,
     extract::State,
@@ -10,7 +11,6 @@ use chrono::{DateTime, Utc};
 use tracing::warn;
 use uuid::Uuid;
 
-use api_types::User;
 use crate::{
     AppState, configure_user_scope,
     db::{
@@ -103,7 +103,10 @@ pub async fn request_context_from_auth_session_id(
     }
 
     if session.inactivity_duration(Utc::now()) > MAX_SESSION_INACTIVITY_DURATION {
-        warn!("session `{}` expired due to inactivity; revoking", session.id);
+        warn!(
+            "session `{}` expired due to inactivity; revoking",
+            session.id
+        );
         if let Err(error) = session_repo.revoke(session.id).await {
             warn!(?error, "failed to revoke inactive session");
         }
