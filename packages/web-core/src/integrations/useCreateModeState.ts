@@ -17,7 +17,7 @@ import {
   PROJECT_ISSUES_SHAPE,
   type Workspace as RemoteWorkspace,
 } from 'shared/remote-types';
-import { useScratch } from '@/shared/hooks/useScratch';
+import { useScratch, type UseScratchResult } from '@/shared/hooks/useScratch';
 import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/shared/integrations/electric/hooks';
@@ -637,7 +637,7 @@ export function useCreateModeState({
 
 interface InitializeParams {
   seedState: CreateModeInitialState | null;
-  scratch: ReturnType<typeof useScratch>['scratch'];
+  scratch: UseScratchResult['scratch'];
   isValidProfile: (config: ExecutorConfig | null) => boolean;
   dispatch: React.Dispatch<DraftAction>;
 }

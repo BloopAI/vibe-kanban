@@ -1,7 +1,9 @@
 import type { CreateModeInitialState } from '@/shared/types/createMode';
 import type { DraftWorkspaceData } from 'shared/types';
 import { ScratchType } from 'shared/types';
+import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
 import { scratchApi } from '@/shared/lib/api';
+import { localStorageScratchUpdate } from '@/shared/hooks/useLocalStorageScratch';
 
 interface WorkspaceDefaultsLike {
   preferredRepos?: CreateModeInitialState['preferredRepos'];
@@ -95,17 +97,25 @@ export function toDraftWorkspaceData(
 
 export async function persistWorkspaceCreateDraft(
   initialState: CreateModeInitialState,
-  draftId = DEFAULT_WORKSPACE_CREATE_DRAFT_ID
+  draftId = DEFAULT_WORKSPACE_CREATE_DRAFT_ID,
+  runtime: AppRuntime = 'local'
 ): Promise<string | null> {
   const draftData = toDraftWorkspaceData(initialState);
+  const payload = {
+    type: 'DRAFT_WORKSPACE' as const,
+    data: draftData,
+  };
 
   try {
-    await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
-      payload: {
-        type: 'DRAFT_WORKSPACE',
-        data: draftData,
-      },
-    });
+    if (runtime === 'remote') {
+      localStorageScratchUpdate(ScratchType.DRAFT_WORKSPACE, draftId, {
+        payload,
+      });
+    } else {
+      await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
+        payload,
+      });
+    }
     return draftId;
   } catch (error) {
     console.error('Failed to persist create-workspace draft:', error);

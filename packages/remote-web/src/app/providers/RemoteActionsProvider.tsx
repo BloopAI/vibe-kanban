@@ -23,6 +23,7 @@ import {
 } from "@/shared/types/actions";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useAppNavigation } from "@/shared/hooks/useAppNavigation";
+import { useAppRuntime } from "@/shared/hooks/useAppRuntime";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import {
   buildKanbanIssueComposerKey,
@@ -42,6 +43,7 @@ function noOpSelection(name: string) {
 export function RemoteActionsProvider({
   children,
 }: RemoteActionsProviderProps) {
+  const runtime = useAppRuntime();
   const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
   const { projectId, hostId } = useParams({ strict: false });
@@ -127,8 +129,10 @@ export function RemoteActionsProvider({
       kanbanProjectId: projectId,
       projectMutations: projectMutations ?? undefined,
       remoteWorkspaces: userCtx?.workspaces ?? [],
+      runtime,
     }),
     [
+      runtime,
       queryClient,
       openStatusSelection,
       openPrioritySelection,

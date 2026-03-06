@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
 import { useProjectContext } from '@/shared/hooks/useProjectContext';
 import type { CreateModeInitialState } from '@/shared/types/createMode';
@@ -9,6 +10,7 @@ export function useProjectWorkspaceCreateDraft() {
   const { projectId } = useProjectContext();
   const appNavigation = useAppNavigation();
   const routeState = useCurrentKanbanRouteState();
+  const runtime = useAppRuntime();
 
   const openWorkspaceCreateFromState = useCallback(
     async (
@@ -19,7 +21,8 @@ export function useProjectWorkspaceCreateDraft() {
 
       const draftId = await persistWorkspaceCreateDraft(
         initialState,
-        crypto.randomUUID()
+        crypto.randomUUID(),
+        runtime
       );
       if (!draftId) {
         return null;
@@ -42,7 +45,7 @@ export function useProjectWorkspaceCreateDraft() {
 
       return draftId;
     },
-    [projectId, appNavigation, routeState.issueId]
+    [projectId, appNavigation, routeState.issueId, runtime]
   );
 
   return {
