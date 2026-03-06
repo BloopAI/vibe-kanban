@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::{McpServer, TaskServer};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListProjectsRequest {
@@ -44,7 +44,7 @@ struct McpListProjectsResponse {
 }
 
 #[tool_router(router = remote_projects_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all the available projects")]
     async fn list_projects(
         &self,

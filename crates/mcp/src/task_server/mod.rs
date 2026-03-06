@@ -40,14 +40,53 @@ pub struct McpContext {
 }
 
 #[derive(Debug, Clone)]
-pub struct TaskServer {
-    client: reqwest::Client,
-    base_url: String,
-    tool_router: ToolRouter<TaskServer>,
-    context: Option<McpContext>,
+pub enum McpMode {
+    Global,
+    Workspace,
 }
 
-impl TaskServer {
+#[derive(Debug, Clone)]
+pub struct McpServer {
+    client: reqwest::Client,
+    base_url: String,
+    tool_router: ToolRouter<McpServer>,
+    context: Option<McpContext>,
+    mode: McpMode,
+    workspace_id: Option<Uuid>,
+    attached_session_id: Option<Uuid>,
+}
+
+pub type TaskServer = McpServer;
+
+impl McpServer {
+    pub fn new_global(base_url: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            base_url: base_url.to_string(),
+            tool_router: Self::global_mode_router(),
+            context: None,
+            mode: McpMode::Global,
+            workspace_id: None,
+            attached_session_id: None,
+        }
+    }
+
+    pub fn new_workspace(
+        base_url: &str,
+        workspace_id: Uuid,
+        attached_session_id: Option<Uuid>,
+    ) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            base_url: base_url.to_string(),
+            tool_router: Self::workspace_mode_router(),
+            context: None,
+            mode: McpMode::Workspace,
+            workspace_id: Some(workspace_id),
+            attached_session_id,
+        }
+    }
+
     fn url(&self, path: &str) -> String {
         format!(
             "{}/{}",
@@ -68,6 +107,10 @@ impl TaskServer {
 
         self.context = context;
         self
+    }
+
+    pub fn mode(&self) -> &McpMode {
+        &self.mode
     }
 
     async fn fetch_context_at_startup(&self) -> Option<McpContext> {
@@ -112,6 +155,10 @@ impl TaskServer {
 
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
+
+        if matches!(self.mode, McpMode::Workspace) && self.workspace_id != Some(workspace_id) {
+            return None;
+        }
 
         // Look up remote workspace to get remote project_id, issue_id, and organization_id
         let (project_id, issue_id, organization_id) = self

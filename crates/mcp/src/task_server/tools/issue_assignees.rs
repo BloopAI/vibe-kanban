@@ -8,7 +8,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListIssueAssigneesRequest {
@@ -61,7 +61,7 @@ struct McpUnassignIssueResponse {
 }
 
 #[tool_router(router = issue_assignees_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List assignees for an issue.")]
     async fn list_issue_assignees(
         &self,
@@ -90,7 +90,7 @@ impl TaskServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListIssueAssigneesResponse {
+        McpServer::success(&McpListIssueAssigneesResponse {
             issue_id: issue_id.to_string(),
             count: assignees.len(),
             issue_assignees: assignees,
@@ -115,7 +115,7 @@ impl TaskServer {
                 Err(e) => return Ok(e),
             };
 
-        TaskServer::success(&McpAssignIssueResponse {
+        McpServer::success(&McpAssignIssueResponse {
             issue_assignee_id: response.data.id.to_string(),
         })
     }
@@ -135,7 +135,7 @@ impl TaskServer {
             return Ok(e);
         }
 
-        TaskServer::success(&McpUnassignIssueResponse {
+        McpServer::success(&McpUnassignIssueResponse {
             success: true,
             issue_assignee_id: issue_assignee_id.to_string(),
         })

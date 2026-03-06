@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::{McpServer, TaskServer};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -97,7 +97,7 @@ struct McpDeleteWorkspaceResponse {
 }
 
 #[tool_router(router = workspaces_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List local workspaces with optional filters and pagination.")]
     async fn list_workspaces(
         &self,
@@ -178,18 +178,13 @@ impl TaskServer {
             name,
         }): Parameters<McpUpdateWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let workspace_id = match workspace_id {
-            Some(id) => id,
-            None => match self.context.as_ref() {
-                Some(ctx) => ctx.workspace_id,
-                None => {
-                    return Self::err(
-                        "workspace_id is required (not available from workspace context)",
-                        None::<&str>,
-                    );
-                }
-            },
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(error_result),
         };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(error_result);
+        }
 
         let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
         let payload = UpdateWorkspace {
@@ -223,18 +218,13 @@ impl TaskServer {
             delete_branches,
         }): Parameters<McpDeleteWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let workspace_id = match workspace_id {
-            Some(id) => id,
-            None => match self.context.as_ref() {
-                Some(ctx) => ctx.workspace_id,
-                None => {
-                    return Self::err(
-                        "workspace_id is required (not available from workspace context)",
-                        None::<&str>,
-                    );
-                }
-            },
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(error_result),
         };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(error_result);
+        }
 
         let delete_remote = delete_remote.unwrap_or(false);
         let delete_branches = delete_branches.unwrap_or(false);

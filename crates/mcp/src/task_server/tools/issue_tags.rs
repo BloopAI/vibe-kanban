@@ -8,7 +8,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::{McpServer, TaskServer};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListTagsRequest {
@@ -86,7 +86,7 @@ struct McpRemoveIssueTagResponse {
 }
 
 #[tool_router(router = issue_tags_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(
         description = "List tags for a project. `project_id` is optional if running inside a workspace linked to a remote project."
     )]

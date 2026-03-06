@@ -1,5 +1,5 @@
 use api_types::{Issue, ListProjectStatusesResponse, ProjectStatus};
-use db::models::tag::Tag;
+use db::models::{execution_process::ExecutionProcessStatus, tag::Tag};
 use regex::Regex;
 use rmcp::{
     ErrorData,
@@ -8,7 +8,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 
-use super::{ApiResponseEnvelope, TaskServer};
+use super::{ApiResponseEnvelope, McpMode, McpServer, TaskServer};
 
 mod context;
 mod issue_assignees;
@@ -18,30 +18,33 @@ mod organizations;
 mod remote_issues;
 mod remote_projects;
 mod repos;
+mod sessions;
 mod task_attempts;
 mod workspaces;
 
-impl TaskServer {
-    pub fn new(base_url: &str) -> Self {
-        Self {
-            client: reqwest::Client::new(),
-            base_url: base_url.to_string(),
-            tool_router: Self::context_tools_router()
-                + Self::workspaces_tools_router()
-                + Self::organizations_tools_router()
-                + Self::repos_tools_router()
-                + Self::remote_projects_tools_router()
-                + Self::remote_issues_tools_router()
-                + Self::issue_assignees_tools_router()
-                + Self::issue_tags_tools_router()
-                + Self::issue_relationships_tools_router()
-                + Self::task_attempts_tools_router(),
-            context: None,
-        }
+impl McpServer {
+    pub fn global_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
+        Self::context_tools_router()
+            + Self::workspaces_tools_router()
+            + Self::organizations_tools_router()
+            + Self::repos_tools_router()
+            + Self::remote_projects_tools_router()
+            + Self::remote_issues_tools_router()
+            + Self::issue_assignees_tools_router()
+            + Self::issue_tags_tools_router()
+            + Self::issue_relationships_tools_router()
+            + Self::task_attempts_tools_router()
+            + Self::session_tools_router()
+    }
+
+    pub fn workspace_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
+        Self::context_tools_router()
+            + Self::workspaces_tools_router()
+            + Self::session_tools_router()
     }
 }
 
-impl TaskServer {
+impl McpServer {
     fn success<T: Serialize>(data: &T) -> Result<CallToolResult, ErrorData> {
         Ok(CallToolResult::success(vec![Content::text(
             serde_json::to_string_pretty(data)
@@ -120,6 +123,41 @@ impl TaskServer {
         if !api_response.success {
             let msg = api_response.message.as_deref().unwrap_or("Unknown error");
             return Err(Self::err("VK API returned error", Some(msg)).unwrap());
+        }
+
+        Ok(())
+    }
+
+    fn resolve_workspace_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+        if let Some(id) = explicit {
+            return Ok(id);
+        }
+        if let Some(id) = self.workspace_id {
+            return Ok(id);
+        }
+        if let Some(ctx) = &self.context {
+            return Ok(ctx.workspace_id);
+        }
+        Err(Self::err(
+            "workspace_id is required (not available from workspace context)",
+            None::<&str>,
+        )
+        .unwrap())
+    }
+
+    fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), CallToolResult> {
+        if matches!(self.mode(), McpMode::Workspace)
+            && let Some(scoped_workspace_id) = self.workspace_id
+            && scoped_workspace_id != workspace_id
+        {
+            return Err(Self::err(
+                "Operation is outside the configured workspace scope".to_string(),
+                Some(format!(
+                    "requested workspace_id={}, configured workspace_id={}",
+                    workspace_id, scoped_workspace_id
+                )),
+            )
+            .unwrap());
         }
 
         Ok(())
@@ -282,5 +320,29 @@ impl TaskServer {
         });
         self.send_empty_json(self.client.post(&link_url).json(&link_payload))
             .await
+    }
+
+    fn normalize_executor_name(executor: Option<&str>) -> String {
+        let normalized = executor
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("CODEX")
+            .replace('-', "_")
+            .to_ascii_uppercase();
+
+        match normalized.as_str() {
+            "CLAUDE_CODE" | "AMP" | "GEMINI" | "CODEX" | "OPENCODE" | "CURSOR_AGENT"
+            | "QWEN_CODE" | "COPILOT" | "DROID" => normalized,
+            _ => "CODEX".to_string(),
+        }
+    }
+
+    fn execution_process_status_label(status: &ExecutionProcessStatus) -> &'static str {
+        match status {
+            ExecutionProcessStatus::Running => "running",
+            ExecutionProcessStatus::Completed => "completed",
+            ExecutionProcessStatus::Failed => "failed",
+            ExecutionProcessStatus::Killed => "killed",
+        }
     }
 }

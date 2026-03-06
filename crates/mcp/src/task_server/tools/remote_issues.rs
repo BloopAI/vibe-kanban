@@ -11,7 +11,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::{McpServer, TaskServer};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpCreateIssueRequest {
@@ -243,7 +243,7 @@ struct McpListIssuePrioritiesResponse {
 }
 
 #[tool_router(router = remote_issues_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(
         description = "Create a new issue in a project. `project_id` is optional if running inside a workspace linked to a remote project."
     )]
@@ -591,7 +591,7 @@ impl TaskServer {
     }
 }
 
-impl TaskServer {
+impl McpServer {
     fn issue_to_summary(
         &self,
         issue: &Issue,

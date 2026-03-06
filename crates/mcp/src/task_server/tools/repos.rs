@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::{McpServer, TaskServer};
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct McpRepoSummary {
@@ -79,7 +79,7 @@ struct ListReposResponse {
 }
 
 #[tool_router(router = repos_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all repositories.")]
     async fn list_repos(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/repos");

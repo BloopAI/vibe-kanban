@@ -1,10 +1,5 @@
-use mcp::workspace_server::WorkspaceServer;
+use mcp::{runtime, task_server::McpServer};
 use rmcp::{ServiceExt, transport::stdio};
-use tracing_subscriber::{EnvFilter, prelude::*};
-use utils::{
-    port_file::read_port_file,
-    sentry::{self as sentry_utils, SentrySource, sentry_layer},
-};
 use uuid::Uuid;
 
 const ATTACHED_SESSION_ID_ENV: &str = "VK_SESSION_ID";
@@ -42,41 +37,6 @@ fn parse_workspace_id_arg() -> anyhow::Result<Uuid> {
         .map_err(|error| anyhow::anyhow!("Invalid workspace_id '{workspace_id}': {error}"))
 }
 
-async fn resolve_base_url() -> anyhow::Result<String> {
-    if let Ok(url) = std::env::var("VIBE_BACKEND_URL") {
-        tracing::info!(
-            "[workspace-mcp] Using backend URL from VIBE_BACKEND_URL: {}",
-            url
-        );
-        return Ok(url);
-    }
-
-    let host = std::env::var("MCP_HOST")
-        .or_else(|_| std::env::var("HOST"))
-        .unwrap_or_else(|_| "127.0.0.1".to_string());
-
-    let port = match std::env::var("MCP_PORT")
-        .or_else(|_| std::env::var("BACKEND_PORT"))
-        .or_else(|_| std::env::var("PORT"))
-    {
-        Ok(port_str) => {
-            tracing::info!("[workspace-mcp] Using port from environment: {}", port_str);
-            port_str
-                .parse::<u16>()
-                .map_err(|error| anyhow::anyhow!("Invalid port value '{}': {}", port_str, error))?
-        }
-        Err(_) => {
-            let port = read_port_file("vibe-kanban").await?;
-            tracing::info!("[workspace-mcp] Using port from port file: {}", port);
-            port
-        }
-    };
-
-    let url = format!("http://{}:{}", host, port);
-    tracing::info!("[workspace-mcp] Using backend URL: {}", url);
-    Ok(url)
-}
-
 fn resolve_attached_session_id() -> Option<Uuid> {
     let session_id = std::env::var(ATTACHED_SESSION_ID_ENV).ok()?;
     let session_id = session_id.trim();
@@ -106,39 +66,23 @@ fn resolve_attached_session_id() -> Option<Uuid> {
 }
 
 fn main() -> anyhow::Result<()> {
-    // Install rustls crypto provider before any TLS operations
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .expect("Failed to install rustls crypto provider");
-
     let workspace_id = parse_workspace_id_arg()?;
 
-    sentry_utils::init_once(SentrySource::Mcp);
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .unwrap()
         .block_on(async {
-            tracing_subscriber::registry()
-                .with(
-                    tracing_subscriber::fmt::layer()
-                        .with_writer(std::io::stderr)
-                        .with_filter(EnvFilter::new("debug")),
-                )
-                .with(sentry_layer())
-                .init();
-
             let version = env!("CARGO_PKG_VERSION");
-            tracing::debug!(
-                "[workspace-mcp] Starting workspace MCP server version {} for workspace {}...",
-                version,
-                workspace_id
-            );
+            runtime::init_process_logging("workspace-mcp", version);
+            tracing::debug!("[workspace-mcp] Scoped workspace_id={}", workspace_id);
 
-            let base_url = resolve_base_url().await?;
+            let base_url = runtime::resolve_base_url("workspace-mcp").await?;
             let attached_session_id = resolve_attached_session_id();
 
-            let service = WorkspaceServer::new(&base_url, workspace_id, attached_session_id)
+            let service = McpServer::new_workspace(&base_url, workspace_id, attached_session_id)
+                .init()
+                .await
                 .serve(stdio())
                 .await
                 .map_err(|error| {

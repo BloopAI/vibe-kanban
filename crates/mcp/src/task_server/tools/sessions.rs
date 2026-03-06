@@ -1,0 +1,367 @@
+use db::models::{
+    execution_process::{ExecutionProcess, ExecutionProcessStatus},
+    session::Session,
+};
+use rmcp::{
+    ErrorData,
+    handler::server::tool::Parameters,
+    model::{CallToolResult, Content},
+    schemars, tool, tool_router,
+};
+use serde::{Deserialize, Serialize};
+use uuid::Uuid;
+
+use super::McpServer;
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct CreateSessionRequest {
+    #[schemars(
+        description = "Workspace ID to create the session in. Optional when running inside a scoped workspace MCP."
+    )]
+    workspace_id: Option<Uuid>,
+    #[schemars(description = "Optional executor to pin this session to")]
+    executor: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct CreateSessionPayload {
+    workspace_id: Uuid,
+    executor: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct SessionSummary {
+    #[schemars(description = "Session ID")]
+    id: String,
+    #[schemars(description = "Workspace ID")]
+    workspace_id: String,
+    #[schemars(description = "Session executor (if set)")]
+    executor: Option<String>,
+    #[schemars(description = "Creation timestamp")]
+    created_at: String,
+    #[schemars(description = "Last update timestamp")]
+    updated_at: String,
+    #[schemars(description = "True if this is the session currently attached to this MCP server")]
+    is_attached_session: bool,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct CreateSessionResponse {
+    session: SessionSummary,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct ListSessionsRequest {
+    #[schemars(
+        description = "Workspace ID to inspect. Optional when running inside a scoped workspace MCP."
+    )]
+    workspace_id: Option<Uuid>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct ListSessionsResponse {
+    #[schemars(description = "Workspace ID this result is scoped to")]
+    workspace_id: String,
+    #[schemars(description = "Session ID currently attached to this MCP server, if available")]
+    attached_session_id: Option<String>,
+    total_count: usize,
+    sessions: Vec<SessionSummary>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct RunCodingAgentInSessionRequest {
+    #[schemars(description = "Session ID to run the coding agent in")]
+    session_id: Uuid,
+    #[schemars(description = "Prompt for the coding agent")]
+    prompt: String,
+}
+
+#[derive(Debug, Serialize)]
+struct FollowUpPayload {
+    prompt: String,
+    executor_config: ExecutorConfigPayload,
+    retry_process_id: Option<Uuid>,
+    force_when_dirty: Option<bool>,
+    perform_git_reset: Option<bool>,
+}
+
+#[derive(Debug, Serialize)]
+struct ExecutorConfigPayload {
+    executor: String,
+    variant: Option<String>,
+    model_id: Option<String>,
+    agent_id: Option<String>,
+    reasoning_id: Option<String>,
+    permission_policy: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct RunCodingAgentInSessionResponse {
+    session_id: String,
+    execution_process_id: String,
+    execution_process: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct GetExecutionStatusRequest {
+    #[schemars(description = "Execution process ID to inspect")]
+    execution_process_id: Uuid,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct GetExecutionStatusResponse {
+    execution_process_id: String,
+    session_id: String,
+    status: String,
+    is_finished: bool,
+    execution_process: serde_json::Value,
+    #[schemars(description = "Final assistant message/summary when execution has finished")]
+    final_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct OutputMarkdownRequest {
+    #[schemars(description = "Markdown content to output directly to the user")]
+    markdown: String,
+}
+
+#[tool_router(router = session_tools_router, vis = "pub")]
+impl McpServer {
+    #[tool(description = "Create a new session in a workspace.")]
+    async fn create_session(
+        &self,
+        Parameters(CreateSessionRequest {
+            workspace_id,
+            executor,
+        }): Parameters<CreateSessionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(error_result),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(error_result);
+        }
+
+        let payload = CreateSessionPayload {
+            workspace_id,
+            executor: executor.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }),
+        };
+
+        let url = self.url("/api/sessions");
+        let session: Session = match self.send_json(self.client.post(&url).json(&payload)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        Self::success(&CreateSessionResponse {
+            session: self.session_summary(session),
+        })
+    }
+
+    #[tool(description = "List all sessions for a workspace.")]
+    async fn list_sessions(
+        &self,
+        Parameters(ListSessionsRequest { workspace_id }): Parameters<ListSessionsRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(error_result),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(error_result);
+        }
+
+        let url = self.url(&format!("/api/sessions?workspace_id={workspace_id}"));
+        let sessions: Vec<Session> = match self.send_json(self.client.get(&url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        let sessions = sessions
+            .into_iter()
+            .map(|session| self.session_summary(session))
+            .collect::<Vec<_>>();
+
+        Self::success(&ListSessionsResponse {
+            workspace_id: workspace_id.to_string(),
+            attached_session_id: self.attached_session_id.map(|id| id.to_string()),
+            total_count: sessions.len(),
+            sessions,
+        })
+    }
+
+    #[tool(
+        description = "Output markdown content directly to the user. Use this tool when you want the user to see formatted markdown text."
+    )]
+    async fn output_markdown_to_user(
+        &self,
+        Parameters(OutputMarkdownRequest { markdown }): Parameters<OutputMarkdownRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        if markdown.trim().is_empty() {
+            return Self::err("markdown must not be empty", None);
+        }
+
+        Ok(CallToolResult::success(vec![Content::text(markdown)]))
+    }
+
+    #[tool(
+        description = "Run a coding agent turn in an existing session and return immediately with the execution process."
+    )]
+    async fn run_coding_agent_in_session(
+        &self,
+        Parameters(RunCodingAgentInSessionRequest { session_id, prompt }): Parameters<
+            RunCodingAgentInSessionRequest,
+        >,
+    ) -> Result<CallToolResult, ErrorData> {
+        let prompt = prompt.trim();
+        if prompt.is_empty() {
+            return Self::err("prompt must not be empty", None);
+        }
+
+        let session_url = self.url(&format!("/api/sessions/{session_id}"));
+        let session: Session = match self.send_json(self.client.get(&session_url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+            return Ok(error_result);
+        }
+        if self.attached_session_id == Some(session_id) {
+            return Self::err(
+                "Cannot run coding agent in the attached session".to_string(),
+                Some(
+                    "Create or re-use a different session and run the coding agent there."
+                        .to_string(),
+                ),
+            );
+        }
+
+        let payload = FollowUpPayload {
+            prompt: prompt.to_string(),
+            executor_config: Self::executor_config_payload_for_session(&session),
+            retry_process_id: None,
+            force_when_dirty: None,
+            perform_git_reset: None,
+        };
+
+        let url = self.url(&format!("/api/sessions/{session_id}/follow-up"));
+        let execution_process: ExecutionProcess =
+            match self.send_json(self.client.post(&url).json(&payload)).await {
+                Ok(value) => value,
+                Err(error_result) => return Ok(error_result),
+            };
+
+        let execution_process_id = execution_process.id.to_string();
+        let execution_process = match Self::serialize_execution_process(&execution_process) {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        Self::success(&RunCodingAgentInSessionResponse {
+            session_id: session_id.to_string(),
+            execution_process_id,
+            execution_process,
+        })
+    }
+
+    #[tool(
+        description = "Get status for an execution process. Returns final_message when available."
+    )]
+    async fn get_execution_status(
+        &self,
+        Parameters(GetExecutionStatusRequest {
+            execution_process_id,
+        }): Parameters<GetExecutionStatusRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let process_url = self.url(&format!("/api/execution-processes/{execution_process_id}"));
+        let execution_process: ExecutionProcess =
+            match self.send_json(self.client.get(&process_url)).await {
+                Ok(value) => value,
+                Err(error_result) => return Ok(error_result),
+            };
+
+        let session_url = self.url(&format!("/api/sessions/{}", execution_process.session_id));
+        let session: Session = match self.send_json(self.client.get(&session_url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+            return Ok(error_result);
+        }
+
+        let is_finished = execution_process.status != ExecutionProcessStatus::Running;
+        let final_message = if is_finished {
+            let final_message_url = self.url(&format!(
+                "/api/execution-processes/{}/final-message",
+                execution_process.id
+            ));
+            let fetched_message: Option<String> =
+                match self.send_json(self.client.get(&final_message_url)).await {
+                    Ok(value) => value,
+                    Err(error_result) => return Ok(error_result),
+                };
+            fetched_message.filter(|message| !message.trim().is_empty())
+        } else {
+            None
+        };
+
+        let execution_process_value = match Self::serialize_execution_process(&execution_process) {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        Self::success(&GetExecutionStatusResponse {
+            execution_process_id: execution_process.id.to_string(),
+            session_id: execution_process.session_id.to_string(),
+            status: Self::execution_process_status_label(&execution_process.status).to_string(),
+            is_finished,
+            execution_process: execution_process_value,
+            final_message,
+        })
+    }
+}
+
+impl McpServer {
+    fn executor_config_payload_for_session(session: &Session) -> ExecutorConfigPayload {
+        ExecutorConfigPayload {
+            executor: Self::normalize_executor_name(session.executor.as_deref()),
+            variant: None,
+            model_id: None,
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: None,
+        }
+    }
+
+    fn session_summary(&self, session: Session) -> SessionSummary {
+        let is_attached_session = self.attached_session_id == Some(session.id);
+        SessionSummary {
+            id: session.id.to_string(),
+            workspace_id: session.workspace_id.to_string(),
+            executor: session.executor,
+            created_at: session.created_at.to_rfc3339(),
+            updated_at: session.updated_at.to_rfc3339(),
+            is_attached_session,
+        }
+    }
+
+    fn serialize_execution_process(
+        execution_process: &ExecutionProcess,
+    ) -> Result<serde_json::Value, CallToolResult> {
+        serde_json::to_value(execution_process).map_err(|error| {
+            Self::err(
+                "Failed to serialize execution process response".to_string(),
+                Some(error.to_string()),
+            )
+            .unwrap()
+        })
+    }
+}

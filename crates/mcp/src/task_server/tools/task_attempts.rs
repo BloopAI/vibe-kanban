@@ -12,7 +12,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::{McpServer, TaskServer};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpWorkspaceRepoInput {
@@ -93,7 +93,7 @@ fn build_workspace_prompt_from_issue(issue: &api_types::Issue) -> Option<String>
 }
 
 #[tool_router(router = task_attempts_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "Start a new workspace session.")]
     async fn start_workspace_session(
         &self,
