@@ -216,8 +216,8 @@
           "label": "即时指导快捷键"
         },
         "runningQueueShortcut": {
-          "helper": "选择任务运行中加入缓冲队列的快捷键。",
-          "label": "缓冲队列快捷键"
+          "helper": "选择任务运行中加入缓冲队列的附加快捷键；Ctrl/Cmd+Enter 始终会加入缓冲队列。",
+          "label": "附加缓冲队列快捷键"
         }
       },
       "privacy": {

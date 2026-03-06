@@ -216,8 +216,8 @@
           "label": "실행 중 Steer 단축키"
         },
         "runningQueueShortcut": {
-          "helper": "작업이 실행 중일 때 후속 메시지를 큐에 넣는 단축키를 선택합니다.",
-          "label": "실행 중 큐 추가 단축키"
+          "helper": "작업이 실행 중일 때 후속 메시지를 큐에 넣는 추가 단축키를 선택합니다. Ctrl/Cmd+Enter는 항상 큐에 추가합니다.",
+          "label": "추가 큐 단축키"
         }
       },
       "privacy": {

@@ -324,21 +324,35 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     () => normalizeRunningMessageShortcuts(config),
     [config?.steer_message_shortcut, config?.queue_message_shortcut]
   );
-  const runningShortcutLabels = useMemo(
-    () => ({
+  const primaryRunningQueueShortcut = 'ModifierEnter' as const;
+  const runningShortcutLabels = useMemo(() => {
+    const disabledLabel = tSettings(
+      'settings.general.messageInput.shortcut.disabledLabel'
+    );
+    const primaryQueueLabel = formatRunningMessageShortcut(
+      primaryRunningQueueShortcut,
+      {
+        disabledLabel,
+      }
+    );
+    const queue = formatRunningMessageShortcut(runningShortcuts.queue, {
+      disabledLabel,
+    });
+    const queueHintLabel =
+      runningShortcuts.queue !== 'Disabled' &&
+      runningShortcuts.queue !== primaryRunningQueueShortcut
+        ? `${primaryQueueLabel} / ${queue}`
+        : primaryQueueLabel;
+
+    return {
       steer: formatRunningMessageShortcut(runningShortcuts.steer, {
-        disabledLabel: tSettings(
-          'settings.general.messageInput.shortcut.disabledLabel'
-        ),
+        disabledLabel,
       }),
-      queue: formatRunningMessageShortcut(runningShortcuts.queue, {
-        disabledLabel: tSettings(
-          'settings.general.messageInput.shortcut.disabledLabel'
-        ),
-      }),
-    }),
-    [runningShortcuts, tSettings]
-  );
+      queue,
+      primaryQueue: primaryQueueLabel,
+      queueHint: queueHintLabel,
+    };
+  }, [primaryRunningQueueShortcut, runningShortcuts, tSettings]);
 
   // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
@@ -1065,6 +1079,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         queue: runningShortcuts.queue,
         steerLabel: runningShortcutLabels.steer,
         queueLabel: runningShortcutLabels.queue,
+        primaryQueueShortcut: primaryRunningQueueShortcut,
+        queueHintLabel: runningShortcutLabels.queueHint,
       }}
       session={{
         sessions,

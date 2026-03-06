@@ -168,6 +168,8 @@ interface RunningShortcutProps {
   queue: RunningMessageShortcut;
   steerLabel: string;
   queueLabel: string;
+  primaryQueueShortcut: RunningMessageShortcut;
+  queueHintLabel: string;
 }
 
 interface SessionChatBoxProps<TExecutor extends string = string> {
@@ -346,6 +348,8 @@ export function SessionChatBox<TExecutor extends string = string>({
       feedbackMode?.onSubmitFeedback();
     } else if (isInEditMode && canSend) {
       editMode?.onSubmitEdit();
+    } else if (status === 'running' && canSend) {
+      actions.onQueue();
     } else if (status === 'queued' && canSend) {
       actions.onSend();
     } else if (status === 'idle' && canSend) {
@@ -546,7 +550,7 @@ export function SessionChatBox<TExecutor extends string = string>({
               disabled={!canSend}
               value={t('conversation.actions.queue')}
               title={t('conversation.actions.queueShortcutHint', {
-                shortcut: runningShortcuts?.queueLabel ?? 'Shift+Enter',
+                shortcut: runningShortcuts?.queueHintLabel ?? 'Ctrl/Cmd+Enter',
               })}
             />
             {queueState?.hasPendingMessages && (
@@ -613,7 +617,13 @@ export function SessionChatBox<TExecutor extends string = string>({
     const normalizeSummary = (value: string) => value.replace(/\s+/g, ' ').trim();
     const truncateSummary = (value: string, maxLength = 52) =>
       value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}...`;
-    const renderSummaryLine = (label: string, summaries: string[]) => {
+    const renderSummaryLine = (
+      label: string,
+      summaries: string[],
+      options?: {
+        multiline?: boolean;
+      }
+    ) => {
       const normalized = summaries
         .map((summary) => truncateSummary(normalizeSummary(summary)))
         .filter((summary) => summary.length > 0);
@@ -624,10 +634,20 @@ export function SessionChatBox<TExecutor extends string = string>({
 
       const visible = normalized.slice(0, 2);
       const hiddenCount = normalized.length - visible.length;
+      const multiline = options?.multiline ?? false;
+      const renderedSummaries = multiline
+        ? visible.join('\n')
+        : visible.join(' | ');
 
       return (
-        <span className="text-xs text-low opacity-80">
-          {label}: {visible.join(' | ')}
+        <span
+          className={
+            multiline
+              ? 'text-xs text-low opacity-80 whitespace-pre-line'
+              : 'text-xs text-low opacity-80'
+          }
+        >
+          {label}: {renderedSummaries}
           {hiddenCount > 0 ? ` +${hiddenCount}` : ''}
         </span>
       );
@@ -674,7 +694,6 @@ export function SessionChatBox<TExecutor extends string = string>({
 
     // Queued message banner
     if (isQueued || queueState?.hasPendingMessages) {
-      const pendingSteerCount = queueState?.pendingSteerCount ?? 0;
       const bufferedQueueCount = queueState?.bufferedQueueCount ?? 0;
       banners.push(
         <div
@@ -688,18 +707,17 @@ export function SessionChatBox<TExecutor extends string = string>({
               {queueState?.pendingCount ? ` (${queueState.pendingCount})` : ''}
             </span>
             <span className="text-xs text-low opacity-80">
-              {t('followUp.pendingBreakdown', {
-                steerCount: pendingSteerCount,
-                queueCount: bufferedQueueCount,
-              })}
+              {t('followUp.queueLabel')}: {bufferedQueueCount}
             </span>
-            {renderSummaryLine(
-              t('followUp.steerLabel'),
-              queueState?.pendingSteerSummaries ?? []
-            )}
+            {(queueState?.pendingSteerCount ?? 0) > 0 &&
+              renderSummaryLine(
+                t('followUp.steerLabel'),
+                queueState?.pendingSteerSummaries ?? []
+              )}
             {renderSummaryLine(
               t('followUp.queueLabel'),
-              queueState?.bufferedQueueSummaries ?? []
+              queueState?.bufferedQueueSummaries ?? [],
+              { multiline: true }
             )}
             {queueState?.hasPendingMessages && (
               <span className="text-xs text-low opacity-80">
@@ -736,9 +754,12 @@ export function SessionChatBox<TExecutor extends string = string>({
         placeholder,
         value: editor.value,
         onChange: editor.onChange,
-        onCmdEnter: status === 'running' ? undefined : handleCmdEnter,
+        onCmdEnter: handleCmdEnter,
         onShiftCmdEnter: status === 'running' ? handleShiftCmdEnter : undefined,
-        runningSteerShortcut: undefined,
+        runningSteerShortcut:
+          status === 'running'
+            ? (runningShortcuts?.primaryQueueShortcut ?? 'ModifierEnter')
+            : undefined,
         runningQueueShortcut:
           status === 'running' ? runningShortcuts?.queue : undefined,
         disabled: isDisabled,

@@ -216,8 +216,8 @@
           "helper": "Choisissez le raccourci qui envoie une instruction imm?diate pendant qu'une t?che est en cours."
         },
         "runningQueueShortcut": {
-          "label": "Mettre le suivi en file avec",
-          "helper": "Choisissez le raccourci qui met un suivi en file pendant qu'une t?che est en cours."
+          "label": "Raccourci de file supplémentaire",
+          "helper": "Choisissez un raccourci supplémentaire qui ajoute aussi un suivi à la file pendant qu'une tâche est en cours. Ctrl/Cmd+Entrée l'ajoute toujours à la file."
         }
       },
       "privacy": {

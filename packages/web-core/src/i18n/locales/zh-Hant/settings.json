@@ -216,8 +216,8 @@
           "label": "即時指導快捷鍵"
         },
         "runningQueueShortcut": {
-          "helper": "選擇任務執行中加入緩衝佇列的快捷鍵。",
-          "label": "緩衝佇列快捷鍵"
+          "helper": "選擇任務執行中加入緩衝佇列的附加快捷鍵；Ctrl/Cmd+Enter 會固定加入緩衝佇列。",
+          "label": "附加緩衝佇列快捷鍵"
         }
       },
       "privacy": {

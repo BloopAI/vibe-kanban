@@ -847,11 +847,14 @@ export function GeneralSettingsSection() {
           )}
         >
           <SettingsSelect
-            value={runningShortcuts.queue}
+            value={
+              runningShortcuts.queue === 'ModifierEnter'
+                ? 'Disabled'
+                : runningShortcuts.queue
+            }
             options={runningShortcutOptions.filter(
               (option) =>
-                option.value === 'Disabled' ||
-                option.value !== runningShortcuts.steer
+                option.value === 'Disabled' || option.value !== 'ModifierEnter'
             )}
             onChange={(value: RunningMessageShortcut) =>
               updateDraft({ queue_message_shortcut: value })

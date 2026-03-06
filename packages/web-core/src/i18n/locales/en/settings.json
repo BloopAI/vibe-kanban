@@ -216,8 +216,8 @@
           "helper": "Choose the shortcut that sends an immediate steer while a task is running."
         },
         "runningQueueShortcut": {
-          "label": "Queue follow-up with",
-          "helper": "Choose the shortcut that buffers a follow-up while a task is running."
+          "label": "Additional queue shortcut",
+          "helper": "Choose an additional shortcut that also buffers a follow-up while a task is running. Ctrl/Cmd+Enter always adds it to the buffered queue."
         }
       },
       "privacy": {

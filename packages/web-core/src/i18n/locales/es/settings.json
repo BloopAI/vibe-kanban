@@ -216,8 +216,8 @@
           "helper": "Elige el atajo que env?a una instrucci?n inmediata mientras una tarea est? en ejecuci?n."
         },
         "runningQueueShortcut": {
-          "label": "Encolar seguimiento con",
-          "helper": "Elige el atajo que agrega un seguimiento a la cola mientras una tarea est? en ejecuci?n."
+          "label": "Atajo adicional para cola",
+          "helper": "Elige un atajo adicional que también agregue un seguimiento a la cola mientras una tarea está en ejecución. Ctrl/Cmd+Enter siempre lo agrega a la cola."
         }
       },
       "privacy": {
