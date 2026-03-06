@@ -185,7 +185,7 @@ async function main() {
 
   if (isMcpMode) {
     await extractAndRun("vibe-kanban-mcp", (bin) => {
-      const proc = spawn(bin, [], { stdio: "inherit" });
+      const proc = spawn(bin, ["--mode", "global"], { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
       proc.on("error", (e) => {
         console.error("MCP server error:", e.message);

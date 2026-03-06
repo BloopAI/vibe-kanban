@@ -98,23 +98,23 @@ struct ExecutorConfigPayload {
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct RunCodingAgentInSessionResponse {
     session_id: String,
-    execution_process_id: String,
-    execution_process: serde_json::Value,
+    execution_id: String,
+    execution: serde_json::Value,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-struct GetExecutionStatusRequest {
-    #[schemars(description = "Execution process ID to inspect")]
-    execution_process_id: Uuid,
+struct GetExecutionRequest {
+    #[schemars(description = "Execution ID to inspect")]
+    execution_id: Uuid,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-struct GetExecutionStatusResponse {
-    execution_process_id: String,
+struct GetExecutionResponse {
+    execution_id: String,
     session_id: String,
     status: String,
     is_finished: bool,
-    execution_process: serde_json::Value,
+    execution: serde_json::Value,
     #[schemars(description = "Final assistant message/summary when execution has finished")]
     final_message: Option<String>,
 }
@@ -201,7 +201,7 @@ impl McpServer {
     #[tool(
         description = "Output markdown content directly to the user. Use this tool when you want the user to see formatted markdown text."
     )]
-    async fn output_markdown_to_user(
+    async fn output_markdown(
         &self,
         Parameters(OutputMarkdownRequest { markdown }): Parameters<OutputMarkdownRequest>,
     ) -> Result<CallToolResult, ErrorData> {
@@ -215,7 +215,7 @@ impl McpServer {
     #[tool(
         description = "Run a coding agent turn in an existing session and return immediately with the execution process."
     )]
-    async fn run_coding_agent_in_session(
+    async fn run_session_prompt(
         &self,
         Parameters(RunCodingAgentInSessionRequest { session_id, prompt }): Parameters<
             RunCodingAgentInSessionRequest,
@@ -259,29 +259,25 @@ impl McpServer {
                 Err(error_result) => return Ok(error_result),
             };
 
-        let execution_process_id = execution_process.id.to_string();
-        let execution_process = match Self::serialize_execution_process(&execution_process) {
+        let execution_id = execution_process.id.to_string();
+        let execution = match Self::serialize_execution_process(&execution_process) {
             Ok(value) => value,
             Err(error_result) => return Ok(error_result),
         };
 
         Self::success(&RunCodingAgentInSessionResponse {
             session_id: session_id.to_string(),
-            execution_process_id,
-            execution_process,
+            execution_id,
+            execution,
         })
     }
 
-    #[tool(
-        description = "Get status for an execution process. Returns final_message when available."
-    )]
-    async fn get_execution_status(
+    #[tool(description = "Get status for an execution. Returns final_message when available.")]
+    async fn get_execution(
         &self,
-        Parameters(GetExecutionStatusRequest {
-            execution_process_id,
-        }): Parameters<GetExecutionStatusRequest>,
+        Parameters(GetExecutionRequest { execution_id }): Parameters<GetExecutionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let process_url = self.url(&format!("/api/execution-processes/{execution_process_id}"));
+        let process_url = self.url(&format!("/api/execution-processes/{execution_id}"));
         let execution_process: ExecutionProcess =
             match self.send_json(self.client.get(&process_url)).await {
                 Ok(value) => value,
@@ -318,12 +314,12 @@ impl McpServer {
             Err(error_result) => return Ok(error_result),
         };
 
-        Self::success(&GetExecutionStatusResponse {
-            execution_process_id: execution_process.id.to_string(),
+        Self::success(&GetExecutionResponse {
+            execution_id: execution_process.id.to_string(),
             session_id: execution_process.session_id.to_string(),
             status: Self::execution_process_status_label(&execution_process.status).to_string(),
             is_finished,
-            execution_process: execution_process_value,
+            execution: execution_process_value,
             final_message,
         })
     }

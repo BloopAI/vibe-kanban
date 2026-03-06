@@ -41,7 +41,7 @@ impl ServerHandler for McpServer {
             protocol_version: ProtocolVersion::V_2025_03_26,
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
-                name: "vibe-kanban".to_string(),
+                name: "vibe-kanban-mcp".to_string(),
                 version: "1.0.0".to_string(),
             },
             instructions: Some(instruction),
