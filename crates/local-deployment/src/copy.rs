@@ -79,24 +79,32 @@ fn copy_single_file(
     target_root: &Path,
     seen: &mut HashSet<PathBuf>,
 ) -> Result<bool, ContainerError> {
-    let canonical_source = source_root.canonicalize()?;
-    let canonical_file = source_file.canonicalize()?;
-    // Validate path is within source_dir
-    if !canonical_file.starts_with(canonical_source) {
+    // Security check: the logical path must be within source_root.
+    // We don't canonicalize here to allow symlinks within the project that point outside.
+    // The relative_path check below ensures the file pattern is within the project structure.
+    let relative_path = source_file.strip_prefix(source_root).map_err(|e| {
+        ContainerError::Other(anyhow!(
+            "File {source_file:?} is outside project directory: {e}"
+        ))
+    })?;
+
+    // Prevent path traversal via ".." components in the logical path
+    if relative_path
+        .components()
+        .any(|c| matches!(c, std::path::Component::ParentDir))
+    {
         return Err(ContainerError::Other(anyhow!(
-            "File {source_file:?} is outside project directory"
+            "File {source_file:?} contains path traversal"
         )));
     }
 
-    if !seen.insert(canonical_file.clone()) {
+    // For deduplication, use canonical path if possible, otherwise logical path
+    let dedup_key = source_file
+        .canonicalize()
+        .unwrap_or_else(|_| source_file.to_path_buf());
+    if !seen.insert(dedup_key) {
         return Ok(false);
     }
-
-    let relative_path = source_file.strip_prefix(source_root).map_err(|e| {
-        ContainerError::Other(anyhow!(
-            "Failed to get relative path for {source_file:?}: {e}"
-        ))
-    })?;
 
     let target_file = target_root.join(relative_path);
 
@@ -323,5 +331,27 @@ mod tests {
         copy_project_files_impl(src.path(), dst.path(), "loop").unwrap();
 
         assert_eq!(std::fs::read_dir(dst.path()).unwrap().count(), 0);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn test_symlink_to_file_outside_project_is_copied() {
+        use std::os::unix::fs::symlink;
+        let src = TempDir::new().unwrap();
+        let dst = TempDir::new().unwrap();
+        let external = TempDir::new().unwrap();
+
+        let external_file = external.path().join("external.txt");
+        fs::write(&external_file, "external content").unwrap();
+
+        symlink(&external_file, src.path().join("link.txt")).unwrap();
+
+        copy_project_files_impl(src.path(), dst.path(), "link.txt").unwrap();
+
+        let copied = dst.path().join("link.txt");
+        assert!(copied.exists());
+        assert!(copied.is_file());
+        assert!(!copied.is_symlink());
+        assert_eq!(fs::read_to_string(copied).unwrap(), "external content");
     }
 }
