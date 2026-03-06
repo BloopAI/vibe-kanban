@@ -94,6 +94,11 @@ import {
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
+  StartWebRtcUpgradeRequest,
+  StartWebRtcUpgradeResponse,
+  FinalizeWebRtcUpgradeRequest,
+  FinalizeWebRtcUpgradeResponse,
+  WebRtcStatusResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -1488,6 +1493,35 @@ export const relayApi = {
       }
     );
     return handleApiResponse<RemoveRelayPairedClientResponse>(response);
+  },
+
+  startWebRtcUpgrade: async (
+    payload: StartWebRtcUpgradeRequest
+  ): Promise<StartWebRtcUpgradeResponse> => {
+    const response = await makeRequest('/api/relay-webrtc/start', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return handleApiResponse<StartWebRtcUpgradeResponse>(response);
+  },
+
+  finalizeWebRtcUpgrade: async (
+    payload: FinalizeWebRtcUpgradeRequest
+  ): Promise<FinalizeWebRtcUpgradeResponse> => {
+    const response = await makeRequest('/api/relay-webrtc/finalize', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return handleApiResponse<FinalizeWebRtcUpgradeResponse>(response);
+  },
+
+  getWebRtcUpgradeStatus: async (
+    sessionId: string
+  ): Promise<WebRtcStatusResponse> => {
+    const response = await makeRequest(
+      `/api/relay-webrtc/status?session_id=${encodeURIComponent(sessionId)}`
+    );
+    return handleApiResponse<WebRtcStatusResponse>(response);
   },
 };
 

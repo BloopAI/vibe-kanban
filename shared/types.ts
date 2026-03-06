@@ -314,6 +314,18 @@ export type RefreshRelaySigningSessionRequest = { client_id: string, timestamp: 
 
 export type RefreshRelaySigningSessionResponse = { signing_session_id: string, };
 
+export type WebRtcTransportStatus = "relay" | "upgrading" | "webrtc" | "fallback";
+
+export type StartWebRtcUpgradeRequest = { offer_sdp: string, };
+
+export type StartWebRtcUpgradeResponse = { session_id: string, status: WebRtcTransportStatus, answer_sdp: string | null, reason: string | null, };
+
+export type FinalizeWebRtcUpgradeRequest = { session_id: string, };
+
+export type FinalizeWebRtcUpgradeResponse = { session_id: string, status: WebRtcTransportStatus, reason: string | null, };
+
+export type WebRtcStatusResponse = { session_id: string, status: WebRtcTransportStatus, reason: string | null, };
+
 export type CreateFollowUpAttempt = { prompt: string, executor_config: ExecutorConfig, retry_process_id: string | null, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };
 
 export type ResetProcessRequest = { process_id: string, force_when_dirty: boolean | null, perform_git_reset: boolean | null, };

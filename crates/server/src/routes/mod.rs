@@ -20,6 +20,7 @@ pub mod migration;
 pub mod oauth;
 pub mod organizations;
 pub mod relay_auth;
+pub mod relay_webrtc;
 pub mod relay_ws;
 pub mod remote;
 pub mod repo;
@@ -63,6 +64,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     let api_routes = Router::new()
         .merge(relay_auth::router())
+        .merge(relay_webrtc::router())
         .merge(relay_signed_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
