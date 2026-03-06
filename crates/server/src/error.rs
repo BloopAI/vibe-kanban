@@ -655,6 +655,46 @@ impl IntoResponse for ApiError {
     }
 }
 
+impl From<TrustedKeyAuthError> for ApiError {
+    fn from(err: TrustedKeyAuthError) -> Self {
+        match err {
+            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
+            TrustedKeyAuthError::BadRequest(msg) => ApiError::BadRequest(msg),
+            TrustedKeyAuthError::Forbidden(msg) => ApiError::Forbidden(msg),
+            TrustedKeyAuthError::TooManyRequests(msg) => ApiError::TooManyRequests(msg),
+            TrustedKeyAuthError::Io(e) => ApiError::Io(e),
+        }
+    }
+}
+
+impl From<RepoServiceError> for ApiError {
+    fn from(err: RepoServiceError) -> Self {
+        match err {
+            RepoServiceError::Database(db_err) => ApiError::Database(db_err),
+            RepoServiceError::Io(io_err) => ApiError::Io(io_err),
+            RepoServiceError::PathNotFound(path) => {
+                ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
+            }
+            RepoServiceError::PathNotDirectory(path) => {
+                ApiError::BadRequest(format!("Path is not a directory: {}", path.display()))
+            }
+            RepoServiceError::NotGitRepository(path) => {
+                ApiError::BadRequest(format!("Path is not a git repository: {}", path.display()))
+            }
+            RepoServiceError::NotFound => ApiError::BadRequest("Repository not found".to_string()),
+            RepoServiceError::DirectoryAlreadyExists(path) => {
+                ApiError::BadRequest(format!("Directory already exists: {}", path.display()))
+            }
+            RepoServiceError::Git(git_err) => {
+                ApiError::BadRequest(format!("Git error: {}", git_err))
+            }
+            RepoServiceError::InvalidFolderName(name) => {
+                ApiError::BadRequest(format!("Invalid folder name: {}", name))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use axum::{body::to_bytes, http::StatusCode, response::IntoResponse};
@@ -696,45 +736,5 @@ mod tests {
             json.get("message").and_then(Value::as_str),
             Some("An internal error occurred. Please try again.")
         );
-    }
-}
-
-impl From<TrustedKeyAuthError> for ApiError {
-    fn from(err: TrustedKeyAuthError) -> Self {
-        match err {
-            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
-            TrustedKeyAuthError::BadRequest(msg) => ApiError::BadRequest(msg),
-            TrustedKeyAuthError::Forbidden(msg) => ApiError::Forbidden(msg),
-            TrustedKeyAuthError::TooManyRequests(msg) => ApiError::TooManyRequests(msg),
-            TrustedKeyAuthError::Io(e) => ApiError::Io(e),
-        }
-    }
-}
-
-impl From<RepoServiceError> for ApiError {
-    fn from(err: RepoServiceError) -> Self {
-        match err {
-            RepoServiceError::Database(db_err) => ApiError::Database(db_err),
-            RepoServiceError::Io(io_err) => ApiError::Io(io_err),
-            RepoServiceError::PathNotFound(path) => {
-                ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
-            }
-            RepoServiceError::PathNotDirectory(path) => {
-                ApiError::BadRequest(format!("Path is not a directory: {}", path.display()))
-            }
-            RepoServiceError::NotGitRepository(path) => {
-                ApiError::BadRequest(format!("Path is not a git repository: {}", path.display()))
-            }
-            RepoServiceError::NotFound => ApiError::BadRequest("Repository not found".to_string()),
-            RepoServiceError::DirectoryAlreadyExists(path) => {
-                ApiError::BadRequest(format!("Directory already exists: {}", path.display()))
-            }
-            RepoServiceError::Git(git_err) => {
-                ApiError::BadRequest(format!("Git error: {}", git_err))
-            }
-            RepoServiceError::InvalidFolderName(name) => {
-                ApiError::BadRequest(format!("Invalid folder name: {}", name))
-            }
-        }
     }
 }
