@@ -1,0 +1,181 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "mint",
+  "name": "Vibe Kanban",
+  "description": "A kanban board for developers to track coding tasks with AI coding agents",
+  "appearance": {
+    "default": "light"
+  },
+  "colors": {
+    "primary": "#000000",
+    "light": "#fefefe",
+    "dark": "#121212"
+  },
+  "background": {
+    "color": {
+      "light": "#FAF9F5",
+      "dark": "#2F2F2D"
+    }
+  },
+  "favicon": "/logo/v-192.png",
+  "navigation": {
+    "groups": [
+      {
+        "group": "Getting started",
+        "pages": [
+          "index",
+          "getting-started",
+          "browser-testing",
+          "issue-management",
+          "reviewing-code",
+          "remote-access",
+          {
+            "group": "Supported Coding Agents",
+            "expanded": true,
+            "pages": [
+              "supported-coding-agents",
+              "agents/claude-code",
+              "agents/openai-codex",
+              "agents/github-copilot",
+              "agents/gemini-cli",
+              "agents/amp",
+              "agents/cursor-cli",
+              "agents/opencode",
+              "agents/droid",
+              "agents/ccr",
+              "agents/qwen-code"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Workspaces",
+        "pages": [
+          "workspaces/index",
+          "workspaces/creating-workspaces",
+          "workspaces/managing-workspaces",
+          "workspaces/repositories",
+          "workspaces/sessions",
+          "workspaces/chat-interface",
+          "workspaces/slash-commands",
+          "workspaces/interface",
+          "workspaces/command-bar",
+          "workspaces/multi-repo-sessions",
+          "workspaces/changes",
+          "workspaces/git-operations"
+        ]
+      },
+      {
+        "group": "Cloud",
+        "pages": [
+          "cloud/index",
+          "cloud/getting-started",
+          "cloud/migration",
+          "cloud/authentication",
+          "cloud/organizations",
+          "cloud/team-members",
+          "cloud/projects",
+          "cloud/issues",
+          "cloud/kanban-board",
+          "cloud/list-view",
+          "cloud/filtering",
+          "cloud/customisation",
+          "cloud/troubleshooting"
+        ]
+      },
+      {
+        "group": "Settings",
+        "pages": [
+          "settings/index",
+          {
+            "group": "General",
+            "pages": [
+              "settings/general",
+              "settings/creating-task-tags"
+            ]
+          },
+          "settings/projects-repositories",
+          "settings/organization-settings",
+          "settings/remote-projects",
+          "settings/agent-configurations",
+          "settings/mcp-servers"
+        ]
+      },
+      {
+        "group": "Self-Hosting",
+        "pages": [
+          "self-hosting/local-development",
+          "self-hosting/deploy-docker"
+        ]
+      },
+      {
+        "group": "Integrations",
+        "pages": [
+          "integrations/github-integration",
+          "integrations/azure-repos-integration",
+          "integrations/vscode-extension",
+          "integrations/mcp-server-configuration",
+          "integrations/vibe-kanban-mcp-server"
+        ]
+      },
+      {
+        "group": "Help",
+        "pages": [
+          "troubleshooting",
+          "responsible-disclosure"
+        ]
+      }
+    ]
+  },
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "GitHub",
+        "href": "https://github.com/BloopAI/vibe-kanban"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Get Started",
+      "href": "https://vibekanban.com/docs"
+    }
+  },
+  "contextual": {
+    "options": [
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
+  },
+  "integrations": {
+    "posthog": {
+      "apiKey": "phc_V5XpxUvgOfEWk38iGHr0Kve2oZTmWFjDe3mIwTCXzx0",
+      "apiHost": "https://eu.i.posthog.com"
+    }
+  },
+  "redirects": [
+    {
+      "source": "/workspaces/preview",
+      "destination": "/browser-testing"
+    },
+    {
+      "source": "/remote-control",
+      "destination": "/remote-access"
+    }
+  ],
+  "footer": {
+    "socials": {
+      "github": "https://github.com/BloopAI/vibe-kanban",
+      "x": "https://x.com/vibekanban"
+    }
+  }
+}
