@@ -1,6 +1,6 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { Merge, Workspace } from 'shared/types';
+import type { ExecutorConfig, Merge, Workspace } from 'shared/types';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   CopyIcon,
@@ -75,6 +75,7 @@ import {
   buildWorkspaceCreateInitialState,
   persistWorkspaceCreateDraft,
 } from '@/shared/lib/workspaceCreateState';
+import { setCreateModeSeedState } from '@/shared/lib/createModeSeedStore';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -163,12 +164,12 @@ export const Actions = {
     requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       try {
-        const [firstMessage, repos] = await Promise.all([
+        const [firstMessage, repos, workspaceWithSession] = await Promise.all([
           attemptsApi.getFirstUserMessage(workspaceId),
           attemptsApi.getRepos(workspaceId),
+          attemptsApi.getWithSession(workspaceId),
         ]);
 
-        // Find linked issue from remote workspace (synced via Electric)
         const remoteWs = ctx.remoteWorkspaces.find(
           (w) => w.local_workspace_id === workspaceId
         );
@@ -179,6 +180,13 @@ export const Actions = {
             }
           : undefined;
 
+        const executorConfig = workspaceWithSession.session?.executor
+          ? {
+              executor: workspaceWithSession.session
+                .executor as ExecutorConfig['executor'],
+            }
+          : null;
+
         const createState = buildWorkspaceCreateInitialState({
           prompt: firstMessage,
           defaults: {
@@ -188,21 +196,13 @@ export const Actions = {
             })),
           },
           linkedIssue,
+          executorConfig,
         });
-        const draftId = await persistWorkspaceCreateDraft(createState);
-        if (!draftId) {
-          await ConfirmDialog.show({
-            title: 'Error',
-            message: 'Failed to prepare workspace draft. Please try again.',
-            confirmText: 'OK',
-            showCancelButton: false,
-          });
-          return;
-        }
+        setCreateModeSeedState(createState);
+        await persistWorkspaceCreateDraft(createState);
 
         ctx.appNavigation.goToWorkspacesCreate();
       } catch {
-        // Fallback to creating without the prompt/repos
         ctx.appNavigation.goToWorkspacesCreate();
       }
     },
@@ -375,16 +375,8 @@ export const Actions = {
           },
           linkedIssue,
         });
-        const draftId = await persistWorkspaceCreateDraft(createState);
-        if (!draftId) {
-          await ConfirmDialog.show({
-            title: 'Error',
-            message: 'Failed to prepare workspace draft. Please try again.',
-            confirmText: 'OK',
-            showCancelButton: false,
-          });
-          return;
-        }
+        setCreateModeSeedState(createState);
+        await persistWorkspaceCreateDraft(createState);
 
         ctx.appNavigation.goToWorkspacesCreate();
       } catch {

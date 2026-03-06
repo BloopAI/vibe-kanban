@@ -676,7 +676,7 @@ async function resolveNavPreferredRepos(
     return [
       {
         repo,
-        targetBranch: preferredRepo.target_branch || null,
+        targetBranch: preferredRepo.target_branch ?? null,
       },
     ];
   });
@@ -693,8 +693,14 @@ async function initializeState({
     const hasInitialPrompt = !!seedState?.initialPrompt;
     const hasLinkedIssue = !!seedState?.linkedIssue;
     const hasPreferredRepos = (seedState?.preferredRepos?.length ?? 0) > 0;
+    const hasExecutorConfig = !!seedState?.executorConfig;
 
-    if (hasInitialPrompt || hasLinkedIssue || hasPreferredRepos) {
+    if (
+      hasInitialPrompt ||
+      hasLinkedIssue ||
+      hasPreferredRepos ||
+      hasExecutorConfig
+    ) {
       const data: Partial<DraftState> = {};
       let appliedSeedState = false;
 
@@ -719,6 +725,15 @@ async function initializeState({
           data.repos = resolvedRepos;
           appliedSeedState = true;
         }
+      }
+
+      // Handle executor config (e.g., from duplicate workspace)
+      if (
+        seedState?.executorConfig &&
+        isValidProfile(seedState.executorConfig)
+      ) {
+        data.executorConfig = seedState.executorConfig;
+        appliedSeedState = true;
       }
 
       if (appliedSeedState) {
@@ -769,7 +784,7 @@ async function initializeState({
         const restoredRepos = await resolveNavPreferredRepos(
           scratchData.repos.map((repo) => ({
             repo_id: repo.repo_id,
-            target_branch: repo.target_branch || null,
+            target_branch: repo.target_branch ?? null,
           }))
         );
 
