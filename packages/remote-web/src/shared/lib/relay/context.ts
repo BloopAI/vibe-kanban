@@ -100,7 +100,11 @@ async function createRelaySessionBaseUrl(hostId: string): Promise<string> {
   const relaySession = await createRelaySession(hostId);
   const authCode = await createRelaySessionAuthCode(relaySession.id);
   const relayApiUrl = getRelayApiUrl();
-  return establishRelaySessionBaseUrl(relayApiUrl, hostId, authCode.code);
+  return establishRelaySessionBaseUrl(
+    relayApiUrl,
+    hostId,
+    authCode.browser_session_id,
+  );
 }
 
 async function findPairedHost(hostId: string): Promise<PairedRelayHost | null> {

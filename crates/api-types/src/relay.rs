@@ -25,6 +25,7 @@ pub struct ListRelayHostsResponse {
 pub struct RelaySessionAuthCodeResponse {
     pub session_id: Uuid,
     pub code: String,
+    pub browser_session_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]

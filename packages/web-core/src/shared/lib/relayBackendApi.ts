@@ -58,15 +58,10 @@ export async function createRelaySessionAuthCode(
 export async function establishRelaySessionBaseUrl(
   relayUrl: string,
   hostId: string,
-  code: string
+  browserSessionId: string
 ): Promise<string> {
-  const exchangeUrl = buildRelayExchangeUrl(relayUrl, hostId, code);
-  const exchangeResponse = await fetch(exchangeUrl, {
-    method: 'GET',
-    redirect: 'follow',
-  });
-
-  return parseRelaySessionBaseUrl(exchangeResponse.url, hostId);
+  const relayBase = relayUrl.replace(/\/+$/, '');
+  return `${relayBase}/relay/h/${hostId}/s/${browserSessionId}`;
 }
 
 export async function startRelaySpake2Enrollment(
@@ -74,7 +69,7 @@ export async function startRelaySpake2Enrollment(
   payload: StartSpake2EnrollmentRequest
 ): Promise<StartSpake2EnrollmentResponse> {
   const response = await fetch(
-    `${relaySessionBaseUrl}/api/relay-auth/spake2/start`,
+    `${relaySessionBaseUrl}/api/relay-auth/server/spake2/start`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,7 +85,7 @@ export async function finishRelaySpake2Enrollment(
   payload: FinishSpake2EnrollmentRequest
 ): Promise<FinishSpake2EnrollmentResponse> {
   const response = await fetch(
-    `${relaySessionBaseUrl}/api/relay-auth/spake2/finish`,
+    `${relaySessionBaseUrl}/api/relay-auth/server/spake2/finish`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -106,7 +101,7 @@ export async function refreshRelaySigningSession(
   payload: RelaySigningSessionRefreshPayload
 ): Promise<RefreshRelaySigningSessionResponse> {
   const response = await fetch(
-    `${relaySessionBaseUrl}/api/relay-auth/signing-session/refresh`,
+    `${relaySessionBaseUrl}/api/relay-auth/server/signing-session/refresh`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -176,32 +171,6 @@ async function parseErrorResponse(
       `${fallbackMessage} (${response.status} ${response.statusText})`
     );
   }
-}
-
-function buildRelayExchangeUrl(
-  relayUrl: string,
-  hostId: string,
-  code: string
-): string {
-  const relayBase = relayUrl.replace(/\/+$/, '');
-  return `${relayBase}/relay/h/${hostId}/exchange?code=${encodeURIComponent(code)}`;
-}
-
-function parseRelaySessionBaseUrl(finalUrl: string, hostId: string): string {
-  const parsed = new URL(finalUrl);
-  const hostPattern = escapeRegExp(hostId);
-  const match = parsed.pathname.match(
-    new RegExp(`^/relay/h/${hostPattern}/s/[^/]+`)
-  );
-  if (!match) {
-    throw new Error('Failed to establish relay browser session.');
-  }
-
-  return `${parsed.origin}${match[0]}`;
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 interface LocalApiSuccess<T> {

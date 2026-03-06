@@ -21,7 +21,6 @@ pub mod oauth;
 pub mod open_remote_editor;
 pub mod organizations;
 pub mod relay_auth;
-pub mod relay_pairing;
 pub mod relay_ws;
 pub mod releases;
 pub mod remote;
@@ -70,7 +69,6 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     let api_routes = Router::new()
         .merge(relay_auth::router())
-        .merge(relay_pairing::router())
         .merge(relay_signed_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,

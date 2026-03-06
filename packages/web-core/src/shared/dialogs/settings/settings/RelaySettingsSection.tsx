@@ -16,8 +16,8 @@ import { relayApi } from '@/shared/lib/api';
 import { createRelaySession } from '@/shared/lib/remoteApi';
 import {
   createRelaySessionAuthCode,
-  establishRelaySessionBaseUrl,
   getRelayApiUrl,
+  establishRelaySessionBaseUrl,
 } from '@/shared/lib/relayBackendApi';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
@@ -139,19 +139,11 @@ function LocalRelaySettingsSectionContent() {
       hostId: string;
       normalizedCode: string;
     }) => {
-      const relaySession = await createRelaySession(hostId);
-      const authCode = await createRelaySessionAuthCode(relaySession.id);
-      const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
-        getRelayApiUrl(),
-        hostId,
-        authCode.code
-      );
       const selectedHost = relayHosts.find((host) => host.id === hostId);
       await relayApi.pairRelayHost({
         host_id: hostId,
         host_name: selectedHost?.name ?? hostId,
         enrollment_code: normalizedCode,
-        relay_session_base_url: relaySessionBaseUrl,
       });
     },
   });
@@ -163,7 +155,7 @@ function LocalRelaySettingsSectionContent() {
       const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
         getRelayApiUrl(),
         hostId,
-        authCode.code
+        authCode.browser_session_id
       );
       return relayApi.openFirstWorkspaceInRemoteEditor({
         host_id: hostId,

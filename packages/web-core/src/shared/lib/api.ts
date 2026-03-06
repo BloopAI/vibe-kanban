@@ -1478,14 +1478,17 @@ export const migrationApi = {
 // Relay API
 export const relayApi = {
   getEnrollmentCode: async (): Promise<{ enrollment_code: string }> => {
-    const response = await makeRequest('/api/relay-auth/enrollment-code', {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      '/api/relay-auth/server/enrollment-code',
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<{ enrollment_code: string }>(response);
   },
 
   listPairedClients: async (): Promise<RelayPairedClient[]> => {
-    const response = await makeRequest('/api/relay-auth/clients');
+    const response = await makeRequest('/api/relay-auth/server/clients');
     const body =
       await handleApiResponse<ListRelayPairedClientsResponse>(response);
     return body.clients;
@@ -1495,7 +1498,7 @@ export const relayApi = {
     clientId: string
   ): Promise<RemoveRelayPairedClientResponse> => {
     const response = await makeRequest(
-      `/api/relay-auth/clients/${encodeURIComponent(clientId)}`,
+      `/api/relay-auth/server/clients/${encodeURIComponent(clientId)}`,
       {
         method: 'DELETE',
       }
@@ -1506,7 +1509,7 @@ export const relayApi = {
   pairRelayHost: async (
     payload: PairRelayHostRequest
   ): Promise<PairRelayHostResponse> => {
-    const response = await makeRequest('/api/relay-pairing/pair', {
+    const response = await makeRequest('/api/relay-auth/client/pair', {
       method: 'POST',
       body: JSON.stringify(payload),
     });

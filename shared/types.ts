@@ -348,7 +348,7 @@ export type OpenRemoteEditorRequest = { host_id: string, workspace_path: string,
 
 export type OpenFirstWorkspaceInRemoteEditorRequest = { host_id: string, editor_type: string | null, relay_session_base_url: string, };
 
-export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, relay_session_base_url: string, };
+export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, };
 
 export type PairRelayHostResponse = { paired: boolean, };
 

@@ -94,5 +94,6 @@ pub async fn relay_session_auth_code(
     Ok(Json(RelaySessionAuthCodeResponse {
         session_id: session.id,
         code,
+        browser_session_id: relay_browser_session.id,
     }))
 }

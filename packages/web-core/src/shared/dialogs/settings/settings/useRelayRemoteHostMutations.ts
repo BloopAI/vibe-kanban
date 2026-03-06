@@ -50,7 +50,7 @@ async function pairRelayHost({
   const relaySessionBaseUrl = await establishRelaySessionBaseUrl(
     getRelayApiUrl(),
     hostId,
-    authCode.code
+    authCode.browser_session_id
   );
 
   const { state, clientMessageB64 } =

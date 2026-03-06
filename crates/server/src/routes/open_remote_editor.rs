@@ -99,9 +99,11 @@ pub async fn open_first_workspace_in_remote_editor(
             );
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Failed to load host workspaces via relay"
-                })),
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Failed to load host workspaces via relay"
+                )),
             )
                 .into_response();
         }
@@ -110,9 +112,9 @@ pub async fn open_first_workspace_in_remote_editor(
     let Some(first_workspace) = workspaces.first() else {
         return (
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({
-                "error": "No workspaces found on host"
-            })),
+            Json(ApiResponse::<
+                desktop_bridge::service::OpenRemoteEditorResponse,
+            >::error("No workspaces found on host")),
         )
             .into_response();
     };
@@ -134,9 +136,11 @@ pub async fn open_first_workspace_in_remote_editor(
             );
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({
-                    "error": "Failed to resolve editor path for host workspace"
-                })),
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Failed to resolve editor path for host workspace"
+                )),
             )
                 .into_response();
         }
@@ -162,16 +166,18 @@ pub async fn upsert_open_remote_editor_credentials(
     {
         Ok(()) => (
             StatusCode::OK,
-            Json(UpsertRelayHostCredentialsResponse { upserted: true }),
+            Json(ApiResponse::<UpsertRelayHostCredentialsResponse>::success(
+                UpsertRelayHostCredentialsResponse { upserted: true },
+            )),
         )
             .into_response(),
         Err(error) => {
             tracing::error!(?error, "Failed to persist relay host credentials");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({
-                    "error": "Failed to persist relay host credentials"
-                })),
+                Json(ApiResponse::<UpsertRelayHostCredentialsResponse>::error(
+                    "Failed to persist relay host credentials",
+                )),
             )
                 .into_response()
         }
@@ -195,9 +201,11 @@ async fn get_signing_ctx(
     let Some(credentials) = deployment.get_relay_host_credentials(host_id).await else {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({
-                "error": format!("Open-in-IDE credentials are unavailable for host '{host_id}'")
-            })),
+            Json(ApiResponse::<
+                desktop_bridge::service::OpenRemoteEditorResponse,
+            >::error(&format!(
+                "Open-in-IDE credentials are unavailable for host '{host_id}'"
+            ))),
         )
             .into_response());
     };
@@ -206,7 +214,9 @@ async fn get_signing_ctx(
         |error| {
             (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({ "error": error.to_string() })),
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(&error.to_string())),
             )
                 .into_response()
         },
@@ -232,12 +242,20 @@ async fn open_remote_editor_with_workspace_path(
         )
         .await
     {
-        Ok(response) => (StatusCode::OK, Json(response)).into_response(),
+        Ok(response) => (
+            StatusCode::OK,
+            Json(ApiResponse::<
+                desktop_bridge::service::OpenRemoteEditorResponse,
+            >::success(response)),
+        )
+            .into_response(),
         Err(error) => {
             tracing::error!(?error, "Open remote editor failed");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({ "error": error.to_string() })),
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(&error.to_string())),
             )
                 .into_response()
         }

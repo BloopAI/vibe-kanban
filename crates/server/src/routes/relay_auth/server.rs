@@ -98,21 +98,24 @@ pub struct RefreshRelaySigningSessionResponse {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
-            "/relay-auth/enrollment-code",
+            "/relay-auth/server/enrollment-code",
             post(generate_enrollment_code),
         )
-        .route("/relay-auth/clients", get(list_relay_paired_clients))
+        .route("/relay-auth/server/clients", get(list_relay_paired_clients))
         .route(
-            "/relay-auth/clients/{client_id}",
+            "/relay-auth/server/clients/{client_id}",
             delete(remove_relay_paired_client),
         )
         .route(
-            "/relay-auth/spake2/start",
+            "/relay-auth/server/spake2/start",
             post(start_spake2_enrollment_route),
         )
-        .route("/relay-auth/spake2/finish", post(finish_spake2_enrollment))
         .route(
-            "/relay-auth/signing-session/refresh",
+            "/relay-auth/server/spake2/finish",
+            post(finish_spake2_enrollment),
+        )
+        .route(
+            "/relay-auth/server/signing-session/refresh",
             post(refresh_relay_signing_session),
         )
 }
