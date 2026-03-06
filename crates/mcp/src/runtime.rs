@@ -1,5 +1,4 @@
 use db::models::session::Session;
-use serde::Deserialize;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     port_file::read_port_file,
@@ -7,18 +6,13 @@ use utils::{
 };
 use uuid::Uuid;
 
+use crate::ApiResponseEnvelope;
+
 const MODE_ENV: &str = "VIBE_MCP_MODE";
 const SESSION_ID_ENV: &str = "VIBE_MCP_SESSION_ID";
 const BACKEND_URL_ENV: &str = "VIBE_MCP_BACKEND_URL";
 const HOST_ENV: &str = "VIBE_MCP_HOST";
 const PORT_ENV: &str = "VIBE_MCP_PORT";
-
-#[derive(Debug, Deserialize)]
-struct ApiResponseEnvelope<T> {
-    success: bool,
-    data: Option<T>,
-    message: Option<String>,
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum McpLaunchMode {

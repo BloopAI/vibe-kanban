@@ -1,5 +1,8 @@
+use std::str::FromStr;
+
 use api_types::{Issue, ListProjectStatusesResponse, ProjectStatus};
 use db::models::{execution_process::ExecutionProcessStatus, tag::Tag};
+use executors::executors::BaseCodingAgent;
 use regex::Regex;
 use rmcp::{
     ErrorData,
@@ -333,11 +336,9 @@ impl McpServer {
             .replace('-', "_")
             .to_ascii_uppercase();
 
-        match normalized.as_str() {
-            "CLAUDE_CODE" | "AMP" | "GEMINI" | "CODEX" | "OPENCODE" | "CURSOR_AGENT"
-            | "QWEN_CODE" | "COPILOT" | "DROID" => normalized,
-            _ => "CODEX".to_string(),
-        }
+        BaseCodingAgent::from_str(&normalized)
+            .map(|executor| executor.to_string())
+            .unwrap_or_else(|_| "CODEX".to_string())
     }
 
     fn execution_process_status_label(status: &ExecutionProcessStatus) -> &'static str {

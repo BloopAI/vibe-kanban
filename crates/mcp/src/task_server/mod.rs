@@ -6,12 +6,7 @@ use rmcp::{handler::server::tool::ToolRouter, schemars};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
-struct ApiResponseEnvelope<T> {
-    success: bool,
-    data: Option<T>,
-    message: Option<String>,
-}
+pub(crate) use crate::ApiResponseEnvelope;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpRepoContext {
