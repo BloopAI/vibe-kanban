@@ -32,7 +32,7 @@ pub enum QueuedMessageKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum QueueClearMode {
-    /// Pop only the most recently added message (buffered queue first, then steer).
+    /// Pop only the most recently added message across steer and buffered queue.
     #[default]
     Latest,
     /// Clear both steer and buffered queue messages.
@@ -121,13 +121,21 @@ impl QueuedMessageService {
     }
 
     /// Pop the most recently added queued message (LIFO) so the UI can restore it for editing.
-    /// Priority is buffered queue first, then pending steers.
+    /// This compares the latest steer and buffered queue entries by queued_at.
     pub fn cancel_latest(&self, session_id: Uuid) -> Option<QueuedMessage> {
         let mut state = self.queue.get_mut(&session_id)?;
-        let cancelled = state
-            .queued_messages
-            .pop_back()
-            .or_else(|| state.pending_steers.pop_back());
+        let cancelled = match (state.pending_steers.back(), state.queued_messages.back()) {
+            (Some(latest_steer), Some(latest_queue)) => {
+                if latest_steer.queued_at >= latest_queue.queued_at {
+                    state.pending_steers.pop_back()
+                } else {
+                    state.queued_messages.pop_back()
+                }
+            }
+            (Some(_), None) => state.pending_steers.pop_back(),
+            (None, Some(_)) => state.queued_messages.pop_back(),
+            (None, None) => None,
+        };
         let should_remove = state.is_empty();
         drop(state);
 
@@ -252,6 +260,8 @@ impl Default for QueuedMessageService {
 
 #[cfg(test)]
 mod tests {
+    use std::{thread::sleep, time::Duration};
+
     use db::models::scratch::DraftFollowUpData;
     use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
 
@@ -287,20 +297,22 @@ mod tests {
     }
 
     #[test]
-    fn cancel_latest_prefers_buffered_queue_then_steer() {
+    fn cancel_latest_uses_most_recent_message_across_both_channels() {
         let service = QueuedMessageService::new();
         let session_id = Uuid::new_v4();
 
         service.queue_steer(session_id, draft("s1"));
+        sleep(Duration::from_millis(2));
         service.queue_message(session_id, draft("q1"));
-        service.queue_message(session_id, draft("q2"));
+        sleep(Duration::from_millis(2));
+        service.queue_steer(session_id, draft("s2"));
 
         let first = service.cancel_latest(session_id).expect("first cancel");
         let second = service.cancel_latest(session_id).expect("second cancel");
         let third = service.cancel_latest(session_id).expect("third cancel");
 
-        assert_eq!(first.data.message, "q2");
-        assert_eq!(first.kind, QueuedMessageKind::Queue);
+        assert_eq!(first.data.message, "s2");
+        assert_eq!(first.kind, QueuedMessageKind::Steer);
         assert_eq!(second.data.message, "q1");
         assert_eq!(second.kind, QueuedMessageKind::Queue);
         assert_eq!(third.data.message, "s1");
