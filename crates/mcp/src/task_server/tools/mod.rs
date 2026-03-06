@@ -328,17 +328,21 @@ impl McpServer {
             .await
     }
 
-    fn normalize_executor_name(executor: Option<&str>) -> String {
-        let normalized = executor
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-            .unwrap_or("CODEX")
-            .replace('-', "_")
-            .to_ascii_uppercase();
+    fn normalize_executor_name(executor: Option<&str>) -> Result<String, CallToolResult> {
+        let Some(executor) = executor.map(str::trim).filter(|value| !value.is_empty()) else {
+            return Ok("CODEX".to_string());
+        };
 
+        let normalized = executor.replace('-', "_").to_ascii_uppercase();
         BaseCodingAgent::from_str(&normalized)
-            .map(|executor| executor.to_string())
-            .unwrap_or_else(|_| "CODEX".to_string())
+            .map(|agent| agent.to_string())
+            .map_err(|_| {
+                Self::err(
+                    format!("Unknown executor '{}' configured for session", executor),
+                    None::<String>,
+                )
+                .unwrap()
+            })
     }
 
     fn execution_process_status_label(status: &ExecutionProcessStatus) -> &'static str {

@@ -222,9 +222,14 @@ impl McpServer {
             );
         }
 
+        let executor_config = match Self::executor_config_payload_for_session(&session) {
+            Ok(config) => config,
+            Err(error_result) => return Ok(error_result),
+        };
+
         let payload = FollowUpPayload {
             prompt: prompt.to_string(),
-            executor_config: Self::executor_config_payload_for_session(&session),
+            executor_config,
             retry_process_id: None,
             force_when_dirty: None,
             perform_git_reset: None,
@@ -290,15 +295,17 @@ impl McpServer {
 }
 
 impl McpServer {
-    fn executor_config_payload_for_session(session: &Session) -> ExecutorConfigPayload {
-        ExecutorConfigPayload {
-            executor: Self::normalize_executor_name(session.executor.as_deref()),
+    fn executor_config_payload_for_session(
+        session: &Session,
+    ) -> Result<ExecutorConfigPayload, CallToolResult> {
+        Ok(ExecutorConfigPayload {
+            executor: Self::normalize_executor_name(session.executor.as_deref())?,
             variant: None,
             model_id: None,
             agent_id: None,
             reasoning_id: None,
             permission_policy: None,
-        }
+        })
     }
 
     fn session_summary(&self, session: Session) -> SessionSummary {
