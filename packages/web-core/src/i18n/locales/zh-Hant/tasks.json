@@ -403,7 +403,6 @@
       "queue": "加入佇列",
       "queueShortcutHint": "快捷鍵：{{shortcut}}",
       "cancelQueue": "佇列彈出",
-      "cancelQueueHint": "彈出最近一條排隊訊息並恢復到輸入框",
       "requestChanges": "請求變更",
       "approve": "核准",
       "clearReviewComments": "清除審查評論",

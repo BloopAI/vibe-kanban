@@ -558,7 +558,6 @@ export function SessionChatBox<TExecutor extends string = string>({
                 onClick={actions.onCancelQueue}
                 variant="secondary"
                 value={t('conversation.actions.cancelQueue')}
-                title={t('conversation.actions.cancelQueueHint')}
                 actionIcon={XIcon}
               />
             )}
@@ -577,7 +576,6 @@ export function SessionChatBox<TExecutor extends string = string>({
             <PrimaryButton
               onClick={actions.onCancelQueue}
               value={t('conversation.actions.cancelQueue')}
-              title={t('conversation.actions.cancelQueueHint')}
               actionIcon={XIcon}
             />
             <PrimaryButton

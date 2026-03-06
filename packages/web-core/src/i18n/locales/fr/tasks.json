@@ -152,7 +152,6 @@
       "queue": "File d'attente",
       "queueShortcutHint": "Raccourci : {{shortcut}}",
       "cancelQueue": "Sortir de la file",
-      "cancelQueueHint": "Retire le dernier message en file et le restaure dans l'éditeur",
       "requestChanges": "Demander des modifications",
       "approve": "Approuver",
       "clearReviewComments": "Effacer les commentaires de révision",

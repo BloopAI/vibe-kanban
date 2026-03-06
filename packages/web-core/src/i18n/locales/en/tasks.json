@@ -152,7 +152,6 @@
       "queue": "Queue",
       "queueShortcutHint": "Shortcut: {{shortcut}}",
       "cancelQueue": "Pop Queue",
-      "cancelQueueHint": "Pop the latest queued message back into the editor",
       "requestChanges": "Request Changes",
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",

@@ -403,7 +403,6 @@
       "queue": "加入队列",
       "queueShortcutHint": "快捷键：{{shortcut}}",
       "cancelQueue": "队列弹出",
-      "cancelQueueHint": "弹出最近一条排队消息并恢复到输入框",
       "requestChanges": "请求更改",
       "approve": "批准",
       "clearReviewComments": "清除审查评论",

@@ -403,7 +403,6 @@
       "queue": "Poner en cola",
       "queueShortcutHint": "Atajo: {{shortcut}}",
       "cancelQueue": "Extraer de la cola",
-      "cancelQueueHint": "Extrae el mensaje en cola más reciente y lo restaura en el editor",
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",

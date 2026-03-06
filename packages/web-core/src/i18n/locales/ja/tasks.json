@@ -403,7 +403,6 @@
       "queue": "キューに追加",
       "queueShortcutHint": "ショートカット: {{shortcut}}",
       "cancelQueue": "キューから取り出す",
-      "cancelQueueHint": "最新のキュー済みメッセージを取り出してエディタに戻す",
       "requestChanges": "変更を依頼",
       "approve": "承認",
       "clearReviewComments": "レビューコメントをクリア",
