@@ -3,10 +3,8 @@ use db::models::{
     session::Session,
 };
 use rmcp::{
-    ErrorData,
-    handler::server::tool::Parameters,
-    model::{CallToolResult, Content},
-    schemars, tool, tool_router,
+    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    tool_router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -119,12 +117,6 @@ struct GetExecutionResponse {
     final_message: Option<String>,
 }
 
-#[derive(Debug, Deserialize, schemars::JsonSchema)]
-struct OutputMarkdownRequest {
-    #[schemars(description = "Markdown content to output directly to the user")]
-    markdown: String,
-}
-
 #[tool_router(router = session_tools_router, vis = "pub")]
 impl McpServer {
     #[tool(description = "Create a new session in a workspace.")]
@@ -196,20 +188,6 @@ impl McpServer {
             total_count: sessions.len(),
             sessions,
         })
-    }
-
-    #[tool(
-        description = "Output markdown content directly to the user. Use this tool when you want the user to see formatted markdown text."
-    )]
-    async fn output_markdown(
-        &self,
-        Parameters(OutputMarkdownRequest { markdown }): Parameters<OutputMarkdownRequest>,
-    ) -> Result<CallToolResult, ErrorData> {
-        if markdown.trim().is_empty() {
-            return Self::err("markdown must not be empty", None);
-        }
-
-        Ok(CallToolResult::success(vec![Content::text(markdown)]))
     }
 
     #[tool(

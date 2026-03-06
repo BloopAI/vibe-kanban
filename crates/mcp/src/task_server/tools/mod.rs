@@ -38,9 +38,12 @@ impl McpServer {
     }
 
     pub fn workspace_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
-        Self::context_tools_router()
+        let mut router = Self::context_tools_router()
             + Self::workspaces_tools_router()
-            + Self::session_tools_router()
+            + Self::session_tools_router();
+        router.remove_route::<(), ()>("list_workspaces");
+        router.remove_route::<(), ()>("delete_workspace");
+        router
     }
 }
 
@@ -344,5 +347,44 @@ impl McpServer {
             ExecutionProcessStatus::Failed => "failed",
             ExecutionProcessStatus::Killed => "killed",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::McpServer;
+
+    fn tool_names(router: rmcp::handler::server::tool::ToolRouter<McpServer>) -> BTreeSet<String> {
+        router
+            .list_all()
+            .into_iter()
+            .map(|tool| tool.name.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn workspace_mode_exposes_only_scoped_workflow_tools() {
+        let actual = tool_names(McpServer::workspace_mode_router());
+        let expected = BTreeSet::from([
+            "create_session".to_string(),
+            "get_context".to_string(),
+            "get_execution".to_string(),
+            "list_sessions".to_string(),
+            "run_session_prompt".to_string(),
+            "update_workspace".to_string(),
+        ]);
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn global_mode_keeps_workspace_admin_and_discovery_tools() {
+        let actual = tool_names(McpServer::global_mode_router());
+
+        assert!(actual.contains("list_workspaces"));
+        assert!(actual.contains("delete_workspace"));
+        assert!(!actual.contains("output_markdown"));
     }
 }
