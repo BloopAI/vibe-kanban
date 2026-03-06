@@ -14,7 +14,10 @@ use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use tokio_util::sync::CancellationToken;
 use tokio_yamux::{Config as YamuxConfig, Session};
 
-use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
+use crate::{
+    tls::ws_connector,
+    ws_io::{WsIoReadMessage, WsMessageStreamIo},
+};
 
 pub struct RelayClientConfig {
     pub ws_url: String,
@@ -40,9 +43,10 @@ pub async fn start_relay_client(config: RelayClientConfig) -> anyhow::Result<()>
             .context("Invalid auth header")?,
     );
 
-    let (ws_stream, _response) = tokio_tungstenite::connect_async(request)
-        .await
-        .context("Failed to connect relay control channel")?;
+    let (ws_stream, _response) =
+        tokio_tungstenite::connect_async_tls_with_config(request, None, false, ws_connector())
+            .await
+            .context("Failed to connect relay control channel")?;
 
     let ws_io = WsMessageStreamIo::new(ws_stream, read_client_message, write_client_message);
     let mut session = Session::new_client(ws_io, YamuxConfig::default());
