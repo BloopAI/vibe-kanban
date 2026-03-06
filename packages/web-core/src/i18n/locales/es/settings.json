@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "Enviar mensaje con",
           "helper": "Elige el atajo de teclado para enviar mensajes.",
-          "enterLabel": "Enter (Shift+Enter para nueva línea)"
+          "enterLabel": "Enter (Shift+Enter para nueva línea)",
+          "disabledLabel": "Desactivado"
+        },
+        "runningSteerShortcut": {
+          "label": "Dirigir ejecuci?n con",
+          "helper": "Elige el atajo que env?a una instrucci?n inmediata mientras una tarea est? en ejecuci?n."
+        },
+        "runningQueueShortcut": {
+          "label": "Encolar seguimiento con",
+          "helper": "Elige el atajo que agrega un seguimiento a la cola mientras una tarea est? en ejecuci?n."
         }
       },
       "privacy": {

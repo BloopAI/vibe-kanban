@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "发送消息快捷键",
           "helper": "选择发送消息的键盘快捷键。",
-          "enterLabel": "Enter（Shift+Enter 换行）"
+          "enterLabel": "Enter（Shift+Enter 换行）",
+          "disabledLabel": "已禁用"
+        },
+        "runningSteerShortcut": {
+          "helper": "选择任务运行中发送即时指导的快捷键。",
+          "label": "即时指导快捷键"
+        },
+        "runningQueueShortcut": {
+          "helper": "选择任务运行中加入缓冲队列的快捷键。",
+          "label": "缓冲队列快捷键"
         }
       },
       "privacy": {

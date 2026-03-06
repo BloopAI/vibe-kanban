@@ -85,8 +85,11 @@ import {
 } from '@/shared/dialogs/command-bar/selections/repoSelection';
 import { fetchAttachmentSasUrl } from '@/shared/lib/remoteApi';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
-import type { SendMessageShortcut } from 'shared/types';
-import type { BaseCodingAgent } from 'shared/types';
+import type {
+  BaseCodingAgent,
+  RunningMessageShortcut,
+  SendMessageShortcut,
+} from 'shared/types';
 
 /** Markdown string representing the editor content */
 export type SerializedEditorState = string;
@@ -108,6 +111,10 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
+  /** Running-chat shortcut for the primary action (typically steer) */
+  primaryActionShortcut?: RunningMessageShortcut;
+  /** Running-chat shortcut for the secondary action (typically queue) */
+  secondaryActionShortcut?: RunningMessageShortcut;
   /** Task attempt ID for resolving .vibe-images paths */
   taskAttemptId?: string;
   /** Repo ID for slash commands when no workspace yet */
@@ -254,6 +261,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       onCmdEnter,
       onShiftCmdEnter,
       sendShortcut,
+      primaryActionShortcut,
+      secondaryActionShortcut,
       taskAttemptId,
       repoId,
       localImages,
@@ -558,6 +567,8 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       onChange={onChange}
                       transformers={extendedTransformers}
                       sendShortcut={sendShortcut}
+                      primaryActionShortcut={primaryActionShortcut}
+                      secondaryActionShortcut={secondaryActionShortcut}
                     />
                   </TypeaheadOpenProvider>
                   <ImageKeyboardPlugin isTargetNode={$isImageNode} />

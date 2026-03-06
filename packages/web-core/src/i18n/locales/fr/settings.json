@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "Envoyer le message avec",
           "helper": "Choisissez le raccourci clavier pour envoyer des messages.",
-          "enterLabel": "Entrée (Maj+Entrée pour nouvelle ligne)"
+          "enterLabel": "Entrée (Maj+Entrée pour nouvelle ligne)",
+          "disabledLabel": "D?sactiv?"
+        },
+        "runningSteerShortcut": {
+          "label": "Orienter l'ex?cution avec",
+          "helper": "Choisissez le raccourci qui envoie une instruction imm?diate pendant qu'une t?che est en cours."
+        },
+        "runningQueueShortcut": {
+          "label": "Mettre le suivi en file avec",
+          "helper": "Choisissez le raccourci qui met un suivi en file pendant qu'une t?che est en cours."
         }
       },
       "privacy": {

@@ -14,6 +14,10 @@ import {
 } from '@/shared/keyboard/registry';
 import { isMac, getModifierKey } from '@/shared/lib/platform';
 import { Tooltip } from '@vibe/ui/components/Tooltip';
+import {
+  formatRunningMessageShortcut,
+  normalizeRunningMessageShortcuts,
+} from '@/shared/lib/runningMessageShortcuts';
 
 interface ShortcutItem {
   keys: string | string[];
@@ -30,13 +34,28 @@ interface ShortcutGroup {
 function useShortcutGroups(): ShortcutGroup[] {
   const { config } = useUserSystem();
   const { t } = useTranslation('common');
+  const { t: tSettings } = useTranslation('settings');
   const sendShortcut = config?.send_message_shortcut ?? 'ModifierEnter';
+  const runningShortcuts = useMemo(
+    () => normalizeRunningMessageShortcuts(config),
+    [config?.steer_message_shortcut, config?.queue_message_shortcut]
+  );
 
   return useMemo(() => {
     const mod = getModifierKey();
     const enterKey = isMac() ? '↩' : 'Enter';
+    const disabledLabel = tSettings(
+      'settings.general.messageInput.shortcut.disabledLabel'
+    );
+    const steerKeys = formatRunningMessageShortcut(runningShortcuts.steer, {
+      modifierKey: mod,
+      disabledLabel,
+    }).split('+');
+    const queueKeys = formatRunningMessageShortcut(runningShortcuts.queue, {
+      modifierKey: mod,
+      disabledLabel,
+    }).split('+');
 
-    // Quick Actions - single key shortcuts
     const quickActions: ShortcutGroup = {
       name: t('shortcuts.groups.quickActions'),
       shortcuts: [
@@ -48,7 +67,6 @@ function useShortcutGroups(): ShortcutGroup[] {
       ],
     };
 
-    // Navigation - Vim-style
     const navigation: ShortcutGroup = {
       name: t('shortcuts.groups.navigation'),
       shortcuts: [
@@ -88,17 +106,18 @@ function useShortcutGroups(): ShortcutGroup[] {
       name: t('shortcuts.groups.runningChat'),
       shortcuts: [
         {
-          keys: [mod, enterKey],
+          keys: steerKeys,
           description: t('shortcuts.actions.steerMessage'),
+          useHintKey: true,
         },
         {
-          keys: ['Shift', enterKey],
+          keys: queueKeys,
           description: t('shortcuts.actions.queueMessage'),
+          useHintKey: true,
         },
       ],
     };
 
-    // Group sequential bindings by their first key
     const sequentialByFirstKey = new Map<string, ShortcutItem[]>();
     for (const binding of sequentialBindings) {
       const firstKey = binding.keys[0];
@@ -118,7 +137,6 @@ function useShortcutGroups(): ShortcutGroup[] {
       });
     }
 
-    // Create named groups for sequential shortcuts
     const sequentialGroups: ShortcutGroup[] = [
       {
         name: t('shortcuts.groups.goTo'),
@@ -152,10 +170,16 @@ function useShortcutGroups(): ShortcutGroup[] {
         name: t('shortcuts.groups.run'),
         shortcuts: sequentialByFirstKey.get('r') || [],
       },
-    ].filter((g) => g.shortcuts.length > 0);
+    ].filter((group) => group.shortcuts.length > 0);
 
-    return [quickActions, navigation, modifiers, runningChat, ...sequentialGroups];
-  }, [sendShortcut, t]);
+    return [
+      quickActions,
+      navigation,
+      modifiers,
+      runningChat,
+      ...sequentialGroups,
+    ];
+  }, [runningShortcuts, sendShortcut, t, tSettings]);
 }
 
 function ShortcutRow({ item }: { item: ShortcutItem }) {
@@ -220,7 +244,6 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
     modal.remove();
   }, [modal]);
 
-  // Handle ESC key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -233,14 +256,11 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
 
   return createPortal(
     <>
-      {/* Overlay */}
       <div
         className="fixed inset-0 z-[9998] bg-black/50 animate-in fade-in-0 duration-200"
         onClick={handleClose}
       />
-      {/* Dialog wrapper - handles positioning */}
       <div className="fixed z-[9999] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        {/* Dialog content - handles animation */}
         <div
           className={cn(
             'w-[700px] max-h-[80vh]',
@@ -249,7 +269,6 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
             'flex flex-col overflow-hidden'
           )}
         >
-          {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border">
             <h2 className="text-lg font-semibold text-high">
               {t('shortcuts.title')}
@@ -261,14 +280,12 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
               <XIcon className="size-icon-sm" weight="bold" />
             </button>
           </div>
-          {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8">
               {groups.map((group, i) => (
                 <ShortcutSection key={i} group={group} />
               ))}
             </div>
-            {/* Footer hint */}
             <div className="mt-4 pt-4 border-t border-border text-center">
               <p className="text-xs text-low">
                 {t('shortcuts.sequentialHint')}

@@ -16,9 +16,11 @@ import {
 } from 'lexical';
 import { $convertToMarkdownString, type Transformer } from '@lexical/markdown';
 import { $isListItemNode } from '@lexical/list';
+import type {
+  RunningMessageShortcut,
+  SendMessageShortcut,
+} from 'shared/types';
 import { useTypeaheadOpen } from './TypeaheadOpenContext';
-
-type SendMessageShortcut = 'ModifierEnter' | 'Enter';
 
 type Props = {
   onCmdEnter?: () => void;
@@ -26,7 +28,31 @@ type Props = {
   onChange?: (markdown: string) => void;
   transformers?: Transformer[];
   sendShortcut?: SendMessageShortcut;
+  primaryActionShortcut?: RunningMessageShortcut;
+  secondaryActionShortcut?: RunningMessageShortcut;
 };
+
+function matchesRunningShortcut(
+  event: KeyboardEvent,
+  shortcut?: RunningMessageShortcut
+): boolean {
+  if (!shortcut || shortcut === 'Disabled' || event.key !== 'Enter') {
+    return false;
+  }
+
+  const hasModifier = event.metaKey || event.ctrlKey;
+
+  switch (shortcut) {
+    case 'ModifierEnter':
+      return hasModifier && !event.shiftKey;
+    case 'ShiftEnter':
+      return event.shiftKey && !hasModifier;
+    case 'ModifierShiftEnter':
+      return hasModifier && event.shiftKey;
+    default:
+      return false;
+  }
+}
 
 export function KeyboardCommandsPlugin({
   onCmdEnter,
@@ -34,6 +60,8 @@ export function KeyboardCommandsPlugin({
   onChange,
   transformers,
   sendShortcut = 'ModifierEnter',
+  primaryActionShortcut,
+  secondaryActionShortcut,
 }: Props) {
   const [editor] = useLexicalComposerContext();
   const { isOpen: isTypeaheadOpen } = useTypeaheadOpen();
@@ -138,6 +166,10 @@ export function KeyboardCommandsPlugin({
       return unregisterTab;
     }
 
+    const hasRunningShortcutOverrides = Boolean(
+      primaryActionShortcut || secondaryActionShortcut
+    );
+
     const flushAndSubmit = () => {
       if (onChange && transformers) {
         const markdown = editor
@@ -166,6 +198,27 @@ export function KeyboardCommandsPlugin({
       KEY_MODIFIER_COMMAND,
       (event: KeyboardEvent) => {
         if (!(event.metaKey || event.ctrlKey) || event.key !== 'Enter') {
+          return false;
+        }
+
+        const shouldSubmit =
+          !!onCmdEnter && matchesRunningShortcut(event, primaryActionShortcut);
+        const shouldQueue =
+          !!onShiftCmdEnter &&
+          matchesRunningShortcut(event, secondaryActionShortcut);
+
+        if (shouldSubmit || shouldQueue) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (shouldSubmit) {
+            flushAndSubmit();
+          } else {
+            flushAndQueue();
+          }
+          return true;
+        }
+
+        if (hasRunningShortcutOverrides) {
           return false;
         }
 
@@ -221,6 +274,30 @@ export function KeyboardCommandsPlugin({
           return false;
         }
 
+        const shouldSubmit =
+          !!onCmdEnter && matchesRunningShortcut(event, primaryActionShortcut);
+        const shouldQueue =
+          !!onShiftCmdEnter &&
+          matchesRunningShortcut(event, secondaryActionShortcut);
+
+        if (shouldSubmit || shouldQueue) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (shouldSubmit) {
+            flushAndSubmit();
+          } else {
+            flushAndQueue();
+          }
+          return true;
+        }
+
+        if (hasRunningShortcutOverrides) {
+          if (event.metaKey || event.ctrlKey) {
+            return true;
+          }
+          return false;
+        }
+
         if (
           onShiftCmdEnter &&
           event.shiftKey &&
@@ -264,6 +341,8 @@ export function KeyboardCommandsPlugin({
     onChange,
     transformers,
     sendShortcut,
+    primaryActionShortcut,
+    secondaryActionShortcut,
     isTypeaheadOpen,
   ]);
 

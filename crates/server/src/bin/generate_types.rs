@@ -180,6 +180,7 @@ fn generate_types_content() -> String {
         services::services::config::UiLanguage::decl(),
         services::services::config::ShowcaseState::decl(),
         services::services::config::SendMessageShortcut::decl(),
+        services::services::config::RunningMessageShortcut::decl(),
         git::GitBranch::decl(),
         services::services::queued_message::QueuedMessage::decl(),
         services::services::queued_message::QueuedMessageKind::decl(),

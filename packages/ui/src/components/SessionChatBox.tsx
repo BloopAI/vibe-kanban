@@ -17,7 +17,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import { type EditorProps, type ExecutorProps } from './CreateChatBox';
-import type { AskUserQuestionItem, QuestionAnswer } from 'shared/types';
+import type {
+  AskUserQuestionItem,
+  QuestionAnswer,
+  RunningMessageShortcut,
+} from 'shared/types';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -150,11 +154,20 @@ export interface SessionChatBoxEditorRenderProps<
   onChange: (value: string) => void;
   onCmdEnter: () => void;
   onShiftCmdEnter?: () => void;
+  runningSteerShortcut?: RunningMessageShortcut;
+  runningQueueShortcut?: RunningMessageShortcut;
   disabled: boolean;
   repoIds?: string[];
   executor: TExecutor | null;
   onPasteFiles: (files: File[]) => void;
   localImages?: LocalImageMetadata[];
+}
+
+interface RunningShortcutProps {
+  steer: RunningMessageShortcut;
+  queue: RunningMessageShortcut;
+  steerLabel: string;
+  queueLabel: string;
 }
 
 interface SessionChatBoxProps<TExecutor extends string = string> {
@@ -173,6 +186,7 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
   queueState?: QueueStateProps;
+  runningShortcuts?: RunningShortcutProps;
   modelSelector?: ReactNode;
   error?: string | null;
   repoIds?: string[];
@@ -236,6 +250,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   reviewComments,
   toolbarActions,
   queueState,
+  runningShortcuts,
   modelSelector,
   error,
   repoIds,
@@ -532,13 +547,17 @@ export function SessionChatBox<TExecutor extends string = string>({
               onClick={actions.onSteer}
               disabled={!canSend}
               value={t('conversation.actions.steer')}
-              title={t('conversation.actions.steerShortcutHint')}
+              title={t('conversation.actions.steerShortcutHint', {
+                shortcut: runningShortcuts?.steerLabel ?? 'Ctrl/Cmd+Enter',
+              })}
             />
             <PrimaryButton
               onClick={actions.onQueue}
               disabled={!canSend}
               value={t('conversation.actions.queue')}
-              title={t('conversation.actions.queueShortcutHint')}
+              title={t('conversation.actions.queueShortcutHint', {
+                shortcut: runningShortcuts?.queueLabel ?? 'Shift+Enter',
+              })}
             />
             {queueState?.hasPendingMessages && (
               <PrimaryButton
@@ -729,6 +748,10 @@ export function SessionChatBox<TExecutor extends string = string>({
         onChange: editor.onChange,
         onCmdEnter: handleCmdEnter,
         onShiftCmdEnter: status === 'running' ? handleShiftCmdEnter : undefined,
+        runningSteerShortcut:
+          status === 'running' ? runningShortcuts?.steer : undefined,
+        runningQueueShortcut:
+          status === 'running' ? runningShortcuts?.queue : undefined,
         disabled: isDisabled,
         repoIds,
         executor: agent || executor?.selected || null,

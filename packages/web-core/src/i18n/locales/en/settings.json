@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "Send message with",
           "helper": "Choose the keyboard shortcut to send messages.",
-          "enterLabel": "Enter (Shift+Enter for new line)"
+          "enterLabel": "Enter (Shift+Enter for new line)",
+          "disabledLabel": "Disabled"
+        },
+        "runningSteerShortcut": {
+          "label": "Steer current run with",
+          "helper": "Choose the shortcut that sends an immediate steer while a task is running."
+        },
+        "runningQueueShortcut": {
+          "label": "Queue follow-up with",
+          "helper": "Choose the shortcut that buffers a follow-up while a task is running."
         }
       },
       "privacy": {

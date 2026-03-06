@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "メッセージ送信キー",
           "helper": "メッセージを送信するキーボードショートカットを選択してください。",
-          "enterLabel": "Enter（Shift+Enterで改行）"
+          "enterLabel": "Enter（Shift+Enterで改行）",
+          "disabledLabel": "無効"
+        },
+        "runningSteerShortcut": {
+          "helper": "タスク実行中に即時Steerを送るショートカットを選択します。",
+          "label": "実行中のSteerショートカット"
+        },
+        "runningQueueShortcut": {
+          "helper": "タスク実行中にフォローアップをキューへ追加するショートカットを選択します。",
+          "label": "実行中のキュー投入ショートカット"
         }
       },
       "privacy": {

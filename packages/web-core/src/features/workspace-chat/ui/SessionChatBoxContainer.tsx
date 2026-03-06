@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -61,6 +62,10 @@ import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { Scope, useKeyEditLastQueued } from '@/shared/keyboard';
+import {
+  formatRunningMessageShortcut,
+  normalizeRunningMessageShortcuts,
+} from '@/shared/lib/runningMessageShortcuts';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -133,6 +138,7 @@ type SessionChatBoxContainerProps =
   | PlaceholderProps;
 
 export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
+  const { t: tSettings } = useTranslation('settings');
   const {
     mode,
     sessions,
@@ -314,6 +320,25 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // User profiles, config preference, and latest executor from processes
   const { profiles, config, capabilities } = useUserSystem();
+  const runningShortcuts = useMemo(
+    () => normalizeRunningMessageShortcuts(config),
+    [config?.steer_message_shortcut, config?.queue_message_shortcut]
+  );
+  const runningShortcutLabels = useMemo(
+    () => ({
+      steer: formatRunningMessageShortcut(runningShortcuts.steer, {
+        disabledLabel: tSettings(
+          'settings.general.messageInput.shortcut.disabledLabel'
+        ),
+      }),
+      queue: formatRunningMessageShortcut(runningShortcuts.queue, {
+        disabledLabel: tSettings(
+          'settings.general.messageInput.shortcut.disabledLabel'
+        ),
+      }),
+    }),
+    [runningShortcuts, tSettings]
+  );
 
   // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
@@ -876,7 +901,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           pendingCount,
           pendingSteerCount: pendingSteers.length,
           bufferedQueueCount: queuedMessages.length,
-          pendingSteerSummaries: pendingSteers.map((entry) => entry.data.message),
+          pendingSteerSummaries: pendingSteers.map(
+            (entry) => entry.data.message
+          ),
           bufferedQueueSummaries: queuedMessages.map(
             (entry) => entry.data.message
           ),
@@ -900,6 +927,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       onChange,
       onCmdEnter,
       onShiftCmdEnter,
+      runningSteerShortcut,
+      runningQueueShortcut,
       disabled,
       repoIds,
       executor,
@@ -923,6 +952,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         sendShortcut={
           status === 'running' ? 'ModifierEnter' : config?.send_message_shortcut
         }
+        primaryActionShortcut={runningSteerShortcut}
+        secondaryActionShortcut={runningQueueShortcut}
       />
     ),
     [config?.send_message_shortcut, status]
@@ -1029,6 +1060,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         onPasteFiles: uploadFiles,
       }}
       queueState={queueState}
+      runningShortcuts={{
+        steer: runningShortcuts.steer,
+        queue: runningShortcuts.queue,
+        steerLabel: runningShortcutLabels.steer,
+        queueLabel: runningShortcutLabels.queue,
+      }}
       session={{
         sessions,
         selectedSessionId: sessionId,
