@@ -29,7 +29,7 @@ pub(crate) async fn ensure_electric_publications(
         "Electric publication sync starting"
     );
 
-    let mut tx = pool.begin().await?;
+    let mut tx = super::begin_tx(pool).await?;
 
     sqlx::query(r#"SELECT pg_advisory_xact_lock(hashtext('electric_publication_sync'))"#)
         .execute(&mut *tx)
