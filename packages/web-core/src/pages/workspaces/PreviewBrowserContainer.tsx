@@ -743,8 +743,16 @@ export function PreviewBrowserContainer({
     if (!parsed) return undefined;
 
     try {
+      // Detect Coder's external proxy URL format: https://<port>--<workspace>--<user>.coder.example.com
+      // In this format the port is embedded as a prefix in the hostname (e.g. "8080--main--giftcash--..."),
+      // so parsed.port is empty (HTTPS default). Extract the port from the hostname prefix instead.
+      const coderPortMatch = !parsed.port
+        ? /^(\d+)--/.exec(parsed.hostname)
+        : null;
       const devServerPort =
-        parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+        parsed.port ||
+        (coderPortMatch ? coderPortMatch[1] : null) ||
+        (parsed.protocol === 'https:' ? '443' : '80');
 
       // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
       const vibeKanbanPort = window.location.port || '80';
