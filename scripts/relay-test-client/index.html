@@ -1,0 +1,1039 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Relay Test Client</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      body {
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        margin: 0;
+        background: #f5f7fb;
+        color: #111827;
+      }
+      main {
+        max-width: 980px;
+        margin: 24px auto;
+        padding: 0 16px 24px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 24px;
+      }
+      p {
+        margin: 0 0 12px;
+        color: #374151;
+      }
+      .card {
+        background: #ffffff;
+        border: 1px solid #dbe2ea;
+        border-radius: 10px;
+        padding: 14px;
+        margin-top: 12px;
+      }
+      .grid {
+        display: grid;
+        gap: 10px;
+      }
+      .grid-2 {
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      }
+      label {
+        font-size: 13px;
+        font-weight: 600;
+      }
+      input,
+      textarea,
+      select,
+      button {
+        font: inherit;
+      }
+      input,
+      textarea,
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #c7d1dc;
+        border-radius: 8px;
+        padding: 8px 10px;
+        background: #fff;
+      }
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      button {
+        border: none;
+        border-radius: 8px;
+        padding: 9px 14px;
+        cursor: pointer;
+        background: #111827;
+        color: #fff;
+        font-weight: 600;
+      }
+      button.secondary {
+        background: #e5e7eb;
+        color: #111827;
+      }
+      button:disabled {
+        cursor: default;
+        opacity: 0.6;
+      }
+      .muted {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      pre {
+        background: #0b1220;
+        color: #cde0ff;
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+        margin: 0;
+        font-size: 12px;
+      }
+      .ok {
+        color: #166534;
+      }
+      .err {
+        color: #b91c1c;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Relay Test Client</h1>
+      <p>
+        Standalone test client for relay path routing and proxied local backend
+        API calls.
+      </p>
+
+      <div class="card grid grid-2">
+        <div class="grid">
+          <label for="remoteApiBase">Remote API Base</label>
+          <input
+            id="remoteApiBase"
+            value="https://localhost:3001"
+            autocomplete="off"
+          />
+        </div>
+        <div class="grid">
+          <label for="relayApiBase">Relay API Base</label>
+          <input
+            id="relayApiBase"
+            value="https://relay.localhost:3001"
+            autocomplete="off"
+          />
+        </div>
+        <div class="row" style="grid-column: 1 / -1">
+          <button id="loginGithubBtn">Sign In (GitHub)</button>
+          <button id="loginGoogleBtn">Sign In (Google)</button>
+          <button id="clearTokensBtn" class="secondary">Clear Tokens</button>
+        </div>
+        <div class="grid" style="grid-column: 1 / -1">
+          <label for="accessToken">Bearer Access Token</label>
+          <textarea
+            id="accessToken"
+            placeholder="Auto-filled after OAuth; manual override allowed"
+          ></textarea>
+          <div class="muted">
+            Stored in localStorage under
+            <code>relay_test_access_token</code>. No auto-refresh in this
+            client.
+          </div>
+        </div>
+      </div>
+
+      <div class="card grid grid-2">
+        <div class="grid">
+          <label for="hostSelect">Relay Host</label>
+          <select id="hostSelect"></select>
+        </div>
+        <div class="grid">
+          <label for="hostIdOverride">Host ID Override (optional)</label>
+          <input id="hostIdOverride" placeholder="UUID" autocomplete="off" />
+        </div>
+        <div class="grid" style="grid-column: 1 / -1">
+          <label for="enrollmentCode">Host Pairing Code</label>
+          <input
+            id="enrollmentCode"
+            placeholder="Code shown in local backend relay logs"
+            autocomplete="off"
+          />
+        </div>
+        <div class="row">
+          <button id="loadHostsBtn" class="secondary">Load Hosts</button>
+          <button id="runTestBtn">Run Test</button>
+        </div>
+      </div>
+
+      <div class="card grid">
+        <div>
+          <strong>Result</strong>
+          <span id="statusText" class="muted"></span>
+        </div>
+        <pre id="resultOutput">{}</pre>
+      </div>
+
+      <div class="card grid">
+        <div><strong>Log</strong></div>
+        <pre id="logOutput">Ready.</pre>
+      </div>
+    </main>
+
+    <script type="module">
+      import { ed25519 } from "https://cdn.jsdelivr.net/npm/@noble/curves@1.9.7/ed25519/+esm";
+
+      const remoteApiBaseEl = document.getElementById("remoteApiBase");
+      const relayApiBaseEl = document.getElementById("relayApiBase");
+      const accessTokenEl = document.getElementById("accessToken");
+      const hostSelectEl = document.getElementById("hostSelect");
+      const hostIdOverrideEl = document.getElementById("hostIdOverride");
+      const enrollmentCodeEl = document.getElementById("enrollmentCode");
+      const loadHostsBtnEl = document.getElementById("loadHostsBtn");
+      const runTestBtnEl = document.getElementById("runTestBtn");
+      const loginGithubBtnEl = document.getElementById("loginGithubBtn");
+      const loginGoogleBtnEl = document.getElementById("loginGoogleBtn");
+      const clearTokensBtnEl = document.getElementById("clearTokensBtn");
+      const resultOutputEl = document.getElementById("resultOutput");
+      const logOutputEl = document.getElementById("logOutput");
+      const statusTextEl = document.getElementById("statusText");
+
+      const ACCESS_TOKEN_KEY = "relay_test_access_token";
+      const REFRESH_TOKEN_KEY = "relay_test_refresh_token";
+      const OAUTH_VERIFIER_KEY = "relay_test_oauth_verifier";
+      const encoder = new TextEncoder();
+      const decoder = new TextDecoder();
+      const ED25519_ORDER = ed25519.CURVE.n;
+      const CLIENT_ID = encoder.encode("vibe-kanban-browser");
+      const SERVER_ID = encoder.encode("vibe-kanban-server");
+      const CLIENT_PROOF_CONTEXT = encoder.encode("vk-spake2-client-proof-v2");
+      const SERVER_PROOF_CONTEXT = encoder.encode("vk-spake2-server-proof-v2");
+      const KEY_CONFIRMATION_INFO = encoder.encode("key-confirmation");
+      const SPAKE2_M = ed25519.ExtendedPoint.fromHex(
+        "15cfd18e385952982b6a8f8c7854963b58e34388c8e6dae891db756481a02312",
+      );
+      const SPAKE2_N = ed25519.ExtendedPoint.fromHex(
+        "f04f2e7eb734b2a8f8b472eaf9c3c632576ac64aea650b496a8a20ff00e583c3",
+      );
+
+      function trimSlash(url) {
+        return String(url || "").trim().replace(/\/+$/, "");
+      }
+
+      function getAccessToken() {
+        const override = accessTokenEl.value.trim();
+        if (override) return override;
+        return localStorage.getItem(ACCESS_TOKEN_KEY) || "";
+      }
+
+      function setTokens(accessToken, refreshToken) {
+        localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+        localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+        accessTokenEl.value = accessToken;
+      }
+
+      function clearTokens() {
+        localStorage.removeItem(ACCESS_TOKEN_KEY);
+        localStorage.removeItem(REFRESH_TOKEN_KEY);
+        accessTokenEl.value = "";
+      }
+
+      function authHeaders() {
+        const token = getAccessToken();
+        if (!token) {
+          throw new Error("Missing bearer access token.");
+        }
+        return {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        };
+      }
+
+      function setBusy(busy) {
+        loadHostsBtnEl.disabled = busy;
+        runTestBtnEl.disabled = busy;
+        loginGithubBtnEl.disabled = busy;
+        loginGoogleBtnEl.disabled = busy;
+      }
+
+      function log(line) {
+        const ts = new Date().toISOString();
+        logOutputEl.textContent += `\n[${ts}] ${line}`;
+        logOutputEl.scrollTop = logOutputEl.scrollHeight;
+      }
+
+      function setResultStatus(message, kind) {
+        statusTextEl.className = kind || "muted";
+        statusTextEl.textContent = ` ${message}`;
+      }
+
+      function renderJson(value) {
+        resultOutputEl.textContent = JSON.stringify(value, null, 2);
+      }
+
+      function selectedHostId() {
+        const override = hostIdOverrideEl.value.trim();
+        if (override) return override;
+        return hostSelectEl.value;
+      }
+
+      function relaySessionPrefixFromUrl(url) {
+        try {
+          const parsed = new URL(url);
+          const match = parsed.pathname.match(/^\/relay\/h\/[^/]+\/s\/[^/]+/);
+          return match ? `${parsed.origin}${match[0]}` : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function extractWorkspaces(payload) {
+        if (Array.isArray(payload)) {
+          return payload;
+        }
+        if (payload && Array.isArray(payload.data)) {
+          return payload.data;
+        }
+        return [];
+      }
+
+      function bytesToBase64(bytes) {
+        return btoa(String.fromCharCode(...bytes));
+      }
+
+      function base64ToBytes(input) {
+        const binary = atob(input);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+          bytes[i] = binary.charCodeAt(i);
+        }
+        return bytes;
+      }
+
+      function concatBytes(...parts) {
+        const totalLength = parts.reduce((sum, bytes) => sum + bytes.length, 0);
+        const output = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const bytes of parts) {
+          output.set(bytes, offset);
+          offset += bytes.length;
+        }
+        return output;
+      }
+
+      function equalBytes(a, b) {
+        if (a.length !== b.length) {
+          return false;
+        }
+        let diff = 0;
+        for (let i = 0; i < a.length; i += 1) {
+          diff |= a[i] ^ b[i];
+        }
+        return diff === 0;
+      }
+
+      function bytesToBigIntLe(bytes) {
+        let value = 0n;
+        for (let i = bytes.length - 1; i >= 0; i -= 1) {
+          value = (value << 8n) + BigInt(bytes[i]);
+        }
+        return value;
+      }
+
+      function modOrder(value) {
+        const result = value % ED25519_ORDER;
+        return result >= 0n ? result : result + ED25519_ORDER;
+      }
+
+      function scalarNeg(scalar) {
+        return scalar === 0n ? 0n : ED25519_ORDER - scalar;
+      }
+
+      function randomScalar() {
+        while (true) {
+          const randomBytes = crypto.getRandomValues(new Uint8Array(64));
+          const scalar = modOrder(bytesToBigIntLe(randomBytes));
+          if (scalar !== 0n) {
+            return scalar;
+          }
+        }
+      }
+
+      function parseUuidBytes(uuid) {
+        const hex = uuid.replace(/-/g, "").toLowerCase();
+        if (!/^[0-9a-f]{32}$/.test(hex)) {
+          throw new Error(`Invalid UUID: ${uuid}`);
+        }
+        const bytes = new Uint8Array(16);
+        for (let i = 0; i < 16; i += 1) {
+          bytes[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+        }
+        return bytes;
+      }
+
+      async function sha256Bytes(data) {
+        const digest = await crypto.subtle.digest("SHA-256", data);
+        return new Uint8Array(digest);
+      }
+
+      async function sha256Base64(data) {
+        const digest = await sha256Bytes(data);
+        return bytesToBase64(digest);
+      }
+
+      async function hkdfSha256(ikm, info, outputLengthBytes) {
+        const key = await crypto.subtle.importKey("raw", ikm, "HKDF", false, [
+          "deriveBits",
+        ]);
+        const bits = await crypto.subtle.deriveBits(
+          {
+            name: "HKDF",
+            hash: "SHA-256",
+            salt: new Uint8Array(),
+            info,
+          },
+          key,
+          outputLengthBytes * 8,
+        );
+        return new Uint8Array(bits);
+      }
+
+      async function hmacSha256(keyBytes, data) {
+        const key = await crypto.subtle.importKey(
+          "raw",
+          keyBytes,
+          { name: "HMAC", hash: "SHA-256" },
+          false,
+          ["sign"],
+        );
+        const signature = await crypto.subtle.sign("HMAC", key, data);
+        return new Uint8Array(signature);
+      }
+
+      async function hashToScalar(passwordBytes) {
+        const okm = await hkdfSha256(passwordBytes, encoder.encode("SPAKE2 pw"), 48);
+        const wideScalarBytes = new Uint8Array(64);
+        for (let i = 0; i < 48; i += 1) {
+          wideScalarBytes[47 - i] = okm[i];
+        }
+        return modOrder(bytesToBigIntLe(wideScalarBytes));
+      }
+
+      async function hashAb(passwordBytes, idA, idB, firstMessage, secondMessage, keyBytes) {
+        const transcript = new Uint8Array(192);
+        transcript.set(await sha256Bytes(passwordBytes), 0);
+        transcript.set(await sha256Bytes(idA), 32);
+        transcript.set(await sha256Bytes(idB), 64);
+        transcript.set(firstMessage, 96);
+        transcript.set(secondMessage, 128);
+        transcript.set(keyBytes, 160);
+        return sha256Bytes(transcript);
+      }
+
+      async function deriveConfirmationKey(sharedKey) {
+        return hkdfSha256(sharedKey, KEY_CONFIRMATION_INFO, 32);
+      }
+
+      async function buildClientProof(sharedKey, enrollmentId, browserPkBytes) {
+        const confirmationKey = await deriveConfirmationKey(sharedKey);
+        const proofInput = concatBytes(
+          CLIENT_PROOF_CONTEXT,
+          parseUuidBytes(enrollmentId),
+          browserPkBytes,
+        );
+        return hmacSha256(confirmationKey, proofInput);
+      }
+
+      async function buildExpectedServerProof(sharedKey, enrollmentId, browserPkBytes, serverPkBytes) {
+        const confirmationKey = await deriveConfirmationKey(sharedKey);
+        const proofInput = concatBytes(
+          SERVER_PROOF_CONTEXT,
+          parseUuidBytes(enrollmentId),
+          browserPkBytes,
+          serverPkBytes,
+        );
+        return hmacSha256(confirmationKey, proofInput);
+      }
+
+      async function ed25519Sign(privateKey, message) {
+        const signature = await crypto.subtle.sign("Ed25519", privateKey, message);
+        return new Uint8Array(signature);
+      }
+
+      async function ed25519Verify(publicKey, signature, message) {
+        return crypto.subtle.verify("Ed25519", publicKey, signature, message);
+      }
+
+      function randomNonce() {
+        const bytes = new Uint8Array(16);
+        crypto.getRandomValues(bytes);
+        return base64UrlEncode(bytes);
+      }
+
+      async function createSigningKey() {
+        const generated = await crypto.subtle.generateKey(
+          { name: "Ed25519" },
+          true,
+          ["sign", "verify"],
+        );
+        const publicRaw = new Uint8Array(
+          await crypto.subtle.exportKey("raw", generated.publicKey),
+        );
+        return {
+          privateKey: generated.privateKey,
+          publicKey: generated.publicKey,
+          publicKeyBytes: publicRaw,
+          publicKeyB64: bytesToBase64(publicRaw),
+        };
+      }
+
+      async function postJson(url, payload, headers = null) {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: headers || { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const text = await response.text();
+        let json = null;
+        if (text) {
+          try {
+            json = JSON.parse(text);
+          } catch {
+            json = null;
+          }
+        }
+        return { response, text, json };
+      }
+
+      function unwrapApiData(result, stepName) {
+        if (!result.response.ok) {
+          throw new Error(`${stepName} failed (${result.response.status}): ${result.text}`);
+        }
+        if (!result.json || result.json.success !== true || !("data" in result.json)) {
+          throw new Error(`${stepName} returned an unexpected response body: ${result.text}`);
+        }
+        return result.json.data;
+      }
+
+      function bytesToHex(bytes) {
+        let out = "";
+        for (let i = 0; i < bytes.length; i++) {
+          out += bytes[i].toString(16).padStart(2, "0");
+        }
+        return out;
+      }
+
+      function base64UrlEncode(bytes) {
+        const base64 = btoa(String.fromCharCode(...bytes));
+        return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+      }
+
+      function generateVerifier() {
+        const bytes = new Uint8Array(32);
+        crypto.getRandomValues(bytes);
+        return base64UrlEncode(bytes);
+      }
+
+      async function sha256Hex(text) {
+        const data = new TextEncoder().encode(text);
+        const digest = await crypto.subtle.digest("SHA-256", data);
+        return bytesToHex(new Uint8Array(digest));
+      }
+
+      function clearOAuthCallbackQuery() {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("handoff_id");
+        url.searchParams.delete("app_code");
+        url.searchParams.delete("error");
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+
+      async function startOAuth(provider) {
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const verifier = generateVerifier();
+          const challenge = await sha256Hex(verifier);
+          sessionStorage.setItem(OAUTH_VERIFIER_KEY, verifier);
+
+          const returnTo = `${window.location.origin}${window.location.pathname}`;
+          const initRes = await fetch(`${remoteApiBase}/v1/oauth/web/init`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              provider,
+              return_to: returnTo,
+              app_challenge: challenge,
+            }),
+          });
+          if (!initRes.ok) {
+            throw new Error(`OAuth init failed (${initRes.status})`);
+          }
+          const initPayload = await initRes.json();
+          const authorizeUrl = initPayload?.authorize_url;
+          if (!authorizeUrl) {
+            throw new Error("Missing authorize_url from OAuth init response.");
+          }
+
+          log(`OAuth init succeeded for ${provider}; redirecting to provider`);
+          window.location.assign(authorizeUrl);
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "OAuth init failed",
+            "err",
+          );
+          log(`OAuth init failed: ${String(error)}`);
+          setBusy(false);
+        }
+      }
+
+      async function completeOAuthIfNeeded() {
+        const params = new URLSearchParams(window.location.search);
+        const handoffId = params.get("handoff_id");
+        const appCode = params.get("app_code");
+        const oauthError = params.get("error");
+        if (!handoffId && !appCode && !oauthError) {
+          return;
+        }
+
+        if (oauthError) {
+          setResultStatus(`OAuth error: ${oauthError}`, "err");
+          log(`OAuth callback error: ${oauthError}`);
+          clearOAuthCallbackQuery();
+          return;
+        }
+
+        if (!handoffId || !appCode) {
+          setResultStatus("OAuth callback missing required params", "err");
+          clearOAuthCallbackQuery();
+          return;
+        }
+
+        const verifier = sessionStorage.getItem(OAUTH_VERIFIER_KEY);
+        if (!verifier) {
+          setResultStatus("Missing OAuth verifier in sessionStorage", "err");
+          clearOAuthCallbackQuery();
+          return;
+        }
+
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const redeemRes = await fetch(`${remoteApiBase}/v1/oauth/web/redeem`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              handoff_id: handoffId,
+              app_code: appCode,
+              app_verifier: verifier,
+            }),
+          });
+          if (!redeemRes.ok) {
+            throw new Error(`OAuth redeem failed (${redeemRes.status})`);
+          }
+          const redeemPayload = await redeemRes.json();
+          const accessToken = redeemPayload?.access_token;
+          const refreshToken = redeemPayload?.refresh_token;
+          if (!accessToken || !refreshToken) {
+            throw new Error("OAuth redeem response missing tokens.");
+          }
+
+          setTokens(accessToken, refreshToken);
+          sessionStorage.removeItem(OAUTH_VERIFIER_KEY);
+          clearOAuthCallbackQuery();
+          setResultStatus("OAuth login succeeded.", "ok");
+          log("OAuth login succeeded; token auto-filled");
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "OAuth redeem failed",
+            "err",
+          );
+          log(`OAuth redeem failed: ${String(error)}`);
+          clearOAuthCallbackQuery();
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function loadHosts() {
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const res = await fetch(`${remoteApiBase}/v1/hosts`, {
+            method: "GET",
+            headers: authHeaders(),
+          });
+          if (!res.ok) {
+            throw new Error(`Host list failed (${res.status})`);
+          }
+          const payload = await res.json();
+          const hosts = Array.isArray(payload.hosts) ? payload.hosts : [];
+
+          hostSelectEl.innerHTML = "";
+          for (const host of hosts) {
+            const option = document.createElement("option");
+            option.value = host.id;
+            const status = host.status || "unknown";
+            option.textContent = `${host.name || host.id} (${status})`;
+            hostSelectEl.appendChild(option);
+          }
+
+          if (!hosts.length) {
+            const option = document.createElement("option");
+            option.value = "";
+            option.textContent = "No hosts found";
+            hostSelectEl.appendChild(option);
+          }
+
+          setResultStatus(`Loaded ${hosts.length} host(s).`, "ok");
+          renderJson(payload);
+          log(`Loaded ${hosts.length} host(s) from ${remoteApiBase}/v1/hosts`);
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "Load hosts failed",
+            "err",
+          );
+          log(`Load hosts failed: ${String(error)}`);
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function runPakeEnrollment(sessionPrefix, enrollmentCode) {
+        const normalizedCode = String(enrollmentCode || "").trim().toUpperCase();
+        if (!normalizedCode) {
+          throw new Error("Missing host pairing code.");
+        }
+
+        const signingKey = await createSigningKey();
+
+        const x = randomScalar();
+        const passwordBytes = encoder.encode(normalizedCode);
+        const pw = await hashToScalar(passwordBytes);
+        const clientPoint = ed25519.ExtendedPoint.BASE
+          .multiply(x)
+          .add(SPAKE2_M.multiply(pw));
+        const clientMessage = concatBytes(Uint8Array.of(0x41), clientPoint.toRawBytes());
+
+        const startResult = await postJson(`${sessionPrefix}/api/relay-auth/spake2/start`, {
+          enrollment_code: normalizedCode,
+          client_message_b64: bytesToBase64(clientMessage),
+        });
+        const startData = unwrapApiData(startResult, "SPAKE2 start");
+        const enrollmentId = startData.enrollment_id;
+        const serverMessageBytes = base64ToBytes(startData.server_message_b64);
+        if (serverMessageBytes.length !== 33 || serverMessageBytes[0] !== 0x42) {
+          throw new Error("Invalid SPAKE2 server message format.");
+        }
+
+        const serverPoint = ed25519.ExtendedPoint.fromHex(serverMessageBytes.slice(1));
+        const unblinding = SPAKE2_N.multiply(scalarNeg(pw));
+        const keyPoint = serverPoint.add(unblinding).multiply(x);
+        const sharedKey = await hashAb(
+          passwordBytes,
+          CLIENT_ID,
+          SERVER_ID,
+          clientMessage.slice(1),
+          serverMessageBytes.slice(1),
+          keyPoint.toRawBytes(),
+        );
+
+        const clientProof = await buildClientProof(
+          sharedKey,
+          enrollmentId,
+          signingKey.publicKeyBytes,
+        );
+        const finishResult = await postJson(`${sessionPrefix}/api/relay-auth/spake2/finish`, {
+          enrollment_id: enrollmentId,
+          public_key_b64: signingKey.publicKeyB64,
+          client_proof_b64: bytesToBase64(clientProof),
+        });
+        const finishData = unwrapApiData(finishResult, "SPAKE2 finish");
+
+        const serverPublicKeyBytes = base64ToBytes(finishData.server_public_key_b64);
+        const serverPublicKey = await crypto.subtle.importKey(
+          "raw",
+          serverPublicKeyBytes,
+          { name: "Ed25519" },
+          true,
+          ["verify"],
+        );
+
+        const expectedServerProof = await buildExpectedServerProof(
+          sharedKey,
+          enrollmentId,
+          signingKey.publicKeyBytes,
+          serverPublicKeyBytes,
+        );
+        const providedServerProof = base64ToBytes(finishData.server_proof_b64);
+        if (!equalBytes(expectedServerProof, providedServerProof)) {
+          throw new Error("SPAKE2 server proof mismatch.");
+        }
+
+        return {
+          signingSessionId: finishData.signing_session_id,
+          browserPrivateKey: signingKey.privateKey,
+          serverPublicKey,
+        };
+      }
+
+      async function signedGetJson(
+        sessionPrefix,
+        path,
+        signingSessionId,
+        browserPrivateKey,
+        serverPublicKey,
+      ) {
+        const timestamp = Math.floor(Date.now() / 1000);
+        const nonce = randomNonce();
+        const bodyHash = await sha256Base64(new Uint8Array(0));
+        const message =
+          `v1|${timestamp}|GET|${path}|${signingSessionId}|${nonce}|${bodyHash}`;
+        const signatureBytes = await ed25519Sign(browserPrivateKey, encoder.encode(message));
+        const requestSignatureB64 = bytesToBase64(signatureBytes);
+
+        const response = await fetch(`${sessionPrefix}${path}`, {
+          method: "GET",
+          headers: {
+            "x-vk-sig-session": signingSessionId,
+            "x-vk-sig-ts": String(timestamp),
+            "x-vk-sig-nonce": nonce,
+            "x-vk-sig-signature": requestSignatureB64,
+          },
+        });
+        const responseBytes = new Uint8Array(await response.arrayBuffer());
+        const text = decoder.decode(responseBytes);
+        await verifySignedRelayResponse(
+          response,
+          responseBytes,
+          path,
+          signingSessionId,
+          nonce,
+          serverPublicKey,
+        );
+        let json = null;
+        if (text) {
+          try {
+            json = JSON.parse(text);
+          } catch {
+            json = null;
+          }
+        }
+        return { response, text, json };
+      }
+
+      async function verifySignedRelayResponse(
+        response,
+        responseBytes,
+        path,
+        signingSessionId,
+        requestNonce,
+        serverPublicKey,
+      ) {
+        const responseTs = response.headers.get("x-vk-resp-ts");
+        const responseNonce = response.headers.get("x-vk-resp-nonce");
+        const responseSignature = response.headers.get("x-vk-resp-signature");
+
+        if (!responseTs || !responseNonce || !responseSignature) {
+          throw new Error("Missing signed relay response headers.");
+        }
+
+        const bodyHash = await sha256Base64(responseBytes);
+        const message =
+          `v1|${responseTs}|${response.status}|${path}|${signingSessionId}|` +
+          `${requestNonce}|${responseNonce}|${bodyHash}`;
+        const signatureBytes = base64ToBytes(responseSignature);
+        const valid = await ed25519Verify(
+          serverPublicKey,
+          signatureBytes,
+          encoder.encode(message),
+        );
+        if (!valid) {
+          throw new Error("Relay response signature mismatch.");
+        }
+      }
+
+      async function runTest() {
+        setBusy(true);
+        try {
+          const remoteApiBase = trimSlash(remoteApiBaseEl.value);
+          const relayApiBase = trimSlash(relayApiBaseEl.value);
+          const hostId = selectedHostId();
+          if (!hostId) {
+            throw new Error("Select a host or provide a host ID override.");
+          }
+
+          log(`Starting test for host ${hostId}`);
+
+          const sessionRes = await fetch(
+            `${remoteApiBase}/v1/hosts/${hostId}/sessions`,
+            {
+              method: "POST",
+              headers: authHeaders(),
+              body: "{}",
+            },
+          );
+          if (!sessionRes.ok) {
+            throw new Error(`Create relay session failed (${sessionRes.status})`);
+          }
+          const sessionPayload = await sessionRes.json();
+          const sessionId = sessionPayload?.session?.id;
+          if (!sessionId) {
+            throw new Error("Missing session ID in create session response.");
+          }
+          log(`Created relay session ${sessionId}`);
+
+          const authCodeRes = await fetch(
+            `${relayApiBase}/v1/relay/sessions/${sessionId}/auth-code`,
+            {
+              method: "POST",
+              headers: authHeaders(),
+              body: "{}",
+            },
+          );
+          if (!authCodeRes.ok) {
+            throw new Error(
+              `Create relay auth code failed (${authCodeRes.status})`,
+            );
+          }
+          const authCodePayload = await authCodeRes.json();
+          const code = authCodePayload?.code;
+          if (!code) {
+            throw new Error("Missing code in auth-code response.");
+          }
+          log("Created auth code");
+
+          const exchangeUrl = new URL(relayApiBase);
+          exchangeUrl.pathname = `/relay/h/${hostId}/exchange`;
+          exchangeUrl.searchParams.set("code", code);
+
+          const exchangeRes = await fetch(exchangeUrl.toString(), {
+            method: "GET",
+            redirect: "follow",
+          });
+
+          const sessionPrefix = relaySessionPrefixFromUrl(exchangeRes.url);
+          if (!sessionPrefix) {
+            throw new Error(
+              `Exchange failed (${exchangeRes.status}): could not derive relay browser session path.`,
+            );
+          }
+          if (!exchangeRes.ok) {
+            log(
+              `Exchange landing returned ${exchangeRes.status}; continuing with derived session path`,
+            );
+          }
+          log(`Browser session path: ${sessionPrefix}`);
+          log("Starting SPAKE2 enrollment");
+          const enrollmentCode = enrollmentCodeEl.value.trim();
+          const signing = await runPakeEnrollment(sessionPrefix, enrollmentCode);
+          log(`SPAKE2 enrollment succeeded (signing session ${signing.signingSessionId})`);
+
+          const workspacesResult = await signedGetJson(
+            sessionPrefix,
+            "/api/task-attempts",
+            signing.signingSessionId,
+            signing.browserPrivateKey,
+            signing.serverPublicKey,
+          );
+          if (!workspacesResult.response.ok) {
+            throw new Error(
+              `Fetch local workspaces failed (${workspacesResult.response.status}): ${workspacesResult.text}`,
+            );
+          }
+          const workspacesPayload = workspacesResult.json;
+          const workspaces = extractWorkspaces(workspacesPayload);
+
+          setResultStatus("Relay test succeeded.", "ok");
+          renderJson({
+            host_id: hostId,
+            session_id: sessionId,
+            signing_session_id: signing.signingSessionId,
+            relay_exchange_url: exchangeUrl.toString(),
+            relay_session_prefix: sessionPrefix,
+            workspace_count: workspaces.length,
+            workspaces,
+            local_workspaces_response: workspacesPayload,
+          });
+          log(
+            `Local /api/task-attempts fetch succeeded (${workspaces.length} workspace(s))`,
+          );
+        } catch (error) {
+          setResultStatus(
+            error instanceof Error ? error.message : "Relay test failed",
+            "err",
+          );
+          log(`Relay test failed: ${String(error)}`);
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      loadHostsBtnEl.addEventListener("click", () => {
+        void loadHosts();
+      });
+      runTestBtnEl.addEventListener("click", () => {
+        void runTest();
+      });
+      loginGithubBtnEl.addEventListener("click", () => {
+        void startOAuth("github");
+      });
+      loginGoogleBtnEl.addEventListener("click", () => {
+        void startOAuth("google");
+      });
+      clearTokensBtnEl.addEventListener("click", () => {
+        clearTokens();
+        setResultStatus("Tokens cleared.", "muted");
+        log("Cleared local auth tokens");
+      });
+      accessTokenEl.addEventListener("change", () => {
+        const token = accessTokenEl.value.trim();
+        if (token) {
+          localStorage.setItem(ACCESS_TOKEN_KEY, token);
+        } else {
+          localStorage.removeItem(ACCESS_TOKEN_KEY);
+        }
+      });
+
+      // Persist URL fields across page reloads (e.g. OAuth redirects)
+      const REMOTE_API_KEY = "relay_test_remote_api";
+      const RELAY_API_KEY = "relay_test_relay_api";
+
+      function persistUrlFields() {
+        localStorage.setItem(REMOTE_API_KEY, remoteApiBaseEl.value);
+        localStorage.setItem(RELAY_API_KEY, relayApiBaseEl.value);
+      }
+
+      const savedRemote = localStorage.getItem(REMOTE_API_KEY);
+      const savedRelay = localStorage.getItem(RELAY_API_KEY);
+      if (savedRemote) remoteApiBaseEl.value = savedRemote;
+      if (savedRelay) relayApiBaseEl.value = savedRelay;
+
+      remoteApiBaseEl.addEventListener("change", persistUrlFields);
+      relayApiBaseEl.addEventListener("change", persistUrlFields);
+
+      const existingToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+      if (existingToken) {
+        accessTokenEl.value = existingToken;
+      }
+      void completeOAuthIfNeeded();
+    </script>
+  </body>
+</html>

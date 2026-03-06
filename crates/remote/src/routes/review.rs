@@ -81,9 +81,10 @@ pub enum ReviewError {
 impl IntoResponse for ReviewError {
     fn into_response(self) -> Response {
         let (status, message) = match &self {
-            ReviewError::Disabled => {
-                (StatusCode::SERVICE_UNAVAILABLE, "Review feature is disabled")
-            }
+            ReviewError::Disabled => (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "Review feature is disabled",
+            ),
             ReviewError::NotConfigured => (
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Review upload service not available",

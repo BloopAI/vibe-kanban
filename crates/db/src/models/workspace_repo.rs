@@ -27,7 +27,6 @@ pub struct CreateWorkspaceRepo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct RepoWithTargetBranch {
     #[serde(flatten)]
     pub repo: Repo,

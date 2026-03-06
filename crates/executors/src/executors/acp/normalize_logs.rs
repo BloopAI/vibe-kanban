@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     path::{Path, PathBuf},
     sync::{Arc, LazyLock},
+    time::Duration,
 };
 
 use agent_client_protocol::{self as acp, SessionNotification};
@@ -17,20 +18,43 @@ use crate::{
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolResult, ToolResultValueType, ToolStatus as LogToolStatus,
+        plain_text_processor::PlainTextLogProcessor,
         stderr_processor::normalize_stderr_logs,
-        utils::{ConversationPatch, EntryIndexProvider},
+        utils::{ConversationPatch, EntryIndexProvider, shell_command_parsing::CommandCategory},
     },
 };
 
-pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
+pub fn normalize_logs(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+) -> Vec<tokio::task::JoinHandle<()>> {
+    normalize_logs_with_suppressed_stderr_patterns(msg_store, worktree_path, &[])
+}
+
+pub fn normalize_logs_with_suppressed_stderr_patterns(
+    msg_store: Arc<MsgStore>,
+    worktree_path: &Path,
+    suppressed_stderr_patterns: &[&str],
+) -> Vec<tokio::task::JoinHandle<()>> {
     // stderr normalization
     let entry_index = EntryIndexProvider::start_from(&msg_store);
-    normalize_stderr_logs(msg_store.clone(), entry_index.clone());
+    let h1 = if suppressed_stderr_patterns.is_empty() {
+        normalize_stderr_logs(msg_store.clone(), entry_index.clone())
+    } else {
+        normalize_acp_stderr_logs(
+            msg_store.clone(),
+            entry_index.clone(),
+            suppressed_stderr_patterns
+                .iter()
+                .map(|pattern| pattern.to_string())
+                .collect(),
+        )
+    };
 
     // stdout normalization (main loop)
     let worktree_path = worktree_path.to_path_buf();
     // Type aliases to simplify complex state types and appease clippy
-    tokio::spawn(async move {
+    let h2 = tokio::spawn(async move {
         type ToolStates = std::collections::HashMap<String, PartialToolCallData>;
 
         let mut stored_session_id = false;
@@ -223,8 +247,51 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             tracing::debug!("Failed to convert tool call update to ToolCall");
                         }
                     }
+                    AcpEvent::ApprovalRequested {
+                        tool_call_id,
+                        approval_id,
+                    } => {
+                        if let Some(tool_data) = tool_states.get(&tool_call_id) {
+                            let action = map_to_action_type(tool_data);
+                            let entry = NormalizedEntry {
+                                timestamp: None,
+                                entry_type: NormalizedEntryType::ToolUse {
+                                    tool_name: tool_data.title.clone(),
+                                    action_type: action,
+                                    status: LogToolStatus::PendingApproval { approval_id },
+                                },
+                                content: get_tool_content(tool_data),
+                                metadata: None,
+                            };
+                            msg_store
+                                .push_patch(ConversationPatch::replace(tool_data.index, entry));
+                        }
+                    }
                     AcpEvent::ApprovalResponse(resp) => {
                         tracing::trace!("Received approval response: {:?}", resp);
+
+                        if let Some(tool_data) = tool_states.get(&resp.tool_call_id) {
+                            let new_status = LogToolStatus::from_approval_status(&resp.status);
+                            if let Some(status) = new_status {
+                                let action = map_to_action_type(tool_data);
+                                let entry = NormalizedEntry {
+                                    timestamp: None,
+                                    entry_type: NormalizedEntryType::ToolUse {
+                                        tool_name: tool_data.title.clone(),
+                                        action_type: action,
+                                        status,
+                                    },
+                                    content: get_tool_content(tool_data),
+                                    metadata: serde_json::to_value(ToolCallMetadata {
+                                        tool_call_id: tool_data.id.0.to_string(),
+                                    })
+                                    .ok(),
+                                };
+                                msg_store
+                                    .push_patch(ConversationPatch::replace(tool_data.index, entry));
+                            }
+                        }
+
                         if let ApprovalStatus::Denied { reason } = resp.status {
                             let tool_name = tool_states
                                 .get(&resp.tool_call_id)
@@ -363,7 +430,11 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
                             output: None,
                         })
                     };
-                    ActionType::CommandRun { command, result }
+                    ActionType::CommandRun {
+                        command: command.clone(),
+                        result,
+                        category: CommandCategory::from_command(&command),
+                    }
                 }
                 agent_client_protocol::ToolKind::Delete => ActionType::FileEdit {
                     path: tc
@@ -604,6 +675,44 @@ pub fn normalize_logs(msg_store: Arc<MsgStore>, worktree_path: &Path) {
             }
         }
     });
+
+    vec![h1, h2]
+}
+
+fn normalize_acp_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+    suppressed_patterns: Vec<String>,
+) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut stderr = msg_store.stderr_chunked_stream();
+
+        let mut processor = PlainTextLogProcessor::builder()
+            .normalized_entry_producer(Box::new(|content: String| NormalizedEntry {
+                timestamp: None,
+                entry_type: NormalizedEntryType::ErrorMessage {
+                    error_type: NormalizedEntryError::Other,
+                },
+                content: strip_ansi_escapes::strip_str(&content),
+                metadata: None,
+            }))
+            .time_gap(Duration::from_secs(2))
+            .index_provider(entry_index_provider)
+            .transform_lines(Box::new(move |lines: &mut Vec<String>| {
+                lines.retain(|line| {
+                    !suppressed_patterns
+                        .iter()
+                        .any(|pattern| line.contains(pattern))
+                });
+            }))
+            .build();
+
+        while let Some(Ok(chunk)) = stderr.next().await {
+            for patch in processor.process(chunk) {
+                msg_store.push_patch(patch);
+            }
+        }
+    })
 }
 
 struct PartialToolCallData {

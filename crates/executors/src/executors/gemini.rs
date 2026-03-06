@@ -12,10 +12,20 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
+        StandardCodingAgentExecutor,
     },
+    logs::utils::patch,
+    model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy},
+    profile::ExecutorConfig,
 };
+
+const SUPPRESSED_STDERR_PATTERNS: &[&str] = &[
+    "was started but never ended. Skipping metrics.",
+    "YOLO mode is enabled. All tool calls will be automatically approved.",
+];
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -36,7 +46,7 @@ pub struct Gemini {
 
 impl Gemini {
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
-        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.27.0");
+        let mut builder = CommandBuilder::new("npx -y @google/gemini-cli@0.29.3");
 
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model.as_str()]);
@@ -55,6 +65,18 @@ impl Gemini {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Gemini {
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(permission_policy) = executor_config.permission_policy.clone() {
+            self.yolo = Some(matches!(
+                permission_policy,
+                crate::model_selector::PermissionPolicy::Auto
+            ));
+        }
+    }
+
     fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
         self.approvals = Some(approvals);
     }
@@ -114,8 +136,16 @@ impl StandardCodingAgentExecutor for Gemini {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        super::acp::normalize_logs(msg_store, worktree_path);
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
+        super::acp::normalize_logs_with_suppressed_stderr_patterns(
+            msg_store,
+            worktree_path,
+            SUPPRESSED_STDERR_PATTERNS,
+        )
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
@@ -148,5 +178,59 @@ impl StandardCodingAgentExecutor for Gemini {
         } else {
             AvailabilityInfo::NotFound
         }
+    }
+
+    fn get_preset_options(&self) -> ExecutorConfig {
+        use crate::model_selector::*;
+        ExecutorConfig {
+            executor: BaseCodingAgent::Gemini,
+            variant: None,
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: Some(if self.yolo.unwrap_or(false) {
+                PermissionPolicy::Auto
+            } else {
+                PermissionPolicy::Supervised
+            }),
+        }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: vec![
+                    ModelInfo {
+                        id: "gemini-3.1-pro-preview".to_string(),
+                        name: "Gemini 3.1 Pro Preview".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
+                    ModelInfo {
+                        id: "gemini-3-pro-preview".to_string(),
+                        name: "Gemini 3 Pro".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
+                    ModelInfo {
+                        id: "gemini-3-flash-preview".to_string(),
+                        name: "Gemini 3 Flash".to_string(),
+                        provider_id: None,
+                        reasoning_options: vec![],
+                    },
+                ],
+                default_model: Some("gemini-3-pro-preview".to_string()),
+                permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 }

@@ -1,10 +1,9 @@
+use api_types::{DeleteResponse, MutationResponse, Tag};
 use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
-use api_types::Tag;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum TagError {

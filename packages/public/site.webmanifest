@@ -1,0 +1,26 @@
+{
+  "name": "Vibe Kanban",
+  "short_name": "VK",
+  "icons": [
+    {
+      "src": "/favicon-vk-light.svg",
+      "sizes": "any",
+      "purpose": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon-vk-light-maskable.svg",
+      "sizes": "any",
+      "purpose": "maskable",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#f2f2f2",
+  "background_color": "#f2f2f2",
+  "display": "standalone"
+}

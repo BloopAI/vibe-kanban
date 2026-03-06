@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE oauth_accounts\n            SET encrypted_provider_tokens = $3\n            WHERE user_id = $1\n              AND provider = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5dae00eb6e3bef4d8ded1db51ad1252f6df335355b877f0dd64075f74c0018b8"
+}

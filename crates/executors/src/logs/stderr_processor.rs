@@ -36,7 +36,10 @@ use crate::logs::utils::EntryIndexProvider;
 /// # Arguments
 /// * `msg_store` - the message store providing a stream of stderr chunks and accepting patches.
 /// * `entry_index_provider` - provider of incremental entry indices for patch ordering.
-pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: EntryIndexProvider) {
+pub fn normalize_stderr_logs(
+    msg_store: Arc<MsgStore>,
+    entry_index_provider: EntryIndexProvider,
+) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let mut stderr = msg_store.stderr_chunked_stream();
 
@@ -59,5 +62,5 @@ pub fn normalize_stderr_logs(msg_store: Arc<MsgStore>, entry_index_provider: Ent
                 msg_store.push_patch(patch);
             }
         }
-    });
+    })
 }

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM hosts h\n                LEFT JOIN organization_member_metadata om\n                    ON om.organization_id = h.shared_with_organization_id\n                    AND om.user_id = $2\n                WHERE h.id = $1\n                  AND (h.owner_user_id = $2 OR om.user_id IS NOT NULL)\n            ) AS \"allowed!\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "allowed!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "2b222c6a2bfc74535ad20d839e8f1aef3d1d64c2b0b96289f1703b08f2a48f68"
+}

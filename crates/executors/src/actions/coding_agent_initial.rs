@@ -11,16 +11,15 @@ use crate::{
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
-    profile::ExecutorProfileId,
+    profile::ExecutorConfig,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct CodingAgentInitialRequest {
     pub prompt: String,
-    /// Executor profile specification
-    #[serde(alias = "profile_variant_label")]
-    // Backwards compatibility with ProfileVariantIds, esp stored in DB under ExecutorAction
-    pub executor_profile_id: ExecutorProfileId,
+    /// Unified executor identity + overrides
+    #[serde(alias = "executor_profile_id", alias = "profile_variant_label")]
+    pub executor_config: ExecutorConfig,
     /// Optional relative path to execute the agent in (relative to container_ref).
     /// If None, uses the container_ref directory directly.
     #[serde(default)]
@@ -29,7 +28,7 @@ pub struct CodingAgentInitialRequest {
 
 impl CodingAgentInitialRequest {
     pub fn base_executor(&self) -> BaseCodingAgent {
-        self.executor_profile_id.executor
+        self.executor_config.executor
     }
 
     pub fn effective_dir(&self, current_dir: &Path) -> std::path::PathBuf {
@@ -60,13 +59,14 @@ impl Executable for CodingAgentInitialRequest {
 
         #[cfg(not(feature = "qa-mode"))]
         {
-            let executor_profile_id = self.executor_profile_id.clone();
+            let profile_id = self.executor_config.profile_id();
             let mut agent = ExecutorConfigs::get_cached()
-                .get_coding_agent(&executor_profile_id)
-                .ok_or(ExecutorError::UnknownExecutorType(
-                    executor_profile_id.to_string(),
-                ))?;
+                .get_coding_agent(&profile_id)
+                .ok_or(ExecutorError::UnknownExecutorType(profile_id.to_string()))?;
 
+            if self.executor_config.has_overrides() {
+                agent.apply_overrides(&self.executor_config);
+            }
             agent.use_approvals(approvals.clone());
 
             agent.spawn(&effective_dir, &self.prompt, env).await

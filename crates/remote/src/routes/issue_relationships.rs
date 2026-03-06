@@ -1,3 +1,7 @@
+use api_types::{
+    CreateIssueRelationshipRequest, DeleteResponse, IssueRelationship, ListIssueRelationshipsQuery,
+    ListIssueRelationshipsResponse, MutationResponse,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -10,21 +14,15 @@ use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_issue_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,
     db::issue_relationships::IssueRelationshipRepository,
     mutation_definition::{MutationBuilder, NoUpdate},
 };
-use api_types::{
-    CreateIssueRelationshipRequest, IssueRelationship, ListIssueRelationshipsQuery,
-    ListIssueRelationshipsResponse,
-};
 
 /// Mutation definition for IssueRelationship - provides both router and TypeScript metadata.
-pub fn mutation(
-) -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, NoUpdate> {
+pub fn mutation() -> MutationBuilder<IssueRelationship, CreateIssueRelationshipRequest, NoUpdate> {
     MutationBuilder::new("issue_relationships")
         .list(list_issue_relationships)
         .get(get_issue_relationship)

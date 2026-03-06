@@ -1,4 +1,7 @@
-use remote::{BillingService, SentrySource, Server, config::RemoteServerConfig, init_tracing, sentry_init_once};
+use remote::{
+    BillingService, SentrySource, Server, config::RemoteServerConfig, init_tracing,
+    sentry_init_once,
+};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {

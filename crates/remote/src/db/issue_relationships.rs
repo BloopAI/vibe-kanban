@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, IssueRelationship, IssueRelationshipType, MutationResponse};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::{IssueRelationship, IssueRelationshipType};
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueRelationshipError {
@@ -61,6 +60,29 @@ impl IssueRelationshipRepository {
         .fetch_all(pool)
         .await?;
 
+        Ok(records)
+    }
+
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<IssueRelationship>, IssueRelationshipError> {
+        let records = sqlx::query_as!(
+            IssueRelationship,
+            r#"
+            SELECT
+                id                AS "id!: Uuid",
+                issue_id          AS "issue_id!: Uuid",
+                related_issue_id  AS "related_issue_id!: Uuid",
+                relationship_type AS "relationship_type!: IssueRelationshipType",
+                created_at        AS "created_at!: DateTime<Utc>"
+            FROM issue_relationships
+            WHERE issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
         Ok(records)
     }
 

@@ -1,8 +1,8 @@
+pub use api_types::InvitationStatus;
 use api_types::MemberRole;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-pub use api_types::InvitationStatus;
 use uuid::Uuid;
 
 use super::{

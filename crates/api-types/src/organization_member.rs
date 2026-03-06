@@ -7,7 +7,6 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[sqlx(type_name = "member_role", rename_all = "lowercase")]
-#[ts(export)]
 #[ts(use_ts_enum)]
 #[ts(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MemberRole {
@@ -18,7 +17,6 @@ pub enum MemberRole {
 /// Organization member as stored in the database / streamed via Electric.
 /// This is the full row type with organization_id for shapes.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct OrganizationMember {
     pub organization_id: Uuid,
     pub user_id: Uuid,

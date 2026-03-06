@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE attachments a\n            SET comment_id = $1, expires_at = NULL\n            FROM blobs b\n            WHERE a.blob_id = b.id\n              AND a.id = ANY($2)\n              AND a.issue_id IS NULL\n              AND a.comment_id IS NULL\n            RETURNING\n                a.id                    AS \"id!: Uuid\",\n                a.blob_id               AS \"blob_id!: Uuid\",\n                a.issue_id              AS \"issue_id?: Uuid\",\n                a.comment_id            AS \"comment_id?: Uuid\",\n                a.created_at            AS \"created_at!: DateTime<Utc>\",\n                a.expires_at            AS \"expires_at?: DateTime<Utc>\",\n                b.blob_path             AS \"blob_path!\",\n                b.thumbnail_blob_path   AS \"thumbnail_blob_path?\",\n                b.original_name         AS \"original_name!\",\n                b.mime_type             AS \"mime_type?\",\n                b.size_bytes            AS \"size_bytes!\",\n                b.hash                  AS \"hash!\",\n                b.width                 AS \"width?\",\n                b.height                AS \"height?\"\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "blob_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "blob_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "thumbnail_blob_path?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "original_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "mime_type?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "size_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "width?",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "height?",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "bdbdee30d4f94a94f3d449aaea132512d8334a6a2636f898facd4e916a683f5e"
+}

@@ -9,7 +9,6 @@ use crate::some_if_present;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
-#[ts(export)]
 pub enum NotificationType {
     IssueCommentAdded,
     IssueStatusChanged,
@@ -18,7 +17,6 @@ pub enum NotificationType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Notification {
     pub id: Uuid,
     pub organization_id: Uuid,

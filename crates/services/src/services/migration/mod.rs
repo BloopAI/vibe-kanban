@@ -324,7 +324,8 @@ impl MigrationService {
         for pr_merge in all_pr_merges {
             if let Some(workspace) =
                 Workspace::find_by_id(&self.sqlite_pool, pr_merge.workspace_id).await?
-                && let Some(task) = Task::find_by_id(&self.sqlite_pool, workspace.task_id).await?
+                && let Some(task_id) = workspace.task_id
+                && let Some(task) = Task::find_by_id(&self.sqlite_pool, task_id).await?
                 && project_ids.contains(&task.project_id)
             {
                 pr_merges.push(pr_merge);
@@ -374,9 +375,9 @@ impl MigrationService {
         for pr_merge in pr_merges {
             let workspace = Workspace::find_by_id(&self.sqlite_pool, pr_merge.workspace_id).await?;
 
-            let issue_id = match workspace {
-                Some(ws) => {
-                    MigrationState::get_remote_id(&self.sqlite_pool, EntityType::Task, ws.task_id)
+            let issue_id = match workspace.and_then(|ws| ws.task_id) {
+                Some(task_id) => {
+                    MigrationState::get_remote_id(&self.sqlite_pool, EntityType::Task, task_id)
                         .await?
                 }
                 None => None,
@@ -446,11 +447,12 @@ impl MigrationService {
         project_ids: &HashSet<Uuid>,
         report: &mut MigrationReport,
     ) -> Result<(), MigrationError> {
-        let all_workspaces = Workspace::fetch_all(&self.sqlite_pool, None).await?;
+        let all_workspaces = Workspace::fetch_all(&self.sqlite_pool).await?;
 
         let mut workspaces = Vec::new();
         for workspace in all_workspaces {
-            if let Some(task) = Task::find_by_id(&self.sqlite_pool, workspace.task_id).await?
+            if let Some(task_id) = workspace.task_id
+                && let Some(task) = Task::find_by_id(&self.sqlite_pool, task_id).await?
                 && project_ids.contains(&task.project_id)
             {
                 workspaces.push(workspace);
@@ -501,10 +503,29 @@ impl MigrationService {
         let mut request_workspace_ids = Vec::new();
 
         for workspace in workspaces {
-            let task = match Task::find_by_id(&self.sqlite_pool, workspace.task_id).await? {
+            let task_id = match workspace.task_id {
+                Some(id) => id,
+                None => {
+                    let error_msg = "Workspace has no task_id".to_string();
+                    MigrationState::mark_skipped(
+                        &self.sqlite_pool,
+                        EntityType::Workspace,
+                        workspace.id,
+                        &error_msg,
+                    )
+                    .await?;
+                    report.workspaces.skipped += 1;
+                    report
+                        .warnings
+                        .push(format!("Skipped workspace {}: {}", workspace.id, error_msg));
+                    continue;
+                }
+            };
+
+            let task = match Task::find_by_id(&self.sqlite_pool, task_id).await? {
                 Some(t) => t,
                 None => {
-                    let error_msg = format!("Task {} not found for workspace", workspace.task_id);
+                    let error_msg = format!("Task {} not found for workspace", task_id);
                     MigrationState::mark_skipped(
                         &self.sqlite_pool,
                         EntityType::Workspace,
@@ -546,15 +567,11 @@ impl MigrationService {
                 }
             };
 
-            let remote_issue_id = MigrationState::get_remote_id(
-                &self.sqlite_pool,
-                EntityType::Task,
-                workspace.task_id,
-            )
-            .await?;
+            let remote_issue_id =
+                MigrationState::get_remote_id(&self.sqlite_pool, EntityType::Task, task_id).await?;
 
             if remote_issue_id.is_none() {
-                let error_msg = format!("Task {} not migrated", workspace.task_id);
+                let error_msg = format!("Task {} not migrated", task_id);
                 MigrationState::mark_skipped(
                     &self.sqlite_pool,
                     EntityType::Workspace,

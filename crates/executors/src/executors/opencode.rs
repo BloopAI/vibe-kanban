@@ -1,7 +1,8 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{cmp::Ordering, path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use convert_case::{Case, Casing};
 use derivative::Derivative;
 use futures::StreamExt;
 use schemars::JsonSchema;
@@ -14,23 +15,31 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
-    env::ExecutionEnv,
+    env::{ExecutionEnv, RepoContext},
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SpawnedChild,
-        StandardCodingAgentExecutor, opencode::types::OpencodeExecutorEvent,
+        AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, ExecutorExitResult,
+        SlashCommandDescription, SpawnedChild, StandardCodingAgentExecutor,
+        opencode::types::OpencodeExecutorEvent, utils::reorder_slash_commands,
     },
     logs::utils::patch,
+    model_selector::{AgentInfo, ModelInfo, ModelProvider, PermissionPolicy, ReasoningOption},
+    profile::ExecutorConfig,
     stdout_dup::create_stdout_pipe_writer,
 };
 
 mod models;
 mod normalize_logs;
-mod sdk;
+pub(crate) mod sdk;
 mod slash_commands;
-mod types;
+pub(crate) mod types;
 
-use sdk::{LogWriter, RunConfig, generate_server_password, run_session, run_slash_command};
+use sdk::{
+    AgentInfo as SDKAgentInfo, LogWriter, RunConfig, build_authenticated_client,
+    generate_server_password, list_agents, list_commands, list_providers, run_session,
+    run_slash_command,
+};
 use slash_commands::{OpencodeSlashCommand, hardcoded_slash_commands};
+use types::{Config, ProviderModelInfo};
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -173,11 +182,7 @@ impl Opencode {
 
         // Prepare config values that will be moved into the spawned task
         let directory = current_dir.to_string_lossy().to_string();
-        let approvals = if self.auto_approve {
-            None
-        } else {
-            self.approvals.clone()
-        };
+        let approvals = self.approvals.clone();
         let model = self.model.clone();
         let model_variant = self.variant.clone();
         let agent = self.agent.clone();
@@ -244,6 +249,60 @@ impl Opencode {
             cancel: Some(cancel),
         })
     }
+
+    /// Transform raw model data into ModelInfo structs.
+    fn transform_models(
+        &self,
+        models: &std::collections::HashMap<String, ProviderModelInfo>,
+        provider_id: &str,
+    ) -> Vec<ModelInfo> {
+        let mut ordered = models.values().collect::<Vec<_>>();
+        ordered.sort_by(|a, b| match (&a.release_date, &b.release_date) {
+            (Some(a_date), Some(b_date)) => b_date.cmp(a_date),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => a.name.cmp(&b.name),
+        });
+
+        ordered
+            .into_iter()
+            .map(|m| {
+                let reasoning_options = m
+                    .variants
+                    .as_ref()
+                    .map(|variants| ReasoningOption::from_names(variants.keys().cloned()))
+                    .unwrap_or_default();
+
+                ModelInfo {
+                    id: m.id.clone(),
+                    name: m.name.clone(),
+                    provider_id: Some(provider_id.to_string()),
+                    reasoning_options,
+                }
+            })
+            .collect()
+    }
+}
+
+fn map_opencode_agents(agents: &[SDKAgentInfo]) -> Vec<AgentInfo> {
+    let default_agent_name = if agents
+        .iter()
+        .any(|a| a.name.eq_ignore_ascii_case("sisyphus"))
+    {
+        "sisyphus"
+    } else {
+        "build"
+    };
+
+    agents
+        .iter()
+        .map(|agent| AgentInfo {
+            id: agent.name.clone(),
+            label: agent.name.to_case(Case::Title),
+            description: agent.description.clone(),
+            is_default: agent.name.eq_ignore_ascii_case(default_agent_name),
+        })
+        .collect()
 }
 
 fn format_tail(captured: Vec<String>) -> String {
@@ -308,35 +367,48 @@ async fn wait_for_server_url(
     }
 }
 
+fn default_discovered_options() -> crate::executor_discovery::ExecutorDiscoveredOptions {
+    use crate::{
+        executor_discovery::ExecutorDiscoveredOptions, model_selector::ModelSelectorConfig,
+    };
+    ExecutorDiscoveredOptions {
+        model_selector: ModelSelectorConfig {
+            providers: vec![],
+            models: vec![],
+            default_model: None,
+            agents: vec![],
+            permissions: vec![PermissionPolicy::Auto, PermissionPolicy::Supervised],
+        },
+        slash_commands: hardcoded_slash_commands(),
+        loading_models: false,
+        loading_agents: false,
+        loading_slash_commands: false,
+        error: None,
+    }
+}
+
 #[async_trait]
 impl StandardCodingAgentExecutor for Opencode {
-    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
-        self.approvals = Some(approvals);
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+
+        if let Some(agent_id) = &executor_config.agent_id {
+            self.agent = Some(agent_id.clone());
+        }
+
+        if let Some(permission_policy) = executor_config.permission_policy.clone() {
+            self.auto_approve = matches!(permission_policy, PermissionPolicy::Auto);
+        }
+
+        if let Some(reasoning_id) = &executor_config.reasoning_id {
+            self.variant = Some(reasoning_id.clone());
+        }
     }
 
-    async fn available_slash_commands(
-        &self,
-        current_dir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let defaults = hardcoded_slash_commands();
-        let this = self.clone();
-        let current_dir = current_dir.to_path_buf();
-
-        let initial = patch::slash_commands(defaults.clone(), true, None);
-
-        let discovery_stream = futures::stream::once(async move {
-            match this.discover_slash_commands(&current_dir).await {
-                Ok(commands) => patch::slash_commands(commands, false, None),
-                Err(e) => {
-                    tracing::warn!("Failed to discover OpenCode slash commands: {}", e);
-                    patch::slash_commands(defaults, false, Some(e.to_string()))
-                }
-            }
-        });
-
-        Ok(Box::pin(
-            futures::stream::once(async move { initial }).chain(discovery_stream),
-        ))
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals = Some(approvals);
     }
 
     async fn spawn(
@@ -364,8 +436,12 @@ impl StandardCodingAgentExecutor for Opencode {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        normalize_logs::normalize_logs(msg_store, worktree_path);
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
+        normalize_logs::normalize_logs(msg_store, worktree_path)
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
@@ -447,6 +523,250 @@ impl StandardCodingAgentExecutor for Opencode {
             AvailabilityInfo::NotFound
         }
     }
+
+    async fn discover_options(
+        &self,
+        workdir: Option<&Path>,
+        repo_path: Option<&Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        use crate::{
+            executor_discovery::ExecutorConfigCacheKey, executors::utils::executor_options_cache,
+        };
+
+        let cache = executor_options_cache();
+        let cmd_key = self.compute_models_cache_key();
+        let base_executor = BaseCodingAgent::Opencode;
+
+        let (target_path, initial_options) = if let Some(wd) = workdir {
+            let wd_buf = wd.to_path_buf();
+            let target_key =
+                ExecutorConfigCacheKey::new(Some(&wd_buf), cmd_key.clone(), base_executor);
+            if let Some(cached) = cache.get(&target_key) {
+                return Ok(Box::pin(futures::stream::once(async move {
+                    patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
+                })));
+            }
+            let provisional = repo_path
+                .and_then(|rp| {
+                    let rp_buf = rp.to_path_buf();
+                    let repo_key =
+                        ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor);
+                    cache.get(&repo_key)
+                })
+                .or_else(|| {
+                    let global_key =
+                        ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+                    cache.get(&global_key)
+                });
+            (
+                Some(wd.to_path_buf()),
+                provisional
+                    .map(|p| p.as_ref().clone().with_loading(true))
+                    .unwrap_or_else(|| default_discovered_options().with_loading(true)),
+            )
+        } else if let Some(rp) = repo_path {
+            let rp_buf = rp.to_path_buf();
+            let target_key =
+                ExecutorConfigCacheKey::new(Some(&rp_buf), cmd_key.clone(), base_executor);
+            if let Some(cached) = cache.get(&target_key) {
+                return Ok(Box::pin(futures::stream::once(async move {
+                    patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
+                })));
+            }
+            let global_key = ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+            let provisional = cache.get(&global_key);
+            (
+                Some(rp.to_path_buf()),
+                provisional
+                    .map(|p| p.as_ref().clone().with_loading(true))
+                    .unwrap_or_else(|| default_discovered_options().with_loading(true)),
+            )
+        } else {
+            let global_key = ExecutorConfigCacheKey::new(None, cmd_key.clone(), base_executor);
+            if let Some(cached) = cache.get(&global_key) {
+                return Ok(Box::pin(futures::stream::once(async move {
+                    patch::executor_discovered_options(cached.as_ref().clone().with_loading(false))
+                })));
+            }
+            (None, default_discovered_options().with_loading(true))
+        };
+
+        let initial_patch = patch::executor_discovered_options(initial_options);
+
+        let this = self.clone();
+        let cmd_key_for_discovery = cmd_key.clone();
+
+        let discovery_stream = async_stream::stream! {
+            let discovery_path = target_path.as_deref().unwrap_or(Path::new(".")).to_path_buf();
+            let mut final_options = default_discovered_options();
+
+            let env = ExecutionEnv::new(RepoContext::default(), false, String::new());
+            let env = setup_permissions_env(this.auto_approve, &env);
+
+            let server = match this.spawn_server(&discovery_path, &env).await {
+                Ok(s) => s,
+                Err(e) => {
+                    tracing::warn!("Failed to spawn OpenCode server: {}", e);
+                    yield patch::discovery_error(e.to_string());
+                    return;
+                }
+            };
+
+            let directory = discovery_path.to_string_lossy();
+            let client = match build_authenticated_client(&directory, &server.server_password) {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!("Failed to build authenticated client: {}", e);
+                    yield patch::discovery_error(e.to_string());
+                    return;
+                }
+            };
+
+            let base_url = server.base_url.clone();
+            let directory_str = directory.to_string();
+
+            let providers_future = list_providers(&client, &base_url, &directory_str);
+            let agents_future = list_agents(&client, &base_url, &directory_str);
+            let commands_future = list_commands(&client, &base_url, &directory_str);
+
+            let config_future = async {
+                let resp = client
+                    .get(format!("{}/config", base_url))
+                    .query(&[("directory", &directory_str)])
+                    .send()
+                    .await
+                    .map_err(|e| ExecutorError::Io(std::io::Error::other(format!("HTTP request failed: {e}"))))?;
+
+                if resp.status().is_success() {
+                    resp.json::<Config>().await.map_err(|e| {
+                        ExecutorError::Io(std::io::Error::other(format!(
+                            "Failed to parse config response: {e}"
+                        )))
+                    })
+                } else {
+                    Ok(Config { model: None })
+                }
+            };
+
+            let (providers_result, agents_result, commands_result, config_result) =
+                tokio::join!(providers_future, agents_future, commands_future, config_future);
+
+            match providers_result {
+                Ok(data) => {
+                    models::seed_context_windows_cache(
+                        &cmd_key_for_discovery,
+                        models::extract_context_windows(&data),
+                    );
+
+                    final_options.model_selector.providers = data
+                        .all
+                        .iter()
+                        .filter(|p| data.connected.contains(&p.id))
+                        .map(|p| ModelProvider {
+                            id: p.id.clone(),
+                            name: p.name.clone(),
+                        })
+                        .collect();
+
+                    final_options.model_selector.models = data
+                        .all
+                        .iter()
+                        .filter(|p| data.connected.contains(&p.id))
+                        .flat_map(|p| this.transform_models(&p.models, &p.id))
+                        .collect();
+
+                    yield patch::update_providers(final_options.model_selector.providers.clone());
+                    yield patch::update_models(final_options.model_selector.models.clone());
+                    yield patch::models_loaded();
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to fetch OpenCode providers: {}", e);
+                }
+            }
+
+            match config_result {
+                Ok(config) => {
+                    final_options.model_selector.default_model = config.model;
+                    yield patch::update_default_model(final_options.model_selector.default_model.clone());
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to fetch OpenCode config: {}", e);
+                }
+            }
+
+            match agents_result {
+                Ok(agents) => {
+                    final_options.model_selector.agents = map_opencode_agents(&agents);
+                    yield patch::update_agents(final_options.model_selector.agents.clone());
+                    yield patch::agents_loaded();
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to fetch OpenCode agents: {}", e);
+                }
+            }
+
+            match commands_result {
+                Ok(commands) => {
+                    let defaults = hardcoded_slash_commands();
+                    let mut seen: std::collections::HashSet<String> =
+                        defaults.iter().map(|cmd| cmd.name.clone()).collect();
+                    let discovered: Vec<SlashCommandDescription> = commands
+                        .into_iter()
+                        .map(|cmd| SlashCommandDescription {
+                            name: cmd.name.trim_start_matches('/').to_string(),
+                            description: cmd.description,
+                        })
+                        .filter(|cmd| seen.insert(cmd.name.clone()))
+                        .chain(defaults)
+                        .collect();
+                    final_options.slash_commands = reorder_slash_commands(discovered);
+                    yield patch::update_slash_commands(final_options.slash_commands.clone());
+                    yield patch::slash_commands_loaded();
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to fetch OpenCode commands: {}", e);
+                    final_options.slash_commands = hardcoded_slash_commands();
+                    yield patch::update_slash_commands(final_options.slash_commands.clone());
+                    yield patch::slash_commands_loaded();
+                }
+            }
+
+            let cache = executor_options_cache();
+            if let Some(path) = &target_path {
+                let target_cache_key = ExecutorConfigCacheKey::new(
+                    Some(path),
+                    cmd_key_for_discovery.clone(),
+                    BaseCodingAgent::Opencode,
+                );
+                cache.put(target_cache_key, final_options.clone());
+            }
+            let global_cache_key = ExecutorConfigCacheKey::new(
+                None,
+                cmd_key_for_discovery,
+                BaseCodingAgent::Opencode,
+            );
+            cache.put(global_cache_key, final_options);
+        };
+
+        Ok(Box::pin(
+            futures::stream::once(async move { initial_patch }).chain(discovery_stream),
+        ))
+    }
+
+    fn get_preset_options(&self) -> ExecutorConfig {
+        ExecutorConfig {
+            executor: BaseCodingAgent::Opencode,
+            variant: None,
+            model_id: self.model.clone(),
+            agent_id: self.agent.clone(),
+            reasoning_id: self.variant.clone(),
+            permission_policy: Some(if self.auto_approve {
+                PermissionPolicy::Auto
+            } else {
+                PermissionPolicy::Supervised
+            }),
+        }
+    }
 }
 
 fn default_to_true() -> bool {
@@ -457,32 +777,22 @@ fn setup_permissions_env(auto_approve: bool, env: &ExecutionEnv) -> ExecutionEnv
     let mut env = env.clone();
 
     let permissions = match env.get("OPENCODE_PERMISSION") {
-        Some(existing) => merge_question_deny(existing),
+        Some(existing) => Some(existing.to_string()),
         None => build_default_permissions(auto_approve),
     };
 
-    env.insert("OPENCODE_PERMISSION", &permissions);
+    if let Some(permissions) = permissions {
+        env.insert("OPENCODE_PERMISSION", &permissions);
+    }
     env
 }
 
-fn build_default_permissions(auto_approve: bool) -> String {
+fn build_default_permissions(auto_approve: bool) -> Option<String> {
     if auto_approve {
-        r#"{"question":"deny"}"#.to_string()
+        None
     } else {
-        r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"deny"}"#.to_string()
+        Some(r#"{"edit":"ask","bash":"ask","webfetch":"ask","doom_loop":"ask","external_directory":"ask","question":"allow"}"#.to_string())
     }
-}
-
-fn merge_question_deny(existing_json: &str) -> String {
-    let mut permissions: Map<String, serde_json::Value> =
-        serde_json::from_str(existing_json.trim()).unwrap_or_default();
-
-    permissions.insert(
-        "question".to_string(),
-        serde_json::Value::String("deny".to_string()),
-    );
-
-    serde_json::to_string(&permissions).unwrap_or_else(|_| r#"{"question":"deny"}"#.to_string())
 }
 
 fn setup_compaction_env(auto_compact: bool, env: &ExecutionEnv) -> ExecutionEnv {

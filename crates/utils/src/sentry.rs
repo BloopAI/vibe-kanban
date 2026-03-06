@@ -3,9 +3,6 @@ use std::sync::OnceLock;
 use sentry_tracing::{EventFilter, SentryLayer};
 use tracing::Level;
 
-const SENTRY_DSN_DEFAULT: &str = "https://1065a1d276a581316999a07d5dffee26@o4509603705192449.ingest.de.sentry.io/4509605576441937";
-const SENTRY_DSN_REMOTE: &str = "https://d6e4c45af2b081fadb10fb0ba726ccaf@o4509603705192449.ingest.de.sentry.io/4510305669283920";
-
 static INIT_GUARD: OnceLock<sentry::ClientInitGuard> = OnceLock::new();
 
 #[derive(Clone, Copy, Debug)]
@@ -24,11 +21,16 @@ impl SentrySource {
         }
     }
 
-    fn dsn(self) -> &'static str {
-        match self {
-            SentrySource::Remote => SENTRY_DSN_REMOTE,
-            _ => SENTRY_DSN_DEFAULT,
-        }
+    fn dsn(self) -> Option<String> {
+        let value = match self {
+            SentrySource::Remote => option_env!("SENTRY_DSN_REMOTE")
+                .map(|s| s.to_string())
+                .or_else(|| std::env::var("SENTRY_DSN_REMOTE").ok()),
+            _ => option_env!("SENTRY_DSN")
+                .map(|s| s.to_string())
+                .or_else(|| std::env::var("SENTRY_DSN").ok()),
+        };
+        value.filter(|s| !s.is_empty())
     }
 }
 
@@ -41,9 +43,13 @@ fn environment() -> &'static str {
 }
 
 pub fn init_once(source: SentrySource) {
+    let Some(dsn) = source.dsn() else {
+        return;
+    };
+
     INIT_GUARD.get_or_init(|| {
         sentry::init((
-            source.dsn(),
+            dsn,
             sentry::ClientOptions {
                 release: sentry::release_name!(),
                 environment: Some(environment().into()),

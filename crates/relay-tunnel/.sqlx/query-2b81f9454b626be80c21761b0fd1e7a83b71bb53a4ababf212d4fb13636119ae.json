@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE relay_browser_sessions\n            SET last_used_at = date_trunc('day', NOW())\n            WHERE id = $1\n              AND (\n                last_used_at IS NULL\n                OR last_used_at < date_trunc('day', NOW())\n              )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2b81f9454b626be80c21761b0fd1e7a83b71bb53a4ababf212d4fb13636119ae"
+}

@@ -19,7 +19,13 @@
       ]
     },
     "model": {
-      "description": "auto, sonnet-4.5, sonnet-4.5-thinking, gpt-5, opus-4.1, grok, composer-1, composer-1.5",
+      "description": "auto, opus-4.6, opus-4.6-thinking, sonnet-4.6, sonnet-4.6-thinking, gpt-5.2, gpt-5.3-codex, grok, composer-1, composer-1.5, gemini-3.1-pro",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reasoning": {
       "type": [
         "string",
         "null"

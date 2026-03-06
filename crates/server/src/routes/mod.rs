@@ -13,12 +13,14 @@ pub mod filesystem;
 // pub mod github;
 pub mod events;
 pub mod execution_processes;
+pub mod frontend;
 pub mod health;
 pub mod images;
 pub mod migration;
 pub mod oauth;
 pub mod organizations;
-pub mod projects;
+pub mod relay_auth;
+pub mod relay_ws;
 pub mod remote;
 pub mod repo;
 pub mod scratch;
@@ -26,17 +28,13 @@ pub mod search;
 pub mod sessions;
 pub mod tags;
 pub mod task_attempts;
-pub mod tasks;
 pub mod terminal;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
-    // Create routers with different middleware layers
-    let base_routes = Router::new()
+    let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(containers::router(&deployment))
-        .merge(projects::router(&deployment))
-        .merge(tasks::router(&deployment))
         .merge(task_attempts::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
@@ -53,10 +51,27 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(terminal::router())
         .nest("/remote", remote::router())
         .nest("/images", images::routes())
+        .layer(axum::middleware::from_fn_with_state(
+            deployment.clone(),
+            middleware::sign_relay_response,
+        ))
+        .layer(axum::middleware::from_fn_with_state(
+            deployment.clone(),
+            middleware::require_relay_request_signature,
+        ))
+        .with_state(deployment.clone());
+
+    let api_routes = Router::new()
+        .merge(relay_auth::router())
+        .merge(relay_signed_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
         .with_state(deployment);
 
-    Router::new().nest("/api", base_routes).into_make_service()
+    Router::new()
+        .route("/", get(frontend::serve_frontend_root))
+        .route("/{*path}", get(frontend::serve_frontend))
+        .nest("/api", api_routes)
+        .into_make_service()
 }

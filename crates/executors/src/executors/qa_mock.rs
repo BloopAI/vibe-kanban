@@ -19,12 +19,13 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     env::ExecutionEnv,
     executors::{
-        ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
+        BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         claude::{
             ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeMessageContent, ClaudeToolData,
         },
     },
     logs::utils::EntryIndexProvider,
+    profile::ExecutorConfig,
 };
 
 /// Mock executor for QA testing
@@ -33,6 +34,8 @@ pub struct QaMockExecutor;
 
 #[async_trait]
 impl StandardCodingAgentExecutor for QaMockExecutor {
+    fn apply_overrides(&mut self, _executor_config: &ExecutorConfig) {}
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -87,19 +90,35 @@ impl StandardCodingAgentExecutor for QaMockExecutor {
         self.spawn(current_dir, prompt, env).await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         // Reuse Claude's log processor since we output ClaudeJson format
         let entry_index_provider = EntryIndexProvider::start_from(&msg_store);
-        crate::executors::claude::ClaudeLogProcessor::process_logs(
+        let h1 = crate::executors::claude::ClaudeLogProcessor::process_logs(
             msg_store,
             current_dir,
             entry_index_provider,
             crate::executors::claude::HistoryStrategy::Default,
         );
+        vec![h1]
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         None // QA mock doesn't need MCP config
+    }
+
+    fn get_preset_options(&self) -> ExecutorConfig {
+        ExecutorConfig {
+            executor: BaseCodingAgent::QaMock,
+            variant: None,
+            model_id: Some("qa-mock".to_string()),
+            agent_id: None,
+            reasoning_id: None,
+            permission_policy: Some(crate::model_selector::PermissionPolicy::Auto),
+        }
     }
 }
 
@@ -196,6 +215,7 @@ fn generate_mock_logs(prompt: &str) -> Vec<String> {
             status: None,
             slash_commands: vec![],
             plugins: vec![],
+            agents: vec![],
         },
         // 2. Assistant thinking
         ClaudeJson::Assistant {

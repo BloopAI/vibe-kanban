@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT w.id as \"workspace_id!: Uuid\"\n               FROM workspaces w\n               WHERE w.container_ref = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "workspace_id!: Uuid",
+        "ordinal": 0,
+        "type_info": "Blob"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "29cc3aa8d0ad5deda94494402500a4125e29381d63f18ef083cc4da95e2c5db5"
+}

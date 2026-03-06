@@ -1,7 +1,8 @@
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
+
+use crate::logs::utils::shell_command_parsing::CommandCategory;
 
 pub mod plain_text_processor;
 pub mod stderr_processor;
@@ -9,14 +10,12 @@ pub mod utils;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[ts(export)]
 pub enum ToolResultValueType {
     Markdown,
     Json,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ToolResult {
     pub r#type: ToolResultValueType,
     /// For Markdown, this will be a JSON string; for JSON, a structured value
@@ -41,14 +40,12 @@ impl ToolResult {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type", rename_all = "snake_case")]
-#[ts(export)]
 pub enum CommandExitStatus {
     ExitCode { code: i32 },
     Success { success: bool },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CommandRunResult {
     pub exit_status: Option<CommandExitStatus>,
     pub output: Option<String>,
@@ -96,6 +93,17 @@ pub enum NormalizedEntryType {
         needs_setup: bool,
     },
     TokenUsageInfo(TokenUsageInfo),
+    UserAnsweredQuestions {
+        answers: Vec<AnsweredQuestion>,
+    },
+}
+
+/// A question–answer pair from a completed AskUserQuestion interaction.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AnsweredQuestion {
+    pub question: String,
+    pub answer: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -136,7 +144,6 @@ impl NormalizedEntry {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
-#[ts(export)]
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum ToolStatus {
     #[default]
@@ -148,8 +155,6 @@ pub enum ToolStatus {
     },
     PendingApproval {
         approval_id: String,
-        requested_at: DateTime<Utc>,
-        timeout_at: DateTime<Utc>,
     },
     TimedOut,
 }
@@ -162,13 +167,19 @@ impl ToolStatus {
                 reason: reason.clone(),
             }),
             ApprovalStatus::TimedOut => Some(ToolStatus::TimedOut),
-            ApprovalStatus::Pending => None, // this should not happen
+            ApprovalStatus::Pending => None,
+        }
+    }
+
+    pub fn from_question_status(status: &QuestionStatus) -> Self {
+        match status {
+            QuestionStatus::Answered { .. } => ToolStatus::Success,
+            QuestionStatus::TimedOut => ToolStatus::TimedOut,
         }
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct TodoItem {
     pub content: String,
     pub status: String,
@@ -178,7 +189,6 @@ pub struct TodoItem {
 
 /// Types of tool actions that can be performed
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ActionType {
     FileRead {
@@ -192,6 +202,8 @@ pub enum ActionType {
         command: String,
         #[serde(default)]
         result: Option<CommandRunResult>,
+        #[serde(default)]
+        category: CommandCategory,
     },
     Search {
         query: String,
@@ -221,9 +233,31 @@ pub enum ActionType {
         todos: Vec<TodoItem>,
         operation: String,
     },
+    AskUserQuestion {
+        questions: Vec<AskUserQuestionItem>,
+    },
     Other {
         description: String,
     },
+}
+
+/// A single question in an AskUserQuestion tool call.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AskUserQuestionItem {
+    pub question: String,
+    pub header: String,
+    pub options: Vec<AskUserQuestionOption>,
+    #[serde(rename = "multiSelect")]
+    pub multi_select: bool,
+}
+
+/// An option for an AskUserQuestion question.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AskUserQuestionOption {
+    pub label: String,
+    pub description: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

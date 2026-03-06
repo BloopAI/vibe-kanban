@@ -7,20 +7,19 @@ use std::{
 };
 
 use command_group::AsyncCommandGroup;
+use convert_case::{Case, Casing};
 use tokio::{
+    fs,
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
-use walkdir::WalkDir;
 
 use super::{ClaudeCode, ClaudeJson, ClaudePlugin, base_command};
 use crate::{
     command::{CommandBuildError, CommandBuilder, apply_overrides},
     env::{ExecutionEnv, RepoContext},
-    executors::{
-        BaseCodingAgent, ExecutorError, SlashCommandDescription,
-        utils::{SlashCommandCache, SlashCommandCacheKey},
-    },
+    executors::{ExecutorError, SlashCommandDescription},
+    model_selector::AgentInfo,
 };
 
 const SLASH_COMMANDS_DISCOVERY_TIMEOUT: Duration = Duration::from_secs(120);
@@ -44,81 +43,97 @@ impl ClaudeCode {
         None
     }
 
-    fn discover_custom_command_descriptions(
+    fn make_key(prefix: &Option<String>, name: &str) -> String {
+        prefix
+            .as_ref()
+            .map(|p| format!("{}:{}", p, name))
+            .unwrap_or_else(|| name.to_string())
+    }
+
+    async fn try_read_description(path: &Path) -> Option<String> {
+        match fs::read_to_string(path).await {
+            Ok(content) => Self::extract_description(&content).or_else(|| {
+                tracing::warn!("Failed to read frontmatter description from {:?}", path);
+                None
+            }),
+            Err(e) => {
+                tracing::error!("Failed to read file {:?}: {}", path, e);
+                None
+            }
+        }
+    }
+
+    async fn scan_dir(
+        dir: &Path,
+        prefix: &Option<String>,
+        get_entry: fn(&Path) -> Option<(&str, PathBuf)>,
+    ) -> HashMap<String, String> {
+        let mut result = HashMap::new();
+        if let Ok(mut entries) = fs::read_dir(dir).await {
+            while let Ok(Some(entry)) = entries.next_entry().await {
+                if let Some((name, desc_path)) = get_entry(&entry.path())
+                    && let Some(desc) = Self::try_read_description(&desc_path).await
+                {
+                    result.insert(Self::make_key(prefix, name), desc);
+                }
+            }
+        }
+        result
+    }
+
+    async fn scan_base_path(base_path: &Path, prefix: Option<String>) -> HashMap<String, String> {
+        let mut descriptions = HashMap::new();
+
+        descriptions.extend(
+            Self::scan_dir(&base_path.join("commands"), &prefix, |path| {
+                path.extension()
+                    .is_some_and(|ext| ext == "md")
+                    .then(|| {
+                        let name = path.file_stem()?.to_str()?;
+                        Some((name, path.to_path_buf()))
+                    })
+                    .flatten()
+            })
+            .await,
+        );
+
+        descriptions.extend(
+            Self::scan_dir(&base_path.join("skills"), &prefix, |path| {
+                path.is_dir()
+                    .then(|| {
+                        let name = path.file_name()?.to_str()?;
+                        let skill_md = path.join("SKILL.md");
+                        skill_md.exists().then_some((name, skill_md))
+                    })
+                    .flatten()
+            })
+            .await,
+        );
+
+        descriptions
+    }
+
+    pub async fn discover_custom_command_descriptions(
         current_dir: &Path,
         plugins: &[ClaudePlugin],
     ) -> HashMap<String, String> {
         let mut descriptions = HashMap::new();
 
-        let mut scan = |base_path: PathBuf, prefix: Option<&str>| {
-            // Commands: base_path/commands/*.md
-            let commands_dir = base_path.join("commands");
-            if commands_dir.exists() {
-                for entry in WalkDir::new(&commands_dir)
-                    .max_depth(1)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
-                    let path = entry.path();
-                    if path.is_file()
-                        && path.extension().is_some_and(|ext| ext == "md")
-                        && let Some(name) = path.file_stem().and_then(|s| s.to_str())
-                        && let Ok(content) = std::fs::read_to_string(path)
-                        && let Some(desc) = Self::extract_description(&content)
-                    {
-                        let key = if let Some(p) = prefix {
-                            format!("{}:{}", p, name)
-                        } else {
-                            name.to_string()
-                        };
-                        descriptions.insert(key, desc);
-                    }
-                }
-            }
-
-            // Skills: base_path/skills/*/SKILL.md
-            let skills_dir = base_path.join("skills");
-            if skills_dir.exists() {
-                for entry in WalkDir::new(&skills_dir)
-                    .min_depth(2)
-                    .max_depth(2)
-                    .into_iter()
-                    .filter_map(|e| e.ok())
-                {
-                    let path = entry.path();
-                    if path.is_file() && path.file_name().is_some_and(|n| n == "SKILL.md") {
-                        // Name is the parent directory name
-                        if let Some(parent) = path
-                            .parent()
-                            .and_then(|p| p.file_name())
-                            .and_then(|s| s.to_str())
-                            && let Ok(content) = std::fs::read_to_string(path)
-                            && let Some(desc) = Self::extract_description(&content)
-                        {
-                            let key = if let Some(p) = prefix {
-                                format!("{}:{}", p, parent)
-                            } else {
-                                parent.to_string()
-                            };
-                            descriptions.insert(key, desc);
-                        }
-                    }
-                }
-            }
-        };
-
         // Project specific
-        scan(current_dir.join(".claude"), None);
+        descriptions.extend(Self::scan_base_path(&current_dir.join(".claude"), None).await);
 
         // Global
         if let Some(home) = dirs::home_dir() {
-            scan(home.join(".claude"), None);
+            descriptions.extend(Self::scan_base_path(&home.join(".claude"), None).await);
         }
 
         // Plugins
         for plugin in plugins {
-            scan(plugin.path.clone(), Some(&plugin.name));
-            scan(plugin.path.join(".claude"), Some(&plugin.name));
+            descriptions
+                .extend(Self::scan_base_path(&plugin.path, Some(plugin.name.clone())).await);
+            descriptions.extend(
+                Self::scan_base_path(&plugin.path.join(".claude"), Some(plugin.name.clone())).await,
+            );
         }
 
         descriptions
@@ -198,7 +213,7 @@ impl ClaudeCode {
     async fn discover_available_command_and_plugins(
         &self,
         current_dir: &Path,
-    ) -> Result<(Vec<String>, Vec<ClaudePlugin>), ExecutorError> {
+    ) -> Result<(Vec<String>, Vec<ClaudePlugin>, Vec<String>), ExecutorError> {
         let command_builder = self
             .build_slash_commands_discovery_command_builder()
             .await?;
@@ -229,7 +244,7 @@ impl ClaudeCode {
 
         let mut lines = BufReader::new(stdout).lines();
 
-        let mut discovered: Option<(Vec<String>, Vec<ClaudePlugin>)> = None;
+        let mut discovered: Option<(Vec<String>, Vec<ClaudePlugin>, Vec<String>)> = None;
         let discovery = async {
             while let Some(line) = lines.next_line().await.map_err(ExecutorError::Io)? {
                 if let Ok(json) = serde_json::from_str::<ClaudeJson>(&line)
@@ -237,11 +252,12 @@ impl ClaudeCode {
                         subtype,
                         slash_commands,
                         plugins,
+                        agents,
                         ..
                     } = &json
                     && matches!(subtype.as_deref(), Some("init"))
                 {
-                    discovered = Some((slash_commands.clone(), plugins.clone()));
+                    discovered = Some((slash_commands.clone(), plugins.clone(), agents.clone()));
                     break;
                 }
             }
@@ -252,36 +268,28 @@ impl ClaudeCode {
         let res = tokio::time::timeout(SLASH_COMMANDS_DISCOVERY_TIMEOUT, discovery).await;
         let _ = child.kill().await;
 
-        match res {
-            Ok(Ok(())) => Ok(discovered.unwrap_or_else(|| (vec![], vec![]))),
-            Ok(Err(e)) => Err(e),
-            Err(_) => Err(ExecutorError::Io(std::io::Error::other(
-                "Timed out discovering Claude Code slash commands",
-            ))),
-        }
+        let result = match res {
+            Ok(Ok(())) => discovered.unwrap_or_else(|| (vec![], vec![], vec![])),
+            Ok(Err(e)) => return Err(e),
+            Err(_) => {
+                return Err(ExecutorError::Io(std::io::Error::other(
+                    "Timed out discovering Claude Code slash commands",
+                )));
+            }
+        };
+
+        Ok(result)
     }
 
     pub async fn discover_available_slash_commands(
         &self,
         current_dir: &Path,
     ) -> Result<Vec<SlashCommandDescription>, ExecutorError> {
-        let key = SlashCommandCacheKey::new(current_dir, &BaseCodingAgent::ClaudeCode);
-        if let Some(cached) = SlashCommandCache::instance().get(&key) {
-            return Ok(cached.as_ref().clone());
-        }
-
-        // Run claude-code to discover commands and plugins
-        let (names, plugins) = self
+        let (names, plugins, _) = self
             .discover_available_command_and_plugins(current_dir)
             .await?;
 
-        // Run file walk to discover command descriptions, including from plugins
-        let current_dir_owned = current_dir.to_owned();
-        let descriptions = tokio::task::spawn_blocking(move || {
-            Self::discover_custom_command_descriptions(&current_dir_owned, &plugins)
-        })
-        .await
-        .map_err(|e| ExecutorError::Io(std::io::Error::other(e)))?;
+        let descriptions = Self::discover_custom_command_descriptions(current_dir, &plugins).await;
 
         let builtin: HashSet<String> = Self::hardcoded_slash_commands()
             .iter()
@@ -302,8 +310,103 @@ impl ClaudeCode {
             })
             .collect();
 
-        SlashCommandCache::instance().put(key, commands.clone());
-
         Ok(commands)
+    }
+
+    pub async fn discover_available_agents(
+        &self,
+        current_dir: &Path,
+    ) -> Result<Vec<AgentInfo>, ExecutorError> {
+        let (_, _, agents) = self
+            .discover_available_command_and_plugins(current_dir)
+            .await?;
+
+        Ok(Self::map_discovered_agents(agents))
+    }
+
+    pub async fn discover_agents_and_slash_commands_initial(
+        &self,
+        current_dir: &Path,
+    ) -> Result<
+        (
+            Vec<AgentInfo>,
+            Vec<SlashCommandDescription>,
+            Vec<ClaudePlugin>,
+        ),
+        ExecutorError,
+    > {
+        let (names, plugins, agents) = self
+            .discover_available_command_and_plugins(current_dir)
+            .await?;
+
+        let agent_options = Self::map_discovered_agents(agents);
+
+        let builtin: HashSet<String> = Self::hardcoded_slash_commands()
+            .iter()
+            .map(|c| c.name.clone())
+            .collect();
+
+        let mut seen = HashSet::new();
+        let slash_commands: Vec<SlashCommandDescription> = names
+            .into_iter()
+            .filter(|name| !name.is_empty() && !builtin.contains(name) && seen.insert(name.clone()))
+            .map(|name| SlashCommandDescription {
+                name,
+                description: None,
+            })
+            .collect();
+
+        Ok((agent_options, slash_commands, plugins))
+    }
+
+    pub async fn fill_slash_command_descriptions(
+        current_dir: &Path,
+        plugins: &[ClaudePlugin],
+        slash_commands: &[SlashCommandDescription],
+    ) -> Vec<SlashCommandDescription> {
+        let descriptions = Self::discover_custom_command_descriptions(current_dir, plugins).await;
+
+        slash_commands
+            .iter()
+            .map(|cmd| SlashCommandDescription {
+                name: cmd.name.clone(),
+                description: descriptions
+                    .get(&cmd.name)
+                    .cloned()
+                    .or(cmd.description.clone()),
+            })
+            .collect()
+    }
+
+    fn map_discovered_agents(agents: Vec<String>) -> Vec<AgentInfo> {
+        let mut seen = HashSet::new();
+
+        agents
+            .into_iter()
+            .filter(|name| name != "statusline-setup")
+            .filter_map(|name| {
+                let option = AgentInfo {
+                    id: name.clone(),
+                    label: Self::format_agent_label(&name),
+                    description: None,
+                    is_default: name == "general-purpose",
+                };
+
+                if option.id.trim().is_empty() || !seen.insert(option.id.clone()) {
+                    return None;
+                }
+                Some(option)
+            })
+            .collect()
+    }
+
+    fn format_agent_label(raw: &str) -> String {
+        let raw = raw.trim();
+
+        if let Some((prefix, suffix)) = raw.split_once(':') {
+            format!("{}: {}", prefix.trim(), suffix.to_case(Case::Title))
+        } else {
+            raw.to_case(Case::Title)
+        }
     }
 }

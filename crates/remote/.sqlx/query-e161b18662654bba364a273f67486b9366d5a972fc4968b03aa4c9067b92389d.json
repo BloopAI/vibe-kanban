@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                a.id                    AS \"id!: Uuid\",\n                a.blob_id               AS \"blob_id!: Uuid\",\n                a.issue_id              AS \"issue_id?: Uuid\",\n                a.comment_id            AS \"comment_id?: Uuid\",\n                a.created_at            AS \"created_at!: DateTime<Utc>\",\n                a.expires_at            AS \"expires_at?: DateTime<Utc>\",\n                b.blob_path             AS \"blob_path!\",\n                b.thumbnail_blob_path   AS \"thumbnail_blob_path?\",\n                b.original_name         AS \"original_name!\",\n                b.mime_type             AS \"mime_type?\",\n                b.size_bytes            AS \"size_bytes!\",\n                b.hash                  AS \"hash!\",\n                b.width                 AS \"width?\",\n                b.height                AS \"height?\"\n            FROM attachments a\n            INNER JOIN blobs b ON b.id = a.blob_id\n            WHERE a.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "blob_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "comment_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "expires_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "blob_path!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "thumbnail_blob_path?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "original_name!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "mime_type?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "size_bytes!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
+        "name": "hash!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "width?",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 13,
+        "name": "height?",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "e161b18662654bba364a273f67486b9366d5a972fc4968b03aa4c9067b92389d"
+}

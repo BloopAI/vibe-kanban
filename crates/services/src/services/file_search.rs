@@ -5,10 +5,7 @@ use std::{
 };
 
 use dashmap::DashMap;
-use db::models::{
-    project::{Project, SearchMatchType, SearchResult},
-    project_repo::ProjectRepo,
-};
+use db::models::repo::{SearchMatchType, SearchResult};
 use fst::{Map, MapBuilder};
 use git::GitService;
 use ignore::WalkBuilder;
@@ -16,7 +13,6 @@ use moka::future::Cache;
 use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{DebounceEventResult, new_debouncer};
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
 use thiserror::Error;
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
@@ -170,58 +166,6 @@ impl FileSearchCache {
                 );
             }
         }
-        Ok(())
-    }
-
-    /// Pre-warm cache for most active projects
-    pub async fn warm_most_active(&self, db_pool: &SqlitePool, limit: i32) -> Result<(), String> {
-        info!("Starting file search cache warming...");
-
-        // Get most active projects
-        let active_projects = Project::find_most_active(db_pool, limit)
-            .await
-            .map_err(|e| format!("Failed to fetch active projects: {e}"))?;
-
-        if active_projects.is_empty() {
-            info!("No active projects found, skipping cache warming");
-            return Ok(());
-        }
-
-        // Collect all repository paths from active projects
-        let mut repo_paths: Vec<PathBuf> = Vec::new();
-        for project in &active_projects {
-            let repos = ProjectRepo::find_repos_for_project(db_pool, project.id)
-                .await
-                .map_err(|e| format!("Failed to fetch repositories for project: {e}"))?;
-            for repo in repos {
-                repo_paths.push(repo.path);
-            }
-        }
-
-        if repo_paths.is_empty() {
-            info!("No repositories found for active projects, skipping cache warming");
-            return Ok(());
-        }
-
-        info!(
-            "Warming cache for {} repositories: {:?}",
-            repo_paths.len(),
-            repo_paths
-        );
-
-        // Warm the cache
-        self.warm_repos(repo_paths.clone())
-            .await
-            .map_err(|e| format!("Failed to warm cache: {e}"))?;
-
-        // Setup watchers for active projects
-        for repo_path in &repo_paths {
-            if let Err(e) = self.setup_watcher(repo_path).await {
-                warn!("Failed to setup watcher for {:?}: {}", repo_path, e);
-            }
-        }
-
-        info!("File search cache warming completed");
         Ok(())
     }
 
@@ -584,6 +528,14 @@ impl FileSearchCache {
         file_ranker: FileRanker,
     ) {
         while let Some(repo_path) = build_receiver.recv().await {
+            if !repo_path.exists() {
+                warn!(
+                    "Skipping cache build for non-existent repo path: {:?}",
+                    repo_path
+                );
+                continue;
+            }
+
             let cache_builder = FileSearchCache {
                 cache: cache.clone(),
                 git_service: git_service.clone(),

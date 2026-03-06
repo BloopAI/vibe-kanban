@@ -5,6 +5,8 @@ use thiserror::Error;
 use ts_rs::TS;
 use uuid::Uuid;
 
+use super::workspace_repo::WorkspaceRepo;
+
 #[derive(Debug, Error)]
 pub enum SessionError {
     #[error(transparent)]
@@ -22,6 +24,7 @@ pub struct Session {
     pub id: Uuid,
     pub workspace_id: Uuid,
     pub executor: Option<String>,
+    pub agent_working_dir: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -38,6 +41,7 @@ impl Session {
             r#"SELECT id AS "id!: Uuid",
                       workspace_id AS "workspace_id!: Uuid",
                       executor,
+                      agent_working_dir,
                       created_at AS "created_at!: DateTime<Utc>",
                       updated_at AS "updated_at!: DateTime<Utc>"
                FROM sessions
@@ -60,6 +64,7 @@ impl Session {
             r#"SELECT s.id AS "id!: Uuid",
                       s.workspace_id AS "workspace_id!: Uuid",
                       s.executor,
+                      s.agent_working_dir,
                       s.created_at AS "created_at!: DateTime<Utc>",
                       s.updated_at AS "updated_at!: DateTime<Utc>"
                FROM sessions s
@@ -89,6 +94,7 @@ impl Session {
             r#"SELECT s.id AS "id!: Uuid",
                       s.workspace_id AS "workspace_id!: Uuid",
                       s.executor,
+                      s.agent_working_dir,
                       s.created_at AS "created_at!: DateTime<Utc>",
                       s.updated_at AS "updated_at!: DateTime<Utc>"
                FROM sessions s
@@ -113,21 +119,43 @@ impl Session {
         id: Uuid,
         workspace_id: Uuid,
     ) -> Result<Self, SessionError> {
+        let agent_working_dir = Self::resolve_agent_working_dir(pool, workspace_id).await?;
+
         Ok(sqlx::query_as!(
             Session,
-            r#"INSERT INTO sessions (id, workspace_id, executor)
-               VALUES ($1, $2, $3)
+            r#"INSERT INTO sessions (id, workspace_id, executor, agent_working_dir)
+               VALUES ($1, $2, $3, $4)
                RETURNING id AS "id!: Uuid",
                          workspace_id AS "workspace_id!: Uuid",
                          executor,
+                         agent_working_dir,
                          created_at AS "created_at!: DateTime<Utc>",
                          updated_at AS "updated_at!: DateTime<Utc>""#,
             id,
             workspace_id,
-            data.executor
+            data.executor,
+            agent_working_dir
         )
         .fetch_one(pool)
         .await?)
+    }
+
+    async fn resolve_agent_working_dir(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<Option<String>, sqlx::Error> {
+        let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace_id).await?;
+        if repos.len() != 1 {
+            return Ok(None);
+        }
+
+        let repo = &repos[0];
+        let path = match repo.default_working_dir.as_deref() {
+            Some(subdir) if !subdir.is_empty() => std::path::PathBuf::from(&repo.name).join(subdir),
+            _ => std::path::PathBuf::from(&repo.name),
+        };
+
+        Ok(Some(path.to_string_lossy().to_string()))
     }
 
     pub async fn update_executor(

@@ -1,0 +1,511 @@
+{
+  "dropzone": {
+    "dropImagesHere": "画像をここにドロップ",
+    "supportedFormats": "PNG、JPG、GIF、WebP、SVG に対応"
+  },
+  "gitPanel": {
+    "advanced": {
+      "placeholder": "例: acme Corp"
+    }
+  },
+  "actions": {
+    "addTask": "タスクを追加"
+  },
+  "editBranchName": {
+    "dialog": {
+      "title": "ブランチ名を編集",
+      "description": "ブランチの新しい名前を入力してください。オープンなPRが存在する場合は名前を変更できません。",
+      "branchNameLabel": "ブランチ名",
+      "placeholder": "例: feature/my-branch",
+      "renaming": "名前を変更中...",
+      "action": "ブランチ名を変更"
+    }
+  },
+  "startReviewDialog": {
+    "title": "レビューを開始",
+    "description": "コーディングエージェントに変更のレビューとフィードバックを依頼します。",
+    "additionalInstructions": "追加の指示（オプション）",
+    "reviewComments": "レビューコメント（{{count}}）",
+    "includeGitContext": "Gitコンテキストを含める",
+    "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
+    "newSession": "新しいセッション"
+  },
+  "actionsMenu": {
+    "startReview": "レビューを開始",
+    "startingReview": "レビューを開始中..."
+  },
+  "attempt": {
+    "actions": {
+      "startDevServer": "開発サーバーを開始"
+    }
+  },
+  "resolveConflicts": {
+    "dialog": {
+      "title": "競合を解決",
+      "description": "競合が検出されました。エージェントにどのように解決させるか選択してください。",
+      "newSession": "新規セッション",
+      "resolve": "競合を解決",
+      "resolving": "開始中...",
+      "filesWithConflicts_one": "{{count}}件のファイルに競合があります",
+      "filesWithConflicts_other": "{{count}}件のファイルに競合があります",
+      "andMore": "...他{{count}}件"
+    }
+  },
+  "rebaseInProgress": {
+    "dialog": {
+      "title": "リベース進行中",
+      "description": "{{targetBranch}}へのリベースが競合なしで進行中です。続行方法を選択してください。",
+      "hint": "リベースを続行して完了するか、中止して以前の状態に戻すことができます。",
+      "continue": "リベースを続行",
+      "continuing": "続行中...",
+      "abort": "リベースを中止",
+      "aborting": "中止中...",
+      "continueError": "リベースの続行に失敗しました。未解決の競合がある可能性があります。",
+      "abortError": "リベースの中止に失敗しました。もう一度お試しください。"
+    }
+  },
+  "createPrDialog": {
+    "title": "プルリクエストを作成",
+    "description": "このタスク試行のプルリクエストを作成します。",
+    "titleLabel": "タイトル",
+    "titlePlaceholder": "PRタイトルを入力",
+    "descriptionLabel": "説明 (オプション)",
+    "descriptionPlaceholder": "PR説明を入力",
+    "baseBranchLabel": "ベースブランチ",
+    "loadingBranches": "ブランチを読み込み中...",
+    "selectBaseBranch": "ベースブランチを選択",
+    "draftLabel": "下書きとして作成",
+    "autoGenerateLabel": "AIエージェントにより良いPR説明を生成させる",
+    "creating": "作成中...",
+    "createButton": "PRを作成",
+    "errors": {
+      "failedToCreate": "PRの作成に失敗しました",
+      "gitCliNotLoggedIn": "Gitが認証されていません。\"gh auth login\" を実行するかGitの認証情報を設定してから再試行してください。",
+      "gitCliNotInstalled": "Git CLIがインストールされていません。PRを作成するにはGitをインストールしてください。",
+      "targetBranchNotFound": "ターゲットブランチ '{{branch}}' がリモートに存在しません。プルリクエストを作成する前にブランチが存在することを確認してください。"
+    }
+  },
+  "branches": {
+    "changeTarget": {
+      "dialog": {
+        "action": "ブランチを変更",
+        "description": "タスク試行の新しいターゲットブランチを選択してください。",
+        "inProgress": "変更中...",
+        "placeholder": "ターゲットブランチを選択",
+        "title": "ターゲットブランチを変更"
+      }
+    }
+  },
+  "repos": {
+    "selector": {
+      "placeholder": "リポジトリを選択",
+      "empty": "利用可能なリポジトリがありません"
+    }
+  },
+  "repoBranchSelector": {
+    "label": "ベースブランチ"
+  },
+  "diff": {
+    "filesChanged_one": "{{count}} file changed",
+    "filesChanged_other": "{{count}} files changed",
+    "largeDiff": {
+      "title": "大きなファイル",
+      "linesChanged": "{{count}} 行が変更されました",
+      "loadAnyway": "差分を読み込む",
+      "warning": "大きな差分はブラウザを遅くする可能性があります。"
+    }
+  },
+  "followUp": {
+    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます"
+  },
+  "git": {
+    "branch": {
+      "current": "現在"
+    },
+    "forcePushDialog": {
+      "title": "強制プッシュが必要です",
+      "description": "リモートブランチ{{branchLabel}}がローカルブランチと乖離しています。通常のプッシュは拒否されました。",
+      "warning": "強制プッシュはリモートの変更をローカルの変更で上書きします。この操作は元に戻せません。",
+      "note": "リモートのブランチ履歴を置き換えてもよいと確信できる場合のみ続行してください。",
+      "error": "強制プッシュに失敗しました"
+    },
+    "errors": {
+      "changeTargetBranch": "ターゲットブランチの変更に失敗しました",
+      "mergeChanges": "変更のマージに失敗しました",
+      "pushChanges": "変更のプッシュに失敗しました",
+      "rebaseBranch": "ブランチのリベースに失敗しました",
+      "branchStatusUnavailable": "ブランチのステータスを取得できません。ターゲットブランチの変更は引き続き可能です。"
+    },
+    "labels": {
+      "taskBranch": "タスクブランチ"
+    },
+    "pr": {
+      "number": "PR #{{number}}",
+      "open": "Open PR #{{number}}",
+      "merged": "マージ済みPR #{{prNumber}}"
+    },
+    "actions": {
+      "title": "Gitアクション",
+      "changeTarget": "ターゲットを変更",
+      "prMerged": "PR #{{number}} は既にマージされています",
+      "loginRequired": {
+        "title": "Git アクションを管理するにはサインインしてください",
+        "description": "このタスクでブランチのプッシュ、変更のマージ、プルリクエストの作成を行うには Vibe Kanban にサインインしてください。",
+        "action": "サインイン"
+      }
+    },
+    "mergeDialog": {
+      "title": "変更をマージ",
+      "description": "変更をターゲットブランチにマージします。続行してもよろしいですか？"
+    },
+    "createRepo": {
+      "dialog": {
+        "title": "新しいリポジトリを作成",
+        "description": "新しいGitリポジトリを初期化"
+      },
+      "form": {
+        "nameLabel": "名前",
+        "namePlaceholder": "my-project",
+        "locationLabel": "場所",
+        "locationPlaceholder": "現在のディレクトリ"
+      },
+      "browseDialog": {
+        "title": "親ディレクトリを選択",
+        "description": "新しいリポジトリを作成する場所を選択"
+      },
+      "errors": {
+        "nameRequired": "リポジトリ名は必須です",
+        "createFailed": "リポジトリの作成に失敗しました"
+      },
+      "buttons": {
+        "createRepository": "リポジトリを作成"
+      },
+      "states": {
+        "creating": "作成中..."
+      }
+    },
+    "states": {
+      "createPr": "PRを作成",
+      "creating": "作成中...",
+      "merge": "マージ",
+      "merged": "マージ完了！",
+      "merging": "マージ中...",
+      "push": "プッシュ",
+      "pushed": "プッシュ完了！",
+      "pushing": "プッシュ中...",
+      "pushFailed": "失敗",
+      "forcePush": "強制プッシュ",
+      "forcePushing": "強制プッシュ中...",
+      "rebase": "リベース",
+      "rebasing": "リベース中..."
+    },
+    "status": {
+      "ahead": "先行",
+      "behind": "遅れ",
+      "commits_one": "コミット",
+      "commits_other": "コミット",
+      "conflicts": "競合",
+      "upToDate": "最新"
+    }
+  },
+  "loading": "タスクを読み込み中...",
+  "preview": {
+    "logs": {
+      "label": "ログ",
+      "viewFull": "完全なログを表示"
+    },
+    "browser": {
+      "title": "開発サーバープレビュー",
+      "devServerFallback": "開発サーバー"
+    },
+    "noServer": {
+      "setupTitle": "プレビュー機能を使用するには、開発サーバースクリプトを設定する必要があります",
+      "setupPrompt": "ライブプレビューとクリックして編集機能を使用するには、このプロジェクトに開発サーバースクリプトを追加してください。",
+      "title": "開発サーバーが実行されていません",
+      "editDevScript": "開発サーバースクリプトを編集",
+      "learnMore": "アプリケーションのテストについてもっと詳しく"
+    },
+    "toolbar": {
+      "copyUrl": "URLをコピー",
+      "openInTab": "新しいタブで開く",
+      "refresh": "プレビューを更新",
+      "stopDevServer": "開発サーバーを停止",
+      "resetUrl": "検出されたURLにリセット",
+      "clearUrlOverride": "URL オーバーライドをクリア",
+      "desktopView": "デスクトップ表示",
+      "mobileView": "モバイル表示 (390x844)",
+      "responsiveView": "レスポンシブ表示（リサイズ可能）",
+      "startDevServer": "開発サーバーを開始",
+      "submitUrl": "URLを送信",
+      "toggleDevTools": "DevTools を切り替え"
+    },
+    "loading": {
+      "startingServer": "開発サーバーを起動中...",
+      "waitingForServer": "サーバーを待機中...",
+      "loadingPreview": "プレビューを読み込み中...",
+      "manualUrlHint": "URLがまだ検出されていません。上部のツールバーでURLを手動で入力できます。"
+    }
+  },
+  "processes": {
+    "noLogsAvailable": "ログがありません",
+    "agent": "Agent:",
+    "backToList": "Back to list",
+    "completed": "Completed: {{date}}",
+    "deleted": "Deleted",
+    "deletedTooltip": "Deleted by restore: timeline was restored to a checkpoint and later executions were removed",
+    "detailsTitle": "Process Details",
+    "errorLoadingDetails": "Failed to load process details. Please try again.",
+    "errorLoadingUpdates": "Failed to load live updates for processes.",
+    "exit": "Exit: {{code}}",
+    "loading": "Loading execution processes...",
+    "loadingDetails": "Loading process details...",
+    "noProcesses": "No execution processes found for this attempt.",
+    "processId": "Process ID: {{id}}",
+    "reconnecting": "Reconnecting...",
+    "selectAttempt": "Select an attempt to view execution processes.",
+    "started": "Started: {{date}}",
+    "copyLogs": "ログをコピー",
+    "logsCopied": "コピーしました！"
+  },
+  "rebase": {
+    "common": {
+      "action": "リベース",
+      "inProgress": "リベース中..."
+    },
+    "dialog": {
+      "advanced": "詳細設定",
+      "description": "このタスク試行をリベースする新しいベースブランチを選択してください。",
+      "targetLabel": "ターゲットブランチ",
+      "targetPlaceholder": "ターゲットブランチを選択",
+      "title": "タスク試行をリベース",
+      "upstreamLabel": "アップストリームブランチ",
+      "upstreamPlaceholder": "アップストリームブランチを選択"
+    }
+  },
+  "todoPopup": {
+    "title": "タスク",
+    "progress": "{{completed}}/{{total}} 完了",
+    "noTasks": "タスクなし"
+  },
+  "viewProcessesDialog": {
+    "title": "Execution processes"
+  },
+  "prComments": {
+    "dialog": {
+      "title": "PRコメントを選択",
+      "noComments": "このPRにコメントはありません",
+      "selectAll": "すべて選択",
+      "deselectAll": "すべて選択解除",
+      "add": "追加",
+      "selectedCount": "{{total}}件中{{selected}}件選択"
+    },
+    "card": {
+      "review": "レビュー",
+      "tooltip": "クリックで表示、ダブルクリックで編集"
+    }
+  },
+  "taskFormDialog": {
+    "createTitle": "新規タスクを作成",
+    "editTitle": "タスクを編集",
+    "titlePlaceholder": "タスクのタイトル",
+    "descriptionPlaceholder": "詳細を追加（オプション）。@でファイルを検索できます。",
+    "statusLabel": "ステータス",
+    "statusOptions": {
+      "todo": "未着手",
+      "inprogress": "進行中",
+      "inreview": "レビュー中",
+      "done": "完了",
+      "cancelled": "キャンセル"
+    },
+    "startLabel": "開始",
+    "attachImage": "画像を添付",
+    "dropImagesHere": "画像をここにドロップ",
+    "updating": "更新中...",
+    "updateTask": "タスクを更新",
+    "starting": "開始中...",
+    "creating": "作成中...",
+    "create": "作成",
+    "discardDialog": {
+      "title": "未保存の変更を破棄しますか？",
+      "description": "未保存の変更があります。本当に破棄してもよろしいですか？",
+      "continueEditing": "編集を続ける",
+      "discardChanges": "変更を破棄"
+    }
+  },
+  "restoreLogsDialog": {
+    "title": "リトライを確認",
+    "titleReset": "リセットを確認",
+    "historyChange": {
+      "title": "履歴の変更",
+      "willDelete": "このプロセスを削除します",
+      "willDeleteProcesses_one": "{{count}}件のプロセスを削除します",
+      "willDeleteProcesses_other": "{{count}}件のプロセスを削除します",
+      "andLaterProcesses_one": "および後続の{{count}}件のプロセス",
+      "andLaterProcesses_other": "および後続の{{count}}件のプロセス",
+      "fromHistory": "を履歴から削除します。",
+      "codingAgentRuns_one": "{{count}}件のコーディングエージェント実行",
+      "codingAgentRuns_other": "{{count}}件のコーディングエージェント実行",
+      "scriptProcesses_one": "{{count}}件のスクリプトプロセス",
+      "scriptProcesses_other": "{{count}}件のスクリプトプロセス",
+      "setupCleanupBreakdown": "(セットアップ{{setup}}件、クリーンアップ{{cleanup}}件)",
+      "permanentWarning": "この操作は履歴を永久に変更し、元に戻すことはできません。"
+    },
+    "uncommittedChanges": {
+      "title": "未コミットの変更が検出されました",
+      "description_one": "{{count}}件の未コミットの変更があります",
+      "description_other": "{{count}}件の未コミットの変更があります",
+      "andUntracked_one": "および{{count}}件の未追跡ファイル",
+      "andUntracked_other": "および{{count}}件の未追跡ファイル",
+      "acknowledgeLabel": "これらの変更が影響を受ける可能性があることを理解しています"
+    },
+    "resetWorktree": {
+      "title": "ワークツリーをリセット",
+      "enabled": "有効",
+      "disabled": "無効",
+      "disabledUncommitted": "無効（未コミットの変更が検出されました）",
+      "restoreDescription": "ワークツリーはこのコミットに復元されます。",
+      "discardChanges_one": "{{count}}件の未コミットの変更を破棄します。",
+      "discardChanges_other": "{{count}}件の未コミットの変更を破棄します。",
+      "untrackedPresent_one": "{{count}}件の未追跡ファイルがあります（リセットの影響を受けません）。",
+      "untrackedPresent_other": "{{count}}件の未追跡ファイルがあります（リセットの影響を受けません）。",
+      "forceReset": "強制リセット（未コミットの変更を破棄）",
+      "uncommittedWillDiscard": "未コミットの変更は破棄されます。",
+      "uncommittedPresentHint": "未コミットの変更があります。強制リセットをオンにするか、コミット/スタッシュしてから続行してください。"
+    },
+    "buttons": {
+      "retry": "リトライ",
+      "reset": "リセット"
+    }
+  },
+  "conversation": {
+    "you": "あなた",
+    "thinking": "考え中",
+    "todo": "タスク",
+    "todos": "タスク",
+    "completed": "完了",
+    "incomplete": "未完了",
+    "pending": "保留中",
+    "inProgress": "進行中",
+    "skipped": "スキップ",
+    "error": "エラー",
+    "retry": "再試行",
+    "showMore": "もっと見る",
+    "showLess": "少なく表示",
+    "actions": {
+      "cancel": "キャンセル",
+      "submitFeedback": "フィードバックを送信",
+      "stop": "停止",
+      "stopping": "停止中",
+      "loading": "読み込み中",
+      "send": "送信",
+      "sending": "送信中",
+      "queue": "キューに追加",
+      "cancelQueue": "キューをキャンセル",
+      "requestChanges": "変更を依頼",
+      "approve": "承認",
+      "clearReviewComments": "レビューコメントをクリア",
+      "edit": "メッセージを編集",
+      "scrollToPreviousMessage": "Go to previous message",
+      "reset": "リセット",
+      "resetTooltip": "この時点にリセット"
+    },
+    "approval": {
+      "conflictWarning": "競合するファイルは手動で解決する必要があります",
+      "conflicts_one": "{{count}}件の競合ファイルを手動で解決する必要があります",
+      "conflicts_other": "{{count}}件の競合ファイルを手動で解決する必要があります"
+    },
+    "executors": "エクゼキューター",
+    "saveAsDefault": "デフォルトとして保存",
+    "script": {
+      "clickToViewLogs": "クリックしてログを表示",
+      "completedSuccessfully": "正常に完了しました",
+      "exitCode": "終了コード: {{code}}",
+      "running": "実行中..."
+    },
+    "scriptPlaceholder": {
+      "setupTitle": "セットアップスクリプト",
+      "setupDescription": "セットアップスクリプトが設定されていません。セットアップスクリプトはコーディングエージェントの開始前に実行されます。",
+      "cleanupTitle": "クリーンアップスクリプト",
+      "cleanupDescription": "クリーンアップスクリプトが設定されていません。クリーンアップスクリプトはコーディングエージェントの終了後に実行されます。",
+      "configure": "設定"
+    },
+    "unableToRenderDiff": "差分を表示できません。",
+    "updatedTodos": "更新されたTodo",
+    "viewInChangesPanel": "変更パネルで表示",
+    "sessions": {
+      "newSession": "新規セッション",
+      "latest": "最新",
+      "previous": "前へ",
+      "label": "セッション",
+      "noPreviousSessions": "以前のセッションはありません"
+    },
+    "reviewComments": {
+      "count_one": "{{count}}件のレビューコメントが含まれます",
+      "count_other": "{{count}}件のレビューコメントが含まれます"
+    },
+    "workspace": {
+      "create": "作成",
+      "creating": "作成中..."
+    },
+    "fileEntry": {
+      "created": "作成済み",
+      "modified": "変更済み",
+      "deleted": "削除済み",
+      "renamed": "名前変更済み"
+    }
+  },
+  "scriptFixer": {
+    "setupScriptTitle": "セットアップスクリプトを修正",
+    "cleanupScriptTitle": "クリーンアップスクリプトを修正",
+    "archiveScriptTitle": "アーカイブスクリプトを修正",
+    "devServerTitle": "開発サーバースクリプトを修正",
+    "scriptLabel": "スクリプト（編集）",
+    "logsLabel": "最後の実行ログ",
+    "saveButton": "保存",
+    "saveAndTestButton": "保存してテスト",
+    "noLogs": "利用可能な実行ログがありません",
+    "selectRepo": "リポジトリ",
+    "fixScript": "スクリプトを修正",
+    "statusRunning": "実行中...",
+    "statusSuccess": "正常に完了しました",
+    "statusFailed": "終了コード {{exitCode}} で失敗しました",
+    "statusKilled": "プロセスが強制終了されました"
+  },
+  "createWorkspaceFromPr": {
+    "title": "PRからワークスペースを作成",
+    "description": "オープンなプルリクエストを選択してワークスペースを作成します。PRのタイトルを使用してタスクが自動的に作成されます。",
+    "repositoryLabel": "リポジトリ",
+    "remoteLabel": "リモート",
+    "pullRequestLabel": "プルリクエスト",
+    "loadingRepositories": "リポジトリを読み込み中...",
+    "loadingRemotes": "リモートを読み込み中...",
+    "noRepositoriesFound": "リポジトリが見つかりません",
+    "loadingPullRequests": "プルリクエストを読み込み中...",
+    "selectRepositoryFirst": "最初にリポジトリを選択してください",
+    "noPullRequestsFound": "オープンなプルリクエストが見つかりません",
+    "runSetupScript": "セットアップスクリプトを実行",
+    "creating": "作成中...",
+    "createWorkspace": "ワークスペースを作成",
+    "selectRepository": "リポジトリを選択",
+    "selectRemote": "リモートを選択",
+    "selectPullRequest": "プルリクエストを選択",
+    "searchPrsPlaceholder": "番号またはタイトルでPRを検索...",
+    "noMatchingPrs": "一致するプルリクエストがありません",
+    "default": "デフォルト",
+    "openPrInBrowser": "ブラウザでPRを開く",
+    "errors": {
+      "cliNotInstalled": "{{provider}} CLIがインストールされていません",
+      "unsupportedProvider": "Gitプロバイダーがサポートされていません",
+      "failedToLoadPrs": "プルリクエストの読み込みに失敗しました",
+      "prNotFound": "プルリクエストが見つかりません",
+      "failedToCreateWorkspace": "ワークスペースの作成に失敗しました"
+    }
+  },
+  "shareDialog": {
+    "loginRequired": {
+      "title": "Sign in required",
+      "description": "Sign in to access this feature.",
+      "action": "Sign in"
+    }
+  }
+}

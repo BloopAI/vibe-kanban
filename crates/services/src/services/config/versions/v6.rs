@@ -10,7 +10,6 @@ pub use v5::{EditorConfig, EditorType, GitHubConfig, NotificationConfig, SoundFi
 use crate::services::config::versions::v5;
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, TS, Default)]
-#[ts(export)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum UiLanguage {
     #[default]

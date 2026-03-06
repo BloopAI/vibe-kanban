@@ -10,10 +10,8 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
-    project_repo::ProjectRepo,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
-    task::{CreateTask, Task, TaskStatus},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
     workspace_repo::{CreateWorkspaceRepo, WorkspaceRepo},
 };
@@ -23,19 +21,18 @@ use executors::actions::{
     coding_agent_initial::CodingAgentInitialRequest,
 };
 use git::{GitCliError, GitRemote, GitServiceError};
+use git_host::{
+    CreatePrRequest, GitHostError, GitHostProvider, GitHostService, ProviderKind, UnifiedPrComment,
+    github::GhCli,
+};
 use serde::{Deserialize, Serialize};
 use services::services::{
-    config::DEFAULT_PR_DESCRIPTION_PROMPT,
-    container::ContainerService,
-    git_host::{
-        self, CreatePrRequest, GitHostError, GitHostProvider, ProviderKind, UnifiedPrComment,
-        github::GhCli,
-    },
-    remote_sync,
+    config::DEFAULT_PR_DESCRIPTION_PROMPT, container::ContainerService, remote_sync,
 };
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
+use workspace_manager::WorkspaceManager;
 
 use crate::{DeploymentImpl, error::ApiError};
 
@@ -145,7 +142,7 @@ async fn trigger_pr_description_follow_up(
     let latest_session_info =
         CodingAgentTurn::find_latest_session_info(&deployment.db().pool, session.id).await?;
 
-    let working_dir = workspace
+    let working_dir = session
         .agent_working_dir
         .as_ref()
         .filter(|dir| !dir.is_empty())
@@ -157,13 +154,13 @@ async fn trigger_pr_description_follow_up(
             prompt,
             session_id: info.session_id,
             reset_to_message_id: None,
-            executor_profile_id: executor_profile_id.clone(),
+            executor_config: executors::profile::ExecutorConfig::from(executor_profile_id.clone()),
             working_dir: working_dir.clone(),
         })
     } else {
         ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
             prompt,
-            executor_profile_id: executor_profile_id.clone(),
+            executor_config: executors::profile::ExecutorConfig::from(executor_profile_id.clone()),
             working_dir,
         })
     };
@@ -268,7 +265,7 @@ pub async fn create_pr(
         }
     }
 
-    let git_host = match git_host::GitHostService::from_url(&target_remote.url) {
+    let git_host = match GitHostService::from_url(&target_remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -392,11 +389,6 @@ pub async fn attach_existing_pr(
 ) -> Result<ResponseJson<ApiResponse<AttachPrResponse, PrError>>, ApiError> {
     let pool = &deployment.db().pool;
 
-    let task = workspace
-        .parent_task(pool)
-        .await?
-        .ok_or(ApiError::Workspace(WorkspaceError::TaskNotFound))?;
-
     let workspace_repo =
         WorkspaceRepo::find_by_workspace_and_repo_id(pool, workspace.id, request.repo_id)
             .await?
@@ -420,7 +412,7 @@ pub async fn attach_existing_pr(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote.url) {
+    let git_host = match GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::UnsupportedProvider) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -501,13 +493,23 @@ pub async fn attach_existing_pr(
             });
         }
 
-        // If PR is merged, mark task as done and archive workspace
+        // If PR is merged, archive workspace
         if matches!(pr_info.status, MergeStatus::Merged) {
-            Task::update_status(pool, task.id, TaskStatus::Done).await?;
-            if !workspace.pinned
-                && let Err(e) = deployment.container().archive_workspace(workspace.id).await
-            {
-                tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
+            let open_pr_count = Merge::count_open_prs_for_workspace(pool, workspace.id).await?;
+
+            if open_pr_count == 0 {
+                if !workspace.pinned
+                    && let Err(e) = deployment.container().archive_workspace(workspace.id).await
+                {
+                    tracing::error!("Failed to archive workspace {}: {}", workspace.id, e);
+                }
+            } else {
+                tracing::info!(
+                    "PR #{} was merged, leaving workspace {} active with {} open PR(s)",
+                    pr_info.number,
+                    workspace.id,
+                    open_pr_count
+                );
             }
         }
 
@@ -560,7 +562,7 @@ pub async fn get_pr_comments(
     let git = deployment.git();
     let remote = git.resolve_remote_for_branch(&repo.path, &workspace_repo.target_branch)?;
 
-    let git_host = match git_host::GitHostService::from_url(&remote.url) {
+    let git_host = match GitHostService::from_url(&remote.url) {
         Ok(host) => host,
         Err(GitHostError::CliNotInstalled { provider }) => {
             return Ok(ResponseJson(ApiResponse::error_with_data(
@@ -616,7 +618,6 @@ pub struct CreateWorkspaceFromPrBody {
 #[derive(Debug, Serialize, TS)]
 pub struct CreateWorkspaceFromPrResponse {
     pub workspace: Workspace,
-    pub task: Task,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -628,7 +629,54 @@ pub enum CreateFromPrError {
     CliNotInstalled { provider: ProviderKind },
     AuthFailed { message: String },
     UnsupportedProvider,
-    RepoNotInProject,
+}
+
+/// Best-effort cleanup of partially-created workspace resources.
+/// Used when workspace creation from PR fails after DB records and filesystem
+/// resources have already been created.
+///
+/// DB records are deleted synchronously (fast). Filesystem cleanup is spawned
+/// as a background task to avoid blocking the error response.
+async fn cleanup_failed_pr_workspace(pool: &sqlx::SqlitePool, workspace: &Workspace) {
+    let workspace_id = workspace.id;
+
+    // Gather data needed for background filesystem cleanup before deleting DB records
+    let workspace_dir = workspace.container_ref.clone().map(PathBuf::from);
+    let repositories = match WorkspaceRepo::find_repos_for_workspace(pool, workspace_id).await {
+        Ok(repos) => repos,
+        Err(e) => {
+            tracing::warn!(
+                "Failed to find repos for workspace {} during cleanup: {}",
+                workspace_id,
+                e
+            );
+            vec![]
+        }
+    };
+
+    // Delete the workspace — FK CASCADE handles workspace_repos, sessions, merges, etc.
+    if let Err(e) = Workspace::delete(pool, workspace_id).await {
+        tracing::warn!(
+            "Failed to delete workspace {} during cleanup: {}",
+            workspace_id,
+            e
+        );
+    }
+
+    // Spawn background cleanup for filesystem resources (worktrees, workspace dir)
+    if let Some(workspace_dir) = workspace_dir {
+        tokio::spawn(async move {
+            if let Err(e) = WorkspaceManager::cleanup_workspace(&workspace_dir, &repositories).await
+            {
+                tracing::error!(
+                    "Background cleanup failed for workspace {} at {}: {}",
+                    workspace_id,
+                    workspace_dir.display(),
+                    e
+                );
+            }
+        });
+    }
 }
 
 #[axum::debug_handler]
@@ -642,20 +690,6 @@ pub async fn create_workspace_from_pr(
         .await?
         .ok_or(RepoError::NotFound)?;
 
-    let project_repos = ProjectRepo::find_by_repo_id(pool, payload.repo_id).await?;
-    let project_id = match project_repos.first() {
-        Some(project_repo) => project_repo.project_id,
-        None => {
-            tracing::error!(
-                "Repo {} is not associated with any project",
-                payload.repo_id
-            );
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                CreateFromPrError::RepoNotInProject,
-            )));
-        }
-    };
-
     let remote = match payload.remote_name {
         Some(ref name) => GitRemote {
             url: deployment.git().get_remote_url(&repo.path, name)?,
@@ -667,32 +701,15 @@ pub async fn create_workspace_from_pr(
     // Use target branch initially - we'll switch to PR branch via gh pr checkout
     let target_branch_ref = format!("{}/{}", remote.name, payload.base_branch);
 
-    let task_id = Uuid::new_v4();
-    let create_task = CreateTask {
-        project_id,
-        title: payload.pr_title.clone(),
-        description: Some(format!(
-            "Created from PR #{}: {}",
-            payload.pr_number, payload.pr_url
-        )),
-        status: Some(TaskStatus::InProgress),
-        parent_workspace_id: None,
-        image_ids: None,
-    };
-    let task = Task::create(pool, &create_task, task_id).await?;
-
-    let agent_working_dir = Some(repo.name.clone());
-
     // Create workspace with target branch initially
     let workspace_id = Uuid::new_v4();
     let mut workspace = Workspace::create(
         pool,
         &CreateWorkspace {
             branch: target_branch_ref.clone(),
-            agent_working_dir,
+            name: Some(payload.pr_title.clone()),
         },
         workspace_id,
-        task.id,
     )
     .await?;
 
@@ -726,6 +743,7 @@ pub async fn create_workspace_from_pr(
                 payload.pr_number,
             ) {
                 tracing::error!("Failed to checkout PR branch: {e}");
+                cleanup_failed_pr_workspace(pool, &workspace).await;
                 return Ok(ResponseJson(ApiResponse::error_with_data(
                     CreateFromPrError::BranchFetchFailed {
                         message: e.to_string(),
@@ -740,6 +758,7 @@ pub async fn create_workspace_from_pr(
             tracing::error!(
                 "Failed to get repo info for PR checkout (gh CLI may not be installed): {e}"
             );
+            cleanup_failed_pr_workspace(pool, &workspace).await;
             return Ok(ResponseJson(ApiResponse::error_with_data(
                 CreateFromPrError::BranchFetchFailed {
                     message: format!("Failed to get repository info: {e}"),
@@ -788,9 +807,7 @@ pub async fn create_workspace_from_pr(
         .track_if_analytics_allowed(
             "workspace_created_from_pr",
             serde_json::json!({
-                "task_id": task.id.to_string(),
                 "workspace_id": workspace.id.to_string(),
-                "project_id": project_id.to_string(),
                 "pr_number": payload.pr_number,
                 "run_setup": payload.run_setup,
             }),
@@ -798,17 +815,16 @@ pub async fn create_workspace_from_pr(
         .await;
 
     tracing::info!(
-        "Created workspace {} from PR #{} for task {}",
+        "Created workspace {} from PR #{}",
         workspace.id,
         payload.pr_number,
-        task.id
     );
 
     let workspace = Workspace::find_by_id(pool, workspace.id)
         .await?
-        .ok_or(WorkspaceError::TaskNotFound)?;
+        .ok_or(WorkspaceError::WorkspaceNotFound)?;
 
     Ok(ResponseJson(ApiResponse::success(
-        CreateWorkspaceFromPrResponse { workspace, task },
+        CreateWorkspaceFromPrResponse { workspace },
     )))
 }

@@ -33,7 +33,6 @@ pub struct Diff {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 #[serde(rename_all = "camelCase")]
 pub enum DiffChangeKind {
     Added,

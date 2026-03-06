@@ -1,3 +1,7 @@
+use api_types::{
+    CreateIssueRequest, DeleteResponse, Issue, ListIssuesQuery, ListIssuesResponse,
+    MutationResponse, UpdateIssueRequest,
+};
 use axum::{
     Json,
     extract::{Extension, Path, Query, State},
@@ -6,16 +10,12 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
-use api_types::{
-    CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, UpdateIssueRequest,
-};
 use uuid::Uuid;
 
 use super::{
     error::{ErrorResponse, db_error},
     organization_members::ensure_project_access,
 };
-use api_types::{DeleteResponse, MutationResponse};
 use crate::{
     AppState,
     auth::RequestContext,

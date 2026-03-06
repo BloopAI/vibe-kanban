@@ -119,8 +119,8 @@ jobs:
           npm version $new_version --no-git-tag-version --allow-same-version
           cd ..
 
-          # Update frontend package.json to match
-          cd frontend
+          # Update web app package.json to match
+          cd packages/local-web
           npm version $new_version --no-git-tag-version --allow-same-version
           cd ..
 
@@ -132,7 +132,10 @@ jobs:
 
       - name: Update remote crate lockfile
         if: ${{ steps.ssh-setup.outcome == 'success' }}
-        run: cargo generate-lockfile --manifest-path crates/remote/Cargo.toml
+        run: cargo metadata --format-version 1 --manifest-path crates/remote/Cargo.toml > /dev/null
+
+      - name: Update relay-tunnel crate lockfile
+        run: cargo metadata --format-version 1 --manifest-path crates/relay-tunnel/Cargo.toml > /dev/null
 
       - name: Stop SSH agent
         if: ${{ steps.ssh-setup.outcome == 'success' }}
@@ -142,9 +145,10 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json frontend/package.json Cargo.lock
+          git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json Cargo.lock
           git add $(find . -name Cargo.toml)
           [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
+          [ -f crates/relay-tunnel/Cargo.lock ] && git add crates/relay-tunnel/Cargo.lock || true
           git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
           git tag -a ${{ steps.version.outputs.new_tag }} -m "Release ${{ steps.version.outputs.new_tag }}"
           git push
@@ -168,17 +172,18 @@ jobs:
         run: pnpm install
 
       - name: Lint frontend
-        run: cd frontend && npm run lint
+        run: cd packages/local-web && npm run lint
 
       - name: Type check frontend
-        run: cd frontend && npx tsc --noEmit
+        run: cd packages/local-web && npx tsc --noEmit
 
       - name: Build frontend
-        run: cd frontend && npm run build
+        run: cd packages/local-web && npm run build
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           VITE_POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           VITE_POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Create Sentry release
         uses: getsentry/action-release@v3
@@ -189,14 +194,14 @@ jobs:
         with:
           release: ${{ needs.bump-version.outputs.new_version }}
           environment: production
-          sourcemaps: "./frontend/dist"
+          sourcemaps: "./packages/local-web/dist"
           ignore_missing: true
 
       - name: Upload frontend artifact
         uses: actions/upload-artifact@v6
         with:
           name: frontend-dist
-          path: frontend/dist/
+          path: packages/local-web/dist/
           retention-days: 1
 
   build-backend:
@@ -317,16 +322,18 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: frontend-dist
-          path: frontend/dist/
+          path: packages/local-web/dist/
 
       - name: Build backend (Linux)
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: |
-          cargo zigbuild --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+          cargo zigbuild --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          VK_SHARED_RELAY_API_BASE: ${{ secrets.VK_SHARED_RELAY_API_BASE }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Build backend (macOS)
         if: runner.os == 'macOS'
@@ -336,11 +343,13 @@ jobs:
           elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
             export MACOSX_DEPLOYMENT_TARGET=11.0
           fi
-          cargo build --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+          cargo build --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          VK_SHARED_RELAY_API_BASE: ${{ secrets.VK_SHARED_RELAY_API_BASE }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Build backend (Windows)
         if: runner.os == 'Linux' && contains(matrix.target, 'windows')
@@ -353,11 +362,13 @@ jobs:
             export DEFAULT_CC=clang-cl
             export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
           fi
-          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p review --bin server --bin mcp_task_server --bin review
+          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
+          VK_SHARED_RELAY_API_BASE: ${{ secrets.VK_SHARED_RELAY_API_BASE }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           # Avoid aws-lc-sys CMake failures when Rust's `release` profile includes debug info.
           # Without this, cmake-rs selects RelWithDebInfo and CMake fails when ASM is enabled.
           CARGO_PROFILE_RELEASE_DEBUG: 0
@@ -533,7 +544,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: frontend-dist
-          path: frontend/dist/
+          path: packages/local-web/dist/
 
       - name: Download backend binary artifact
         uses: actions/download-artifact@v7
@@ -684,17 +695,17 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: frontend-dist
-          path: frontend/dist/
+          path: packages/local-web/dist/
 
       - name: List downloaded artifacts
         run: |
-          echo "Frontend dist:"
-          find frontend/dist
+          echo "Web dist:"
+          find packages/local-web/dist
 
       - name: Zip frontend
         run: |
           mkdir vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
-          mv frontend/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
+          mv packages/local-web/dist vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
           zip -r vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip vibe-kanban-${{ needs.bump-version.outputs.new_tag }}
 
       - name: Setup Node for npm pack

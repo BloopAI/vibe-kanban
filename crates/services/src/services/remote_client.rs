@@ -4,14 +4,18 @@ use std::time::Duration;
 
 use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
-    CreateIssueRequest, CreateOrganizationRequest, CreateOrganizationResponse,
+    CreateIssueAssigneeRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
+    CreateIssueTagRequest, CreateOrganizationRequest, CreateOrganizationResponse,
     CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
     GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, ListInvitationsResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse, MutationResponse,
-    Organization, ProfileResponse, RevokeInvitationRequest, TokenRefreshRequest,
-    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
-    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
+    ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
+    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
+    ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
+    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
+    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
+    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -31,6 +35,8 @@ pub enum RemoteClientError {
     Transport(String),
     #[error("timeout")]
     Timeout,
+    #[error("token refresh timed out")]
+    TokenRefreshTimeout,
     #[error("http {status}: {body}")]
     Http { status: u16, body: String },
     #[error("api error: {0:?}")]
@@ -90,6 +96,12 @@ struct ApiErrorResponse {
     error: String,
 }
 
+#[derive(Debug, Clone, Copy)]
+struct RequestTimeoutOptions {
+    timeout: Duration,
+    retry_on_timeout: bool,
+}
+
 /// HTTP client for the remote OAuth server with automatic retries.
 pub struct RemoteClient {
     base: Url,
@@ -119,6 +131,7 @@ impl Clone for RemoteClient {
 
 impl RemoteClient {
     const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
+    const TOKEN_REFRESH_REQUEST_TIMEOUT: Duration = Duration::from_mins(5);
     const TOKEN_REFRESH_LEEWAY_SECS: i64 = 20;
 
     pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
@@ -184,6 +197,14 @@ impl RemoteClient {
                     let _ = self.auth_context.clear_credentials().await;
                     Err(RemoteClientError::Auth)
                 }
+                Err(RemoteClientError::TokenRefreshTimeout) => {
+                    tracing::error!(
+                        "Refresh token request timed out after {} minutes. Discarding the refresh token and forcing re-login.",
+                        Self::TOKEN_REFRESH_REQUEST_TIMEOUT.as_secs() / 60
+                    );
+                    let _ = self.auth_context.clear_credentials().await;
+                    Err(RemoteClientError::TokenRefreshTimeout)
+                }
                 Err(err) => Err(err),
             }
         })
@@ -217,8 +238,21 @@ impl RemoteClient {
         let request = TokenRefreshRequest {
             refresh_token: refresh_token.to_string(),
         };
-        self.post_public("/v1/tokens/refresh", Some(&request))
+
+        let timeout_options = RequestTimeoutOptions {
+            timeout: Self::TOKEN_REFRESH_REQUEST_TIMEOUT,
+            retry_on_timeout: false,
+        };
+
+        self.post_public_with_timeout_options("/v1/tokens/refresh", Some(&request), timeout_options)
             .await
+            .map_err(|e| {
+                if matches!(e, RemoteClientError::Timeout) {
+                    RemoteClientError::TokenRefreshTimeout
+                } else {
+                    e
+                }
+            })
             .map_err(|e| self.map_api_error(e))
     }
 
@@ -271,17 +305,38 @@ impl RemoteClient {
     where
         B: Serialize,
     {
+        self.send_internal(method, path, requires_auth, body, None)
+            .await
+    }
+
+    async fn send_internal<B>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        requires_auth: bool,
+        body: Option<&B>,
+        timeout_options: Option<RequestTimeoutOptions>,
+    ) -> Result<reqwest::Response, RemoteClientError>
+    where
+        B: Serialize,
+    {
         let url = self
             .base
             .join(path)
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
 
-        (|| async {
+        let retry_on_timeout = timeout_options.is_none_or(|o| o.retry_on_timeout);
+
+        let operation = || async {
             let mut req = self
                 .http
                 .request(method.clone(), url.clone())
                 .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
                 .header("X-Client-Type", "local-backend");
+
+            if let Some(t) = timeout_options.map(|o| o.timeout) {
+                req = req.timeout(t);
+            }
 
             if requires_auth {
                 let token = self.require_token().await?;
@@ -303,23 +358,30 @@ impl RemoteClient {
                     Err(RemoteClientError::Http { status, body })
                 }
             }
-        })
-        .retry(
-            &ExponentialBuilder::default()
-                .with_min_delay(Duration::from_millis(500))
-                .with_max_delay(Duration::from_secs(2))
-                .with_max_times(2)
-                .with_jitter(),
-        )
-        .when(|e: &RemoteClientError| e.should_retry())
-        .notify(|e, dur| {
-            warn!(
-                "Remote call failed, retrying after {:.2}s: {}",
-                dur.as_secs_f64(),
-                e
+        };
+
+        operation
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_millis(500))
+                    .with_max_delay(Duration::from_secs(2))
+                    .with_max_times(2)
+                    .with_jitter(),
             )
-        })
-        .await
+            .when(move |e: &RemoteClientError| {
+                if !e.should_retry() {
+                    return false;
+                }
+                retry_on_timeout || !matches!(e, RemoteClientError::Timeout)
+            })
+            .notify(|e, dur| {
+                warn!(
+                    "Remote call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    e
+                )
+            })
+            .await
     }
 
     // Public endpoint helpers (no auth required)
@@ -341,6 +403,30 @@ impl RemoteClient {
         B: Serialize,
     {
         let res = self.send(reqwest::Method::POST, path, false, body).await?;
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    async fn post_public_with_timeout_options<T, B>(
+        &self,
+        path: &str,
+        body: Option<&B>,
+        timeout_options: RequestTimeoutOptions,
+    ) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+        B: Serialize,
+    {
+        let res = self
+            .send_internal(
+                reqwest::Method::POST,
+                path,
+                false,
+                body,
+                Some(timeout_options),
+            )
+            .await?;
         res.json::<T>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
@@ -614,6 +700,21 @@ impl RemoteClient {
         Ok(())
     }
 
+    /// Triggers issue-status sync for a workspace that was merged locally without a PR.
+    pub async fn sync_issue_status_from_local_workspace_merge(
+        &self,
+        local_workspace_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.send(
+            reqwest::Method::POST,
+            &format!("/v1/workspaces/{local_workspace_id}/sync_issue_status_from_local_merge"),
+            true,
+            None::<&()>,
+        )
+        .await?;
+        Ok(())
+    }
+
     /// Creates a workspace on the remote server, linking it to a local workspace and an issue.
     pub async fn create_workspace(
         &self,
@@ -678,6 +779,137 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
+    // ── Issue Assignees ────────────────────────────────────────────────
+
+    /// Lists assignees for an issue.
+    pub async fn list_issue_assignees(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueAssigneesResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_assignees?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Gets a single issue assignee by ID.
+    pub async fn get_issue_assignee(
+        &self,
+        issue_assignee_id: Uuid,
+    ) -> Result<IssueAssignee, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_assignees/{issue_assignee_id}"))
+            .await
+    }
+
+    /// Creates a new issue assignee.
+    pub async fn create_issue_assignee(
+        &self,
+        request: &CreateIssueAssigneeRequest,
+    ) -> Result<MutationResponse<IssueAssignee>, RemoteClientError> {
+        self.post_authed("/v1/issue_assignees", Some(request)).await
+    }
+
+    /// Deletes an issue assignee.
+    pub async fn delete_issue_assignee(
+        &self,
+        issue_assignee_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_assignees/{issue_assignee_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Tags ───────────────────────────────────────────────────────────
+
+    /// Lists tags for a project.
+    pub async fn list_tags(&self, project_id: Uuid) -> Result<ListTagsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags?project_id={project_id}"))
+            .await
+    }
+
+    /// Gets a single tag by ID.
+    pub async fn get_tag(&self, tag_id: Uuid) -> Result<Tag, RemoteClientError> {
+        self.get_authed(&format!("/v1/tags/{tag_id}")).await
+    }
+
+    // ── Issue Tags ─────────────────────────────────────────────────────
+
+    /// Lists tags attached to an issue.
+    pub async fn list_issue_tags(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueTagsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_tags?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Gets a single issue-tag relation by ID.
+    pub async fn get_issue_tag(&self, issue_tag_id: Uuid) -> Result<IssueTag, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_tags/{issue_tag_id}"))
+            .await
+    }
+
+    /// Attaches a tag to an issue.
+    pub async fn create_issue_tag(
+        &self,
+        request: &CreateIssueTagRequest,
+    ) -> Result<MutationResponse<IssueTag>, RemoteClientError> {
+        self.post_authed("/v1/issue_tags", Some(request)).await
+    }
+
+    /// Removes a tag from an issue.
+    pub async fn delete_issue_tag(
+        &self,
+        issue_tag_id: Uuid,
+    ) -> Result<DeleteResponse, RemoteClientError> {
+        let res = self
+            .send(
+                reqwest::Method::DELETE,
+                &format!("/v1/issue_tags/{issue_tag_id}"),
+                true,
+                None::<&()>,
+            )
+            .await?;
+        res.json::<DeleteResponse>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
+    // ── Issue Relationships ────────────────────────────────────────────
+
+    /// Lists relationships for an issue.
+    pub async fn list_issue_relationships(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListIssueRelationshipsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issue_relationships?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Creates a new issue relationship.
+    pub async fn create_issue_relationship(
+        &self,
+        request: &CreateIssueRelationshipRequest,
+    ) -> Result<MutationResponse<IssueRelationship>, RemoteClientError> {
+        self.post_authed("/v1/issue_relationships", Some(request))
+            .await
+    }
+
+    /// Deletes an issue relationship.
+    pub async fn delete_issue_relationship(
+        &self,
+        relationship_id: Uuid,
+    ) -> Result<(), RemoteClientError> {
+        self.delete_authed(&format!("/v1/issue_relationships/{relationship_id}"))
+            .await
+    }
+
     // ── Remote Projects ─────────────────────────────────────────────────
 
     /// Gets a single remote project by ID.
@@ -724,6 +956,40 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    /// Lists pull requests linked to an issue.
+    pub async fn list_pull_requests(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListPullRequestsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/pull_requests?issue_id={issue_id}"))
+            .await
+    }
+
+    /// Lists attachments for an issue on the remote server.
+    pub async fn list_issue_attachments(
+        &self,
+        issue_id: Uuid,
+    ) -> Result<ListAttachmentsResponse, RemoteClientError> {
+        self.get_authed(&format!("/v1/issues/{issue_id}/attachments"))
+            .await
+    }
+
+    /// Used for fetching from presigned Azure SAS URLs.
+    pub async fn download_from_url(&self, url: &str) -> Result<Vec<u8>, RemoteClientError> {
+        let res = self.http.get(url).send().await.map_err(map_reqwest_error)?;
+        if !res.status().is_success() {
+            return Err(RemoteClientError::Http {
+                status: res.status().as_u16(),
+                body: res.text().await.unwrap_or_default(),
+            });
+        }
+        let bytes = res
+            .bytes()
+            .await
+            .map_err(|e| RemoteClientError::Transport(e.to_string()))?;
+        Ok(bytes.to_vec())
     }
 }
 

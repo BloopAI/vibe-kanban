@@ -1,6 +1,8 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use workspace_utils::approvals::ApprovalStatus;
+use workspace_utils::approvals::{ApprovalStatus, QuestionStatus};
 
 /// JSON log events emitted by the OpenCode SDK executor.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,9 +24,21 @@ pub enum OpencodeExecutorEvent {
         total_tokens: u32,
         model_context_window: u32,
     },
+    ApprovalRequested {
+        tool_call_id: String,
+        approval_id: String,
+    },
     ApprovalResponse {
         tool_call_id: String,
         status: ApprovalStatus,
+    },
+    QuestionAsked {
+        tool_call_id: String,
+        approval_id: String,
+    },
+    QuestionResponse {
+        tool_call_id: String,
+        status: QuestionStatus,
     },
     SystemMessage {
         content: String,
@@ -57,6 +71,9 @@ pub(super) enum SdkEvent {
     SessionCompacted,
     SessionError(SessionErrorEvent),
     TodoUpdated(TodoUpdatedEvent),
+    QuestionAsked(QuestionAskedEvent),
+    QuestionReplied,
+    QuestionRejected,
     CommandExecuted,
     TuiSessionSelect,
     Unknown { type_: String, properties: Value },
@@ -91,6 +108,11 @@ impl SdkEvent {
             "todo.updated" => {
                 SdkEvent::TodoUpdated(serde_json::from_value(envelope.properties).ok()?)
             }
+            "question.asked" => {
+                SdkEvent::QuestionAsked(serde_json::from_value(envelope.properties).ok()?)
+            }
+            "question.replied" => SdkEvent::QuestionReplied,
+            "question.rejected" => SdkEvent::QuestionRejected,
             "command.executed" => SdkEvent::CommandExecuted,
             "tui.session.select" => SdkEvent::TuiSessionSelect,
             _ => SdkEvent::Unknown {
@@ -202,6 +224,40 @@ pub(super) struct PermissionAskedEvent {
 pub(super) struct PermissionToolInfo {
     #[serde(rename = "callID")]
     pub(super) call_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct QuestionAskedEvent {
+    pub(super) id: String,
+    pub(super) questions: Vec<QuestionInfo>,
+    #[serde(default)]
+    pub(super) tool: Option<QuestionAskedTool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct QuestionAskedTool {
+    #[allow(dead_code)]
+    #[serde(rename = "messageID")]
+    pub(super) message_id: String,
+    #[serde(rename = "callID")]
+    pub(super) call_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct QuestionInfo {
+    pub(super) question: String,
+    pub(super) header: String,
+    #[serde(default)]
+    pub(super) options: Vec<QuestionOption>,
+    #[serde(default)]
+    pub(super) multiple: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(super) struct QuestionOption {
+    pub(super) label: String,
+    #[serde(default)]
+    pub(super) description: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -346,28 +402,45 @@ impl<'de> Deserialize<'de> for SdkError {
     }
 }
 
-// Provider API types (for /provider endpoint - model context windows)
-
+/// Configuration response from /config endpoint
 #[derive(Debug, Deserialize)]
-pub(super) struct ProviderListResponse {
-    pub(super) all: Vec<ProviderInfo>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(super) struct ProviderInfo {
-    pub(super) id: String,
+pub(super) struct Config {
     #[serde(default)]
-    pub(super) models: std::collections::HashMap<String, ProviderModelInfo>,
+    pub(super) model: Option<String>,
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub(super) struct ProviderModelInfo {
+pub struct ProviderModelInfo {
     #[serde(default)]
-    pub(super) limit: ProviderModelLimit,
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub release_date: Option<String>,
+    #[serde(default)]
+    pub variants: Option<HashMap<String, Value>>,
+    #[serde(default)]
+    pub limit: ProviderModelLimit,
 }
 
 #[derive(Debug, Deserialize, Default)]
-pub(super) struct ProviderModelLimit {
+pub struct ProviderModelLimit {
     #[serde(default, deserialize_with = "deserialize_f64_as_u32")]
-    pub(super) context: u32,
+    pub context: u32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProviderInfo {
+    pub id: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub models: HashMap<String, ProviderModelInfo>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ProviderListResponse {
+    pub all: Vec<ProviderInfo>,
+    #[serde(default)]
+    pub connected: Vec<String>,
 }

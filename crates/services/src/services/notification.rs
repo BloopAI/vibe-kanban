@@ -127,13 +127,23 @@ impl NotificationService {
         let message = message.to_string();
 
         let _handle = tokio::task::spawn_blocking(move || {
-            if let Err(e) = Notification::new()
+            match Notification::new()
                 .summary(&title)
                 .body(&message)
                 .timeout(10000)
                 .show()
             {
-                tracing::error!("Failed to send Linux notification: {}", e);
+                Ok(_) => {}
+                Err(e) => {
+                    let err_str = e.to_string();
+                    if err_str.contains("ServiceUnknown")
+                        || err_str.contains("org.freedesktop.Notifications")
+                    {
+                        tracing::warn!("Linux notification daemon not available: {}", e);
+                    } else {
+                        tracing::warn!("Failed to send Linux notification: {}", e);
+                    }
+                }
             }
         });
         drop(_handle); // Don't await, fire-and-forget

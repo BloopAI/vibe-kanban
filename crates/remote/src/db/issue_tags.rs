@@ -1,10 +1,9 @@
+use api_types::{DeleteResponse, IssueTag, MutationResponse};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::IssueTag;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueTagError {
@@ -53,6 +52,27 @@ impl IssueTagRepository {
         .fetch_all(pool)
         .await?;
 
+        Ok(records)
+    }
+
+    pub async fn list_by_project(
+        pool: &PgPool,
+        project_id: Uuid,
+    ) -> Result<Vec<IssueTag>, IssueTagError> {
+        let records = sqlx::query_as!(
+            IssueTag,
+            r#"
+            SELECT
+                id       AS "id!: Uuid",
+                issue_id AS "issue_id!: Uuid",
+                tag_id   AS "tag_id!: Uuid"
+            FROM issue_tags
+            WHERE issue_id IN (SELECT id FROM issues WHERE project_id = $1)
+            "#,
+            project_id
+        )
+        .fetch_all(pool)
+        .await?;
         Ok(records)
     }
 

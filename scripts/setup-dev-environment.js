@@ -69,14 +69,15 @@ function savePorts(ports) {
 async function verifyPorts(ports) {
   const frontendAvailable = await isPortAvailable(ports.frontend);
   const backendAvailable = await isPortAvailable(ports.backend);
+  const previewProxyAvailable = await isPortAvailable(ports.preview_proxy);
 
-  if (process.argv[2] === "get" && (!frontendAvailable || !backendAvailable)) {
+  if (process.argv[2] === "get" && (!frontendAvailable || !backendAvailable || !previewProxyAvailable)) {
     console.log(
-      `Port availability check failed: frontend:${ports.frontend}=${frontendAvailable}, backend:${ports.backend}=${backendAvailable}`
+      `Port availability check failed: frontend:${ports.frontend}=${frontendAvailable}, backend:${ports.backend}=${backendAvailable}, preview_proxy:${ports.preview_proxy}=${previewProxyAvailable}`
     );
   }
 
-  return frontendAvailable && backendAvailable;
+  return frontendAvailable && backendAvailable && previewProxyAvailable;
 }
 
 /**
@@ -87,10 +88,12 @@ async function allocatePorts() {
   if (process.env.PORT) {
     const frontendPort = parseInt(process.env.PORT, 10);
     const backendPort = frontendPort + 1;
+    const previewProxyPort = backendPort + 1;
 
     const ports = {
       frontend: frontendPort,
       backend: backendPort,
+      preview_proxy: previewProxyPort,
       timestamp: new Date().toISOString(),
     };
 
@@ -98,6 +101,7 @@ async function allocatePorts() {
       console.log("Using PORT environment variable:");
       console.log(`Frontend: ${ports.frontend}`);
       console.log(`Backend: ${ports.backend}`);
+      console.log(`Preview Proxy: ${ports.preview_proxy}`);
     }
 
     return ports;
@@ -113,6 +117,7 @@ async function allocatePorts() {
         console.log("Reusing existing dev ports:");
         console.log(`Frontend: ${existingPorts.frontend}`);
         console.log(`Backend: ${existingPorts.backend}`);
+        console.log(`Preview Proxy: ${existingPorts.preview_proxy}`);
       }
       return existingPorts;
     } else {
@@ -127,10 +132,12 @@ async function allocatePorts() {
   // Find new free ports
   const frontendPort = await findFreePort(3000);
   const backendPort = await findFreePort(frontendPort + 1);
+  const previewProxyPort = await findFreePort(backendPort + 1);
 
   const ports = {
     frontend: frontendPort,
     backend: backendPort,
+    preview_proxy: previewProxyPort,
     timestamp: new Date().toISOString(),
   };
 
@@ -140,6 +147,7 @@ async function allocatePorts() {
     console.log("Allocated new dev ports:");
     console.log(`Frontend: ${ports.frontend}`);
     console.log(`Backend: ${ports.backend}`);
+    console.log(`Preview Proxy: ${ports.preview_proxy}`);
   }
 
   return ports;
@@ -221,19 +229,30 @@ if (require.main === module) {
         .catch(console.error);
       break;
 
+    case "preview_proxy":
+      getPorts()
+        .then((ports) => {
+          console.log(JSON.stringify(ports.preview_proxy, null, 2));
+        })
+        .catch(console.error);
+      break;
+
     default:
       console.log("Usage:");
       console.log(
-        "  node setup-dev-environment.js get     - Setup dev environment (ports + assets)"
+        "  node setup-dev-environment.js get           - Setup dev environment (ports + assets)"
       );
       console.log(
-        "  node setup-dev-environment.js frontend - Get frontend port only"
+        "  node setup-dev-environment.js frontend      - Get frontend port only"
       );
       console.log(
-        "  node setup-dev-environment.js backend  - Get backend port only"
+        "  node setup-dev-environment.js backend       - Get backend port only"
       );
       console.log(
-        "  node setup-dev-environment.js clear    - Clear saved ports"
+        "  node setup-dev-environment.js preview_proxy - Get preview proxy port only"
+      );
+      console.log(
+        "  node setup-dev-environment.js clear         - Clear saved ports"
       );
       break;
   }

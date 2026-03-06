@@ -11,7 +11,6 @@ pub struct MutationResponse<T> {
 
 /// Response wrapper for delete endpoints.
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct DeleteResponse {
     pub txid: i64,
 }

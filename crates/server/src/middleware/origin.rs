@@ -38,6 +38,12 @@ impl OriginKey {
 
 #[allow(clippy::result_large_err)]
 pub fn validate_origin<B>(req: &mut Request<B>) -> Result<(), Response> {
+    // Relay-proxied requests are authenticated through the relay's own session
+    // system, so origin validation is not applicable.
+    if is_relay_request(req) {
+        return Ok(());
+    }
+
     let Some(origin) = get_origin_header(req) else {
         return Ok(());
     };
@@ -87,6 +93,13 @@ fn get_header<B>(req: &Request<B>, name: header::HeaderName) -> Option<&str> {
         .get(name)
         .and_then(|v| v.to_str().ok())
         .map(str::trim)
+}
+
+fn is_relay_request<B>(req: &Request<B>) -> bool {
+    req.headers()
+        .get("x-vk-relayed")
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.trim() == "1")
 }
 
 fn forbidden() -> Response {

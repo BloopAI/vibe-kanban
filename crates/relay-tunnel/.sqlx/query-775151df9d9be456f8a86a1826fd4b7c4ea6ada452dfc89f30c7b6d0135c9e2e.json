@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE auth_sessions\n            SET last_used_at = date_trunc('day', NOW())\n            WHERE id = $1\n              AND (\n                last_used_at IS NULL\n                OR last_used_at < date_trunc('day', NOW())\n              )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "775151df9d9be456f8a86a1826fd4b7c4ea6ada452dfc89f30c7b6d0135c9e2e"
+}

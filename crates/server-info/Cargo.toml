@@ -1,0 +1,7 @@
+[package]
+name = "server-info"
+version = "0.1.25"
+edition = "2024"
+
+[dependencies]
+tokio = { workspace = true }

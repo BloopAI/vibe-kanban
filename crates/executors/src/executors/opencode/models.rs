@@ -6,7 +6,7 @@ use std::{
 use serde_json::Value;
 
 use crate::executors::opencode::{
-    sdk::EventStreamContext,
+    sdk::{EventStreamContext, list_providers},
     types::{MessageRole, OpencodeExecutorEvent, ProviderListResponse, SdkEvent},
 };
 
@@ -15,7 +15,7 @@ type ModelId = String;
 type ContextWindowTokens = u32;
 
 // Maps (Provider, Model) -> Context Window
-type ModelContextWindows = HashMap<(ProviderId, ModelId), ContextWindowTokens>;
+pub(super) type ModelContextWindows = HashMap<(ProviderId, ModelId), ContextWindowTokens>;
 
 /// Cache entry for model context windows.
 /// Keyed by a config-derived cache key (based on env vars + base command)
@@ -155,49 +155,35 @@ pub(super) async fn maybe_emit_token_usage(context: &EventStreamContext<'_>, eve
         .await;
 }
 
+pub(super) fn extract_context_windows(data: &ProviderListResponse) -> ModelContextWindows {
+    let mut windows = ModelContextWindows::new();
+    for provider in &data.all {
+        for (model_id, info) in &provider.models {
+            if info.limit.context > 0 {
+                windows.insert((provider.id.clone(), model_id.clone()), info.limit.context);
+            }
+        }
+    }
+    windows
+}
+
+pub(super) fn seed_context_windows_cache(cache_key: &str, windows: ModelContextWindows) {
+    let mut cache = CONTEXT_WINDOWS_CACHE.entries.lock().unwrap();
+    let entry = cache.entry(cache_key.to_string()).or_default();
+    entry.context_windows.extend(windows);
+}
+
 async fn fetch_model_context_windows(
     client: &reqwest::Client,
     base_url: &str,
     directory: &str,
 ) -> Option<ModelContextWindows> {
-    let response = match client
-        .get(format!("{base_url}/provider"))
-        .query(&[("directory", directory)])
-        .send()
-        .await
-    {
-        Ok(resp) => resp,
+    let parsed = match list_providers(client, base_url, directory).await {
+        Ok(p) => p,
         Err(err) => {
             tracing::debug!("OpenCode provider list request failed: {err}");
             return None;
         }
     };
-
-    if !response.status().is_success() {
-        tracing::debug!(
-            "OpenCode provider list request failed with HTTP {}",
-            response.status()
-        );
-        return None;
-    }
-
-    let parsed = match response.json::<ProviderListResponse>().await {
-        Ok(parsed) => parsed,
-        Err(err) => {
-            tracing::debug!("OpenCode provider list response parse failed: {err}");
-            return None;
-        }
-    };
-
-    let mut windows: ModelContextWindows = HashMap::new();
-    for provider in parsed.all {
-        for (model_id, info) in provider.models {
-            let context_window = info.limit.context;
-            if context_window > 0 {
-                windows.insert((provider.id.clone(), model_id), context_window);
-            }
-        }
-    }
-
-    Some(windows)
+    Some(extract_context_windows(&parsed))
 }

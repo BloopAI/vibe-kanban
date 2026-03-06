@@ -1,8 +1,12 @@
+use api_types::{
+    ListPullRequestsQuery, ListPullRequestsResponse, PullRequest, PullRequestStatus,
+    UpsertPullRequestRequest,
+};
 use axum::{
     Json, Router,
-    extract::{Extension, State},
+    extract::{Extension, Query, State},
     http::StatusCode,
-    routing::post,
+    routing::get,
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
@@ -16,9 +20,11 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{issues::IssueRepository, pull_requests::PullRequestRepository, workspaces::WorkspaceRepository},
+    db::{
+        issues::IssueRepository, pull_requests::PullRequestRepository,
+        workspaces::WorkspaceRepository,
+    },
 };
-use api_types::{PullRequest, PullRequestStatus, UpsertPullRequestRequest};
 
 #[derive(Debug, Deserialize)]
 pub struct CreatePullRequestRequest {
@@ -43,10 +49,36 @@ pub struct UpdatePullRequestRequest {
 pub fn router() -> Router<AppState> {
     Router::new().route(
         "/pull_requests",
-        post(create_pull_request)
+        get(list_pull_requests)
+            .post(create_pull_request)
             .patch(update_pull_request)
             .put(upsert_pull_request),
     )
+}
+
+#[instrument(
+    name = "pull_requests.list_pull_requests",
+    skip(state, ctx),
+    fields(issue_id = %query.issue_id, user_id = %ctx.user.id)
+)]
+async fn list_pull_requests(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<ListPullRequestsQuery>,
+) -> Result<Json<ListPullRequestsResponse>, ErrorResponse> {
+    ensure_issue_access(state.pool(), ctx.user.id, query.issue_id).await?;
+
+    let pull_requests = PullRequestRepository::list_by_issue(state.pool(), query.issue_id)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, "failed to list pull requests");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list pull requests",
+            )
+        })?;
+
+    Ok(Json(ListPullRequestsResponse { pull_requests }))
 }
 
 #[instrument(

@@ -5,7 +5,7 @@ use std::{
 };
 
 use dashmap::DashMap;
-use db::models::project::{SearchMatchType, SearchResult};
+use db::models::repo::{SearchMatchType, SearchResult};
 use git::{FileStat, GitService, GitServiceError};
 use once_cell::sync::Lazy;
 use tokio::task;

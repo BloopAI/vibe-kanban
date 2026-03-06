@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT b.project_id\n            FROM attachments a\n            INNER JOIN blobs b ON b.id = a.blob_id\n            WHERE a.id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "project_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "08fa6f887e954e3b6921f84bbd412b4c3fc5dc1df0b9a5ea3fa4a4b07a86bb55"
+}

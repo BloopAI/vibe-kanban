@@ -6,7 +6,6 @@ use uuid::Uuid;
 use crate::some_if_present;
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct IssueCommentReaction {
     pub id: Uuid,
     pub comment_id: Uuid,

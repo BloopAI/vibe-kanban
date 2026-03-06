@@ -12,8 +12,14 @@ use workspace_utils::msg_store::MsgStore;
 use crate::{
     command::{CommandBuildError, CommandBuilder, CommandParts},
     env::ExecutionEnv,
-    executors::{AppendPrompt, ExecutorError, SpawnedChild, StandardCodingAgentExecutor},
-    logs::utils::EntryIndexProvider,
+    executor_discovery::ExecutorDiscoveredOptions,
+    executors::{
+        AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
+        StandardCodingAgentExecutor,
+    },
+    logs::utils::{EntryIndexProvider, patch},
+    model_selector::{ModelInfo, ModelSelectorConfig},
+    profile::ExecutorConfig,
 };
 
 pub mod normalize_logs;
@@ -137,6 +143,19 @@ async fn spawn_droid(
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Droid {
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(permission_policy) = executor_config.permission_policy.clone() {
+            self.autonomy = match permission_policy {
+                crate::model_selector::PermissionPolicy::Auto => Autonomy::SkipPermissionsUnsafe,
+                crate::model_selector::PermissionPolicy::Supervised
+                | crate::model_selector::PermissionPolicy::Plan => Autonomy::Normal,
+            };
+        }
+    }
+
     async fn spawn(
         &self,
         current_dir: &Path,
@@ -165,15 +184,95 @@ impl StandardCodingAgentExecutor for Droid {
         spawn_droid(continue_cmd, &combined_prompt, current_dir, env, &self.cmd).await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, current_dir: &Path) {
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        current_dir: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         normalize_logs(
             msg_store.clone(),
             current_dir,
             EntryIndexProvider::start_from(&msg_store),
-        );
+        )
     }
 
     fn default_mcp_config_path(&self) -> Option<std::path::PathBuf> {
         dirs::home_dir().map(|home| home.join(".factory").join("mcp.json"))
+    }
+
+    fn get_availability_info(&self) -> AvailabilityInfo {
+        let mcp_config_found = self
+            .default_mcp_config_path()
+            .map(|p| p.exists())
+            .unwrap_or(false);
+
+        let installation_indicator_found = dirs::home_dir()
+            .map(|home| home.join(".factory").join("installation_id").exists())
+            .unwrap_or(false);
+
+        if mcp_config_found || installation_indicator_found {
+            AvailabilityInfo::InstallationFound
+        } else {
+            AvailabilityInfo::NotFound
+        }
+    }
+
+    fn get_preset_options(&self) -> ExecutorConfig {
+        ExecutorConfig {
+            executor: BaseCodingAgent::Droid,
+            variant: None,
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: self
+                .reasoning_effort
+                .as_ref()
+                .map(|e| e.as_ref().to_string()),
+            permission_policy: Some(crate::model_selector::PermissionPolicy::Auto),
+        }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: [
+                    ("claude-opus-4-6", "Claude Opus 4.6"),
+                    ("claude-opus-4-6-fast", "Claude Opus 4.6 Fast Mode"),
+                    ("gemini-3.1-pro-preview", "Gemini 3.1 Pro"),
+                    ("glm-5", "GLM-5"),
+                    ("gpt-5.3-codex", "GPT 5.3 Codex"),
+                    ("claude-sonnet-4-6", "Claude Sonnet 4.6"),
+                    ("kimi-k2.5", "Kimi K2.5"),
+                    ("minimax-m2.5", "MiniMax M2.5"),
+                    ("glm-4.7", "GLM-4.7"),
+                    ("claude-opus-4-5-20251101", "Claude Opus 4.5"),
+                    ("claude-sonnet-4-5-20250929", "Claude Sonnet 4.5"),
+                    ("claude-haiku-4-5-20251001", "Claude Haiku 4.5"),
+                    ("gpt-5.2-codex", "GPT 5.2 Codex"),
+                    ("gpt-5.2", "GPT 5.2"),
+                    ("gemini-3-pro-preview", "Gemini 3 Pro"),
+                    ("gemini-3-flash-preview", "Gemini 3 Flash"),
+                    ("gpt-5.1-codex", "GPT 5.1 Codex"),
+                    ("gpt-5.1-codex-max", "GPT 5.1 Codex Max"),
+                    ("gpt-5.1", "GPT 5.1"),
+                ]
+                .into_iter()
+                .map(|(id, name)| ModelInfo {
+                    id: id.to_string(),
+                    name: name.to_string(),
+                    provider_id: None,
+                    reasoning_options: vec![],
+                })
+                .collect(),
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 }

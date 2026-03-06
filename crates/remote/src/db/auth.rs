@@ -1,5 +1,5 @@
-use chrono::{DateTime, Duration, Utc};
-use serde::Serialize;
+pub use api_types::AuthSession;
+use chrono::Duration;
 use sqlx::{PgPool, query_as};
 use thiserror::Error;
 use uuid::Uuid;
@@ -18,17 +18,6 @@ pub enum AuthSessionError {
     InvalidToken,
     #[error(transparent)]
     Database(#[from] sqlx::Error),
-}
-
-#[derive(Debug, Clone, sqlx::FromRow, Serialize)]
-pub struct AuthSession {
-    pub id: Uuid,
-    pub user_id: Uuid,
-    pub created_at: DateTime<Utc>,
-    pub last_used_at: Option<DateTime<Utc>>,
-    pub revoked_at: Option<DateTime<Utc>>,
-    pub refresh_token_id: Option<Uuid>,
-    pub refresh_token_issued_at: Option<DateTime<Utc>>,
 }
 
 pub const MAX_SESSION_INACTIVITY_DURATION: Duration = Duration::days(365);
@@ -241,15 +230,5 @@ impl<'a> AuthSessionRepository<'a> {
         .execute(self.pool)
         .await?;
         Ok(())
-    }
-}
-
-impl AuthSession {
-    pub fn last_activity_at(&self) -> DateTime<Utc> {
-        self.last_used_at.unwrap_or(self.created_at)
-    }
-
-    pub fn inactivity_duration(&self, now: DateTime<Utc>) -> Duration {
-        now.signed_duration_since(self.last_activity_at())
     }
 }

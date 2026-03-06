@@ -5,34 +5,32 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use db::models::{
-    execution_process::ExecutionProcessError, project::ProjectError,
-    project_repo::ProjectRepoError, repo::RepoError, scratch::ScratchError, session::SessionError,
-    workspace::WorkspaceError,
+    execution_process::ExecutionProcessError, repo::RepoError, scratch::ScratchError,
+    session::SessionError, workspace::WorkspaceError,
 };
 use deployment::{DeploymentError, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
 use git::GitServiceError;
+use git_host::GitHostError;
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
-    git_host::GitHostError,
     image::ImageError,
     migration::MigrationError,
-    project::ProjectServiceError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
-    worktree_manager::WorktreeError,
 };
 use thiserror::Error;
+use trusted_key_auth::error::TrustedKeyAuthError;
 use utils::response::ApiResponse;
+use workspace_manager::WorkspaceError as WorkspaceManagerError;
+use worktree_manager::WorktreeError;
 
 #[derive(Debug, Error, ts_rs::TS)]
 #[ts(type = "string")]
 pub enum ApiError {
-    #[error(transparent)]
-    Project(#[from] ProjectError),
     #[error(transparent)]
     Repo(#[from] RepoError),
     #[error(transparent)]
@@ -77,6 +75,8 @@ pub enum ApiError {
     Conflict(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -100,6 +100,34 @@ impl From<Git2Error> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<WorkspaceManagerError> for ApiError {
+    fn from(err: WorkspaceManagerError) -> Self {
+        match err {
+            WorkspaceManagerError::Database(err) => ApiError::Database(err),
+            WorkspaceManagerError::Repo(err) => ApiError::Repo(err),
+            WorkspaceManagerError::Worktree(err) => ApiError::Worktree(err),
+            WorkspaceManagerError::GitService(err) => ApiError::GitService(err),
+            WorkspaceManagerError::Io(err) => ApiError::Io(err),
+            WorkspaceManagerError::WorkspaceNotFound => {
+                ApiError::Workspace(WorkspaceError::WorkspaceNotFound)
+            }
+            WorkspaceManagerError::RepoAlreadyAttached => {
+                ApiError::Conflict("Repository already attached to workspace".to_string())
+            }
+            WorkspaceManagerError::BranchNotFound { repo_name, branch } => {
+                ApiError::BadRequest(format!(
+                    "Branch '{}' does not exist in repository '{}'",
+                    branch, repo_name
+                ))
+            }
+            WorkspaceManagerError::NoRepositories => {
+                ApiError::BadRequest("Workspace has no repositories configured".to_string())
+            }
+            WorkspaceManagerError::PartialCreation(msg) => ApiError::Conflict(msg),
+        }
     }
 }
 
@@ -163,6 +191,11 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
             StatusCode::GATEWAY_TIMEOUT,
             "RemoteClientError",
             "Remote service timeout. Please try again.",
+        ),
+        RemoteClientError::TokenRefreshTimeout => ErrorInfo::with_status(
+            StatusCode::UNAUTHORIZED,
+            "RemoteClientError",
+            "Remote service timeout during token refresh. Please sign in again.",
         ),
         RemoteClientError::Transport(_) => ErrorInfo::with_status(
             StatusCode::BAD_GATEWAY,
@@ -244,12 +277,6 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let info = match &self {
-            ApiError::Project(ProjectError::Database(_)) => ErrorInfo::internal("ProjectError"),
-            ApiError::Project(ProjectError::ProjectNotFound) => {
-                ErrorInfo::not_found("ProjectError", "Project not found.")
-            }
-            ApiError::Project(ProjectError::CreateFailed(_)) => ErrorInfo::internal("ProjectError"),
-
             ApiError::Repo(RepoError::Database(_)) => ErrorInfo::internal("RepoError"),
             ApiError::Repo(RepoError::NotFound) => {
                 ErrorInfo::not_found("RepoError", "Repository not found.")
@@ -258,11 +285,8 @@ impl IntoResponse for ApiError {
             ApiError::Workspace(WorkspaceError::Database(_)) => {
                 ErrorInfo::internal("WorkspaceError")
             }
-            ApiError::Workspace(WorkspaceError::TaskNotFound) => {
-                ErrorInfo::not_found("WorkspaceError", "Task not found.")
-            }
-            ApiError::Workspace(WorkspaceError::ProjectNotFound) => {
-                ErrorInfo::not_found("WorkspaceError", "Project not found.")
+            ApiError::Workspace(WorkspaceError::WorkspaceNotFound) => {
+                ErrorInfo::not_found("WorkspaceError", "Workspace not found.")
             }
             ApiError::Workspace(WorkspaceError::ValidationError(msg)) => {
                 ErrorInfo::bad_request("WorkspaceError", msg.clone())
@@ -409,6 +433,11 @@ impl IntoResponse for ApiError {
             ApiError::Forbidden(msg) => {
                 ErrorInfo::with_status(StatusCode::FORBIDDEN, "ForbiddenError", msg.clone())
             }
+            ApiError::TooManyRequests(msg) => ErrorInfo::with_status(
+                StatusCode::TOO_MANY_REQUESTS,
+                "TooManyRequests",
+                msg.clone(),
+            ),
             ApiError::Multipart(_) => ErrorInfo::bad_request(
                 "MultipartError",
                 "Failed to upload file. Please ensure the file is valid and try again.",
@@ -473,36 +502,14 @@ impl IntoResponse for ApiError {
     }
 }
 
-impl From<ProjectServiceError> for ApiError {
-    fn from(err: ProjectServiceError) -> Self {
+impl From<TrustedKeyAuthError> for ApiError {
+    fn from(err: TrustedKeyAuthError) -> Self {
         match err {
-            ProjectServiceError::Database(db_err) => ApiError::Database(db_err),
-            ProjectServiceError::Io(io_err) => ApiError::Io(io_err),
-            ProjectServiceError::Project(proj_err) => ApiError::Project(proj_err),
-            ProjectServiceError::PathNotFound(path) => {
-                ApiError::BadRequest(format!("Path does not exist: {}", path.display()))
-            }
-            ProjectServiceError::PathNotDirectory(path) => {
-                ApiError::BadRequest(format!("Path is not a directory: {}", path.display()))
-            }
-            ProjectServiceError::NotGitRepository(path) => {
-                ApiError::BadRequest(format!("Path is not a git repository: {}", path.display()))
-            }
-            ProjectServiceError::DuplicateGitRepoPath => ApiError::Conflict(
-                "A project with this git repository path already exists".to_string(),
-            ),
-            ProjectServiceError::DuplicateRepositoryName => ApiError::Conflict(
-                "A repository with this name already exists in the project".to_string(),
-            ),
-            ProjectServiceError::RepositoryNotFound => {
-                ApiError::BadRequest("Repository not found".to_string())
-            }
-            ProjectServiceError::GitError(msg) => {
-                ApiError::BadRequest(format!("Git operation failed: {}", msg))
-            }
-            ProjectServiceError::RemoteClient(msg) => {
-                ApiError::BadRequest(format!("Remote client error: {}", msg))
-            }
+            TrustedKeyAuthError::Unauthorized => ApiError::Unauthorized,
+            TrustedKeyAuthError::BadRequest(msg) => ApiError::BadRequest(msg),
+            TrustedKeyAuthError::Forbidden(msg) => ApiError::Forbidden(msg),
+            TrustedKeyAuthError::TooManyRequests(msg) => ApiError::TooManyRequests(msg),
+            TrustedKeyAuthError::Io(e) => ApiError::Io(e),
         }
     }
 }
@@ -530,20 +537,6 @@ impl From<RepoServiceError> for ApiError {
             }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
-            }
-        }
-    }
-}
-
-impl From<ProjectRepoError> for ApiError {
-    fn from(err: ProjectRepoError) -> Self {
-        match err {
-            ProjectRepoError::Database(db_err) => ApiError::Database(db_err),
-            ProjectRepoError::NotFound => {
-                ApiError::BadRequest("Repository not found in project".to_string())
-            }
-            ProjectRepoError::AlreadyExists => {
-                ApiError::Conflict("Repository already exists in project".to_string())
             }
         }
     }

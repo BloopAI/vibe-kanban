@@ -6,6 +6,8 @@ use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use executors::profile::ExecutorConfigs;
 use git::GitService;
+use relay_control::{RelayControl, signing::RelaySigningService};
+use server_info::ServerInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -18,18 +20,19 @@ use services::services::{
     image::ImageService,
     oauth_credentials::OAuthCredentials,
     pr_monitor::PrMonitorService,
-    project::ProjectService,
     queued_message::QueuedMessageService,
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
-    worktree_manager::WorktreeManager,
 };
 use tokio::sync::RwLock;
+use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
-    assets::{config_path, credentials_path},
+    assets::{config_path, credentials_path, server_signing_key_path, trusted_keys_path},
     msg_store::MsgStore,
 };
 use uuid::Uuid;
+use workspace_manager::WorkspaceManager;
+use worktree_manager::WorktreeManager;
 
 use crate::{container::LocalContainerService, pty::PtyService};
 mod command;
@@ -42,10 +45,10 @@ pub struct LocalDeployment {
     config: Arc<RwLock<Config>>,
     user_id: String,
     db: DBService,
+    workspace_manager: WorkspaceManager,
     analytics: Option<AnalyticsService>,
     container: LocalContainerService,
     git: GitService,
-    project: ProjectService,
     repo: RepoService,
     image: ImageService,
     filesystem: FilesystemService,
@@ -54,8 +57,13 @@ pub struct LocalDeployment {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
+    shared_api_base: Option<String>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
+    trusted_key_auth: TrustedKeyAuthRuntime,
+    relay_signing: RelaySigningService,
+    relay_control: Arc<RelayControl>,
+    server_info: Arc<ServerInfo>,
     pty: PtyService,
 }
 
@@ -68,6 +76,11 @@ struct PendingHandoff {
 #[async_trait]
 impl Deployment for LocalDeployment {
     async fn new() -> Result<Self, DeploymentError> {
+        // Run one-time process logs migration from DB to filesystem
+        services::services::execution_process::migrate_execution_logs_to_files()
+            .await
+            .map_err(|e| DeploymentError::Other(anyhow::anyhow!("Migration failed: {}", e)))?;
+
         let mut raw_config = load_config_from_file(&config_path()).await;
 
         let profiles = ExecutorConfigs::get_cached();
@@ -101,7 +114,6 @@ impl Deployment for LocalDeployment {
         let user_id = generate_user_id();
         let analytics = AnalyticsConfig::new().map(AnalyticsService::new);
         let git = GitService::new();
-        let project = ProjectService::new();
         let repo = RepoService::new();
         let msg_stores = Arc::new(RwLock::new(HashMap::new()));
         let filesystem = FilesystemService::new();
@@ -131,7 +143,7 @@ impl Deployment for LocalDeployment {
             });
         }
 
-        let approvals = Approvals::new(msg_stores.clone());
+        let approvals = Approvals::new();
         let queued_message_service = QueuedMessageService::new();
 
         let oauth_credentials = Arc::new(OAuthCredentials::new(credentials_path()));
@@ -146,8 +158,8 @@ impl Deployment for LocalDeployment {
             .ok()
             .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
 
-        let remote_client = match api_base {
-            Some(url) => match RemoteClient::new(&url, auth_context.clone()) {
+        let remote_client = match &api_base {
+            Some(url) => match RemoteClient::new(url, auth_context.clone()) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
                     Ok(client)
@@ -164,6 +176,11 @@ impl Deployment for LocalDeployment {
         };
 
         let oauth_handoffs = Arc::new(RwLock::new(HashMap::new()));
+        let trusted_key_auth = TrustedKeyAuthRuntime::new(trusted_keys_path());
+        let relay_signing = RelaySigningService::load_or_generate(&server_signing_key_path())
+            .expect("Failed to load or generate server signing key");
+        let relay_control = Arc::new(RelayControl::new());
+        let server_info = Arc::new(ServerInfo::new());
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully
@@ -171,8 +188,10 @@ impl Deployment for LocalDeployment {
             user_id: user_id.clone(),
             analytics_service: s.clone(),
         });
+        let workspace_manager = WorkspaceManager::new(db.clone());
         let container = LocalContainerService::new(
             db.clone(),
+            workspace_manager.clone(),
             msg_stores.clone(),
             config.clone(),
             git.clone(),
@@ -204,10 +223,10 @@ impl Deployment for LocalDeployment {
             config,
             user_id,
             db,
+            workspace_manager,
             analytics,
             container,
             git,
-            project,
             repo,
             image,
             filesystem,
@@ -216,8 +235,13 @@ impl Deployment for LocalDeployment {
             approvals,
             queued_message_service,
             remote_client,
+            shared_api_base: api_base,
             auth_context,
             oauth_handoffs,
+            trusted_key_auth,
+            relay_signing,
+            relay_control,
+            server_info,
             pty,
         };
 
@@ -246,10 +270,6 @@ impl Deployment for LocalDeployment {
 
     fn git(&self) -> &GitService {
         &self.git
-    }
-
-    fn project(&self) -> &ProjectService {
-        &self.project
     }
 
     fn repo(&self) -> &RepoService {
@@ -283,9 +303,33 @@ impl Deployment for LocalDeployment {
     fn auth_context(&self) -> &AuthContext {
         &self.auth_context
     }
+
+    fn relay_control(&self) -> &Arc<RelayControl> {
+        &self.relay_control
+    }
+
+    fn relay_signing(&self) -> &RelaySigningService {
+        &self.relay_signing
+    }
+
+    fn server_info(&self) -> &Arc<ServerInfo> {
+        &self.server_info
+    }
+
+    fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {
+        &self.trusted_key_auth
+    }
+
+    fn shared_api_base(&self) -> Option<String> {
+        self.shared_api_base.clone()
+    }
 }
 
 impl LocalDeployment {
+    pub fn workspace_manager(&self) -> &WorkspaceManager {
+        &self.workspace_manager
+    }
+
     pub fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         self.remote_client.clone()
     }

@@ -1,9 +1,4 @@
-use axum::{
-    Json, Router,
-    http::{Request, header::HeaderName},
-    middleware,
-    routing::get,
-};
+use axum::{Json, Router, http::header::HeaderName, middleware, routing::get};
 use serde::Serialize;
 use tower_http::{
     cors::{AllowHeaders, AllowMethods, AllowOrigin, CorsLayer},
@@ -29,9 +24,11 @@ mod billing {
         Router::new()
     }
 }
-mod electric_proxy;
+pub mod attachments;
+pub(crate) mod electric_proxy;
 pub(crate) mod error;
 mod github_app;
+pub mod hosts;
 mod identity;
 pub mod issue_assignees;
 pub mod issue_comment_reactions;
@@ -55,7 +52,7 @@ mod workspaces;
 
 pub fn router(state: AppState) -> Router {
     let trace_layer = TraceLayer::new_for_http()
-        .make_span_with(|request: &Request<_>| {
+        .make_span_with(|request: &axum::http::Request<_>| {
             let request_id = request
                 .extensions()
                 .get::<RequestId>()
@@ -110,6 +107,7 @@ pub fn router(state: AppState) -> Router {
 
     let v1_protected = Router::<AppState>::new()
         .merge(identity::router())
+        .merge(hosts::router())
         .merge(projects::router())
         .merge(organizations::router())
         .merge(organization_members::protected_router())
@@ -122,6 +120,7 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_comment_reactions::router())
         .merge(issues::router())
         .merge(issue_assignees::router())
+        .merge(attachments::router())
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())

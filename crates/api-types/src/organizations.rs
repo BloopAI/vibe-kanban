@@ -19,7 +19,6 @@ pub enum InvitationStatus {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-#[ts(export)]
 pub struct Organization {
     pub id: Uuid,
     pub name: String,
@@ -31,7 +30,6 @@ pub struct Organization {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-#[ts(export)]
 pub struct OrganizationWithRole {
     pub id: Uuid,
     pub name: String,
@@ -44,33 +42,28 @@ pub struct OrganizationWithRole {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ListOrganizationsResponse {
     pub organizations: Vec<OrganizationWithRole>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct GetOrganizationResponse {
     pub organization: Organization,
     pub user_role: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateOrganizationRequest {
     pub name: String,
     pub slug: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateOrganizationResponse {
     pub organization: OrganizationWithRole,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateOrganizationRequest {
     pub name: String,
 }
@@ -78,7 +71,6 @@ pub struct UpdateOrganizationRequest {
 // Invitation types
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Invitation {
     pub id: Uuid,
     pub organization_id: Uuid,
@@ -92,26 +84,22 @@ pub struct Invitation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateInvitationRequest {
     pub email: String,
     pub role: MemberRole,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CreateInvitationResponse {
     pub invitation: Invitation,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ListInvitationsResponse {
     pub invitations: Vec<Invitation>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct GetInvitationResponse {
     pub id: Uuid,
     pub organization_slug: String,
@@ -120,7 +108,6 @@ pub struct GetInvitationResponse {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AcceptInvitationResponse {
     pub organization_id: String,
     pub organization_slug: String,
@@ -137,7 +124,6 @@ pub struct RevokeInvitationRequest {
 /// Organization member info for API responses (without organization_id).
 /// See also `OrganizationMember` in organization_member.rs for the full DB row type.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct OrganizationMemberInfo {
     pub user_id: Uuid,
     pub role: MemberRole,
@@ -145,7 +131,6 @@ pub struct OrganizationMemberInfo {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct OrganizationMemberWithProfile {
     pub user_id: Uuid,
     pub role: MemberRole,
@@ -158,19 +143,16 @@ pub struct OrganizationMemberWithProfile {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ListMembersResponse {
     pub members: Vec<OrganizationMemberWithProfile>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateMemberRoleRequest {
     pub role: MemberRole,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct UpdateMemberRoleResponse {
     pub user_id: Uuid,
     pub role: MemberRole,

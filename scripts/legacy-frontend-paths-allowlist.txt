@@ -1,0 +1,7 @@
+# Allowed legacy frontend files during structure migration
+# Any newly added file under these paths should fail CI until moved to the new structure.
+# Paths covered:
+# - packages/local-web/src/components/ui-new
+# - packages/local-web/src/components/dialogs
+#
+# Intentionally empty: both legacy directories have been removed.

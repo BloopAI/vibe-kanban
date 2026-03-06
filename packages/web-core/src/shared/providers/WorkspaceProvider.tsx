@@ -1,0 +1,214 @@
+import { ReactNode, useMemo, useCallback, useEffect } from 'react';
+import { useParams } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
+import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
+import { useAttempt } from '@/shared/hooks/useAttempt';
+import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
+import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
+import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
+import { useDiffStream } from '@/shared/hooks/useDiffStream';
+import { attemptsApi } from '@/shared/lib/api';
+import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
+import type { DiffStats } from 'shared/types';
+import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+
+import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+
+interface WorkspaceProviderProps {
+  children: ReactNode;
+}
+
+export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
+  const { workspaceId } = useParams({ strict: false });
+  const appNavigation = useAppNavigation();
+  const currentDestination = useCurrentAppDestination();
+  const queryClient = useQueryClient();
+
+  // Derive isCreateMode from URL path instead of prop to allow provider to persist across route changes
+  const isCreateMode = currentDestination?.kind === 'workspaces-create';
+
+  // Fetch workspaces for sidebar display
+  const {
+    workspaces: activeWorkspaces,
+    archivedWorkspaces,
+    isLoading: isLoadingList,
+  } = useWorkspaces();
+
+  // Fetch real workspace data for the selected workspace
+  const { data: workspace, isLoading: isLoadingWorkspace } = useAttempt(
+    workspaceId,
+    { enabled: !!workspaceId && !isCreateMode }
+  );
+
+  // Fetch sessions for the current workspace
+  const {
+    sessions,
+    selectedSession,
+    selectedSessionId,
+    selectSession,
+    selectLatestSession,
+    isLoading: isSessionsLoading,
+    isNewSessionMode,
+    startNewSession,
+  } = useWorkspaceSessions(workspaceId, { enabled: !isCreateMode });
+
+  // Fetch repos for the current workspace
+  const { repos, isLoading: isReposLoading } = useAttemptRepo(workspaceId, {
+    enabled: !isCreateMode,
+  });
+
+  // Get first repo ID for PR comments.
+  // TODO: Support multiple repos - currently only fetches comments from the primary repo.
+  const primaryRepoId = repos[0]?.id;
+
+  // Check if current workspace has a PR attached (from workspace summaries)
+  const currentWorkspaceSummary = activeWorkspaces.find(
+    (w) => w.id === workspaceId
+  );
+  const hasPrAttached = !!currentWorkspaceSummary?.prStatus;
+
+  // GitHub comments hook (fetching, normalization, and helpers)
+  const {
+    gitHubComments,
+    isGitHubCommentsLoading,
+    showGitHubComments,
+    setShowGitHubComments,
+    getGitHubCommentsForFile,
+    getGitHubCommentCountForFile,
+    getFilesWithGitHubComments,
+    getFirstCommentLineForFile,
+  } = useGitHubComments({
+    workspaceId,
+    repoId: primaryRepoId,
+    enabled: !isCreateMode && hasPrAttached,
+  });
+
+  // Stream diffs for the current workspace
+  const { diffs } = useDiffStream(workspaceId ?? null, !isCreateMode);
+
+  const diffPaths = useMemo(
+    () =>
+      new Set(diffs.map((d) => d.newPath || d.oldPath || '').filter(Boolean)),
+    [diffs]
+  );
+
+  // Sync diffPaths to store for expand/collapse all functionality
+  useEffect(() => {
+    useDiffViewStore.getState().setDiffPaths(Array.from(diffPaths));
+    return () => useDiffViewStore.getState().setDiffPaths([]);
+  }, [diffPaths]);
+
+  const diffStats: DiffStats = useMemo(
+    () => ({
+      files_changed: diffs.length,
+      lines_added: diffs.reduce((sum, d) => sum + (d.additions ?? 0), 0),
+      lines_removed: diffs.reduce((sum, d) => sum + (d.deletions ?? 0), 0),
+    }),
+    [diffs]
+  );
+
+  const isLoading = isLoadingList || isLoadingWorkspace;
+
+  // Mark workspace as seen whenever the active workspaceId changes.
+  // This covers all navigation paths: sidebar clicks, kanban card clicks,
+  // direct URL navigation, and post-creation redirects.
+  useEffect(() => {
+    if (!workspaceId || isCreateMode) return;
+
+    attemptsApi
+      .markSeen(workspaceId)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
+      })
+      .catch((error) => {
+        console.warn('Failed to mark workspace as seen:', error);
+      });
+  }, [workspaceId, isCreateMode, queryClient]);
+
+  const selectWorkspace = useCallback(
+    (id: string) => {
+      appNavigation.goToWorkspace(id);
+    },
+    [appNavigation]
+  );
+
+  const navigateToCreate = useMemo(
+    () => () => {
+      appNavigation.goToWorkspacesCreate();
+    },
+    [appNavigation]
+  );
+
+  const value = useMemo(
+    () => ({
+      workspaceId,
+      workspace,
+      activeWorkspaces,
+      archivedWorkspaces,
+      isLoading,
+      isCreateMode,
+      selectWorkspace,
+      navigateToCreate,
+      sessions,
+      selectedSession,
+      selectedSessionId,
+      selectSession,
+      selectLatestSession,
+      isSessionsLoading,
+      isNewSessionMode,
+      startNewSession,
+      repos,
+      isReposLoading,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      getGitHubCommentCountForFile,
+      getFilesWithGitHubComments,
+      getFirstCommentLineForFile,
+      diffs,
+      diffPaths,
+      diffStats,
+    }),
+    [
+      workspaceId,
+      workspace,
+      activeWorkspaces,
+      archivedWorkspaces,
+      isLoading,
+      isCreateMode,
+      selectWorkspace,
+      navigateToCreate,
+      sessions,
+      selectedSession,
+      selectedSessionId,
+      selectSession,
+      selectLatestSession,
+      isSessionsLoading,
+      isNewSessionMode,
+      startNewSession,
+      repos,
+      isReposLoading,
+      gitHubComments,
+      isGitHubCommentsLoading,
+      showGitHubComments,
+      setShowGitHubComments,
+      getGitHubCommentsForFile,
+      getGitHubCommentCountForFile,
+      getFilesWithGitHubComments,
+      getFirstCommentLineForFile,
+      diffs,
+      diffPaths,
+      diffStats,
+    ]
+  );
+
+  return (
+    <WorkspaceContext.Provider value={value}>
+      {children}
+    </WorkspaceContext.Provider>
+  );
+}

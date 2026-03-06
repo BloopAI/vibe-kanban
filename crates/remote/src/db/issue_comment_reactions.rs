@@ -1,11 +1,10 @@
+use api_types::{DeleteResponse, IssueCommentReaction, MutationResponse};
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use thiserror::Error;
-use api_types::IssueCommentReaction;
 use uuid::Uuid;
 
 use super::get_txid;
-use api_types::{DeleteResponse, MutationResponse};
 
 #[derive(Debug, Error)]
 pub enum IssueCommentReactionError {
@@ -38,6 +37,29 @@ impl IssueCommentReactionRepository {
         .await?;
 
         Ok(record)
+    }
+
+    pub async fn list_by_issue(
+        pool: &PgPool,
+        issue_id: Uuid,
+    ) -> Result<Vec<IssueCommentReaction>, IssueCommentReactionError> {
+        let records = sqlx::query_as!(
+            IssueCommentReaction,
+            r#"
+            SELECT
+                id          AS "id!: Uuid",
+                comment_id  AS "comment_id!: Uuid",
+                user_id     AS "user_id!: Uuid",
+                emoji       AS "emoji!",
+                created_at  AS "created_at!: DateTime<Utc>"
+            FROM issue_comment_reactions
+            WHERE comment_id IN (SELECT id FROM issue_comments WHERE issue_id = $1)
+            "#,
+            issue_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(records)
     }
 
     pub async fn create(

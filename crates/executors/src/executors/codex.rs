@@ -2,12 +2,12 @@ pub mod client;
 pub mod jsonrpc;
 pub mod normalize_logs;
 pub mod review;
-pub mod session;
 pub mod slash_commands;
 use std::{
     collections::HashMap,
     env,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -24,17 +24,32 @@ pub fn codex_home() -> Option<PathBuf> {
     dirs::home_dir().map(|home| home.join(".codex"))
 }
 
+pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> ThreadForkParams {
+    ThreadForkParams {
+        thread_id,
+        model: params.model,
+        model_provider: params.model_provider,
+        cwd: params.cwd,
+        approval_policy: params.approval_policy,
+        sandbox: params.sandbox,
+        config: params.config,
+        base_instructions: params.base_instructions,
+        developer_instructions: params.developer_instructions,
+        ..Default::default()
+    }
+}
+
 use async_trait::async_trait;
-use codex_app_server_protocol::{NewConversationParams, ReviewTarget};
-use codex_protocol::{
-    config_types::SandboxMode as CodexSandboxMode, protocol::AskForApproval as CodexAskForApproval,
+use codex_app_server_protocol::{
+    AskForApproval as V2AskForApproval, ReviewTarget, SandboxMode as V2SandboxMode,
+    ThreadForkParams, ThreadStartParams, UserInput,
 };
 use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use strum_macros::AsRefStr;
+use strum_macros::{AsRefStr, EnumString};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
@@ -43,17 +58,19 @@ use self::{
     client::{AppServerClient, LogWriter},
     jsonrpc::{ExitSignalSender, JsonRpcPeer},
     normalize_logs::{Error, normalize_logs},
-    session::SessionHandler,
 };
 use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuildError, CommandBuilder, CommandParts, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
-        AppendPrompt, AvailabilityInfo, ExecutorError, ExecutorExitResult, SlashCommandDescription,
-        SpawnedChild, StandardCodingAgentExecutor,
+        AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, ExecutorExitResult,
+        SlashCommandDescription, SpawnedChild, StandardCodingAgentExecutor,
     },
     logs::utils::patch,
+    model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy, ReasoningOption},
+    profile::ExecutorConfig,
     stdout_dup::create_stdout_pipe_writer,
 };
 
@@ -88,7 +105,7 @@ pub enum AskForApproval {
 }
 
 /// Reasoning effort for the underlying model
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, JsonSchema, AsRefStr, EnumString)]
 #[serde(rename_all = "kebab-case")]
 #[strum(serialize_all = "kebab-case")]
 pub enum ReasoningEffort {
@@ -154,6 +171,8 @@ pub struct Codex {
     pub compact_prompt: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub developer_instructions: Option<String>,
+    #[serde(default)]
+    pub plan: bool,
     #[serde(flatten)]
     pub cmd: CmdOverrides,
 
@@ -165,39 +184,34 @@ pub struct Codex {
 
 #[async_trait]
 impl StandardCodingAgentExecutor for Codex {
-    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
-        self.approvals = Some(approvals);
+    fn apply_overrides(&mut self, executor_config: &ExecutorConfig) {
+        if let Some(model_id) = &executor_config.model_id {
+            self.model = Some(model_id.clone());
+        }
+        if let Some(reasoning_id) = &executor_config.reasoning_id
+            && let Ok(reasoning_effort) = ReasoningEffort::from_str(reasoning_id)
+        {
+            self.model_reasoning_effort = Some(reasoning_effort)
+        }
+        if let Some(permission_policy) = &executor_config.permission_policy {
+            match permission_policy {
+                crate::model_selector::PermissionPolicy::Auto => {
+                    self.ask_for_approval = Some(AskForApproval::Never);
+                }
+                crate::model_selector::PermissionPolicy::Supervised => {
+                    if matches!(self.ask_for_approval, None | Some(AskForApproval::Never)) {
+                        self.ask_for_approval = Some(AskForApproval::UnlessTrusted);
+                    }
+                }
+                crate::model_selector::PermissionPolicy::Plan => {
+                    self.plan = true;
+                }
+            }
+        }
     }
 
-    async fn available_slash_commands(
-        &self,
-        _workdir: &Path,
-    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
-        let commands = vec![
-            SlashCommandDescription {
-                name: "compact".to_string(),
-                description: Some(
-                    "summarize conversation to prevent hitting the context limit".to_string(),
-                ),
-            },
-            SlashCommandDescription {
-                name: "init".to_string(),
-                description: Some(
-                    "create an AGENTS.md file with instructions for Codex".to_string(),
-                ),
-            },
-            SlashCommandDescription {
-                name: "status".to_string(),
-                description: Some("show current session configuration and token usage".to_string()),
-            },
-            SlashCommandDescription {
-                name: "mcp".to_string(),
-                description: Some("list configured MCP tools".to_string()),
-            },
-        ];
-        Ok(Box::pin(futures::stream::once(async move {
-            patch::slash_commands(commands, false, None)
-        })))
+    fn use_approvals(&mut self, approvals: Arc<dyn ExecutorApprovalService>) {
+        self.approvals = Some(approvals);
     }
 
     async fn spawn(
@@ -222,8 +236,12 @@ impl StandardCodingAgentExecutor for Codex {
             .await
     }
 
-    fn normalize_logs(&self, msg_store: Arc<MsgStore>, worktree_path: &Path) {
-        normalize_logs(msg_store, worktree_path);
+    fn normalize_logs(
+        &self,
+        msg_store: Arc<MsgStore>,
+        worktree_path: &Path,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
+        normalize_logs(msg_store, worktree_path)
     }
 
     fn default_mcp_config_path(&self) -> Option<PathBuf> {
@@ -258,6 +276,116 @@ impl StandardCodingAgentExecutor for Codex {
         }
     }
 
+    fn get_preset_options(&self) -> ExecutorConfig {
+        use crate::model_selector::*;
+        let permission_policy = if self.plan {
+            PermissionPolicy::Plan
+        } else if matches!(self.ask_for_approval, None | Some(AskForApproval::Never)) {
+            PermissionPolicy::Auto
+        } else {
+            PermissionPolicy::Supervised
+        };
+
+        ExecutorConfig {
+            executor: BaseCodingAgent::Codex,
+            variant: None,
+            model_id: self.model.clone(),
+            agent_id: None,
+            reasoning_id: self
+                .model_reasoning_effort
+                .as_ref()
+                .map(|e| e.as_ref().to_string()),
+            permission_policy: Some(permission_policy),
+        }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        let xhigh_reasoning_options = ReasoningOption::from_names(
+            [
+                ReasoningEffort::Low,
+                ReasoningEffort::Medium,
+                ReasoningEffort::High,
+                ReasoningEffort::Xhigh,
+            ]
+            .map(|e| e.as_ref().to_string()),
+        );
+
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: vec![
+                    ModelInfo {
+                        id: "gpt-5.4".to_string(),
+                        name: "GPT-5.4".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.3-codex".to_string(),
+                        name: "GPT-5.3 Codex".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.2-codex".to_string(),
+                        name: "GPT-5.2 Codex".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.2".to_string(),
+                        name: "GPT-5.2".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.1-codex-max".to_string(),
+                        name: "GPT-5.1 Codex Max".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options,
+                    },
+                ],
+                permissions: vec![
+                    PermissionPolicy::Auto,
+                    PermissionPolicy::Supervised,
+                    PermissionPolicy::Plan,
+                ],
+                ..Default::default()
+            },
+            slash_commands: vec![
+                SlashCommandDescription {
+                    name: "compact".to_string(),
+                    description: Some(
+                        "summarize conversation to prevent hitting the context limit".to_string(),
+                    ),
+                },
+                SlashCommandDescription {
+                    name: "init".to_string(),
+                    description: Some(
+                        "create an AGENTS.md file with instructions for Codex".to_string(),
+                    ),
+                },
+                SlashCommandDescription {
+                    name: "status".to_string(),
+                    description: Some(
+                        "show current session configuration and token usage".to_string(),
+                    ),
+                },
+                SlashCommandDescription {
+                    name: "mcp".to_string(),
+                    description: Some("list configured MCP tools".to_string()),
+                },
+            ],
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
+    }
+
     async fn spawn_review(
         &self,
         current_dir: &Path,
@@ -279,7 +407,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.98.0"
+        "npx -y @openai/codex@0.110.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -292,38 +420,65 @@ impl Codex {
         apply_overrides(builder, &self.cmd)
     }
 
-    fn build_new_conversation_params(&self, cwd: &Path) -> NewConversationParams {
+    fn build_thread_start_params(&self, cwd: &Path) -> ThreadStartParams {
         let sandbox = match self.sandbox.as_ref() {
-            None | Some(SandboxMode::Auto) => Some(CodexSandboxMode::WorkspaceWrite), // match the Auto preset in codex
-            Some(SandboxMode::ReadOnly) => Some(CodexSandboxMode::ReadOnly),
-            Some(SandboxMode::WorkspaceWrite) => Some(CodexSandboxMode::WorkspaceWrite),
-            Some(SandboxMode::DangerFullAccess) => Some(CodexSandboxMode::DangerFullAccess),
+            None | Some(SandboxMode::Auto) => Some(V2SandboxMode::WorkspaceWrite), // match the Auto preset in codex
+            Some(SandboxMode::ReadOnly) => Some(V2SandboxMode::ReadOnly),
+            Some(SandboxMode::WorkspaceWrite) => Some(V2SandboxMode::WorkspaceWrite),
+            Some(SandboxMode::DangerFullAccess) => Some(V2SandboxMode::DangerFullAccess),
         };
 
         let approval_policy = match self.ask_for_approval.as_ref() {
             None if matches!(self.sandbox.as_ref(), None | Some(SandboxMode::Auto)) => {
                 // match the Auto preset in codex
-                Some(CodexAskForApproval::OnRequest)
+                Some(V2AskForApproval::OnRequest)
             }
             None => None,
-            Some(AskForApproval::UnlessTrusted) => Some(CodexAskForApproval::UnlessTrusted),
-            Some(AskForApproval::OnFailure) => Some(CodexAskForApproval::OnFailure),
-            Some(AskForApproval::OnRequest) => Some(CodexAskForApproval::OnRequest),
-            Some(AskForApproval::Never) => Some(CodexAskForApproval::Never),
+            Some(AskForApproval::UnlessTrusted) => Some(V2AskForApproval::UnlessTrusted),
+            Some(AskForApproval::OnFailure) => Some(V2AskForApproval::OnFailure),
+            Some(AskForApproval::OnRequest) => Some(V2AskForApproval::OnRequest),
+            Some(AskForApproval::Never) => Some(V2AskForApproval::Never),
         };
 
-        NewConversationParams {
+        let mut config = self.build_config_overrides();
+        // V1 top-level params that moved into config overrides in v2
+        if let Some(profile) = &self.profile {
+            config
+                .get_or_insert_with(HashMap::new)
+                .insert("profile".to_string(), Value::String(profile.clone()));
+        }
+        if let Some(include) = self.include_apply_patch_tool {
+            config
+                .get_or_insert_with(HashMap::new)
+                .insert("include_apply_patch_tool".to_string(), Value::Bool(include));
+        }
+        if let Some(compact) = &self.compact_prompt {
+            config
+                .get_or_insert_with(HashMap::new)
+                .insert("compact_prompt".to_string(), Value::String(compact.clone()));
+        }
+        if !matches!(approval_policy, None | Some(V2AskForApproval::Never)) {
+            let map = config.get_or_insert_with(HashMap::new);
+            map.insert(
+                "features.default_mode_request_user_input".to_string(),
+                Value::Bool(true),
+            );
+            map.insert(
+                "suppress_unstable_features_warning".to_string(),
+                Value::Bool(true),
+            );
+        }
+
+        ThreadStartParams {
             model: self.model.clone(),
-            profile: self.profile.clone(),
             cwd: Some(cwd.to_string_lossy().to_string()),
             approval_policy,
             sandbox,
-            config: self.build_config_overrides(),
+            config,
             base_instructions: self.base_instructions.clone(),
-            include_apply_patch_tool: self.include_apply_patch_tool,
             model_provider: self.model_provider.clone(),
-            compact_prompt: self.compact_prompt.clone(),
             developer_instructions: self.developer_instructions.clone(),
+            ..Default::default()
         }
     }
 
@@ -368,7 +523,7 @@ impl Codex {
         resume_session: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
-        let params = self.build_new_conversation_params(current_dir);
+        let params = self.build_thread_start_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
 
         self.spawn_app_server(
@@ -390,49 +545,46 @@ impl Codex {
     }
 
     async fn launch_codex_agent(
-        conversation_params: NewConversationParams,
+        thread_start_params: ThreadStartParams,
         resume_session: Option<String>,
         combined_prompt: String,
         client: Arc<AppServerClient>,
     ) -> Result<(), ExecutorError> {
-        let auth_status = client.get_auth_status().await?;
-        if auth_status.requires_openai_auth.unwrap_or(true) && auth_status.auth_method.is_none() {
+        let account = client.get_account().await?;
+        if account.requires_openai_auth && account.account.is_none() {
             return Err(ExecutorError::AuthRequired(
                 "Codex authentication required".to_string(),
             ));
         }
-        match resume_session {
+
+        let (thread_id, resolved_model) = match resume_session {
             None => {
-                let params = conversation_params;
-                let response = client.new_conversation(params).await?;
-                let conversation_id = response.conversation_id;
-                client.register_session(&conversation_id).await?;
-                client.add_conversation_listener(conversation_id).await?;
-                client
-                    .send_user_message(conversation_id, combined_prompt)
-                    .await?;
+                let response = client.thread_start(thread_start_params).await?;
+                (response.thread.id, response.model)
             }
             Some(session_id) => {
-                let (rollout_path, _forked_session_id) =
-                    SessionHandler::fork_rollout_file(&session_id)
-                        .map_err(|e| ExecutorError::FollowUpNotSupported(e.to_string()))?;
-                let overrides = conversation_params;
                 let response = client
-                    .resume_conversation(rollout_path.clone(), overrides)
+                    .thread_fork(fork_params_from(session_id, thread_start_params))
                     .await?;
-                tracing::debug!(
-                    "resuming session using rollout file {}, response {:?}",
-                    rollout_path.display(),
-                    response
-                );
-                let conversation_id = response.conversation_id;
-                client.register_session(&conversation_id).await?;
-                client.add_conversation_listener(conversation_id).await?;
-                client
-                    .send_user_message(conversation_id, combined_prompt)
-                    .await?;
+                tracing::debug!("forked thread, new thread_id={}", response.thread.id);
+                (response.thread.id, response.model)
             }
-        }
+        };
+
+        client.set_resolved_model(resolved_model);
+        client.register_session(&thread_id).await?;
+        let collaboration_mode = client.initial_collaboration_mode()?;
+        client
+            .turn_start_with_mode(
+                thread_id,
+                vec![UserInput::Text {
+                    text: combined_prompt,
+                    text_elements: vec![],
+                }],
+                collaboration_mode,
+            )
+            .await?;
+
         Ok(())
     }
 
@@ -486,6 +638,7 @@ impl Codex {
             (&self.sandbox, &self.ask_for_approval),
             (Some(SandboxMode::DangerFullAccess), None)
         );
+        let plan_mode = self.plan;
         let approvals = self.approvals.clone();
         let repo_context = env.repo_context.clone();
         let commit_reminder = env.commit_reminder;
@@ -501,6 +654,7 @@ impl Codex {
                 log_writer.clone(),
                 approvals,
                 auto_approve,
+                plan_mode,
                 repo_context,
                 commit_reminder,
                 commit_reminder_prompt,

@@ -3,7 +3,7 @@ use std::{
     io,
     path::{Path, PathBuf},
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use anyhow::anyhow;
@@ -20,7 +20,6 @@ use db::{
         repo::Repo,
         scratch::{DraftFollowUpData, Scratch, ScratchType},
         session::{Session, SessionError},
-        task::{Task, TaskStatus},
         workspace::Workspace,
         workspace_repo::WorkspaceRepo,
     },
@@ -51,7 +50,6 @@ use services::services::{
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
     remote_sync,
-    workspace_manager::{RepoWorkspaceInput, WorkspaceManager},
 };
 use tokio::{sync::RwLock, task::JoinHandle};
 use tokio_util::io::ReaderStream;
@@ -61,12 +59,16 @@ use utils::{
     text::{git_branch_id, short_uuid, truncate_to_char_boundary},
 };
 use uuid::Uuid;
+use workspace_manager::{RepoWorkspaceInput, WorkspaceError, WorkspaceManager};
 
 use crate::{command, copy};
+
+const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_mins(2);
 
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
+    workspace_manager: WorkspaceManager,
     child_store: Arc<RwLock<HashMap<Uuid, Arc<RwLock<AsyncGroupChild>>>>>,
     cancellation_tokens: Arc<RwLock<HashMap<Uuid, CancellationToken>>>,
     msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
@@ -74,6 +76,7 @@ pub struct LocalContainerService {
     /// When stopping execution, we await these to ensure logs are fully persisted.
     db_stream_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
     exit_monitor_handles: Arc<RwLock<HashMap<Uuid, JoinHandle<()>>>>,
+    workspace_touch_times: Arc<RwLock<HashMap<Uuid, Instant>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
     image_service: ImageService,
@@ -88,6 +91,7 @@ impl LocalContainerService {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         db: DBService,
+        workspace_manager: WorkspaceManager,
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
         config: Arc<RwLock<Config>>,
         git: GitService,
@@ -101,15 +105,18 @@ impl LocalContainerService {
         let cancellation_tokens = Arc::new(RwLock::new(HashMap::new()));
         let db_stream_handles = Arc::new(RwLock::new(HashMap::new()));
         let exit_monitor_handles = Arc::new(RwLock::new(HashMap::new()));
+        let workspace_touch_times = Arc::new(RwLock::new(HashMap::new()));
         let notification_service = NotificationService::new(config.clone());
 
         let container = LocalContainerService {
             db,
+            workspace_manager,
             child_store,
             cancellation_tokens,
             msg_stores,
             db_stream_handles,
             exit_monitor_handles,
+            workspace_touch_times,
             config,
             git,
             image_service,
@@ -123,6 +130,67 @@ impl LocalContainerService {
         container.spawn_workspace_cleanup();
 
         container
+    }
+
+    fn map_workspace_manager_error(err: WorkspaceError) -> ContainerError {
+        match err {
+            WorkspaceError::Database(err) => ContainerError::Sqlx(err),
+            WorkspaceError::Worktree(err) => ContainerError::Worktree(err),
+            WorkspaceError::GitService(err) => ContainerError::GitServiceError(err),
+            WorkspaceError::Io(err) => ContainerError::Io(err),
+            WorkspaceError::NoRepositories => {
+                ContainerError::Other(anyhow!("No repositories provided"))
+            }
+            WorkspaceError::Repo(err) => ContainerError::Other(anyhow!(err)),
+            WorkspaceError::WorkspaceNotFound => {
+                ContainerError::Other(anyhow!("Workspace not found"))
+            }
+            WorkspaceError::RepoAlreadyAttached => {
+                ContainerError::Other(anyhow!("Repository already attached to workspace"))
+            }
+            WorkspaceError::BranchNotFound { repo_name, branch } => ContainerError::Other(anyhow!(
+                "Branch '{}' does not exist in repository '{}'",
+                branch,
+                repo_name
+            )),
+            WorkspaceError::PartialCreation(msg) => ContainerError::Other(anyhow!(msg)),
+        }
+    }
+
+    async fn workspace_repo_inputs(
+        &self,
+        workspace_id: Uuid,
+    ) -> Result<(Vec<Repo>, Vec<RepoWorkspaceInput>), ContainerError> {
+        let workspace_repos =
+            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace_id).await?;
+        if workspace_repos.is_empty() {
+            return Err(ContainerError::Other(anyhow!(
+                "Workspace has no repositories configured"
+            )));
+        }
+
+        let repositories =
+            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace_id).await?;
+        let target_branches: HashMap<_, _> = workspace_repos
+            .iter()
+            .map(|wr| (wr.repo_id, wr.target_branch.clone()))
+            .collect();
+
+        let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
+            .iter()
+            .map(|repo| {
+                let target_branch = target_branches.get(&repo.id).cloned().ok_or_else(|| {
+                    ContainerError::Other(anyhow!(
+                        "Missing target branch mapping for repo {} in workspace {}",
+                        repo.id,
+                        workspace_id
+                    ))
+                })?;
+                Ok(RepoWorkspaceInput::new(repo.clone(), target_branch))
+            })
+            .collect::<Result<_, ContainerError>>()?;
+
+        Ok((repositories, workspace_inputs))
     }
 
     pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
@@ -170,13 +238,13 @@ impl LocalContainerService {
         map.remove(id)
     }
 
-    pub async fn cleanup_workspace(db: &DBService, workspace: &Workspace) {
+    pub async fn cleanup_workspace(&self, workspace: &Workspace) {
         let Some(container_ref) = &workspace.container_ref else {
             return;
         };
         let workspace_dir = PathBuf::from(container_ref);
 
-        let repositories = WorkspaceRepo::find_repos_for_workspace(&db.pool, workspace.id)
+        let repositories = WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id)
             .await
             .unwrap_or_default();
 
@@ -202,11 +270,10 @@ impl LocalContainerService {
                 });
         }
 
-        // Clear container_ref so this workspace won't be picked up again
-        let _ = Workspace::clear_container_ref(&db.pool, workspace.id).await;
+        let _ = Workspace::mark_worktree_deleted(&self.db.pool, workspace.id).await;
     }
 
-    pub async fn cleanup_expired_workspaces(db: &DBService) -> Result<(), DeploymentError> {
+    pub async fn cleanup_expired_workspaces(&self) -> Result<(), DeploymentError> {
         if std::env::var("DISABLE_WORKTREE_CLEANUP").is_ok() {
             tracing::info!(
                 "Expired workspace cleanup is disabled via DISABLE_WORKTREE_CLEANUP environment variable"
@@ -214,7 +281,7 @@ impl LocalContainerService {
             return Ok(());
         }
 
-        let expired_workspaces = Workspace::find_expired_for_cleanup(&db.pool).await?;
+        let expired_workspaces = Workspace::find_expired_for_cleanup(&self.db.pool).await?;
         if expired_workspaces.is_empty() {
             tracing::debug!("No expired workspaces found");
             return Ok(());
@@ -224,25 +291,30 @@ impl LocalContainerService {
             expired_workspaces.len()
         );
         for workspace in &expired_workspaces {
-            Self::cleanup_workspace(db, workspace).await;
+            self.cleanup_workspace(workspace).await;
         }
         Ok(())
     }
 
     pub fn spawn_workspace_cleanup(&self) {
-        let db = self.db.clone();
-        let cleanup_expired = Self::cleanup_expired_workspaces;
+        let container = self.clone();
         tokio::spawn(async move {
-            WorkspaceManager::cleanup_orphan_workspaces(&db.pool).await;
+            container
+                .workspace_manager
+                .cleanup_orphan_workspaces()
+                .await;
 
             let mut cleanup_interval =
                 tokio::time::interval(tokio::time::Duration::from_secs(1800)); // 30 minutes
             loop {
                 cleanup_interval.tick().await;
                 tracing::info!("Starting periodic workspace cleanup...");
-                cleanup_expired(&db).await.unwrap_or_else(|e| {
-                    tracing::error!("Failed to clean up expired workspaces: {}", e)
-                });
+                container
+                    .cleanup_expired_workspaces()
+                    .await
+                    .unwrap_or_else(|e| {
+                        tracing::error!("Failed to clean up expired workspaces: {}", e)
+                    });
             }
         });
     }
@@ -535,6 +607,14 @@ impl LocalContainerService {
                 }
 
                 if container.should_finalize(&ctx) {
+                    let has_chained_follow_up = ctx
+                        .execution_process
+                        .executor_action()
+                        .ok()
+                        .and_then(|action| action.next_action())
+                        .is_some();
+                    let mut started_queued_follow_up = false;
+
                     // Only execute queued messages if the execution succeeded
                     // If it failed or was killed, just clear the queue and finalize
                     let should_execute_queued = !matches!(
@@ -573,6 +653,8 @@ impl LocalContainerService {
                                 tracing::error!("Failed to start queued follow-up: {}", e);
                                 // Fall back to finalization if follow-up fails
                                 container.finalize_task(&ctx).await;
+                            } else {
+                                started_queued_follow_up = true;
                             }
                         } else {
                             // Execution failed or was killed - discard the queued message and finalize
@@ -586,6 +668,26 @@ impl LocalContainerService {
                     } else {
                         container.finalize_task(&ctx).await;
                     }
+
+                    let should_mark_turn_unseen = matches!(
+                        ctx.execution_process.run_reason,
+                        ExecutionProcessRunReason::CodingAgent
+                    ) && !has_chained_follow_up
+                        && !started_queued_follow_up;
+
+                    if should_mark_turn_unseen
+                        && let Err(e) = CodingAgentTurn::mark_unseen_by_execution_process_id(
+                            &db.pool,
+                            ctx.execution_process.id,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            "Failed to mark coding agent turn unseen for execution {}: {}",
+                            ctx.execution_process.id,
+                            e
+                        );
+                    }
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
@@ -597,8 +699,6 @@ impl LocalContainerService {
                     && let Some(analytics) = &analytics
                 {
                     analytics.analytics_service.track_event(&analytics.user_id, "task_attempt_finished", Some(json!({
-                        "task_id": ctx.task.id.to_string(),
-                        "project_id": ctx.task.project_id.to_string(),
                         "workspace_id": ctx.workspace.id.to_string(),
                         "session_id": ctx.session.id.to_string(),
                         "execution_success": matches!(ctx.execution_process.status, ExecutionProcessStatus::Completed),
@@ -811,16 +911,20 @@ impl LocalContainerService {
             }
         }
 
+        let agent_working_dir = Session::find_latest_by_workspace_id(&self.db.pool, workspace.id)
+            .await?
+            .and_then(|session| session.agent_working_dir);
+
         if let Err(e) = self
             .image_service
-            .copy_images_by_task_to_worktree(
+            .copy_images_by_workspace_to_worktree(
                 workspace_dir,
-                workspace.task_id,
-                workspace.agent_working_dir.as_deref(),
+                workspace.id,
+                agent_working_dir.as_deref(),
             )
             .await
         {
-            tracing::warn!("Failed to copy task images to workspace: {}", e);
+            tracing::warn!("Failed to copy workspace images to workspace: {}", e);
         }
 
         Ok(())
@@ -888,7 +992,7 @@ impl LocalContainerService {
         ctx: &ExecutionContext,
         queued_data: &DraftFollowUpData,
     ) -> Result<ExecutionProcess, ContainerError> {
-        let executor_profile_id = queued_data.executor_profile_id.clone();
+        let executor_profile_id = queued_data.executor_config.profile_id();
 
         // Validate executor matches session if session has prior executions
         let expected_executor: Option<String> =
@@ -922,7 +1026,7 @@ impl LocalContainerService {
         let cleanup_action = self.cleanup_actions_for_repos(&repos);
 
         let working_dir = ctx
-            .workspace
+            .session
             .agent_working_dir
             .as_ref()
             .filter(|dir| !dir.is_empty())
@@ -933,13 +1037,13 @@ impl LocalContainerService {
                 prompt: queued_data.message.clone(),
                 session_id: info.session_id,
                 reset_to_message_id: None,
-                executor_profile_id: executor_profile_id.clone(),
+                executor_config: queued_data.executor_config.clone(),
                 working_dir: working_dir.clone(),
             })
         } else {
             ExecutorActionType::CodingAgentInitialRequest(CodingAgentInitialRequest {
                 prompt: queued_data.message.clone(),
-                executor_profile_id: executor_profile_id.clone(),
+                executor_config: queued_data.executor_config.clone(),
                 working_dir,
             })
         };
@@ -987,6 +1091,39 @@ impl ContainerService for LocalContainerService {
         &self.notification_service
     }
 
+    async fn touch(&self, workspace: &Workspace) -> Result<(), ContainerError> {
+        let now = Instant::now();
+
+        // We debounce touches to avoid excessive database writes, which in SQLites causes DB locks
+        let should_debounce = |last_touch: &Instant| -> bool {
+            now.duration_since(*last_touch) < WORKSPACE_TOUCH_DEBOUNCE
+        };
+
+        // Quick check with read lock
+        if self
+            .workspace_touch_times
+            .read()
+            .await
+            .get(&workspace.id)
+            .is_some_and(should_debounce)
+        {
+            return Ok(());
+        }
+
+        let mut map = self.workspace_touch_times.write().await;
+        // Clean up stale entries older than the debounce window, reduce memory usage over time
+        map.retain(|_, time| should_debounce(time));
+        // check in case another thread has touched already
+        if map.get(&workspace.id).is_some_and(should_debounce) {
+            return Ok(());
+        }
+        map.insert(workspace.id, now);
+        drop(map);
+
+        Workspace::touch(&self.db.pool, workspace.id).await?;
+        Ok(())
+    }
+
     async fn store_db_stream_handle(&self, id: Uuid, handle: JoinHandle<()>) {
         self.add_db_stream_handle(id, handle).await;
     }
@@ -1004,45 +1141,20 @@ impl ContainerService for LocalContainerService {
     }
 
     async fn create(&self, workspace: &Workspace) -> Result<ContainerRef, ContainerError> {
-        let task = workspace
-            .parent_task(&self.db.pool)
-            .await?
-            .ok_or(sqlx::Error::RowNotFound)?;
-
+        let label = workspace.name.as_deref().unwrap_or("workspace");
         let workspace_dir_name =
-            LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
+            LocalContainerService::dir_name_from_workspace(&workspace.id, label);
         let workspace_dir = WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name);
 
-        let workspace_repos =
-            WorkspaceRepo::find_by_workspace_id(&self.db.pool, workspace.id).await?;
-        if workspace_repos.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
-
-        let repositories =
-            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
-
-        let target_branches: HashMap<_, _> = workspace_repos
-            .iter()
-            .map(|wr| (wr.repo_id, wr.target_branch.clone()))
-            .collect();
-
-        let workspace_inputs: Vec<RepoWorkspaceInput> = repositories
-            .iter()
-            .map(|repo| {
-                let target_branch = target_branches.get(&repo.id).cloned().unwrap_or_default();
-                RepoWorkspaceInput::new(repo.clone(), target_branch)
-            })
-            .collect();
+        let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
 
         let created_workspace = WorkspaceManager::create_workspace(
             &workspace_dir,
             &workspace_inputs,
             &workspace.branch,
         )
-        .await?;
+        .await
+        .map_err(Self::map_workspace_manager_error)?;
 
         // Copy project files and images to workspace
         self.copy_files_and_images(&created_workspace.workspace_dir, workspace)
@@ -1066,7 +1178,7 @@ impl ContainerService for LocalContainerService {
 
     async fn delete(&self, workspace: &Workspace) -> Result<(), ContainerError> {
         self.try_stop(workspace, true).await;
-        Self::cleanup_workspace(&self.db, workspace).await;
+        self.cleanup_workspace(workspace).await;
         Ok(())
     }
 
@@ -1074,30 +1186,25 @@ impl ContainerService for LocalContainerService {
         &self,
         workspace: &Workspace,
     ) -> Result<ContainerRef, ContainerError> {
-        Workspace::touch(&self.db.pool, workspace.id).await?;
-        let repositories =
-            WorkspaceRepo::find_repos_for_workspace(&self.db.pool, workspace.id).await?;
-
-        if repositories.is_empty() {
-            return Err(ContainerError::Other(anyhow!(
-                "Workspace has no repositories configured"
-            )));
-        }
+        self.touch(workspace).await?;
+        let (repositories, workspace_inputs) = self.workspace_repo_inputs(workspace.id).await?;
 
         let workspace_dir = if let Some(container_ref) = &workspace.container_ref {
             PathBuf::from(container_ref)
         } else {
-            let task = workspace
-                .parent_task(&self.db.pool)
-                .await?
-                .ok_or(sqlx::Error::RowNotFound)?;
+            let label = workspace.name.as_deref().unwrap_or("workspace");
             let workspace_dir_name =
-                LocalContainerService::dir_name_from_workspace(&workspace.id, &task.title);
+                LocalContainerService::dir_name_from_workspace(&workspace.id, label);
             WorkspaceManager::get_workspace_base_dir().join(&workspace_dir_name)
         };
 
-        WorkspaceManager::ensure_workspace_exists(&workspace_dir, &repositories, &workspace.branch)
-            .await?;
+        WorkspaceManager::ensure_workspace_exists(
+            &workspace_dir,
+            &workspace_inputs,
+            &workspace.branch,
+        )
+        .await
+        .map_err(Self::map_workspace_manager_error)?;
 
         if workspace.container_ref.is_none() {
             Workspace::update_container_ref(
@@ -1106,6 +1213,10 @@ impl ContainerService for LocalContainerService {
                 &workspace_dir.to_string_lossy(),
             )
             .await?;
+        }
+
+        if workspace.worktree_deleted {
+            Workspace::clear_worktree_deleted(&self.db.pool, workspace.id).await?;
         }
 
         // Copy project files and images (fast no-op if already exist)
@@ -1132,8 +1243,12 @@ impl ContainerService for LocalContainerService {
 
         for repo in &repositories {
             let worktree_path = workspace_dir.join(&repo.name);
-            if worktree_path.exists() && !self.git().is_worktree_clean(&worktree_path)? {
-                return Ok(false);
+            if worktree_path.exists() {
+                let (uncommitted, untracked) =
+                    self.git().get_worktree_change_counts(&worktree_path)?;
+                if uncommitted > 0 || untracked > 0 {
+                    return Ok(false);
+                }
             }
         }
 
@@ -1286,18 +1401,6 @@ impl ContainerService for LocalContainerService {
         }
         if let Some(handle) = db_stream_handle {
             let _ = tokio::time::timeout(Duration::from_secs(5), handle).await;
-        }
-
-        // Update task status to InReview when execution is stopped
-        if let Ok(ctx) = ExecutionProcess::load_context(&self.db.pool, execution_process.id).await
-            && !matches!(
-                ctx.execution_process.run_reason,
-                ExecutionProcessRunReason::DevServer
-            )
-            && let Err(e) =
-                Task::update_status(&self.db.pool, ctx.task.id, TaskStatus::InReview).await
-        {
-            tracing::error!("Failed to update task status to InReview: {e}");
         }
 
         tracing::debug!(

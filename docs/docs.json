@@ -25,6 +25,10 @@
         "pages": [
           "index",
           "getting-started",
+          "browser-testing",
+          "issue-management",
+          "reviewing-code",
+          "remote-access",
           {
             "group": "Supported Coding Agents",
             "expanded": true,
@@ -45,26 +49,7 @@
         ]
       },
       {
-        "group": "Core Features",
-        "pages": [
-          "core-features/creating-projects",
-          "core-features/creating-tasks",
-          "core-features/monitoring-task-execution",
-          "core-features/testing-your-application",
-          "core-features/reviewing-code-changes",
-          "core-features/completing-a-task"
-        ]
-      },
-      {
-        "group": "Advanced Features",
-        "pages": [
-          "core-features/subtasks",
-          "core-features/new-task-attempts",
-          "core-features/resolving-rebase-conflicts"
-        ]
-      },
-      {
-        "group": "Workspaces (Beta)",
+        "group": "Workspaces",
         "pages": [
           "workspaces/index",
           "workspaces/creating-workspaces",
@@ -76,13 +61,12 @@
           "workspaces/interface",
           "workspaces/command-bar",
           "workspaces/multi-repo-sessions",
-          "workspaces/preview",
           "workspaces/changes",
           "workspaces/git-operations"
         ]
       },
       {
-        "group": "Cloud (Beta)",
+        "group": "Cloud",
         "pages": [
           "cloud/index",
           "cloud/getting-started",
@@ -100,36 +84,28 @@
         ]
       },
       {
-        "group": "Configuration & Customisation",
+        "group": "Settings",
         "pages": [
-          "configuration-customisation/global-settings",
-          "configuration-customisation/agent-configurations",
-          "configuration-customisation/creating-task-tags",
-          "configuration-customisation/keyboard-shortcuts"
-        ]
-      },
-      {
-        "group": "Settings (Beta)",
-        "pages": [
-          "settings-beta/index",
+          "settings/index",
           {
             "group": "General",
             "pages": [
-              "settings-beta/general",
-              "settings-beta/creating-task-tags"
+              "settings/general",
+              "settings/creating-task-tags"
             ]
           },
-          "settings-beta/projects-repositories",
-          "settings-beta/organization-settings",
-          "settings-beta/remote-projects",
-          "settings-beta/agent-configurations",
-          "settings-beta/mcp-servers"
+          "settings/projects-repositories",
+          "settings/organization-settings",
+          "settings/remote-projects",
+          "settings/agent-configurations",
+          "settings/mcp-servers"
         ]
       },
       {
         "group": "Self-Hosting",
         "pages": [
-          "self-hosting/local-development"
+          "self-hosting/local-development",
+          "self-hosting/deploy-docker"
         ]
       },
       {
@@ -145,7 +121,8 @@
       {
         "group": "Help",
         "pages": [
-          "troubleshooting"
+          "troubleshooting",
+          "responsible-disclosure"
         ]
       }
     ]
@@ -185,6 +162,16 @@
       "apiHost": "https://eu.i.posthog.com"
     }
   },
+  "redirects": [
+    {
+      "source": "/workspaces/preview",
+      "destination": "/browser-testing"
+    },
+    {
+      "source": "/remote-control",
+      "destination": "/remote-access"
+    }
+  ],
   "footer": {
     "socials": {
       "github": "https://github.com/BloopAI/vibe-kanban",

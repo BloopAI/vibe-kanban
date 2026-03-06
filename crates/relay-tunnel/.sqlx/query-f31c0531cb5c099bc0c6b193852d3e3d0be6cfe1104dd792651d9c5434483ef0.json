@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE relay_auth_codes\n            SET consumed_at = NOW()\n            WHERE code_hash = $1\n              AND host_id = $2\n              AND consumed_at IS NULL\n              AND expires_at > NOW()\n            RETURNING relay_cookie_value\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "relay_cookie_value",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f31c0531cb5c099bc0c6b193852d3e3d0be6cfe1104dd792651d9c5434483ef0"
+}

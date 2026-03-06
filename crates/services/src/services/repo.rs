@@ -1,11 +1,13 @@
 use std::path::{Path, PathBuf};
 
-use db::models::repo::Repo as RepoModel;
+use db::models::repo::{Repo as RepoModel, SearchMatchType, SearchResult};
 use git::{GitService, GitServiceError};
 use sqlx::SqlitePool;
 use thiserror::Error;
 use utils::path::expand_tilde;
 use uuid::Uuid;
+
+use super::file_search::{FileSearchCache, SearchQuery};
 
 #[derive(Debug, Error)]
 pub enum RepoError {
@@ -123,5 +125,66 @@ impl RepoService {
 
         let repo = RepoModel::find_or_create(pool, &repo_path, folder_name).await?;
         Ok(repo)
+    }
+
+    pub async fn search_files(
+        &self,
+        cache: &FileSearchCache,
+        repositories: &[RepoModel],
+        query: &SearchQuery,
+    ) -> Result<Vec<SearchResult>> {
+        let query_str = query.q.trim();
+        if query_str.is_empty() || repositories.is_empty() {
+            return Ok(vec![]);
+        }
+
+        // Search in parallel and prefix paths with repo name
+        let search_futures: Vec<_> = repositories
+            .iter()
+            .map(|repo| {
+                let repo_name = repo.name.clone();
+                let repo_path = repo.path.clone();
+                let mode = query.mode.clone();
+                let query_str = query_str.to_string();
+                async move {
+                    let results = cache
+                        .search_repo(&repo_path, &query_str, mode)
+                        .await
+                        .unwrap_or_else(|e| {
+                            tracing::warn!("Search failed for repo {}: {}", repo_name, e);
+                            vec![]
+                        });
+                    (repo_name, results)
+                }
+            })
+            .collect();
+
+        let repo_results = futures::future::join_all(search_futures).await;
+
+        let mut all_results: Vec<SearchResult> = repo_results
+            .into_iter()
+            .flat_map(|(repo_name, results)| {
+                results.into_iter().map(move |r| SearchResult {
+                    path: format!("{}/{}", repo_name, r.path),
+                    is_file: r.is_file,
+                    match_type: r.match_type.clone(),
+                    score: r.score,
+                })
+            })
+            .collect();
+
+        all_results.sort_by(|a, b| {
+            let priority = |m: &SearchMatchType| match m {
+                SearchMatchType::FileName => 0,
+                SearchMatchType::DirectoryName => 1,
+                SearchMatchType::FullPath => 2,
+            };
+            priority(&a.match_type)
+                .cmp(&priority(&b.match_type))
+                .then_with(|| b.score.cmp(&a.score)) // Higher scores first
+        });
+
+        all_results.truncate(10);
+        Ok(all_results)
     }
 }

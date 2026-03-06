@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT COUNT(1) as \"count!: i64\"\n               FROM merges\n               WHERE workspace_id = $1\n                 AND merge_type = 'pr'\n                 AND pr_status = 'open'",
+  "describe": {
+    "columns": [
+      {
+        "name": "count!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "167c1d13ee37ebe62cd2316feaf6b5354eb26d0a8fc16efb22827a5cde59a60e"
+}

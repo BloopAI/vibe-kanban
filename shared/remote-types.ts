@@ -4,7 +4,7 @@
 // Electric row types
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
-export type Project = { id: string, organization_id: string, name: string, color: string, created_at: string, updated_at: string, };
+export type Project = { id: string, organization_id: string, name: string, color: string, sort_order: number, created_at: string, updated_at: string, };
 
 export type Notification = { id: string, organization_id: string, user_id: string, notification_type: NotificationType, payload: JsonValue, issue_id: string | null, comment_id: string | null, seen: boolean, dismissed_at: string | null, created_at: string, };
 
@@ -19,6 +19,12 @@ export type Tag = { id: string, project_id: string, name: string, color: string,
 export type Issue = { id: string, project_id: string, issue_number: number, simple_id: string, status_id: string, title: string, description: string | null, priority: IssuePriority | null, start_date: string | null, target_date: string | null, completed_at: string | null, sort_order: number, parent_issue_id: string | null, parent_issue_sort_order: number | null, extension_metadata: JsonValue, creator_user_id: string | null, created_at: string, updated_at: string, };
 
 export type IssueAssignee = { id: string, issue_id: string, user_id: string, assigned_at: string, };
+
+export type Blob = { id: string, project_id: string, blob_path: string, thumbnail_blob_path: string | null, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, width: number | null, height: number | null, created_at: string, updated_at: string, };
+
+export type Attachment = { id: string, blob_id: string, issue_id: string | null, comment_id: string | null, created_at: string, expires_at: string | null, };
+
+export type AttachmentWithBlob = { id: string, blob_id: string, issue_id: string | null, comment_id: string | null, created_at: string, expires_at: string | null, blob_path: string, thumbnail_blob_path: string | null, original_name: string, mime_type: string | null, size_bytes: bigint, hash: string, width: number | null, height: number | null, };
 
 export type IssueFollower = { id: string, issue_id: string, user_id: string, };
 
@@ -42,6 +48,16 @@ export type UserData = { user_id: string, first_name: string | null, last_name: 
 
 export type User = { id: string, email: string, first_name: string | null, last_name: string | null, username: string | null, created_at: string, updated_at: string, };
 
+export type RelayHost = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
+
+export type ListRelayHostsResponse = { hosts: Array<RelayHost>, };
+
+export type RelaySession = { id: string, host_id: string, request_user_id: string, state: string, created_at: string, expires_at: string, claimed_at: string | null, ended_at: string | null, };
+
+export type CreateRelaySessionResponse = { session: RelaySession, };
+
+export type RelaySessionAuthCodeResponse = { session_id: string, code: string, };
+
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 
 export type OrganizationMember = { organization_id: string, user_id: string, role: MemberRole, joined_at: string, last_seen_at: string | null, };
@@ -53,7 +69,7 @@ export type CreateProjectRequest = {
  */
 id?: string, organization_id: string, name: string, color: string, };
 
-export type UpdateProjectRequest = { name: string | null, color: string | null, };
+export type UpdateProjectRequest = { name: string | null, color: string | null, sort_order: number | null, };
 
 export type CreateNotificationRequest = { 
 /**
@@ -137,11 +153,24 @@ id?: string, comment_id: string, emoji: string, };
 
 export type UpdateIssueCommentReactionRequest = { emoji: string | null, };
 
+export type InitUploadRequest = { project_id: string, filename: string, size_bytes: number, hash: string, };
+
+export type InitUploadResponse = { upload_url: string, upload_id: string, expires_at: string, skip_upload: boolean, existing_blob_id: string | null, };
+
+export type ConfirmUploadRequest = { project_id: string, upload_id: string, filename: string, content_type?: string, size_bytes: number, hash: string, issue_id?: string, comment_id?: string, };
+
+export type CommitAttachmentsRequest = { attachment_ids: Array<string>, };
+
+export type CommitAttachmentsResponse = { attachments: Array<AttachmentWithBlob>, };
+
+export type AttachmentUrlResponse = { url: string, };
+
 // Shape definition interface
 export interface ShapeDefinition<T> {
   readonly table: string;
   readonly params: readonly string[];
   readonly url: string;
+  readonly fallbackUrl: string;
   readonly _type: T;  // Phantom field for type inference (not present at runtime)
 }
 
@@ -149,106 +178,123 @@ export interface ShapeDefinition<T> {
 function defineShape<T>(
   table: string,
   params: readonly string[],
-  url: string
+  url: string,
+  fallbackUrl: string
 ): ShapeDefinition<T> {
-  return { table, params, url } as ShapeDefinition<T>;
+  return { table, params, url, fallbackUrl } as ShapeDefinition<T>;
 }
 
 // Individual shape definitions with embedded types
 export const PROJECTS_SHAPE = defineShape<Project>(
   'projects',
   ['organization_id'] as const,
-  '/v1/shape/projects'
+  '/v1/shape/projects',
+  '/v1/fallback/projects'
 );
 
 export const NOTIFICATIONS_SHAPE = defineShape<Notification>(
   'notifications',
   ['organization_id', 'user_id'] as const,
-  '/v1/shape/notifications'
+  '/v1/shape/notifications',
+  '/v1/fallback/notifications'
 );
 
 export const ORGANIZATION_MEMBERS_SHAPE = defineShape<OrganizationMember>(
   'organization_member_metadata',
   ['organization_id'] as const,
-  '/v1/shape/organization_members'
+  '/v1/shape/organization_members',
+  '/v1/fallback/organization_members'
 );
 
 export const USERS_SHAPE = defineShape<User>(
   'users',
   ['organization_id'] as const,
-  '/v1/shape/users'
+  '/v1/shape/users',
+  '/v1/fallback/users'
 );
 
 export const PROJECT_TAGS_SHAPE = defineShape<Tag>(
   'tags',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/tags'
+  '/v1/shape/project/{project_id}/tags',
+  '/v1/fallback/tags'
 );
 
 export const PROJECT_PROJECT_STATUSES_SHAPE = defineShape<ProjectStatus>(
   'project_statuses',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/project_statuses'
+  '/v1/shape/project/{project_id}/project_statuses',
+  '/v1/fallback/project_statuses'
 );
 
 export const PROJECT_ISSUES_SHAPE = defineShape<Issue>(
   'issues',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issues'
+  '/v1/shape/project/{project_id}/issues',
+  '/v1/fallback/issues'
 );
 
 export const USER_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['owner_user_id'] as const,
-  '/v1/shape/user/workspaces'
+  '/v1/shape/user/workspaces',
+  '/v1/fallback/user_workspaces'
 );
 
 export const PROJECT_WORKSPACES_SHAPE = defineShape<Workspace>(
   'workspaces',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/workspaces'
+  '/v1/shape/project/{project_id}/workspaces',
+  '/v1/fallback/project_workspaces'
 );
 
 export const PROJECT_ISSUE_ASSIGNEES_SHAPE = defineShape<IssueAssignee>(
   'issue_assignees',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_assignees'
+  '/v1/shape/project/{project_id}/issue_assignees',
+  '/v1/fallback/issue_assignees'
 );
 
 export const PROJECT_ISSUE_FOLLOWERS_SHAPE = defineShape<IssueFollower>(
   'issue_followers',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_followers'
+  '/v1/shape/project/{project_id}/issue_followers',
+  '/v1/fallback/issue_followers'
 );
 
 export const PROJECT_ISSUE_TAGS_SHAPE = defineShape<IssueTag>(
   'issue_tags',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_tags'
+  '/v1/shape/project/{project_id}/issue_tags',
+  '/v1/fallback/issue_tags'
 );
 
 export const PROJECT_ISSUE_RELATIONSHIPS_SHAPE = defineShape<IssueRelationship>(
   'issue_relationships',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/issue_relationships'
+  '/v1/shape/project/{project_id}/issue_relationships',
+  '/v1/fallback/issue_relationships'
 );
 
 export const PROJECT_PULL_REQUESTS_SHAPE = defineShape<PullRequest>(
   'pull_requests',
   ['project_id'] as const,
-  '/v1/shape/project/{project_id}/pull_requests'
+  '/v1/shape/project/{project_id}/pull_requests',
+  '/v1/fallback/pull_requests'
 );
 
 export const ISSUE_COMMENTS_SHAPE = defineShape<IssueComment>(
   'issue_comments',
   ['issue_id'] as const,
-  '/v1/shape/issue/{issue_id}/comments'
+  '/v1/shape/issue/{issue_id}/comments',
+  '/v1/fallback/issue_comments'
 );
 
 export const ISSUE_REACTIONS_SHAPE = defineShape<IssueCommentReaction>(
   'issue_comment_reactions',
   ['issue_id'] as const,
-  '/v1/shape/issue/{issue_id}/reactions'
+  '/v1/shape/issue/{issue_id}/reactions',
+  '/v1/fallback/issue_comment_reactions'
 );
 
 // =============================================================================

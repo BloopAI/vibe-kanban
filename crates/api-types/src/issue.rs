@@ -18,7 +18,6 @@ pub enum IssuePriority {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Issue {
     pub id: Uuid,
     pub project_id: Uuid,

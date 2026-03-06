@@ -4,10 +4,7 @@ use api_types::LoginStatus;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{
-        Path, Query, State,
-        ws::{WebSocket, WebSocketUpgrade},
-    },
+    extract::{Path, Query, State, ws::Message},
     http,
     response::{IntoResponse, Json as ResponseJson, Response},
     routing::{get, put},
@@ -35,7 +32,12 @@ use ts_rs::TS;
 use utils::{assets::config_path, log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{
+    DeploymentImpl,
+    error::ApiError,
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    tunnel,
+};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -49,9 +51,10 @@ pub fn router() -> Router<DeploymentImpl> {
             get(check_editor_availability),
         )
         .route("/agents/check-availability", get(check_agent_availability))
+        .route("/agents/preset-options", get(get_agent_preset_options))
         .route(
-            "/agents/slash-commands/ws",
-            get(stream_agent_slash_commands_ws),
+            "/agents/discovered-options/ws",
+            get(stream_executor_discovered_options_ws),
         )
 }
 
@@ -83,6 +86,7 @@ impl Environment {
 
 #[derive(Debug, Serialize, Deserialize, TS)]
 pub struct UserSystemInfo {
+    pub version: String,
     pub config: Config,
     pub analytics_user_id: String,
     pub login_status: LoginStatus,
@@ -91,6 +95,8 @@ pub struct UserSystemInfo {
     pub environment: Environment,
     /// Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
     pub capabilities: HashMap<String, Vec<BaseAgentCapability>>,
+    pub shared_api_base: Option<String>,
+    pub preview_proxy_port: Option<u16>,
 }
 
 // TODO: update frontend, BE schema has changed, this replaces GET /config and /config/constants
@@ -107,6 +113,7 @@ async fn get_user_system_info(
     .unwrap_or(LoginStatus::LoggedOut);
 
     let user_system_info = UserSystemInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
         config: config.clone(),
         analytics_user_id: deployment.user_id().to_string(),
         login_status,
@@ -122,6 +129,8 @@ async fn get_user_system_info(
             }
             caps
         },
+        shared_api_base: deployment.shared_api_base(),
+        preview_proxy_port: crate::preview_proxy::get_proxy_port(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))
@@ -193,12 +202,23 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
-    if !old.disclaimer_acknowledged && new.disclaimer_acknowledged {
-        // Spawn auto project setup as background task to avoid blocking config response
-        let deployment_clone = deployment.clone();
-        tokio::spawn(async move {
-            deployment_clone.trigger_auto_project_setup().await;
-        });
+    let old_relay_host_name = tunnel::effective_relay_host_name(old, deployment.user_id());
+    let new_relay_host_name = tunnel::effective_relay_host_name(new, deployment.user_id());
+
+    deployment
+        .server_info()
+        .set_hostname(new_relay_host_name.clone())
+        .await;
+
+    match (old.relay_enabled, new.relay_enabled) {
+        (false, true) => tunnel::spawn_relay(deployment).await,
+        (true, false) => tunnel::stop_relay(deployment).await,
+        (true, true) => {
+            if old_relay_host_name != new_relay_host_name {
+                tunnel::spawn_relay(deployment).await;
+            }
+        }
+        (false, false) => (),
     }
 }
 
@@ -472,9 +492,10 @@ async fn check_editor_availability(
     // Construct a minimal EditorConfig for checking
     let editor_config = EditorConfig::new(
         query.editor_type,
-        None, // custom_command
-        None, // remote_ssh_host
-        None, // remote_ssh_user
+        None,  // custom_command
+        None,  // remote_ssh_host
+        None,  // remote_ssh_user
+        false, // auto_install_extension
     );
 
     let available = editor_config.check_availability().await;
@@ -503,42 +524,68 @@ async fn check_agent_availability(
     ResponseJson(ApiResponse::success(info))
 }
 
+#[derive(Debug, Deserialize, TS)]
+pub struct AgentPresetOptionsQuery {
+    pub executor: BaseCodingAgent,
+    pub variant: Option<String>,
+}
+
+async fn get_agent_preset_options(
+    Query(query): Query<AgentPresetOptionsQuery>,
+) -> ResponseJson<ApiResponse<executors::profile::ExecutorConfig>> {
+    let profiles = ExecutorConfigs::get_cached();
+    let profile_id = if let Some(variant) = query.variant {
+        ExecutorProfileId::with_variant(query.executor, variant)
+    } else {
+        ExecutorProfileId::new(query.executor)
+    };
+
+    let options = match profiles.get_coding_agent(&profile_id) {
+        Some(agent) => agent.get_preset_options(),
+        None => {
+            // Return a default config if not found
+            executors::profile::ExecutorConfig::new(query.executor)
+        }
+    };
+
+    ResponseJson(ApiResponse::success(options))
+}
+
 #[derive(Debug, Deserialize)]
-pub struct AgentSlashCommandsStreamQuery {
+pub struct ExecutorDiscoveredOptionsStreamQuery {
     executor: BaseCodingAgent,
+    #[serde(default)]
+    session_id: Option<Uuid>,
     #[serde(default)]
     workspace_id: Option<Uuid>,
     #[serde(default)]
     repo_id: Option<Uuid>,
 }
 
-pub async fn stream_agent_slash_commands_ws(
-    ws: WebSocketUpgrade,
+pub async fn stream_executor_discovered_options_ws(
+    ws: SignedWsUpgrade,
     State(deployment): State<DeploymentImpl>,
-    Query(query): Query<AgentSlashCommandsStreamQuery>,
+    Query(query): Query<ExecutorDiscoveredOptionsStreamQuery>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_agent_slash_commands_ws(socket, deployment, query).await {
-            tracing::warn!("slash commands WS closed: {}", e);
+        if let Err(e) = handle_executor_discovered_options_ws(socket, deployment, query).await {
+            tracing::warn!("discovered options WS closed: {}", e);
         }
     })
 }
 
-async fn handle_agent_slash_commands_ws(
-    socket: WebSocket,
+async fn handle_executor_discovered_options_ws(
+    mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
-    query: AgentSlashCommandsStreamQuery,
+    query: ExecutorDiscoveredOptionsStreamQuery,
 ) -> anyhow::Result<()> {
-    use futures_util::{SinkExt, StreamExt};
-
-    let (mut sender, mut receiver) = socket.split();
-
-    tokio::spawn(async move { while let Some(Ok(_)) = receiver.next().await {} });
+    use futures_util::StreamExt;
 
     match deployment
         .container()
-        .available_agent_slash_commands(
+        .discover_executor_options(
             ExecutorProfileId::new(query.executor),
+            query.session_id,
             query.workspace_id,
             query.repo_id,
         )
@@ -546,32 +593,47 @@ async fn handle_agent_slash_commands_ws(
     {
         Ok(Some(mut stream)) => {
             if let Some(patch) = stream.next().await {
-                let _ = sender
+                let _ = socket
                     .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
                     .await;
             }
 
-            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
+            let _ = socket.send(LogMsg::Ready.to_ws_message_unchecked()).await;
 
-            while let Some(patch) = stream.next().await {
-                if sender
-                    .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
-                    .await
-                    .is_err()
-                {
-                    break;
+            loop {
+                tokio::select! {
+                    patch = stream.next() => {
+                        let Some(patch) = patch else {
+                            break;
+                        };
+                        if socket
+                            .send(LogMsg::JsonPatch(patch).to_ws_message_unchecked())
+                            .await
+                            .is_err()
+                        {
+                            break;
+                        }
+                    }
+                    inbound = socket.recv() => {
+                        match inbound {
+                            Ok(Some(Message::Close(_))) => break,
+                            Ok(Some(_)) => {}
+                            Ok(None) => break,
+                            Err(_) => break,
+                        }
+                    }
                 }
             }
         }
         Ok(None) => {
-            let _ = sender.send(LogMsg::Ready.to_ws_message_unchecked()).await;
+            let _ = socket.send(LogMsg::Ready.to_ws_message_unchecked()).await;
         }
         Err(e) => {
-            tracing::warn!("Failed to start slash command stream: {}", e);
+            tracing::warn!("Failed to start discovered options stream: {}", e);
         }
     }
 
-    let _ = sender
+    let _ = socket
         .send(LogMsg::Finished.to_ws_message_unchecked())
         .await;
     Ok(())

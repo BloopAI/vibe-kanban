@@ -215,6 +215,26 @@ impl CodingAgentTurn {
         Ok(())
     }
 
+    /// Mark a coding agent turn as unseen by execution process ID.
+    pub async fn mark_unseen_by_execution_process_id(
+        pool: &SqlitePool,
+        execution_process_id: Uuid,
+    ) -> Result<(), sqlx::Error> {
+        let now = Utc::now();
+        sqlx::query(
+            r#"UPDATE coding_agent_turns
+               SET seen = 0, updated_at = ?
+               WHERE execution_process_id = ?
+                 AND seen = 1"#,
+        )
+        .bind(now)
+        .bind(execution_process_id.to_string())
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
     /// Mark all coding agent turns for a workspace as seen
     pub async fn mark_seen_by_workspace_id(
         pool: &SqlitePool,

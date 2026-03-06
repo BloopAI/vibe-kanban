@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use executors::profile::ExecutorProfileId;
+use executors::profile::ExecutorConfig;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 use strum_macros::{Display, EnumDiscriminants, EnumString};
@@ -21,7 +21,8 @@ pub enum ScratchError {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftFollowUpData {
     pub message: String,
-    pub executor_profile_id: ExecutorProfileId,
+    #[serde(alias = "executor_profile_id", alias = "config")]
+    pub executor_config: ExecutorConfig,
 }
 
 /// Data for preview settings scratch (URL override and screen size)
@@ -47,6 +48,52 @@ pub struct WorkspaceNotesData {
 pub struct WorkspacePanelStateData {
     pub right_main_panel_mode: Option<String>,
     pub is_left_main_panel_visible: bool,
+}
+
+/// Workspace sidebar PR filter state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspacePrFilterData {
+    #[default]
+    All,
+    HasPr,
+    NoPr,
+}
+
+/// Workspace sidebar sort field
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceSortByData {
+    #[default]
+    UpdatedAt,
+    CreatedAt,
+}
+
+/// Workspace sidebar sort order
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum WorkspaceSortOrderData {
+    Asc,
+    #[default]
+    Desc,
+}
+
+/// Workspace sidebar filter state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+pub struct WorkspaceFilterStateData {
+    #[serde(default)]
+    pub project_ids: Vec<String>,
+    #[serde(default)]
+    pub pr_filter: WorkspacePrFilterData,
+}
+
+/// Workspace sidebar sort state
+#[derive(Debug, Clone, Serialize, Deserialize, TS, Default)]
+pub struct WorkspaceSortStateData {
+    #[serde(default)]
+    pub sort_by: WorkspaceSortByData,
+    #[serde(default)]
+    pub sort_order: WorkspaceSortOrderData,
 }
 
 /// Data for UI preferences scratch (global preferences stored per-user or per-device)
@@ -82,6 +129,18 @@ pub struct UiPreferencesData {
     /// Workspace-specific panel states
     #[serde(default)]
     pub workspace_panel_states: std::collections::HashMap<String, WorkspacePanelStateData>,
+    /// Workspace sidebar filter preferences
+    #[serde(default)]
+    pub workspace_filters: WorkspaceFilterStateData,
+    /// Workspace sidebar sort preferences
+    #[serde(default)]
+    pub workspace_sort: WorkspaceSortStateData,
+    /// Last selected organization ID
+    #[serde(default)]
+    pub selected_org_id: Option<String>,
+    /// Last selected project ID
+    #[serde(default)]
+    pub selected_project_id: Option<String>,
 }
 
 /// Linked issue data for draft workspace scratch
@@ -93,18 +152,29 @@ pub struct DraftWorkspaceLinkedIssue {
     pub remote_project_id: String,
 }
 
+/// Uploaded image stored in a draft workspace
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct DraftWorkspaceImage {
+    pub id: Uuid,
+    pub file_path: String,
+    pub original_name: String,
+    #[serde(default)]
+    pub mime_type: Option<String>,
+    pub size_bytes: i64,
+}
+
 /// Data for a draft workspace scratch (new workspace creation)
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DraftWorkspaceData {
     pub message: String,
     #[serde(default)]
-    pub project_id: Option<Uuid>,
-    #[serde(default)]
     pub repos: Vec<DraftWorkspaceRepo>,
-    #[serde(default)]
-    pub selected_profile: Option<ExecutorProfileId>,
+    #[serde(default, alias = "selected_profile", alias = "config")]
+    pub executor_config: Option<ExecutorConfig>,
     #[serde(default)]
     pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
+    #[serde(default)]
+    pub images: Vec<DraftWorkspaceImage>,
 }
 
 /// Repository entry in a draft workspace
@@ -112,6 +182,12 @@ pub struct DraftWorkspaceData {
 pub struct DraftWorkspaceRepo {
     pub repo_id: Uuid,
     pub target_branch: String,
+}
+
+/// Data for project repo defaults scratch (default repos/branches per project)
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ProjectRepoDefaultsData {
+    pub repos: Vec<DraftWorkspaceRepo>,
 }
 
 /// Data for a draft issue scratch (issue creation on kanban board)
@@ -155,6 +231,7 @@ pub enum ScratchPayload {
     PreviewSettings(PreviewSettingsData),
     WorkspaceNotes(WorkspaceNotesData),
     UiPreferences(UiPreferencesData),
+    ProjectRepoDefaults(ProjectRepoDefaultsData),
 }
 
 impl ScratchPayload {

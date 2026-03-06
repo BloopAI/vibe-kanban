@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 /// Workspace metadata pushed from local clients
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow, TS)]
-#[ts(export)]
 pub struct Workspace {
     pub id: Uuid,
     pub project_id: Uuid,

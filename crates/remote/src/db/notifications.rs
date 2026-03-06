@@ -1,8 +1,8 @@
+use api_types::{Notification, NotificationType};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Executor, Postgres};
 use thiserror::Error;
-use api_types::{Notification, NotificationType};
 use uuid::Uuid;
 
 #[derive(Debug, Error)]
@@ -147,6 +147,41 @@ impl NotificationRepository {
             .fetch_all(executor)
             .await?
         };
+
+        Ok(records)
+    }
+
+    pub async fn list_by_organization_and_user<'e, E>(
+        executor: E,
+        organization_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<Vec<Notification>, NotificationError>
+    where
+        E: Executor<'e, Database = Postgres>,
+    {
+        let records = sqlx::query_as!(
+            Notification,
+            r#"
+            SELECT
+                id                AS "id!: Uuid",
+                organization_id   AS "organization_id!: Uuid",
+                user_id           AS "user_id!: Uuid",
+                notification_type AS "notification_type!: NotificationType",
+                payload           AS "payload!: Value",
+                issue_id          AS "issue_id: Uuid",
+                comment_id        AS "comment_id: Uuid",
+                seen              AS "seen!",
+                dismissed_at      AS "dismissed_at: DateTime<Utc>",
+                created_at        AS "created_at!: DateTime<Utc>"
+            FROM notifications
+            WHERE organization_id = $1 AND user_id = $2
+            ORDER BY created_at DESC
+            "#,
+            organization_id,
+            user_id
+        )
+        .fetch_all(executor)
+        .await?;
 
         Ok(records)
     }
