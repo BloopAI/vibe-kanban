@@ -65,14 +65,18 @@ jobs:
 
       - name: Build npx package
         run: pnpm run build:npx
+        env:
+          SENTRY_AUTH_TOKEN: ''  # disable sentry sourcemap upload in CI
 
       - name: Create tarball with npm pack
-        run: |
-          TARBALL=$(npm pack)
-          echo "tarball=$TARBALL" >> $GITHUB_OUTPUT
-          echo "Created tarball: $TARBALL"
-          ls -lh $TARBALL
         id: pack
+        run: |
+          # --ignore-scripts skips prepack (local-build.sh already ran above)
+          # Capture only the last line of output which is the tarball filename
+          TARBALL=$(npm pack --ignore-scripts 2>/dev/null | tail -1)
+          echo "tarball=$TARBALL" >> "$GITHUB_OUTPUT"
+          echo "Created tarball: $TARBALL"
+          ls -lh "$TARBALL"
 
       - name: Publish to GitHub Packages
         run: npm publish
