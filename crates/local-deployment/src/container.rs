@@ -72,6 +72,30 @@ fn should_execute_queued_follow_up(status: &ExecutionProcessStatus) -> bool {
     )
 }
 
+#[derive(Debug, PartialEq, Eq)]
+enum TerminalQueueAction {
+    StartNextQueuedFollowUp,
+    FinalizeTask,
+    SuppressNotification,
+}
+
+fn terminal_queue_action(
+    status: &ExecutionProcessStatus,
+    has_queued_follow_up: bool,
+) -> TerminalQueueAction {
+    if should_execute_queued_follow_up(status) {
+        if has_queued_follow_up {
+            TerminalQueueAction::StartNextQueuedFollowUp
+        } else {
+            TerminalQueueAction::FinalizeTask
+        }
+    } else if has_queued_follow_up {
+        TerminalQueueAction::SuppressNotification
+    } else {
+        TerminalQueueAction::FinalizeTask
+    }
+}
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -134,6 +158,54 @@ impl LocalContainerService {
         container.spawn_workspace_cleanup();
 
         container
+    }
+
+    async fn continue_or_finalize_terminal_execution(&self, ctx: &ExecutionContext) {
+        let has_queued_follow_up = self.queued_message_service.has_queued(ctx.session.id);
+
+        match terminal_queue_action(&ctx.execution_process.status, has_queued_follow_up) {
+            TerminalQueueAction::StartNextQueuedFollowUp => {
+                if let Some(queued_msg) = self.queued_message_service.take_next(ctx.session.id) {
+                    tracing::info!(
+                        "Found queued {:?} message for session {}, starting follow-up execution",
+                        queued_msg.kind,
+                        ctx.session.id,
+                    );
+
+                    // Delete the scratch since we're consuming the queued message
+                    if let Err(e) =
+                        Scratch::delete(&self.db.pool, ctx.session.id, &ScratchType::DraftFollowUp)
+                            .await
+                    {
+                        tracing::warn!(
+                            "Failed to delete scratch after consuming queued message: {}",
+                            e
+                        );
+                    }
+
+                    if let Err(e) = self.start_queued_follow_up(ctx, &queued_msg.data).await {
+                        tracing::error!("Failed to start queued follow-up: {}", e);
+                        self.queued_message_service.requeue_front(queued_msg);
+                        tracing::info!(
+                            "Skipping task finalization notification for session {} because the queued follow-up was restored for retry",
+                            ctx.session.id,
+                        );
+                    }
+                } else {
+                    self.finalize_task(ctx).await;
+                }
+            }
+            TerminalQueueAction::FinalizeTask => {
+                self.finalize_task(ctx).await;
+            }
+            TerminalQueueAction::SuppressNotification => {
+                tracing::info!(
+                    "Skipping task finalization notification for session {} because queued follow-up messages remain after execution status {:?}",
+                    ctx.session.id,
+                    ctx.execution_process.status,
+                );
+            }
+        }
     }
 
     pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
@@ -540,65 +612,16 @@ impl LocalContainerService {
                             ctx.workspace.id
                         );
 
-                        // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(&ctx).await;
+                        // We skipped the next action, so this execution becomes terminal.
+                        container
+                            .continue_or_finalize_terminal_execution(&ctx)
+                            .await;
                     }
                 }
-
                 if container.should_finalize(&ctx) {
-                    // Only execute queued follow-ups if the execution succeeded.
-                    // On failed/killed runs we preserve queued messages for manual recovery.
-                    let should_execute_queued =
-                        should_execute_queued_follow_up(&ctx.execution_process.status);
-
-                    if should_execute_queued {
-                        if let Some(queued_msg) =
-                            container.queued_message_service.take_next(ctx.session.id)
-                        {
-                            tracing::info!(
-                                "Found queued {:?} message for session {}, starting follow-up execution",
-                                queued_msg.kind,
-                                ctx.session.id,
-                            );
-
-                            // Delete the scratch since we're consuming the queued message
-                            if let Err(e) = Scratch::delete(
-                                &db.pool,
-                                ctx.session.id,
-                                &ScratchType::DraftFollowUp,
-                            )
-                            .await
-                            {
-                                tracing::warn!(
-                                    "Failed to delete scratch after consuming queued message: {}",
-                                    e
-                                );
-                            }
-
-                            // Execute the queued follow-up
-                            if let Err(e) = container
-                                .start_queued_follow_up(&ctx, &queued_msg.data)
-                                .await
-                            {
-                                tracing::error!("Failed to start queued follow-up: {}", e);
-                                // Put the message back so it can be retried/edited later.
-                                container.queued_message_service.requeue_front(queued_msg);
-                                // Fall back to finalization if follow-up fails
-                                container.finalize_task(&ctx).await;
-                            }
-                        } else {
-                            container.finalize_task(&ctx).await;
-                        }
-                    } else {
-                        if container.queued_message_service.has_queued(ctx.session.id) {
-                            tracing::info!(
-                                "Preserving queued follow-up messages for session {} due to execution status {:?}",
-                                ctx.session.id,
-                                ctx.execution_process.status
-                            );
-                        }
-                        container.finalize_task(&ctx).await;
-                    }
+                    container
+                        .continue_or_finalize_terminal_execution(&ctx)
+                        .await;
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
@@ -1528,5 +1551,33 @@ mod tests {
         assert!(!should_execute_queued_follow_up(
             &ExecutionProcessStatus::Killed
         ));
+    }
+
+    #[test]
+    fn starts_next_queue_only_for_successful_terminal_runs() {
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Completed, true),
+            TerminalQueueAction::StartNextQueuedFollowUp
+        );
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Completed, false),
+            TerminalQueueAction::FinalizeTask
+        );
+    }
+
+    #[test]
+    fn suppresses_notifications_while_queue_is_preserved() {
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Failed, true),
+            TerminalQueueAction::SuppressNotification
+        );
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Killed, true),
+            TerminalQueueAction::SuppressNotification
+        );
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Failed, false),
+            TerminalQueueAction::FinalizeTask
+        );
     }
 }

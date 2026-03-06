@@ -47,10 +47,6 @@ function useShortcutGroups(): ShortcutGroup[] {
     const disabledLabel = tSettings(
       'settings.general.messageInput.shortcut.disabledLabel'
     );
-    const steerKeys = formatRunningMessageShortcut(runningShortcuts.steer, {
-      modifierKey: mod,
-      disabledLabel,
-    }).split('+');
     const queueKeys = formatRunningMessageShortcut(runningShortcuts.queue, {
       modifierKey: mod,
       disabledLabel,
@@ -105,11 +101,6 @@ function useShortcutGroups(): ShortcutGroup[] {
     const runningChat: ShortcutGroup = {
       name: t('shortcuts.groups.runningChat'),
       shortcuts: [
-        {
-          keys: steerKeys,
-          description: t('shortcuts.actions.steerMessage'),
-          useHintKey: true,
-        },
         {
           keys: queueKeys,
           description: t('shortcuts.actions.queueMessage'),

@@ -152,7 +152,7 @@ export interface SessionChatBoxEditorRenderProps<
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
-  onCmdEnter: () => void;
+  onCmdEnter?: () => void;
   onShiftCmdEnter?: () => void;
   runningSteerShortcut?: RunningMessageShortcut;
   runningQueueShortcut?: RunningMessageShortcut;
@@ -346,8 +346,6 @@ export function SessionChatBox<TExecutor extends string = string>({
       feedbackMode?.onSubmitFeedback();
     } else if (isInEditMode && canSend) {
       editMode?.onSubmitEdit();
-    } else if (status === 'running' && canSend) {
-      actions.onSteer();
     } else if (status === 'queued' && canSend) {
       actions.onSend();
     } else if (status === 'idle' && canSend) {
@@ -544,14 +542,6 @@ export function SessionChatBox<TExecutor extends string = string>({
         return (
           <>
             <PrimaryButton
-              onClick={actions.onSteer}
-              disabled={!canSend}
-              value={t('conversation.actions.steer')}
-              title={t('conversation.actions.steerShortcutHint', {
-                shortcut: runningShortcuts?.steerLabel ?? 'Ctrl/Cmd+Enter',
-              })}
-            />
-            <PrimaryButton
               onClick={actions.onQueue}
               disabled={!canSend}
               value={t('conversation.actions.queue')}
@@ -746,10 +736,9 @@ export function SessionChatBox<TExecutor extends string = string>({
         placeholder,
         value: editor.value,
         onChange: editor.onChange,
-        onCmdEnter: handleCmdEnter,
+        onCmdEnter: status === 'running' ? undefined : handleCmdEnter,
         onShiftCmdEnter: status === 'running' ? handleShiftCmdEnter : undefined,
-        runningSteerShortcut:
-          status === 'running' ? runningShortcuts?.steer : undefined,
+        runningSteerShortcut: undefined,
         runningQueueShortcut:
           status === 'running' ? runningShortcuts?.queue : undefined,
         disabled: isDisabled,

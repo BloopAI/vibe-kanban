@@ -840,26 +840,6 @@ export function GeneralSettingsSection() {
             }
           />
         </SettingsField>
-
-        <SettingsField
-          label={t('settings.general.messageInput.runningSteerShortcut.label')}
-          description={t(
-            'settings.general.messageInput.runningSteerShortcut.helper'
-          )}
-        >
-          <SettingsSelect
-            value={runningShortcuts.steer}
-            options={runningShortcutOptions.filter(
-              (option) =>
-                option.value === 'Disabled' ||
-                option.value !== runningShortcuts.queue
-            )}
-            onChange={(value: RunningMessageShortcut) =>
-              updateDraft({ steer_message_shortcut: value })
-            }
-          />
-        </SettingsField>
-
         <SettingsField
           label={t('settings.general.messageInput.runningQueueShortcut.label')}
           description={t(
