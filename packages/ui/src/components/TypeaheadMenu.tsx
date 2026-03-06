@@ -69,7 +69,8 @@ function placementsEqual(
 function computePlacement(
   anchorEl: HTMLElement,
   menuEl: HTMLElement,
-  editorEl?: HTMLElement | null
+  editorEl?: HTMLElement | null,
+  lockedSide?: VerticalSide | null
 ): TypeaheadPlacement {
   const anchorRect = anchorEl.getBoundingClientRect();
   const menuRect = menuEl.getBoundingClientRect();
@@ -97,8 +98,11 @@ function computePlacement(
     : cursorTopBoundary;
   const aboveSpace = topBoundary - marginBottom;
   const belowSpace = viewportHeight - anchorRect.bottom - marginTop;
-  const side: VerticalSide =
-    belowSpace >= measuredHeight || belowSpace >= aboveSpace ? 'bottom' : 'top';
+  const side: VerticalSide = lockedSide
+    ? lockedSide
+    : belowSpace >= measuredHeight || belowSpace >= aboveSpace
+      ? 'bottom'
+      : 'top';
   const availableSpace = Math.max(
     side === 'bottom' ? belowSpace : aboveSpace,
     0
@@ -152,12 +156,19 @@ function TypeaheadMenuRoot({
 }: TypeaheadMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<TypeaheadPlacement | null>(null);
+  const lockedSideRef = useRef<VerticalSide | null>(null);
 
   const syncPlacement = useCallback(() => {
     const menuEl = menuRef.current;
     if (!menuEl) return;
 
-    const nextPlacement = computePlacement(anchorEl, menuEl, editorEl);
+    const nextPlacement = computePlacement(
+      anchorEl,
+      menuEl,
+      editorEl,
+      lockedSideRef.current
+    );
+    lockedSideRef.current = nextPlacement.side;
     setPlacement((previous) => {
       if (previous && placementsEqual(previous, nextPlacement)) {
         return previous;
