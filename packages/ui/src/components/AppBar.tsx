@@ -136,7 +136,7 @@ export function AppBar({
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       className={cn(
-        'flex flex-col items-center h-full p-base gap-base',
+        'flex flex-col items-center h-full min-h-0 overflow-y-auto p-base gap-base',
         'bg-secondary border-r border-border'
       )}
     >
@@ -403,7 +403,10 @@ export function AppBar({
           }
         />
         {appVersion && (
-          <p className="text-[9px] font-ibm-plex-mono text-low leading-none">
+          <p
+            className="text-[9px] font-ibm-plex-mono text-low leading-none truncate max-w-full"
+            title={`v${appVersion}`}
+          >
             v{appVersion}
           </p>
         )}

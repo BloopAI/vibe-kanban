@@ -141,3 +141,29 @@ jobs:
               release_id: releaseId,
               body: currentBody + '\n\n✅ **Published to npm registry**'
             });
+
+  # Promote the tag-specific Tauri update manifest to the fixed endpoint
+  # so existing desktop app users receive the update notification.
+  promote-tauri-update:
+    runs-on: ubuntu-latest
+    if: github.event.release.prerelease == false && !startsWith(github.event.release.tag_name, 'remote-')
+    steps:
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Copy update manifest to live endpoint
+        run: |
+          TAG="${{ github.event.release.tag_name || inputs.tag_name }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          echo "Promoting update manifest for $TAG to live endpoint..."
+          aws s3 cp \
+            "s3://$BUCKET/binaries/$TAG/tauri/latest.json" \
+            "s3://$BUCKET/binaries/tauri-update/latest.json" \
+            --endpoint-url "$ENDPOINT" --content-type "application/json"
+
+          echo "Update manifest promoted: binaries/tauri-update/latest.json"

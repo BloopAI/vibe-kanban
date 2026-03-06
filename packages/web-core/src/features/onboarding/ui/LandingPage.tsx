@@ -36,7 +36,7 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
-import { cn } from '@/shared/lib/utils';
+import { cn, playSound } from '@/shared/lib/utils';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
@@ -233,10 +233,9 @@ export function LandingPage() {
 
   const editorOptions = useMemo(() => Object.values(EditorType), []);
 
-  const playSound = async (value: SoundFile) => {
-    const audio = new Audio(`/api/sounds/${value}`);
+  const previewSound = async (value: SoundFile) => {
     try {
-      await audio.play();
+      await playSound(`/api/sounds/${value}`);
     } catch (err) {
       console.error('Failed to play sound:', err);
     }
@@ -249,7 +248,7 @@ export function LandingPage() {
   const handleSoundSelect = (value: SoundFile) => {
     setSoundEnabled(true);
     setSoundFile(value);
-    void playSound(value);
+    void previewSound(value);
   };
 
   const isCustomEditorValid =
@@ -326,18 +325,13 @@ export function LandingPage() {
   }
 
   return (
-    <div className="h-screen overflow-auto bg-primary">
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col justify-center px-base py-double">
-        <div className="rounded-sm border border-border bg-secondary p-double space-y-double">
-          <header className="space-y-double">
-            <div className="flex justify-center">
-              <img
-                src={logoSrc}
-                alt="Vibe Kanban"
-                className="h-8 w-auto logo"
-              />
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-2">
+    <div className="h-screen bg-primary flex items-center justify-center p-double">
+      <div className="flex max-h-full w-full max-w-5xl flex-col rounded-sm border border-border bg-secondary">
+        {/* Header */}
+        <header className="shrink-0 space-y-base p-double pb-base">
+          <div className="flex items-center justify-between">
+            <img src={logoSrc} alt="Vibe Kanban" className="h-8 w-auto logo" />
+            <div className="flex flex-wrap items-center gap-2">
               {SOCIAL_LINKS.map((link) => (
                 <PrimaryButton
                   key={link.label}
@@ -348,241 +342,232 @@ export function LandingPage() {
                 />
               ))}
             </div>
-            <div className="rounded-sm border border-brand bg-brand/20 p-base">
-              <div className="flex items-start gap-base">
-                <WarningIcon
-                  className="size-icon-sm text-brand shrink-0 mt-[2px]"
-                  weight="fill"
-                />
-                <div className="space-y-half text-sm text-normal">
-                  <p>
-                    Vibe Kanban runs AI coding agents with{' '}
-                    <code>--dangerously-skip-permissions</code> /{' '}
-                    <code>--yolo</code> by default.
-                  </p>
-                  <p>
-                    Always review what agents are doing and keep backups of
-                    important work. Learn more at{' '}
-                    <a
-                      href="https://www.vibekanban.com/docs/getting-started#safety-notice"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-brand hover:underline"
-                    >
-                      the safety notice
-                    </a>
-                    .
-                  </p>
-                </div>
-              </div>
-            </div>
-          </header>
-
-          <section className="space-y-half">
-            <h2 className="text-base font-medium text-high">
-              Choose Your Coding Agent
-            </h2>
-            <p className="text-sm text-low">
-              Select the default coding agent configuration.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {executorOptions.map((agent) => {
-                const selected = selectedAgent === agent;
-
-                return (
-                  <button
-                    key={agent}
-                    type="button"
-                    onClick={() => setSelectedAgent(agent)}
-                    className={cn(
-                      'flex items-center gap-base rounded-sm border px-base py-half text-left',
-                      selected
-                        ? 'border-brand bg-brand/10'
-                        : 'border-border bg-panel hover:bg-primary'
-                    )}
-                  >
-                    <AgentIcon
-                      agent={agent}
-                      className="size-icon-xl shrink-0"
-                    />
-                    <span className="text-sm text-normal flex-1">
-                      {getAgentName(agent)}
-                    </span>
-                    {selected && (
-                      <CheckIcon
-                        className="size-icon-xs text-brand"
-                        weight="bold"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-
-          <section className="space-y-half">
-            <h2 className="text-base font-medium text-high">
-              Choose Your Code Editor
-            </h2>
-            <p className="text-sm text-low">
-              This editor will be used when opening attempts and files.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {editorOptions.map((editor) => {
-                const selected = editorType === editor;
-
-                return (
-                  <button
-                    key={editor}
-                    type="button"
-                    onClick={() => setEditorType(editor)}
-                    className={cn(
-                      'flex items-center gap-base rounded-sm border px-base py-half text-left',
-                      selected
-                        ? 'border-brand bg-brand/10'
-                        : 'border-border bg-panel hover:bg-primary'
-                    )}
-                  >
-                    <IdeIcon
-                      editorType={editor}
-                      className="size-icon-sm shrink-0"
-                    />
-                    <span className="text-sm text-normal flex-1">
-                      {getIdeName(editor)}
-                    </span>
-                    {selected && (
-                      <CheckIcon
-                        className="size-icon-xs text-brand"
-                        weight="bold"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {editorType === EditorType.CUSTOM && (
-              <div className="space-y-half">
-                <label className="text-sm font-medium text-normal">
-                  Custom Command
-                </label>
-                <input
-                  type="text"
-                  value={customCommand}
-                  onChange={(e) => setCustomCommand(e.target.value)}
-                  placeholder="e.g. code --wait"
-                  className={cn(
-                    'w-full bg-panel border rounded-sm px-base py-half text-sm text-high',
-                    'placeholder:text-low placeholder:opacity-80 focus:outline-none',
-                    'focus:ring-1 focus:ring-brand',
-                    customCommand.trim() === ''
-                      ? 'border-warning/60'
-                      : 'border-border'
-                  )}
-                />
-              </div>
-            )}
-          </section>
-
-          <section className="space-y-half">
-            <h2 className="text-base font-medium text-high">
-              Notification Sound
-            </h2>
-            <p className="text-sm text-low">
-              Pick a sound for notifications, or disable sound.
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {SOUND_OPTIONS.map((option) => {
-                const Icon = option.icon;
-                const selected = soundEnabled && soundFile === option.value;
-
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => handleSoundSelect(option.value)}
-                    className={cn(
-                      'flex items-center gap-base rounded-sm border px-base py-half text-left',
-                      selected
-                        ? 'border-brand bg-brand/10'
-                        : 'border-border bg-panel hover:bg-primary'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'size-icon-sm shrink-0',
-                        selected ? 'text-brand' : 'text-normal'
-                      )}
-                      weight={selected ? 'fill' : 'bold'}
-                    />
-                    <span className="text-sm text-normal flex-1">
-                      {option.label}
-                    </span>
-                    {selected && (
-                      <CheckIcon
-                        className="size-icon-xs text-brand"
-                        weight="bold"
-                      />
-                    )}
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setSoundEnabled(false)}
-                className={cn(
-                  'flex items-center gap-base rounded-sm border px-base py-half text-left',
-                  !soundEnabled
-                    ? 'border-brand bg-brand/10'
-                    : 'border-border bg-panel hover:bg-primary'
-                )}
-              >
-                <SpeakerXIcon
-                  className={cn(
-                    'size-icon-sm shrink-0',
-                    !soundEnabled ? 'text-brand' : 'text-normal'
-                  )}
-                  weight={!soundEnabled ? 'fill' : 'bold'}
-                />
-                <span className="text-sm text-normal flex-1">No sound</span>
-                {!soundEnabled && (
-                  <CheckIcon
-                    className="size-icon-xs text-brand"
-                    weight="bold"
-                  />
-                )}
-              </button>
-            </div>
-          </section>
-
-          <div className="pt-base border-t border-border flex items-center justify-between gap-base">
-            <p className="text-xs text-low">
-              By continuing you agree to the{' '}
-              <a
-                href="https://www.vibekanban.com/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand hover:underline"
-              >
-                terms and conditions
-              </a>{' '}
-              and{' '}
-              <a
-                href="https://www.vibekanban.com/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand hover:underline"
-              >
-                privacy policy
-              </a>
-              .
-            </p>
-            <PrimaryButton
-              value={saving ? 'Saving...' : 'Continue'}
-              onClick={handleContinue}
-              disabled={!canContinue}
-            />
           </div>
+          <div className="rounded-sm border border-brand bg-brand/20 p-base">
+            <div className="flex items-start gap-base">
+              <WarningIcon
+                className="size-icon-sm text-brand shrink-0 mt-[2px]"
+                weight="fill"
+              />
+              <p className="text-sm text-normal">
+                Vibe Kanban runs AI coding agents with{' '}
+                <code>--dangerously-skip-permissions</code> /{' '}
+                <code>--yolo</code> by default. Always review what agents are
+                doing.{' '}
+                <a
+                  href="https://www.vibekanban.com/docs/getting-started#safety-notice"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-brand hover:underline"
+                >
+                  Learn more
+                </a>
+                .
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* 3-column grid */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-double pb-double">
+          <div className="grid grid-cols-3 gap-double">
+            {/* Column 1: Coding Agent */}
+            <section className="space-y-half">
+              <h2 className="text-sm font-medium text-high">Coding Agent</h2>
+              <div className="grid gap-1.5">
+                {executorOptions.map((agent) => {
+                  const selected = selectedAgent === agent;
+
+                  return (
+                    <button
+                      key={agent}
+                      type="button"
+                      onClick={() => setSelectedAgent(agent)}
+                      className={cn(
+                        'flex items-center gap-base rounded-sm border px-base py-half text-left',
+                        selected
+                          ? 'border-brand bg-brand/10'
+                          : 'border-border bg-panel hover:bg-primary'
+                      )}
+                    >
+                      <AgentIcon
+                        agent={agent}
+                        className="size-icon-xl shrink-0"
+                      />
+                      <span className="text-sm text-normal flex-1 truncate">
+                        {getAgentName(agent)}
+                      </span>
+                      {selected && (
+                        <CheckIcon
+                          className="size-icon-xs text-brand shrink-0"
+                          weight="bold"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Column 2: Code Editor */}
+            <section className="space-y-half">
+              <h2 className="text-sm font-medium text-high">Code Editor</h2>
+              <div className="grid gap-1.5">
+                {editorOptions.map((editor) => {
+                  const selected = editorType === editor;
+
+                  return (
+                    <button
+                      key={editor}
+                      type="button"
+                      onClick={() => setEditorType(editor)}
+                      className={cn(
+                        'flex items-center gap-base rounded-sm border px-base py-half text-left',
+                        selected
+                          ? 'border-brand bg-brand/10'
+                          : 'border-border bg-panel hover:bg-primary'
+                      )}
+                    >
+                      <IdeIcon
+                        editorType={editor}
+                        className="size-icon-sm shrink-0"
+                      />
+                      <span className="text-sm text-normal flex-1 truncate">
+                        {getIdeName(editor)}
+                      </span>
+                      {selected && (
+                        <CheckIcon
+                          className="size-icon-xs text-brand shrink-0"
+                          weight="bold"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {editorType === EditorType.CUSTOM && (
+                <div className="space-y-half">
+                  <label className="text-sm font-medium text-normal">
+                    Custom Command
+                  </label>
+                  <input
+                    type="text"
+                    value={customCommand}
+                    onChange={(e) => setCustomCommand(e.target.value)}
+                    placeholder="e.g. code --wait"
+                    className={cn(
+                      'w-full bg-panel border rounded-sm px-base py-half text-sm text-high',
+                      'placeholder:text-low placeholder:opacity-80 focus:outline-none',
+                      'focus:ring-1 focus:ring-brand',
+                      customCommand.trim() === ''
+                        ? 'border-warning/60'
+                        : 'border-border'
+                    )}
+                  />
+                </div>
+              )}
+            </section>
+
+            {/* Column 3: Notification Sound */}
+            <section className="space-y-half">
+              <h2 className="text-sm font-medium text-high">
+                Notification Sound
+              </h2>
+              <div className="grid gap-1.5">
+                {SOUND_OPTIONS.map((option) => {
+                  const Icon = option.icon;
+                  const selected = soundEnabled && soundFile === option.value;
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => handleSoundSelect(option.value)}
+                      className={cn(
+                        'flex items-center gap-base rounded-sm border px-base py-half text-left',
+                        selected
+                          ? 'border-brand bg-brand/10'
+                          : 'border-border bg-panel hover:bg-primary'
+                      )}
+                    >
+                      <Icon
+                        className={cn(
+                          'size-icon-sm shrink-0',
+                          selected ? 'text-brand' : 'text-normal'
+                        )}
+                        weight={selected ? 'fill' : 'bold'}
+                      />
+                      <span className="text-sm text-normal flex-1 truncate">
+                        {option.label}
+                      </span>
+                      {selected && (
+                        <CheckIcon
+                          className="size-icon-xs text-brand shrink-0"
+                          weight="bold"
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setSoundEnabled(false)}
+                  className={cn(
+                    'flex items-center gap-base rounded-sm border px-base py-half text-left',
+                    !soundEnabled
+                      ? 'border-brand bg-brand/10'
+                      : 'border-border bg-panel hover:bg-primary'
+                  )}
+                >
+                  <SpeakerXIcon
+                    className={cn(
+                      'size-icon-sm shrink-0',
+                      !soundEnabled ? 'text-brand' : 'text-normal'
+                    )}
+                    weight={!soundEnabled ? 'fill' : 'bold'}
+                  />
+                  <span className="text-sm text-normal flex-1">No sound</span>
+                  {!soundEnabled && (
+                    <CheckIcon
+                      className="size-icon-xs text-brand shrink-0"
+                      weight="bold"
+                    />
+                  )}
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="shrink-0 border-t border-border p-double pt-base flex items-center justify-between gap-base">
+          <p className="text-xs text-low">
+            By continuing you agree to the{' '}
+            <a
+              href="https://www.vibekanban.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand hover:underline"
+            >
+              terms and conditions
+            </a>{' '}
+            and{' '}
+            <a
+              href="https://www.vibekanban.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand hover:underline"
+            >
+              privacy policy
+            </a>
+            .
+          </p>
+          <PrimaryButton
+            value={saving ? 'Saving...' : 'Continue'}
+            onClick={handleContinue}
+            disabled={!canContinue}
+          />
         </div>
       </div>
     </div>
