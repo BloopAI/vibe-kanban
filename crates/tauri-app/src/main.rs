@@ -6,7 +6,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use services::services::notification::{PushNotifier, set_global_push_notifier};
 use tauri::{
-    Emitter, Manager,
+    Emitter, Listener, Manager,
     menu::{MenuBuilder, MenuItemBuilder},
     tray::TrayIconBuilder,
 };
@@ -163,6 +163,12 @@ fn main() {
                 tauri::async_runtime::spawn(async move {
                     check_for_updates(update_handle).await;
                 });
+
+                // Listen for restart request from frontend (after update installed).
+                let restart_handle = app.handle().clone();
+                app.listen("restart-app", move |_| {
+                    restart_handle.restart();
+                });
             }
 
             Ok(())
@@ -274,10 +280,14 @@ async fn check_for_updates(app: tauri::AppHandle) {
                 }),
             );
 
+            let new_version = update.version.to_string();
             match update.download_and_install(|_, _| {}, || {}).await {
                 Ok(_) => {
                     tracing::info!("Update installed successfully, restart required");
-                    let _ = app.emit("update-installed", ());
+                    let _ = app.emit(
+                        "update-installed",
+                        serde_json::json!({ "newVersion": new_version }),
+                    );
                 }
                 Err(e) => {
                     tracing::error!("Failed to install update: {}", e);

@@ -6,6 +6,7 @@ import {
 } from '@hello-pangea/dnd';
 import type { ReactNode } from 'react';
 import {
+  ArrowsClockwiseIcon,
   LayoutIcon,
   LinkIcon,
   PlusIcon,
@@ -68,6 +69,8 @@ interface AppBarProps {
   starCount?: number | null;
   onlineCount?: number | null;
   appVersion?: string | null;
+  updateVersion?: string | null;
+  onUpdateClick?: () => void;
   githubIconPath: string;
   discordIconPath: string;
 }
@@ -124,6 +127,8 @@ export function AppBar({
   starCount,
   onlineCount,
   appVersion,
+  updateVersion,
+  onUpdateClick,
   githubIconPath,
   discordIconPath,
 }: AppBarProps) {
@@ -402,13 +407,31 @@ export function AppBar({
             onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
           }
         />
-        {appVersion && (
-          <p
-            className="text-[9px] font-ibm-plex-mono text-low leading-none truncate max-w-full"
-            title={`v${appVersion}`}
-          >
-            v{appVersion}
-          </p>
+        {updateVersion ? (
+          <Tooltip content={`Update to v${updateVersion}`} side="right">
+            <button
+              type="button"
+              onClick={onUpdateClick}
+              className={cn(
+                'flex items-center gap-0.5 px-1.5 py-1 rounded-md',
+                'text-[9px] font-ibm-plex-mono font-medium leading-none',
+                'bg-brand text-on-brand hover:bg-brand-hover',
+                'transition-colors cursor-pointer'
+              )}
+            >
+              <ArrowsClockwiseIcon size={10} weight="bold" />
+              Update
+            </button>
+          </Tooltip>
+        ) : (
+          appVersion && (
+            <p
+              className="text-[9px] font-ibm-plex-mono text-low leading-none truncate max-w-full"
+              title={`v${appVersion}`}
+            >
+              v{appVersion}
+            </p>
+          )
         )}
       </div>
     </div>
