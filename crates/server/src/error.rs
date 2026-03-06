@@ -379,17 +379,6 @@ fn deployment_error_message(err: &DeploymentError) -> Option<String> {
     }
 }
 
-fn client_message_for_error(error: &ApiError) -> Option<String> {
-    match error {
-        ApiError::Deployment(err) => deployment_error_message(err),
-        ApiError::Container(err) => container_error_message(err),
-        ApiError::Executor(err) => executor_error_message(err),
-        ApiError::Worktree(err) => worktree_error_message(err),
-        ApiError::GitService(err) => git_service_error_message(err),
-        _ => None,
-    }
-}
-
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         let info = match &self {
@@ -538,7 +527,7 @@ impl IntoResponse for ApiError {
                 ErrorInfo::with_status(StatusCode::GONE, "PtyError", "PTY session closed.")
             }
             ApiError::Pty(_) => ErrorInfo::internal("PtyError"),
-            ApiError::Deployment(_) => client_message_for_error(&self)
+            ApiError::Deployment(err) => deployment_error_message(err)
                 .map(|msg| {
                     ErrorInfo::with_status(
                         StatusCode::INTERNAL_SERVER_ERROR,
@@ -547,19 +536,19 @@ impl IntoResponse for ApiError {
                     )
                 })
                 .unwrap_or_else(|| ErrorInfo::internal("DeploymentError")),
-            ApiError::Container(_) => client_message_for_error(&self)
+            ApiError::Container(err) => container_error_message(err)
                 .map(|msg| {
                     ErrorInfo::with_status(StatusCode::INTERNAL_SERVER_ERROR, "ContainerError", msg)
                 })
                 .unwrap_or_else(|| ErrorInfo::internal("ContainerError")),
-            ApiError::Executor(_) => client_message_for_error(&self)
+            ApiError::Executor(err) => executor_error_message(err)
                 .map(|msg| {
                     ErrorInfo::with_status(StatusCode::INTERNAL_SERVER_ERROR, "ExecutorError", msg)
                 })
                 .unwrap_or_else(|| ErrorInfo::internal("ExecutorError")),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
-            ApiError::Worktree(_) => client_message_for_error(&self)
+            ApiError::Worktree(err) => worktree_error_message(err)
                 .map(|msg| {
                     ErrorInfo::with_status(StatusCode::INTERNAL_SERVER_ERROR, "WorktreeError", msg)
                 })
