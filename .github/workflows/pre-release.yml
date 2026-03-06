@@ -895,13 +895,15 @@ jobs:
             fi
           done
 
-          # Upload latest.json to the fixed update endpoint path
-          echo "Uploading updater manifest..."
+          # Upload latest.json alongside the tag artifacts (NOT to the fixed
+          # update endpoint). The fixed endpoint is only updated when a
+          # pre-release is promoted to a full release (see publish.yml).
+          echo "Uploading updater manifest for tag..."
           aws s3 cp latest.json \
-            "s3://$BUCKET/binaries/tauri-update/latest.json" \
+            "s3://$BUCKET/binaries/$TAG/tauri/latest.json" \
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
-          echo "Update manifest uploaded to: binaries/tauri-update/latest.json"
+          echo "Update manifest uploaded to: binaries/$TAG/tauri/latest.json"
 
           # Upload desktop manifest for NPX CLI auto-install
           echo "Uploading desktop manifest..."
