@@ -29,18 +29,10 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
-import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
-import { useWorkspaceSidebarVisibilityController } from './useWorkspaceSidebarVisibilityController';
 
 const WORKSPACES_GUIDE_ID = 'workspaces-guide';
 
-interface WorkspacesLayoutProps {
-  isAppBarHovered?: boolean;
-}
-
-export function WorkspacesLayout({
-  isAppBarHovered = false,
-}: WorkspacesLayoutProps) {
+export function WorkspacesLayout() {
   const appNavigation = useAppNavigation();
   const {
     workspaceId,
@@ -91,10 +83,6 @@ export function WorkspacesLayout({
     loading: configLoading,
   } = useUserSystem();
   const hasAutoShownWorkspacesGuide = useRef(false);
-  const sidebarVisibility = useWorkspaceSidebarVisibilityController({
-    isPinned: isLeftSidebarVisible,
-    isAppBarHovered,
-  });
 
   // Auto-show Workspaces Guide on first visit
   useEffect(() => {
@@ -345,40 +333,10 @@ export function WorkspacesLayout({
   );
 
   return (
-    <div className="relative flex flex-1 min-h-0 h-full">
+    <div className="flex flex-1 min-h-0 h-full">
       {isLeftSidebarVisible && (
         <div className="w-[300px] shrink-0 h-full overflow-hidden">
           <WorkspacesSidebarContainer onScrollToBottom={handleScrollToBottom} />
-        </div>
-      )}
-
-      {!isLeftSidebarVisible && (
-        <div className="absolute inset-y-0 left-0 z-20 flex items-center">
-          <WorkspacesSidebarReopenTag
-            active={sidebarVisibility.isPreviewOpen}
-            onHoverStart={sidebarVisibility.handleHandleHoverStart}
-            onHoverEnd={sidebarVisibility.handleHandleHoverEnd}
-            ariaLabel={t('workspaces.title')}
-          />
-        </div>
-      )}
-
-      {!isLeftSidebarVisible && (
-        <div
-          className={cn(
-            'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
-            sidebarVisibility.isPreviewOpen
-              ? 'translate-x-0 pointer-events-auto'
-              : '-translate-x-full pointer-events-none'
-          )}
-          onMouseEnter={sidebarVisibility.handlePreviewHoverStart}
-          onMouseLeave={sidebarVisibility.handlePreviewHoverEnd}
-        >
-          <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
-            <WorkspacesSidebarContainer
-              onScrollToBottom={handleScrollToBottom}
-            />
-          </div>
         </div>
       )}
 
