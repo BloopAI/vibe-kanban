@@ -676,7 +676,7 @@ async function resolveNavPreferredRepos(
     return [
       {
         repo,
-        targetBranch: preferredRepo.target_branch || null,
+        targetBranch: preferredRepo.target_branch ?? null,
       },
     ];
   });
@@ -778,7 +778,7 @@ async function initializeState({
         const restoredRepos = await resolveNavPreferredRepos(
           scratchData.repos.map((repo) => ({
             repo_id: repo.repo_id,
-            target_branch: repo.target_branch || null,
+            target_branch: repo.target_branch ?? null,
           }))
         );
 
