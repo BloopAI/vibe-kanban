@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import type {
   DraftWorkspaceData,
   DraftWorkspaceImage,
@@ -16,6 +23,7 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { repoApi } from '@/shared/lib/api';
 import { useWorkspaceCreateDefaults } from '@/shared/hooks/useWorkspaceCreateDefaults';
+import { getValidProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import type {
   CreateModeInitialState,
   LinkedIssue,
@@ -301,6 +309,9 @@ export function useCreateModeState({
   const hasAttemptedAutoSelect = useRef(false);
   const repoDefaultsSourceRef = useRef<string | null>(null);
   const hasAppliedRepoDefaultsRef = useRef(false);
+  const [projectDefaultsStatus, setProjectDefaultsStatus] = useState<
+    'pending' | 'applied' | 'empty' | 'n/a'
+  >('pending');
   const sourceWorkspaceId = useMemo(() => {
     if (state.linkedIssue) {
       const linkedIssueWorkspaceId = getLatestWorkspaceIdForRemoteProject({
@@ -341,6 +352,14 @@ export function useCreateModeState({
     hasAttemptedAutoSelect.current = true;
   }, [state.phase]);
 
+  // When no linked issue with a project, mark project defaults as not applicable
+  useEffect(() => {
+    if (state.phase !== 'ready') return;
+    if (!state.linkedIssue?.remoteProjectId) {
+      setProjectDefaultsStatus('n/a');
+    }
+  }, [state.phase, state.linkedIssue?.remoteProjectId]);
+
   // ============================================================================
   // Auto-apply repos/branches defaults for fresh drafts
   // ============================================================================
@@ -350,9 +369,22 @@ export function useCreateModeState({
     hasAppliedRepoDefaultsRef.current = false;
   }, [sourceWorkspaceId]);
 
+  // When project defaults resolve as empty, allow Effect A to fire as fallback
+  useEffect(() => {
+    if (projectDefaultsStatus === 'empty') {
+      hasAppliedRepoDefaultsRef.current = false;
+    }
+  }, [projectDefaultsStatus]);
+
   useEffect(() => {
     if (!shouldLoadWorkspaceDefaults) return;
     if (!hasResolvedPreferredRepos) return;
+    // When a project is linked, wait for project defaults to resolve first
+    if (
+      state.linkedIssue?.remoteProjectId &&
+      projectDefaultsStatus === 'pending'
+    )
+      return;
     if (hasAppliedRepoDefaultsRef.current) return;
 
     hasAppliedRepoDefaultsRef.current = true;
@@ -371,7 +403,67 @@ export function useCreateModeState({
     hasResolvedPreferredRepos,
     state.repos.length,
     preferredRepos,
+    projectDefaultsStatus,
+    state.linkedIssue?.remoteProjectId,
   ]);
+
+  // ============================================================================
+  // Scratch project-repo defaults (async, non-blocking)
+  // ============================================================================
+  const scratchDefaultsProjectRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const remoteProjectId = state.linkedIssue?.remoteProjectId;
+    if (!remoteProjectId) return;
+    if (state.repos.length > 0) return;
+    if (scratchDefaultsProjectRef.current === remoteProjectId) return;
+
+    scratchDefaultsProjectRef.current = remoteProjectId;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const allRepos = await repoApi.list();
+        if (cancelled) return;
+
+        const availableRepoIds = new Set(allRepos.map((r) => r.id));
+        const scratchDefaults = await getValidProjectRepoDefaults(
+          remoteProjectId,
+          availableRepoIds
+        );
+        if (cancelled) return;
+
+        if (scratchDefaults.length === 0) {
+          setProjectDefaultsStatus('empty');
+          return;
+        }
+
+        const reposById = new Map(allRepos.map((r) => [r.id, r]));
+        const selectedRepos = scratchDefaults.flatMap((d) => {
+          const repo = reposById.get(d.repo_id);
+          if (!repo) return [];
+          return [{ repo, targetBranch: d.target_branch || null }];
+        });
+
+        if (selectedRepos.length > 0) {
+          dispatch({ type: 'SET_REPOS_IF_EMPTY', repos: selectedRepos });
+          setProjectDefaultsStatus('applied');
+        } else {
+          setProjectDefaultsStatus('empty');
+        }
+      } catch (err) {
+        console.warn(
+          '[useCreateModeState] Scratch defaults lookup failed:',
+          err
+        );
+        setProjectDefaultsStatus('empty');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.linkedIssue?.remoteProjectId, state.repos.length]);
 
   // ============================================================================
   // Persistence to scratch (debounced)

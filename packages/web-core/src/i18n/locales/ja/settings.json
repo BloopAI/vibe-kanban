@@ -428,6 +428,12 @@
       "description": "このリポジトリがワークスペースで使用されるときに実行されるスクリプトを設定します。",
       "loading": "リポジトリを読み込み中...",
       "loadError": "リポジトリの読み込みに失敗しました。",
+      "addRepo": {
+        "button": "リポジトリを追加",
+        "dialogTitle": "Gitリポジトリを選択",
+        "dialogDescription": "登録する既存のgitリポジトリを選択してください。",
+        "error": "リポジトリの登録に失敗しました"
+      },
       "selector": {
         "label": "リポジトリを選択",
         "placeholder": "設定するリポジトリを選択",
@@ -487,6 +493,22 @@
           "helper": "このリポジトリの開発サーバーを起動します。スクリプトはリポジトリのワークツリーディレクトリから実行されます。"
         }
       },
+      "linkedProjects": {
+        "title": "リンクされたプロジェクト",
+        "description": "デフォルトのワークスペース設定でこのリポジトリを使用しているプロジェクト。",
+        "loading": "プロジェクトを確認中…",
+        "none": "リンクされたプロジェクトはありません"
+      },
+      "remove": {
+        "title": "リポジトリを削除",
+        "description": "このリポジトリをVibe Kanbanからリンク解除します。ディスク上のファイルは削除されません。",
+        "button": "削除",
+        "confirm": "リポジトリを削除",
+        "dialogTitle": "「{{name}}」を削除しますか？",
+        "dialogDescription": "リポジトリをVibe Kanbanからリンク解除します。ディスク上のファイルには影響しません。後で再度追加できます。",
+        "success": "リポジトリが正常に削除されました。",
+        "error": "リポジトリの削除に失敗しました。"
+      },
       "save": {
         "button": "リポジトリ設定を保存",
         "success": "リポジトリ設定が正常に保存されました！",
@@ -541,6 +563,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {

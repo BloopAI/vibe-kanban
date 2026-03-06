@@ -20,11 +20,14 @@ import {
   XIcon,
   DotsSixVerticalIcon,
   PencilSimpleLineIcon,
+  CheckIcon,
+  CaretDownIcon,
 } from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
 import {
@@ -65,6 +68,21 @@ import {
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
+import type { DraftWorkspaceRepo, GitBranch, Repo } from 'shared/types';
+import { repoApi } from '@/shared/lib/api';
+import {
+  SelectionDialog,
+  type SelectionPage,
+} from '@/shared/dialogs/command-bar/SelectionDialog';
+import {
+  buildBranchSelectionPages,
+  type BranchSelectionResult,
+} from '@/shared/dialogs/command-bar/selections/branchSelection';
+import { FolderPickerDialog } from '@/shared/dialogs/shared/FolderPickerDialog';
+import {
+  getProjectRepoDefaults,
+  saveProjectRepoDefaults,
+} from '@/shared/hooks/useProjectRepoDefaults';
 
 interface FormState {
   name: string;
@@ -338,6 +356,20 @@ export function RemoteProjectsSettingsSection({
   const [success, setSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
+  // Default repos state
+  const [defaultRepos, setDefaultRepos] = useState<DraftWorkspaceRepo[]>([]);
+  const [isLoadingDefaults, setIsLoadingDefaults] = useState(false);
+  const [allRepos, setAllRepos] = useState<Repo[]>([]);
+  const [defaultReposError, setDefaultReposError] = useState<string | null>(
+    null
+  );
+  const [branchCache, setBranchCache] = useState<Map<string, GitBranch[]>>(
+    new Map()
+  );
+  const [loadingBranches, setLoadingBranches] = useState<Set<string>>(
+    new Set()
+  );
+
   // Fetch organizations
   const {
     data: orgsResponse,
@@ -463,6 +495,173 @@ export function RemoteProjectsSettingsSection({
       );
     }
   }, [selectedProjectId, sortedProjectStatuses, hasStatusChanges]);
+
+  // Load default repos and registered repos when project changes
+  useEffect(() => {
+    if (!selectedProjectId) {
+      setDefaultRepos([]);
+      setAllRepos([]);
+      setDefaultReposError(null);
+      return;
+    }
+    setIsLoadingDefaults(true);
+    setDefaultReposError(null);
+
+    Promise.all([
+      getProjectRepoDefaults(selectedProjectId),
+      repoApi.list().catch(() => {
+        setDefaultReposError(
+          t('settings:settings.remoteProjects.form.defaultRepos.fetchError')
+        );
+        return [] as Repo[];
+      }),
+    ])
+      .then(([repos, registeredRepos]) => {
+        setDefaultRepos(repos ?? []);
+        setAllRepos(registeredRepos);
+      })
+      .catch(() => setDefaultRepos([]))
+      .finally(() => setIsLoadingDefaults(false));
+  }, [selectedProjectId, t]);
+
+  const defaultRepoIds = useMemo(
+    () => new Set(defaultRepos.map((r) => r.repo_id)),
+    [defaultRepos]
+  );
+
+  const availableRepos = useMemo(
+    () => allRepos.filter((r) => !defaultRepoIds.has(r.id)),
+    [allRepos, defaultRepoIds]
+  );
+
+  const pickBranchForRepo = useCallback(async (repo: Repo) => {
+    const branches = await repoApi.getBranches(repo.id);
+    const branchItems = branches.map((b) => ({
+      name: b.name,
+      isCurrent: b.is_current,
+    }));
+    if (branchItems.length === 0) return null;
+    const branchResult = (await SelectionDialog.show({
+      initialPageId: 'selectBranch',
+      pages: buildBranchSelectionPages(
+        branchItems,
+        repo.display_name || repo.name
+      ) as Record<string, SelectionPage>,
+    })) as BranchSelectionResult | undefined;
+
+    return branchResult?.branch ?? null;
+  }, []);
+
+  const handleAddDefaultRepo = useCallback(
+    async (repo: Repo) => {
+      if (!selectedProjectId) return;
+      setDefaultReposError(null);
+      try {
+        const branch = await pickBranchForRepo(repo);
+        if (!branch) {
+          const branches = await repoApi.getBranches(repo.id);
+          if (branches.length === 0) {
+            setDefaultReposError(
+              t('settings:settings.remoteProjects.form.defaultRepos.noBranches')
+            );
+          }
+          return;
+        }
+        const updated = [
+          ...defaultRepos,
+          { repo_id: repo.id, target_branch: branch },
+        ];
+        setDefaultRepos(updated);
+        await saveProjectRepoDefaults(selectedProjectId, updated);
+      } catch (error) {
+        setDefaultReposError(
+          error instanceof Error
+            ? error.message
+            : t('settings:settings.remoteProjects.form.defaultRepos.saveError')
+        );
+      }
+    },
+    [selectedProjectId, defaultRepos, pickBranchForRepo, t]
+  );
+
+  const handleAddNewDefaultRepo = useCallback(async () => {
+    if (!selectedProjectId) return;
+    setDefaultReposError(null);
+    try {
+      const result = await FolderPickerDialog.show({});
+      if (!result) return;
+      const newRepo = await repoApi.register({ path: result });
+      setAllRepos((prev) => [...prev, newRepo]);
+      await handleAddDefaultRepo(newRepo);
+    } catch (error) {
+      setDefaultReposError(
+        error instanceof Error
+          ? error.message
+          : t('settings:settings.remoteProjects.form.defaultRepos.saveError')
+      );
+    }
+  }, [selectedProjectId, handleAddDefaultRepo, t]);
+
+  const handleRemoveDefaultRepo = useCallback(
+    async (repoId: string) => {
+      if (!selectedProjectId) return;
+      setDefaultReposError(null);
+      const updated = defaultRepos.filter((r) => r.repo_id !== repoId);
+      setDefaultRepos(updated);
+      try {
+        await saveProjectRepoDefaults(selectedProjectId, updated);
+      } catch (error) {
+        setDefaultReposError(
+          error instanceof Error
+            ? error.message
+            : t('settings:settings.remoteProjects.form.defaultRepos.saveError')
+        );
+      }
+    },
+    [selectedProjectId, defaultRepos, t]
+  );
+
+  const fetchBranchesForRepo = useCallback(
+    async (repoId: string) => {
+      if (branchCache.has(repoId)) return;
+      setLoadingBranches((prev) => new Set(prev).add(repoId));
+      try {
+        const branches = await repoApi.getBranches(repoId);
+        setBranchCache((prev) => new Map(prev).set(repoId, branches));
+      } catch {
+        setDefaultReposError(
+          t('settings:settings.remoteProjects.form.defaultRepos.fetchError')
+        );
+      } finally {
+        setLoadingBranches((prev) => {
+          const next = new Set(prev);
+          next.delete(repoId);
+          return next;
+        });
+      }
+    },
+    [branchCache, t]
+  );
+
+  const handleChangeBranch = useCallback(
+    async (repoId: string, newBranch: string) => {
+      if (!selectedProjectId) return;
+      const updated = defaultRepos.map((r) =>
+        r.repo_id === repoId ? { ...r, target_branch: newBranch } : r
+      );
+      setDefaultRepos(updated);
+      try {
+        await saveProjectRepoDefaults(selectedProjectId, updated);
+      } catch (error) {
+        setDefaultReposError(
+          error instanceof Error
+            ? error.message
+            : t('settings:settings.remoteProjects.form.defaultRepos.saveError')
+        );
+      }
+    },
+    [selectedProjectId, defaultRepos, t]
+  );
 
   const visibleStatusCount = useMemo(
     () => localStatuses.filter((status) => !status.hidden).length,
@@ -996,6 +1195,174 @@ export function RemoteProjectsSettingsSection({
                 disabled={isSaving}
               />
             </SettingsField>
+          </div>
+        )}
+
+        {selectedProjectId && (
+          <div
+            className={cn(
+              'bg-secondary/50 border border-border rounded-sm p-4 space-y-base',
+              isSaving && 'opacity-60 pointer-events-none'
+            )}
+          >
+            <div>
+              <p className="text-sm font-medium text-normal">
+                {t('settings:settings.remoteProjects.form.defaultRepos.label')}
+              </p>
+              <p className="text-sm text-low mt-1">
+                {t(
+                  'settings:settings.remoteProjects.form.defaultRepos.description'
+                )}
+              </p>
+            </div>
+
+            {defaultReposError && (
+              <p className="text-sm text-red-500">{defaultReposError}</p>
+            )}
+
+            {isLoadingDefaults ? (
+              <div className="flex items-center gap-half py-half">
+                <SpinnerIcon className="size-icon-xs animate-spin" />
+              </div>
+            ) : defaultRepos.length === 0 ? (
+              <p className="text-sm text-low">
+                {t('settings:settings.remoteProjects.form.defaultRepos.empty')}
+              </p>
+            ) : (
+              <div className="space-y-half">
+                {defaultRepos.map((dr) => {
+                  const repo = allRepos.find((r) => r.id === dr.repo_id);
+                  return (
+                    <div
+                      key={dr.repo_id}
+                      className="flex items-center gap-base px-base py-half rounded-sm bg-secondary"
+                    >
+                      <span className="text-sm text-high flex-1 truncate">
+                        {repo?.display_name || repo?.name || dr.repo_id}
+                      </span>
+                      <DropdownMenu
+                        onOpenChange={(open) => {
+                          if (open) void fetchBranchesForRepo(dr.repo_id);
+                        }}
+                      >
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex items-center gap-1 text-xs text-low bg-panel border border-border rounded-sm px-1.5 py-0.5 hover:bg-secondary cursor-pointer transition-colors"
+                          >
+                            {loadingBranches.has(dr.repo_id) ? (
+                              <SpinnerIcon className="size-icon-2xs animate-spin" />
+                            ) : (
+                              <>
+                                {dr.target_branch}
+                                <CaretDownIcon
+                                  className="size-icon-2xs opacity-50"
+                                  weight="bold"
+                                />
+                              </>
+                            )}
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="max-h-60 overflow-y-auto"
+                        >
+                          {loadingBranches.has(dr.repo_id) ? (
+                            <div className="flex items-center justify-center py-2 px-3">
+                              <SpinnerIcon className="size-icon-xs animate-spin" />
+                            </div>
+                          ) : (branchCache.get(dr.repo_id) ?? []).length ===
+                            0 ? (
+                            <div className="py-2 px-3 text-xs text-low">
+                              {t(
+                                'settings:settings.remoteProjects.form.defaultRepos.noBranches'
+                              )}
+                            </div>
+                          ) : (
+                            (branchCache.get(dr.repo_id) ?? []).map(
+                              (branch) => (
+                                <DropdownMenuItem
+                                  key={branch.name}
+                                  onClick={() =>
+                                    handleChangeBranch(dr.repo_id, branch.name)
+                                  }
+                                >
+                                  <div className="flex items-center justify-between w-full gap-2">
+                                    <span
+                                      className={cn(
+                                        'truncate',
+                                        branch.name === dr.target_branch &&
+                                          'font-medium text-high'
+                                      )}
+                                    >
+                                      {branch.name}
+                                    </span>
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {branch.is_current && (
+                                        <span className="text-[10px] text-low bg-secondary border border-border rounded-sm px-1">
+                                          current
+                                        </span>
+                                      )}
+                                      {branch.name === dr.target_branch && (
+                                        <CheckIcon
+                                          className="size-icon-2xs text-brand"
+                                          weight="bold"
+                                        />
+                                      )}
+                                    </div>
+                                  </div>
+                                </DropdownMenuItem>
+                              )
+                            )
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveDefaultRepo(dr.repo_id)}
+                        className="flex items-center justify-center size-icon-sm text-low hover:text-normal"
+                      >
+                        <XIcon className="size-icon-xs" weight="bold" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center gap-half px-base py-half text-high hover:bg-secondary rounded-sm transition-colors"
+                >
+                  <div className="flex items-center justify-center size-icon-sm">
+                    <PlusIcon className="size-icon-xs" weight="bold" />
+                  </div>
+                  <span className="text-xs font-light">
+                    {t(
+                      'settings:settings.remoteProjects.form.defaultRepos.addButton'
+                    )}
+                  </span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                {availableRepos.map((repo) => (
+                  <DropdownMenuItem
+                    key={repo.id}
+                    onClick={() => handleAddDefaultRepo(repo)}
+                  >
+                    {repo.display_name || repo.name}
+                  </DropdownMenuItem>
+                ))}
+                {availableRepos.length > 0 && <DropdownMenuSeparator />}
+                <DropdownMenuItem onClick={handleAddNewDefaultRepo}>
+                  {t(
+                    'settings:settings.remoteProjects.form.defaultRepos.addNew'
+                  )}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         )}
 

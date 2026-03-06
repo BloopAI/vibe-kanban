@@ -19,7 +19,8 @@
     "discard": "Abandonner",
     "addItem": "Ajouter un élément",
     "reply": "Répondre",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Ajouter"
   },
   "form": {
     "notSpecified": "Non spécifié",
@@ -377,7 +378,7 @@
     "issueTitlePlaceholder": "Titre du ticket...",
     "issueDescriptionPlaceholder": "Entrez la description de la tâche...",
     "createDraftWorkspaceImmediately": "Créer immédiatement un espace de travail brouillon",
-    "createDraftWorkspaceDescription": "Cochez pour créer automatiquement un espace de travail",
+    "createDraftWorkspaceDescription": "Après la création de l'issue, ouvrir le formulaire de création de workspace pré-rempli avec les détails de l'issue",
     "createIssue": "Créer la tâche",
     "newIssue": "Nouveau ticket",
     "previewCodeBlock": "[Bloc de code]",
@@ -494,7 +495,11 @@
         "recent": "Récents",
         "browse": "Parcourir",
         "create": "Créer"
-      }
+      },
+      "setupHintTitle": "Scripts de Configuration",
+      "setupHint": "Astuce : Configurez les scripts d'installation pour ce dépôt dans Paramètres → Dépôts",
+      "setupHintDismiss": "Fermer",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   ClockCounterClockwiseIcon,
   GitBranchIcon,
@@ -14,6 +15,7 @@ import { repoApi } from '@/shared/lib/api';
 import { cn } from '@/shared/lib/utils';
 import { useCreateMode } from '@/shared/hooks/useCreateMode';
 import { FolderPickerDialog } from '@/shared/dialogs/shared/FolderPickerDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import { CreateRepoDialog } from '@vibe/ui/components/CreateRepoDialog';
 import {
@@ -72,12 +74,20 @@ export function CreateModeRepoPickerBar({
   onContinueToPrompt,
 }: CreateModeRepoPickerBarProps) {
   const { t } = useTranslation('common');
+  const queryClient = useQueryClient();
   const { repos, targetBranches, addRepo, removeRepo, setTargetBranch } =
     useCreateMode();
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [branchRepoId, setBranchRepoId] = useState<string | null>(null);
   const [pickerError, setPickerError] = useState<string | null>(null);
+  const [setupHintDismissed, setSetupHintDismissed] = useState(false);
   const isBusy = pendingAction !== null;
+
+  const hasUnconfiguredRepo = useMemo(
+    () => repos.some((repo) => !repo.setup_script),
+    [repos]
+  );
+  const showSetupHint = hasUnconfiguredRepo && !setupHintDismissed;
 
   const selectedRepoIds = useMemo(
     () => new Set(repos.map((repo) => repo.id)),
@@ -185,6 +195,7 @@ export function CreateModeRepoPickerBar({
         if (!selectedPath) return;
 
         const repo = await repoApi.register({ path: selectedPath });
+        queryClient.invalidateQueries({ queryKey: ['repos'] });
         await addRepoWithBranchSelection(repo);
       },
       'Failed to register repository'
@@ -207,6 +218,7 @@ export function CreateModeRepoPickerBar({
               parent_path: parentPath,
               folder_name: folderName,
             });
+            queryClient.invalidateQueries({ queryKey: ['repos'] });
             await addRepoWithBranchSelection(repo);
           },
         });
@@ -346,6 +358,41 @@ export function CreateModeRepoPickerBar({
           </div>
         </div>
       </div>
+      {showSetupHint && (
+        <div className="mx-plusfifty mt-half flex items-start gap-half rounded-sm border border-brand/20 bg-brand/5 px-base py-base">
+          <div className="flex-1">
+            <p className="text-sm font-medium text-normal">
+              {t('createMode.repoPicker.setupHintTitle')}
+            </p>
+            <p className="mt-quarter text-sm text-low">
+              {t('createMode.repoPicker.setupHint')}
+            </p>
+            <button
+              type="button"
+              className="mt-quarter cursor-pointer text-sm font-medium text-brand underline hover:text-brand/80"
+              onClick={() => {
+                const unconfiguredRepo = repos.find(
+                  (repo) => !repo.setup_script
+                );
+                SettingsDialog.show({
+                  initialSection: 'repos',
+                  initialState: { repoId: unconfiguredRepo?.id },
+                });
+              }}
+            >
+              {t('createMode.repoPicker.setupHintLink')}
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSetupHintDismissed(true)}
+            className="shrink-0 text-low hover:text-normal"
+            aria-label={t('createMode.repoPicker.setupHintDismiss')}
+          >
+            <XIcon className="size-icon-2xs" weight="bold" />
+          </button>
+        </div>
+      )}
       {pickerError && (
         <div className="mt-half rounded-sm border border-error/30 bg-error/10 px-base py-half">
           <p className="text-xs text-error">{pickerError}</p>

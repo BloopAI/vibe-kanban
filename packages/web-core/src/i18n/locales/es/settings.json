@@ -428,6 +428,12 @@
       "description": "Configura los scripts que se ejecutan cuando este repositorio se usa en workspaces.",
       "loading": "Cargando repositorios...",
       "loadError": "Error al cargar repositorios.",
+      "addRepo": {
+        "button": "Agregar Repositorio",
+        "dialogTitle": "Seleccionar Repositorio Git",
+        "dialogDescription": "Elige un repositorio git existente para registrar.",
+        "error": "Error al registrar el repositorio"
+      },
       "selector": {
         "label": "Seleccionar Repositorio",
         "placeholder": "Elige un repositorio para configurar",
@@ -487,6 +493,22 @@
           "helper": "Inicia un servidor de desarrollo para este repositorio. Los scripts se ejecutan desde el directorio worktree del repositorio."
         }
       },
+      "linkedProjects": {
+        "title": "Proyectos Vinculados",
+        "description": "Proyectos que usan este repositorio en su configuración de workspace predeterminada.",
+        "loading": "Verificando proyectos…",
+        "none": "No hay proyectos vinculados"
+      },
+      "remove": {
+        "title": "Eliminar Repositorio",
+        "description": "Desvincular este repositorio de Vibe Kanban. Los archivos en disco no se eliminarán.",
+        "button": "Eliminar",
+        "confirm": "Eliminar Repositorio",
+        "dialogTitle": "¿Eliminar \"{{name}}\"?",
+        "dialogDescription": "Esto desvinculará el repositorio de Vibe Kanban. Tus archivos en disco no se verán afectados. Puedes volver a agregarlo más tarde.",
+        "success": "Repositorio eliminado exitosamente.",
+        "error": "Error al eliminar el repositorio."
+      },
       "save": {
         "button": "Guardar Configuración del Repositorio",
         "success": "¡Configuración del repositorio guardada exitosamente!",
@@ -541,6 +563,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {

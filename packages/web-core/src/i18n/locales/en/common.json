@@ -19,7 +19,8 @@
     "discard": "Discard",
     "addItem": "Add Item",
     "reply": "Reply",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Add"
   },
   "form": {
     "notSpecified": "Not specified",
@@ -391,7 +392,7 @@
     "issueTitlePlaceholder": "Issue Title...",
     "issueDescriptionPlaceholder": "Enter task description here...",
     "createDraftWorkspaceImmediately": "Create draft workspace immediately",
-    "createDraftWorkspaceDescription": "Tick to automatically create a workspace",
+    "createDraftWorkspaceDescription": "After creating the issue, open the workspace creation form pre-filled with the issue details",
     "createIssue": "Create Issue",
     "newIssue": "New Issue",
     "previewCodeBlock": "[Code block]",
@@ -508,7 +509,11 @@
         "recent": "Recent",
         "browse": "Browse",
         "create": "Create"
-      }
+      },
+      "setupHintTitle": "Setup Scripts",
+      "setupHint": "Tip: Configure setup scripts for this repository in Settings → Repositories",
+      "setupHintDismiss": "Dismiss",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

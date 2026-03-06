@@ -428,6 +428,12 @@
       "description": "設定此儲存庫在工作區中使用時執行的腳本。",
       "loading": "載入儲存庫中...",
       "loadError": "載入儲存庫失敗。",
+      "addRepo": {
+        "button": "新增儲存庫",
+        "dialogTitle": "選擇 Git 儲存庫",
+        "dialogDescription": "選擇一個現有的 git 儲存庫進行註冊。",
+        "error": "註冊儲存庫失敗"
+      },
       "selector": {
         "label": "選擇儲存庫",
         "placeholder": "選擇要設定的儲存庫",
@@ -487,6 +493,22 @@
           "helper": "啟動此儲存庫的開發伺服器。腳本會從儲存庫的工作樹目錄執行。"
         }
       },
+      "linkedProjects": {
+        "title": "關聯專案",
+        "description": "在預設工作區設定中使用此儲存庫的專案。",
+        "loading": "正在檢查專案…",
+        "none": "沒有關聯的專案"
+      },
+      "remove": {
+        "title": "移除儲存庫",
+        "description": "從 Vibe Kanban 取消關聯此儲存庫。磁碟上的檔案不會被刪除。",
+        "button": "移除",
+        "confirm": "移除儲存庫",
+        "dialogTitle": "移除「{{name}}」？",
+        "dialogDescription": "這將從 Vibe Kanban 取消關聯此儲存庫。您磁碟上的檔案不受影響。您可以稍後重新加入。",
+        "success": "儲存庫移除成功。",
+        "error": "移除儲存庫失敗。"
+      },
       "save": {
         "button": "儲存儲存庫設定",
         "success": "儲存庫設定儲存成功！",
@@ -541,6 +563,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {

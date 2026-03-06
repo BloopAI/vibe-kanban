@@ -38,7 +38,8 @@
     "send": "Enviar",
     "addItem": "Añadir elemento",
     "reply": "Responder",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "Agregar"
   },
   "form": {
     "notSpecified": "No especificado",
@@ -377,7 +378,7 @@
     "issueTitlePlaceholder": "Título del issue...",
     "issueDescriptionPlaceholder": "Ingresa la descripción de la tarea...",
     "createDraftWorkspaceImmediately": "Crear workspace borrador inmediatamente",
-    "createDraftWorkspaceDescription": "Marca para crear automáticamente un workspace",
+    "createDraftWorkspaceDescription": "Después de crear la incidencia, abrir el formulario de creación de workspace con los datos de la incidencia",
     "createIssue": "Crear tarea",
     "newIssue": "Nuevo issue",
     "previewCodeBlock": "[Bloque de código]",
@@ -494,7 +495,11 @@
         "recent": "Recientes",
         "browse": "Explorar",
         "create": "Crear"
-      }
+      },
+      "setupHintTitle": "Scripts de Configuración",
+      "setupHint": "Consejo: Configura los scripts de instalación para este repositorio en Ajustes → Repositorios",
+      "setupHintDismiss": "Cerrar",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

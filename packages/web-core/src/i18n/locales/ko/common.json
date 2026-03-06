@@ -38,7 +38,8 @@
     "send": "보내기",
     "addItem": "항목 추가",
     "reply": "답장",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "추가"
   },
   "form": {
     "notSpecified": "지정되지 않음",
@@ -377,7 +378,7 @@
     "issueTitlePlaceholder": "이슈 제목...",
     "issueDescriptionPlaceholder": "작업 설명을 입력하세요...",
     "createDraftWorkspaceImmediately": "초안 워크스페이스를 즉시 생성",
-    "createDraftWorkspaceDescription": "체크하면 워크스페이스를 자동으로 생성합니다",
+    "createDraftWorkspaceDescription": "이슈를 생성한 후, 이슈 세부 정보가 미리 입력된 워크스페이스 생성 양식을 엽니다",
     "createIssue": "작업 생성",
     "newIssue": "새 이슈",
     "previewCodeBlock": "[코드 블록]",
@@ -494,7 +495,11 @@
         "recent": "최근",
         "browse": "찾아보기",
         "create": "생성"
-      }
+      },
+      "setupHintTitle": "설정 스크립트",
+      "setupHint": "팁: 이 저장소의 설정 스크립트를 설정 → 저장소에서 구성하세요",
+      "setupHintDismiss": "닫기",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

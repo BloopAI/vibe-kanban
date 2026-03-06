@@ -428,6 +428,12 @@
       "description": "이 저장소가 워크스페이스에서 사용될 때 실행되는 스크립트를 구성합니다.",
       "loading": "저장소 로딩 중...",
       "loadError": "저장소를 불러오지 못했습니다.",
+      "addRepo": {
+        "button": "저장소 추가",
+        "dialogTitle": "Git 저장소 선택",
+        "dialogDescription": "등록할 기존 git 저장소를 선택하세요.",
+        "error": "저장소 등록에 실패했습니다"
+      },
       "selector": {
         "label": "저장소 선택",
         "placeholder": "구성할 저장소를 선택하세요",
@@ -487,6 +493,22 @@
           "helper": "이 저장소의 개발 서버를 시작합니다. 스크립트는 저장소의 워크트리 디렉토리에서 실행됩니다."
         }
       },
+      "linkedProjects": {
+        "title": "연결된 프로젝트",
+        "description": "기본 워크스페이스 설정에서 이 저장소를 사용하는 프로젝트입니다.",
+        "loading": "프로젝트 확인 중…",
+        "none": "연결된 프로젝트가 없습니다"
+      },
+      "remove": {
+        "title": "저장소 제거",
+        "description": "이 저장소를 Vibe Kanban에서 연결 해제합니다. 디스크의 파일은 삭제되지 않습니다.",
+        "button": "제거",
+        "confirm": "저장소 제거",
+        "dialogTitle": "\"{{name}}\"을(를) 제거하시겠습니까?",
+        "dialogDescription": "저장소를 Vibe Kanban에서 연결 해제합니다. 디스크의 파일은 영향을 받지 않습니다. 나중에 다시 추가할 수 있습니다.",
+        "success": "저장소가 성공적으로 제거되었습니다.",
+        "error": "저장소 제거에 실패했습니다."
+      },
       "save": {
         "button": "저장소 설정 저장",
         "success": "저장소 설정이 성공적으로 저장되었습니다!",
@@ -541,6 +563,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {

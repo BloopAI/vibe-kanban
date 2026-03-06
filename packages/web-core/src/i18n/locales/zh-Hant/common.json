@@ -19,7 +19,8 @@
     "discard": "放棄",
     "addItem": "新增項目",
     "reply": "回覆",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "新增"
   },
   "form": {
     "notSpecified": "未指定",
@@ -377,7 +378,7 @@
     "issueTitlePlaceholder": "問題標題...",
     "issueDescriptionPlaceholder": "輸入任務描述...",
     "createDraftWorkspaceImmediately": "立即建立草稿工作區",
-    "createDraftWorkspaceDescription": "勾選後自動建立工作區",
+    "createDraftWorkspaceDescription": "建立議題後，開啟預填了議題詳情的工作區建立表單",
     "createIssue": "建立任務",
     "newIssue": "新問題",
     "previewCodeBlock": "[程式碼區塊]",
@@ -494,7 +495,11 @@
         "recent": "最近",
         "browse": "瀏覽",
         "create": "建立"
-      }
+      },
+      "setupHintTitle": "設定腳本",
+      "setupHint": "提示：在設定 → 儲存庫中為此儲存庫設定安裝腳本",
+      "setupHintDismiss": "關閉",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

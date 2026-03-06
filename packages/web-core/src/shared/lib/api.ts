@@ -777,6 +777,13 @@ export const repoApi = {
     return handleApiResponse<Repo>(response);
   },
 
+  delete: async (repoId: string): Promise<void> => {
+    const response = await makeRequest(`/api/repos/${repoId}`, {
+      method: 'DELETE',
+    });
+    return handleApiResponse<void>(response);
+  },
+
   register: async (data: {
     path: string;
     display_name?: string;

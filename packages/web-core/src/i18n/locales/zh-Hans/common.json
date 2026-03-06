@@ -19,7 +19,8 @@
     "discard": "放弃",
     "addItem": "添加项目",
     "reply": "回复",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "添加"
   },
   "form": {
     "notSpecified": "未指定",
@@ -377,7 +378,7 @@
     "issueTitlePlaceholder": "问题标题...",
     "issueDescriptionPlaceholder": "输入任务描述...",
     "createDraftWorkspaceImmediately": "立即创建草稿工作区",
-    "createDraftWorkspaceDescription": "勾选后自动创建工作区",
+    "createDraftWorkspaceDescription": "创建议题后，打开预填了议题详情的工作区创建表单",
     "createIssue": "创建任务",
     "newIssue": "新问题",
     "previewCodeBlock": "[代码块]",
@@ -494,7 +495,11 @@
         "recent": "最近",
         "browse": "浏览",
         "create": "创建"
-      }
+      },
+      "setupHintTitle": "设置脚本",
+      "setupHint": "提示：在设置 → 仓库中为此仓库配置设置脚本",
+      "setupHintDismiss": "关闭",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

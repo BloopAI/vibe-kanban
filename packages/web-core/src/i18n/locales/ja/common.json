@@ -38,7 +38,8 @@
     "send": "送信",
     "addItem": "項目を追加",
     "reply": "返信",
-    "retry": "Retry"
+    "retry": "Retry",
+    "add": "追加"
   },
   "form": {
     "notSpecified": "指定なし",
@@ -377,7 +378,7 @@
     "issueTitlePlaceholder": "課題タイトル...",
     "issueDescriptionPlaceholder": "タスクの説明を入力してください...",
     "createDraftWorkspaceImmediately": "下書きワークスペースをすぐに作成",
-    "createDraftWorkspaceDescription": "チェックするとワークスペースを自動作成します",
+    "createDraftWorkspaceDescription": "課題を作成した後、課題の詳細が入力されたワークスペース作成フォームを開きます",
     "createIssue": "タスクを作成",
     "newIssue": "新しい課題",
     "previewCodeBlock": "[コードブロック]",
@@ -494,7 +495,11 @@
         "recent": "最近",
         "browse": "参照",
         "create": "作成"
-      }
+      },
+      "setupHintTitle": "セットアップスクリプト",
+      "setupHint": "ヒント: このリポジトリのセットアップスクリプトは設定 → リポジトリで構成できます",
+      "setupHintDismiss": "閉じる",
+      "setupHintLink": "Configure in Settings"
     }
   },
   "modelSelector": {

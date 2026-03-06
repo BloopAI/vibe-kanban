@@ -428,6 +428,12 @@
       "description": "Configurez les scripts qui s'exécutent lorsque ce dépôt est utilisé dans les espaces de travail.",
       "loading": "Chargement des dépôts...",
       "loadError": "Échec du chargement des dépôts.",
+      "addRepo": {
+        "button": "Ajouter un dépôt",
+        "dialogTitle": "Sélectionner un dépôt Git",
+        "dialogDescription": "Choisissez un dépôt git existant à enregistrer.",
+        "error": "Échec de l'enregistrement du dépôt"
+      },
       "selector": {
         "label": "Sélectionner un dépôt",
         "placeholder": "Choisir un dépôt à configurer",
@@ -487,6 +493,22 @@
           "helper": "Démarre un serveur de développement pour ce dépôt. Les scripts s'exécutent depuis le répertoire du worktree du dépôt."
         }
       },
+      "linkedProjects": {
+        "title": "Projets liés",
+        "description": "Projets utilisant ce dépôt dans leur configuration d'espace de travail par défaut.",
+        "loading": "Vérification des projets…",
+        "none": "Aucun projet lié"
+      },
+      "remove": {
+        "title": "Retirer le dépôt",
+        "description": "Dissocier ce dépôt de Vibe Kanban. Les fichiers sur le disque ne seront pas supprimés.",
+        "button": "Retirer",
+        "confirm": "Retirer le dépôt",
+        "dialogTitle": "Retirer « {{name}} » ?",
+        "dialogDescription": "Cela dissociera le dépôt de Vibe Kanban. Vos fichiers sur le disque ne seront pas affectés. Vous pourrez le rajouter ultérieurement.",
+        "success": "Dépôt retiré avec succès.",
+        "error": "Échec du retrait du dépôt."
+      },
       "save": {
         "button": "Enregistrer les paramètres du dépôt",
         "success": "Paramètres du dépôt enregistrés avec succès !",
@@ -541,6 +563,17 @@
         "statuses": {
           "label": "Project Statuses",
           "description": "Manage kanban columns for this project."
+        },
+        "defaultRepos": {
+          "label": "Default Repositories",
+          "description": "Repositories that are automatically added when creating workspaces from this project's issues.",
+          "empty": "No default repositories configured",
+          "addButton": "Add",
+          "addNew": "Add new repository...",
+          "branchLabel": "Branch",
+          "noBranches": "No branches found for this repository",
+          "fetchError": "Could not load repositories",
+          "saveError": "Failed to save default repositories"
         }
       },
       "loginRequired": {
