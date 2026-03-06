@@ -250,7 +250,7 @@ impl McpServer {
         })
     }
 
-    #[tool(description = "Get status for an execution. Returns final_message when available.")]
+    #[tool(description = "Get status for an execution.")]
     async fn get_execution(
         &self,
         Parameters(GetExecutionRequest { execution_id }): Parameters<GetExecutionRequest>,
@@ -272,20 +272,6 @@ impl McpServer {
         }
 
         let is_finished = execution_process.status != ExecutionProcessStatus::Running;
-        let final_message = if is_finished {
-            let final_message_url = self.url(&format!(
-                "/api/execution-processes/{}/final-message",
-                execution_process.id
-            ));
-            let fetched_message: Option<String> =
-                match self.send_json(self.client.get(&final_message_url)).await {
-                    Ok(value) => value,
-                    Err(error_result) => return Ok(error_result),
-                };
-            fetched_message.filter(|message| !message.trim().is_empty())
-        } else {
-            None
-        };
 
         let execution_process_value = match Self::serialize_execution_process(&execution_process) {
             Ok(value) => value,
@@ -298,7 +284,7 @@ impl McpServer {
             status: Self::execution_process_status_label(&execution_process.status).to_string(),
             is_finished,
             execution: execution_process_value,
-            final_message,
+            final_message: None,
         })
     }
 }
