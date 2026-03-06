@@ -70,12 +70,37 @@ export function useKanbanFilters({
       result = result.filter((issue) => issue.parent_issue_id === null);
     }
 
-    // Text search (title)
+    // Text search (title + short ID)
     const query = filters.searchQuery.trim().toLowerCase();
     if (query) {
-      result = result.filter((issue) =>
-        issue.title.toLowerCase().includes(query)
-      );
+      const normalizedIdQuery = query.startsWith('#') ? query.slice(1) : query;
+
+      result = result.filter((issue) => {
+        if (issue.title.toLowerCase().includes(query)) {
+          return true;
+        }
+
+        const simpleId = issue.simple_id.toLowerCase();
+        if (simpleId.includes(query)) {
+          return true;
+        }
+
+        if (
+          normalizedIdQuery !== query &&
+          simpleId.includes(normalizedIdQuery)
+        ) {
+          return true;
+        }
+
+        const issueNumber = String(issue.issue_number);
+        if (issueNumber.includes(query)) {
+          return true;
+        }
+
+        return (
+          normalizedIdQuery !== query && issueNumber.includes(normalizedIdQuery)
+        );
+      });
     }
 
     // Priority filter (OR within)
