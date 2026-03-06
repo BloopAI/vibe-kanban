@@ -45,7 +45,8 @@ export const useScratch = (
   });
 
   // --- WebSocket/API path (local-web) ---
-  const serverEnabled = !isRemote && (options?.enabled ?? true) && id.length > 0;
+  const serverEnabled =
+    !isRemote && (options?.enabled ?? true) && id.length > 0;
   const endpoint = serverEnabled
     ? scratchApi.getStreamUrl(scratchType, id)
     : undefined;
