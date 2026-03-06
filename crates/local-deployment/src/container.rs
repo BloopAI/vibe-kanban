@@ -96,6 +96,13 @@ fn terminal_queue_action(
     }
 }
 
+fn should_run_terminal_handler_after_success_path(
+    should_start_next: bool,
+    should_finalize: bool,
+) -> bool {
+    should_start_next && should_finalize
+}
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -576,7 +583,7 @@ impl LocalContainerService {
                     ExecutionProcessStatus::Running
                 );
 
-                if success || cleanup_done {
+                let should_run_terminal_handler = if success || cleanup_done {
                     // Commit changes (if any) and get feedback about whether changes were made
                     let changes_committed = match container.try_commit_changes(&ctx).await {
                         Ok(committed) => committed,
@@ -617,8 +624,16 @@ impl LocalContainerService {
                             .continue_or_finalize_terminal_execution(&ctx)
                             .await;
                     }
-                }
-                if container.should_finalize(&ctx) {
+
+                    should_run_terminal_handler_after_success_path(
+                        should_start_next,
+                        container.should_finalize(&ctx),
+                    )
+                } else {
+                    container.should_finalize(&ctx)
+                };
+
+                if should_run_terminal_handler {
                     container
                         .continue_or_finalize_terminal_execution(&ctx)
                         .await;
@@ -1579,5 +1594,12 @@ mod tests {
             terminal_queue_action(&ExecutionProcessStatus::Failed, false),
             TerminalQueueAction::FinalizeTask
         );
+    }
+
+    #[test]
+    fn skips_duplicate_terminal_handling_when_next_action_is_skipped() {
+        assert!(!should_run_terminal_handler_after_success_path(false, true));
+        assert!(should_run_terminal_handler_after_success_path(true, true));
+        assert!(!should_run_terminal_handler_after_success_path(true, false));
     }
 }
