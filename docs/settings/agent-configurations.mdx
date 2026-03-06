@@ -234,6 +234,67 @@ Text appended to the system prompt
 Options prefixed with "dangerously_" bypass safety confirmations and can perform destructive actions. Use with extreme caution.
 </Warning>
 
+## Environment Variables
+
+Each agent profile can define environment variables that are injected into the agent process at launch. This is useful for pointing an agent at a non-default API endpoint, supplying API keys, or running Claude Code against third-party providers.
+
+Set environment variables in the **Environment Variables** section of the agent configuration form.
+
+<Frame>
+<img src="/images/settings-agents-env-vars.png" alt="Agent configuration form showing the Environment Variables section with KEY and value inputs" />
+</Frame>
+
+<Info>
+Profile environment variables override any variables already set in your shell. This means you can keep your default Anthropic credentials for normal use and create separate profiles that point to different providers — each profile is fully isolated.
+</Info>
+
+### Using Third-Party Providers with Claude Code
+
+Many providers expose an OpenAI-compatible or Anthropic-compatible API. You can use them with Claude Code by creating a dedicated profile with the right environment variables.
+
+<Tabs>
+<Tab title="Z.ai (GLM)">
+Create a profile named **GLM** (or any name) and set:
+
+| Variable | Value |
+|----------|-------|
+| `ANTHROPIC_BASE_URL` | `https://api.z.ai/api/anthropic` |
+| `ANTHROPIC_AUTH_TOKEN` | Your Z.ai API key |
+
+Z.ai automatically maps Claude models to GLM equivalents, so no model override is needed.
+
+See the [Z.ai manual setup guide](https://docs.z.ai/devpack/tool/claude#manual-configuration) for details.
+</Tab>
+
+<Tab title="OpenRouter">
+Create a profile named **OPENROUTER** and set:
+
+| Variable | Value |
+|----------|-------|
+| `ANTHROPIC_BASE_URL` | `https://openrouter.ai/api` |
+| `ANTHROPIC_AUTH_TOKEN` | Your OpenRouter API key |
+| `ANTHROPIC_API_KEY` | `""` (empty string) |
+
+Setting `ANTHROPIC_API_KEY` to an empty string prevents Claude Code from falling back to Anthropic's servers.
+
+See the [OpenRouter Claude Code integration guide](https://openrouter.ai/docs/guides/guides/claude-code-integration) for details.
+</Tab>
+
+<Tab title="Custom / Self-Hosted">
+For any Anthropic-compatible endpoint, refer to your provider's documentation for the required environment variables. Common variables include:
+
+| Variable | Purpose |
+|----------|---------|
+| `ANTHROPIC_BASE_URL` | Provider's API endpoint |
+| `ANTHROPIC_AUTH_TOKEN` | Authentication token |
+| `ANTHROPIC_API_KEY` | API key (set to `""` if using `AUTH_TOKEN` instead) |
+</Tab>
+</Tabs>
+
+<Tip>
+Your original Anthropic configuration remains untouched. Select the **GLM**, **OPENROUTER**, or custom profile from the agent dropdown when creating a workspace to use the third-party provider, and switch back to the **DEFAULT** profile for normal Anthropic usage.
+</Tip>
+
 ## Using Agent Configurations
 
 Once configured, your agent variants appear in the chat input toolbar, allowing quick switching between configurations.
