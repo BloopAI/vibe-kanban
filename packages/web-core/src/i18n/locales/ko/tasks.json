@@ -114,7 +114,7 @@
   "followUp": {
     "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
     "pendingBreakdown": "Steer: {{steerCount}} · Queue: {{queueCount}}",
-    "cancelQueueHint": "대기열 취소 시 가장 최근 대기 메시지를 편집기에 복원합니다",
+    "cancelQueueHint": "\"대기열 꺼내기\"는 가장 최근 대기 메시지를 편집기에 복원합니다",
     "steerLabel": "Steer",
     "queueLabel": "Queue"
   },
@@ -403,8 +403,8 @@
       "steerShortcutHint": "단축키: Ctrl/Cmd+Enter",
       "queue": "대기열에 추가",
       "queueShortcutHint": "단축키: Shift+Enter",
-      "cancelQueue": "대기열 취소",
-      "cancelQueueHint": "가장 최근 대기 메시지를 제거하고 편집기에 복원",
+      "cancelQueue": "대기열 꺼내기",
+      "cancelQueueHint": "가장 최근 대기 메시지를 꺼내 편집기에 복원",
       "requestChanges": "변경 요청",
       "approve": "승인",
       "clearReviewComments": "리뷰 댓글 지우기",

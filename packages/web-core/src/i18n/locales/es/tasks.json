@@ -114,7 +114,7 @@
   "followUp": {
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
     "pendingBreakdown": "Steer: {{steerCount}} · Cola: {{queueCount}}",
-    "cancelQueueHint": "Cancelar cola restaura el mensaje en cola más reciente en el editor",
+    "cancelQueueHint": "\"Extraer de la cola\" restaura el mensaje en cola más reciente en el editor",
     "steerLabel": "Steer",
     "queueLabel": "Cola"
   },
@@ -403,8 +403,8 @@
       "steerShortcutHint": "Atajo: Ctrl/Cmd+Enter",
       "queue": "Poner en cola",
       "queueShortcutHint": "Atajo: Shift+Enter",
-      "cancelQueue": "Cancelar cola",
-      "cancelQueueHint": "Quita el último mensaje en cola y lo restaura en el editor",
+      "cancelQueue": "Extraer de la cola",
+      "cancelQueueHint": "Extrae el mensaje en cola más reciente y lo restaura en el editor",
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",

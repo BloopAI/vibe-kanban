@@ -114,7 +114,7 @@
   "followUp": {
     "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます",
     "pendingBreakdown": "Steer: {{steerCount}} ・ キュー: {{queueCount}}",
-    "cancelQueueHint": "キューをキャンセルすると最新のキュー済みメッセージがエディタに戻ります",
+    "cancelQueueHint": "「キューから取り出す」で最新のキュー済みメッセージがエディタに戻ります",
     "steerLabel": "Steer",
     "queueLabel": "キュー"
   },
@@ -403,8 +403,8 @@
       "steerShortcutHint": "ショートカット: Ctrl/Cmd+Enter",
       "queue": "キューに追加",
       "queueShortcutHint": "ショートカット: Shift+Enter",
-      "cancelQueue": "キューをキャンセル",
-      "cancelQueueHint": "最新のキュー済みメッセージを取り消してエディタに戻す",
+      "cancelQueue": "キューから取り出す",
+      "cancelQueueHint": "最新のキュー済みメッセージを取り出してエディタに戻す",
       "requestChanges": "変更を依頼",
       "approve": "承認",
       "clearReviewComments": "レビューコメントをクリア",

@@ -115,7 +115,7 @@
   "followUp": {
     "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
     "pendingBreakdown": "Steer : {{steerCount}} · File : {{queueCount}}",
-    "cancelQueueHint": "Annuler la file restaure le dernier message en file dans l'éditeur",
+    "cancelQueueHint": "\"Sortir de la file\" restaure le dernier message en file dans l'éditeur",
     "steerLabel": "Steer",
     "queueLabel": "File"
   },
@@ -152,7 +152,7 @@
       "steerShortcutHint": "Raccourci : Ctrl/Cmd+Enter",
       "queue": "File d'attente",
       "queueShortcutHint": "Raccourci : Shift+Enter",
-      "cancelQueue": "Annuler la file",
+      "cancelQueue": "Sortir de la file",
       "cancelQueueHint": "Retire le dernier message en file et le restaure dans l'éditeur",
       "requestChanges": "Demander des modifications",
       "approve": "Approuver",

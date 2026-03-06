@@ -115,7 +115,7 @@
   "followUp": {
     "queuedMessage": "Message queued - will execute when current run finishes",
     "pendingBreakdown": "Steer: {{steerCount}} · Queue: {{queueCount}}",
-    "cancelQueueHint": "Cancel Queue restores the latest queued message to the editor",
+    "cancelQueueHint": "\"Pop Queue\" restores the latest queued message to the editor",
     "steerLabel": "Steer",
     "queueLabel": "Queue"
   },
@@ -152,8 +152,8 @@
       "steerShortcutHint": "Shortcut: Ctrl/Cmd+Enter",
       "queue": "Queue",
       "queueShortcutHint": "Shortcut: Shift+Enter",
-      "cancelQueue": "Cancel Queue",
-      "cancelQueueHint": "Remove latest queued message and restore it to editor",
+      "cancelQueue": "Pop Queue",
+      "cancelQueueHint": "Pop the latest queued message back into the editor",
       "requestChanges": "Request Changes",
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",

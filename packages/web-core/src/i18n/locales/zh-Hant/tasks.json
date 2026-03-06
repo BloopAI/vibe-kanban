@@ -118,7 +118,7 @@
   "followUp": {
     "queuedMessage": "訊息已加入佇列 - 會在目前執行完成後處理",
     "pendingBreakdown": "即時指導：{{steerCount}} · 緩衝佇列：{{queueCount}}",
-    "cancelQueueHint": "「取消佇列」會將最近一條排隊訊息回填到輸入框",
+    "cancelQueueHint": "「佇列彈出」會將最近一條排隊訊息回填到輸入框",
     "steerLabel": "即時指導",
     "queueLabel": "緩衝佇列"
   },
@@ -403,8 +403,8 @@
       "steerShortcutHint": "快捷鍵：Ctrl/Cmd+Enter",
       "queue": "加入佇列",
       "queueShortcutHint": "快捷鍵：Shift+Enter",
-      "cancelQueue": "取消佇列",
-      "cancelQueueHint": "移除最近一條排隊訊息並恢復到輸入框",
+      "cancelQueue": "佇列彈出",
+      "cancelQueueHint": "彈出最近一條排隊訊息並恢復到輸入框",
       "requestChanges": "請求變更",
       "approve": "核准",
       "clearReviewComments": "清除審查評論",
