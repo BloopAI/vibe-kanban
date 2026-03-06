@@ -37,6 +37,7 @@ fn generate_types_content() -> String {
         db::models::scratch::WorkspaceFilterStateData::decl(),
         db::models::scratch::WorkspaceSortStateData::decl(),
         db::models::scratch::UiPreferencesData::decl(),
+        db::models::scratch::ProjectRepoDefaultsData::decl(),
         db::models::scratch::ScratchPayload::decl(),
         db::models::scratch::ScratchType::decl(),
         db::models::scratch::Scratch::decl(),
