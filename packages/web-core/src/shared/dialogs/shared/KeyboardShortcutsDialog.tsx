@@ -84,6 +84,20 @@ function useShortcutGroups(): ShortcutGroup[] {
       ],
     };
 
+    const runningChat: ShortcutGroup = {
+      name: t('shortcuts.groups.runningChat'),
+      shortcuts: [
+        {
+          keys: [mod, enterKey],
+          description: t('shortcuts.actions.steerMessage'),
+        },
+        {
+          keys: ['Shift', enterKey],
+          description: t('shortcuts.actions.queueMessage'),
+        },
+      ],
+    };
+
     // Group sequential bindings by their first key
     const sequentialByFirstKey = new Map<string, ShortcutItem[]>();
     for (const binding of sequentialBindings) {
@@ -140,7 +154,7 @@ function useShortcutGroups(): ShortcutGroup[] {
       },
     ].filter((g) => g.shortcuts.length > 0);
 
-    return [quickActions, navigation, modifiers, ...sequentialGroups];
+    return [quickActions, navigation, modifiers, runningChat, ...sequentialGroups];
   }, [sendShortcut, t]);
 }
 

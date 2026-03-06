@@ -118,7 +118,9 @@
   "followUp": {
     "queuedMessage": "消息已排队 - 将在当前运行完成时执行",
     "pendingBreakdown": "即时指导：{{steerCount}} · 缓冲队列：{{queueCount}}",
-    "cancelQueueHint": "“取消队列”会将最近一条排队消息回填到输入框"
+    "cancelQueueHint": "“取消队列”会将最近一条排队消息回填到输入框",
+    "steerLabel": "即时指导",
+    "queueLabel": "缓冲队列"
   },
   "todoPopup": {
     "title": "任务",
@@ -397,7 +399,10 @@
       "loading": "加载中",
       "send": "发送",
       "sending": "发送中",
+      "steer": "即时指导",
+      "steerShortcutHint": "快捷键：Ctrl/Cmd+Enter",
       "queue": "加入队列",
+      "queueShortcutHint": "快捷键：Shift+Enter",
       "cancelQueue": "取消队列",
       "cancelQueueHint": "移除最近一条排队消息并恢复到输入框",
       "requestChanges": "请求更改",

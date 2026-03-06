@@ -114,7 +114,9 @@
   "followUp": {
     "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
     "pendingBreakdown": "Steer: {{steerCount}} · Cola: {{queueCount}}",
-    "cancelQueueHint": "Cancelar cola restaura el mensaje en cola más reciente en el editor"
+    "cancelQueueHint": "Cancelar cola restaura el mensaje en cola más reciente en el editor",
+    "steerLabel": "Steer",
+    "queueLabel": "Cola"
   },
   "git": {
     "branch": {
@@ -397,7 +399,10 @@
       "loading": "Cargando",
       "send": "Enviar",
       "sending": "Enviando",
+      "steer": "Steer",
+      "steerShortcutHint": "Atajo: Ctrl/Cmd+Enter",
       "queue": "Poner en cola",
+      "queueShortcutHint": "Atajo: Shift+Enter",
       "cancelQueue": "Cancelar cola",
       "cancelQueueHint": "Quita el último mensaje en cola y lo restaura en el editor",
       "requestChanges": "Solicitar cambios",

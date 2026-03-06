@@ -876,6 +876,10 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
           pendingCount,
           pendingSteerCount: pendingSteers.length,
           bufferedQueueCount: queuedMessages.length,
+          pendingSteerSummaries: pendingSteers.map((entry) => entry.data.message),
+          bufferedQueueSummaries: queuedMessages.map(
+            (entry) => entry.data.message
+          ),
           hasPendingMessages: true,
         }
       : undefined;
@@ -895,6 +899,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       value,
       onChange,
       onCmdEnter,
+      onShiftCmdEnter,
       disabled,
       repoIds,
       executor,
@@ -907,6 +912,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         value={value}
         onChange={onChange}
         onCmdEnter={onCmdEnter}
+        onShiftCmdEnter={onShiftCmdEnter}
         disabled={disabled}
         className="min-h-double max-h-[50vh] overflow-y-auto"
         repoIds={repoIds}
@@ -914,10 +920,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         autoFocus
         onPasteFiles={onPasteFiles}
         localImages={localImages}
-        sendShortcut={config?.send_message_shortcut}
+        sendShortcut={
+          status === 'running' ? 'ModifierEnter' : config?.send_message_shortcut
+        }
       />
     ),
-    [config?.send_message_shortcut]
+    [config?.send_message_shortcut, status]
   );
 
   const modelSelectorNode = effectiveExecutor ? (

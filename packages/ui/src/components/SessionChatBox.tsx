@@ -58,6 +58,8 @@ interface QueueStateProps {
   pendingSteerCount: number;
   bufferedQueueCount: number;
   hasPendingMessages: boolean;
+  pendingSteerSummaries: string[];
+  bufferedQueueSummaries: string[];
 }
 
 export interface SessionOption<TExecutor extends string = string> {
@@ -147,6 +149,7 @@ export interface SessionChatBoxEditorRenderProps<
   value: string;
   onChange: (value: string) => void;
   onCmdEnter: () => void;
+  onShiftCmdEnter?: () => void;
   disabled: boolean;
   repoIds?: string[];
   executor: TExecutor | null;
@@ -337,6 +340,12 @@ export function SessionChatBox<TExecutor extends string = string>({
     }
   };
 
+  const handleShiftCmdEnter = () => {
+    if (status === 'running' && canSend) {
+      actions.onQueue();
+    }
+  };
+
   // File input handlers
   const handleFileInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((f) =>
@@ -522,12 +531,14 @@ export function SessionChatBox<TExecutor extends string = string>({
             <PrimaryButton
               onClick={actions.onSteer}
               disabled={!canSend}
-              value={t('conversation.actions.send')}
+              value={t('conversation.actions.steer')}
+              title={t('conversation.actions.steerShortcutHint')}
             />
             <PrimaryButton
               onClick={actions.onQueue}
               disabled={!canSend}
               value={t('conversation.actions.queue')}
+              title={t('conversation.actions.queueShortcutHint')}
             />
             {queueState?.hasPendingMessages && (
               <PrimaryButton
@@ -590,6 +601,28 @@ export function SessionChatBox<TExecutor extends string = string>({
   // Banner content
   const renderBanner = () => {
     const banners: ReactNode[] = [];
+    const normalizeSummary = (value: string) => value.replace(/\s+/g, ' ').trim();
+    const truncateSummary = (value: string, maxLength = 52) =>
+      value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}...`;
+    const renderSummaryLine = (label: string, summaries: string[]) => {
+      const normalized = summaries
+        .map((summary) => truncateSummary(normalizeSummary(summary)))
+        .filter((summary) => summary.length > 0);
+
+      if (normalized.length === 0) {
+        return null;
+      }
+
+      const visible = normalized.slice(0, 2);
+      const hiddenCount = normalized.length - visible.length;
+
+      return (
+        <span className="text-xs text-low opacity-80">
+          {label}: {visible.join(' | ')}
+          {hiddenCount > 0 ? ` +${hiddenCount}` : ''}
+        </span>
+      );
+    };
 
     // Review comments banner
     if (reviewComments && reviewComments.count > 0) {
@@ -651,6 +684,14 @@ export function SessionChatBox<TExecutor extends string = string>({
                 queueCount: bufferedQueueCount,
               })}
             </span>
+            {renderSummaryLine(
+              t('followUp.steerLabel'),
+              queueState?.pendingSteerSummaries ?? []
+            )}
+            {renderSummaryLine(
+              t('followUp.queueLabel'),
+              queueState?.bufferedQueueSummaries ?? []
+            )}
             {queueState?.hasPendingMessages && (
               <span className="text-xs text-low opacity-80">
                 {t('followUp.cancelQueueHint')}
@@ -687,6 +728,7 @@ export function SessionChatBox<TExecutor extends string = string>({
         value: editor.value,
         onChange: editor.onChange,
         onCmdEnter: handleCmdEnter,
+        onShiftCmdEnter: status === 'running' ? handleShiftCmdEnter : undefined,
         disabled: isDisabled,
         repoIds,
         executor: agent || executor?.selected || null,

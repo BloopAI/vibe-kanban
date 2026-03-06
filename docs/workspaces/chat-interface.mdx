@@ -84,8 +84,8 @@ Select a file to include it as context for the agent.
 
 | Action | Shortcut | Description |
 |--------|----------|-------------|
-| **Send** | `Cmd/Ctrl + Enter` | Send immediately (while running, this acts as high-priority steer) |
-| **Queue** | Click Queue button | Buffer a follow-up while agent is running |
+| **Send / Steer** | `Cmd/Ctrl + Enter` | Send immediately (while running, this is high-priority steer) |
+| **Queue** | `Shift + Enter` (running) or click Queue button | Buffer a follow-up while agent is running |
 | **Edit Last Queued** | `Alt + ↑` | Pop the latest queued message back into the editor |
 | **Stop** | Click Stop button | Stop the current agent execution |
 
@@ -107,7 +107,7 @@ The chat interface shows different states:
 <Info>
 When the agent is running:
 - **Send** inserts an immediate **steer** message.
-- **Queue** appends a buffered follow-up.
+- **Shift + Enter** (or **Queue**) appends a buffered follow-up.
 - Buffered queue runs in FIFO order.
 - Steer messages are consumed before buffered queue messages.
 - **Alt + ↑** restores the latest queued message so you can edit and resend it.
@@ -295,7 +295,8 @@ When you add inline comments in the Changes panel:
 
 | Shortcut | Action |
 |----------|--------|
-| `Cmd/Ctrl + Enter` | Send message (or contextual action) |
+| `Cmd/Ctrl + Enter` | Send message (running state: steer) |
+| `Shift + Enter` | Queue follow-up while running |
 | `Alt + ↑` | Edit (restore) latest queued message |
 | `Cmd/Ctrl + B` | Bold text |
 | `Cmd/Ctrl + I` | Italic text |

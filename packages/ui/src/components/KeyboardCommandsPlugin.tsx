@@ -150,6 +150,18 @@ export function KeyboardCommandsPlugin({
       onCmdEnter?.();
     };
 
+    const flushAndQueue = () => {
+      if (onChange && transformers) {
+        const markdown = editor
+          .getEditorState()
+          .read(() => $convertToMarkdownString(transformers));
+        flushSync(() => {
+          onChange(markdown);
+        });
+      }
+      onShiftCmdEnter?.();
+    };
+
     const unregisterModifier = editor.registerCommand(
       KEY_MODIFIER_COMMAND,
       (event: KeyboardEvent) => {
@@ -161,7 +173,7 @@ export function KeyboardCommandsPlugin({
         event.stopPropagation();
 
         if (event.shiftKey && onShiftCmdEnter) {
-          onShiftCmdEnter();
+          flushAndQueue();
           return true;
         }
 
@@ -207,6 +219,18 @@ export function KeyboardCommandsPlugin({
         // If typeahead is open, let it handle Enter
         if (isTypeaheadOpen) {
           return false;
+        }
+
+        if (
+          onShiftCmdEnter &&
+          event.shiftKey &&
+          !event.metaKey &&
+          !event.ctrlKey
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          flushAndQueue();
+          return true;
         }
 
         if (sendShortcut === 'Enter') {

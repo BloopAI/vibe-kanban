@@ -115,7 +115,9 @@
   "followUp": {
     "queuedMessage": "Message queued - will execute when current run finishes",
     "pendingBreakdown": "Steer: {{steerCount}} · Queue: {{queueCount}}",
-    "cancelQueueHint": "Cancel Queue restores the latest queued message to the editor"
+    "cancelQueueHint": "Cancel Queue restores the latest queued message to the editor",
+    "steerLabel": "Steer",
+    "queueLabel": "Queue"
   },
   "todoPopup": {
     "title": "Tasks",
@@ -146,7 +148,10 @@
       "loading": "Loading",
       "send": "Send",
       "sending": "Sending",
+      "steer": "Steer",
+      "steerShortcutHint": "Shortcut: Ctrl/Cmd+Enter",
       "queue": "Queue",
+      "queueShortcutHint": "Shortcut: Shift+Enter",
       "cancelQueue": "Cancel Queue",
       "cancelQueueHint": "Remove latest queued message and restore it to editor",
       "requestChanges": "Request Changes",
