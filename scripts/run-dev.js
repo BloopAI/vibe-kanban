@@ -10,6 +10,7 @@ console.log("[dev] launcher boot");
 const REPO_ROOT = path.resolve(__dirname, "..");
 const LIBCLANG_FALLBACK = "G:\\libclang\\clang\\native";
 const IS_WINDOWS = process.platform === "win32";
+const DEFAULT_SHARED_API_BASE = "https://api.vibekanban.com";
 
 function hasLibclang(nativeDir) {
   if (!nativeDir) return false;
@@ -50,7 +51,10 @@ function buildEnv(ports) {
   env.BACKEND_PORT = String(ports.backend);
   env.PREVIEW_PROXY_PORT = String(ports.preview_proxy);
   env.VK_ALLOWED_ORIGINS = `http://localhost:${ports.frontend}`;
-  env.VITE_VK_SHARED_API_BASE = env.VITE_VK_SHARED_API_BASE || "";
+  env.VK_SHARED_API_BASE =
+    env.VK_SHARED_API_BASE ?? DEFAULT_SHARED_API_BASE;
+  env.VITE_VK_SHARED_API_BASE =
+    env.VITE_VK_SHARED_API_BASE ?? env.VK_SHARED_API_BASE ?? "";
   env.DISABLE_WORKTREE_CLEANUP = env.DISABLE_WORKTREE_CLEANUP || "1";
   env.RUST_LOG = env.RUST_LOG || "debug";
 
@@ -82,6 +86,9 @@ async function main() {
 
   console.log(`[dev] frontend=${ports.frontend} backend=${ports.backend}`);
   console.log(`[dev] LIBCLANG_PATH=${libclangStatus}`);
+  console.log(
+    `[dev] VK_SHARED_API_BASE=${env.VK_SHARED_API_BASE || "(disabled)"}`
+  );
 
   const backend = spawnProcess(`cargo watch -w crates -x "run --bin server"`, {
     env,
