@@ -33,12 +33,14 @@ import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 
 interface ActionsProviderProps {
   children: ReactNode;
 }
 
 export function ActionsProvider({ children }: ActionsProviderProps) {
+  const appRuntime = useAppRuntime();
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
   const currentDestination = useCurrentAppDestination();
@@ -203,6 +205,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Build executor context from hooks
   const executorContext = useMemo<ActionExecutorContext>(() => {
     return {
+      appRuntime,
+      currentHostId: hostId,
       appNavigation,
       queryClient,
       selectWorkspace,
@@ -228,6 +232,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       remoteWorkspaces: userCtx?.workspaces ?? [],
     };
   }, [
+    appRuntime,
+    hostId,
     queryClient,
     selectWorkspace,
     activeWorkspaces,

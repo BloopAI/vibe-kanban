@@ -13,15 +13,18 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl,
-    relay::{client::get_signed_relay_api, relay_session_url},
+    relay::{
+        client::{RelayApiClient, get_signed_relay_api},
+        relay_session_url,
+    },
 };
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/open-remote-editor", post(open_remote_editor))
         .route(
-            "/open-remote-editor/first-workspace",
-            post(open_first_workspace_in_remote_editor),
+            "/open-remote-editor/workspace",
+            post(open_remote_workspace_in_editor),
         )
         .route(
             "/open-remote-editor/credentials",
@@ -39,9 +42,9 @@ pub struct OpenRemoteEditorRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct OpenFirstWorkspaceInRemoteEditorRequest {
+pub struct OpenRemoteWorkspaceInEditorRequest {
     pub host_id: Uuid,
-    pub browser_session_id: Uuid,
+    pub workspace_id: Uuid,
     #[serde(default)]
     pub editor_type: Option<String>,
 }
@@ -78,56 +81,39 @@ pub async fn open_remote_editor(
     .await
 }
 
-pub async fn open_first_workspace_in_remote_editor(
+pub async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
-    Json(req): Json<OpenFirstWorkspaceInRemoteEditorRequest>,
+    Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
     let signing_ctx = match get_signing_ctx(&deployment, req.host_id).await {
         Ok(signing_ctx) => signing_ctx,
         Err(response) => return response,
     };
 
-    let workspaces: Vec<RelayWorkspace> = match get_signed_relay_api(
-        req.host_id,
-        req.browser_session_id,
-        "/api/task-attempts",
-        &signing_ctx,
-    )
-    .await
-    {
-        Ok(workspaces) => workspaces,
+    let remote_session = match create_relay_remote_session(&deployment, req.host_id).await {
+        Ok(remote_session) => remote_session,
         Err(error) => {
             tracing::warn!(
                 ?error,
                 host_id = %req.host_id,
-                "Failed to fetch host workspaces"
+                "Failed to create relay session for remote editor open"
             );
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::<
                     desktop_bridge::service::OpenRemoteEditorResponse,
                 >::error(
-                    "Failed to load host workspaces via relay"
+                    "Failed to create relay session for host"
                 )),
             )
                 .into_response();
         }
     };
 
-    let Some(first_workspace) = workspaces.first() else {
-        return (
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::<
-                desktop_bridge::service::OpenRemoteEditorResponse,
-            >::error("No workspaces found on host")),
-        )
-            .into_response();
-    };
-
     let editor_path: RelayEditorPathResponse = match get_signed_relay_api(
         req.host_id,
-        req.browser_session_id,
-        &format!("/api/task-attempts/{}/editor-path", first_workspace.id),
+        remote_session.id,
+        &format!("/api/task-attempts/{}/editor-path", req.workspace_id),
         &signing_ctx,
     )
     .await
@@ -137,7 +123,7 @@ pub async fn open_first_workspace_in_remote_editor(
             tracing::warn!(
                 ?error,
                 host_id = %req.host_id,
-                workspace_id = %first_workspace.id,
+                workspace_id = %req.workspace_id,
                 "Failed to resolve workspace editor path"
             );
             return (
@@ -158,7 +144,7 @@ pub async fn open_first_workspace_in_remote_editor(
         editor_path.workspace_path,
         req.editor_type,
         req.host_id,
-        req.browser_session_id,
+        remote_session.id,
     )
     .await
 }
@@ -198,13 +184,18 @@ pub async fn upsert_open_remote_editor_credentials(
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct RelayWorkspace {
-    id: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
 struct RelayEditorPathResponse {
     workspace_path: String,
+}
+
+async fn create_relay_remote_session(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+) -> anyhow::Result<crate::relay::client::RemoteSession> {
+    let remote_client = deployment.remote_client()?;
+    let access_token = remote_client.access_token().await?;
+    let relay_client = RelayApiClient::new(access_token);
+    relay_client.create_session(host_id).await
 }
 
 async fn get_signing_ctx(

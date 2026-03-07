@@ -51,7 +51,7 @@ import {
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
 
-import { attemptsApi, repoApi } from '@/shared/lib/api';
+import { attemptsApi, relayApi, repoApi } from '@/shared/lib/api';
 import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
 import { attemptKeys } from '@/shared/hooks/useAttempt';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
@@ -749,10 +749,17 @@ export const Actions = {
     execute: async (ctx) => {
       if (!ctx.currentWorkspaceId) return;
       try {
-        const response = await attemptsApi.openEditor(ctx.currentWorkspaceId, {
-          editor_type: null,
-          file_path: null,
-        });
+        const response =
+          ctx.appRuntime === 'local' && ctx.currentHostId
+            ? await relayApi.openRemoteWorkspaceInEditor({
+                host_id: ctx.currentHostId,
+                workspace_id: ctx.currentWorkspaceId,
+                editor_type: null,
+              })
+            : await attemptsApi.openEditor(ctx.currentWorkspaceId, {
+                editor_type: null,
+                file_path: null,
+              });
         if (response.url) {
           window.open(response.url, '_blank');
         }

@@ -99,7 +99,7 @@ import {
   RelayPairedHost,
   ListRelayPairedHostsResponse,
   RemoveRelayPairedHostResponse,
-  OpenFirstWorkspaceInRemoteEditorRequest,
+  OpenRemoteWorkspaceInEditorRequest,
   OpenRemoteEditorResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
@@ -1538,16 +1538,13 @@ export const relayApi = {
     return handleApiResponse<RemoveRelayPairedHostResponse>(response);
   },
 
-  openFirstWorkspaceInRemoteEditor: async (
-    payload: OpenFirstWorkspaceInRemoteEditorRequest
+  openRemoteWorkspaceInEditor: async (
+    payload: OpenRemoteWorkspaceInEditorRequest
   ): Promise<OpenRemoteEditorResponse> => {
-    const response = await makeRequest(
-      '/api/open-remote-editor/first-workspace',
-      {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }
-    );
+    const response = await makeRequest('/api/open-remote-editor/workspace', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
     return handleApiResponse<OpenRemoteEditorResponse>(response);
   },
 };
