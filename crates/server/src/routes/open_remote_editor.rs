@@ -168,7 +168,13 @@ pub async fn upsert_open_remote_editor_credentials(
     Json(req): Json<UpsertRelayHostCredentialsRequest>,
 ) -> Response {
     match deployment
-        .upsert_relay_host_credentials(req.host_id, req.signing_session_id, req.private_key_jwk)
+        .upsert_relay_host_credentials(
+            req.host_id,
+            req.signing_session_id,
+            req.private_key_jwk,
+            None,
+            None,
+        )
         .await
     {
         Ok(()) => (

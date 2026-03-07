@@ -1,15 +1,16 @@
 use anyhow::Context as _;
 use axum::{
     Json, Router,
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{delete, get, post},
 };
 use base64::{
     Engine as _,
     engine::general_purpose::{STANDARD as BASE64_STANDARD, URL_SAFE_NO_PAD},
 };
+use chrono::Utc;
 use ed25519_dalek::SigningKey;
 use rand::rngs::OsRng;
 use serde::{Deserialize, Serialize};
@@ -33,7 +34,13 @@ const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new().route("/relay-auth/client/pair", post(pair_relay_host))
+    Router::new()
+        .route("/relay-auth/client/pair", post(pair_relay_host))
+        .route("/relay-auth/client/hosts", get(list_relay_paired_hosts))
+        .route(
+            "/relay-auth/client/hosts/{host_id}",
+            delete(remove_relay_paired_host),
+        )
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -46,6 +53,23 @@ pub struct PairRelayHostRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct PairRelayHostResponse {
     pub paired: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct RelayPairedHost {
+    pub host_id: Uuid,
+    pub host_name: Option<String>,
+    pub paired_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct ListRelayPairedHostsResponse {
+    pub hosts: Vec<RelayPairedHost>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct RemoveRelayPairedHostResponse {
+    pub removed: bool,
 }
 
 pub async fn pair_relay_host(
@@ -71,6 +95,8 @@ pub async fn pair_relay_host(
             req.host_id,
             paired_credentials.signing_session_id,
             paired_credentials.private_key_jwk,
+            Some(req.host_name.clone()),
+            Some(Utc::now().to_rfc3339()),
         )
         .await
     {
@@ -87,6 +113,54 @@ pub async fn pair_relay_host(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(ApiResponse::<PairRelayHostResponse>::error(
                     "Failed to persist paired relay host credentials",
+                )),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn list_relay_paired_hosts(State(deployment): State<DeploymentImpl>) -> Response {
+    let mut hosts = deployment
+        .list_relay_host_credentials_summary()
+        .await
+        .into_iter()
+        .map(|value| RelayPairedHost {
+            host_id: value.host_id,
+            host_name: value.host_name,
+            paired_at: value.paired_at,
+        })
+        .collect::<Vec<_>>();
+
+    hosts.sort_by(|a, b| b.paired_at.cmp(&a.paired_at));
+
+    (
+        StatusCode::OK,
+        Json(ApiResponse::<ListRelayPairedHostsResponse>::success(
+            ListRelayPairedHostsResponse { hosts },
+        )),
+    )
+        .into_response()
+}
+
+pub async fn remove_relay_paired_host(
+    State(deployment): State<DeploymentImpl>,
+    Path(host_id): Path<Uuid>,
+) -> Response {
+    match deployment.remove_relay_host_credentials(host_id).await {
+        Ok(removed) => (
+            StatusCode::OK,
+            Json(ApiResponse::<RemoveRelayPairedHostResponse>::success(
+                RemoveRelayPairedHostResponse { removed },
+            )),
+        )
+            .into_response(),
+        Err(error) => {
+            tracing::error!(?error, %host_id, "Failed to remove paired relay host");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<RemoveRelayPairedHostResponse>::error(
+                    "Failed to remove paired relay host",
                 )),
             )
                 .into_response()

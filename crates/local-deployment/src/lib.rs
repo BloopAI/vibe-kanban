@@ -84,6 +84,15 @@ struct PendingHandoff {
 pub struct RelayHostCredentials {
     pub signing_session_id: String,
     pub private_key_jwk: serde_json::Value,
+    pub host_name: Option<String>,
+    pub paired_at: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub struct RelayHostCredentialSummary {
+    pub host_id: Uuid,
+    pub host_name: Option<String>,
+    pub paired_at: Option<String>,
 }
 
 #[async_trait]
@@ -426,13 +435,20 @@ impl LocalDeployment {
         host_id: Uuid,
         signing_session_id: String,
         private_key_jwk: serde_json::Value,
+        host_name: Option<String>,
+        paired_at: Option<String>,
     ) -> anyhow::Result<()> {
         let mut credentials = self.relay_host_credentials.write().await;
+        let existing = credentials.get(&host_id).cloned();
         credentials.insert(
             host_id,
             RelayHostCredentials {
                 signing_session_id,
                 private_key_jwk,
+                host_name: host_name
+                    .or_else(|| existing.as_ref().and_then(|value| value.host_name.clone())),
+                paired_at: paired_at
+                    .or_else(|| existing.as_ref().and_then(|value| value.paired_at.clone())),
             },
         );
 
@@ -447,6 +463,30 @@ impl LocalDeployment {
             .await
             .get(&host_id)
             .cloned()
+    }
+
+    pub async fn list_relay_host_credentials_summary(&self) -> Vec<RelayHostCredentialSummary> {
+        self.relay_host_credentials
+            .read()
+            .await
+            .iter()
+            .map(|(host_id, value)| RelayHostCredentialSummary {
+                host_id: *host_id,
+                host_name: value.host_name.clone(),
+                paired_at: value.paired_at.clone(),
+            })
+            .collect()
+    }
+
+    pub async fn remove_relay_host_credentials(&self, host_id: Uuid) -> anyhow::Result<bool> {
+        let mut credentials = self.relay_host_credentials.write().await;
+        let removed = credentials.remove(&host_id).is_some();
+
+        if removed {
+            persist_relay_host_credentials_map(&credentials).await?;
+        }
+
+        Ok(removed)
     }
 }
 

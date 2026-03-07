@@ -9,7 +9,6 @@ import {
   useRemoveRemoteCloudHostMutation,
   useSetActiveRemoteCloudHostMutation,
 } from '@/shared/hooks/useRemoteCloudHosts';
-import { relayApi } from '@/shared/lib/api';
 import {
   SettingsCard,
   SettingsField,
@@ -118,16 +117,10 @@ export function RemoteCloudHostsSettingsCard() {
     const effectiveHostName = hostName.trim() || selectedHost.name;
 
     try {
-      await relayApi.pairRelayHost({
+      await pairHost({
         host_id: selectedHost.id,
         host_name: effectiveHostName,
         enrollment_code: normalizedCode,
-      });
-      await pairHost({
-        hostName: effectiveHostName,
-        // Temporary UI-model backing until backend host-state routes are added.
-        baseUrl: `https://${selectedHost.id}`,
-        pairingCode: normalizedCode,
       });
       setSuccessMessage(
         t(
@@ -187,7 +180,7 @@ export function RemoteCloudHostsSettingsCard() {
       )}
       description={t(
         'settings.relay.remoteCloudHost.description',
-        'Pair remote hosts using enrollment codes. Host list/active-state backend sync is in progress.'
+        'Pair remote hosts using enrollment codes and manage local paired hosts.'
       )}
       headerAction={
         <PrimaryButton

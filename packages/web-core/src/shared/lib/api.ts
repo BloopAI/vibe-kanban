@@ -96,6 +96,9 @@ import {
   RemoveRelayPairedClientResponse,
   PairRelayHostRequest,
   PairRelayHostResponse,
+  RelayPairedHost,
+  ListRelayPairedHostsResponse,
+  RemoveRelayPairedHostResponse,
   OpenFirstWorkspaceInRemoteEditorRequest,
   OpenRemoteEditorResponse,
 } from 'shared/types';
@@ -1514,6 +1517,25 @@ export const relayApi = {
       body: JSON.stringify(payload),
     });
     return handleApiResponse<PairRelayHostResponse>(response);
+  },
+
+  listPairedRelayHosts: async (): Promise<RelayPairedHost[]> => {
+    const response = await makeRequest('/api/relay-auth/client/hosts');
+    const body =
+      await handleApiResponse<ListRelayPairedHostsResponse>(response);
+    return body.hosts;
+  },
+
+  removePairedRelayHost: async (
+    hostId: string
+  ): Promise<RemoveRelayPairedHostResponse> => {
+    const response = await makeRequest(
+      `/api/relay-auth/client/hosts/${encodeURIComponent(hostId)}`,
+      {
+        method: 'DELETE',
+      }
+    );
+    return handleApiResponse<RemoveRelayPairedHostResponse>(response);
   },
 
   openFirstWorkspaceInRemoteEditor: async (
