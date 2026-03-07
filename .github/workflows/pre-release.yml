@@ -810,6 +810,7 @@ jobs:
           certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
           files-folder: ${{ github.workspace }}/target/${{ matrix.target }}/release/bundle
           files-folder-filter: exe,msi
+          files-folder-recurse: true
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
