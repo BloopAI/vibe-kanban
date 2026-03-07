@@ -200,26 +200,24 @@ pub enum RunScriptError {
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    let workspace_id_router = Router::new().merge(
-        Router::new()
-            .route(
-                "/",
-                get(core::get_workspace)
-                    .put(core::update_workspace)
-                    .delete(core::delete_workspace),
-            )
-            .route("/messages/first", get(core::get_first_user_message))
-            .route("/seen", axum::routing::put(core::mark_seen))
-            .nest("/git", git_router())
-            .nest("/execution", execution_router())
-            .nest("/integration", integration_router())
-            .nest("/repos", repos_router())
-            .nest("/pull-requests", pr::router())
-            .layer(from_fn_with_state(
-                deployment.clone(),
-                load_workspace_middleware,
-            )),
-    );
+    let workspace_id_router = Router::new()
+        .route(
+            "/",
+            get(core::get_workspace)
+                .put(core::update_workspace)
+                .delete(core::delete_workspace),
+        )
+        .route("/messages/first", get(core::get_first_user_message))
+        .route("/seen", axum::routing::put(core::mark_seen))
+        .nest("/git", git_router())
+        .nest("/execution", execution_router())
+        .nest("/integration", integration_router())
+        .nest("/repos", repos_router())
+        .nest("/pull-requests", pr::router())
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_workspace_middleware,
+        ));
 
     let workspaces_router = Router::new()
         .route(
