@@ -1,6 +1,6 @@
 [package]
 name = "mcp"
-version = "0.1.25-pthis.8"
+version = "0.1.25-pthis.9"
 edition = "2024"
 
 [lints.clippy]
