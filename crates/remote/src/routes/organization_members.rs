@@ -18,6 +18,7 @@ use uuid::Uuid;
 use super::error::{ErrorResponse, membership_error};
 use crate::{
     AppState,
+    audit::{self, AuditAction, AuditEvent},
     auth::RequestContext,
     db::{
         identity_errors::IdentityError,
@@ -95,6 +96,8 @@ pub async fn create_invitation(
     Path(org_id): Path<Uuid>,
     Json(payload): Json<CreateInvitationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
+    let session_id = ctx.session_id;
+
     let user = ctx.user;
     let org_repo = OrganizationRepository::new(&state.pool);
     let invitation_repo = InvitationRepository::new(&state.pool);
@@ -149,6 +152,19 @@ pub async fn create_invitation(
             user.username.as_deref(),
         )
         .await;
+
+    audit::emit(
+        AuditEvent::system(AuditAction::MemberInvite)
+            .user(user.id, Some(session_id))
+            .resource("invitation", Some(invitation.id))
+            .organization(org_id)
+            .http(
+                "POST",
+                format!("/v1/organizations/{org_id}/invitations"),
+                201,
+            )
+            .description(format!("Invited member with role {:?}", payload.role)),
+    );
 
     if let Some(analytics) = state.analytics() {
         analytics.track(
@@ -229,13 +245,12 @@ pub async fn revoke_invitation(
     Path(org_id): Path<Uuid>,
     Json(payload): Json<RevokeInvitationRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
-    let user = ctx.user;
     let invitation_repo = InvitationRepository::new(&state.pool);
 
-    ensure_admin_access(&state.pool, org_id, user.id).await?;
+    ensure_admin_access(&state.pool, org_id, ctx.user.id).await?;
 
     invitation_repo
-        .revoke_invitation(org_id, payload.invitation_id, user.id)
+        .revoke_invitation(org_id, payload.invitation_id, ctx.user.id)
         .await
         .map_err(|e| match e {
             IdentityError::PermissionDenied => {
@@ -247,6 +262,18 @@ pub async fn revoke_invitation(
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
 
+    audit::emit(
+        AuditEvent::from_request(&ctx, AuditAction::MemberRevokeInvite)
+            .resource("invitation", Some(payload.invitation_id))
+            .organization(org_id)
+            .http(
+                "POST",
+                format!("/v1/organizations/{org_id}/invitations/revoke"),
+                204,
+            )
+            .description("Revoked invitation"),
+    );
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -255,6 +282,8 @@ pub async fn accept_invitation(
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path(token): Path<String>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
+    let session_id = ctx.session_id;
+
     let user = ctx.user;
     let invitation_repo = InvitationRepository::new(&state.pool);
 
@@ -272,6 +301,15 @@ pub async fn accept_invitation(
             }
             _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"),
         })?;
+
+    audit::emit(
+        AuditEvent::system(AuditAction::MemberAcceptInvite)
+            .user(user.id, Some(session_id))
+            .resource("organization_member", None)
+            .organization(org.id)
+            .http("POST", format!("/v1/invitations/{token}/accept"), 200)
+            .description(format!("Accepted invitation with role {role:?}")),
+    );
 
     if let Some(analytics) = state.analytics() {
         analytics.track(
@@ -337,6 +375,8 @@ pub async fn remove_member(
     axum::extract::Extension(ctx): axum::extract::Extension<RequestContext>,
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
+    let session_id = ctx.session_id;
+
     let user = ctx.user;
     if user.id == user_id {
         return Err(ErrorResponse::new(
@@ -359,9 +399,7 @@ pub async fn remove_member(
 
     ensure_admin_access(&state.pool, org_id, user.id).await?;
 
-    let mut tx = state
-        .pool
-        .begin()
+    let mut tx = crate::db::begin_tx(&state.pool)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
 
@@ -420,6 +458,19 @@ pub async fn remove_member(
 
     state.billing().on_member_count_changed(org_id).await;
 
+    audit::emit(
+        AuditEvent::system(AuditAction::MemberRemove)
+            .user(user.id, Some(session_id))
+            .resource("organization_member", Some(user_id))
+            .organization(org_id)
+            .http(
+                "DELETE",
+                format!("/v1/organizations/{org_id}/members/{user_id}"),
+                204,
+            )
+            .description("Removed member from organization"),
+    );
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -429,6 +480,8 @@ pub async fn update_member_role(
     Path((org_id, user_id)): Path<(Uuid, Uuid)>,
     Json(payload): Json<UpdateMemberRoleRequest>,
 ) -> Result<impl IntoResponse, ErrorResponse> {
+    let session_id = ctx.session_id;
+
     let user = ctx.user;
     if user.id == user_id && payload.role == MemberRole::Member {
         return Err(ErrorResponse::new(
@@ -451,9 +504,7 @@ pub async fn update_member_role(
 
     ensure_admin_access(&state.pool, org_id, user.id).await?;
 
-    let mut tx = state
-        .pool
-        .begin()
+    let mut tx = crate::db::begin_tx(&state.pool)
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
 
@@ -518,6 +569,22 @@ pub async fn update_member_role(
     tx.commit()
         .await
         .map_err(|_| ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "Database error"))?;
+
+    audit::emit(
+        AuditEvent::system(AuditAction::MemberRoleChange)
+            .user(user.id, Some(session_id))
+            .resource("organization_member", Some(user_id))
+            .organization(org_id)
+            .http(
+                "PATCH",
+                format!("/v1/organizations/{org_id}/members/{user_id}/role"),
+                200,
+            )
+            .description(format!(
+                "Changed member role to {role:?}",
+                role = payload.role
+            )),
+    );
 
     Ok(Json(UpdateMemberRoleResponse {
         user_id,
