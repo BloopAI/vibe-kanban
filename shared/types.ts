@@ -326,9 +326,9 @@ export type AddWorkspaceRepoRequest = { repo_id: string, target_branch: string, 
 
 export type AddWorkspaceRepoResponse = { workspace: Workspace, repo: RepoWithTargetBranch, };
 
-export type MergeTaskAttemptRequest = { repo_id: string, };
+export type MergeWorkspaceRequest = { repo_id: string, };
 
-export type PushTaskAttemptRequest = { repo_id: string, };
+export type PushWorkspaceRequest = { repo_id: string, };
 
 export type RenameBranchRequest = { new_branch_name: string, };
 
@@ -360,7 +360,7 @@ export type RunAgentSetupResponse = Record<string, never>;
 
 export type GhCliSetupError = "BREW_MISSING" | "SETUP_HELPER_NOT_SUPPORTED" | { "OTHER": { message: string, } };
 
-export type RebaseTaskAttemptRequest = { repo_id: string, old_base_branch: string | null, new_base_branch: string | null, };
+export type RebaseWorkspaceRequest = { repo_id: string, old_base_branch: string | null, new_base_branch: string | null, };
 
 export type ContinueRebaseRequest = { repo_id: string, };
 

@@ -3,12 +3,12 @@ import { useParams } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
-import { useAttempt } from '@/shared/hooks/useAttempt';
-import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
+import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
+import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
 import { useGitHubComments } from '@/shared/hooks/useGitHubComments';
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import { useDiffViewStore } from '@/shared/stores/useDiffViewStore';
 import type { DiffStats } from 'shared/types';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
@@ -37,7 +37,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   } = useWorkspaces();
 
   // Fetch real workspace data for the selected workspace
-  const { data: workspace, isLoading: isLoadingWorkspace } = useAttempt(
+  const { data: workspace, isLoading: isLoadingWorkspace } = useWorkspaceRecord(
     workspaceId,
     { enabled: !!workspaceId && !isCreateMode }
   );
@@ -55,7 +55,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   } = useWorkspaceSessions(workspaceId, { enabled: !isCreateMode });
 
   // Fetch repos for the current workspace
-  const { repos, isLoading: isReposLoading } = useAttemptRepo(workspaceId, {
+  const { repos, isLoading: isReposLoading } = useWorkspaceRepo(workspaceId, {
     enabled: !isCreateMode,
   });
 
@@ -117,7 +117,7 @@ export function WorkspaceProvider({ children }: WorkspaceProviderProps) {
   useEffect(() => {
     if (!workspaceId || isCreateMode) return;
 
-    attemptsApi
+    workspacesApi
       .markSeen(workspaceId)
       .then(() => {
         queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });

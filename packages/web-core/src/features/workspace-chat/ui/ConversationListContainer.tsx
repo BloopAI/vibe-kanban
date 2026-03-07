@@ -98,7 +98,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedThinkingGroup={null}
         entry={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -114,7 +114,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedThinkingGroup={null}
         entry={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -130,7 +130,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedThinkingGroup={data}
         entry={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -151,7 +151,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedDiffGroup={null}
         aggregatedThinkingGroup={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );

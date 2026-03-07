@@ -1,4 +1,4 @@
-import { attemptsApi, repoApi } from '@/shared/lib/api';
+import { workspacesApi, repoApi } from '@/shared/lib/api';
 import type { Workspace } from 'shared/remote-types';
 import { getValidProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 
@@ -55,8 +55,8 @@ export async function getWorkspaceDefaults(
     if (projectRecent?.local_workspace_id) {
       try {
         const [repos] = await Promise.all([
-          attemptsApi.getRepos(projectRecent.local_workspace_id),
-          attemptsApi.get(projectRecent.local_workspace_id),
+          workspacesApi.getRepos(projectRecent.local_workspace_id),
+          workspacesApi.get(projectRecent.local_workspace_id),
         ]);
         return {
           preferredRepos: repos.map((r) => ({
@@ -88,8 +88,8 @@ export async function getWorkspaceDefaults(
 
   try {
     const [repos] = await Promise.all([
-      attemptsApi.getRepos(mostRecent.local_workspace_id),
-      attemptsApi.get(mostRecent.local_workspace_id),
+      workspacesApi.getRepos(mostRecent.local_workspace_id),
+      workspacesApi.get(mostRecent.local_workspace_id),
     ]);
 
     return {

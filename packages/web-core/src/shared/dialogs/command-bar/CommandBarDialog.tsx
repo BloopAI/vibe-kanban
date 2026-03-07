@@ -11,7 +11,7 @@ import {
 } from '@vibe/ui/components/CommandBar';
 import { useActions } from '@/shared/hooks/useActions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { attemptKeys } from '@/shared/hooks/useAttempt';
+import { workspaceRecordKeys } from '@/shared/hooks/useWorkspaceRecord';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import type { PageId, ResolvedGroupItem } from '@/shared/types/commandBar';
 import {
@@ -72,7 +72,7 @@ function CommandBarContent({
   const effectiveWorkspaceId = workspaceId ?? contextWorkspaceId;
   const workspace = effectiveWorkspaceId
     ? queryClient.getQueryData<Workspace>(
-        attemptKeys.byId(effectiveWorkspaceId)
+        workspaceRecordKeys.byId(effectiveWorkspaceId)
       )
     : undefined;
 

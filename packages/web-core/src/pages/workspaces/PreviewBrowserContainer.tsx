@@ -124,12 +124,12 @@ function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
 }
 
 interface PreviewBrowserContainerProps {
-  attemptId: string;
+  workspaceId: string;
   className: string;
 }
 
 export function PreviewBrowserContainer({
-  attemptId,
+  workspaceId,
   className,
 }: PreviewBrowserContainerProps) {
   // ─── Data Sources ───────────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ export function PreviewBrowserContainer({
   const triggerPreviewRefresh = useUiPreferencesStore(
     (s) => s.triggerPreviewRefresh
   );
-  const { repos, workspaceId } = useWorkspaceContext();
+  const { repos, workspaceId: activeWorkspaceId } = useWorkspaceContext();
 
   // Get preview proxy port for security isolation
   const { data: systemInfo } = useQuery({
@@ -159,7 +159,7 @@ export function PreviewBrowserContainer({
     isStopping,
     runningDevServers,
     devServerProcesses,
-  } = usePreviewDevServer(attemptId);
+  } = usePreviewDevServer(activeWorkspaceId ?? workspaceId);
 
   const primaryDevServer = useMemo(() => {
     if (runningDevServers.length === 0) return undefined;
@@ -192,7 +192,7 @@ export function PreviewBrowserContainer({
     responsiveDimensions,
     setScreenSize,
     setResponsiveDimensions,
-  } = usePreviewSettings(workspaceId);
+  } = usePreviewSettings(activeWorkspaceId ?? workspaceId);
 
   // ─── URL Bar State ──────────────────────────────────────────────────────────
   // effectiveUrl:       The override URL (if set) or the auto-detected dev server URL.
@@ -802,21 +802,23 @@ export function PreviewBrowserContainer({
   // This duplication is intentional — they may diverge in the future to support
   // different dialog configurations (e.g., edit vs. auto-fix modes).
   const handleEditDevScript = useCallback(() => {
-    if (!attemptId || repos.length === 0) return;
+    const targetWorkspaceId = activeWorkspaceId ?? workspaceId;
+    if (!targetWorkspaceId || repos.length === 0) return;
 
     const sessionId = devServerProcesses[0]?.session_id;
 
     ScriptFixerDialog.show({
       scriptType: 'dev_server',
       repos,
-      workspaceId: attemptId,
+      workspaceId: targetWorkspaceId,
       sessionId,
       initialRepoId: repos.length === 1 ? repos[0].id : undefined,
     });
-  }, [attemptId, repos, devServerProcesses]);
+  }, [activeWorkspaceId, workspaceId, repos, devServerProcesses]);
 
   const handleFixDevScript = useCallback(() => {
-    if (!attemptId || repos.length === 0) return;
+    const targetWorkspaceId = activeWorkspaceId ?? workspaceId;
+    if (!targetWorkspaceId || repos.length === 0) return;
 
     // Get session ID from the latest dev server process
     const sessionId = devServerProcesses[0]?.session_id;
@@ -824,11 +826,11 @@ export function PreviewBrowserContainer({
     ScriptFixerDialog.show({
       scriptType: 'dev_server',
       repos,
-      workspaceId: attemptId,
+      workspaceId: targetWorkspaceId,
       sessionId,
       initialRepoId: repos.length === 1 ? repos[0].id : undefined,
     });
-  }, [attemptId, repos, devServerProcesses]);
+  }, [activeWorkspaceId, workspaceId, repos, devServerProcesses]);
 
   return (
     <PreviewBrowser
@@ -860,7 +862,7 @@ export function PreviewBrowserContainer({
       repos={repos}
       handleEditDevScript={handleEditDevScript}
       handleFixDevScript={
-        attemptId && repos.length > 0 ? handleFixDevScript : undefined
+        workspaceId && repos.length > 0 ? handleFixDevScript : undefined
       }
       hasFailedDevServer={hasFailedDevServer}
       mobileScale={mobileScale}

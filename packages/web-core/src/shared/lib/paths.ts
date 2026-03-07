@@ -5,14 +5,14 @@ export const paths = {
     void taskId;
     return `/projects/${projectId}`;
   },
-  attempt: (projectId: string, taskId: string, attemptId: string) => {
+  attempt: (projectId: string, taskId: string, workspaceId: string) => {
     void taskId;
-    void attemptId;
+    void workspaceId;
     return `/projects/${projectId}`;
   },
-  attemptFull: (projectId: string, taskId: string, attemptId: string) => {
+  attemptFull: (projectId: string, taskId: string, workspaceId: string) => {
     void taskId;
-    void attemptId;
+    void workspaceId;
     return `/projects/${projectId}`;
   },
 };

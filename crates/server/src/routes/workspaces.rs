@@ -60,12 +60,12 @@ use crate::{
     middleware::load_workspace_middleware,
     routes::{
         relay_ws::{SignedWebSocket, SignedWsUpgrade},
-        task_attempts::{gh_cli_setup::GhCliSetupError, images::import_issue_attachment_images},
+        workspaces::{gh_cli_setup::GhCliSetupError, images::import_issue_attachment_images},
     },
 };
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct RebaseTaskAttemptRequest {
+pub struct RebaseWorkspaceRequest {
     pub repo_id: Uuid,
     pub old_base_branch: Option<String>,
     pub new_base_branch: Option<String>,
@@ -159,7 +159,7 @@ async fn create_workspace_record(
     Ok(workspace)
 }
 
-pub async fn get_task_attempts(
+pub async fn get_workspaces(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Workspace>>>, ApiError> {
     let pool = &deployment.db().pool;
@@ -167,7 +167,7 @@ pub async fn get_task_attempts(
     Ok(ResponseJson(ApiResponse::success(workspaces)))
 }
 
-pub async fn get_task_attempt(
+pub async fn get_workspace(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
     Ok(ResponseJson(ApiResponse::success(workspace)))
@@ -280,7 +280,7 @@ pub async fn run_agent_setup(
 }
 
 #[axum::debug_handler]
-pub async fn stream_task_attempt_diff_ws(
+pub async fn stream_workspace_diff_ws(
     ws: SignedWsUpgrade,
     Query(params): Query<DiffStreamQuery>,
     Extension(workspace): Extension<Workspace>,
@@ -289,14 +289,13 @@ pub async fn stream_task_attempt_diff_ws(
     let _ = deployment.container().touch(&workspace).await;
     let stats_only = params.stats_only;
     ws.on_upgrade(move |socket| async move {
-        if let Err(e) = handle_task_attempt_diff_ws(socket, deployment, workspace, stats_only).await
-        {
+        if let Err(e) = handle_workspace_diff_ws(socket, deployment, workspace, stats_only).await {
             tracing::warn!("diff WS closed: {}", e);
         }
     })
 }
 
-async fn handle_task_attempt_diff_ws(
+async fn handle_workspace_diff_ws(
     mut socket: SignedWebSocket,
     deployment: DeploymentImpl,
     workspace: Workspace,
@@ -400,12 +399,12 @@ async fn handle_workspaces_ws(
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct MergeTaskAttemptRequest {
+pub struct MergeWorkspaceRequest {
     pub repo_id: Uuid,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct PushTaskAttemptRequest {
+pub struct PushWorkspaceRequest {
     pub repo_id: Uuid,
 }
 
@@ -429,10 +428,10 @@ async fn resolve_vibe_kanban_identifier(
 }
 
 #[axum::debug_handler]
-pub async fn merge_task_attempt(
+pub async fn merge_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Json(request): Json<MergeTaskAttemptRequest>,
+    Json(request): Json<MergeWorkspaceRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -520,10 +519,10 @@ pub async fn merge_task_attempt(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
-pub async fn push_task_attempt_branch(
+pub async fn push_workspace_branch(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Json(request): Json<PushTaskAttemptRequest>,
+    Json(request): Json<PushWorkspaceRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -575,10 +574,10 @@ pub async fn push_task_attempt_branch(
     }
 }
 
-pub async fn force_push_task_attempt_branch(
+pub async fn force_push_workspace_branch(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Json(request): Json<PushTaskAttemptRequest>,
+    Json(request): Json<PushWorkspaceRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), PushError>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -635,7 +634,7 @@ pub struct OpenEditorResponse {
     pub url: Option<String>,
 }
 
-pub async fn open_task_attempt_in_editor(
+pub async fn open_workspace_in_editor(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<OpenEditorRequest>,
@@ -673,7 +672,7 @@ pub async fn open_task_attempt_in_editor(
     match editor_config.open_file(path.as_path()).await {
         Ok(url) => {
             tracing::info!(
-                "Opened editor for task attempt {} at path: {}{}",
+                "Opened editor for workspace {} at path: {}{}",
                 workspace.id,
                 path.display(),
                 if url.is_some() { " (remote mode)" } else { "" }
@@ -735,7 +734,7 @@ pub struct RepoBranchStatus {
     pub status: BranchStatus,
 }
 
-pub async fn get_task_attempt_branch_status(
+pub async fn get_workspace_branch_status(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RepoBranchStatus>>>, ApiError> {
@@ -1089,7 +1088,7 @@ pub async fn rename_branch(
 
     if updated_children_count > 0 {
         tracing::info!(
-            "Updated {} child task attempts to target new branch '{}'",
+            "Updated {} child workspaces to target new branch '{}'",
             updated_children_count,
             new_branch_name
         );
@@ -1110,10 +1109,10 @@ pub async fn rename_branch(
 }
 
 #[axum::debug_handler]
-pub async fn rebase_task_attempt(
+pub async fn rebase_workspace(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Json(payload): Json<RebaseTaskAttemptRequest>,
+    Json(payload): Json<RebaseWorkspaceRequest>,
 ) -> Result<ResponseJson<ApiResponse<(), GitOperationError>>, ApiError> {
     let pool = &deployment.db().pool;
 
@@ -1210,7 +1209,7 @@ pub async fn rebase_task_attempt(
 }
 
 #[axum::debug_handler]
-pub async fn abort_conflicts_task_attempt(
+pub async fn abort_workspace_conflicts(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<AbortConflictsRequest>,
@@ -1234,7 +1233,7 @@ pub async fn abort_conflicts_task_attempt(
 }
 
 #[axum::debug_handler]
-pub async fn continue_rebase_task_attempt(
+pub async fn continue_workspace_rebase(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<ContinueRebaseRequest>,
@@ -1359,7 +1358,7 @@ pub async fn start_dev_server(
     Ok(ResponseJson(ApiResponse::success(execution_processes)))
 }
 
-pub async fn stop_task_attempt_execution(
+pub async fn stop_workspace_execution(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
@@ -1384,68 +1383,6 @@ pub enum RunScriptError {
     NoScriptConfigured,
     ProcessAlreadyRunning,
     SessionRequired,
-}
-
-#[axum::debug_handler]
-pub async fn run_setup_script(
-    Extension(workspace): Extension<Workspace>,
-    State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
-    let pool = &deployment.db().pool;
-
-    // Check if any non-dev-server processes are already running for this workspace
-    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
-        .await?
-    {
-        return Ok(ResponseJson(ApiResponse::error_with_data(
-            RunScriptError::ProcessAlreadyRunning,
-        )));
-    }
-
-    deployment
-        .container()
-        .ensure_container_exists(&workspace)
-        .await?;
-
-    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
-    let executor_action = match deployment.container().setup_actions_for_repos(&repos) {
-        Some(action) => action,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                RunScriptError::NoScriptConfigured,
-            )));
-        }
-    };
-
-    let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(session) => session,
-        None => {
-            return Ok(ResponseJson(ApiResponse::error_with_data(
-                RunScriptError::SessionRequired,
-            )));
-        }
-    };
-
-    let execution_process = deployment
-        .container()
-        .start_execution(
-            &workspace,
-            &session,
-            &executor_action,
-            &ExecutionProcessRunReason::SetupScript,
-        )
-        .await?;
-
-    deployment
-        .track_if_analytics_allowed(
-            "setup_script_executed",
-            serde_json::json!({
-                "workspace_id": workspace.id.to_string(),
-            }),
-        )
-        .await;
-
-    Ok(ResponseJson(ApiResponse::success(execution_process)))
 }
 
 #[axum::debug_handler]
@@ -1614,7 +1551,7 @@ pub async fn gh_cli_setup_handler(
     }
 }
 
-pub async fn get_task_attempt_repos(
+pub async fn get_workspace_repos(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<RepoWithTargetBranch>>>, ApiError> {
@@ -1992,41 +1929,37 @@ pub async fn create_and_start_workspace(
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
-    let task_attempt_id_router = Router::new()
+    let workspace_id_router = Router::new()
         .route("/unlink", post(unlink_workspace))
         .merge(
             Router::new()
                 .route(
                     "/",
-                    get(get_task_attempt)
+                    get(get_workspace)
                         .put(update_workspace)
                         .delete(delete_workspace),
                 )
                 .route("/run-agent-setup", post(run_agent_setup))
                 .route("/gh-cli-setup", post(gh_cli_setup_handler))
                 .route("/start-dev-server", post(start_dev_server))
-                .route("/run-setup-script", post(run_setup_script))
                 .route("/run-cleanup-script", post(run_cleanup_script))
                 .route("/run-archive-script", post(run_archive_script))
-                .route("/branch-status", get(get_task_attempt_branch_status))
-                .route("/diff/ws", get(stream_task_attempt_diff_ws))
-                .route("/merge", post(merge_task_attempt))
-                .route("/push", post(push_task_attempt_branch))
-                .route("/push/force", post(force_push_task_attempt_branch))
-                .route("/rebase", post(rebase_task_attempt))
-                .route("/rebase/continue", post(continue_rebase_task_attempt))
-                .route("/conflicts/abort", post(abort_conflicts_task_attempt))
+                .route("/branch-status", get(get_workspace_branch_status))
+                .route("/diff/ws", get(stream_workspace_diff_ws))
+                .route("/merge", post(merge_workspace))
+                .route("/push", post(push_workspace_branch))
+                .route("/push/force", post(force_push_workspace_branch))
+                .route("/rebase", post(rebase_workspace))
+                .route("/rebase/continue", post(continue_workspace_rebase))
+                .route("/conflicts/abort", post(abort_workspace_conflicts))
                 .route("/pr", post(pr::create_pr))
                 .route("/pr/attach", post(pr::attach_existing_pr))
                 .route("/pr/comments", get(pr::get_pr_comments))
-                .route("/open-editor", post(open_task_attempt_in_editor))
-                .route("/stop", post(stop_task_attempt_execution))
+                .route("/open-editor", post(open_workspace_in_editor))
+                .route("/stop", post(stop_workspace_execution))
                 .route("/change-target-branch", post(change_target_branch))
                 .route("/rename-branch", post(rename_branch))
-                .route(
-                    "/repos",
-                    get(get_task_attempt_repos).post(add_workspace_repo),
-                )
+                .route("/repos", get(get_workspace_repos).post(add_workspace_repo))
                 .route("/first-message", get(get_first_user_message))
                 .route("/mark-seen", put(mark_seen))
                 .route("/link", post(link_workspace))
@@ -2036,14 +1969,14 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 )),
         );
 
-    let task_attempts_router = Router::new()
-        .route("/", get(get_task_attempts).post(create_workspace))
+    let workspaces_router = Router::new()
+        .route("/", get(get_workspaces).post(create_workspace))
         .route("/create-and-start", post(create_and_start_workspace))
         .route("/from-pr", post(pr::create_workspace_from_pr))
         .route("/stream/ws", get(stream_workspaces_ws))
         .route("/summary", post(workspace_summary::get_workspace_summaries))
-        .nest("/{id}", task_attempt_id_router)
+        .nest("/{id}", workspace_id_router)
         .nest("/{id}/images", images::router(deployment));
 
-    Router::new().nest("/task-attempts", task_attempts_router)
+    Router::new().nest("/workspaces", workspaces_router)
 }

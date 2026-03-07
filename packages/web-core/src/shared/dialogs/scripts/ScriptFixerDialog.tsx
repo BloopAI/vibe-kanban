@@ -23,7 +23,7 @@ import { AutoExpandingTextarea } from '@vibe/ui/components/AutoExpandingTextarea
 import { VirtualizedProcessLogs } from '@/shared/components/VirtualizedProcessLogs';
 import { RunningDots } from '@vibe/ui/components/RunningDots';
 import { defineModal } from '@/shared/lib/modals';
-import { repoApi, attemptsApi } from '@/shared/lib/api';
+import { repoApi, workspacesApi } from '@/shared/lib/api';
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import type { RepoWithTargetBranch, PatchType, UpdateRepo } from 'shared/types';
@@ -229,23 +229,23 @@ const ScriptFixerDialogImpl = create<ScriptFixerDialogProps>(
 
         // Then run the script and capture the session ID from the returned process
         if (scriptType === 'setup') {
-          const result = await attemptsApi.runSetupScript(workspaceId);
+          const result = await workspacesApi.runSetupScript(workspaceId);
           if (result.success) {
             setActiveSessionId(result.data.session_id);
           }
         } else if (scriptType === 'cleanup') {
-          const result = await attemptsApi.runCleanupScript(workspaceId);
+          const result = await workspacesApi.runCleanupScript(workspaceId);
           if (result.success) {
             setActiveSessionId(result.data.session_id);
           }
         } else if (scriptType === 'archive') {
-          const result = await attemptsApi.runArchiveScript(workspaceId);
+          const result = await workspacesApi.runArchiveScript(workspaceId);
           if (result.success) {
             setActiveSessionId(result.data.session_id);
           }
         } else {
           // Start the dev server
-          const processes = await attemptsApi.startDevServer(workspaceId);
+          const processes = await workspacesApi.startDevServer(workspaceId);
           if (processes.length > 0) {
             setActiveSessionId(processes[0].session_id);
           }

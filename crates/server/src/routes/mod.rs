@@ -28,15 +28,15 @@ pub mod scratch;
 pub mod search;
 pub mod sessions;
 pub mod tags;
-pub mod task_attempts;
 pub mod terminal;
+pub mod workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(containers::router(&deployment))
-        .merge(task_attempts::router(&deployment))
+        .merge(workspaces::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
         .merge(oauth::router())

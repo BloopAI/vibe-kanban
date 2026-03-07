@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import { EditorSelectionDialog } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
 import type { EditorType } from 'shared/types';
 
@@ -9,17 +9,17 @@ type OpenEditorOptions = {
 };
 
 export function useOpenInEditor(
-  attemptId?: string,
+  workspaceId?: string,
   onShowEditorDialog?: () => void
 ) {
   return useCallback(
     async (options?: OpenEditorOptions): Promise<void> => {
-      if (!attemptId) return;
+      if (!workspaceId) return;
 
       const { editorType, filePath } = options ?? {};
 
       try {
-        const response = await attemptsApi.openEditor(attemptId, {
+        const response = await workspacesApi.openEditor(workspaceId, {
           editor_type: editorType ?? null,
           file_path: filePath ?? null,
         });
@@ -35,13 +35,13 @@ export function useOpenInEditor(
             onShowEditorDialog();
           } else {
             EditorSelectionDialog.show({
-              selectedAttemptId: attemptId,
+              selectedAttemptId: workspaceId,
               filePath,
             });
           }
         }
       }
     },
-    [attemptId, onShowEditorDialog]
+    [workspaceId, onShowEditorDialog]
   );
 }

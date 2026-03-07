@@ -61,7 +61,7 @@
         "executor": {
           "label": "Default Agent Configuration",
           "placeholder": "Select profile",
-          "helper": "Choose the default agent configuration to use when creating a task attempt."
+          "helper": "Choose the default agent configuration to use when creating a workspace."
         },
         "variant": "DEFAULT",
         "defaultLabel": "Default"
@@ -177,7 +177,7 @@
       },
       "commits": {
         "title": "Commits",
-        "description": "Configure commit behavior for task attempts",
+        "description": "Configure commit behavior for workspaces",
         "reminder": {
           "label": "Commit reminder",
           "helper": "Prompt supported agents to commit changes before stopping."
@@ -192,14 +192,14 @@
         "description": "Control when and how you receive notifications.",
         "sound": {
           "label": "Sound Notifications",
-          "helper": "Play a sound when task attempts finish running.",
+          "helper": "Play a sound when workspaces finish running.",
           "fileLabel": "Sound",
           "filePlaceholder": "Select sound",
           "fileHelper": "Choose the sound to play when tasks complete. Click the volume button to preview."
         },
         "push": {
           "label": "Push Notifications",
-          "helper": "Show system notifications when task attempts finish running."
+          "helper": "Show system notifications when workspaces finish running."
         }
       },
       "messageInput": {
@@ -285,7 +285,7 @@
         "description": "Try out experimental features before they're released.",
         "workspaces": {
           "label": "Enable Workspaces Beta",
-          "helper": "Use the new workspaces interface when viewing task attempts. Tasks will open in task view first, and attempts will open in the new workspaces view."
+          "helper": "Use the new workspaces interface when viewing workspaces. Tasks will open in task view first, and attempts will open in the new workspaces view."
         }
       }
     },

@@ -185,7 +185,7 @@ pub async fn get_image_metadata(
     // Build proxy URL - the path after .vibe-images/
     let image_path = query.path.strip_prefix(&vibe_images_prefix).unwrap_or("");
     let proxy_url = format!(
-        "/api/task-attempts/{}/images/file/{}?session_id={}",
+        "/api/workspaces/{}/images/file/{}?session_id={}",
         workspace.id, image_path, query.session_id
     );
 

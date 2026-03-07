@@ -16,20 +16,20 @@ import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { useTranslation } from 'react-i18next';
 
 export interface ForcePushDialogProps {
-  attemptId: string;
+  workspaceId: string;
   repoId: string;
   branchName?: string;
 }
 
 const ForcePushDialogImpl = create<ForcePushDialogProps>((props) => {
   const modal = useModal();
-  const { attemptId, repoId, branchName } = props;
+  const { workspaceId, repoId, branchName } = props;
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation(['tasks', 'common']);
   const branchLabel = branchName ? ` "${branchName}"` : '';
 
   const forcePush = useForcePush(
-    attemptId,
+    workspaceId,
     () => {
       // Success - close dialog
       modal.resolve('success');

@@ -136,7 +136,7 @@ export function WorkspacesLayout() {
   // WebSocket connections and scroll positions across tab switches.
   if (isMobile) {
     const mobileContent = (
-      <ReviewProvider attemptId={selectedWorkspace?.id}>
+      <ReviewProvider workspaceId={selectedWorkspace?.id}>
         <ChangesViewProvider>
           <div className="flex flex-col h-full min-h-0">
             {/* Workspaces tab */}
@@ -186,7 +186,7 @@ export function WorkspacesLayout() {
               {selectedWorkspace?.id && (
                 <ChangesPanelContainer
                   className=""
-                  attemptId={selectedWorkspace.id}
+                  workspaceId={selectedWorkspace.id}
                 />
               )}
             </div>
@@ -210,7 +210,7 @@ export function WorkspacesLayout() {
             >
               {selectedWorkspace?.id && (
                 <PreviewBrowserContainer
-                  attemptId={selectedWorkspace.id}
+                  workspaceId={selectedWorkspace.id}
                   className=""
                 />
               )}
@@ -250,7 +250,7 @@ export function WorkspacesLayout() {
   }
 
   const mainContent = (
-    <ReviewProvider attemptId={selectedWorkspace?.id}>
+    <ReviewProvider workspaceId={selectedWorkspace?.id}>
       <ChangesViewProvider>
         <div className="flex h-full">
           <Group
@@ -301,7 +301,7 @@ export function WorkspacesLayout() {
                   selectedWorkspace?.id && (
                     <ChangesPanelContainer
                       className=""
-                      attemptId={selectedWorkspace.id}
+                      workspaceId={selectedWorkspace.id}
                     />
                   )}
                 {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.LOGS && (
@@ -310,7 +310,7 @@ export function WorkspacesLayout() {
                 {rightMainPanelMode === RIGHT_MAIN_PANEL_MODES.PREVIEW &&
                   selectedWorkspace?.id && (
                     <PreviewBrowserContainer
-                      attemptId={selectedWorkspace.id}
+                      workspaceId={selectedWorkspace.id}
                       className=""
                     />
                   )}

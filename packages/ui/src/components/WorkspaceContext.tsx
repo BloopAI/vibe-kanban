@@ -1,10 +1,10 @@
 import { createContext, useContext } from 'react';
 
-export const TaskAttemptContext = createContext<string | undefined>(undefined);
+export const WorkspaceContext = createContext<string | undefined>(undefined);
 export const SessionContext = createContext<string | undefined>(undefined);
 
-export function useTaskAttemptId() {
-  return useContext(TaskAttemptContext);
+export function useWorkspaceId() {
+  return useContext(WorkspaceContext);
 }
 
 export function useSessionId() {

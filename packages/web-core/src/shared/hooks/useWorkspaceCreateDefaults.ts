@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { ExecutorConfig, RepoWithTargetBranch } from 'shared/types';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import { useExecutionProcesses } from '@/shared/hooks/useExecutionProcesses';
 import { getLatestConfigFromProcesses } from '@/shared/lib/executor';
 
@@ -35,8 +35,8 @@ export function useWorkspaceCreateDefaults({
     refetchOnMount: 'always',
     queryFn: async () => {
       const [repos, workspaceWithSession] = await Promise.all([
-        attemptsApi.getRepos(sourceWorkspaceId!),
-        attemptsApi.getWithSession(sourceWorkspaceId!),
+        workspacesApi.getRepos(sourceWorkspaceId!),
+        workspacesApi.getWithSession(sourceWorkspaceId!),
       ]);
 
       const result = {

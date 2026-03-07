@@ -71,7 +71,7 @@ import {
 type Props = {
   expansionKey: string;
   executionProcessId: string;
-  taskAttempt: WorkspaceWithSession;
+  workspaceWithSession: WorkspaceWithSession;
   resetAction: UseResetProcessResult;
   entry: NormalizedEntry | null;
   aggregatedGroup: AggregatedPatchGroup | null;
@@ -167,7 +167,7 @@ function renderToolUseEntry(
   props: Props,
   t: TFunction<'common'>
 ): React.ReactNode {
-  const { expansionKey, executionProcessId, taskAttempt } = props;
+  const { expansionKey, executionProcessId, workspaceWithSession } = props;
   const { action_type, status } = entryType;
 
   // File edit - use ChatFileEntry
@@ -194,7 +194,7 @@ function renderToolUseEntry(
       <PlanEntry
         plan={action_type.plan}
         expansionKey={expansionKey}
-        workspaceId={taskAttempt?.id}
+        workspaceId={workspaceWithSession?.id}
         status={status}
       />
     );
@@ -219,7 +219,7 @@ function renderToolUseEntry(
         result={action_type.result}
         expansionKey={expansionKey}
         status={status}
-        workspaceId={taskAttempt?.id}
+        workspaceId={workspaceWithSession?.id}
       />
     );
   }
@@ -247,8 +247,8 @@ function renderToolUseEntry(
         processId={executionProcessId ?? ''}
         exitCode={exitCode}
         status={status}
-        workspaceId={taskAttempt?.id}
-        sessionId={taskAttempt?.session?.id}
+        workspaceId={workspaceWithSession?.id}
+        sessionId={workspaceWithSession?.session?.id}
       />
     );
   }
@@ -260,7 +260,7 @@ function renderToolUseEntry(
         toolName={entryType.tool_name}
         content={entry.content}
         expansionKey={expansionKey}
-        workspaceId={taskAttempt?.id}
+        workspaceId={workspaceWithSession?.id}
         status={status}
       />
     );
@@ -290,12 +290,12 @@ function DisplayConversationEntry(props: Props) {
     aggregatedThinkingGroup,
     expansionKey,
     executionProcessId,
-    taskAttempt,
+    workspaceWithSession,
     resetAction,
   } = props;
   const executorCanFork = !!(
-    taskAttempt?.session?.executor &&
-    capabilities?.[taskAttempt.session.executor]?.includes(
+    workspaceWithSession?.session?.executor &&
+    capabilities?.[workspaceWithSession.session.executor]?.includes(
       BaseAgentCapability.SESSION_FORK
     )
   );
@@ -315,7 +315,7 @@ function DisplayConversationEntry(props: Props) {
     return (
       <AggregatedThinkingGroupEntry
         group={aggregatedThinkingGroup}
-        taskAttemptId={taskAttempt?.id}
+        workspaceId={workspaceWithSession?.id}
       />
     );
   }
@@ -336,7 +336,7 @@ function DisplayConversationEntry(props: Props) {
         <UserMessageEntry
           content={entry.content}
           expansionKey={expansionKey}
-          workspaceId={taskAttempt?.id}
+          workspaceId={workspaceWithSession?.id}
           executionProcessId={executionProcessId}
           executorCanFork={executorCanFork}
           resetAction={resetAction}
@@ -347,7 +347,7 @@ function DisplayConversationEntry(props: Props) {
       return (
         <AssistantMessageEntry
           content={entry.content}
-          workspaceId={taskAttempt?.id}
+          workspaceId={workspaceWithSession?.id}
         />
       );
 
@@ -363,7 +363,7 @@ function DisplayConversationEntry(props: Props) {
       return (
         <ChatThinkingMessage
           content={entry.content}
-          taskAttemptId={taskAttempt?.id}
+          workspaceId={workspaceWithSession?.id}
           renderMarkdown={({ content, workspaceId, className }) => (
             <AppChatMarkdown
               content={content}
@@ -396,7 +396,7 @@ function DisplayConversationEntry(props: Props) {
         <UserFeedbackEntry
           content={entry.content}
           deniedTool={entryType.denied_tool}
-          taskAttemptId={taskAttempt?.id}
+          workspaceId={workspaceWithSession?.id}
         />
       );
 
@@ -473,7 +473,7 @@ function AppChatMarkdown({
           value={content}
           disabled
           className={className}
-          taskAttemptId={workspaceId}
+          workspaceId={workspaceId}
           sessionId={selectedSessionId}
           findMatchingDiffPath={findMatchingDiffPath}
           onCodeClick={viewFileInChanges}
@@ -743,11 +743,11 @@ function UserMessageEntry({
 function UserFeedbackEntry({
   content,
   deniedTool,
-  taskAttemptId,
+  workspaceId,
 }: {
   content: string;
   deniedTool: string;
-  taskAttemptId: string | undefined;
+  workspaceId: string | undefined;
 }) {
   const { t } = useTranslation('common');
   const { selectedSessionId } = useWorkspaceContext();
@@ -765,7 +765,7 @@ function UserFeedbackEntry({
           value={content}
           disabled
           className="whitespace-pre-wrap break-words flex flex-col gap-1 font-light py-3"
-          taskAttemptId={taskAttemptId}
+          workspaceId={workspaceId}
           sessionId={selectedSessionId}
         />
       </div>
@@ -1223,10 +1223,10 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
  */
 function AggregatedThinkingGroupEntry({
   group,
-  taskAttemptId,
+  workspaceId,
 }: {
   group: AggregatedThinkingGroup;
-  taskAttemptId: string | undefined;
+  workspaceId: string | undefined;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -1256,7 +1256,7 @@ function AggregatedThinkingGroupEntry({
       isHovered={isHovered}
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
-      taskAttemptId={taskAttemptId}
+      workspaceId={workspaceId}
       renderMarkdown={({ content, workspaceId, className }) => (
         <AppChatMarkdown
           content={content}

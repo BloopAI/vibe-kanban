@@ -171,7 +171,7 @@ export function RightSidebar({
             expanded: upperExpanded,
             content: (
               <PreviewControlsContainer
-                attemptId={selectedWorkspace.id}
+                workspaceId={selectedWorkspace.id}
                 className=""
               />
             ),

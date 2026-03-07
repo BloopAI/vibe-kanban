@@ -17,7 +17,7 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { CreateModeProvider } from '@/integrations/CreateModeProvider';
 import { useWorkspaceSessions } from '@/shared/hooks/useWorkspaceSessions';
-import { useAttempt } from '@/shared/hooks/useAttempt';
+import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import { CreateChatBoxContainer } from '@/shared/components/CreateChatBoxContainer';
 import { KanbanIssuePanelContainer } from './KanbanIssuePanelContainer';
@@ -146,7 +146,7 @@ function WorkspaceSessionPanel({
   const { activeWorkspaces, archivedWorkspaces } = useWorkspaceContext();
   const conversationListRef = useRef<ConversationListHandle>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
-  const { data: workspace, isLoading: isWorkspaceLoading } = useAttempt(
+  const { data: workspace, isLoading: isWorkspaceLoading } = useWorkspaceRecord(
     workspaceId,
     { enabled: !!workspaceId }
   );
@@ -272,7 +272,7 @@ function WorkspaceSessionPanel({
               {workspaceWithSession ? (
                 <div className="flex flex-1 min-h-0 overflow-hidden justify-center">
                   <div className="w-chat max-w-full h-full">
-                    <RetryUiProvider attemptId={workspaceWithSession.id}>
+                    <RetryUiProvider workspaceId={workspaceWithSession.id}>
                       <ConversationList
                         ref={conversationListRef}
                         attempt={workspaceWithSession}
