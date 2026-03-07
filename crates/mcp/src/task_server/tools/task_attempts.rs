@@ -192,7 +192,7 @@ impl McpServer {
             image_ids: None,
         };
 
-        let create_and_start_url = self.url("/api/task-attempts/create-and-start");
+        let create_and_start_url = self.url("/api/workspaces/create-and-start");
         let create_and_start_response: CreateAndStartWorkspaceResponse = match self
             .send_json(
                 self.client

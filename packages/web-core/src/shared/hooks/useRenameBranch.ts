@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { workspacesApi } from '@/shared/lib/api';
+import { workspaceRecordKeys } from '@/shared/hooks/useWorkspaceRecord';
 import type { Workspace } from 'shared/types';
 
 interface RenameBranchContext {
@@ -15,26 +16,29 @@ export function useRenameBranch(
 
   return useMutation<{ branch: string }, unknown, string, RenameBranchContext>({
     mutationFn: async (newBranchName) => {
-      if (!workspaceId) throw new Error('Attempt id is not set');
+      if (!workspaceId) throw new Error('Workspace id is not set');
       return workspacesApi.renameBranch(workspaceId, newBranchName);
     },
     onMutate: async (newBranchName) => {
       if (!workspaceId) return { previousWorkspace: undefined };
 
-      // Cancel any outgoing refetches (use 'attempt' key to match useWorkspaceRecord hook)
-      await queryClient.cancelQueries({ queryKey: ['attempt', workspaceId] });
+      await queryClient.cancelQueries({
+        queryKey: workspaceRecordKeys.byId(workspaceId),
+      });
 
       // Snapshot the previous value
-      const previousWorkspace = queryClient.getQueryData<Workspace>([
-        'attempt',
-        workspaceId,
-      ]);
+      const previousWorkspace = queryClient.getQueryData<Workspace>(
+        workspaceRecordKeys.byId(workspaceId)
+      );
 
       // Optimistically update the cache
-      queryClient.setQueryData<Workspace>(['attempt', workspaceId], (old) => {
-        if (!old) return old;
-        return { ...old, branch: newBranchName };
-      });
+      queryClient.setQueryData<Workspace>(
+        workspaceRecordKeys.byId(workspaceId),
+        (old) => {
+          if (!old) return old;
+          return { ...old, branch: newBranchName };
+        }
+      );
 
       // Return context with the previous value
       return { previousWorkspace };
@@ -44,7 +48,9 @@ export function useRenameBranch(
         queryClient.invalidateQueries({
           queryKey: ['workspaceWithSession', workspaceId],
         });
-        queryClient.invalidateQueries({ queryKey: ['attempt', workspaceId] });
+        queryClient.invalidateQueries({
+          queryKey: workspaceRecordKeys.byId(workspaceId),
+        });
         queryClient.invalidateQueries({
           queryKey: ['attemptBranch', workspaceId],
         });
@@ -60,7 +66,7 @@ export function useRenameBranch(
       // Rollback to the previous value on error
       if (workspaceId && context?.previousWorkspace) {
         queryClient.setQueryData(
-          ['attempt', workspaceId],
+          workspaceRecordKeys.byId(workspaceId),
           context.previousWorkspace
         );
       }

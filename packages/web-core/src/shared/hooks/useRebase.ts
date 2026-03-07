@@ -3,6 +3,7 @@ import { workspacesApi, Result } from '@/shared/lib/api';
 import type { RebaseWorkspaceRequest } from 'shared/types';
 import type { GitOperationError } from 'shared/types';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
+import { workspaceRepoKeys } from '@/shared/hooks/useWorkspaceRepo';
 
 export function useRebase(
   workspaceId: string | undefined,
@@ -50,7 +51,7 @@ export function useRebase(
 
         // Refresh repos to update target_branch in RepoCard
         queryClient.invalidateQueries({
-          queryKey: ['attemptRepo', workspaceId],
+          queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
         });
 
         // Refresh branch list

@@ -5,6 +5,7 @@ import type {
   ChangeTargetBranchResponse,
 } from 'shared/types';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
+import { workspaceRepoKeys } from '@/shared/hooks/useWorkspaceRepo';
 
 type ChangeTargetBranchParams = {
   newTargetBranch: string;
@@ -46,7 +47,7 @@ export function useChangeTargetBranch(
         });
         // Refresh repos to update target_branch in RepoCard
         queryClient.invalidateQueries({
-          queryKey: ['attemptRepo', workspaceId],
+          queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
         });
       }
 

@@ -19,7 +19,10 @@ import { GitOperationsProvider } from '@/shared/hooks/GitOperationsContext';
 import { useGitOperations } from '@/shared/hooks/useGitOperations';
 import { useWorkspaceRecord } from '@/shared/hooks/useWorkspaceRecord';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
-import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
+import {
+  useWorkspaceRepo,
+  workspaceRepoKeys,
+} from '@/shared/hooks/useWorkspaceRepo';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useWorkspaces } from '@/shared/hooks/useWorkspaces';
@@ -81,7 +84,7 @@ function RebaseDialogContent({
         queryKey: ['branchStatus', workspaceId],
       }),
       queryClient.invalidateQueries({
-        queryKey: ['attemptRepos', workspaceId],
+        queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
       }),
     ]);
   }, [queryClient, workspaceId]);

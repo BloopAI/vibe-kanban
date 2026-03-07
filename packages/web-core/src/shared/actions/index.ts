@@ -54,6 +54,7 @@ import {
 import { workspacesApi, repoApi } from '@/shared/lib/api';
 import { bulkUpdateIssues } from '@/shared/lib/remoteApi';
 import { workspaceRecordKeys } from '@/shared/hooks/useWorkspaceRecord';
+import { workspaceRepoKeys } from '@/shared/hooks/useWorkspaceRepo';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
 import { workspaceSummaryKeys } from '@/shared/hooks/workspaceSummaryKeys';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
@@ -1060,7 +1061,7 @@ export const Actions = {
             queryKey: workspaceRecordKeys.byId(workspaceId),
           });
           ctx.queryClient.invalidateQueries({
-            queryKey: ['attemptRepo', workspaceId],
+            queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
           });
           ctx.queryClient.invalidateQueries({
             queryKey: repoBranchKeys.byRepo(repoId),

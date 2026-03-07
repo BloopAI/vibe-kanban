@@ -110,7 +110,7 @@ impl McpServer {
             offset,
         }): Parameters<McpListWorkspacesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url("/api/task-attempts");
+        let url = self.url("/api/workspaces");
         let mut workspaces: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
             Ok(ws) => ws,
             Err(e) => return Ok(e),
@@ -186,7 +186,7 @@ impl McpServer {
             return Ok(error_result);
         }
 
-        let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
+        let url = self.url(&format!("/api/workspaces/{}", workspace_id));
         let payload = UpdateWorkspace {
             archived,
             pinned,
@@ -229,7 +229,7 @@ impl McpServer {
         let delete_remote = delete_remote.unwrap_or(false);
         let delete_branches = delete_branches.unwrap_or(false);
 
-        let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
+        let url = self.url(&format!("/api/workspaces/{}", workspace_id));
         if let Err(e) = self
             .send_empty_json(self.client.delete(&url).query(&[
                 ("delete_remote", delete_remote),

@@ -7,6 +7,13 @@ interface UseWorkspaceRepoOptions {
   enabled?: boolean;
 }
 
+export const workspaceRepoKeys = {
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['workspaceRepos', workspaceId] as const,
+  selection: (workspaceId: string | undefined) =>
+    ['workspaceRepoSelection', workspaceId] as const,
+};
+
 export function useWorkspaceRepo(
   workspaceId?: string,
   options: UseWorkspaceRepoOptions = {}
@@ -15,7 +22,7 @@ export function useWorkspaceRepo(
   const queryClient = useQueryClient();
 
   const query = useQuery<RepoWithTargetBranch[]>({
-    queryKey: ['workspaceRepos', workspaceId],
+    queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
     queryFn: async () => {
       const repos = await workspacesApi.getRepos(workspaceId!);
       return repos;
@@ -27,7 +34,7 @@ export function useWorkspaceRepo(
 
   // Use React Query cache for shared state across all hook consumers
   const { data: selectedRepoId = null } = useQuery<string | null>({
-    queryKey: ['workspaceRepoSelection', workspaceId],
+    queryKey: workspaceRepoKeys.selection(workspaceId),
     queryFn: () => null,
     enabled: false,
     staleTime: Infinity,
@@ -35,7 +42,7 @@ export function useWorkspaceRepo(
 
   const setSelectedRepoId = useCallback(
     (id: string | null) => {
-      queryClient.setQueryData(['workspaceRepoSelection', workspaceId], id);
+      queryClient.setQueryData(workspaceRepoKeys.selection(workspaceId), id);
     },
     [queryClient, workspaceId]
   );
