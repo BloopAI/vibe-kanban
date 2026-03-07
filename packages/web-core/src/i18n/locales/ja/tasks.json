@@ -112,7 +112,10 @@
     }
   },
   "followUp": {
-    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます"
+    "queuedMessage": "メッセージがキューに追加されました - 現在の実行が完了すると実行されます",
+    "pendingBreakdown": "Steer: {{steerCount}} ・ キュー: {{queueCount}}",
+    "steerLabel": "Steer",
+    "queueLabel": "キュー"
   },
   "git": {
     "branch": {
@@ -395,8 +398,11 @@
       "loading": "読み込み中",
       "send": "送信",
       "sending": "送信中",
+      "steer": "Steer",
+      "steerShortcutHint": "ショートカット: {{shortcut}}",
       "queue": "キューに追加",
-      "cancelQueue": "キューをキャンセル",
+      "queueShortcutHint": "ショートカット: {{shortcut}}",
+      "cancelQueue": "キューから取り出す",
       "requestChanges": "変更を依頼",
       "approve": "承認",
       "clearReviewComments": "レビューコメントをクリア",

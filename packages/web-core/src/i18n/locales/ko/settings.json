@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "메시지 보내기 키",
           "helper": "메시지를 보내는 키보드 단축키를 선택하세요.",
-          "enterLabel": "Enter (Shift+Enter로 새 줄)"
+          "enterLabel": "Enter (Shift+Enter로 새 줄)",
+          "disabledLabel": "사용 안 함"
+        },
+        "runningSteerShortcut": {
+          "helper": "작업이 실행 중일 때 즉시 steer를 보내는 단축키를 선택합니다.",
+          "label": "실행 중 Steer 단축키"
+        },
+        "runningQueueShortcut": {
+          "helper": "작업이 실행 중일 때 후속 메시지를 큐에 넣는 추가 단축키를 선택합니다. Ctrl/Cmd+Enter는 항상 큐에 추가합니다.",
+          "label": "추가 큐 단축키"
         }
       },
       "privacy": {

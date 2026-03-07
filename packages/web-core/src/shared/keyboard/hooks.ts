@@ -109,6 +109,15 @@ export const useKeyDenyApproval = createSemanticHook(Action.DENY_APPROVAL);
 export const useKeySubmitFollowUp = createSemanticHook(Action.SUBMIT_FOLLOW_UP);
 
 /**
+ * Edit last queued message action - typically Alt+Up
+ * Pops the latest queued message and restores it in the editor.
+ *
+ * @example
+ * useKeyEditLastQueued(() => handleCancelQueue(), { scope: Scope.KANBAN });
+ */
+export const useKeyEditLastQueued = createSemanticHook(Action.EDIT_LAST_QUEUED);
+
+/**
  * Submit task action - typically Cmd+Enter
  * Primary submit action in task dialog (Create & Start or Update)
  *

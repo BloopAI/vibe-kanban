@@ -68,6 +68,7 @@ import {
   TokenResponse,
   CurrentUserResponse,
   QueueStatus,
+  CancelQueueResponse,
   PrCommentsResponse,
   MergeTaskAttemptRequest,
   PushTaskAttemptRequest,
@@ -1403,6 +1404,8 @@ export const agentsApi = {
 };
 
 // Queue API for session follow-up messages
+export type QueueCancelMode = 'latest' | 'all' | 'queue' | 'steer';
+
 export const queueApi = {
   /**
    * Queue a follow-up message to be executed when current execution finishes
@@ -1419,13 +1422,41 @@ export const queueApi = {
   },
 
   /**
-   * Cancel a queued follow-up message
+   * Queue a high-priority steer message that runs before buffered queue messages
    */
-  cancel: async (sessionId: string): Promise<QueueStatus> => {
-    const response = await makeRequest(`/api/sessions/${sessionId}/queue`, {
-      method: 'DELETE',
-    });
+  steer: async (
+    sessionId: string,
+    data: DraftFollowUpData
+  ): Promise<QueueStatus> => {
+    const response = await makeRequest(
+      `/api/sessions/${sessionId}/queue/steer`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<QueueStatus>(response);
+  },
+
+  /**
+   * Pop the latest queued follow-up message for editing
+   */
+  cancel: async (
+    sessionId: string,
+    mode: QueueCancelMode = 'latest'
+  ): Promise<CancelQueueResponse> => {
+    const params = new URLSearchParams();
+    if (mode !== 'latest') {
+      params.set('mode', mode);
+    }
+    const query = params.toString();
+    const response = await makeRequest(
+      `/api/sessions/${sessionId}/queue${query ? `?${query}` : ''}`,
+      {
+      method: 'DELETE',
+      }
+    );
+    return handleApiResponse<CancelQueueResponse>(response);
   },
 
   /**

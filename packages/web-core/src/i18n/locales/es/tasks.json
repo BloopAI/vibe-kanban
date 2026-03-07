@@ -112,7 +112,10 @@
     }
   },
   "followUp": {
-    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual"
+    "queuedMessage": "Mensaje en cola - se ejecutará cuando finalice la ejecución actual",
+    "pendingBreakdown": "Steer: {{steerCount}} · Cola: {{queueCount}}",
+    "steerLabel": "Steer",
+    "queueLabel": "Cola"
   },
   "git": {
     "branch": {
@@ -395,8 +398,11 @@
       "loading": "Cargando",
       "send": "Enviar",
       "sending": "Enviando",
+      "steer": "Steer",
+      "steerShortcutHint": "Atajo: {{shortcut}}",
       "queue": "Poner en cola",
-      "cancelQueue": "Cancelar cola",
+      "queueShortcutHint": "Atajo: {{shortcut}}",
+      "cancelQueue": "Extraer de la cola",
       "requestChanges": "Solicitar cambios",
       "approve": "Aprobar",
       "clearReviewComments": "Limpiar comentarios de revisión",

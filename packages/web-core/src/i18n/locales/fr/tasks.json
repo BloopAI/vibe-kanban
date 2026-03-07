@@ -113,7 +113,10 @@
     "logsCopied": "Copié !"
   },
   "followUp": {
-    "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée"
+    "queuedMessage": "Message en file d'attente - s'exécutera lorsque l'exécution actuelle sera terminée",
+    "pendingBreakdown": "Steer : {{steerCount}} · File : {{queueCount}}",
+    "steerLabel": "Steer",
+    "queueLabel": "File"
   },
   "todoPopup": {
     "title": "Tâches",
@@ -144,8 +147,11 @@
       "loading": "Chargement",
       "send": "Envoyer",
       "sending": "Envoi en cours",
+      "steer": "Steer",
+      "steerShortcutHint": "Raccourci : {{shortcut}}",
       "queue": "File d'attente",
-      "cancelQueue": "Annuler la file",
+      "queueShortcutHint": "Raccourci : {{shortcut}}",
+      "cancelQueue": "Sortir de la file",
       "requestChanges": "Demander des modifications",
       "approve": "Approuver",
       "clearReviewComments": "Effacer les commentaires de révision",

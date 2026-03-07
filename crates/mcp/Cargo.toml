@@ -24,3 +24,7 @@ sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "
 reqwest = { workspace = true }
 rustls = { workspace = true }
 regex = "1"
+
+[dev-dependencies]
+wiremock = "0.6"
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

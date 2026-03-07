@@ -13,12 +13,17 @@ import {
   DEFAULT_PR_DESCRIPTION_PROMPT,
   EditorType,
   type ExecutorProfileId,
+  type RunningMessageShortcut,
   type SendMessageShortcut,
   SoundFile,
   ThemeMode,
   UiLanguage,
 } from 'shared/types';
 import { getModifierKey } from '@/shared/lib/platform';
+import {
+  formatRunningMessageShortcut,
+  normalizeRunningMessageShortcuts,
+} from '@/shared/lib/runningMessageShortcuts';
 import { getLanguageOptions } from '@/i18n/languages';
 import { toPrettyCase } from '@/shared/lib/string';
 import {
@@ -69,6 +74,43 @@ export function GeneralSettingsSection() {
   const { config, loading, updateAndSaveConfig, profiles } = useUserSystem();
 
   const [draft, setDraft] = useState(() => (config ? cloneDeep(config) : null));
+  const runningShortcuts = useMemo(
+    () => normalizeRunningMessageShortcuts(draft),
+    [draft?.steer_message_shortcut, draft?.queue_message_shortcut]
+  );
+  const runningShortcutOptions = useMemo(
+    () => [
+      {
+        value: 'ModifierEnter' as RunningMessageShortcut,
+        label: formatRunningMessageShortcut('ModifierEnter', {
+          disabledLabel: t(
+            'settings.general.messageInput.shortcut.disabledLabel'
+          ),
+        }),
+      },
+      {
+        value: 'ShiftEnter' as RunningMessageShortcut,
+        label: formatRunningMessageShortcut('ShiftEnter', {
+          disabledLabel: t(
+            'settings.general.messageInput.shortcut.disabledLabel'
+          ),
+        }),
+      },
+      {
+        value: 'ModifierShiftEnter' as RunningMessageShortcut,
+        label: formatRunningMessageShortcut('ModifierShiftEnter', {
+          disabledLabel: t(
+            'settings.general.messageInput.shortcut.disabledLabel'
+          ),
+        }),
+      },
+      {
+        value: 'Disabled' as RunningMessageShortcut,
+        label: t('settings.general.messageInput.shortcut.disabledLabel'),
+      },
+    ],
+    [t]
+  );
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -180,13 +222,20 @@ export function GeneralSettingsSection() {
   const handleSave = async () => {
     if (!draft) return;
 
+    const sanitizedDraft = {
+      ...draft,
+      steer_message_shortcut: runningShortcuts.steer,
+      queue_message_shortcut: runningShortcuts.queue,
+    };
+
     setSaving(true);
     setError(null);
     setSuccess(false);
 
     try {
-      await updateAndSaveConfig(draft);
-      setTheme(draft.theme);
+      await updateAndSaveConfig(sanitizedDraft);
+      setDraft(cloneDeep(sanitizedDraft));
+      setTheme(sanitizedDraft.theme);
       setDirty(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -788,6 +837,27 @@ export function GeneralSettingsSection() {
             ]}
             onChange={(value: SendMessageShortcut) =>
               updateDraft({ send_message_shortcut: value })
+            }
+          />
+        </SettingsField>
+        <SettingsField
+          label={t('settings.general.messageInput.runningQueueShortcut.label')}
+          description={t(
+            'settings.general.messageInput.runningQueueShortcut.helper'
+          )}
+        >
+          <SettingsSelect
+            value={
+              runningShortcuts.queue === 'ModifierEnter'
+                ? 'Disabled'
+                : runningShortcuts.queue
+            }
+            options={runningShortcutOptions.filter(
+              (option) =>
+                option.value === 'Disabled' || option.value !== 'ModifierEnter'
+            )}
+            onChange={(value: RunningMessageShortcut) =>
+              updateDraft({ queue_message_shortcut: value })
             }
           />
         </SettingsField>

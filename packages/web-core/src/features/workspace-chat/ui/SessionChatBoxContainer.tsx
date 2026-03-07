@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import {
@@ -60,6 +61,11 @@ import { useActionVisibilityContext } from '@/shared/hooks/useActionVisibilityCo
 import { PrCommentsDialog } from '@/shared/dialogs/tasks/PrCommentsDialog';
 import type { NormalizedComment } from '@vibe/ui/components/pr-comment-node';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
+import { Scope, useKeyEditLastQueued } from '@/shared/keyboard';
+import {
+  formatRunningMessageShortcut,
+  normalizeRunningMessageShortcuts,
+} from '@/shared/lib/runningMessageShortcuts';
 
 /** Compute execution status from boolean flags */
 function computeExecutionStatus(params: {
@@ -76,8 +82,8 @@ function computeExecutionStatus(params: {
   if (params.isStopping) return 'stopping';
   if (params.isQueueLoading) return 'queue-loading';
   if (params.isSendingFollowUp) return 'sending';
-  if (params.isQueued) return 'queued';
   if (params.isAttemptRunning) return 'running';
+  if (params.isQueued) return 'queued';
   return 'idle';
 }
 
@@ -132,6 +138,7 @@ type SessionChatBoxContainerProps =
   | PlaceholderProps;
 
 export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
+  const { t: tSettings } = useTranslation('settings');
   const {
     mode,
     sessions,
@@ -313,6 +320,39 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // User profiles, config preference, and latest executor from processes
   const { profiles, config, capabilities } = useUserSystem();
+  const runningShortcuts = useMemo(
+    () => normalizeRunningMessageShortcuts(config),
+    [config?.steer_message_shortcut, config?.queue_message_shortcut]
+  );
+  const primaryRunningQueueShortcut = 'ModifierEnter' as const;
+  const runningShortcutLabels = useMemo(() => {
+    const disabledLabel = tSettings(
+      'settings.general.messageInput.shortcut.disabledLabel'
+    );
+    const primaryQueueLabel = formatRunningMessageShortcut(
+      primaryRunningQueueShortcut,
+      {
+        disabledLabel,
+      }
+    );
+    const queue = formatRunningMessageShortcut(runningShortcuts.queue, {
+      disabledLabel,
+    });
+    const queueHintLabel =
+      runningShortcuts.queue !== 'Disabled' &&
+      runningShortcuts.queue !== primaryRunningQueueShortcut
+        ? `${primaryQueueLabel} / ${queue}`
+        : primaryQueueLabel;
+
+    return {
+      steer: formatRunningMessageShortcut(runningShortcuts.steer, {
+        disabledLabel,
+      }),
+      queue,
+      primaryQueue: primaryQueueLabel,
+      queueHint: queueHintLabel,
+    };
+  }, [primaryRunningQueueShortcut, runningShortcuts, tSettings]);
 
   // Fetch processes from last session to get full profile (only in new session mode)
   const lastSessionId = isNewSessionMode ? sessions?.[0]?.id : undefined;
@@ -449,10 +489,12 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Queue interaction
   const {
     isQueued,
-    queuedMessage,
-    queuedConfig,
+    pendingSteers,
+    queuedMessages,
+    pendingCount,
     isQueueLoading,
     queueMessage,
+    steerMessage,
     cancelQueue,
     refreshQueueStatus,
   } = useSessionQueueInteraction({ sessionId });
@@ -500,6 +542,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Track previous process count for queue refresh
   const prevProcessCountRef = useRef(processes.length);
+  const followUpActionInFlightRef = useRef(false);
 
   // Refresh queue status when execution stops or new process starts
   useEffect(() => {
@@ -521,18 +564,29 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
     // Allow queueing if there's a message OR review comments, and we have a config
-    if ((!localMessage.trim() && !reviewMarkdown) || !executorConfig) return;
+    if (
+      followUpActionInFlightRef.current ||
+      (!localMessage.trim() && !reviewMarkdown) ||
+      !executorConfig
+    ) {
+      return;
+    }
 
     const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
-    cancelDebouncedSave();
-    await saveToScratch(localMessage, executorConfig);
-    await queueMessage(prompt, executorConfig);
+    followUpActionInFlightRef.current = true;
+    try {
+      cancelDebouncedSave();
+      await saveToScratch(localMessage, executorConfig);
+      await queueMessage(prompt, executorConfig);
 
-    // Clear local state after queueing (same as handleSend)
-    setLocalMessage('');
-    clearUploadedImages();
-    reviewContext?.clearComments();
+      // Clear local state after queueing (same as handleSend)
+      setLocalMessage('');
+      clearUploadedImages();
+      reviewContext?.clearComments();
+    } finally {
+      followUpActionInFlightRef.current = false;
+    }
   }, [
     localMessage,
     reviewMarkdown,
@@ -545,10 +599,45 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     reviewContext,
   ]);
 
+  // Steer message handler (high-priority queue while run is active)
+  const handleSteerMessage = useCallback(async () => {
+    if (
+      followUpActionInFlightRef.current ||
+      (!localMessage.trim() && !reviewMarkdown) ||
+      !executorConfig
+    ) {
+      return;
+    }
+
+    const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
+
+    followUpActionInFlightRef.current = true;
+    try {
+      cancelDebouncedSave();
+      await saveToScratch(localMessage, executorConfig);
+      await steerMessage(prompt, executorConfig);
+
+      setLocalMessage('');
+      clearUploadedImages();
+      reviewContext?.clearComments();
+    } finally {
+      followUpActionInFlightRef.current = false;
+    }
+  }, [
+    localMessage,
+    reviewMarkdown,
+    executorConfig,
+    steerMessage,
+    cancelDebouncedSave,
+    saveToScratch,
+    setLocalMessage,
+    clearUploadedImages,
+    reviewContext,
+  ]);
+
   // Editor change handler
   const handleEditorChange = useCallback(
     (value: string) => {
-      if (isQueued) cancelQueue();
       if (executorConfig) {
         handleMessageChange(value, executorConfig);
       } else {
@@ -557,8 +646,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       if (sendError) clearError();
     },
     [
-      isQueued,
-      cancelQueue,
       handleMessageChange,
       executorConfig,
       sendError,
@@ -593,20 +680,40 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Handle cancel queue - restore message to editor
   const handleCancelQueue = useCallback(async () => {
-    if (queuedMessage) {
-      setLocalMessage(queuedMessage);
+    if (isQueueLoading || (!isQueued && pendingCount === 0)) return;
+    const cancelled = await cancelQueue();
+    if (cancelled) {
+      setLocalMessage(cancelled.data.message);
+      setExecutorOverrides(cancelled.data.executor_config);
     }
-    if (queuedConfig) {
-      setExecutorOverrides(queuedConfig);
-    }
-    await cancelQueue();
   }, [
-    queuedMessage,
-    queuedConfig,
+    isQueueLoading,
+    isQueued,
+    pendingCount,
+    cancelQueue,
     setLocalMessage,
     setExecutorOverrides,
-    cancelQueue,
   ]);
+
+  const canEditLastQueued =
+    !!sessionId &&
+    !isQueueLoading &&
+    (isQueued || pendingCount > 0) &&
+    !isInFeedbackMode &&
+    !isInEditMode &&
+    !pendingApproval;
+
+  useKeyEditLastQueued(
+    () => {
+      void handleCancelQueue();
+    },
+    {
+      scope: Scope.KANBAN,
+      enabled: canEditLastQueued,
+      enableOnContentEditable: true,
+      preventDefault: true,
+    }
+  );
 
   // Message edit retry mutation
   const editRetryMutation = useMessageEditRetry(sessionId ?? '', () => {
@@ -825,19 +932,29 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     isAttemptRunning,
   });
 
+  const queueState =
+    pendingCount > 0
+      ? {
+          pendingCount,
+          pendingSteerCount: pendingSteers.length,
+          bufferedQueueCount: queuedMessages.length,
+          pendingSteerSummaries: pendingSteers.map(
+            (entry) => entry.data.message
+          ),
+          bufferedQueueSummaries: queuedMessages.map(
+            (entry) => entry.data.message
+          ),
+          hasPendingMessages: true,
+        }
+      : undefined;
+
   // During loading, render with empty editor to preserve container UI
-  // In approval mode, don't show queued message - it's for follow-up, not approval response
+  // In approval mode, preserve local message for response editing.
   const editorValue = useMemo(() => {
     if (isScratchLoading || !hasInitialValue) return '';
     if (pendingApproval) return localMessage;
-    return queuedMessage ?? localMessage;
-  }, [
-    isScratchLoading,
-    hasInitialValue,
-    pendingApproval,
-    queuedMessage,
-    localMessage,
-  ]);
+    return localMessage;
+  }, [isScratchLoading, hasInitialValue, pendingApproval, localMessage]);
 
   const renderEditor = useCallback(
     ({
@@ -846,6 +963,9 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       value,
       onChange,
       onCmdEnter,
+      onShiftCmdEnter,
+      runningSteerShortcut,
+      runningQueueShortcut,
       disabled,
       repoIds,
       executor,
@@ -858,6 +978,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         value={value}
         onChange={onChange}
         onCmdEnter={onCmdEnter}
+        onShiftCmdEnter={onShiftCmdEnter}
         disabled={disabled}
         className="min-h-double max-h-[50vh] overflow-y-auto"
         repoIds={repoIds}
@@ -865,10 +986,14 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         autoFocus
         onPasteFiles={onPasteFiles}
         localImages={localImages}
-        sendShortcut={config?.send_message_shortcut}
+        sendShortcut={
+          status === 'running' ? 'ModifierEnter' : config?.send_message_shortcut
+        }
+        primaryActionShortcut={runningSteerShortcut}
+        secondaryActionShortcut={runningQueueShortcut}
       />
     ),
-    [config?.send_message_shortcut]
+    [config?.send_message_shortcut, status]
   );
 
   const modelSelectorNode = effectiveExecutor ? (
@@ -912,6 +1037,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         }}
         actions={{
           onSend: () => {},
+          onSteer: () => {},
           onQueue: () => {},
           onCancelQueue: () => {},
           onStop: () => {},
@@ -964,10 +1090,20 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       }}
       actions={{
         onSend: handleSend,
+        onSteer: handleSteerMessage,
         onQueue: handleQueueMessage,
         onCancelQueue: handleCancelQueue,
         onStop: stopExecution,
         onPasteFiles: uploadFiles,
+      }}
+      queueState={queueState}
+      runningShortcuts={{
+        steer: runningShortcuts.steer,
+        queue: runningShortcuts.queue,
+        steerLabel: runningShortcutLabels.steer,
+        queueLabel: runningShortcutLabels.queue,
+        primaryQueueShortcut: primaryRunningQueueShortcut,
+        queueHintLabel: runningShortcutLabels.queueHint,
       }}
       session={{
         sessions,

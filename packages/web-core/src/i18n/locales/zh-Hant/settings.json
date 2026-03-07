@@ -208,7 +208,16 @@
         "shortcut": {
           "label": "傳送訊息快捷鍵",
           "helper": "選擇傳送訊息的鍵盤快捷鍵。",
-          "enterLabel": "Enter（Shift+Enter 換行）"
+          "enterLabel": "Enter（Shift+Enter 換行）",
+          "disabledLabel": "已停用"
+        },
+        "runningSteerShortcut": {
+          "helper": "選擇任務執行中發送即時指導的快捷鍵。",
+          "label": "即時指導快捷鍵"
+        },
+        "runningQueueShortcut": {
+          "helper": "選擇任務執行中加入緩衝佇列的附加快捷鍵；Ctrl/Cmd+Enter 會固定加入緩衝佇列。",
+          "label": "附加緩衝佇列快捷鍵"
         }
       },
       "privacy": {

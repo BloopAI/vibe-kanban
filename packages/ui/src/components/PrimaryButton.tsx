@@ -5,6 +5,7 @@ interface PrimaryButtonProps {
   variant?: 'default' | 'secondary' | 'tertiary';
   actionIcon?: Icon | 'spinner';
   value?: string;
+  title?: string;
   onClick?: () => void;
   disabled?: boolean;
   children?: React.ReactNode;
@@ -15,6 +16,7 @@ export function PrimaryButton({
   variant = 'default',
   actionIcon: ActionIcon,
   value,
+  title,
   onClick,
   disabled,
   children,
@@ -35,6 +37,7 @@ export function PrimaryButton({
         variantStyles,
         className
       )}
+      title={title}
       onClick={onClick}
       disabled={disabled}
     >

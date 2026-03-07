@@ -11,6 +11,7 @@ use uuid::Uuid;
 use super::{ApiResponseEnvelope, TaskServer};
 
 mod context;
+mod execution_processes;
 mod issue_assignees;
 mod issue_relationships;
 mod issue_tags;
@@ -18,6 +19,7 @@ mod organizations;
 mod remote_issues;
 mod remote_projects;
 mod repos;
+mod sessions;
 mod task_attempts;
 mod workspaces;
 
@@ -35,7 +37,9 @@ impl TaskServer {
                 + Self::issue_assignees_tools_router()
                 + Self::issue_tags_tools_router()
                 + Self::issue_relationships_tools_router()
-                + Self::task_attempts_tools_router(),
+                + Self::task_attempts_tools_router()
+                + Self::sessions_tools_router()
+                + Self::execution_processes_tools_router(),
             context: None,
         }
     }

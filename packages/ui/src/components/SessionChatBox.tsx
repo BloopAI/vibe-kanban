@@ -17,7 +17,11 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import { type EditorProps, type ExecutorProps } from './CreateChatBox';
-import type { AskUserQuestionItem, QuestionAnswer } from 'shared/types';
+import type {
+  AskUserQuestionItem,
+  QuestionAnswer,
+  RunningMessageShortcut,
+} from 'shared/types';
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -46,10 +50,20 @@ export type ExecutionStatus =
 
 interface ActionsProps {
   onSend: () => void;
+  onSteer: () => void;
   onQueue: () => void;
   onCancelQueue: () => void;
   onStop: () => void;
   onPasteFiles: (files: File[]) => void;
+}
+
+interface QueueStateProps {
+  pendingCount: number;
+  pendingSteerCount: number;
+  bufferedQueueCount: number;
+  hasPendingMessages: boolean;
+  pendingSteerSummaries: string[];
+  bufferedQueueSummaries: string[];
 }
 
 export interface SessionOption<TExecutor extends string = string> {
@@ -138,12 +152,24 @@ export interface SessionChatBoxEditorRenderProps<
   placeholder: string;
   value: string;
   onChange: (value: string) => void;
-  onCmdEnter: () => void;
+  onCmdEnter?: () => void;
+  onShiftCmdEnter?: () => void;
+  runningSteerShortcut?: RunningMessageShortcut;
+  runningQueueShortcut?: RunningMessageShortcut;
   disabled: boolean;
   repoIds?: string[];
   executor: TExecutor | null;
   onPasteFiles: (files: File[]) => void;
   localImages?: LocalImageMetadata[];
+}
+
+interface RunningShortcutProps {
+  steer: RunningMessageShortcut;
+  queue: RunningMessageShortcut;
+  steerLabel: string;
+  queueLabel: string;
+  primaryQueueShortcut: RunningMessageShortcut;
+  queueHintLabel: string;
 }
 
 interface SessionChatBoxProps<TExecutor extends string = string> {
@@ -161,6 +187,8 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   askQuestionMode?: AskQuestionModeProps;
   reviewComments?: ReviewCommentsProps;
   toolbarActions?: ToolbarActionsProps;
+  queueState?: QueueStateProps;
+  runningShortcuts?: RunningShortcutProps;
   modelSelector?: ReactNode;
   error?: string | null;
   repoIds?: string[];
@@ -223,6 +251,8 @@ export function SessionChatBox<TExecutor extends string = string>({
   askQuestionMode,
   reviewComments,
   toolbarActions,
+  queueState,
+  runningShortcuts,
   modelSelector,
   error,
   repoIds,
@@ -278,9 +308,9 @@ export function SessionChatBox<TExecutor extends string = string>({
   const canSend =
     hasContent && !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
-  const isRunning = status === 'running' || status === 'queued';
+  const isRunning = status === 'running';
   const showRunningAnimation =
-    (status === 'running' || status === 'queued' || status === 'sending') &&
+    (status === 'running' || status === 'sending') &&
     !isInApprovalMode &&
     !isInAskQuestionMode &&
     editor.value.trim().length === 0;
@@ -320,8 +350,16 @@ export function SessionChatBox<TExecutor extends string = string>({
       editMode?.onSubmitEdit();
     } else if (status === 'running' && canSend) {
       actions.onQueue();
+    } else if (status === 'queued' && canSend) {
+      actions.onSend();
     } else if (status === 'idle' && canSend) {
       actions.onSend();
+    }
+  };
+
+  const handleShiftCmdEnter = () => {
+    if (status === 'running' && canSend) {
+      actions.onQueue();
     }
   };
 
@@ -511,7 +549,18 @@ export function SessionChatBox<TExecutor extends string = string>({
               onClick={actions.onQueue}
               disabled={!canSend}
               value={t('conversation.actions.queue')}
+              title={t('conversation.actions.queueShortcutHint', {
+                shortcut: runningShortcuts?.queueHintLabel ?? 'Ctrl/Cmd+Enter',
+              })}
             />
+            {queueState?.hasPendingMessages && (
+              <PrimaryButton
+                onClick={actions.onCancelQueue}
+                variant="secondary"
+                value={t('conversation.actions.cancelQueue')}
+                actionIcon={XIcon}
+              />
+            )}
             <PrimaryButton
               onClick={actions.onStop}
               variant="secondary"
@@ -530,10 +579,10 @@ export function SessionChatBox<TExecutor extends string = string>({
               actionIcon={XIcon}
             />
             <PrimaryButton
-              onClick={actions.onStop}
+              onClick={actions.onSend}
               variant="secondary"
-              value={t('conversation.actions.stop')}
-              actionIcon="spinner"
+              disabled={!canSend}
+              value={t('conversation.actions.send')}
             />
           </>
         );
@@ -563,6 +612,48 @@ export function SessionChatBox<TExecutor extends string = string>({
   // Banner content
   const renderBanner = () => {
     const banners: ReactNode[] = [];
+    const normalizeSummary = (value: string) => value.replace(/\s+/g, ' ').trim();
+    const truncateSummary = (value: string, maxLength = 52) =>
+      value.length <= maxLength ? value : `${value.slice(0, maxLength - 1)}...`;
+    const renderSummaryLine = (
+      label: string,
+      summaries: string[],
+      options?: {
+        multiline?: boolean;
+        showLabel?: boolean;
+      }
+    ) => {
+      const normalized = summaries
+        .map((summary) => truncateSummary(normalizeSummary(summary)))
+        .filter((summary) => summary.length > 0);
+
+      if (normalized.length === 0) {
+        return null;
+      }
+
+      const multiline = options?.multiline ?? false;
+      const showLabel = options?.showLabel ?? true;
+      const visible = multiline ? normalized : normalized.slice(0, 2);
+      const hiddenCount = multiline ? 0 : normalized.length - visible.length;
+      const renderedSummaries = multiline
+        ? visible.join('\n')
+        : visible.join(' | ');
+      const prefix = showLabel ? `${label}: ` : '';
+
+      return (
+        <span
+          className={
+            multiline
+              ? 'text-xs text-low opacity-80 whitespace-pre-line'
+              : 'text-xs text-low opacity-80'
+          }
+        >
+          {prefix}
+          {renderedSummaries}
+          {hiddenCount > 0 ? ` +${hiddenCount}` : ''}
+        </span>
+      );
+    };
 
     // Review comments banner
     if (reviewComments && reviewComments.count > 0) {
@@ -604,16 +695,33 @@ export function SessionChatBox<TExecutor extends string = string>({
     }
 
     // Queued message banner
-    if (isQueued) {
+    if (isQueued || queueState?.hasPendingMessages) {
+      const bufferedQueueCount = queueState?.bufferedQueueCount ?? 0;
       banners.push(
         <div
           key="queued"
           className="bg-secondary border-b px-double py-base flex items-center gap-base"
         >
           <ClockIcon className="h-4 w-4 text-low" />
-          <span className="text-sm text-low">
-            {t('followUp.queuedMessage')}
-          </span>
+          <div className="flex flex-col gap-half">
+            <span className="text-sm text-low">
+              {t('followUp.queuedMessage')}
+              {queueState?.pendingCount ? ` (${queueState.pendingCount})` : ''}
+            </span>
+            <span className="text-xs text-low opacity-80">
+              {t('followUp.queueLabel')}: {bufferedQueueCount}
+            </span>
+            {(queueState?.pendingSteerCount ?? 0) > 0 &&
+              renderSummaryLine(
+                t('followUp.steerLabel'),
+                queueState?.pendingSteerSummaries ?? []
+              )}
+            {renderSummaryLine(
+              t('followUp.queueLabel'),
+              queueState?.bufferedQueueSummaries ?? [],
+              { multiline: true, showLabel: false }
+            )}
+          </div>
         </div>
       );
     }
@@ -644,6 +752,13 @@ export function SessionChatBox<TExecutor extends string = string>({
         value: editor.value,
         onChange: editor.onChange,
         onCmdEnter: handleCmdEnter,
+        onShiftCmdEnter: status === 'running' ? handleShiftCmdEnter : undefined,
+        runningSteerShortcut:
+          status === 'running'
+            ? (runningShortcuts?.primaryQueueShortcut ?? 'ModifierEnter')
+            : undefined,
+        runningQueueShortcut:
+          status === 'running' ? runningShortcuts?.queue : undefined,
         disabled: isDisabled,
         repoIds,
         executor: agent || executor?.selected || null,

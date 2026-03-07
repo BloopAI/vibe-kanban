@@ -1,12 +1,15 @@
 use axum::{
-    Extension, Json, Router, extract::State, middleware::from_fn_with_state,
-    response::Json as ResponseJson, routing::get,
+    Extension, Json, Router,
+    extract::{Query, State},
+    middleware::from_fn_with_state,
+    response::Json as ResponseJson,
+    routing::{get, post},
 };
 use db::models::{scratch::DraftFollowUpData, session::Session};
 use deployment::Deployment;
 use executors::profile::ExecutorConfig;
-use serde::Deserialize;
-use services::services::queued_message::QueueStatus;
+use serde::{Deserialize, Serialize};
+use services::services::queued_message::{QueueClearMode, QueueStatus, QueuedMessage};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
@@ -17,6 +20,20 @@ use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware
 pub struct QueueMessageRequest {
     pub message: String,
     pub executor_config: ExecutorConfig,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct CancelQueueResponse {
+    pub status: QueueStatus,
+    pub cancelled_message: Option<QueuedMessage>,
+}
+
+/// Optional query for queue cancel mode.
+/// Default is latest pop behavior for backward compatibility.
+#[derive(Debug, Deserialize, TS)]
+pub struct CancelQueueRequest {
+    #[serde(default)]
+    pub mode: Option<QueueClearMode>,
 }
 
 /// Queue a follow-up message to be executed when the current execution finishes
@@ -44,23 +61,31 @@ pub async fn queue_message(
         )
         .await;
 
-    Ok(ResponseJson(ApiResponse::success(QueueStatus::Queued {
-        message: queued,
-    })))
+    Ok(ResponseJson(ApiResponse::success(
+        deployment
+            .queued_message_service()
+            .get_status(queued.session_id),
+    )))
 }
 
-/// Cancel a queued follow-up message
-pub async fn cancel_queued_message(
+/// Queue a steer message with higher priority than buffered queue messages
+pub async fn queue_steer_message(
     Extension(session): Extension<Session>,
     State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<QueueMessageRequest>,
 ) -> Result<ResponseJson<ApiResponse<QueueStatus>>, ApiError> {
-    deployment
+    let data = DraftFollowUpData {
+        message: payload.message,
+        executor_config: payload.executor_config,
+    };
+
+    let queued = deployment
         .queued_message_service()
-        .cancel_queued(session.id);
+        .queue_steer(session.id, data);
 
     deployment
         .track_if_analytics_allowed(
-            "follow_up_queue_cancelled",
+            "follow_up_steered",
             serde_json::json!({
                 "session_id": session.id.to_string(),
                 "workspace_id": session.workspace_id.to_string(),
@@ -68,7 +93,39 @@ pub async fn cancel_queued_message(
         )
         .await;
 
-    Ok(ResponseJson(ApiResponse::success(QueueStatus::Empty)))
+    Ok(ResponseJson(ApiResponse::success(
+        deployment
+            .queued_message_service()
+            .get_status(queued.session_id),
+    )))
+}
+
+/// Pop the latest queued follow-up message for editor restore
+pub async fn cancel_queued_message(
+    Extension(session): Extension<Session>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<CancelQueueRequest>,
+) -> Result<ResponseJson<ApiResponse<CancelQueueResponse>>, ApiError> {
+    let mode = query.mode.unwrap_or_default();
+    let cancelled_message = deployment.queued_message_service().clear(session.id, mode);
+
+    deployment
+        .track_if_analytics_allowed(
+            "follow_up_queue_cancelled",
+            serde_json::json!({
+                "session_id": session.id.to_string(),
+                "workspace_id": session.workspace_id.to_string(),
+                "mode": mode,
+            }),
+        )
+        .await;
+
+    let status = deployment.queued_message_service().get_status(session.id);
+
+    Ok(ResponseJson(ApiResponse::success(CancelQueueResponse {
+        status,
+        cancelled_message,
+    })))
 }
 
 /// Get the current queue status for a session's workspace
@@ -89,6 +146,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
                 .post(queue_message)
                 .delete(cancel_queued_message),
         )
+        .route("/steer", post(queue_steer_message))
         .layer(from_fn_with_state(
             deployment.clone(),
             load_session_middleware,

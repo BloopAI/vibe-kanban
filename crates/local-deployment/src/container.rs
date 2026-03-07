@@ -65,6 +65,44 @@ use crate::{command, copy};
 
 const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_mins(2);
 
+fn should_execute_queued_follow_up(status: &ExecutionProcessStatus) -> bool {
+    !matches!(
+        status,
+        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
+    )
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum TerminalQueueAction {
+    StartNextQueuedFollowUp,
+    FinalizeTask,
+    SuppressNotification,
+}
+
+fn terminal_queue_action(
+    status: &ExecutionProcessStatus,
+    has_queued_follow_up: bool,
+) -> TerminalQueueAction {
+    if should_execute_queued_follow_up(status) {
+        if has_queued_follow_up {
+            TerminalQueueAction::StartNextQueuedFollowUp
+        } else {
+            TerminalQueueAction::FinalizeTask
+        }
+    } else if has_queued_follow_up {
+        TerminalQueueAction::SuppressNotification
+    } else {
+        TerminalQueueAction::FinalizeTask
+    }
+}
+
+fn should_run_terminal_handler_after_success_path(
+    should_start_next: bool,
+    should_finalize: bool,
+) -> bool {
+    should_start_next && should_finalize
+}
+
 #[derive(Clone)]
 pub struct LocalContainerService {
     db: DBService,
@@ -127,6 +165,54 @@ impl LocalContainerService {
         container.spawn_workspace_cleanup();
 
         container
+    }
+
+    async fn continue_or_finalize_terminal_execution(&self, ctx: &ExecutionContext) {
+        let has_queued_follow_up = self.queued_message_service.has_queued(ctx.session.id);
+
+        match terminal_queue_action(&ctx.execution_process.status, has_queued_follow_up) {
+            TerminalQueueAction::StartNextQueuedFollowUp => {
+                if let Some(queued_msg) = self.queued_message_service.take_next(ctx.session.id) {
+                    tracing::info!(
+                        "Found queued {:?} message for session {}, starting follow-up execution",
+                        queued_msg.kind,
+                        ctx.session.id,
+                    );
+
+                    // Delete the scratch since we're consuming the queued message
+                    if let Err(e) =
+                        Scratch::delete(&self.db.pool, ctx.session.id, &ScratchType::DraftFollowUp)
+                            .await
+                    {
+                        tracing::warn!(
+                            "Failed to delete scratch after consuming queued message: {}",
+                            e
+                        );
+                    }
+
+                    if let Err(e) = self.start_queued_follow_up(ctx, &queued_msg.data).await {
+                        tracing::error!("Failed to start queued follow-up: {}", e);
+                        self.queued_message_service.requeue_front(queued_msg);
+                        tracing::info!(
+                            "Skipping task finalization notification for session {} because the queued follow-up was restored for retry",
+                            ctx.session.id,
+                        );
+                    }
+                } else {
+                    self.finalize_task(ctx).await;
+                }
+            }
+            TerminalQueueAction::FinalizeTask => {
+                self.finalize_task(ctx).await;
+            }
+            TerminalQueueAction::SuppressNotification => {
+                tracing::info!(
+                    "Skipping task finalization notification for session {} because queued follow-up messages remain after execution status {:?}",
+                    ctx.session.id,
+                    ctx.execution_process.status,
+                );
+            }
+        }
     }
 
     pub async fn get_child_from_store(&self, id: &Uuid) -> Option<Arc<RwLock<AsyncGroupChild>>> {
@@ -497,7 +583,7 @@ impl LocalContainerService {
                     ExecutionProcessStatus::Running
                 );
 
-                if success || cleanup_done {
+                let should_run_terminal_handler = if success || cleanup_done {
                     // Commit changes (if any) and get feedback about whether changes were made
                     let changes_committed = match container.try_commit_changes(&ctx).await {
                         Ok(committed) => committed,
@@ -533,63 +619,24 @@ impl LocalContainerService {
                             ctx.workspace.id
                         );
 
-                        // Manually finalize task since we're bypassing normal execution flow
-                        container.finalize_task(&ctx).await;
+                        // We skipped the next action, so this execution becomes terminal.
+                        container
+                            .continue_or_finalize_terminal_execution(&ctx)
+                            .await;
                     }
-                }
 
-                if container.should_finalize(&ctx) {
-                    // Only execute queued messages if the execution succeeded
-                    // If it failed or was killed, just clear the queue and finalize
-                    let should_execute_queued = !matches!(
-                        ctx.execution_process.status,
-                        ExecutionProcessStatus::Failed | ExecutionProcessStatus::Killed
-                    );
+                    should_run_terminal_handler_after_success_path(
+                        should_start_next,
+                        container.should_finalize(&ctx),
+                    )
+                } else {
+                    container.should_finalize(&ctx)
+                };
 
-                    if let Some(queued_msg) =
-                        container.queued_message_service.take_queued(ctx.session.id)
-                    {
-                        if should_execute_queued {
-                            tracing::info!(
-                                "Found queued message for session {}, starting follow-up execution",
-                                ctx.session.id
-                            );
-
-                            // Delete the scratch since we're consuming the queued message
-                            if let Err(e) = Scratch::delete(
-                                &db.pool,
-                                ctx.session.id,
-                                &ScratchType::DraftFollowUp,
-                            )
-                            .await
-                            {
-                                tracing::warn!(
-                                    "Failed to delete scratch after consuming queued message: {}",
-                                    e
-                                );
-                            }
-
-                            // Execute the queued follow-up
-                            if let Err(e) = container
-                                .start_queued_follow_up(&ctx, &queued_msg.data)
-                                .await
-                            {
-                                tracing::error!("Failed to start queued follow-up: {}", e);
-                                // Fall back to finalization if follow-up fails
-                                container.finalize_task(&ctx).await;
-                            }
-                        } else {
-                            // Execution failed or was killed - discard the queued message and finalize
-                            tracing::info!(
-                                "Discarding queued message for session {} due to execution status {:?}",
-                                ctx.session.id,
-                                ctx.execution_process.status
-                            );
-                            container.finalize_task(&ctx).await;
-                        }
-                    } else {
-                        container.finalize_task(&ctx).await;
-                    }
+                if should_run_terminal_handler {
+                    container
+                        .continue_or_finalize_terminal_execution(&ctx)
+                        .await;
                 }
 
                 // Fire analytics event when CodingAgent execution has finished
@@ -1497,5 +1544,62 @@ fn success_exit_status() -> std::process::ExitStatus {
     {
         use std::os::windows::process::ExitStatusExt;
         ExitStatusExt::from_raw(0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn executes_queued_follow_up_for_completed_status() {
+        assert!(should_execute_queued_follow_up(
+            &ExecutionProcessStatus::Completed
+        ));
+    }
+
+    #[test]
+    fn preserves_queue_for_failed_or_killed_status() {
+        assert!(!should_execute_queued_follow_up(
+            &ExecutionProcessStatus::Failed
+        ));
+        assert!(!should_execute_queued_follow_up(
+            &ExecutionProcessStatus::Killed
+        ));
+    }
+
+    #[test]
+    fn starts_next_queue_only_for_successful_terminal_runs() {
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Completed, true),
+            TerminalQueueAction::StartNextQueuedFollowUp
+        );
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Completed, false),
+            TerminalQueueAction::FinalizeTask
+        );
+    }
+
+    #[test]
+    fn suppresses_notifications_while_queue_is_preserved() {
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Failed, true),
+            TerminalQueueAction::SuppressNotification
+        );
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Killed, true),
+            TerminalQueueAction::SuppressNotification
+        );
+        assert_eq!(
+            terminal_queue_action(&ExecutionProcessStatus::Failed, false),
+            TerminalQueueAction::FinalizeTask
+        );
+    }
+
+    #[test]
+    fn skips_duplicate_terminal_handling_when_next_action_is_skipped() {
+        assert!(!should_run_terminal_handler_after_success_path(false, true));
+        assert!(should_run_terminal_handler_after_success_path(true, true));
+        assert!(!should_run_terminal_handler_after_success_path(true, false));
     }
 }

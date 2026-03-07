@@ -112,7 +112,10 @@
     }
   },
   "followUp": {
-    "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다"
+    "queuedMessage": "메시지가 대기열에 추가됨 - 현재 실행이 완료되면 실행됩니다",
+    "pendingBreakdown": "Steer: {{steerCount}} · Queue: {{queueCount}}",
+    "steerLabel": "Steer",
+    "queueLabel": "Queue"
   },
   "git": {
     "labels": {
@@ -395,8 +398,11 @@
       "loading": "로딩 중",
       "send": "보내기",
       "sending": "보내는 중",
+      "steer": "Steer",
+      "steerShortcutHint": "단축키: {{shortcut}}",
       "queue": "대기열에 추가",
-      "cancelQueue": "대기열 취소",
+      "queueShortcutHint": "단축키: {{shortcut}}",
+      "cancelQueue": "대기열 꺼내기",
       "requestChanges": "변경 요청",
       "approve": "승인",
       "clearReviewComments": "리뷰 댓글 지우기",

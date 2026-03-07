@@ -470,7 +470,7 @@ export type DirectoryListResponse = { entries: Array<DirectoryEntry>, current_pa
 
 export type SearchMode = "taskform" | "settings";
 
-export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, remote_onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, commit_reminder_enabled: boolean, commit_reminder_prompt: string | null, send_message_shortcut: SendMessageShortcut, relay_enabled: boolean, relay_host_name: string | null, };
+export type Config = { config_version: string, theme: ThemeMode, executor_profile: ExecutorProfileId, disclaimer_acknowledged: boolean, onboarding_acknowledged: boolean, remote_onboarding_acknowledged: boolean, notifications: NotificationConfig, editor: EditorConfig, github: GitHubConfig, analytics_enabled: boolean, workspace_dir: string | null, last_app_version: string | null, show_release_notes: boolean, language: UiLanguage, git_branch_prefix: string, showcases: ShowcaseState, pr_auto_description_enabled: boolean, pr_auto_description_prompt: string | null, commit_reminder_enabled: boolean, commit_reminder_prompt: string | null, send_message_shortcut: SendMessageShortcut, steer_message_shortcut: RunningMessageShortcut, queue_message_shortcut: RunningMessageShortcut, relay_enabled: boolean, relay_host_name: string | null, };
 
 export type NotificationConfig = { sound_enabled: boolean, push_enabled: boolean, sound_file: SoundFile, };
 
@@ -492,6 +492,8 @@ export type ShowcaseState = { seen_features: Array<string>, };
 
 export type SendMessageShortcut = "ModifierEnter" | "Enter";
 
+export type RunningMessageShortcut = "ModifierEnter" | "ShiftEnter" | "ModifierShiftEnter" | "Disabled";
+
 export type GitBranch = { name: string, is_current: boolean, is_remote: boolean, last_commit_date: Date, };
 
 export type QueuedMessage = { 
@@ -506,9 +508,17 @@ data: DraftFollowUpData,
 /**
  * Timestamp when the message was queued
  */
-queued_at: string, };
+queued_at: string, 
+/**
+ * Which queue this message belongs to
+ */
+kind: QueuedMessageKind, };
 
-export type QueueStatus = { "status": "empty" } | { "status": "queued", message: QueuedMessage, };
+export type QueuedMessageKind = "steer" | "queue";
+
+export type QueueStatus = { "status": "empty" } | { "status": "queued", next: QueuedMessage, pending_steers: Array<QueuedMessage>, queued_messages: Array<QueuedMessage>, };
+
+export type CancelQueueResponse = { status: QueueStatus, cancelled_message: QueuedMessage | null, };
 
 export type ConflictOp = "rebase" | "merge" | "cherry_pick" | "revert";
 

@@ -113,7 +113,10 @@
     "logsCopied": "Copied!"
   },
   "followUp": {
-    "queuedMessage": "Message queued - will execute when current run finishes"
+    "queuedMessage": "Message queued - will execute when current run finishes",
+    "pendingBreakdown": "Steer: {{steerCount}} · Queue: {{queueCount}}",
+    "steerLabel": "Steer",
+    "queueLabel": "Queue"
   },
   "todoPopup": {
     "title": "Tasks",
@@ -144,8 +147,11 @@
       "loading": "Loading",
       "send": "Send",
       "sending": "Sending",
+      "steer": "Steer",
+      "steerShortcutHint": "Shortcut: {{shortcut}}",
       "queue": "Queue",
-      "cancelQueue": "Cancel Queue",
+      "queueShortcutHint": "Shortcut: {{shortcut}}",
+      "cancelQueue": "Pop Queue",
       "requestChanges": "Request Changes",
       "approve": "Approve",
       "clearReviewComments": "Clear review comments",
