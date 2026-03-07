@@ -94,6 +94,10 @@ import {
   RelayPairedClient,
   ListRelayPairedClientsResponse,
   RemoveRelayPairedClientResponse,
+  PairRelayHostRequest,
+  PairRelayHostResponse,
+  OpenFirstWorkspaceInRemoteEditorRequest,
+  OpenRemoteEditorResponse,
 } from 'shared/types';
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
@@ -449,6 +453,15 @@ export const attemptsApi = {
       }
     );
     return handleApiResponse<OpenEditorResponse>(response);
+  },
+
+  getEditorPath: async (
+    attemptId: string
+  ): Promise<{ workspace_path: string }> => {
+    const response = await makeRequest(
+      `/api/task-attempts/${attemptId}/editor-path`
+    );
+    return handleApiResponse<{ workspace_path: string }>(response);
   },
 
   getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {
@@ -1465,14 +1478,17 @@ export const migrationApi = {
 // Relay API
 export const relayApi = {
   getEnrollmentCode: async (): Promise<{ enrollment_code: string }> => {
-    const response = await makeRequest('/api/relay-auth/enrollment-code', {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      '/api/relay-auth/server/enrollment-code',
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<{ enrollment_code: string }>(response);
   },
 
   listPairedClients: async (): Promise<RelayPairedClient[]> => {
-    const response = await makeRequest('/api/relay-auth/clients');
+    const response = await makeRequest('/api/relay-auth/server/clients');
     const body =
       await handleApiResponse<ListRelayPairedClientsResponse>(response);
     return body.clients;
@@ -1482,12 +1498,35 @@ export const relayApi = {
     clientId: string
   ): Promise<RemoveRelayPairedClientResponse> => {
     const response = await makeRequest(
-      `/api/relay-auth/clients/${encodeURIComponent(clientId)}`,
+      `/api/relay-auth/server/clients/${encodeURIComponent(clientId)}`,
       {
         method: 'DELETE',
       }
     );
     return handleApiResponse<RemoveRelayPairedClientResponse>(response);
+  },
+
+  pairRelayHost: async (
+    payload: PairRelayHostRequest
+  ): Promise<PairRelayHostResponse> => {
+    const response = await makeRequest('/api/relay-auth/client/pair', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return handleApiResponse<PairRelayHostResponse>(response);
+  },
+
+  openFirstWorkspaceInRemoteEditor: async (
+    payload: OpenFirstWorkspaceInRemoteEditorRequest
+  ): Promise<OpenRemoteEditorResponse> => {
+    const response = await makeRequest(
+      '/api/open-remote-editor/first-workspace',
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    );
+    return handleApiResponse<OpenRemoteEditorResponse>(response);
   },
 };
 

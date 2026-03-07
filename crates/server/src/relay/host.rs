@@ -1,7 +1,5 @@
-//! Relay client bootstrap for remote access to the local server.
-//!
-//! App-specific concerns (login, host lifecycle) stay here. The transport and
-//! muxing implementation lives in the `relay-tunnel` crate.
+//! Relay host connection — registers the local backend with the relay server
+//! so it can receive tunneled connections from remote browsers.
 
 use anyhow::Context as _;
 use deployment::Deployment as _;
@@ -28,12 +26,6 @@ pub fn effective_relay_host_name(config: &Config, user_id: &str) -> String {
         .unwrap_or_else(|| default_relay_host_name(user_id))
 }
 
-fn relay_api_base() -> Option<String> {
-    std::env::var("VK_SHARED_RELAY_API_BASE")
-        .ok()
-        .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()))
-}
-
 struct RelayParams {
     local_port: u16,
     remote_client: RemoteClient,
@@ -52,7 +44,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
     }
     drop(config);
 
-    let relay_base = relay_api_base().or_else(|| {
+    let relay_base = super::relay_api_base().or_else(|| {
         tracing::debug!("VK_SHARED_RELAY_API_BASE not set; relay unavailable");
         None
     })?;

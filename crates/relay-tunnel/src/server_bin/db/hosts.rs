@@ -1,4 +1,3 @@
-use api_types::RelaySession;
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -86,72 +85,6 @@ impl<'a> HostRepository<'a> {
             .fetch_optional(self.pool)
             .await?;
         Ok(row.map(|r| r.status == "online").unwrap_or(false))
-    }
-
-    pub async fn get_session_for_requester(
-        &self,
-        session_id: Uuid,
-        request_user_id: Uuid,
-    ) -> Result<Option<RelaySession>, sqlx::Error> {
-        sqlx::query_as!(
-            RelaySession,
-            r#"
-            SELECT
-                id              AS "id!: Uuid",
-                host_id         AS "host_id!: Uuid",
-                request_user_id AS "request_user_id!: Uuid",
-                state,
-                created_at,
-                expires_at,
-                claimed_at,
-                ended_at
-            FROM relay_sessions
-            WHERE id = $1 AND request_user_id = $2
-            "#,
-            session_id,
-            request_user_id
-        )
-        .fetch_optional(self.pool)
-        .await
-    }
-
-    pub async fn mark_session_active(&self, session_id: Uuid) -> Result<RelaySession, sqlx::Error> {
-        sqlx::query_as!(
-            RelaySession,
-            r#"
-            UPDATE relay_sessions
-            SET state = 'active',
-                claimed_at = COALESCE(claimed_at, NOW())
-            WHERE id = $1
-            RETURNING
-                id              AS "id!: Uuid",
-                host_id         AS "host_id!: Uuid",
-                request_user_id AS "request_user_id!: Uuid",
-                state,
-                created_at,
-                expires_at,
-                claimed_at,
-                ended_at
-            "#,
-            session_id
-        )
-        .fetch_one(self.pool)
-        .await
-    }
-
-    pub async fn mark_session_expired(&self, session_id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(
-            r#"
-            UPDATE relay_sessions
-            SET state = 'expired',
-                ended_at = COALESCE(ended_at, NOW())
-            WHERE id = $1
-            "#,
-            session_id
-        )
-        .execute(self.pool)
-        .await?;
-        Ok(())
     }
 
     pub async fn mark_host_online(

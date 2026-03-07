@@ -5,9 +5,11 @@ use std::{
     task::{Context, Poll, ready},
 };
 
+use axum::extract::ws::{Message as AxumWsMessage, WebSocket as AxumWebSocket};
 use bytes::BytesMut;
 use futures::{Sink, Stream};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio_tungstenite::tungstenite;
 
 pub enum WsIoReadMessage {
     Data(Vec<u8>),
@@ -19,6 +21,8 @@ pub enum WsIoReadMessage {
 pub struct WsMessageStreamIo<S, M, FRead, FWrite> {
     ws: S,
     read_buf: BytesMut,
+    /// When true, a previous start_send completed but flush is still pending.
+    flushing: bool,
     read_message: FRead,
     write_message: FWrite,
     _message: PhantomData<fn() -> M>,
@@ -29,6 +33,7 @@ impl<S, M, FRead, FWrite> WsMessageStreamIo<S, M, FRead, FWrite> {
         Self {
             ws,
             read_buf: BytesMut::new(),
+            flushing: false,
             read_message,
             write_message,
             _message: PhantomData,
@@ -89,11 +94,18 @@ where
         }
 
         let this = self.as_mut().get_mut();
-        ready!(Pin::new(&mut this.ws).poll_ready(cx))
+        if !this.flushing {
+            ready!(Pin::new(&mut this.ws).poll_ready(cx))
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            Pin::new(&mut this.ws)
+                .start_send((this.write_message)(buf.to_vec()))
+                .map_err(|error| io::Error::other(error.to_string()))?;
+            this.flushing = true;
+        }
+
+        ready!(Pin::new(&mut this.ws).poll_flush(cx))
             .map_err(|error| io::Error::other(error.to_string()))?;
-        Pin::new(&mut this.ws)
-            .start_send((this.write_message)(buf.to_vec()))
-            .map_err(|error| io::Error::other(error.to_string()))?;
+        this.flushing = false;
 
         Poll::Ready(Ok(buf.len()))
     }
@@ -102,6 +114,7 @@ where
         let this = self.as_mut().get_mut();
         ready!(Pin::new(&mut this.ws).poll_flush(cx))
             .map_err(|error| io::Error::other(error.to_string()))?;
+        this.flushing = false;
         Poll::Ready(Ok(()))
     }
 
@@ -109,6 +122,55 @@ where
         let this = self.as_mut().get_mut();
         ready!(Pin::new(&mut this.ws).poll_close(cx))
             .map_err(|error| io::Error::other(error.to_string()))?;
+        this.flushing = false;
         Poll::Ready(Ok(()))
     }
+}
+
+pub type AxumWsStreamIo = WsMessageStreamIo<
+    AxumWebSocket,
+    AxumWsMessage,
+    fn(AxumWsMessage) -> WsIoReadMessage,
+    fn(Vec<u8>) -> AxumWsMessage,
+>;
+
+pub fn axum_ws_stream_io(ws: AxumWebSocket) -> AxumWsStreamIo {
+    WsMessageStreamIo::new(ws, read_axum_message, write_axum_message)
+}
+
+fn read_axum_message(message: AxumWsMessage) -> WsIoReadMessage {
+    match message {
+        AxumWsMessage::Binary(data) => WsIoReadMessage::Data(data.to_vec()),
+        AxumWsMessage::Text(text) => WsIoReadMessage::Data(text.as_bytes().to_vec()),
+        AxumWsMessage::Close(_) => WsIoReadMessage::Eof,
+        _ => WsIoReadMessage::Skip,
+    }
+}
+
+fn write_axum_message(bytes: Vec<u8>) -> AxumWsMessage {
+    AxumWsMessage::Binary(bytes.into())
+}
+
+pub type TungsteniteWsStreamIo<S> = WsMessageStreamIo<
+    S,
+    tungstenite::Message,
+    fn(tungstenite::Message) -> WsIoReadMessage,
+    fn(Vec<u8>) -> tungstenite::Message,
+>;
+
+pub fn tungstenite_ws_stream_io<S>(ws: S) -> TungsteniteWsStreamIo<S> {
+    WsMessageStreamIo::new(ws, read_tungstenite_message, write_tungstenite_message)
+}
+
+fn read_tungstenite_message(message: tungstenite::Message) -> WsIoReadMessage {
+    match message {
+        tungstenite::Message::Binary(data) => WsIoReadMessage::Data(data.to_vec()),
+        tungstenite::Message::Text(text) => WsIoReadMessage::Data(text.as_bytes().to_vec()),
+        tungstenite::Message::Close(_) => WsIoReadMessage::Eof,
+        _ => WsIoReadMessage::Skip,
+    }
+}
+
+fn write_tungstenite_message(bytes: Vec<u8>) -> tungstenite::Message {
+    tungstenite::Message::Binary(bytes)
 }

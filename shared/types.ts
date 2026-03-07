@@ -342,6 +342,20 @@ export type OpenEditorRequest = { editor_type: string | null, file_path: string 
 
 export type OpenEditorResponse = { url: string | null, };
 
+export type OpenRemoteEditorResponse = { url: string, local_port: number, ssh_alias: string, };
+
+export type OpenRemoteEditorRequest = { host_id: string, browser_session_id: string, workspace_path: string, editor_type: string | null, };
+
+export type OpenFirstWorkspaceInRemoteEditorRequest = { host_id: string, browser_session_id: string, editor_type: string | null, };
+
+export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, };
+
+export type PairRelayHostResponse = { paired: boolean, };
+
+export type UpsertRelayHostCredentialsRequest = { host_id: string, signing_session_id: string, private_key_jwk: JsonValue, };
+
+export type UpsertRelayHostCredentialsResponse = { upserted: boolean, };
+
 export type LinkedIssueInfo = { remote_project_id: string, issue_id: string, };
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };

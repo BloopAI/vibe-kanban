@@ -2,10 +2,7 @@ use std::{future::Future, sync::Arc};
 
 use axum::{
     body::Body,
-    extract::{
-        Request,
-        ws::{Message as AxumWsMessage, WebSocket},
-    },
+    extract::{Request, ws::WebSocket},
     http::{StatusCode, Uri},
     response::{IntoResponse, Response},
 };
@@ -15,7 +12,7 @@ use hyper_util::rt::TokioIo;
 use tokio::sync::Mutex;
 use tokio_yamux::{Config as YamuxConfig, Control, Session};
 
-use crate::ws_io::{WsIoReadMessage, WsMessageStreamIo};
+use crate::ws_io::axum_ws_stream_io;
 
 pub type SharedControl = Arc<Mutex<Control>>;
 
@@ -28,7 +25,7 @@ where
     F: FnOnce(SharedControl) -> Fut,
     Fut: Future<Output = ()>,
 {
-    let ws_io = WsMessageStreamIo::new(socket, read_server_message, write_server_message);
+    let ws_io = axum_ws_stream_io(socket);
     let mut session = Session::new_server(ws_io, YamuxConfig::default());
     let control = Arc::new(Mutex::new(session.control()));
 
@@ -128,17 +125,4 @@ fn normalized_relay_path(uri: &axum::http::Uri, strip_prefix: &str) -> String {
     let path = if path.is_empty() { "/" } else { path };
     let query = uri.query().map(|q| format!("?{q}")).unwrap_or_default();
     format!("{path}{query}")
-}
-
-fn read_server_message(message: AxumWsMessage) -> WsIoReadMessage {
-    match message {
-        AxumWsMessage::Binary(data) => WsIoReadMessage::Data(data.to_vec()),
-        AxumWsMessage::Text(text) => WsIoReadMessage::Data(text.as_bytes().to_vec()),
-        AxumWsMessage::Close(_) => WsIoReadMessage::Eof,
-        _ => WsIoReadMessage::Skip,
-    }
-}
-
-fn write_server_message(bytes: Vec<u8>) -> AxumWsMessage {
-    AxumWsMessage::Binary(bytes.into())
 }

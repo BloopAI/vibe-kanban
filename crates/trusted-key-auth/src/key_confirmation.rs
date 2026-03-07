@@ -20,6 +20,22 @@ fn derive_confirmation_key(shared_key: &[u8]) -> [u8; 32] {
     output
 }
 
+/// Build the client's proof binding the browser's public key.
+/// Client proof = HMAC(confirmation_key, CLIENT_CONTEXT || enrollment_id || browser_pk)
+pub fn build_client_proof(
+    shared_key: &[u8],
+    enrollment_id: &Uuid,
+    browser_pk_bytes: &[u8],
+) -> Result<String, TrustedKeyAuthError> {
+    let confirmation_key = derive_confirmation_key(shared_key);
+    let mut mac = HmacSha256::new_from_slice(&confirmation_key)
+        .map_err(|_| TrustedKeyAuthError::Unauthorized)?;
+    mac.update(CLIENT_PROOF_CONTEXT);
+    mac.update(enrollment_id.as_bytes());
+    mac.update(browser_pk_bytes);
+    Ok(BASE64_STANDARD.encode(mac.finalize().into_bytes()))
+}
+
 /// Verify the client's proof binding the browser's public key.
 /// Client proof = HMAC(confirmation_key, CLIENT_CONTEXT || enrollment_id || browser_pk)
 pub fn verify_client_proof(
@@ -59,19 +75,27 @@ pub fn build_server_proof(
     Ok(BASE64_STANDARD.encode(mac.finalize().into_bytes()))
 }
 
-#[cfg(test)]
-fn build_client_proof_base64(
+/// Verify the server's proof binding both keys.
+/// Server proof = HMAC(confirmation_key, SERVER_CONTEXT || enrollment_id || browser_pk || server_pk)
+pub fn verify_server_proof(
     shared_key: &[u8],
     enrollment_id: &Uuid,
     browser_pk_bytes: &[u8],
-) -> Result<String, TrustedKeyAuthError> {
+    server_pk_bytes: &[u8],
+    provided_proof_b64: &str,
+) -> Result<(), TrustedKeyAuthError> {
+    let provided_proof = BASE64_STANDARD
+        .decode(provided_proof_b64)
+        .map_err(|_| TrustedKeyAuthError::Unauthorized)?;
     let confirmation_key = derive_confirmation_key(shared_key);
     let mut mac = HmacSha256::new_from_slice(&confirmation_key)
         .map_err(|_| TrustedKeyAuthError::Unauthorized)?;
-    mac.update(CLIENT_PROOF_CONTEXT);
+    mac.update(SERVER_PROOF_CONTEXT);
     mac.update(enrollment_id.as_bytes());
     mac.update(browser_pk_bytes);
-    Ok(BASE64_STANDARD.encode(mac.finalize().into_bytes()))
+    mac.update(server_pk_bytes);
+    mac.verify_slice(&provided_proof)
+        .map_err(|_| TrustedKeyAuthError::Unauthorized)
 }
 
 #[cfg(test)]
@@ -84,8 +108,7 @@ mod tests {
         let enrollment_id = Uuid::new_v4();
         let browser_pk = [1u8; 32];
 
-        let proof_b64 =
-            build_client_proof_base64(&shared_key, &enrollment_id, &browser_pk).unwrap();
+        let proof_b64 = build_client_proof(&shared_key, &enrollment_id, &browser_pk).unwrap();
 
         verify_client_proof(&shared_key, &enrollment_id, &browser_pk, &proof_b64).unwrap();
     }
@@ -122,6 +145,26 @@ mod tests {
         let expected = BASE64_STANDARD.encode(mac.finalize().into_bytes());
 
         assert_eq!(proof_b64, expected);
+    }
+
+    #[test]
+    fn roundtrip_server_proof() {
+        let shared_key = [11u8; 32];
+        let enrollment_id = Uuid::new_v4();
+        let browser_pk = [3u8; 32];
+        let server_pk = [4u8; 32];
+
+        let proof_b64 =
+            build_server_proof(&shared_key, &enrollment_id, &browser_pk, &server_pk).unwrap();
+
+        verify_server_proof(
+            &shared_key,
+            &enrollment_id,
+            &browser_pk,
+            &server_pk,
+            &proof_b64,
+        )
+        .unwrap();
     }
 
     #[test]

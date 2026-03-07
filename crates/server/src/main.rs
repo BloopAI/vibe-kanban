@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes, tunnel};
+use server::{DeploymentImpl, preview_proxy, relay::host, routes};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
@@ -37,7 +37,7 @@ async fn main() -> Result<(), VibeKanbanError> {
 
     let log_level = std::env::var("RUST_LOG").unwrap_or_else(|_| "info".to_string());
     let filter_string = format!(
-        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},codex_core=off",
+        "warn,server={level},services={level},db={level},executors={level},deployment={level},local_deployment={level},utils={level},embedded_ssh={level},desktop_bridge={level},codex_core=off",
         level = log_level
     );
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
@@ -172,10 +172,10 @@ async fn main() -> Result<(), VibeKanbanError> {
     deployment.server_info().set_port(actual_main_port).await;
     let relay_host_name = {
         let config = deployment.config().read().await;
-        tunnel::effective_relay_host_name(&config, deployment.user_id())
+        host::effective_relay_host_name(&config, deployment.user_id())
     };
     deployment.server_info().set_hostname(relay_host_name).await;
-    tunnel::spawn_relay(&deployment).await;
+    host::spawn_relay(&deployment).await;
 
     tokio::select! {
         _ = shutdown_signal() => {

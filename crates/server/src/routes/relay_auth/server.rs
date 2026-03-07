@@ -19,6 +19,10 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
+use super::types::{
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
+    StartSpake2EnrollmentResponse,
+};
 use crate::{DeploymentImpl, error::ApiError};
 
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
@@ -30,37 +34,6 @@ const RELAY_HEADER: &str = "x-vk-relayed";
 #[derive(Debug, Serialize)]
 struct GenerateEnrollmentCodeResponse {
     enrollment_code: String,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct StartSpake2EnrollmentRequest {
-    enrollment_code: String,
-    client_message_b64: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct StartSpake2EnrollmentResponse {
-    enrollment_id: Uuid,
-    server_message_b64: String,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct FinishSpake2EnrollmentRequest {
-    enrollment_id: Uuid,
-    client_id: Uuid,
-    client_name: String,
-    client_browser: String,
-    client_os: String,
-    client_device: String,
-    public_key_b64: String,
-    client_proof_b64: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct FinishSpake2EnrollmentResponse {
-    signing_session_id: Uuid,
-    server_public_key_b64: String,
-    server_proof_b64: String,
 }
 
 #[derive(Debug, Serialize, TS)]
@@ -98,21 +71,24 @@ pub struct RefreshRelaySigningSessionResponse {
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route(
-            "/relay-auth/enrollment-code",
+            "/relay-auth/server/enrollment-code",
             post(generate_enrollment_code),
         )
-        .route("/relay-auth/clients", get(list_relay_paired_clients))
+        .route("/relay-auth/server/clients", get(list_relay_paired_clients))
         .route(
-            "/relay-auth/clients/{client_id}",
+            "/relay-auth/server/clients/{client_id}",
             delete(remove_relay_paired_client),
         )
         .route(
-            "/relay-auth/spake2/start",
+            "/relay-auth/server/spake2/start",
             post(start_spake2_enrollment_route),
         )
-        .route("/relay-auth/spake2/finish", post(finish_spake2_enrollment))
         .route(
-            "/relay-auth/signing-session/refresh",
+            "/relay-auth/server/spake2/finish",
+            post(finish_spake2_enrollment),
+        )
+        .route(
+            "/relay-auth/server/signing-session/refresh",
             post(refresh_relay_signing_session),
         )
 }
