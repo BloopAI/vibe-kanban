@@ -767,6 +767,11 @@ jobs:
             );
             // Remove beforeBuildCommand — frontend is already pre-built and downloaded as an artifact
             delete conf.build.beforeBuildCommand;
+            // Remove Windows signCommand when Azure signing secrets are not configured
+            const hasAzureSigning = '${{ secrets.AZURE_ENDPOINT }}'.length > 0;
+            if (!hasAzureSigning && conf.bundle?.windows?.signCommand) {
+              delete conf.bundle.windows.signCommand;
+            }
             fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
