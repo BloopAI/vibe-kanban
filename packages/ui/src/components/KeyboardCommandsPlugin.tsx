@@ -201,6 +201,24 @@ export function KeyboardCommandsPlugin({
           return false;
         }
 
+        if (hasRunningShortcutOverrides) {
+          return false;
+        }
+
+        if (event.shiftKey && onShiftCmdEnter) {
+          event.preventDefault();
+          event.stopPropagation();
+          flushAndQueue();
+          return true;
+        }
+
+        if (!event.shiftKey && onCmdEnter && sendShortcut === 'ModifierEnter') {
+          event.preventDefault();
+          event.stopPropagation();
+          flushAndSubmit();
+          return true;
+        }
+
         return false;
       },
       COMMAND_PRIORITY_NORMAL
