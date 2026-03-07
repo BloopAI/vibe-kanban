@@ -3,7 +3,7 @@ use axum::{
     extract::State,
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{post, put},
+    routing::post,
 };
 use desktop_bridge::signing::SigningContext;
 use serde::{Deserialize, Serialize};
@@ -20,15 +20,10 @@ use crate::{
 };
 
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route(
-            "/open-remote-editor/workspace",
-            post(open_remote_workspace_in_editor),
-        )
-        .route(
-            "/open-remote-editor/credentials",
-            put(upsert_open_remote_editor_credentials),
-        )
+    Router::new().route(
+        "/open-remote-editor/workspace",
+        post(open_remote_workspace_in_editor),
+    )
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -37,18 +32,6 @@ pub struct OpenRemoteWorkspaceInEditorRequest {
     pub workspace_id: Uuid,
     #[serde(default)]
     pub editor_type: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct UpsertRelayHostCredentialsRequest {
-    pub host_id: Uuid,
-    pub signing_session_id: String,
-    pub private_key_jwk: serde_json::Value,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct UpsertRelayHostCredentialsResponse {
-    pub upserted: bool,
 }
 
 pub async fn open_remote_workspace_in_editor(
@@ -117,40 +100,6 @@ pub async fn open_remote_workspace_in_editor(
         remote_session.id,
     )
     .await
-}
-
-pub async fn upsert_open_remote_editor_credentials(
-    State(deployment): State<DeploymentImpl>,
-    Json(req): Json<UpsertRelayHostCredentialsRequest>,
-) -> Response {
-    match deployment
-        .upsert_relay_host_credentials(
-            req.host_id,
-            req.signing_session_id,
-            req.private_key_jwk,
-            None,
-            None,
-        )
-        .await
-    {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(ApiResponse::<UpsertRelayHostCredentialsResponse>::success(
-                UpsertRelayHostCredentialsResponse { upserted: true },
-            )),
-        )
-            .into_response(),
-        Err(error) => {
-            tracing::error!(?error, "Failed to persist relay host credentials");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<UpsertRelayHostCredentialsResponse>::error(
-                    "Failed to persist relay host credentials",
-                )),
-            )
-                .into_response()
-        }
-    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

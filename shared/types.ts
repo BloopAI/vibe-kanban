@@ -356,10 +356,6 @@ export type ListRelayPairedHostsResponse = { hosts: Array<RelayPairedHost>, };
 
 export type RemoveRelayPairedHostResponse = { removed: boolean, };
 
-export type UpsertRelayHostCredentialsRequest = { host_id: string, signing_session_id: string, private_key_jwk: JsonValue, };
-
-export type UpsertRelayHostCredentialsResponse = { upserted: boolean, };
-
 export type LinkedIssueInfo = { remote_project_id: string, issue_id: string, };
 
 export type CreatePrApiRequest = { title: string, body: string | null, target_branch: string | null, draft: boolean | null, repo_id: string, auto_generate_description: boolean, };

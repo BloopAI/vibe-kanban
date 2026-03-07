@@ -140,8 +140,6 @@ fn generate_types_content() -> String {
         server::routes::relay_auth::RelayPairedHost::decl(),
         server::routes::relay_auth::ListRelayPairedHostsResponse::decl(),
         server::routes::relay_auth::RemoveRelayPairedHostResponse::decl(),
-        server::routes::open_remote_editor::UpsertRelayHostCredentialsRequest::decl(),
-        server::routes::open_remote_editor::UpsertRelayHostCredentialsResponse::decl(),
         db::models::requests::LinkedIssueInfo::decl(),
         server::routes::task_attempts::pr::CreatePrApiRequest::decl(),
         server::routes::images::ImageResponse::decl(),
