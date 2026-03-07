@@ -8,11 +8,8 @@ use uuid::Uuid;
 
 use crate::ApiResponseEnvelope;
 
-const MODE_ENV: &str = "VIBE_MCP_MODE";
-const SESSION_ID_ENV: &str = "VIBE_MCP_SESSION_ID";
-const BACKEND_URL_ENV: &str = "VIBE_MCP_BACKEND_URL";
-const HOST_ENV: &str = "VIBE_MCP_HOST";
-const PORT_ENV: &str = "VIBE_MCP_PORT";
+const HOST_ENV: &str = "MCP_HOST";
+const PORT_ENV: &str = "MCP_PORT";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum McpLaunchMode {
@@ -27,25 +24,9 @@ pub struct LaunchConfig {
 }
 
 pub fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
-    parse_launch_config(
-        std::env::args().skip(1),
-        std::env::var(MODE_ENV).ok(),
-        std::env::var(SESSION_ID_ENV).ok(),
-    )
-}
-
-fn parse_launch_config<I>(
-    args: I,
-    mode_env: Option<String>,
-    session_id_env: Option<String>,
-) -> anyhow::Result<LaunchConfig>
-where
-    I: IntoIterator,
-    I::Item: Into<String>,
-{
-    let mut args = args.into_iter().map(Into::into);
-    let mut mode = mode_env;
-    let mut session_id = session_id_env;
+    let mut args = std::env::args().skip(1);
+    let mut mode = None;
+    let mut session_id = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -103,16 +84,6 @@ fn parse_uuid_arg(value: &str) -> anyhow::Result<Uuid> {
 }
 
 pub async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
-    if let Ok(url) = std::env::var(BACKEND_URL_ENV) {
-        tracing::info!(
-            "[{}] Using backend URL from {}: {}",
-            log_prefix,
-            BACKEND_URL_ENV,
-            url
-        );
-        return Ok(url);
-    }
-
     let host = std::env::var(HOST_ENV)
         .or_else(|_| std::env::var("HOST"))
         .unwrap_or_else(|_| "127.0.0.1".to_string());
@@ -196,94 +167,4 @@ pub fn init_process_logging(log_prefix: &str, version: &str) {
         log_prefix,
         version
     );
-}
-
-#[cfg(test)]
-mod tests {
-    use uuid::Uuid;
-
-    use super::{LaunchConfig, McpLaunchMode, parse_launch_config};
-
-    #[test]
-    fn global_mode_defaults_without_session() {
-        let actual = parse_launch_config(Vec::<String>::new(), None, None).unwrap();
-
-        assert_eq!(actual.mode, McpLaunchMode::Global);
-        assert_eq!(actual.session_id, None);
-    }
-
-    #[test]
-    fn orchestrator_mode_accepts_session_id_flag() {
-        let session_id = Uuid::new_v4();
-        let actual = parse_launch_config(
-            vec![
-                "--mode".to_string(),
-                "orchestrator".to_string(),
-                "--session-id".to_string(),
-                session_id.to_string(),
-            ],
-            None,
-            None,
-        )
-        .unwrap();
-
-        assert_eq!(
-            actual,
-            LaunchConfig {
-                mode: McpLaunchMode::Orchestrator,
-                session_id: Some(session_id),
-            }
-        );
-    }
-
-    #[test]
-    fn orchestrator_mode_accepts_session_id_env() {
-        let session_id = Uuid::new_v4();
-        let actual = parse_launch_config(
-            vec!["--mode".to_string(), "orchestrator".to_string()],
-            None,
-            Some(session_id.to_string()),
-        )
-        .unwrap();
-
-        assert_eq!(
-            actual,
-            LaunchConfig {
-                mode: McpLaunchMode::Orchestrator,
-                session_id: Some(session_id),
-            }
-        );
-    }
-
-    #[test]
-    fn workspace_mode_is_rejected() {
-        let error = parse_launch_config(
-            vec!["--mode".to_string(), "workspace".to_string()],
-            None,
-            None,
-        )
-        .unwrap_err();
-
-        assert!(
-            error
-                .to_string()
-                .contains("Expected 'global' or 'orchestrator'")
-        );
-    }
-
-    #[test]
-    fn workspace_id_flag_is_rejected() {
-        let error = parse_launch_config(
-            vec!["--workspace-id".to_string(), Uuid::new_v4().to_string()],
-            None,
-            None,
-        )
-        .unwrap_err();
-
-        assert!(
-            error
-                .to_string()
-                .contains("Unknown argument '--workspace-id'")
-        );
-    }
 }
