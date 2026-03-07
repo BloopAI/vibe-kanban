@@ -745,6 +745,10 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
+      - name: Install trusted-signing-cli (Windows)
+        if: runner.os == 'Windows'
+        run: cargo install trusted-signing-cli --locked
+
       - name: Download frontend artifact
         uses: actions/download-artifact@v7
         with:
@@ -797,6 +801,13 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          # Azure Trusted Signing (Windows code signing)
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+          AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
 
       - name: Collect updater artifacts and installers
         run: |
