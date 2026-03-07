@@ -327,7 +327,7 @@ jobs:
       - name: Build backend (Linux)
         if: runner.os == 'Linux' && !contains(matrix.target, 'windows')
         run: |
-          cargo zigbuild --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
+          cargo zigbuild --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -343,7 +343,7 @@ jobs:
           elif [[ "${{ matrix.target }}" == "aarch64-apple-darwin" ]]; then
             export MACOSX_DEPLOYMENT_TARGET=11.0
           fi
-          cargo build --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
+          cargo build --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -362,7 +362,7 @@ jobs:
             export DEFAULT_CC=clang-cl
             export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
           fi
-          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin mcp_task_server --bin review
+          cargo xwin build --cross-compiler clang-cl --release --target ${{ matrix.target }} -p server -p mcp -p review --bin server --bin vibe-kanban-mcp --bin review
         env:
           POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
@@ -391,11 +391,11 @@ jobs:
           mkdir -p dist
           if [[ "${{ matrix.name }}" == *"windows"* ]]; then
             cp target/${{ matrix.target }}/release/server.exe dist/vibe-kanban-${{ matrix.name }}.exe
-            cp target/${{ matrix.target }}/release/mcp_task_server.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
+            cp target/${{ matrix.target }}/release/vibe-kanban-mcp.exe dist/vibe-kanban-mcp-${{ matrix.name }}.exe
             cp target/${{ matrix.target }}/release/review.exe dist/vibe-kanban-review-${{ matrix.name }}.exe
           else
             cp target/${{ matrix.target }}/release/server dist/vibe-kanban-${{ matrix.name }}
-            cp target/${{ matrix.target }}/release/mcp_task_server dist/vibe-kanban-mcp-${{ matrix.name }}
+            cp target/${{ matrix.target }}/release/vibe-kanban-mcp dist/vibe-kanban-mcp-${{ matrix.name }}
             cp target/${{ matrix.target }}/release/review dist/vibe-kanban-review-${{ matrix.name }}
           fi
 
@@ -430,7 +430,7 @@ jobs:
         if: runner.os == 'macOS'
         uses: BloopAI/apple-code-sign-action@v1
         with:
-          input_path: target/${{ matrix.target }}/release/mcp_task_server
+          input_path: target/${{ matrix.target }}/release/vibe-kanban-mcp
           output_path: vibe-kanban-mcp
           p12_file: certificate.p12
           p12_password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
