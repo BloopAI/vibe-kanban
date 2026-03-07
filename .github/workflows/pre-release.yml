@@ -745,10 +745,6 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2" --locked
 
-      - name: Install trusted-signing-cli (Windows)
-        if: runner.os == 'Windows'
-        run: cargo install trusted-signing-cli --locked
-
       - name: Download frontend artifact
         uses: actions/download-artifact@v7
         with:
@@ -767,11 +763,6 @@ jobs:
             );
             // Remove beforeBuildCommand — frontend is already pre-built and downloaded as an artifact
             delete conf.build.beforeBuildCommand;
-            // Remove Windows signCommand when Azure signing secrets are not configured
-            const hasAzureSigning = '${{ secrets.AZURE_ENDPOINT }}'.length > 0;
-            if (!hasAzureSigning && conf.bundle?.windows?.signCommand) {
-              delete conf.bundle.windows.signCommand;
-            }
             fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
@@ -806,13 +797,24 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          # Azure Trusted Signing (Windows code signing)
-          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Sign Windows artifacts with Azure Trusted Signing
+        if: runner.os == 'Windows' && env.AZURE_ENDPOINT != ''
+        uses: azure/trusted-signing-action@v0.5.0
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+          files-folder: ${{ github.workspace }}/target/${{ matrix.target }}/release/bundle
+          files-folder-filter: exe,msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+        env:
           AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
-          AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
-          AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
 
       - name: Collect updater artifacts and installers
         run: |
