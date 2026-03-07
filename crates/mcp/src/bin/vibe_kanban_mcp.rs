@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
                         anyhow::anyhow!("orchestrator mode requires --session-id")
                     })?;
                     let session = resolve_session(&base_url, session_id).await?;
-                    McpServer::new_orchestrator(&base_url, session.workspace_id, Some(session.id))
+                    McpServer::new_orchestrator(&base_url, session)
                 }
             };
 

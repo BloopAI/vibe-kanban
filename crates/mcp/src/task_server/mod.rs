@@ -1,7 +1,7 @@
 mod handler;
 mod tools;
 
-use db::models::{requests::ContainerQuery, workspace::WorkspaceContext};
+use db::models::{requests::ContainerQuery, session::Session, workspace::WorkspaceContext};
 use rmcp::{handler::server::tool::ToolRouter, schemars};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -26,6 +26,8 @@ pub struct McpContext {
     pub project_id: Option<Uuid>,
     #[schemars(description = "The remote issue ID (if workspace is linked to a remote issue)")]
     pub issue_id: Option<Uuid>,
+    #[schemars(description = "The attached session ID when running in orchestrator mode")]
+    pub session_id: Option<Uuid>,
     pub workspace_id: Uuid,
     pub workspace_branch: String,
     #[schemars(
@@ -47,8 +49,7 @@ pub struct McpServer {
     tool_router: ToolRouter<McpServer>,
     context: Option<McpContext>,
     mode: McpMode,
-    workspace_id: Option<Uuid>,
-    attached_session_id: Option<Uuid>,
+    orchestrator_session: Option<Session>,
 }
 
 impl McpServer {
@@ -59,24 +60,18 @@ impl McpServer {
             tool_router: Self::global_mode_router(),
             context: None,
             mode: McpMode::Global,
-            workspace_id: None,
-            attached_session_id: None,
+            orchestrator_session: None,
         }
     }
 
-    pub fn new_orchestrator(
-        base_url: &str,
-        workspace_id: Uuid,
-        attached_session_id: Option<Uuid>,
-    ) -> Self {
+    pub fn new_orchestrator(base_url: &str, session: Session) -> Self {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::orchestrator_mode_router(),
             context: None,
             mode: McpMode::Orchestrator,
-            workspace_id: Some(workspace_id),
-            attached_session_id,
+            orchestrator_session: Some(session),
         }
     }
 
@@ -149,7 +144,11 @@ impl McpServer {
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
 
-        if matches!(self.mode, McpMode::Orchestrator) && self.workspace_id != Some(workspace_id) {
+        let session_id = self.orchestrator_session.as_ref().map(|session| session.id);
+
+        if let Some(orchestrator_session) = &self.orchestrator_session
+            && orchestrator_session.workspace_id != workspace_id
+        {
             return None;
         }
 
@@ -163,6 +162,7 @@ impl McpServer {
             organization_id,
             project_id,
             issue_id,
+            session_id,
             workspace_id,
             workspace_branch,
             workspace_repos,

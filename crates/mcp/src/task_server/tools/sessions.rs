@@ -184,7 +184,7 @@ impl McpServer {
 
         Self::success(&ListSessionsResponse {
             workspace_id: workspace_id.to_string(),
-            attached_session_id: self.attached_session_id.map(|id| id.to_string()),
+            attached_session_id: self.attached_session_id().map(|id| id.to_string()),
             total_count: sessions.len(),
             sessions,
         })
@@ -212,7 +212,7 @@ impl McpServer {
         if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
             return Ok(error_result);
         }
-        if self.attached_session_id == Some(session_id) {
+        if self.attached_session_id() == Some(session_id) {
             return Self::err(
                 "Cannot run coding agent in the attached session".to_string(),
                 Some(
@@ -309,7 +309,7 @@ impl McpServer {
     }
 
     fn session_summary(&self, session: Session) -> SessionSummary {
-        let is_attached_session = self.attached_session_id == Some(session.id);
+        let is_attached_session = self.attached_session_id() == Some(session.id);
         SessionSummary {
             id: session.id.to_string(),
             workspace_id: session.workspace_id.to_string(),

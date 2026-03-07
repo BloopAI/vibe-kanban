@@ -51,6 +51,10 @@ impl McpServer {
 }
 
 impl McpServer {
+    fn attached_session_id(&self) -> Option<Uuid> {
+        self.context.as_ref().and_then(|ctx| ctx.session_id)
+    }
+
     fn success<T: Serialize>(data: &T) -> Result<CallToolResult, ErrorData> {
         Ok(CallToolResult::success(vec![Content::text(
             serde_json::to_string_pretty(data)
@@ -138,9 +142,6 @@ impl McpServer {
         if let Some(id) = explicit {
             return Ok(id);
         }
-        if let Some(id) = self.workspace_id {
-            return Ok(id);
-        }
         if let Some(ctx) = &self.context {
             return Ok(ctx.workspace_id);
         }
@@ -153,7 +154,7 @@ impl McpServer {
 
     fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), CallToolResult> {
         if matches!(self.mode(), McpMode::Orchestrator)
-            && let Some(scoped_workspace_id) = self.workspace_id
+            && let Some(scoped_workspace_id) = self.context.as_ref().map(|ctx| ctx.workspace_id)
             && scoped_workspace_id != workspace_id
         {
             return Err(Self::err(
@@ -357,9 +358,23 @@ impl McpServer {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, sync::Once};
+
+    use rmcp::handler::server::tool::ToolRouter;
+    use uuid::Uuid;
 
     use super::McpServer;
+    use crate::task_server::{McpContext, McpMode, McpRepoContext};
+
+    static RUSTLS_PROVIDER: Once = Once::new();
+
+    fn install_rustls_provider() {
+        RUSTLS_PROVIDER.call_once(|| {
+            rustls::crypto::aws_lc_rs::default_provider()
+                .install_default()
+                .expect("Failed to install rustls crypto provider");
+        });
+    }
 
     fn tool_names(router: rmcp::handler::server::tool::ToolRouter<McpServer>) -> BTreeSet<String> {
         router
@@ -391,5 +406,35 @@ mod tests {
         assert!(actual.contains("list_workspaces"));
         assert!(actual.contains("delete_workspace"));
         assert!(!actual.contains("output_markdown"));
+    }
+
+    #[test]
+    fn attached_session_id_is_resolved_from_context() {
+        install_rustls_provider();
+        let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+        let server = McpServer {
+            client: reqwest::Client::new(),
+            base_url: "http://127.0.0.1:3000".to_string(),
+            tool_router: ToolRouter::default(),
+            context: Some(McpContext {
+                organization_id: None,
+                project_id: None,
+                issue_id: None,
+                session_id: Some(session_id),
+                workspace_id,
+                workspace_branch: "main".to_string(),
+                workspace_repos: vec![McpRepoContext {
+                    repo_id: Uuid::new_v4(),
+                    repo_name: "repo".to_string(),
+                    target_branch: "main".to_string(),
+                }],
+            }),
+            mode: McpMode::Global,
+            orchestrator_session: None,
+        };
+
+        assert_eq!(server.attached_session_id(), Some(session_id));
+        assert_eq!(server.resolve_workspace_id(None).unwrap(), workspace_id);
     }
 }
