@@ -13,7 +13,6 @@ import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { relayApi } from '@/shared/lib/api';
-import { createRemoteSession } from '@/shared/lib/relayBackendApi';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
@@ -31,6 +30,8 @@ import {
   SettingsSelect,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
+import { PairingCodeInput } from './PairingCodeInput';
+import { RemoteCloudHostsSettingsCard } from './RemoteCloudHostsSettingsCard';
 
 interface PairedHostRow {
   id: string;
@@ -80,22 +81,6 @@ function LocalRelaySettingsSectionContent() {
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const [removingClientId, setRemovingClientId] = useState<string | null>(null);
   const [enrollmentCodeCopied, setEnrollmentCodeCopied] = useState(false);
-  const [selectedRemoteHostId, setSelectedRemoteHostId] = useState<
-    string | undefined
-  >();
-  const [remoteHostPairCode, setRemoteHostPairCode] = useState('');
-  const [remoteHostPairError, setRemoteHostPairError] = useState<string | null>(
-    null
-  );
-  const [remoteHostPairSuccess, setRemoteHostPairSuccess] = useState<
-    string | null
-  >(null);
-  const [pairedRemoteHostId, setPairedRemoteHostId] = useState<string | null>(
-    null
-  );
-  const [openRemoteIdeError, setOpenRemoteIdeError] = useState<string | null>(
-    null
-  );
 
   const {
     data: pairedClients = [],
@@ -108,48 +93,11 @@ function LocalRelaySettingsSectionContent() {
     refetchInterval: 10000,
   });
 
-  const {
-    data: relayHosts = [],
-    isLoading: relayHostsLoading,
-    error: relayHostsError,
-  } = useQuery({
-    ...useRelayRemoteHostsQuery(),
-    enabled: isSignedIn && (draft?.relay_enabled ?? false),
-  });
-
   const removePairedClientMutation = useMutation({
     mutationFn: (clientId: string) => relayApi.removePairedClient(clientId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({
         queryKey: RELAY_PAIRED_CLIENTS_QUERY_KEY,
-      });
-    },
-  });
-
-  const pairRemoteHostMutation = useMutation({
-    mutationFn: async ({
-      hostId,
-      normalizedCode,
-    }: {
-      hostId: string;
-      normalizedCode: string;
-    }) => {
-      const selectedHost = relayHosts.find((host) => host.id === hostId);
-      await relayApi.pairRelayHost({
-        host_id: hostId,
-        host_name: selectedHost?.name ?? hostId,
-        enrollment_code: normalizedCode,
-      });
-    },
-  });
-
-  const openFirstWorkspaceMutation = useMutation({
-    mutationFn: async (hostId: string) => {
-      const createSessionResponse = await createRemoteSession(hostId);
-      return relayApi.openFirstWorkspaceInRemoteEditor({
-        host_id: hostId,
-        browser_session_id: createSessionResponse.session_id,
-        editor_type: null,
       });
     },
   });
@@ -170,40 +118,6 @@ function LocalRelaySettingsSectionContent() {
     setContextDirty('relay', hasUnsavedChanges);
     return () => setContextDirty('relay', false);
   }, [hasUnsavedChanges, setContextDirty]);
-
-  useEffect(() => {
-    if (relayHosts.length === 0) {
-      setSelectedRemoteHostId(undefined);
-      return;
-    }
-
-    if (!selectedRemoteHostId) {
-      setSelectedRemoteHostId(relayHosts[0].id);
-      return;
-    }
-
-    if (!relayHosts.some((host) => host.id === selectedRemoteHostId)) {
-      setSelectedRemoteHostId(relayHosts[0].id);
-    }
-  }, [relayHosts, selectedRemoteHostId]);
-
-  const relayHostOptions = useMemo(
-    () =>
-      relayHosts.map((host) => ({
-        value: host.id,
-        label: host.name,
-      })),
-    [relayHosts]
-  );
-
-  const pairedRemoteHostName = useMemo(() => {
-    if (!pairedRemoteHostId) {
-      return null;
-    }
-    return (
-      relayHosts.find((host) => host.id === pairedRemoteHostId)?.name ?? null
-    );
-  }, [pairedRemoteHostId, relayHosts]);
 
   const updateDraft = useCallback(
     (patch: Partial<typeof config>) => {
@@ -263,63 +177,6 @@ function LocalRelaySettingsSectionContent() {
       await removePairedClientMutation.mutateAsync(clientId);
     } finally {
       setRemovingClientId(null);
-    }
-  };
-
-  const handlePairRemoteHost = async () => {
-    if (!selectedRemoteHostId) {
-      return;
-    }
-
-    const normalizedCode = normalizeEnrollmentCode(remoteHostPairCode);
-    if (normalizedCode.length !== 6) {
-      setRemoteHostPairError(
-        t(
-          'settings.relay.remote.pair.code.invalid',
-          'Enter a 6-character code.'
-        )
-      );
-      return;
-    }
-
-    setRemoteHostPairError(null);
-    setRemoteHostPairSuccess(null);
-    setOpenRemoteIdeError(null);
-
-    try {
-      await pairRemoteHostMutation.mutateAsync({
-        hostId: selectedRemoteHostId,
-        normalizedCode,
-      });
-      const selectedHostName =
-        relayHosts.find((host) => host.id === selectedRemoteHostId)?.name ??
-        selectedRemoteHostId;
-      setPairedRemoteHostId(selectedRemoteHostId);
-      setRemoteHostPairCode('');
-      setRemoteHostPairSuccess(
-        t('settings.relay.local.pair.success', 'Paired {{hostName}}.', {
-          hostName: selectedHostName,
-        })
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setRemoteHostPairError(message);
-    }
-  };
-
-  const handleOpenFirstWorkspaceInRemoteIde = async () => {
-    if (!pairedRemoteHostId) {
-      return;
-    }
-
-    setOpenRemoteIdeError(null);
-    try {
-      const response =
-        await openFirstWorkspaceMutation.mutateAsync(pairedRemoteHostId);
-      window.open(response.url, '_blank');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setOpenRemoteIdeError(message);
     }
   };
 
@@ -559,151 +416,6 @@ function LocalRelaySettingsSectionContent() {
                     </div>
                   )}
                 </div>
-
-                <div className="space-y-3 pt-2 border-t border-border/70">
-                  <h4 className="text-sm font-medium text-normal">
-                    {t(
-                      'settings.relay.local.remoteIde.title',
-                      'Remote IDE pairing'
-                    )}
-                  </h4>
-
-                  {relayHostsError instanceof Error && (
-                    <p className="text-sm text-error">
-                      {relayHostsError.message}
-                    </p>
-                  )}
-
-                  {relayHostsLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-low">
-                      <SpinnerIcon
-                        className="size-icon-sm animate-spin"
-                        weight="bold"
-                      />
-                      <span>
-                        {t(
-                          'settings.relay.local.remoteIde.hostsLoading',
-                          'Loading hosts...'
-                        )}
-                      </span>
-                    </div>
-                  ) : relayHostOptions.length === 0 ? (
-                    <p className="text-sm text-low">
-                      {t(
-                        'settings.relay.local.remoteIde.noHosts',
-                        'No relay hosts available to pair.'
-                      )}
-                    </p>
-                  ) : (
-                    <>
-                      <SettingsField
-                        label={t(
-                          'settings.relay.remote.pair.host.label',
-                          'Host'
-                        )}
-                      >
-                        <SettingsSelect
-                          value={selectedRemoteHostId}
-                          options={relayHostOptions}
-                          onChange={setSelectedRemoteHostId}
-                          placeholder={t(
-                            'settings.relay.remote.pair.host.placeholder',
-                            'Select a host'
-                          )}
-                          disabled={
-                            pairRemoteHostMutation.isPending ||
-                            openFirstWorkspaceMutation.isPending
-                          }
-                        />
-                      </SettingsField>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-normal">
-                          {t(
-                            'settings.relay.remote.pair.code.label',
-                            'Pairing code'
-                          )}
-                        </label>
-                        <RelayCodeInput
-                          value={remoteHostPairCode}
-                          onChange={setRemoteHostPairCode}
-                          disabled={
-                            pairRemoteHostMutation.isPending ||
-                            openFirstWorkspaceMutation.isPending
-                          }
-                        />
-                      </div>
-
-                      {remoteHostPairSuccess && (
-                        <p className="text-sm text-success">
-                          {remoteHostPairSuccess}
-                        </p>
-                      )}
-                      {remoteHostPairError && (
-                        <p className="text-sm text-error">
-                          {remoteHostPairError}
-                        </p>
-                      )}
-                      {openRemoteIdeError && (
-                        <p className="text-sm text-error">
-                          {openRemoteIdeError}
-                        </p>
-                      )}
-
-                      <div className="flex items-center gap-2">
-                        <PrimaryButton
-                          value={t(
-                            'settings.relay.local.remoteIde.pairButton',
-                            'Pair host'
-                          )}
-                          onClick={() => void handlePairRemoteHost()}
-                          disabled={
-                            !selectedRemoteHostId ||
-                            normalizeEnrollmentCode(remoteHostPairCode)
-                              .length !== 6 ||
-                            pairRemoteHostMutation.isPending ||
-                            openFirstWorkspaceMutation.isPending
-                          }
-                          actionIcon={
-                            pairRemoteHostMutation.isPending
-                              ? 'spinner'
-                              : undefined
-                          }
-                        />
-                        <PrimaryButton
-                          variant="secondary"
-                          value={t(
-                            'settings.relay.local.remoteIde.openButton',
-                            'Open in remote IDE'
-                          )}
-                          onClick={() =>
-                            void handleOpenFirstWorkspaceInRemoteIde()
-                          }
-                          disabled={
-                            !pairedRemoteHostId ||
-                            pairRemoteHostMutation.isPending ||
-                            openFirstWorkspaceMutation.isPending
-                          }
-                          actionIcon={
-                            openFirstWorkspaceMutation.isPending
-                              ? 'spinner'
-                              : undefined
-                          }
-                        />
-                      </div>
-
-                      {pairedRemoteHostName && (
-                        <p className="text-xs text-low">
-                          {t(
-                            'settings.relay.local.remoteIde.readyHost',
-                            'Open in remote IDE will use the first workspace on {{hostName}}.',
-                            { hostName: pairedRemoteHostName }
-                          )}
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
               </>
             ) : (
               <div className="space-y-2">
@@ -725,6 +437,8 @@ function LocalRelaySettingsSectionContent() {
           </div>
         )}
       </SettingsCard>
+
+      <RemoteCloudHostsSettingsCard />
 
       <SettingsSaveBar
         show={hasUnsavedChanges}
@@ -1017,7 +731,7 @@ function RemoteRelaySettingsSectionContent({
               <label className="text-sm font-medium text-normal">
                 {t('settings.relay.remote.pair.code.label', 'Pairing code')}
               </label>
-              <RelayCodeInput
+              <PairingCodeInput
                 value={pairingCode}
                 onChange={setPairingCode}
                 disabled={isPairing}
@@ -1156,84 +870,4 @@ function formatDeviceLabel(device: string): string {
     return '';
   }
   return `${device[0]?.toUpperCase() ?? ''}${device.slice(1)}`;
-}
-
-function RelayCodeInput({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (nextValue: string) => void;
-  disabled?: boolean;
-}) {
-  const inputsRef = useRef<Array<HTMLInputElement | null>>([]);
-  const normalizedValue = normalizeEnrollmentCode(value).slice(0, 6);
-  const characters = useMemo(
-    () => Array.from({ length: 6 }, (_, index) => normalizedValue[index] ?? ''),
-    [normalizedValue]
-  );
-
-  const setCharacterAt = (index: number, char: string) => {
-    const next = [...characters];
-    next[index] = char;
-    onChange(next.join(''));
-  };
-
-  return (
-    <div
-      className="flex gap-2"
-      onPaste={(event) => {
-        const pasted = normalizeEnrollmentCode(
-          event.clipboardData.getData('text')
-        ).slice(0, 6);
-        if (!pasted) {
-          return;
-        }
-
-        event.preventDefault();
-        onChange(pasted);
-        const focusIndex = Math.min(pasted.length, 5);
-        inputsRef.current[focusIndex]?.focus();
-      }}
-    >
-      {characters.map((char, index) => (
-        <input
-          key={index}
-          ref={(element) => {
-            inputsRef.current[index] = element;
-          }}
-          type="text"
-          inputMode="text"
-          autoComplete="one-time-code"
-          value={char}
-          maxLength={1}
-          disabled={disabled}
-          onChange={(event) => {
-            const nextChar = normalizeEnrollmentCode(event.target.value).slice(
-              -1
-            );
-            setCharacterAt(index, nextChar);
-            if (nextChar && index < 5) {
-              inputsRef.current[index + 1]?.focus();
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Backspace' && !characters[index] && index > 0) {
-              inputsRef.current[index - 1]?.focus();
-            }
-            if (event.key === 'ArrowLeft' && index > 0) {
-              event.preventDefault();
-              inputsRef.current[index - 1]?.focus();
-            }
-            if (event.key === 'ArrowRight' && index < 5) {
-              event.preventDefault();
-              inputsRef.current[index + 1]?.focus();
-            }
-          }}
-          className="w-10 h-12 rounded-sm border border-border bg-panel text-center font-mono text-lg uppercase text-high focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-50"
-        />
-      ))}
-    </div>
-  );
 }

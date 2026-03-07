@@ -52,6 +52,8 @@ interface SidebarWorkspace {
 
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
+  appRuntime: 'local' | 'remote';
+  currentHostId: string | null;
   appNavigation: AppNavigation;
   queryClient: QueryClient;
   selectWorkspace: (workspaceId: string) => void;

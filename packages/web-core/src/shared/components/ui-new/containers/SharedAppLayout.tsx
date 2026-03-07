@@ -9,7 +9,7 @@ import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 
 import { NavbarContainer } from './NavbarContainer';
-import { AppBar } from '@vibe/ui/components/AppBar';
+import { AppBar, type AppBarHostStatus } from '@vibe/ui/components/AppBar';
 import { MobileDrawer } from '@vibe/ui/components/MobileDrawer';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
@@ -33,6 +33,7 @@ import {
   type CreateRemoteProjectResult,
 } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useWorkspaceSidebarPreviewController } from '@/shared/hooks/useWorkspaceSidebarPreviewController';
@@ -45,6 +46,10 @@ import {
 } from 'shared/remote-types';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
+import {
+  useRemoteCloudHostsAppBarModel,
+  useSetActiveRemoteCloudHostMutation,
+} from '@/shared/hooks/useRemoteCloudHosts';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -61,6 +66,10 @@ export function SharedAppLayout() {
   const { data: starCount } = useGitHubStars();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAppBarHovered, setIsAppBarHovered] = useState(false);
+  const { hosts: remoteCloudHosts, activeHostId: activeRemoteHostId } =
+    useRemoteCloudHostsAppBarModel();
+  const { mutateAsync: setActiveRemoteCloudHost } =
+    useSetActiveRemoteCloudHostMutation();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -282,6 +291,29 @@ export function SharedAppLayout() {
     }
   }, [isSignedIn, appNavigation]);
 
+  const openRelaySettings = useCallback((hostId?: string) => {
+    void SettingsDialog.show({
+      initialSection: 'relay',
+      ...(hostId ? { initialState: { hostId } } : {}),
+    });
+  }, []);
+
+  const handleHostClick = useCallback(
+    (hostId: string, status: AppBarHostStatus) => {
+      if (status === 'offline') {
+        return;
+      }
+
+      void setActiveRemoteCloudHost(hostId);
+      appNavigation.goToWorkspaces();
+    },
+    [appNavigation, setActiveRemoteCloudHost]
+  );
+
+  const handlePairHostClick = useCallback(() => {
+    openRelaySettings();
+  }, [openRelaySettings]);
+
   return (
     <SyncErrorProvider>
       <div
@@ -295,8 +327,13 @@ export function SharedAppLayout() {
         {!isMobile && !isMigrateRoute && (
           <AppBar
             projects={orderedProjects}
+            hosts={remoteCloudHosts}
+            hostsLabel="HOSTS"
+            activeHostId={activeRemoteHostId}
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
+            onHostClick={handleHostClick}
+            onPairHostClick={handlePairHostClick}
             onProjectClick={handleProjectClick}
             onProjectsDragEnd={handleProjectsDragEnd}
             isSavingProjectOrder={isSavingProjectOrder}

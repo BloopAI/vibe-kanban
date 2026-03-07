@@ -20,6 +20,7 @@ import {
 } from '@/shared/stores/useUiPreferencesStore';
 import type { Workspace } from '@/shared/hooks/useWorkspaces';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import {
   WorkspacesSidebar,
   type WorkspacesSidebarPersistKeys,
@@ -50,6 +51,7 @@ import {
   SortDescendingIcon,
   XIcon,
 } from '@phosphor-icons/react';
+import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
 
 export type WorkspaceLayoutMode = 'flat' | 'accordion';
 
@@ -261,6 +263,8 @@ export function WorkspacesSidebarContainer({
   } = useWorkspaceContext();
 
   const isMobile = useIsMobile();
+  const { hosts: remoteCloudHosts, activeHostId: activeRemoteHostId } =
+    useRemoteCloudHostsAppBarModel();
   const setMobileActiveTab = useUiPreferencesStore((s) => s.setMobileActiveTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [showArchive, setShowArchive] = usePersistedExpanded(
@@ -656,6 +660,26 @@ export function WorkspacesSidebarContainer({
     </>
   );
 
+  const activeRemoteHost = useMemo(() => {
+    if (remoteCloudHosts.length === 0) {
+      return null;
+    }
+
+    return (
+      remoteCloudHosts.find((host) => host.id === activeRemoteHostId) ??
+      remoteCloudHosts[0]
+    );
+  }, [activeRemoteHostId, remoteCloudHosts]);
+
+  const handleOpenRemoteHostSettings = useCallback(() => {
+    void SettingsDialog.show({
+      initialSection: 'relay',
+      ...(activeRemoteHostId
+        ? { initialState: { hostId: activeRemoteHostId } }
+        : {}),
+    });
+  }, [activeRemoteHostId]);
+
   return (
     <WorkspacesSidebar
       workspaces={paginatedActiveWorkspaces}
@@ -678,6 +702,8 @@ export function WorkspacesSidebarContainer({
       searchControls={searchControls}
       onOpenWorkspaceActions={handleOpenWorkspaceActions}
       persistKeys={sidebarPersistKeys}
+      activeRemoteHost={activeRemoteHost}
+      onOpenRemoteHostSettings={handleOpenRemoteHostSettings}
     />
   );
 }
