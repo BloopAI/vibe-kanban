@@ -26,8 +26,8 @@ use db::models::{
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
     repo::{Repo, RepoError},
     requests::{
-        CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, UpdateWorkspace,
-        WorkspaceRepoInput,
+        CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, CreateWorkspaceApiRequest,
+        UpdateWorkspace, WorkspaceRepoInput,
     },
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
@@ -46,11 +46,7 @@ use git::{ConflictOp, GitCliError, GitServiceError};
 use git2::BranchType;
 use serde::{Deserialize, Serialize};
 use services::services::{
-    container::ContainerService,
-    diff_stream,
-    image::ImageService,
-    remote_client::{RemoteClient, RemoteClientError},
-    remote_sync,
+    container::ContainerService, diff_stream, remote_client::RemoteClientError, remote_sync,
 };
 use sqlx::Error as SqlxError;
 use ts_rs::TS;
@@ -64,7 +60,7 @@ use crate::{
     middleware::load_workspace_middleware,
     routes::{
         relay_ws::{SignedWebSocket, SignedWsUpgrade},
-        task_attempts::gh_cli_setup::GhCliSetupError,
+        task_attempts::{gh_cli_setup::GhCliSetupError, images::import_issue_attachment_images},
     },
 };
 
@@ -136,6 +132,33 @@ pub struct AddWorkspaceRepoResponse {
     pub repo: RepoWithTargetBranch,
 }
 
+async fn create_workspace_record(
+    deployment: &DeploymentImpl,
+    name: Option<String>,
+) -> Result<Workspace, ApiError> {
+    let workspace_id = Uuid::new_v4();
+    let branch_label = name
+        .as_deref()
+        .filter(|branch_label| !branch_label.is_empty())
+        .unwrap_or("workspace");
+    let git_branch_name = deployment
+        .container()
+        .git_branch_from_workspace(&workspace_id, branch_label)
+        .await;
+
+    let workspace = Workspace::create(
+        &deployment.db().pool,
+        &CreateWorkspace {
+            branch: git_branch_name,
+            name: name.filter(|workspace_name| !workspace_name.is_empty()),
+        },
+        workspace_id,
+    )
+    .await?;
+
+    Ok(workspace)
+}
+
 pub async fn get_task_attempts(
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<Vec<Workspace>>>, ApiError> {
@@ -147,6 +170,24 @@ pub async fn get_task_attempts(
 pub async fn get_task_attempt(
     Extension(workspace): Extension<Workspace>,
 ) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    Ok(ResponseJson(ApiResponse::success(workspace)))
+}
+
+pub async fn create_workspace(
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<CreateWorkspaceApiRequest>,
+) -> Result<ResponseJson<ApiResponse<Workspace>>, ApiError> {
+    let workspace = create_workspace_record(&deployment, payload.name).await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "workspace_created",
+            serde_json::json!({
+                "workspace_id": workspace.id.to_string(),
+            }),
+        )
+        .await;
+
     Ok(ResponseJson(ApiResponse::success(workspace)))
 }
 
@@ -1342,6 +1383,7 @@ pub async fn stop_task_attempt_execution(
 pub enum RunScriptError {
     NoScriptConfigured,
     ProcessAlreadyRunning,
+    SessionRequired,
 }
 
 #[axum::debug_handler]
@@ -1375,17 +1417,12 @@ pub async fn run_setup_script(
         }
     };
 
-    // Get or create a session for setup script
     let session = match Session::find_latest_by_workspace_id(pool, workspace.id).await? {
-        Some(s) => s,
+        Some(session) => session,
         None => {
-            Session::create(
-                pool,
-                &CreateSession { executor: None },
-                Uuid::new_v4(),
-                workspace.id,
-            )
-            .await?
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RunScriptError::SessionRequired,
+            )));
         }
     };
 
@@ -1847,10 +1884,6 @@ pub async fn unlink_workspace(
 
 // ── Create-and-start (moved from tasks.rs) ──────────────────────────────────
 
-struct ImportedImage {
-    image_id: Uuid,
-}
-
 fn normalize_prompt(prompt: &str) -> Option<String> {
     let trimmed = prompt.trim();
     if trimmed.is_empty() {
@@ -1858,70 +1891,6 @@ fn normalize_prompt(prompt: &str) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
-}
-
-/// Downloads attachments from a remote issue and stores them in the local cache.
-async fn import_issue_attachments(
-    client: &RemoteClient,
-    image_service: &ImageService,
-    issue_id: Uuid,
-) -> anyhow::Result<Vec<ImportedImage>> {
-    let response = client.list_issue_attachments(issue_id).await?;
-
-    let mut imported = Vec::new();
-
-    for entry in response.attachments {
-        // Only import image types
-        let is_image = entry
-            .attachment
-            .mime_type
-            .as_ref()
-            .is_some_and(|m| m.starts_with("image/"));
-        if !is_image {
-            continue;
-        }
-
-        let file_url = match &entry.file_url {
-            Some(url) => url,
-            None => {
-                tracing::warn!(
-                    "No file_url for attachment {}, skipping",
-                    entry.attachment.id
-                );
-                continue;
-            }
-        };
-        let bytes = match client.download_from_url(file_url).await {
-            Ok(b) => b,
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to download attachment {}: {}",
-                    entry.attachment.id,
-                    e
-                );
-                continue;
-            }
-        };
-
-        let image = match image_service
-            .store_image(&bytes, &entry.attachment.original_name)
-            .await
-        {
-            Ok(img) => img,
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to store imported image '{}': {}",
-                    entry.attachment.original_name,
-                    e
-                );
-                continue;
-            }
-        };
-
-        imported.push(ImportedImage { image_id: image.id });
-    }
-
-    Ok(imported)
 }
 
 pub async fn create_and_start_workspace(
@@ -1949,26 +1918,10 @@ pub async fn create_and_start_workspace(
         ));
     }
 
-    let workspace_manager = deployment.workspace_manager();
-
-    let workspace_id = Uuid::new_v4();
-    let branch_label = name.as_deref().unwrap_or("workspace");
-    let git_branch_name = deployment
-        .container()
-        .git_branch_from_workspace(&workspace_id, branch_label)
-        .await;
-
-    let workspace = Workspace::create(
-        &deployment.db().pool,
-        &CreateWorkspace {
-            branch: git_branch_name,
-            name: name.clone().filter(|n| !n.is_empty()),
-        },
-        workspace_id,
-    )
-    .await?;
-
-    let mut managed_workspace = workspace_manager.load_managed_workspace(workspace).await?;
+    let mut managed_workspace = deployment
+        .workspace_manager()
+        .load_managed_workspace(create_workspace_record(&deployment, name).await?)
+        .await?;
 
     for repo in &repos {
         managed_workspace
@@ -1986,16 +1939,17 @@ pub async fn create_and_start_workspace(
     if let Some(linked_issue) = &linked_issue
         && let Ok(client) = deployment.remote_client()
     {
-        match import_issue_attachments(&client, deployment.image(), linked_issue.issue_id).await {
-            Ok(imported) if !imported.is_empty() => {
-                let imported_ids: Vec<Uuid> = imported.iter().map(|i| i.image_id).collect();
+        match import_issue_attachment_images(&client, deployment.image(), linked_issue.issue_id)
+            .await
+        {
+            Ok(imported_ids) if !imported_ids.is_empty() => {
                 if let Err(e) = managed_workspace.associate_images(&imported_ids).await {
                     tracing::warn!("Failed to associate imported images with workspace: {}", e);
                 }
 
                 tracing::info!(
                     "Imported {} images from issue {}",
-                    imported.len(),
+                    imported_ids.len(),
                     linked_issue.issue_id
                 );
             }
@@ -2083,7 +2037,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         );
 
     let task_attempts_router = Router::new()
-        .route("/", get(get_task_attempts))
+        .route("/", get(get_task_attempts).post(create_workspace))
         .route("/create-and-start", post(create_and_start_workspace))
         .route("/from-pr", post(pr::create_workspace_from_pr))
         .route("/stream/ws", get(stream_workspaces_ws))
