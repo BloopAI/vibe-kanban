@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use db::models::requests::{
     CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
     WorkspaceRepoInput,
 };
-use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
+use executors::profile::ExecutorConfig;
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -123,8 +121,7 @@ impl McpServer {
             }
         });
 
-        let normalized_executor = executor_trimmed.replace('-', "_").to_ascii_uppercase();
-        let base_executor = match BaseCodingAgent::from_str(&normalized_executor) {
+        let base_executor = match Self::parse_executor_agent(executor_trimmed) {
             Ok(exec) => exec,
             Err(_) => {
                 return Self::err(

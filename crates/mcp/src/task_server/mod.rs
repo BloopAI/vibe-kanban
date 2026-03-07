@@ -87,6 +87,13 @@ impl McpServer {
         let context = self.fetch_context_at_startup().await;
 
         if context.is_none() {
+            if let Some(orchestrator_session) = &self.orchestrator_session {
+                tracing::warn!(
+                    session_id = %orchestrator_session.id,
+                    workspace_id = %orchestrator_session.workspace_id,
+                    "VK orchestrator context unavailable at startup; get_context will not be registered"
+                );
+            }
             self.tool_router.map.remove("get_context");
             tracing::debug!("VK context not available, get_context tool will not be registered");
         } else {
@@ -149,6 +156,11 @@ impl McpServer {
         if let Some(orchestrator_session) = &self.orchestrator_session
             && orchestrator_session.workspace_id != workspace_id
         {
+            tracing::warn!(
+                configured_workspace_id = %orchestrator_session.workspace_id,
+                discovered_workspace_id = %workspace_id,
+                "VK orchestrator context workspace mismatch; disabling get_context"
+            );
             return None;
         }
 

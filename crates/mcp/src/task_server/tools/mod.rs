@@ -55,6 +55,17 @@ impl McpServer {
         self.context.as_ref().and_then(|ctx| ctx.session_id)
     }
 
+    fn scoped_workspace_id(&self) -> Option<Uuid> {
+        self.context
+            .as_ref()
+            .map(|ctx| ctx.workspace_id)
+            .or_else(|| {
+                self.orchestrator_session
+                    .as_ref()
+                    .map(|session| session.workspace_id)
+            })
+    }
+
     fn success<T: Serialize>(data: &T) -> Result<CallToolResult, ErrorData> {
         Ok(CallToolResult::success(vec![Content::text(
             serde_json::to_string_pretty(data)
@@ -154,7 +165,7 @@ impl McpServer {
 
     fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), CallToolResult> {
         if matches!(self.mode(), McpMode::Orchestrator)
-            && let Some(scoped_workspace_id) = self.context.as_ref().map(|ctx| ctx.workspace_id)
+            && let Some(scoped_workspace_id) = self.scoped_workspace_id()
             && scoped_workspace_id != workspace_id
         {
             return Err(Self::err(
@@ -329,13 +340,19 @@ impl McpServer {
             .await
     }
 
+    fn parse_executor_agent(executor: &str) -> Result<BaseCodingAgent, CallToolResult> {
+        let normalized = executor.replace('-', "_").to_ascii_uppercase();
+        BaseCodingAgent::from_str(&normalized).map_err(|_| {
+            Self::err(format!("Unknown executor '{executor}'."), None::<String>).unwrap()
+        })
+    }
+
     fn normalize_executor_name(executor: Option<&str>) -> Result<String, CallToolResult> {
         let Some(executor) = executor.map(str::trim).filter(|value| !value.is_empty()) else {
             return Ok("CODEX".to_string());
         };
 
-        let normalized = executor.replace('-', "_").to_ascii_uppercase();
-        BaseCodingAgent::from_str(&normalized)
+        Self::parse_executor_agent(executor)
             .map(|agent| agent.to_string())
             .map_err(|_| {
                 Self::err(
@@ -360,7 +377,9 @@ impl McpServer {
 mod tests {
     use std::{collections::BTreeSet, sync::Once};
 
+    use db::models::session::Session;
     use rmcp::handler::server::tool::ToolRouter;
+    use serde_json::json;
     use uuid::Uuid;
 
     use super::McpServer;
@@ -436,5 +455,32 @@ mod tests {
 
         assert_eq!(server.attached_session_id(), Some(session_id));
         assert_eq!(server.resolve_workspace_id(None).unwrap(), workspace_id);
+    }
+
+    #[test]
+    fn orchestrator_scope_falls_back_to_attached_session_when_context_is_missing() {
+        install_rustls_provider();
+        let workspace_id = Uuid::new_v4();
+        let server = McpServer {
+            client: reqwest::Client::new(),
+            base_url: "http://127.0.0.1:3000".to_string(),
+            tool_router: ToolRouter::default(),
+            context: None,
+            mode: McpMode::Orchestrator,
+            orchestrator_session: Some(
+                serde_json::from_value::<Session>(json!({
+                    "id": Uuid::new_v4(),
+                    "workspace_id": workspace_id,
+                    "executor": "CODEX",
+                    "agent_working_dir": null,
+                    "created_at": "2026-03-07T00:00:00Z",
+                    "updated_at": "2026-03-07T00:00:00Z"
+                }))
+                .expect("session fixture should deserialize"),
+            ),
+        };
+
+        assert!(server.scope_allows_workspace(workspace_id).is_ok());
+        assert!(server.scope_allows_workspace(Uuid::new_v4()).is_err());
     }
 }
