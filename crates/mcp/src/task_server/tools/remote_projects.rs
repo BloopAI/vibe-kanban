@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListProjectsRequest {
@@ -65,7 +65,7 @@ impl McpServer {
             .map(ProjectSummary::from_remote_project)
             .collect();
 
-        TaskServer::success(&McpListProjectsResponse {
+        McpServer::success(&McpListProjectsResponse {
             count: project_summaries.len(),
             projects: project_summaries,
         })

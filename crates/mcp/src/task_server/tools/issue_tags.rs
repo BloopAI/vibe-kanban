@@ -8,7 +8,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListTagsRequest {
@@ -116,7 +116,7 @@ impl McpServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListTagsResponse {
+        McpServer::success(&McpListTagsResponse {
             project_id: project_id.to_string(),
             count: tags.len(),
             tags,
@@ -144,7 +144,7 @@ impl McpServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListIssueTagsResponse {
+        McpServer::success(&McpListIssueTagsResponse {
             issue_id: issue_id.to_string(),
             count: issue_tags.len(),
             issue_tags,
@@ -169,7 +169,7 @@ impl McpServer {
                 Err(e) => return Ok(e),
             };
 
-        TaskServer::success(&McpAddIssueTagResponse {
+        McpServer::success(&McpAddIssueTagResponse {
             issue_tag_id: response.data.id.to_string(),
         })
     }
@@ -184,7 +184,7 @@ impl McpServer {
             return Ok(e);
         }
 
-        TaskServer::success(&McpRemoveIssueTagResponse {
+        McpServer::success(&McpRemoveIssueTagResponse {
             success: true,
             issue_tag_id: issue_tag_id.to_string(),
         })

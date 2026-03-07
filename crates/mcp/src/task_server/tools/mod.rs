@@ -11,7 +11,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use uuid::Uuid;
 
-use super::{ApiResponseEnvelope, McpMode, McpServer, TaskServer};
+use super::{ApiResponseEnvelope, McpMode, McpServer};
 
 mod context;
 mod issue_assignees;

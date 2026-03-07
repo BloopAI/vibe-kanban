@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct McpRepoSummary {
@@ -101,7 +101,7 @@ impl McpServer {
             repos: repo_summaries,
         };
 
-        TaskServer::success(&response)
+        McpServer::success(&response)
     }
 
     #[tool(
@@ -116,7 +116,7 @@ impl McpServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&RepoDetails {
+        McpServer::success(&RepoDetails {
             id: repo.id.to_string(),
             name: repo.name,
             display_name: repo.display_name,
@@ -148,7 +148,7 @@ impl McpServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "setup_script".to_string(),
@@ -177,7 +177,7 @@ impl McpServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "cleanup_script".to_string(),
@@ -206,7 +206,7 @@ impl McpServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "dev_server_script".to_string(),

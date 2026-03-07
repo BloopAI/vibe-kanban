@@ -51,8 +51,6 @@ pub struct McpServer {
     attached_session_id: Option<Uuid>,
 }
 
-pub type TaskServer = McpServer;
-
 impl McpServer {
     pub fn new_global(base_url: &str) -> Self {
         Self {

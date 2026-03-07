@@ -11,7 +11,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpCreateIssueRequest {
@@ -303,7 +303,7 @@ impl McpServer {
                 Err(e) => return Ok(e),
             };
 
-        TaskServer::success(&McpCreateIssueResponse {
+        McpServer::success(&McpCreateIssueResponse {
             issue_id: response.data.id.to_string(),
         })
     }
@@ -462,7 +462,7 @@ impl McpServer {
             ));
         }
 
-        TaskServer::success(&McpListIssuesResponse {
+        McpServer::success(&McpListIssuesResponse {
             total_count,
             returned_count: summaries.len(),
             limit,
@@ -487,7 +487,7 @@ impl McpServer {
 
         let pull_requests = self.fetch_pull_requests(issue_id).await;
         let details = self.issue_to_details(&issue, pull_requests).await;
-        TaskServer::success(&McpGetIssueResponse { issue: details })
+        McpServer::success(&McpGetIssueResponse { issue: details })
     }
 
     #[tool(
@@ -562,12 +562,12 @@ impl McpServer {
 
         let pull_requests = self.fetch_pull_requests(issue_id).await;
         let details = self.issue_to_details(&response.data, pull_requests).await;
-        TaskServer::success(&McpUpdateIssueResponse { issue: details })
+        McpServer::success(&McpUpdateIssueResponse { issue: details })
     }
 
     #[tool(description = "List allowed issue priority values.")]
     async fn list_issue_priorities(&self) -> Result<CallToolResult, ErrorData> {
-        TaskServer::success(&McpListIssuePrioritiesResponse {
+        McpServer::success(&McpListIssuePrioritiesResponse {
             priorities: ["urgent", "high", "medium", "low"]
                 .iter()
                 .map(|s| s.to_string())
@@ -585,7 +585,7 @@ impl McpServer {
             return Ok(e);
         }
 
-        TaskServer::success(&McpDeleteIssueResponse {
+        McpServer::success(&McpDeleteIssueResponse {
             deleted_issue_id: Some(issue_id.to_string()),
         })
     }

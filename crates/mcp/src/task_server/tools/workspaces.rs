@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -157,7 +157,7 @@ impl McpServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListWorkspacesResponse {
+        McpServer::success(&McpListWorkspacesResponse {
             returned_count: workspace_summaries.len(),
             total_count,
             limit,
@@ -198,7 +198,7 @@ impl McpServer {
             Err(e) => return Ok(e),
         };
 
-        TaskServer::success(&McpUpdateWorkspaceResponse {
+        McpServer::success(&McpUpdateWorkspaceResponse {
             success: true,
             workspace_id: updated.id.to_string(),
             archived: updated.archived,
@@ -240,7 +240,7 @@ impl McpServer {
             return Ok(e);
         }
 
-        TaskServer::success(&McpDeleteWorkspaceResponse {
+        McpServer::success(&McpDeleteWorkspaceResponse {
             success: true,
             workspace_id: workspace_id.to_string(),
             delete_remote,

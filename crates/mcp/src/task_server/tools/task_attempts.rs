@@ -12,7 +12,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpWorkspaceRepoInput {
@@ -221,7 +221,7 @@ impl McpServer {
             workspace_id: create_and_start_response.workspace.id.to_string(),
         };
 
-        TaskServer::success(&response)
+        McpServer::success(&response)
     }
 
     #[tool(
@@ -238,7 +238,7 @@ impl McpServer {
             return Ok(e);
         }
 
-        TaskServer::success(&LinkWorkspaceIssueResponse {
+        McpServer::success(&LinkWorkspaceIssueResponse {
             success: true,
             workspace_id: workspace_id.to_string(),
             issue_id: issue_id.to_string(),

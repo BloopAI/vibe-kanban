@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{McpServer, TaskServer};
+use super::McpServer;
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct OrganizationSummary {
@@ -83,7 +83,7 @@ impl McpServer {
             })
             .collect();
 
-        TaskServer::success(&McpListOrganizationsResponse {
+        McpServer::success(&McpListOrganizationsResponse {
             count: org_summaries.len(),
             organizations: org_summaries,
         })
@@ -124,7 +124,7 @@ impl McpServer {
             })
             .collect();
 
-        TaskServer::success(&McpListOrgMembersResponse {
+        McpServer::success(&McpListOrgMembersResponse {
             organization_id: organization_id.to_string(),
             count: members.len(),
             members,
