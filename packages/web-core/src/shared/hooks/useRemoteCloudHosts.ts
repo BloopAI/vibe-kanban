@@ -1,17 +1,16 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { AppBarHost } from '@vibe/ui/components/AppBar';
+import type { AppBarHost, AppBarHostStatus } from '@vibe/ui/components/AppBar';
 import type { PairRelayHostRequest, RelayPairedHost } from 'shared/types';
 import type { RelayHost } from 'shared/remote-types';
 import { relayApi } from '@/shared/lib/api';
 import { listRelayHosts } from '@/shared/lib/remoteApi';
 
-export type RemoteCloudHostStatus = 'online' | 'offline' | 'unpaired';
+export type RemoteCloudHostStatus = AppBarHostStatus;
 
 export interface RemoteCloudHost {
   id: string;
   name: string;
-  baseUrl: string;
   status: RemoteCloudHostStatus;
   pairedAt: string;
   lastUsedAt: string;
@@ -49,6 +48,16 @@ function writeActiveHostId(hostId: string | null): void {
   window.localStorage.setItem(ACTIVE_HOST_STORAGE_KEY, hostId);
 }
 
+function normalizeRemoteCloudHostStatus(
+  status: RelayHost['status'] | undefined
+): RemoteCloudHostStatus {
+  if (status === 'online' || status === 'offline' || status === 'unpaired') {
+    return status;
+  }
+
+  return 'offline';
+}
+
 async function fetchRemoteCloudHostsState(): Promise<RemoteCloudHostsState> {
   let pairedHosts: RelayPairedHost[] = [];
   try {
@@ -69,13 +78,12 @@ async function fetchRemoteCloudHostsState(): Promise<RemoteCloudHostsState> {
   const hosts = pairedHosts
     .map((host) => {
       const remoteHost = remoteHostsById.get(host.host_id);
-      const status = (remoteHost?.status ?? 'offline') as RemoteCloudHostStatus;
+      const status = normalizeRemoteCloudHostStatus(remoteHost?.status);
       const pairedAt = host.paired_at ?? '';
 
       return {
         id: host.host_id,
         name: remoteHost?.name ?? host.host_name ?? host.host_id,
-        baseUrl: host.host_id,
         status,
         pairedAt,
         lastUsedAt: pairedAt,

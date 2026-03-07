@@ -313,9 +313,7 @@ export function RemoteCloudHostsSettingsCard() {
                     <p className="text-sm font-medium text-high truncate">
                       {host.name}
                     </p>
-                    <p className="text-xs text-low truncate">
-                      {host.baseUrl || host.id}
-                    </p>
+                    <p className="text-xs text-low truncate">{host.id}</p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
