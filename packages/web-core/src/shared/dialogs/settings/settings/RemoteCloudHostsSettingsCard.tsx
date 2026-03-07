@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { SpinnerIcon } from '@phosphor-icons/react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
@@ -8,25 +9,31 @@ import {
   useRemoveRemoteCloudHostMutation,
   useSetActiveRemoteCloudHostMutation,
 } from '@/shared/hooks/useRemoteCloudHosts';
+import { relayApi } from '@/shared/lib/api';
 import {
   SettingsCard,
   SettingsField,
   SettingsInput,
+  SettingsSelect,
 } from './SettingsComponents';
 import { PairingCodeInput } from './PairingCodeInput';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
+import { useRelayRemoteHostsQuery } from './useRelayRemoteHostMutations';
 
 export function RemoteCloudHostsSettingsCard() {
   const { t } = useTranslation(['settings', 'common']);
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [hostName, setHostName] = useState('');
-  const [hostUrl, setHostUrl] = useState('');
+  const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
   const [pairingCode, setPairingCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [removingHostId, setRemovingHostId] = useState<string | null>(null);
   const [activatingHostId, setActivatingHostId] = useState<string | null>(null);
 
+  const { data: relayHosts = [], isLoading: relayHostsLoading } = useQuery({
+    ...useRelayRemoteHostsQuery(),
+  });
   const { data, isLoading } = useRemoteCloudHostsState();
   const { mutateAsync: pairHost, isPending: isPairing } =
     usePairRemoteCloudHostMutation();
@@ -34,6 +41,31 @@ export function RemoteCloudHostsSettingsCard() {
     useRemoveRemoteCloudHostMutation();
   const { mutateAsync: setActiveHost, isPending: isActivating } =
     useSetActiveRemoteCloudHostMutation();
+
+  useEffect(() => {
+    if (relayHosts.length === 0) {
+      setSelectedHostId(undefined);
+      return;
+    }
+
+    if (!selectedHostId) {
+      setSelectedHostId(relayHosts[0].id);
+      return;
+    }
+
+    if (!relayHosts.some((host) => host.id === selectedHostId)) {
+      setSelectedHostId(relayHosts[0].id);
+    }
+  }, [relayHosts, selectedHostId]);
+
+  const relayHostOptions = useMemo(
+    () =>
+      relayHosts.map((host) => ({
+        value: host.id,
+        label: host.name,
+      })),
+    [relayHosts]
+  );
 
   const connectedHosts = useMemo(() => {
     const hosts = data?.hosts ?? [];
@@ -47,13 +79,12 @@ export function RemoteCloudHostsSettingsCard() {
   }, [data?.activeHostId, data?.hosts]);
 
   const canSubmitPairing =
-    hostUrl.trim().length > 0 &&
+    !!selectedHostId &&
     normalizeEnrollmentCode(pairingCode).length === 6 &&
     !isPairing;
 
   const resetForm = () => {
     setHostName('');
-    setHostUrl('');
     setPairingCode('');
     setShowConnectForm(false);
   };
@@ -62,11 +93,41 @@ export function RemoteCloudHostsSettingsCard() {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    if (!selectedHostId) {
+      setErrorMessage(
+        t(
+          'settings.relay.remoteCloudHost.hostRequired',
+          'Select a host to connect.'
+        )
+      );
+      return;
+    }
+
+    const selectedHost = relayHosts.find((host) => host.id === selectedHostId);
+    if (!selectedHost) {
+      setErrorMessage(
+        t(
+          'settings.relay.remoteCloudHost.hostMissing',
+          'Selected host is no longer available.'
+        )
+      );
+      return;
+    }
+
+    const normalizedCode = normalizeEnrollmentCode(pairingCode);
+    const effectiveHostName = hostName.trim() || selectedHost.name;
+
     try {
+      await relayApi.pairRelayHost({
+        host_id: selectedHost.id,
+        host_name: effectiveHostName,
+        enrollment_code: normalizedCode,
+      });
       await pairHost({
-        hostName,
-        baseUrl: hostUrl,
-        pairingCode,
+        hostName: effectiveHostName,
+        // Temporary UI-model backing until backend host-state routes are added.
+        baseUrl: `https://${selectedHost.id}`,
+        pairingCode: normalizedCode,
       });
       setSuccessMessage(
         t(
@@ -126,7 +187,7 @@ export function RemoteCloudHostsSettingsCard() {
       )}
       description={t(
         'settings.relay.remoteCloudHost.description',
-        'Save remote cloud host connections locally with a host URL and pairing code. Backend integration will be wired next.'
+        'Pair remote hosts using enrollment codes. Host list/active-state backend sync is in progress.'
       )}
       headerAction={
         <PrimaryButton
@@ -155,16 +216,21 @@ export function RemoteCloudHostsSettingsCard() {
       {showConnectForm && (
         <div className="border border-border rounded-sm bg-secondary/40 p-4 space-y-4">
           <SettingsField
-            label={t('settings.relay.remoteCloudHost.urlLabel', 'Host URL')}
+            label={t('settings.relay.remoteCloudHost.hostLabel', 'Host')}
             description={t(
-              'settings.relay.remoteCloudHost.urlHelp',
-              'Example: https://remote.company.com'
+              'settings.relay.remoteCloudHost.hostHelp',
+              'Select a relay host to pair with this local instance.'
             )}
           >
-            <SettingsInput
-              value={hostUrl}
-              onChange={setHostUrl}
-              placeholder="https://remote.example.com"
+            <SettingsSelect
+              value={selectedHostId}
+              options={relayHostOptions}
+              onChange={setSelectedHostId}
+              placeholder={t(
+                'settings.relay.remoteCloudHost.hostPlaceholder',
+                relayHostsLoading ? 'Loading hosts...' : 'Select a host'
+              )}
+              disabled={relayHostsLoading || relayHostOptions.length === 0}
             />
           </SettingsField>
 
@@ -254,7 +320,9 @@ export function RemoteCloudHostsSettingsCard() {
                     <p className="text-sm font-medium text-high truncate">
                       {host.name}
                     </p>
-                    <p className="text-xs text-low truncate">{host.baseUrl}</p>
+                    <p className="text-xs text-low truncate">
+                      {host.baseUrl || host.id}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
