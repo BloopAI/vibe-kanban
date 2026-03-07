@@ -153,11 +153,11 @@ impl McpServer {
         if let Some(id) = explicit {
             return Ok(id);
         }
-        if let Some(ctx) = &self.context {
-            return Ok(ctx.workspace_id);
+        if let Some(workspace_id) = self.scoped_workspace_id() {
+            return Ok(workspace_id);
         }
         Err(Self::err(
-            "workspace_id is required (not available from workspace context)",
+            "workspace_id is required (not available from current MCP context)",
             None::<&str>,
         )
         .unwrap())
@@ -480,6 +480,7 @@ mod tests {
             ),
         };
 
+        assert_eq!(server.resolve_workspace_id(None).unwrap(), workspace_id);
         assert!(server.scope_allows_workspace(workspace_id).is_ok());
         assert!(server.scope_allows_workspace(Uuid::new_v4()).is_err());
     }

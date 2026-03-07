@@ -1,7 +1,6 @@
 use db::models::session::Session;
-use mcp::task_server::McpServer;
+use mcp::{ApiResponseEnvelope, task_server::McpServer};
 use rmcp::{ServiceExt, transport::stdio};
-use serde::Deserialize;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     port_file::read_port_file,
@@ -22,13 +21,6 @@ enum McpLaunchMode {
 struct LaunchConfig {
     mode: McpLaunchMode,
     session_id: Option<Uuid>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ApiResponseEnvelope<T> {
-    success: bool,
-    data: Option<T>,
-    message: Option<String>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -127,6 +119,15 @@ fn parse_uuid_arg(value: &str) -> anyhow::Result<Uuid> {
 }
 
 async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
+    if let Ok(url) = std::env::var("VIBE_BACKEND_URL") {
+        tracing::info!(
+            "[{}] Using backend URL from VIBE_BACKEND_URL: {}",
+            log_prefix,
+            url
+        );
+        return Ok(url);
+    }
+
     let host = std::env::var(HOST_ENV)
         .or_else(|_| std::env::var("HOST"))
         .unwrap_or_else(|_| "127.0.0.1".to_string());

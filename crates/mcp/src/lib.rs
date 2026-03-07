@@ -1,10 +1,10 @@
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
-pub(crate) struct ApiResponseEnvelope<T> {
-    pub(crate) success: bool,
-    pub(crate) data: Option<T>,
-    pub(crate) message: Option<String>,
+pub struct ApiResponseEnvelope<T> {
+    pub success: bool,
+    pub data: Option<T>,
+    pub message: Option<String>,
 }
 
 pub mod task_server;
