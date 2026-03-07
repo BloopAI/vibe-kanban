@@ -2,6 +2,7 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { HttpsProxyAgent } = require("https-proxy-agent");
 
 // Replaced during npm pack by workflow
 const R2_BASE_URL = "__R2_PUBLIC_URL__";
@@ -13,9 +14,36 @@ const CACHE_DIR = path.join(require("os").homedir(), ".vibe-kanban", "bin");
 const LOCAL_DIST_DIR = path.join(__dirname, "..", "dist");
 const LOCAL_DEV_MODE = fs.existsSync(LOCAL_DIST_DIR) || process.env.VIBE_KANBAN_LOCAL === "1";
 
+/**
+ * Returns an HttpsProxyAgent if a proxy is configured for the given URL,
+ * respecting HTTPS_PROXY / HTTP_PROXY and NO_PROXY (all case-insensitive).
+ */
+function getProxyAgent(urlString) {
+  const proxyUrl =
+    process.env.HTTPS_PROXY ||
+    process.env.https_proxy ||
+    process.env.HTTP_PROXY ||
+    process.env.http_proxy;
+
+  if (!proxyUrl) return undefined;
+
+  const noProxy = process.env.NO_PROXY || process.env.no_proxy;
+  if (noProxy) {
+    const hostname = new URL(urlString).hostname;
+    const entries = noProxy.split(",").map((s) => s.trim()).filter(Boolean);
+    for (const entry of entries) {
+      if (entry === "*") return undefined;
+      if (hostname === entry || hostname.endsWith("." + entry)) return undefined;
+    }
+  }
+
+  return new HttpsProxyAgent(proxyUrl);
+}
+
 async function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const agent = getProxyAgent(url);
+    https.get(url, agent ? { agent } : {}, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         return fetchJson(res.headers.location).then(resolve).catch(reject);
       }
@@ -47,7 +75,8 @@ async function downloadFile(url, destPath, expectedSha256, onProgress) {
       } catch {}
     };
 
-    https.get(url, (res) => {
+    const agent = getProxyAgent(url);
+    https.get(url, agent ? { agent } : {}, (res) => {
       if (res.statusCode === 301 || res.statusCode === 302) {
         file.close();
         cleanup();
