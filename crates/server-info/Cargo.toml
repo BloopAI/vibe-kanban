@@ -1,6 +1,6 @@
 [package]
 name = "server-info"
-version = "0.1.25-pthis.3"
+version = "0.1.25-pthis.4"
 edition = "2024"
 
 [dependencies]
