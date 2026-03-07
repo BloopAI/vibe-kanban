@@ -21,7 +21,6 @@ use crate::{
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route("/open-remote-editor", post(open_remote_editor))
         .route(
             "/open-remote-editor/workspace",
             post(open_remote_workspace_in_editor),
@@ -30,15 +29,6 @@ pub fn router() -> Router<DeploymentImpl> {
             "/open-remote-editor/credentials",
             put(upsert_open_remote_editor_credentials),
         )
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct OpenRemoteEditorRequest {
-    pub host_id: Uuid,
-    pub browser_session_id: Uuid,
-    pub workspace_path: String,
-    #[serde(default)]
-    pub editor_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -59,26 +49,6 @@ pub struct UpsertRelayHostCredentialsRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct UpsertRelayHostCredentialsResponse {
     pub upserted: bool,
-}
-
-pub async fn open_remote_editor(
-    State(deployment): State<DeploymentImpl>,
-    Json(req): Json<OpenRemoteEditorRequest>,
-) -> Response {
-    let signing_ctx = match get_signing_ctx(&deployment, req.host_id).await {
-        Ok(signing_ctx) => signing_ctx,
-        Err(response) => return response,
-    };
-
-    open_remote_editor_with_workspace_path(
-        &deployment,
-        signing_ctx,
-        req.workspace_path,
-        req.editor_type,
-        req.host_id,
-        req.browser_session_id,
-    )
-    .await
 }
 
 pub async fn open_remote_workspace_in_editor(
