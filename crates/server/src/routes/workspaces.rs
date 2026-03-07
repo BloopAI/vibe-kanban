@@ -197,7 +197,6 @@ pub enum RenameBranchError {
 pub enum RunScriptError {
     NoScriptConfigured,
     ProcessAlreadyRunning,
-    SessionRequired,
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
