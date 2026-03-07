@@ -50,6 +50,31 @@ Add the following configuration to your agent's MCP servers configuration:
 }
 ```
 
+`--mcp` launches the local MCP stdio server. Any additional arguments after `--mcp` are passed through to the `vibe-kanban-mcp` binary.
+
+For example, orchestrator mode can be launched with:
+
+```json
+{
+  "mcpServers": {
+    "vibe_kanban_orchestrator": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "vibe-kanban@latest",
+        "--mcp",
+        "--mode",
+        "orchestrator",
+        "--session-id",
+        "123e4567-e89b-12d3-a456-426614174000"
+      ]
+    }
+  }
+}
+```
+
+`--session-id` is required in orchestrator mode. If you only specify `--mcp`, the server defaults to `global` mode.
+
 ## Available MCP Tools
 
 The Vibe Kanban MCP server provides tools for managing organisations, projects, issues, workspaces, and task execution.
