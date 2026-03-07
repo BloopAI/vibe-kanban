@@ -334,7 +334,7 @@ impl McpServer {
         let issue_url = self.url(&format!("/api/remote/issues/{}", issue_id));
         let issue: Issue = self.send_json(self.client.get(&issue_url)).await?;
 
-        let link_url = self.url(&format!("/api/workspaces/{}/link", workspace_id));
+        let link_url = self.url(&format!("/api/workspaces/{}/links", workspace_id));
         let link_payload = serde_json::json!({
             "project_id": issue.project_id,
             "issue_id": issue_id,

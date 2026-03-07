@@ -1,0 +1,95 @@
+use api_types::{CreateWorkspaceRequest, PullRequestStatus, UpsertPullRequestRequest};
+use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
+use db::models::{
+    merge::{Merge, MergeStatus},
+    workspace::Workspace,
+};
+use deployment::Deployment;
+use services::services::{diff_stream, remote_client::RemoteClientError, remote_sync};
+use utils::response::ApiResponse;
+
+use super::LinkWorkspaceRequest;
+use crate::{DeploymentImpl, error::ApiError};
+
+pub async fn link_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Json(payload): Json<LinkWorkspaceRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    let stats =
+        diff_stream::compute_diff_stats(&deployment.db().pool, deployment.git(), &workspace).await;
+
+    client
+        .create_workspace(CreateWorkspaceRequest {
+            project_id: payload.project_id,
+            local_workspace_id: workspace.id,
+            issue_id: payload.issue_id,
+            name: workspace.name.clone(),
+            archived: Some(workspace.archived),
+            files_changed: stats.as_ref().map(|s| s.files_changed as i32),
+            lines_added: stats.as_ref().map(|s| s.lines_added as i32),
+            lines_removed: stats.as_ref().map(|s| s.lines_removed as i32),
+        })
+        .await?;
+
+    {
+        let pool = deployment.db().pool.clone();
+        let ws_id = workspace.id;
+        let client = client.clone();
+        tokio::spawn(async move {
+            let merges = match Merge::find_by_workspace_id(&pool, ws_id).await {
+                Ok(m) => m,
+                Err(e) => {
+                    tracing::error!(
+                        "Failed to fetch merges for workspace {} during link: {}",
+                        ws_id,
+                        e
+                    );
+                    return;
+                }
+            };
+            for merge in merges {
+                if let Merge::Pr(pr_merge) = merge {
+                    let pr_status = match pr_merge.pr_info.status {
+                        MergeStatus::Open => PullRequestStatus::Open,
+                        MergeStatus::Merged => PullRequestStatus::Merged,
+                        MergeStatus::Closed => PullRequestStatus::Closed,
+                        MergeStatus::Unknown => continue,
+                    };
+                    remote_sync::sync_pr_to_remote(
+                        &client,
+                        UpsertPullRequestRequest {
+                            url: pr_merge.pr_info.url,
+                            number: pr_merge.pr_info.number as i32,
+                            status: pr_status,
+                            merged_at: pr_merge.pr_info.merged_at,
+                            merge_commit_sha: pr_merge.pr_info.merge_commit_sha,
+                            target_branch_name: pr_merge.target_branch_name,
+                            local_workspace_id: ws_id,
+                        },
+                    )
+                    .await;
+                }
+            }
+        });
+    }
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+pub async fn unlink_workspace(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let client = deployment.remote_client()?;
+
+    match client.delete_workspace(workspace.id).await {
+        Ok(()) => Ok(ResponseJson(ApiResponse::success(()))),
+        Err(RemoteClientError::Http { status: 404, .. }) => {
+            Ok(ResponseJson(ApiResponse::success(())))
+        }
+        Err(e) => Err(e.into()),
+    }
+}

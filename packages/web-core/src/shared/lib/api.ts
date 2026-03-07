@@ -345,7 +345,7 @@ export const workspacesApi = {
   createAndStart: async (
     data: CreateAndStartWorkspaceRequest
   ): Promise<CreateAndStartWorkspaceResponse> => {
-    const response = await makeRequest(`/api/workspaces/create-and-start`, {
+    const response = await makeRequest(`/api/workspaces/start`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -391,9 +391,12 @@ export const workspacesApi = {
   },
 
   stop: async (workspaceId: string): Promise<void> => {
-    const response = await makeRequest(`/api/workspaces/${workspaceId}/stop`, {
-      method: 'POST',
-    });
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/execution/stop`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
@@ -418,7 +421,7 @@ export const workspacesApi = {
     projectId: string,
     issueId: string
   ): Promise<void> => {
-    const response = await makeRequest(`/api/workspaces/${workspaceId}/link`, {
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/links`, {
       method: 'POST',
       body: JSON.stringify({ project_id: projectId, issue_id: issueId }),
     });
@@ -426,10 +429,9 @@ export const workspacesApi = {
   },
 
   unlinkFromIssue: async (workspaceId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/unlink`,
-      { method: 'POST' }
-    );
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/links`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 
@@ -438,7 +440,7 @@ export const workspacesApi = {
     data: RunAgentSetupRequest
   ): Promise<RunAgentSetupResponse> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/run-agent-setup`,
+      `/api/workspaces/${workspaceId}/integration/agent/setup`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -452,7 +454,7 @@ export const workspacesApi = {
     data: OpenEditorRequest
   ): Promise<OpenEditorResponse> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/open-editor`,
+      `/api/workspaces/${workspaceId}/integration/editor/open`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -463,7 +465,7 @@ export const workspacesApi = {
 
   getBranchStatus: async (workspaceId: string): Promise<RepoBranchStatus[]> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/branch-status`
+      `/api/workspaces/${workspaceId}/git/status`
     );
     return handleApiResponse<RepoBranchStatus[]>(response);
   },
@@ -475,7 +477,7 @@ export const workspacesApi = {
 
   getFirstUserMessage: async (workspaceId: string): Promise<string | null> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/first-message`
+      `/api/workspaces/${workspaceId}/messages/first`
     );
     return handleApiResponse<string | null>(response);
   },
@@ -484,10 +486,13 @@ export const workspacesApi = {
     workspaceId: string,
     data: MergeWorkspaceRequest
   ): Promise<void> => {
-    const response = await makeRequest(`/api/workspaces/${workspaceId}/merge`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/git/merge`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
@@ -495,10 +500,13 @@ export const workspacesApi = {
     workspaceId: string,
     data: PushWorkspaceRequest
   ): Promise<Result<void, PushError>> => {
-    const response = await makeRequest(`/api/workspaces/${workspaceId}/push`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/git/push`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponseAsResult<void, PushError>(response);
   },
 
@@ -507,7 +515,7 @@ export const workspacesApi = {
     data: PushWorkspaceRequest
   ): Promise<Result<void, PushError>> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/push/force`,
+      `/api/workspaces/${workspaceId}/git/push/force`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -521,7 +529,7 @@ export const workspacesApi = {
     data: RebaseWorkspaceRequest
   ): Promise<Result<void, GitOperationError>> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/rebase`,
+      `/api/workspaces/${workspaceId}/git/rebase`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -535,9 +543,9 @@ export const workspacesApi = {
     data: ChangeTargetBranchRequest
   ): Promise<ChangeTargetBranchResponse> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/change-target-branch`,
+      `/api/workspaces/${workspaceId}/git/target-branch`,
       {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(data),
       }
     );
@@ -552,9 +560,9 @@ export const workspacesApi = {
       new_branch_name: newBranchName,
     };
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/rename-branch`,
+      `/api/workspaces/${workspaceId}/git/branch`,
       {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(payload),
       }
     );
@@ -566,7 +574,7 @@ export const workspacesApi = {
     data: AbortConflictsRequest
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/conflicts/abort`,
+      `/api/workspaces/${workspaceId}/git/conflicts/abort`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -580,7 +588,7 @@ export const workspacesApi = {
     data: ContinueRebaseRequest
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/rebase/continue`,
+      `/api/workspaces/${workspaceId}/git/rebase/continue`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -593,10 +601,13 @@ export const workspacesApi = {
     workspaceId: string,
     data: CreatePrApiRequest
   ): Promise<Result<string, PrError>> => {
-    const response = await makeRequest(`/api/workspaces/${workspaceId}/pr`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/pull-requests`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponseAsResult<string, PrError>(response);
   },
 
@@ -606,7 +617,7 @@ export const workspacesApi = {
     data: AttachExistingPrRequest
   ): Promise<Result<AttachPrResponse, PrError>> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/pr/attach`,
+      `/api/workspaces/${workspaceId}/pull-requests/attach`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -617,7 +628,7 @@ export const workspacesApi = {
 
   startDevServer: async (workspaceId: string): Promise<ExecutionProcess[]> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/start-dev-server`,
+      `/api/workspaces/${workspaceId}/execution/dev-server/start`,
       {
         method: 'POST',
       }
@@ -627,7 +638,7 @@ export const workspacesApi = {
 
   setupGhCli: async (workspaceId: string): Promise<ExecutionProcess> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/gh-cli-setup`,
+      `/api/workspaces/${workspaceId}/integration/github/cli/setup`,
       {
         method: 'POST',
       }
@@ -655,7 +666,7 @@ export const workspacesApi = {
     workspaceId: string
   ): Promise<Result<ExecutionProcess, RunScriptError>> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/run-cleanup-script`,
+      `/api/workspaces/${workspaceId}/execution/cleanup`,
       {
         method: 'POST',
       }
@@ -669,7 +680,7 @@ export const workspacesApi = {
     workspaceId: string
   ): Promise<Result<ExecutionProcess, RunScriptError>> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/run-archive-script`,
+      `/api/workspaces/${workspaceId}/execution/archive`,
       {
         method: 'POST',
       }
@@ -684,19 +695,16 @@ export const workspacesApi = {
     repoId: string
   ): Promise<PrCommentsResponse> => {
     const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/pr/comments?repo_id=${encodeURIComponent(repoId)}`
+      `/api/workspaces/${workspaceId}/pull-requests/comments?repo_id=${encodeURIComponent(repoId)}`
     );
     return handleApiResponse<PrCommentsResponse>(response);
   },
 
   /** Mark all coding agent turns for a workspace as seen */
   markSeen: async (workspaceId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/workspaces/${workspaceId}/mark-seen`,
-      {
-        method: 'PUT',
-      }
-    );
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/seen`, {
+      method: 'PUT',
+    });
     return handleApiResponse<void>(response);
   },
 

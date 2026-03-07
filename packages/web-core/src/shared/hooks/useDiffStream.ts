@@ -27,7 +27,7 @@ export const useDiffStream = (
 ): UseDiffStreamResult => {
   const endpoint = (() => {
     if (!workspaceId) return undefined;
-    const query = `/api/workspaces/${workspaceId}/diff/ws`;
+    const query = `/api/workspaces/${workspaceId}/git/diff/ws`;
     if (typeof options?.statsOnly === 'boolean') {
       const params = new URLSearchParams();
       params.set('stats_only', String(options.statsOnly));
