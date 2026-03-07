@@ -83,9 +83,10 @@ struct PendingHandoff {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RelayHostCredentials {
     pub signing_session_id: String,
-    pub private_key_jwk: serde_json::Value,
     pub host_name: Option<String>,
     pub paired_at: Option<String>,
+    pub client_id: Option<String>,
+    pub server_public_key_b64: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -434,9 +435,10 @@ impl LocalDeployment {
         &self,
         host_id: Uuid,
         signing_session_id: String,
-        private_key_jwk: serde_json::Value,
         host_name: Option<String>,
         paired_at: Option<String>,
+        client_id: Option<String>,
+        server_public_key_b64: Option<String>,
     ) -> anyhow::Result<()> {
         let mut credentials = self.relay_host_credentials.write().await;
         let existing = credentials.get(&host_id).cloned();
@@ -444,11 +446,17 @@ impl LocalDeployment {
             host_id,
             RelayHostCredentials {
                 signing_session_id,
-                private_key_jwk,
                 host_name: host_name
                     .or_else(|| existing.as_ref().and_then(|value| value.host_name.clone())),
                 paired_at: paired_at
                     .or_else(|| existing.as_ref().and_then(|value| value.paired_at.clone())),
+                client_id: client_id
+                    .or_else(|| existing.as_ref().and_then(|value| value.client_id.clone())),
+                server_public_key_b64: server_public_key_b64.or_else(|| {
+                    existing
+                        .as_ref()
+                        .and_then(|value| value.server_public_key_b64.clone())
+                }),
             },
         );
 

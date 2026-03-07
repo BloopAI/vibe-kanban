@@ -15,7 +15,7 @@ use utils::{
 
 use crate::{
     DeploymentImpl,
-    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
 };
 
 pub async fn respond_to_approval(
@@ -60,7 +60,7 @@ pub async fn stream_approvals_ws(
 }
 
 async fn handle_approvals_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
 ) -> anyhow::Result<()> {
     let mut stream = deployment.approvals().patch_stream();

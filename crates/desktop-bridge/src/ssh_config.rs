@@ -11,13 +11,16 @@ use ed25519_dalek::SigningKey;
 use sha2::{Digest, Sha256};
 use ssh_key::private::{Ed25519Keypair, Ed25519PrivateKey, KeypairData};
 
-/// Provision an SSH identity for the given signing key.
+/// Provision an SSH identity for the given signing key and remote host.
 ///
 /// Writes the OpenSSH PEM private key to `~/.vk-ssh/keys/{hash}` and returns
-/// the path and the host alias (`vk-{hash}`).
-pub fn provision_ssh_key(signing_key: &SigningKey) -> anyhow::Result<(PathBuf, String)> {
+/// the path and the host alias (`vk-{host_id}`).
+pub fn provision_ssh_key(
+    signing_key: &SigningKey,
+    host_id: &str,
+) -> anyhow::Result<(PathBuf, String)> {
     let key_hash = short_key_hash(signing_key);
-    let alias = format!("vk-{key_hash}");
+    let alias = format!("vk-{host_id}");
 
     let ssh_dir = vk_ssh_dir()?;
     let keys_dir = ssh_dir.join("keys");

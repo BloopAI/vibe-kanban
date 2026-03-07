@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use desktop_bridge::signing::SigningContext;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     relay::{
-        client::{RelayApiClient, get_signed_relay_api},
+        api::{RelayApiClient, get_signed_relay_api},
         relay_session_url,
     },
 };
@@ -38,10 +38,13 @@ pub async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
-    let signing_ctx = match get_signing_ctx(&deployment, req.host_id).await {
-        Ok(signing_ctx) => signing_ctx,
+    let host_signing = match get_host_signing_info(&deployment, req.host_id).await {
+        Ok(info) => info,
         Err(response) => return response,
     };
+
+    let signing_key = deployment.relay_signing().signing_key().clone();
+    let signing_session_id = host_signing.signing_session_id;
 
     let remote_session = match create_relay_remote_session(&deployment, req.host_id).await {
         Ok(remote_session) => remote_session,
@@ -67,7 +70,8 @@ pub async fn open_remote_workspace_in_editor(
         req.host_id,
         remote_session.id,
         &format!("/api/task-attempts/{}/editor-path", req.workspace_id),
-        &signing_ctx,
+        &signing_key,
+        &signing_session_id,
     )
     .await
     {
@@ -91,70 +95,7 @@ pub async fn open_remote_workspace_in_editor(
         }
     };
 
-    open_remote_editor_with_workspace_path(
-        &deployment,
-        signing_ctx,
-        editor_path.workspace_path,
-        req.editor_type,
-        req.host_id,
-        remote_session.id,
-    )
-    .await
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct RelayEditorPathResponse {
-    workspace_path: String,
-}
-
-async fn create_relay_remote_session(
-    deployment: &DeploymentImpl,
-    host_id: Uuid,
-) -> anyhow::Result<crate::relay::client::RemoteSession> {
-    let remote_client = deployment.remote_client()?;
-    let access_token = remote_client.access_token().await?;
-    let relay_client = RelayApiClient::new(access_token);
-    relay_client.create_session(host_id).await
-}
-
-async fn get_signing_ctx(
-    deployment: &DeploymentImpl,
-    host_id: Uuid,
-) -> Result<SigningContext, Response> {
-    let Some(credentials) = deployment.get_relay_host_credentials(host_id).await else {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::<
-                desktop_bridge::service::OpenRemoteEditorResponse,
-            >::error(&format!(
-                "Open-in-IDE credentials are unavailable for host '{host_id}'"
-            ))),
-        )
-            .into_response());
-    };
-
-    SigningContext::from_jwk(credentials.signing_session_id, &credentials.private_key_jwk).map_err(
-        |error| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<
-                    desktop_bridge::service::OpenRemoteEditorResponse,
-                >::error(&error.to_string())),
-            )
-                .into_response()
-        },
-    )
-}
-
-async fn open_remote_editor_with_workspace_path(
-    deployment: &DeploymentImpl,
-    signing_ctx: SigningContext,
-    workspace_path: String,
-    editor_type: Option<String>,
-    host_id: Uuid,
-    browser_session_id: Uuid,
-) -> Response {
-    let relay_url = match relay_session_url(host_id, browser_session_id) {
+    let relay_url = match relay_session_url(req.host_id, remote_session.id) {
         Some(url) => url,
         None => {
             return (
@@ -171,7 +112,12 @@ async fn open_remote_editor_with_workspace_path(
 
     let local_port = match deployment
         .tunnel_manager()
-        .get_or_create_ssh_tunnel(&relay_url, &signing_ctx)
+        .get_or_create_ssh_tunnel(
+            &relay_url,
+            &signing_key,
+            &signing_session_id,
+            host_signing.server_verify_key,
+        )
         .await
     {
         Ok(port) => port,
@@ -189,9 +135,10 @@ async fn open_remote_editor_with_workspace_path(
 
     match desktop_bridge::service::open_remote_editor(
         local_port,
-        &signing_ctx.signing_key,
-        &workspace_path,
-        editor_type.as_deref(),
+        &signing_key,
+        &req.host_id.to_string(),
+        &editor_path.workspace_path,
+        req.editor_type.as_deref(),
     ) {
         Ok(response) => (
             StatusCode::OK,
@@ -211,4 +158,62 @@ async fn open_remote_editor_with_workspace_path(
                 .into_response()
         }
     }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RelayEditorPathResponse {
+    workspace_path: String,
+}
+
+async fn create_relay_remote_session(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+) -> anyhow::Result<crate::relay::api::RemoteSession> {
+    let remote_client = deployment.remote_client()?;
+    let access_token = remote_client.access_token().await?;
+    let relay_client = RelayApiClient::new(access_token);
+    relay_client.create_session(host_id).await
+}
+
+struct HostSigningInfo {
+    signing_session_id: String,
+    server_verify_key: ed25519_dalek::VerifyingKey,
+}
+
+async fn get_host_signing_info(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+) -> Result<HostSigningInfo, Response> {
+    let Some(credentials) = deployment.get_relay_host_credentials(host_id).await else {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::<
+                desktop_bridge::service::OpenRemoteEditorResponse,
+            >::error(&format!(
+                "Open-in-IDE credentials are unavailable for host '{host_id}'"
+            ))),
+        )
+            .into_response());
+    };
+
+    let server_verify_key = credentials
+        .server_public_key_b64
+        .as_deref()
+        .and_then(|key| trusted_key_auth::trusted_keys::parse_public_key_base64(key).ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Host pairing is missing signing metadata. Re-pair it."
+                )),
+            )
+                .into_response()
+        })?;
+
+    Ok(HostSigningInfo {
+        signing_session_id: credentials.signing_session_id,
+        server_verify_key,
+    })
 }

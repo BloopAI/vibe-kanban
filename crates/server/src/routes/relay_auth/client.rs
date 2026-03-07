@@ -6,13 +6,9 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
-use base64::{
-    Engine as _,
-    engine::general_purpose::{STANDARD as BASE64_STANDARD, URL_SAFE_NO_PAD},
-};
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use chrono::Utc;
-use ed25519_dalek::SigningKey;
-use rand::rngs::OsRng;
+use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
 use trusted_key_auth::{
@@ -28,7 +24,7 @@ use super::types::{
     FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
     StartSpake2EnrollmentResponse,
 };
-use crate::{DeploymentImpl, relay::client::RelayApiClient};
+use crate::{DeploymentImpl, relay::api::RelayApiClient};
 
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
@@ -94,9 +90,10 @@ pub async fn pair_relay_host(
         .upsert_relay_host_credentials(
             req.host_id,
             paired_credentials.signing_session_id,
-            paired_credentials.private_key_jwk,
             Some(req.host_name.clone()),
             Some(Utc::now().to_rfc3339()),
+            Some(paired_credentials.client_id),
+            Some(paired_credentials.server_public_key_b64),
         )
         .await
     {
@@ -171,7 +168,8 @@ pub async fn remove_relay_paired_host(
 #[derive(Debug, Clone)]
 struct PairedCredentials {
     signing_session_id: String,
-    private_key_jwk: serde_json::Value,
+    client_id: String,
+    server_public_key_b64: String,
 }
 
 async fn pair_relay_host_credentials(
@@ -214,8 +212,7 @@ async fn pair_relay_host_credentials(
         .finish(&server_message)
         .map_err(|_| anyhow::anyhow!("Failed to complete relay PAKE handshake"))?;
 
-    let mut csprng = OsRng;
-    let signing_key = SigningKey::generate(&mut csprng);
+    let signing_key = deployment.relay_signing().signing_key();
     let browser_public_key = signing_key.verifying_key();
     let browser_public_key_b64 = BASE64_STANDARD.encode(browser_public_key.as_bytes());
     let client_proof_b64 = build_client_proof(
@@ -226,13 +223,14 @@ async fn pair_relay_host_credentials(
     .map_err(|_| anyhow::anyhow!("Failed to build relay PAKE client proof"))?;
 
     let os = os_info::get();
+    let client_id = Uuid::new_v4();
     let finish_response: FinishSpake2EnrollmentResponse = relay_client
         .post_session_api(
             &relay_browser_session,
             "/api/relay-auth/server/spake2/finish",
             &FinishSpake2EnrollmentRequest {
                 enrollment_id: start_response.enrollment_id,
-                client_id: Uuid::new_v4(),
+                client_id,
                 client_name: format!("Vibe Kanban Relay Pairing ({})", req.host_name),
                 client_browser: "local-backend".to_string(),
                 client_os: format!("{} {}", os.os_type(), os.version()),
@@ -257,18 +255,7 @@ async fn pair_relay_host_credentials(
 
     Ok(PairedCredentials {
         signing_session_id: finish_response.signing_session_id.to_string(),
-        private_key_jwk: signing_key_to_jwk(&signing_key),
-    })
-}
-
-fn signing_key_to_jwk(signing_key: &SigningKey) -> serde_json::Value {
-    let public_key = signing_key.verifying_key();
-    serde_json::json!({
-        "kty": "OKP",
-        "crv": "Ed25519",
-        "x": URL_SAFE_NO_PAD.encode(public_key.as_bytes()),
-        "d": URL_SAFE_NO_PAD.encode(signing_key.to_bytes()),
-        "key_ops": ["sign"],
-        "ext": true
+        client_id: client_id.to_string(),
+        server_public_key_b64: finish_response.server_public_key_b64,
     })
 }

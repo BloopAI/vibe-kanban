@@ -11,6 +11,8 @@ const HOST_RUNTIME_API_PREFIXES = [
   '/api/images',
   '/api/approvals',
   '/api/search',
+  '/api/terminal',
+  '/api/scratch',
   '/api/agents/discovered-options/ws',
   '/api/agents/preset-options',
 ] as const;

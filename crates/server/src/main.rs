@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, relay::host, routes};
+use server::{DeploymentImpl, preview_proxy, relay::registration, routes};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
@@ -172,10 +172,10 @@ async fn main() -> Result<(), VibeKanbanError> {
     deployment.server_info().set_port(actual_main_port).await;
     let relay_host_name = {
         let config = deployment.config().read().await;
-        host::effective_relay_host_name(&config, deployment.user_id())
+        registration::effective_relay_host_name(&config, deployment.user_id())
     };
     deployment.server_info().set_hostname(relay_host_name).await;
-    host::spawn_relay(&deployment).await;
+    registration::spawn_relay(&deployment).await;
 
     tokio::select! {
         _ = shutdown_signal() => {

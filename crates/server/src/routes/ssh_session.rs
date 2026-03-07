@@ -1,15 +1,12 @@
-use axum::{
-    extract::{State, ws::WebSocketUpgrade},
-    response::Response,
-};
+use axum::{extract::State, response::IntoResponse};
 use deployment::Deployment;
 
-use crate::DeploymentImpl;
+use crate::{DeploymentImpl, middleware::signed_ws::SignedWsUpgrade};
 
 pub async fn ssh_session_ws(
     State(deployment): State<DeploymentImpl>,
-    ws: WebSocketUpgrade,
-) -> Response {
+    ws: SignedWsUpgrade,
+) -> impl IntoResponse {
     let ssh_config = deployment.ssh_config().clone();
     let relay_signing = deployment.relay_signing().clone();
 

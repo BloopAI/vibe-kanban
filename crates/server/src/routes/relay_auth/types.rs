@@ -32,3 +32,16 @@ pub struct FinishSpake2EnrollmentResponse {
     pub(crate) server_public_key_b64: String,
     pub(crate) server_proof_b64: String,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct RefreshRelaySigningSessionRequest {
+    pub client_id: Uuid,
+    pub timestamp: i64,
+    pub nonce: String,
+    pub signature_b64: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct RefreshRelaySigningSessionResponse {
+    pub signing_session_id: Uuid,
+}

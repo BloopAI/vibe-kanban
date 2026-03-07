@@ -14,7 +14,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
 };
 
 /// Path parameters for scratch routes with composite key
@@ -114,7 +114,7 @@ pub async fn stream_scratch_ws(
 }
 
 async fn handle_scratch_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,

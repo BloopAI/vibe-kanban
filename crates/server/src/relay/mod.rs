@@ -4,8 +4,11 @@
 //! URL construction, authentication, and transport are encapsulated here
 //! so no other module needs to know about relay URL patterns.
 
-pub mod client;
-pub mod host;
+pub mod api;
+pub mod proxy;
+pub mod registration;
+
+pub const RELAY_HEADER: &str = "x-vk-relayed";
 
 /// Resolve the relay API base URL from environment.
 ///

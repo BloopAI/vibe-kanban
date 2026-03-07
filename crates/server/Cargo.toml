@@ -20,6 +20,7 @@ services = { path = "../services" }
 worktree-manager = { path = "../worktree-manager" }
 workspace-manager = { path = "../workspace-manager" }
 embedded-ssh = { path = "../embedded-ssh" }
+relay-control = { path = "../relay-control", features = ["axum", "tungstenite"] }
 relay-tunnel = { path = "../relay-tunnel" }
 desktop-bridge = { path = "../desktop-bridge" }
 trusted-key-auth = { path = "../trusted-key-auth" }

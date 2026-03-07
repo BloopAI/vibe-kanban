@@ -22,10 +22,11 @@ pub struct OpenRemoteEditorResponse {
 pub fn open_remote_editor(
     local_port: u16,
     signing_key: &SigningKey,
+    host_id: &str,
     workspace_path: &str,
     editor_type: Option<&str>,
 ) -> anyhow::Result<OpenRemoteEditorResponse> {
-    let (key_path, alias) = ssh_config::provision_ssh_key(signing_key)?;
+    let (key_path, alias) = ssh_config::provision_ssh_key(signing_key, host_id)?;
     ssh_config::update_ssh_config(&alias, local_port, &key_path)?;
     ssh_config::ensure_ssh_include()?;
 

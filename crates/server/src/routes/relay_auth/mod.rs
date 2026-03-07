@@ -11,12 +11,12 @@ pub use client::{
     RemoveRelayPairedHostResponse,
 };
 pub use server::{
-    ListRelayPairedClientsResponse, RefreshRelaySigningSessionRequest,
-    RefreshRelaySigningSessionResponse, RelayPairedClient, RemoveRelayPairedClientResponse,
+    ListRelayPairedClientsResponse, RelayPairedClient, RemoveRelayPairedClientResponse,
 };
 pub use types::{
-    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
-    StartSpake2EnrollmentResponse,
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse,
+    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse,
+    StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
 };
 
 pub fn router() -> Router<DeploymentImpl> {

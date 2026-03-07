@@ -127,14 +127,14 @@ where
     }
 }
 
-pub type AxumWsStreamIo = WsMessageStreamIo<
-    AxumWebSocket,
+pub type AxumWsStreamIo<S = AxumWebSocket> = WsMessageStreamIo<
+    S,
     AxumWsMessage,
     fn(AxumWsMessage) -> WsIoReadMessage,
     fn(Vec<u8>) -> AxumWsMessage,
 >;
 
-pub fn axum_ws_stream_io(ws: AxumWebSocket) -> AxumWsStreamIo {
+pub fn axum_ws_stream_io<S>(ws: S) -> AxumWsStreamIo<S> {
     WsMessageStreamIo::new(ws, read_axum_message, write_axum_message)
 }
 

@@ -4,7 +4,8 @@
 //! (both Bearer-authenticated and signature-authenticated).
 
 use anyhow::Context as _;
-use desktop_bridge::signing::SigningContext;
+use ed25519_dalek::SigningKey;
+use relay_control::signing;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -112,24 +113,28 @@ impl RelayApiClient {
 
 /// Make a signed GET request through the relay proxy for a given host/session.
 ///
-/// Uses Ed25519 signature query params (not Bearer auth) since this goes
-/// through the public relay proxy path.
+/// Uses Ed25519 signature headers since this goes through the public relay proxy path.
 pub async fn get_signed_relay_api<TData>(
     host_id: Uuid,
     session_id: Uuid,
     path: &str,
-    signing_ctx: &SigningContext,
+    signing_key: &SigningKey,
+    signing_session_id: &str,
 ) -> anyhow::Result<TData>
 where
     TData: DeserializeOwned,
 {
     let session_url = super::relay_session_url(host_id, session_id)
         .ok_or_else(|| anyhow::anyhow!("VK_SHARED_RELAY_API_BASE is not configured"))?;
-    let signed_path = desktop_bridge::signing::sign_path(signing_ctx, "GET", path);
-    let url = format!("{session_url}{signed_path}");
+    let url = format!("{session_url}{path}");
+    let sig = signing::build_request_signature(signing_key, signing_session_id, "GET", path, &[]);
 
     let response = reqwest::Client::new()
         .get(url)
+        .header(signing::SIGNING_SESSION_HEADER, &sig.signing_session_id)
+        .header(signing::TIMESTAMP_HEADER, sig.timestamp.to_string())
+        .header(signing::NONCE_HEADER, &sig.nonce)
+        .header(signing::REQUEST_SIGNATURE_HEADER, &sig.signature_b64)
         .send()
         .await
         .with_context(|| format!("Relay request failed for '{path}'"))?;

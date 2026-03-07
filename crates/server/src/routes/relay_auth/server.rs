@@ -8,7 +8,7 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use trusted_key_auth::{
     key_confirmation::{build_server_proof, verify_client_proof},
     refresh::{build_refresh_message, validate_refresh_timestamp, verify_refresh_signature},
@@ -20,16 +20,16 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use super::types::{
-    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
-    StartSpake2EnrollmentResponse,
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse,
+    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse,
+    StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
 };
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{DeploymentImpl, error::ApiError, relay::RELAY_HEADER};
 
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
 const SPAKE2_START_GLOBAL_LIMIT: usize = 30;
 const SIGNING_SESSION_REFRESH_GLOBAL_LIMIT: usize = 30;
-const RELAY_HEADER: &str = "x-vk-relayed";
 
 #[derive(Debug, Serialize)]
 struct GenerateEnrollmentCodeResponse {
@@ -53,19 +53,6 @@ pub struct ListRelayPairedClientsResponse {
 #[derive(Debug, Serialize, TS)]
 pub struct RemoveRelayPairedClientResponse {
     removed: bool,
-}
-
-#[derive(Debug, Deserialize, TS)]
-pub struct RefreshRelaySigningSessionRequest {
-    client_id: Uuid,
-    timestamp: i64,
-    nonce: String,
-    signature_b64: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct RefreshRelaySigningSessionResponse {
-    signing_session_id: Uuid,
 }
 
 pub fn router() -> Router<DeploymentImpl> {
