@@ -52,7 +52,10 @@ impl McpServer {
 
 impl McpServer {
     fn attached_session_id(&self) -> Option<Uuid> {
-        self.context.as_ref().and_then(|ctx| ctx.session_id)
+        self.context
+            .as_ref()
+            .and_then(|ctx| ctx.session_id)
+            .or_else(|| self.orchestrator_session.as_ref().map(|session| session.id))
     }
 
     fn scoped_workspace_id(&self) -> Option<Uuid> {
@@ -460,6 +463,7 @@ mod tests {
     #[test]
     fn orchestrator_scope_falls_back_to_attached_session_when_context_is_missing() {
         install_rustls_provider();
+        let session_id = Uuid::new_v4();
         let workspace_id = Uuid::new_v4();
         let server = McpServer {
             client: reqwest::Client::new(),
@@ -469,7 +473,7 @@ mod tests {
             mode: McpMode::Orchestrator,
             orchestrator_session: Some(
                 serde_json::from_value::<Session>(json!({
-                    "id": Uuid::new_v4(),
+                    "id": session_id,
                     "workspace_id": workspace_id,
                     "executor": "CODEX",
                     "agent_working_dir": null,
@@ -480,6 +484,7 @@ mod tests {
             ),
         };
 
+        assert_eq!(server.attached_session_id(), Some(session_id));
         assert_eq!(server.resolve_workspace_id(None).unwrap(), workspace_id);
         assert!(server.scope_allows_workspace(workspace_id).is_ok());
         assert!(server.scope_allows_workspace(Uuid::new_v4()).is_err());
