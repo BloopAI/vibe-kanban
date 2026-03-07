@@ -1,5 +1,11 @@
 use api_types::{CreateWorkspaceRequest, PullRequestStatus, UpsertPullRequestRequest};
-use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
+use axum::{
+    Extension, Json, Router,
+    extract::{Path as AxumPath, State},
+    middleware::from_fn_with_state,
+    response::Json as ResponseJson,
+    routing::{delete, post},
+};
 use db::models::{
     merge::{Merge, MergeStatus},
     workspace::Workspace,
@@ -9,7 +15,7 @@ use services::services::{diff_stream, remote_client::RemoteClientError, remote_s
 use utils::response::ApiResponse;
 
 use super::LinkWorkspaceRequest;
-use crate::{DeploymentImpl, error::ApiError};
+use crate::{DeploymentImpl, error::ApiError, middleware::load_workspace_middleware};
 
 pub async fn link_workspace(
     Extension(workspace): Extension<Workspace>,
@@ -80,16 +86,29 @@ pub async fn link_workspace(
 }
 
 pub async fn unlink_workspace(
-    Extension(workspace): Extension<Workspace>,
+    AxumPath(workspace_id): AxumPath<uuid::Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let client = deployment.remote_client()?;
 
-    match client.delete_workspace(workspace.id).await {
+    match client.delete_workspace(workspace_id).await {
         Ok(()) => Ok(ResponseJson(ApiResponse::success(()))),
         Err(RemoteClientError::Http { status: 404, .. }) => {
             Ok(ResponseJson(ApiResponse::success(())))
         }
         Err(e) => Err(e.into()),
     }
+}
+
+pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
+    let post_router = Router::new()
+        .route("/", post(link_workspace))
+        .layer(from_fn_with_state(
+            deployment.clone(),
+            load_workspace_middleware,
+        ));
+
+    let delete_router = Router::new().route("/", delete(unlink_workspace));
+
+    post_router.merge(delete_router)
 }

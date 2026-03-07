@@ -650,14 +650,11 @@ export const workspacesApi = {
     workspaceId: string
   ): Promise<Result<ExecutionProcess, RunScriptError>> => {
     const sessions = await sessionsApi.getByWorkspace(workspaceId);
-    const session = sessions[0];
-
-    if (!session) {
-      return {
-        success: false,
-        error: { type: 'session_required' },
-      };
-    }
+    const session =
+      sessions[0] ??
+      (await sessionsApi.create({
+        workspace_id: workspaceId,
+      }));
 
     return sessionsApi.runSetupScript(session.id);
   },

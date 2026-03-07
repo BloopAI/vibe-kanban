@@ -13,13 +13,13 @@ pub mod repos;
 pub mod streams;
 pub mod workspace_summary;
 
+use ::git::ConflictOp;
 use axum::{
     Router,
     middleware::from_fn_with_state,
     routing::{get, post},
 };
 use db::models::{merge::Merge, workspace::Workspace, workspace_repo::RepoWithTargetBranch};
-use ::git::ConflictOp;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
@@ -215,9 +215,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             .nest("/execution", execution_router())
             .nest("/integration", integration_router())
             .nest("/repos", repos_router())
-            .nest("/links", links_router())
             .nest("/pull-requests", pr::router())
-            .nest("/images", images::router(deployment))
             .layer(from_fn_with_state(
                 deployment.clone(),
                 load_workspace_middleware,
@@ -236,7 +234,9 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             "/summaries",
             post(workspace_summary::get_workspace_summaries),
         )
-        .nest("/{id}", workspace_id_router);
+        .nest("/{id}", workspace_id_router)
+        .nest("/{id}/images", images::router(deployment))
+        .nest("/{id}/links", links::router(deployment));
 
     Router::new().nest("/workspaces", workspaces_router)
 }
@@ -277,12 +277,5 @@ fn repos_router() -> Router<DeploymentImpl> {
     Router::new().route(
         "/",
         get(repos::get_workspace_repos).post(repos::add_workspace_repo),
-    )
-}
-
-fn links_router() -> Router<DeploymentImpl> {
-    Router::new().route(
-        "/",
-        post(links::link_workspace).delete(links::unlink_workspace),
     )
 }
