@@ -542,6 +542,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Track previous process count for queue refresh
   const prevProcessCountRef = useRef(processes.length);
+  const followUpActionInFlightRef = useRef(false);
 
   // Refresh queue status when execution stops or new process starts
   useEffect(() => {
@@ -563,18 +564,29 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   // Queue message handler
   const handleQueueMessage = useCallback(async () => {
     // Allow queueing if there's a message OR review comments, and we have a config
-    if ((!localMessage.trim() && !reviewMarkdown) || !executorConfig) return;
+    if (
+      followUpActionInFlightRef.current ||
+      (!localMessage.trim() && !reviewMarkdown) ||
+      !executorConfig
+    ) {
+      return;
+    }
 
     const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
-    cancelDebouncedSave();
-    await saveToScratch(localMessage, executorConfig);
-    await queueMessage(prompt, executorConfig);
+    followUpActionInFlightRef.current = true;
+    try {
+      cancelDebouncedSave();
+      await saveToScratch(localMessage, executorConfig);
+      await queueMessage(prompt, executorConfig);
 
-    // Clear local state after queueing (same as handleSend)
-    setLocalMessage('');
-    clearUploadedImages();
-    reviewContext?.clearComments();
+      // Clear local state after queueing (same as handleSend)
+      setLocalMessage('');
+      clearUploadedImages();
+      reviewContext?.clearComments();
+    } finally {
+      followUpActionInFlightRef.current = false;
+    }
   }, [
     localMessage,
     reviewMarkdown,
@@ -589,17 +601,28 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
   // Steer message handler (high-priority queue while run is active)
   const handleSteerMessage = useCallback(async () => {
-    if ((!localMessage.trim() && !reviewMarkdown) || !executorConfig) return;
+    if (
+      followUpActionInFlightRef.current ||
+      (!localMessage.trim() && !reviewMarkdown) ||
+      !executorConfig
+    ) {
+      return;
+    }
 
     const { prompt } = buildAgentPrompt(localMessage, [reviewMarkdown]);
 
-    cancelDebouncedSave();
-    await saveToScratch(localMessage, executorConfig);
-    await steerMessage(prompt, executorConfig);
+    followUpActionInFlightRef.current = true;
+    try {
+      cancelDebouncedSave();
+      await saveToScratch(localMessage, executorConfig);
+      await steerMessage(prompt, executorConfig);
 
-    setLocalMessage('');
-    clearUploadedImages();
-    reviewContext?.clearComments();
+      setLocalMessage('');
+      clearUploadedImages();
+      reviewContext?.clearComments();
+    } finally {
+      followUpActionInFlightRef.current = false;
+    }
   }, [
     localMessage,
     reviewMarkdown,

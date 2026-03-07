@@ -201,40 +201,6 @@ export function KeyboardCommandsPlugin({
           return false;
         }
 
-        const shouldSubmit =
-          !!onCmdEnter && matchesRunningShortcut(event, primaryActionShortcut);
-        const shouldQueue =
-          !!onShiftCmdEnter &&
-          matchesRunningShortcut(event, secondaryActionShortcut);
-
-        if (shouldSubmit || shouldQueue) {
-          event.preventDefault();
-          event.stopPropagation();
-          if (shouldSubmit) {
-            flushAndSubmit();
-          } else {
-            flushAndQueue();
-          }
-          return true;
-        }
-
-        if (hasRunningShortcutOverrides) {
-          return false;
-        }
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (event.shiftKey && onShiftCmdEnter) {
-          flushAndQueue();
-          return true;
-        }
-
-        if (!event.shiftKey && onCmdEnter && sendShortcut === 'ModifierEnter') {
-          flushAndSubmit();
-          return true;
-        }
-
         return false;
       },
       COMMAND_PRIORITY_NORMAL
