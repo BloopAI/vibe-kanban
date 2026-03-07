@@ -344,17 +344,17 @@ export type OpenEditorResponse = { url: string | null, };
 
 export type OpenRemoteEditorResponse = { url: string, local_port: number, ssh_alias: string, };
 
-export type OpenRemoteEditorRequest = { host_id: string, browser_session_id: string, workspace_path: string, editor_type: string | null, };
-
-export type OpenFirstWorkspaceInRemoteEditorRequest = { host_id: string, browser_session_id: string, editor_type: string | null, };
+export type OpenRemoteWorkspaceInEditorRequest = { host_id: string, workspace_id: string, editor_type: string | null, };
 
 export type PairRelayHostRequest = { host_id: string, host_name: string, enrollment_code: string, };
 
 export type PairRelayHostResponse = { paired: boolean, };
 
-export type UpsertRelayHostCredentialsRequest = { host_id: string, signing_session_id: string, private_key_jwk: JsonValue, };
+export type RelayPairedHost = { host_id: string, host_name: string | null, paired_at: string | null, };
 
-export type UpsertRelayHostCredentialsResponse = { upserted: boolean, };
+export type ListRelayPairedHostsResponse = { hosts: Array<RelayPairedHost>, };
+
+export type RemoveRelayPairedHostResponse = { removed: boolean, };
 
 export type CreateWorkspaceApiRequest = { name: string | null, };
 

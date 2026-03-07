@@ -6,7 +6,10 @@ pub mod client;
 pub mod server;
 mod types;
 
-pub use client::{PairRelayHostRequest, PairRelayHostResponse};
+pub use client::{
+    ListRelayPairedHostsResponse, PairRelayHostRequest, PairRelayHostResponse, RelayPairedHost,
+    RemoveRelayPairedHostResponse,
+};
 pub use server::{
     ListRelayPairedClientsResponse, RefreshRelaySigningSessionRequest,
     RefreshRelaySigningSessionResponse, RelayPairedClient, RemoveRelayPairedClientResponse,
