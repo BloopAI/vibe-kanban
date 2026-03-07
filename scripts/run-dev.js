@@ -9,6 +9,7 @@ console.log("[dev] launcher boot");
 
 const REPO_ROOT = path.resolve(__dirname, "..");
 const LIBCLANG_FALLBACK = "G:\\libclang\\clang\\native";
+const IS_WINDOWS = process.platform === "win32";
 
 function hasLibclang(nativeDir) {
   if (!nativeDir) return false;
@@ -19,6 +20,28 @@ function resolveLibclangPath(envPath) {
   if (hasLibclang(envPath)) return envPath;
   if (hasLibclang(LIBCLANG_FALLBACK)) return LIBCLANG_FALLBACK;
   return null;
+}
+
+function getPathKey(env) {
+  if (!IS_WINDOWS) return "PATH";
+  return Object.keys(env).find((key) => key.toLowerCase() === "path") || "Path";
+}
+
+function prependToPath(env, entry) {
+  const pathKey = getPathKey(env);
+  const currentPath = env[pathKey] || "";
+
+  if (IS_WINDOWS) {
+    for (const key of Object.keys(env)) {
+      if (key !== pathKey && key.toLowerCase() === "path") {
+        delete env[key];
+      }
+    }
+  }
+
+  env[pathKey] = currentPath
+    ? `${entry}${path.delimiter}${currentPath}`
+    : entry;
 }
 
 function buildEnv(ports) {
@@ -34,7 +57,7 @@ function buildEnv(ports) {
   const libclangPath = resolveLibclangPath(env.LIBCLANG_PATH);
   if (libclangPath) {
     env.LIBCLANG_PATH = libclangPath;
-    env.PATH = `${libclangPath}${path.delimiter}${env.PATH || ""}`;
+    prependToPath(env, libclangPath);
   }
 
   return env;
