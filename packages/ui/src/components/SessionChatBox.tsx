@@ -620,6 +620,7 @@ export function SessionChatBox<TExecutor extends string = string>({
       summaries: string[],
       options?: {
         multiline?: boolean;
+        showLabel?: boolean;
       }
     ) => {
       const normalized = summaries
@@ -631,11 +632,13 @@ export function SessionChatBox<TExecutor extends string = string>({
       }
 
       const multiline = options?.multiline ?? false;
+      const showLabel = options?.showLabel ?? true;
       const visible = multiline ? normalized : normalized.slice(0, 2);
       const hiddenCount = multiline ? 0 : normalized.length - visible.length;
       const renderedSummaries = multiline
         ? visible.join('\n')
         : visible.join(' | ');
+      const prefix = showLabel ? `${label}: ` : '';
 
       return (
         <span
@@ -645,7 +648,8 @@ export function SessionChatBox<TExecutor extends string = string>({
               : 'text-xs text-low opacity-80'
           }
         >
-          {label}: {renderedSummaries}
+          {prefix}
+          {renderedSummaries}
           {hiddenCount > 0 ? ` +${hiddenCount}` : ''}
         </span>
       );
@@ -715,7 +719,7 @@ export function SessionChatBox<TExecutor extends string = string>({
             {renderSummaryLine(
               t('followUp.queueLabel'),
               queueState?.bufferedQueueSummaries ?? [],
-              { multiline: true }
+              { multiline: true, showLabel: false }
             )}
           </div>
         </div>
