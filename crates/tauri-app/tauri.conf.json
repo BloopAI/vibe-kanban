@@ -24,9 +24,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "windows": {
-      "signCommand": "trusted-signing-cli -e %AZURE_ENDPOINT% -a %AZURE_CODE_SIGNING_NAME% -c %AZURE_CERT_PROFILE_NAME% %1"
-    },
+    "windows": {},
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
