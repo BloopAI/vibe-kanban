@@ -32,7 +32,7 @@ impl ServerHandler for McpServer {
         );
         if self.context.is_some() {
             instruction = format!(
-                "Use 'get_context' to fetch project, issue, workspace, and orchestrator session metadata for the active MCP context when available. {}",
+                "Use 'get_context' to fetch project, issue, workspace, and orchestrator-session metadata for the active MCP context when available. {}",
                 instruction
             );
         }

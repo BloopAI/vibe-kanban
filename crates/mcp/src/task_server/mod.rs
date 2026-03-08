@@ -34,8 +34,9 @@ pub struct McpContext {
     pub project_id: Option<Uuid>,
     #[schemars(description = "The remote issue ID (if workspace is linked to a remote issue)")]
     pub issue_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[schemars(description = "The orchestrator session ID when running in orchestrator mode")]
-    pub session_id: Option<Uuid>,
+    pub orchestrator_session_id: Option<Uuid>,
     pub workspace_id: Uuid,
     pub workspace_branch: String,
     #[schemars(
@@ -288,9 +289,13 @@ impl McpServer {
 
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
-        let session_id = orchestrator_session
-            .map(|session| session.id)
-            .or(ctx.orchestrator_session_id);
+        let orchestrator_session_id = if matches!(self.mode(), McpMode::Orchestrator) {
+            orchestrator_session
+                .map(|session| session.id)
+                .or(ctx.orchestrator_session_id)
+        } else {
+            None
+        };
 
         let (project_id, issue_id, organization_id) = self
             .fetch_remote_workspace_context(workspace_id)
@@ -301,7 +306,7 @@ impl McpServer {
             organization_id,
             project_id,
             issue_id,
-            session_id,
+            orchestrator_session_id,
             workspace_id,
             workspace_branch,
             workspace_repos,

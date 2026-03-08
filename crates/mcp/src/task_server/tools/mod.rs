@@ -52,7 +52,9 @@ impl McpServer {
 
 impl McpServer {
     fn orchestrator_session_id(&self) -> Option<Uuid> {
-        self.context.as_ref().and_then(|ctx| ctx.session_id)
+        self.context
+            .as_ref()
+            .and_then(|ctx| ctx.orchestrator_session_id)
     }
 
     fn scoped_workspace_id(&self) -> Option<Uuid> {
@@ -433,7 +435,7 @@ mod tests {
                 organization_id: None,
                 project_id: None,
                 issue_id: None,
-                session_id: Some(session_id),
+                orchestrator_session_id: Some(session_id),
                 workspace_id,
                 workspace_branch: "main".to_string(),
                 workspace_repos: vec![McpRepoContext {
@@ -485,5 +487,23 @@ mod tests {
             Path::new("/tmp/ws"),
             &session
         ));
+    }
+
+    #[test]
+    fn global_context_omits_orchestrator_session_id_from_serialized_output() {
+        install_rustls_provider();
+        let context = McpContext {
+            organization_id: None,
+            project_id: None,
+            issue_id: None,
+            orchestrator_session_id: None,
+            workspace_id: Uuid::new_v4(),
+            workspace_branch: "main".to_string(),
+            workspace_repos: vec![],
+        };
+
+        let serialized = serde_json::to_value(&context).expect("context should serialize");
+
+        assert!(serialized.get("orchestrator_session_id").is_none());
     }
 }
