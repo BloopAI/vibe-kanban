@@ -100,7 +100,23 @@ if [[ "$1" == "--desktop" || "$1" == "--all" ]]; then
 
   echo ""
   echo "🖥️  Building Tauri desktop app for $TAURI_PLATFORM..."
+
+  # Replace the updater endpoint placeholder with a dummy URL for local builds
+  # (CI injects the real R2 URL; locally the updater is non-functional)
+  TAURI_CONF="crates/tauri-app/tauri.conf.json"
+  node -e "
+    const fs = require('fs');
+    const conf = JSON.parse(fs.readFileSync('$TAURI_CONF', 'utf8'));
+    conf.plugins.updater.endpoints = conf.plugins.updater.endpoints.map(e =>
+      e === '__TAURI_UPDATE_ENDPOINT__' ? 'https://localhost/disabled' : e
+    );
+    fs.writeFileSync('$TAURI_CONF', JSON.stringify(conf, null, 2) + '\n');
+  "
+
   cargo tauri build
+
+  # Restore tauri.conf.json
+  git checkout -- "$TAURI_CONF"
 
   TAURI_DIST="npx-cli/dist/tauri/$TAURI_PLATFORM"
   mkdir -p "$TAURI_DIST"
