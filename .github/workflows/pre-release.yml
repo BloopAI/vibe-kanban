@@ -761,8 +761,6 @@ jobs:
             conf.plugins.updater.endpoints = conf.plugins.updater.endpoints.map(e =>
               e === '__TAURI_UPDATE_ENDPOINT__' ? endpoint : e
             );
-            // Remove beforeBuildCommand — frontend is already pre-built and downloaded as an artifact
-            delete conf.build.beforeBuildCommand;
             fs.writeFileSync('crates/tauri-app/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
           "
 
