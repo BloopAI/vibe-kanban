@@ -370,11 +370,9 @@ impl McpServer {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeSet, path::Path, sync::Once};
+    use std::{collections::BTreeSet, sync::Once};
 
-    use db::models::session::Session;
     use rmcp::handler::server::tool::ToolRouter;
-    use serde_json::json;
     use uuid::Uuid;
 
     use super::McpServer;
@@ -445,7 +443,6 @@ mod tests {
                 }],
             }),
             mode: McpMode::Global,
-            orchestrator_session_id: None,
         };
 
         assert_eq!(server.orchestrator_session_id(), Some(session_id));
@@ -461,32 +458,11 @@ mod tests {
             tool_router: ToolRouter::default(),
             context: None,
             mode: McpMode::Orchestrator,
-            orchestrator_session_id: None,
         };
 
         assert_eq!(server.orchestrator_session_id(), None);
         assert!(server.resolve_workspace_id(None).is_err());
         assert!(server.scope_allows_workspace(Uuid::new_v4()).is_ok());
-    }
-
-    #[test]
-    fn nested_session_workdir_is_accepted_when_under_workspace_root() {
-        install_rustls_provider();
-        let session = serde_json::from_value::<Session>(json!({
-            "id": Uuid::new_v4(),
-            "workspace_id": Uuid::new_v4(),
-            "executor": "CODEX",
-            "agent_working_dir": "repo/packages/app",
-            "created_at": "2026-03-07T00:00:00Z",
-            "updated_at": "2026-03-07T00:00:00Z"
-        }))
-        .expect("session fixture should deserialize");
-
-        assert!(McpServer::current_dir_matches_workspace(
-            Path::new("/tmp/ws/repo/packages/app"),
-            Path::new("/tmp/ws"),
-            &session
-        ));
     }
 
     #[test]

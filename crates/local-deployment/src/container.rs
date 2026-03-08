@@ -1307,7 +1307,6 @@ impl ContainerService for LocalContainerService {
         // Always inject workspace/session context
         env.insert("VK_WORKSPACE_ID", workspace.id.to_string());
         env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
-        env.insert("VK_SESSION_ID", execution_process.session_id.to_string());
 
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(

@@ -1,15 +1,10 @@
 mod handler;
 mod tools;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use anyhow::Context;
-use db::models::{
-    requests::ContainerQuery,
-    session::Session,
-    workspace::{Workspace, WorkspaceContext},
-    workspace_repo::RepoWithTargetBranch,
-};
+use db::models::{requests::ContainerQuery, workspace::WorkspaceContext};
 use rmcp::{handler::server::tool::ToolRouter, schemars};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -58,7 +53,6 @@ pub struct McpServer {
     tool_router: ToolRouter<McpServer>,
     context: Option<McpContext>,
     mode: McpMode,
-    orchestrator_session_id: Option<Uuid>,
 }
 
 impl McpServer {
@@ -69,18 +63,16 @@ impl McpServer {
             tool_router: Self::global_mode_router(),
             context: None,
             mode: McpMode::Global,
-            orchestrator_session_id: None,
         }
     }
 
-    pub fn new_orchestrator(base_url: &str, orchestrator_session_id: Option<Uuid>) -> Self {
+    pub fn new_orchestrator(base_url: &str) -> Self {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::orchestrator_mode_router(),
             context: None,
             mode: McpMode::Orchestrator,
-            orchestrator_session_id,
         }
     }
 
@@ -114,39 +106,16 @@ impl McpServer {
         let current_dir = std::env::current_dir().context("Failed to resolve current directory")?;
         let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
         let normalized_path = utils::path::normalize_macos_private_alias(&canonical_path);
-        let orchestrator_session = self.fetch_orchestrator_session().await?;
 
         match self.try_fetch_attempt_context(&normalized_path).await {
-            Ok(Some(ctx)) => {
-                if let Some(session) = orchestrator_session.as_ref()
-                    && session.workspace_id != ctx.workspace.id
-                {
-                    return self
-                        .fetch_orchestrator_context_from_session(session, &normalized_path)
-                        .await
-                        .map(Some);
-                }
-
-                Ok(Some(
-                    self.build_mcp_context_from_workspace_context(
-                        &ctx,
-                        orchestrator_session.as_ref(),
-                    )
-                    .await,
-                ))
-            }
+            Ok(Some(ctx)) => Ok(Some(
+                self.build_mcp_context_from_workspace_context(&ctx).await,
+            )),
             Ok(None) | Err(_) if matches!(self.mode(), McpMode::Global) => Ok(None),
-            Ok(None) | Err(_) => {
-                let Some(session) = orchestrator_session.as_ref() else {
-                    anyhow::bail!(
-                        "Failed to load orchestrator MCP context: no orchestrator session was available"
-                    );
-                };
-
-                self.fetch_orchestrator_context_from_session(session, &normalized_path)
-                    .await
-                    .map(Some)
-            }
+            Ok(None) => anyhow::bail!(
+                "Failed to load orchestrator MCP context from /api/containers/attempt-context"
+            ),
+            Err(error) => Err(error.context("Failed to load orchestrator MCP context")),
         }
     }
 
@@ -183,100 +152,7 @@ impl McpServer {
         Ok(api_response.data)
     }
 
-    async fn fetch_orchestrator_session(&self) -> anyhow::Result<Option<Session>> {
-        let Some(session_id) = self.orchestrator_session_id else {
-            return Ok(None);
-        };
-
-        let session = self
-            .fetch_json::<Session>(&format!("/api/sessions/{session_id}"))
-            .await
-            .with_context(|| format!("Failed to resolve orchestrator session {session_id}"))?;
-
-        Ok(Some(session))
-    }
-
-    async fn fetch_orchestrator_context_from_session(
-        &self,
-        session: &Session,
-        current_dir: &Path,
-    ) -> anyhow::Result<McpContext> {
-        let workspace: Workspace = self
-            .fetch_json(&format!("/api/workspaces/{}", session.workspace_id))
-            .await
-            .with_context(|| {
-                format!(
-                    "Failed to resolve workspace {} for orchestrator session {}",
-                    session.workspace_id, session.id
-                )
-            })?;
-        let workspace_root = workspace
-            .container_ref
-            .as_deref()
-            .filter(|path| !path.is_empty())
-            .map(PathBuf::from)
-            .with_context(|| {
-                format!(
-                    "Workspace {} is missing container_ref for orchestrator MCP startup",
-                    workspace.id
-                )
-            })?;
-
-        if !Self::current_dir_matches_workspace(current_dir, &workspace_root, session) {
-            anyhow::bail!(
-                "Failed to load orchestrator MCP context: current directory {} is outside workspace {}",
-                current_dir.display(),
-                workspace_root.display()
-            );
-        }
-
-        let workspace_repos: Vec<RepoWithTargetBranch> = self
-            .fetch_json(&format!("/api/workspaces/{}/repos", workspace.id))
-            .await
-            .with_context(|| format!("Failed to resolve repos for workspace {}", workspace.id))?;
-
-        let ctx = WorkspaceContext {
-            workspace,
-            workspace_repos,
-            orchestrator_session_id: Some(session.id),
-        };
-
-        Ok(self
-            .build_mcp_context_from_workspace_context(&ctx, Some(session))
-            .await)
-    }
-
-    async fn fetch_json<T: for<'de> Deserialize<'de>>(&self, path: &str) -> anyhow::Result<T> {
-        let response = self
-            .client
-            .get(self.url(path))
-            .send()
-            .await
-            .with_context(|| format!("Failed to fetch {path}"))?;
-
-        if !response.status().is_success() {
-            anyhow::bail!("{path} returned {}", response.status());
-        }
-
-        let api_response: ApiResponseEnvelope<T> = response
-            .json()
-            .await
-            .with_context(|| format!("Failed to parse response from {path}"))?;
-
-        if !api_response.success {
-            anyhow::bail!("{path} returned an unsuccessful API response");
-        }
-
-        api_response
-            .data
-            .with_context(|| format!("{path} response was missing data"))
-    }
-
-    async fn build_mcp_context_from_workspace_context(
-        &self,
-        ctx: &WorkspaceContext,
-        orchestrator_session: Option<&Session>,
-    ) -> McpContext {
+    async fn build_mcp_context_from_workspace_context(&self, ctx: &WorkspaceContext) -> McpContext {
         let workspace_repos: Vec<McpRepoContext> = ctx
             .workspace_repos
             .iter()
@@ -290,9 +166,7 @@ impl McpServer {
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
         let orchestrator_session_id = if matches!(self.mode(), McpMode::Orchestrator) {
-            orchestrator_session
-                .map(|session| session.id)
-                .or(ctx.orchestrator_session_id)
+            ctx.orchestrator_session_id
         } else {
             None
         };
@@ -311,23 +185,6 @@ impl McpServer {
             workspace_branch,
             workspace_repos,
         }
-    }
-
-    fn current_dir_matches_workspace(
-        current_dir: &Path,
-        workspace_root: &Path,
-        session: &Session,
-    ) -> bool {
-        if current_dir.starts_with(workspace_root) {
-            return true;
-        }
-
-        session
-            .agent_working_dir
-            .as_deref()
-            .filter(|path| !path.is_empty())
-            .map(|path| workspace_root.join(path))
-            .is_some_and(|session_path| current_dir.starts_with(session_path))
     }
 
     async fn fetch_remote_workspace_context(

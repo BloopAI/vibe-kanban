@@ -365,26 +365,26 @@ impl Workspace {
         })
     }
 
-    /// Find workspace by path, also trying the parent directory.
-    /// Used by VSCode extension which may open a repo subfolder (single-repo case)
-    /// rather than the workspace root directory (multi-repo case).
+    /// Find workspace by path, walking ancestor directories until a workspace root is found.
+    /// Used by clients that may open a repo subfolder rather than the workspace root.
     pub async fn resolve_container_ref_by_prefix(
         pool: &SqlitePool,
         path: &str,
     ) -> Result<ContainerInfo, sqlx::Error> {
-        // First try exact match
-        if let Ok(info) = Self::resolve_container_ref(pool, path).await {
-            return Ok(info);
-        }
-
-        if let Some(parent) = std::path::Path::new(path).parent()
-            && let Some(parent_str) = parent.to_str()
-            && let Ok(info) = Self::resolve_container_ref(pool, parent_str).await
-        {
-            return Ok(info);
+        for candidate in Self::container_ref_candidates(path) {
+            if let Ok(info) = Self::resolve_container_ref(pool, &candidate).await {
+                return Ok(info);
+            }
         }
 
         Err(sqlx::Error::RowNotFound)
+    }
+
+    fn container_ref_candidates(path: &str) -> Vec<String> {
+        std::path::Path::new(path)
+            .ancestors()
+            .filter_map(|ancestor| ancestor.to_str().map(ToOwned::to_owned))
+            .collect()
     }
 
     pub async fn set_archived(
@@ -673,5 +673,27 @@ impl Workspace {
         }
 
         Ok(Some(ws))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Workspace;
+
+    #[test]
+    fn container_ref_candidates_walk_all_ancestors() {
+        let candidates = Workspace::container_ref_candidates("/tmp/ws/repo/packages/app");
+
+        assert_eq!(
+            candidates,
+            vec![
+                "/tmp/ws/repo/packages/app".to_string(),
+                "/tmp/ws/repo/packages".to_string(),
+                "/tmp/ws/repo".to_string(),
+                "/tmp/ws".to_string(),
+                "/tmp".to_string(),
+                "/".to_string(),
+            ]
+        );
     }
 }
