@@ -34,7 +34,7 @@ pub struct McpContext {
     pub project_id: Option<Uuid>,
     #[schemars(description = "The remote issue ID (if workspace is linked to a remote issue)")]
     pub issue_id: Option<Uuid>,
-    #[schemars(description = "The attached session ID when running in orchestrator mode")]
+    #[schemars(description = "The orchestrator session ID when running in orchestrator mode")]
     pub session_id: Option<Uuid>,
     pub workspace_id: Uuid,
     pub workspace_branch: String,
@@ -57,7 +57,7 @@ pub struct McpServer {
     tool_router: ToolRouter<McpServer>,
     context: Option<McpContext>,
     mode: McpMode,
-    attached_session_id: Option<Uuid>,
+    orchestrator_session_id: Option<Uuid>,
 }
 
 impl McpServer {
@@ -68,18 +68,18 @@ impl McpServer {
             tool_router: Self::global_mode_router(),
             context: None,
             mode: McpMode::Global,
-            attached_session_id: None,
+            orchestrator_session_id: None,
         }
     }
 
-    pub fn new_orchestrator(base_url: &str, attached_session_id: Option<Uuid>) -> Self {
+    pub fn new_orchestrator(base_url: &str, orchestrator_session_id: Option<Uuid>) -> Self {
         Self {
             client: reqwest::Client::new(),
             base_url: base_url.to_string(),
             tool_router: Self::orchestrator_mode_router(),
             context: None,
             mode: McpMode::Orchestrator,
-            attached_session_id,
+            orchestrator_session_id,
         }
     }
 
@@ -113,33 +113,36 @@ impl McpServer {
         let current_dir = std::env::current_dir().context("Failed to resolve current directory")?;
         let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
         let normalized_path = utils::path::normalize_macos_private_alias(&canonical_path);
-        let attached_session = self.fetch_attached_session().await?;
+        let orchestrator_session = self.fetch_orchestrator_session().await?;
 
         match self.try_fetch_attempt_context(&normalized_path).await {
             Ok(Some(ctx)) => {
-                if let Some(session) = attached_session.as_ref()
+                if let Some(session) = orchestrator_session.as_ref()
                     && session.workspace_id != ctx.workspace.id
                 {
                     return self
-                        .fetch_orchestrator_context_from_attached_session(session, &normalized_path)
+                        .fetch_orchestrator_context_from_session(session, &normalized_path)
                         .await
                         .map(Some);
                 }
 
                 Ok(Some(
-                    self.build_mcp_context_from_workspace_context(&ctx, attached_session.as_ref())
-                        .await,
+                    self.build_mcp_context_from_workspace_context(
+                        &ctx,
+                        orchestrator_session.as_ref(),
+                    )
+                    .await,
                 ))
             }
             Ok(None) | Err(_) if matches!(self.mode(), McpMode::Global) => Ok(None),
             Ok(None) | Err(_) => {
-                let Some(session) = attached_session.as_ref() else {
+                let Some(session) = orchestrator_session.as_ref() else {
                     anyhow::bail!(
-                        "Failed to load orchestrator MCP context: no attached session was available"
+                        "Failed to load orchestrator MCP context: no orchestrator session was available"
                     );
                 };
 
-                self.fetch_orchestrator_context_from_attached_session(session, &normalized_path)
+                self.fetch_orchestrator_context_from_session(session, &normalized_path)
                     .await
                     .map(Some)
             }
@@ -179,20 +182,20 @@ impl McpServer {
         Ok(api_response.data)
     }
 
-    async fn fetch_attached_session(&self) -> anyhow::Result<Option<Session>> {
-        let Some(session_id) = self.attached_session_id else {
+    async fn fetch_orchestrator_session(&self) -> anyhow::Result<Option<Session>> {
+        let Some(session_id) = self.orchestrator_session_id else {
             return Ok(None);
         };
 
         let session = self
             .fetch_json::<Session>(&format!("/api/sessions/{session_id}"))
             .await
-            .with_context(|| format!("Failed to resolve attached session {session_id}"))?;
+            .with_context(|| format!("Failed to resolve orchestrator session {session_id}"))?;
 
         Ok(Some(session))
     }
 
-    async fn fetch_orchestrator_context_from_attached_session(
+    async fn fetch_orchestrator_context_from_session(
         &self,
         session: &Session,
         current_dir: &Path,
@@ -202,7 +205,7 @@ impl McpServer {
             .await
             .with_context(|| {
                 format!(
-                    "Failed to resolve workspace {} for attached session {}",
+                    "Failed to resolve workspace {} for orchestrator session {}",
                     session.workspace_id, session.id
                 )
             })?;
@@ -271,7 +274,7 @@ impl McpServer {
     async fn build_mcp_context_from_workspace_context(
         &self,
         ctx: &WorkspaceContext,
-        attached_session: Option<&Session>,
+        orchestrator_session: Option<&Session>,
     ) -> McpContext {
         let workspace_repos: Vec<McpRepoContext> = ctx
             .workspace_repos
@@ -285,7 +288,7 @@ impl McpServer {
 
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
-        let session_id = attached_session
+        let session_id = orchestrator_session
             .map(|session| session.id)
             .or(ctx.orchestrator_session_id);
 

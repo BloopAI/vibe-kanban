@@ -35,12 +35,12 @@ fn main() -> anyhow::Result<()> {
 
             let base_url = resolve_base_url("vibe-kanban-mcp").await?;
             let LaunchConfig { mode } = launch_config;
-            let attached_session_id = resolve_attached_session_id()?;
+            let orchestrator_session_id = resolve_orchestrator_session_id()?;
 
             let server = match mode {
                 McpLaunchMode::Global => McpServer::new_global(&base_url),
                 McpLaunchMode::Orchestrator => {
-                    McpServer::new_orchestrator(&base_url, attached_session_id)
+                    McpServer::new_orchestrator(&base_url, orchestrator_session_id)
                 }
             };
 
@@ -138,7 +138,7 @@ async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
     Ok(url)
 }
 
-fn resolve_attached_session_id() -> anyhow::Result<Option<Uuid>> {
+fn resolve_orchestrator_session_id() -> anyhow::Result<Option<Uuid>> {
     std::env::var(SESSION_ENV)
         .ok()
         .map(|value| {
@@ -175,7 +175,8 @@ fn init_process_logging(log_prefix: &str, version: &str) {
 #[cfg(test)]
 mod tests {
     use super::{
-        LaunchConfig, McpLaunchMode, resolve_attached_session_id, resolve_launch_config_from_iter,
+        LaunchConfig, McpLaunchMode, resolve_launch_config_from_iter,
+        resolve_orchestrator_session_id,
     };
 
     #[test]
@@ -214,12 +215,12 @@ mod tests {
     }
 
     #[test]
-    fn attached_session_id_is_loaded_from_env() {
+    fn orchestrator_session_id_is_loaded_from_env() {
         unsafe {
             std::env::set_var("VK_SESSION_ID", "123e4567-e89b-12d3-a456-426614174000");
         }
 
-        let session_id = resolve_attached_session_id().expect("env session id should parse");
+        let session_id = resolve_orchestrator_session_id().expect("env session id should parse");
 
         assert_eq!(
             session_id.map(|id| id.to_string()),

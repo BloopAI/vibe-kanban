@@ -51,7 +51,7 @@ impl McpServer {
 }
 
 impl McpServer {
-    fn attached_session_id(&self) -> Option<Uuid> {
+    fn orchestrator_session_id(&self) -> Option<Uuid> {
         self.context.as_ref().and_then(|ctx| ctx.session_id)
     }
 
@@ -421,7 +421,7 @@ mod tests {
     }
 
     #[test]
-    fn attached_session_id_is_resolved_from_context() {
+    fn orchestrator_session_id_is_resolved_from_context() {
         install_rustls_provider();
         let session_id = Uuid::new_v4();
         let workspace_id = Uuid::new_v4();
@@ -443,10 +443,10 @@ mod tests {
                 }],
             }),
             mode: McpMode::Global,
-            attached_session_id: None,
+            orchestrator_session_id: None,
         };
 
-        assert_eq!(server.attached_session_id(), Some(session_id));
+        assert_eq!(server.orchestrator_session_id(), Some(session_id));
         assert_eq!(server.resolve_workspace_id(None).unwrap(), workspace_id);
     }
 
@@ -459,10 +459,10 @@ mod tests {
             tool_router: ToolRouter::default(),
             context: None,
             mode: McpMode::Orchestrator,
-            attached_session_id: None,
+            orchestrator_session_id: None,
         };
 
-        assert_eq!(server.attached_session_id(), None);
+        assert_eq!(server.orchestrator_session_id(), None);
         assert!(server.resolve_workspace_id(None).is_err());
         assert!(server.scope_allows_workspace(Uuid::new_v4()).is_ok());
     }

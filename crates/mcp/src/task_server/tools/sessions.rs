@@ -39,8 +39,8 @@ struct SessionSummary {
     created_at: String,
     #[schemars(description = "Last update timestamp")]
     updated_at: String,
-    #[schemars(description = "True if this is the session currently attached to this MCP server")]
-    is_attached_session: bool,
+    #[schemars(description = "True if this is the orchestrator session for this MCP server")]
+    is_orchestrator_session: bool,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -60,8 +60,6 @@ struct ListSessionsRequest {
 struct ListSessionsResponse {
     #[schemars(description = "Workspace ID this result is scoped to")]
     workspace_id: String,
-    #[schemars(description = "Session ID currently attached to this MCP server, if available")]
-    attached_session_id: Option<String>,
     total_count: usize,
     sessions: Vec<SessionSummary>,
 }
@@ -184,7 +182,6 @@ impl McpServer {
 
         Self::success(&ListSessionsResponse {
             workspace_id: workspace_id.to_string(),
-            attached_session_id: self.attached_session_id().map(|id| id.to_string()),
             total_count: sessions.len(),
             sessions,
         })
@@ -212,9 +209,9 @@ impl McpServer {
         if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
             return Ok(error_result);
         }
-        if self.attached_session_id() == Some(session_id) {
+        if self.orchestrator_session_id() == Some(session_id) {
             return Self::err(
-                "Cannot run coding agent in the attached session".to_string(),
+                "Cannot run coding agent in the orchestrator session".to_string(),
                 Some(
                     "Create or re-use a different session and run the coding agent there."
                         .to_string(),
@@ -309,14 +306,14 @@ impl McpServer {
     }
 
     fn session_summary(&self, session: Session) -> SessionSummary {
-        let is_attached_session = self.attached_session_id() == Some(session.id);
+        let is_orchestrator_session = self.orchestrator_session_id() == Some(session.id);
         SessionSummary {
             id: session.id.to_string(),
             workspace_id: session.workspace_id.to_string(),
             executor: session.executor,
             created_at: session.created_at.to_rfc3339(),
             updated_at: session.updated_at.to_rfc3339(),
-            is_attached_session,
+            is_orchestrator_session,
         }
     }
 
