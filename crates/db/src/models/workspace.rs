@@ -32,6 +32,12 @@ pub struct ContainerInfo {
     pub workspace_id: Uuid,
 }
 
+#[derive(Debug)]
+struct WorkspaceContainerRefRow {
+    id: Uuid,
+    container_ref: String,
+}
+
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct Workspace {
     pub id: Uuid,
@@ -371,18 +377,10 @@ impl Workspace {
         pool: &SqlitePool,
         path: &str,
     ) -> Result<ContainerInfo, sqlx::Error> {
-        let workspaces = sqlx::query_as::<_, Workspace>(
+        let workspaces = sqlx::query_as!(
+            WorkspaceContainerRefRow,
             r#"SELECT id as "id!: Uuid",
-                      task_id as "task_id: Uuid",
-                      container_ref,
-                      branch,
-                      setup_completed_at as "setup_completed_at: DateTime<Utc>",
-                      created_at as "created_at!: DateTime<Utc>",
-                      updated_at as "updated_at!: DateTime<Utc>",
-                      archived as "archived!: bool",
-                      pinned as "pinned!: bool",
-                      name,
-                      worktree_deleted as "worktree_deleted!: bool"
+                      container_ref as "container_ref!"
                FROM workspaces
                WHERE container_ref IS NOT NULL"#,
         )
@@ -391,11 +389,9 @@ impl Workspace {
 
         Self::best_matching_container_ref(
             path,
-            workspaces.iter().filter_map(|ws| {
-                ws.container_ref
-                    .as_deref()
-                    .map(|container_ref| (ws.id, container_ref))
-            }),
+            workspaces
+                .iter()
+                .map(|ws| (ws.id, ws.container_ref.as_str())),
         )
         .map(|workspace_id| ContainerInfo { workspace_id })
         .ok_or(sqlx::Error::RowNotFound)
