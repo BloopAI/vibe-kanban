@@ -5,11 +5,25 @@ use db::models::{
     workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
 };
 use deployment::Deployment;
+use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
+use ts_rs::TS;
 use utils::response::ApiResponse;
+use uuid::Uuid;
 
-use super::{AddWorkspaceRepoRequest, AddWorkspaceRepoResponse};
 use crate::{DeploymentImpl, error::ApiError};
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AddWorkspaceRepoRequest {
+    pub repo_id: Uuid,
+    pub target_branch: String,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct AddWorkspaceRepoResponse {
+    pub workspace: Workspace,
+    pub repo: RepoWithTargetBranch,
+}
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new().route("/", get(get_workspace_repos).post(add_workspace_repo))

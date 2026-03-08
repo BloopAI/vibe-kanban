@@ -31,7 +31,7 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl, error::ApiError, middleware::load_session_middleware,
-    routes::workspaces::RunScriptError,
+    routes::workspaces::execution::RunScriptError,
 };
 
 #[derive(Debug, Deserialize)]

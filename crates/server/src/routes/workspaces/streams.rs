@@ -4,15 +4,25 @@ use axum::{
     response::IntoResponse,
 };
 use deployment::Deployment;
+use serde::Deserialize;
 use services::services::container::ContainerService;
 
 use crate::{
     DeploymentImpl,
-    routes::{
-        relay_ws::{SignedWebSocket, SignedWsUpgrade},
-        workspaces::WorkspaceStreamQuery,
-    },
+    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
 };
+
+#[derive(Debug, Deserialize)]
+pub struct DiffStreamQuery {
+    #[serde(default)]
+    pub stats_only: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct WorkspaceStreamQuery {
+    pub archived: Option<bool>,
+    pub limit: Option<i64>,
+}
 
 pub async fn stream_workspaces_ws(
     ws: SignedWsUpgrade,
@@ -29,7 +39,7 @@ pub async fn stream_workspaces_ws(
 
 pub async fn stream_workspace_diff_ws(
     ws: SignedWsUpgrade,
-    Query(params): Query<super::DiffStreamQuery>,
+    Query(params): Query<DiffStreamQuery>,
     Extension(workspace): Extension<db::models::workspace::Workspace>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {

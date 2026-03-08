@@ -7,16 +7,34 @@ use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
 use executors::{
     executors::{CodingAgent, ExecutorError},
-    profile::ExecutorConfigs,
+    profile::{ExecutorConfigs, ExecutorProfileId},
 };
+use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
+use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use super::{
-    OpenEditorRequest, OpenEditorResponse, RunAgentSetupRequest, RunAgentSetupResponse,
-    codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError,
-};
+use super::{codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError};
 use crate::{DeploymentImpl, error::ApiError};
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct RunAgentSetupRequest {
+    pub executor_profile_id: ExecutorProfileId,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct RunAgentSetupResponse {}
+
+#[derive(Deserialize, TS)]
+pub struct OpenEditorRequest {
+    editor_type: Option<String>,
+    file_path: Option<String>,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct OpenEditorResponse {
+    pub url: Option<String>,
+}
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()

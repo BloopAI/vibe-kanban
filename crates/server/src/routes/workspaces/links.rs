@@ -11,11 +11,18 @@ use db::models::{
     workspace::Workspace,
 };
 use deployment::Deployment;
+use serde::Deserialize;
 use services::services::{diff_stream, remote_client::RemoteClientError, remote_sync};
 use utils::response::ApiResponse;
+use uuid::Uuid;
 
-use super::LinkWorkspaceRequest;
 use crate::{DeploymentImpl, error::ApiError, middleware::load_workspace_middleware};
+
+#[derive(Debug, Deserialize)]
+pub struct LinkWorkspaceRequest {
+    pub project_id: Uuid,
+    pub issue_id: Uuid,
+}
 
 pub async fn link_workspace(
     Extension(workspace): Extension<Workspace>,

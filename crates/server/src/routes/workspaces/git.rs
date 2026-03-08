@@ -18,17 +18,122 @@ use db::models::{
 use deployment::Deployment;
 use git::{ConflictOp, GitCliError, GitServiceError};
 use git2::BranchType;
+use serde::{Deserialize, Serialize};
 use services::services::{container::ContainerService, diff_stream, remote_sync};
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::{
-    AbortConflictsRequest, BranchStatus, ChangeTargetBranchRequest, ChangeTargetBranchResponse,
-    ContinueRebaseRequest, GitOperationError, MergeWorkspaceRequest, PushError,
-    PushWorkspaceRequest, RebaseWorkspaceRequest, RenameBranchError, RenameBranchRequest,
-    RenameBranchResponse, RepoBranchStatus, streams::stream_workspace_diff_ws,
-};
+use super::streams::{DiffStreamQuery, stream_workspace_diff_ws};
 use crate::{DeploymentImpl, error::ApiError, routes::relay_ws::SignedWsUpgrade};
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct RebaseWorkspaceRequest {
+    pub repo_id: Uuid,
+    pub old_base_branch: Option<String>,
+    pub new_base_branch: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AbortConflictsRequest {
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct ContinueRebaseRequest {
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum GitOperationError {
+    MergeConflicts {
+        message: String,
+        op: ConflictOp,
+        conflicted_files: Vec<String>,
+        target_branch: String,
+    },
+    RebaseInProgress,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct MergeWorkspaceRequest {
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct PushWorkspaceRequest {
+    pub repo_id: Uuid,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum PushError {
+    ForcePushRequired,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct BranchStatus {
+    pub commits_behind: Option<usize>,
+    pub commits_ahead: Option<usize>,
+    pub has_uncommitted_changes: Option<bool>,
+    pub head_oid: Option<String>,
+    pub uncommitted_count: Option<usize>,
+    pub untracked_count: Option<usize>,
+    pub target_branch_name: String,
+    pub remote_commits_behind: Option<usize>,
+    pub remote_commits_ahead: Option<usize>,
+    pub merges: Vec<Merge>,
+    pub is_rebase_in_progress: bool,
+    pub conflict_op: Option<ConflictOp>,
+    pub conflicted_files: Vec<String>,
+    pub is_target_remote: bool,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+pub struct RepoBranchStatus {
+    pub repo_id: Uuid,
+    pub repo_name: String,
+    #[serde(flatten)]
+    pub status: BranchStatus,
+}
+
+#[derive(Deserialize, Debug, TS)]
+pub struct ChangeTargetBranchRequest {
+    pub repo_id: Uuid,
+    pub new_target_branch: String,
+}
+
+#[derive(Serialize, Debug, TS)]
+pub struct ChangeTargetBranchResponse {
+    pub repo_id: Uuid,
+    pub new_target_branch: String,
+    pub status: (usize, usize),
+}
+
+#[derive(Deserialize, Debug, TS)]
+pub struct RenameBranchRequest {
+    pub new_branch_name: String,
+}
+
+#[derive(Serialize, Debug, TS)]
+pub struct RenameBranchResponse {
+    pub branch: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum RenameBranchError {
+    EmptyBranchName,
+    InvalidBranchNameFormat,
+    OpenPullRequest,
+    BranchAlreadyExists { repo_name: String },
+    RebaseInProgress { repo_name: String },
+    RenameFailed { repo_name: String, message: String },
+}
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -64,7 +169,7 @@ async fn resolve_vibe_kanban_identifier(
 #[axum::debug_handler]
 pub async fn stream_diff_ws(
     ws: SignedWsUpgrade,
-    query: axum::extract::Query<super::DiffStreamQuery>,
+    query: axum::extract::Query<DiffStreamQuery>,
     workspace: Extension<Workspace>,
     deployment: State<DeploymentImpl>,
 ) -> impl IntoResponse {

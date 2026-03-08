@@ -10,13 +10,21 @@ use db::models::{
     workspace::{Workspace, WorkspaceError},
 };
 use deployment::Deployment;
+use serde::Deserialize;
 use services::services::{container::ContainerService, diff_stream, remote_sync};
 use sqlx::Error as SqlxError;
 use utils::response::ApiResponse;
 use workspace_manager::WorkspaceManager;
 
-use super::DeleteWorkspaceQuery;
 use crate::{DeploymentImpl, error::ApiError};
+
+#[derive(Debug, Deserialize)]
+pub struct DeleteWorkspaceQuery {
+    #[serde(default)]
+    pub delete_remote: bool,
+    #[serde(default)]
+    pub delete_branches: bool,
+}
 
 pub async fn get_workspaces(
     State(deployment): State<DeploymentImpl>,

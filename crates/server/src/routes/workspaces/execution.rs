@@ -10,12 +10,21 @@ use executors::actions::{
     ExecutorAction, ExecutorActionType,
     script::{ScriptContext, ScriptRequest, ScriptRequestLanguage},
 };
+use serde::{Deserialize, Serialize};
 use services::services::container::ContainerService;
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::RunScriptError;
 use crate::{DeploymentImpl, error::ApiError};
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[serde(tag = "type", rename_all = "snake_case")]
+#[ts(tag = "type", rename_all = "snake_case")]
+pub enum RunScriptError {
+    NoScriptConfigured,
+    ProcessAlreadyRunning,
+}
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
