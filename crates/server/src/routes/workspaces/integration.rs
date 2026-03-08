@@ -1,6 +1,8 @@
 use std::path::Path;
 
-use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
+use axum::{
+    Extension, Json, Router, extract::State, response::Json as ResponseJson, routing::post,
+};
 use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
 use executors::{
@@ -15,6 +17,13 @@ use super::{
     codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError,
 };
 use crate::{DeploymentImpl, error::ApiError};
+
+pub fn router() -> Router<DeploymentImpl> {
+    Router::new()
+        .route("/editor/open", post(open_workspace_in_editor))
+        .route("/agent/setup", post(run_agent_setup))
+        .route("/github/cli/setup", post(gh_cli_setup_handler))
+}
 
 #[axum::debug_handler]
 pub async fn run_agent_setup(

@@ -209,10 +209,10 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         )
         .route("/messages/first", get(core::get_first_user_message))
         .route("/seen", axum::routing::put(core::mark_seen))
-        .nest("/git", git_router())
-        .nest("/execution", execution_router())
-        .nest("/integration", integration_router())
-        .nest("/repos", repos_router())
+        .nest("/git", git::router())
+        .nest("/execution", execution::router())
+        .nest("/integration", integration::router())
+        .nest("/repos", repos::router())
         .nest("/pull-requests", pr::router())
         .layer(from_fn_with_state(
             deployment.clone(),
@@ -236,43 +236,4 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
         .nest("/{id}/links", links::router(deployment));
 
     Router::new().nest("/workspaces", workspaces_router)
-}
-
-fn git_router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/status", get(git::get_workspace_branch_status))
-        .route("/diff/ws", get(git::stream_diff_ws))
-        .route("/merge", post(git::merge_workspace))
-        .route("/push", post(git::push_workspace_branch))
-        .route("/push/force", post(git::force_push_workspace_branch))
-        .route("/rebase", post(git::rebase_workspace))
-        .route("/rebase/continue", post(git::continue_workspace_rebase))
-        .route("/conflicts/abort", post(git::abort_workspace_conflicts))
-        .route(
-            "/target-branch",
-            axum::routing::put(git::change_target_branch),
-        )
-        .route("/branch", axum::routing::put(git::rename_branch))
-}
-
-fn execution_router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/dev-server/start", post(execution::start_dev_server))
-        .route("/cleanup", post(execution::run_cleanup_script))
-        .route("/archive", post(execution::run_archive_script))
-        .route("/stop", post(execution::stop_workspace_execution))
-}
-
-fn integration_router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/editor/open", post(integration::open_workspace_in_editor))
-        .route("/agent/setup", post(integration::run_agent_setup))
-        .route("/github/cli/setup", post(integration::gh_cli_setup_handler))
-}
-
-fn repos_router() -> Router<DeploymentImpl> {
-    Router::new().route(
-        "/",
-        get(repos::get_workspace_repos).post(repos::add_workspace_repo),
-    )
 }

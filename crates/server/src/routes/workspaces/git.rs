@@ -4,9 +4,10 @@ use std::{
 };
 
 use axum::{
-    Extension, Json,
+    Extension, Json, Router,
     extract::State,
     response::{IntoResponse, Json as ResponseJson},
+    routing::{get, post},
 };
 use db::models::{
     merge::{Merge, MergeStatus, PrMerge, PullRequestInfo},
@@ -28,6 +29,20 @@ use super::{
     RenameBranchResponse, RepoBranchStatus, streams::stream_workspace_diff_ws,
 };
 use crate::{DeploymentImpl, error::ApiError, routes::relay_ws::SignedWsUpgrade};
+
+pub fn router() -> Router<DeploymentImpl> {
+    Router::new()
+        .route("/status", get(get_workspace_branch_status))
+        .route("/diff/ws", get(stream_diff_ws))
+        .route("/merge", post(merge_workspace))
+        .route("/push", post(push_workspace_branch))
+        .route("/push/force", post(force_push_workspace_branch))
+        .route("/rebase", post(rebase_workspace))
+        .route("/rebase/continue", post(continue_workspace_rebase))
+        .route("/conflicts/abort", post(abort_workspace_conflicts))
+        .route("/target-branch", axum::routing::put(change_target_branch))
+        .route("/branch", axum::routing::put(rename_branch))
+}
 
 async fn resolve_vibe_kanban_identifier(
     deployment: &DeploymentImpl,

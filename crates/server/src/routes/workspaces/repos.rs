@@ -1,4 +1,4 @@
-use axum::{Extension, Json, extract::State, response::Json as ResponseJson};
+use axum::{Extension, Json, Router, extract::State, response::Json as ResponseJson, routing::get};
 use db::models::{
     requests::WorkspaceRepoInput,
     workspace::{Workspace, WorkspaceError},
@@ -10,6 +10,10 @@ use utils::response::ApiResponse;
 
 use super::{AddWorkspaceRepoRequest, AddWorkspaceRepoResponse};
 use crate::{DeploymentImpl, error::ApiError};
+
+pub fn router() -> Router<DeploymentImpl> {
+    Router::new().route("/", get(get_workspace_repos).post(add_workspace_repo))
+}
 
 pub async fn get_workspace_repos(
     Extension(workspace): Extension<Workspace>,
