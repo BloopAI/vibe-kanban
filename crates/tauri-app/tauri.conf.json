@@ -8,10 +8,6 @@
       "script": "concurrently \"pnpm run backend:dev:watch\" \"pnpm run local-web:dev\"",
       "cwd": "../.."
     },
-    "beforeBuildCommand": {
-      "script": "pnpm run build",
-      "cwd": "../../frontend"
-    },
     "devUrl": "http://localhost:3000",
     "frontendDist": "./splash"
   },

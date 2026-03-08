@@ -100,21 +100,7 @@ if [[ "$1" == "--desktop" || "$1" == "--all" ]]; then
 
   echo ""
   echo "🖥️  Building Tauri desktop app for $TAURI_PLATFORM..."
-
-  # Remove beforeBuildCommand from tauri.conf.json — the frontend is already built above.
-  # This mirrors what CI does in pre-release.yml.
-  TAURI_CONF="crates/tauri-app/tauri.conf.json"
-  node -e "
-    const fs = require('fs');
-    const conf = JSON.parse(fs.readFileSync('$TAURI_CONF', 'utf8'));
-    delete conf.build.beforeBuildCommand;
-    fs.writeFileSync('$TAURI_CONF', JSON.stringify(conf, null, 2) + '\n');
-  "
-
   cargo tauri build
-
-  # Restore tauri.conf.json
-  git checkout -- "$TAURI_CONF"
 
   TAURI_DIST="npx-cli/dist/tauri/$TAURI_PLATFORM"
   mkdir -p "$TAURI_DIST"
