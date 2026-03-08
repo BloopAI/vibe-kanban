@@ -365,26 +365,57 @@ impl Workspace {
         })
     }
 
-    /// Find workspace by path, walking ancestor directories until a workspace root is found.
+    /// Find workspace by path using container-ref path containment.
     /// Used by clients that may open a repo subfolder rather than the workspace root.
     pub async fn resolve_container_ref_by_prefix(
         pool: &SqlitePool,
         path: &str,
     ) -> Result<ContainerInfo, sqlx::Error> {
-        for candidate in Self::container_ref_candidates(path) {
-            if let Ok(info) = Self::resolve_container_ref(pool, &candidate).await {
-                return Ok(info);
-            }
-        }
+        let workspaces = sqlx::query_as::<_, Workspace>(
+            r#"SELECT id as "id!: Uuid",
+                      task_id as "task_id: Uuid",
+                      container_ref,
+                      branch,
+                      setup_completed_at as "setup_completed_at: DateTime<Utc>",
+                      created_at as "created_at!: DateTime<Utc>",
+                      updated_at as "updated_at!: DateTime<Utc>",
+                      archived as "archived!: bool",
+                      pinned as "pinned!: bool",
+                      name,
+                      worktree_deleted as "worktree_deleted!: bool"
+               FROM workspaces
+               WHERE container_ref IS NOT NULL"#,
+        )
+        .fetch_all(pool)
+        .await?;
 
-        Err(sqlx::Error::RowNotFound)
+        Self::best_matching_container_ref(
+            path,
+            workspaces.iter().filter_map(|ws| {
+                ws.container_ref
+                    .as_deref()
+                    .map(|container_ref| (ws.id, container_ref))
+            }),
+        )
+        .map(|workspace_id| ContainerInfo { workspace_id })
+        .ok_or(sqlx::Error::RowNotFound)
     }
 
-    fn container_ref_candidates(path: &str) -> Vec<String> {
-        std::path::Path::new(path)
-            .ancestors()
-            .filter_map(|ancestor| ancestor.to_str().map(ToOwned::to_owned))
-            .collect()
+    fn best_matching_container_ref<'a>(
+        path: &str,
+        candidates: impl Iterator<Item = (Uuid, &'a str)>,
+    ) -> Option<Uuid> {
+        let path = std::path::Path::new(path);
+
+        candidates
+            .filter(|(_, container_ref)| {
+                let container_ref = std::path::Path::new(container_ref);
+                path.starts_with(container_ref) || container_ref.starts_with(path)
+            })
+            .max_by_key(|(_, container_ref)| {
+                std::path::Path::new(container_ref).components().count()
+            })
+            .map(|(workspace_id, _)| workspace_id)
     }
 
     pub async fn set_archived(
@@ -678,22 +709,41 @@ impl Workspace {
 
 #[cfg(test)]
 mod tests {
+    use uuid::Uuid;
+
     use super::Workspace;
 
     #[test]
-    fn container_ref_candidates_walk_all_ancestors() {
-        let candidates = Workspace::container_ref_candidates("/tmp/ws/repo/packages/app");
-
-        assert_eq!(
-            candidates,
-            vec![
-                "/tmp/ws/repo/packages/app".to_string(),
-                "/tmp/ws/repo/packages".to_string(),
-                "/tmp/ws/repo".to_string(),
-                "/tmp/ws".to_string(),
-                "/tmp".to_string(),
-                "/".to_string(),
-            ]
+    fn best_matching_container_ref_prefers_deepest_match() {
+        let broad_id = Uuid::new_v4();
+        let exact_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/ws/repo/packages/app",
+            [(broad_id, "/tmp"), (exact_id, "/tmp/ws")].into_iter(),
         );
+
+        assert_eq!(selected, Some(exact_id));
+    }
+
+    #[test]
+    fn best_matching_container_ref_supports_parent_request_path() {
+        let workspace_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/ws/repo",
+            [(workspace_id, "/tmp/ws/repo/packages/app")].into_iter(),
+        );
+
+        assert_eq!(selected, Some(workspace_id));
+    }
+
+    #[test]
+    fn best_matching_container_ref_ignores_unrelated_paths() {
+        let workspace_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/other/path",
+            [(workspace_id, "/tmp/ws")].into_iter(),
+        );
+
+        assert_eq!(selected, None);
     }
 }
