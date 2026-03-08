@@ -47,9 +47,6 @@ async function installAndLaunchMacOS(bundleInfo) {
   }
 
   extractTarGz(archivePath, dir);
-  try {
-    fs.unlinkSync(archivePath);
-  } catch {}
 
   const appName = fs.readdirSync(dir).find((f) => f.endsWith('.app'));
   if (!appName) {
@@ -91,9 +88,6 @@ async function installAndLaunchLinux(bundleInfo) {
   }
 
   extractTarGz(archivePath, dir);
-  try {
-    fs.unlinkSync(archivePath);
-  } catch {}
 
   const appImage = fs.readdirSync(dir).find((f) => f.endsWith('.AppImage'));
   if (!appImage) {
