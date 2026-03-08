@@ -5,9 +5,11 @@ use utils::{
     port_file::read_port_file,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
+use uuid::Uuid;
 
 const HOST_ENV: &str = "MCP_HOST";
 const PORT_ENV: &str = "MCP_PORT";
+const SESSION_ENV: &str = "VK_SESSION_ID";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum McpLaunchMode {
@@ -33,10 +35,13 @@ fn main() -> anyhow::Result<()> {
 
             let base_url = resolve_base_url("vibe-kanban-mcp").await?;
             let LaunchConfig { mode } = launch_config;
+            let attached_session_id = resolve_attached_session_id()?;
 
             let server = match mode {
                 McpLaunchMode::Global => McpServer::new_global(&base_url),
-                McpLaunchMode::Orchestrator => McpServer::new_orchestrator(&base_url),
+                McpLaunchMode::Orchestrator => {
+                    McpServer::new_orchestrator(&base_url, attached_session_id)
+                }
             };
 
             let service = server.init().await?.serve(stdio()).await.map_err(|error| {
@@ -133,6 +138,17 @@ async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
     Ok(url)
 }
 
+fn resolve_attached_session_id() -> anyhow::Result<Option<Uuid>> {
+    std::env::var(SESSION_ENV)
+        .ok()
+        .map(|value| {
+            Uuid::parse_str(value.trim()).map_err(|error| {
+                anyhow::anyhow!("Invalid {} value '{}': {}", SESSION_ENV, value, error)
+            })
+        })
+        .transpose()
+}
+
 fn init_process_logging(log_prefix: &str, version: &str) {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
@@ -158,7 +174,9 @@ fn init_process_logging(log_prefix: &str, version: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::{LaunchConfig, McpLaunchMode, resolve_launch_config_from_iter};
+    use super::{
+        LaunchConfig, McpLaunchMode, resolve_attached_session_id, resolve_launch_config_from_iter,
+    };
 
     #[test]
     fn orchestrator_mode_does_not_require_session_id() {
@@ -193,5 +211,23 @@ mod tests {
                 .to_string()
                 .contains("Unknown argument '--session-id'")
         );
+    }
+
+    #[test]
+    fn attached_session_id_is_loaded_from_env() {
+        unsafe {
+            std::env::set_var("VK_SESSION_ID", "123e4567-e89b-12d3-a456-426614174000");
+        }
+
+        let session_id = resolve_attached_session_id().expect("env session id should parse");
+
+        assert_eq!(
+            session_id.map(|id| id.to_string()),
+            Some("123e4567-e89b-12d3-a456-426614174000".to_string())
+        );
+
+        unsafe {
+            std::env::remove_var("VK_SESSION_ID");
+        }
     }
 }
