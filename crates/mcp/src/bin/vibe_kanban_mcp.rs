@@ -1,12 +1,10 @@
-use db::models::session::Session;
-use mcp::{ApiResponseEnvelope, task_server::McpServer};
+use mcp::task_server::McpServer;
 use rmcp::{ServiceExt, transport::stdio};
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     port_file::read_port_file,
     sentry::{self as sentry_utils, SentrySource, sentry_layer},
 };
-use uuid::Uuid;
 
 const HOST_ENV: &str = "MCP_HOST";
 const PORT_ENV: &str = "MCP_PORT";
@@ -20,7 +18,6 @@ enum McpLaunchMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct LaunchConfig {
     mode: McpLaunchMode,
-    session_id: Option<Uuid>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -35,20 +32,14 @@ fn main() -> anyhow::Result<()> {
             init_process_logging("vibe-kanban-mcp", version);
 
             let base_url = resolve_base_url("vibe-kanban-mcp").await?;
-            let LaunchConfig { mode, session_id } = launch_config;
+            let LaunchConfig { mode } = launch_config;
 
             let server = match mode {
                 McpLaunchMode::Global => McpServer::new_global(&base_url),
-                McpLaunchMode::Orchestrator => {
-                    let session_id = session_id.ok_or_else(|| {
-                        anyhow::anyhow!("orchestrator mode requires --session-id")
-                    })?;
-                    let session = resolve_session(&base_url, session_id).await?;
-                    McpServer::new_orchestrator(&base_url, session)
-                }
+                McpLaunchMode::Orchestrator => McpServer::new_orchestrator(&base_url),
             };
 
-            let service = server.init().await.serve(stdio()).await.map_err(|error| {
+            let service = server.init().await?.serve(stdio()).await.map_err(|error| {
                 tracing::error!("serving error: {:?}", error);
                 error
             })?;
@@ -59,9 +50,14 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
-    let mut args = std::env::args().skip(1);
+    resolve_launch_config_from_iter(std::env::args().skip(1))
+}
+
+fn resolve_launch_config_from_iter<I>(mut args: I) -> anyhow::Result<LaunchConfig>
+where
+    I: Iterator<Item = String>,
+{
     let mut mode = None;
-    let mut session_id = None;
 
     while let Some(arg) = args.next() {
         match arg.as_str() {
@@ -70,20 +66,13 @@ fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
                     anyhow::anyhow!("Missing value for --mode. Expected 'global' or 'orchestrator'")
                 })?);
             }
-            "--session-id" => {
-                session_id = Some(args.next().ok_or_else(|| {
-                    anyhow::anyhow!("Missing value for --session-id. Expected a UUID")
-                })?);
-            }
             "-h" | "--help" => {
-                println!(
-                    "Usage: vibe-kanban-mcp --mode <global|orchestrator> [--session-id <UUID>]"
-                );
+                println!("Usage: vibe-kanban-mcp --mode <global|orchestrator>");
                 std::process::exit(0);
             }
             _ => {
                 return Err(anyhow::anyhow!(
-                    "Unknown argument '{arg}'. Usage: vibe-kanban-mcp --mode <global|orchestrator> [--session-id <UUID>]"
+                    "Unknown argument '{arg}'. Usage: vibe-kanban-mcp --mode <global|orchestrator>"
                 ));
             }
         }
@@ -105,17 +94,7 @@ fn resolve_launch_config() -> anyhow::Result<LaunchConfig> {
         }
     };
 
-    let session_id = session_id
-        .as_deref()
-        .filter(|value| !value.trim().is_empty())
-        .map(parse_uuid_arg)
-        .transpose()?;
-
-    Ok(LaunchConfig { mode, session_id })
-}
-
-fn parse_uuid_arg(value: &str) -> anyhow::Result<Uuid> {
-    Uuid::parse_str(value).map_err(|error| anyhow::anyhow!("Invalid UUID '{value}': {error}"))
+    Ok(LaunchConfig { mode })
 }
 
 async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
@@ -154,42 +133,6 @@ async fn resolve_base_url(log_prefix: &str) -> anyhow::Result<String> {
     Ok(url)
 }
 
-async fn resolve_session(base_url: &str, session_id: Uuid) -> anyhow::Result<Session> {
-    let url = format!(
-        "{}/api/sessions/{}",
-        base_url.trim_end_matches('/'),
-        session_id
-    );
-    let response = reqwest::Client::new().get(&url).send().await?;
-
-    if !response.status().is_success() {
-        return Err(anyhow::anyhow!(
-            "Failed to resolve session {}: backend returned {}",
-            session_id,
-            response.status()
-        ));
-    }
-
-    let api_response = response.json::<ApiResponseEnvelope<Session>>().await?;
-    if !api_response.success {
-        let message = api_response
-            .message
-            .unwrap_or_else(|| "Unknown error".to_string());
-        return Err(anyhow::anyhow!(
-            "Failed to resolve session {}: {}",
-            session_id,
-            message
-        ));
-    }
-
-    api_response.data.ok_or_else(|| {
-        anyhow::anyhow!(
-            "Failed to resolve session {}: response missing session data",
-            session_id
-        )
-    })
-}
-
 fn init_process_logging(log_prefix: &str, version: &str) {
     rustls::crypto::aws_lc_rs::default_provider()
         .install_default()
@@ -211,4 +154,44 @@ fn init_process_logging(log_prefix: &str, version: &str) {
         log_prefix,
         version
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{LaunchConfig, McpLaunchMode, resolve_launch_config_from_iter};
+
+    #[test]
+    fn orchestrator_mode_does_not_require_session_id() {
+        let config = resolve_launch_config_from_iter(
+            ["--mode".to_string(), "orchestrator".to_string()].into_iter(),
+        )
+        .expect("config should parse");
+
+        assert_eq!(
+            config,
+            LaunchConfig {
+                mode: McpLaunchMode::Orchestrator
+            }
+        );
+    }
+
+    #[test]
+    fn session_id_flag_is_rejected() {
+        let error = resolve_launch_config_from_iter(
+            [
+                "--mode".to_string(),
+                "orchestrator".to_string(),
+                "--session-id".to_string(),
+                "x".to_string(),
+            ]
+            .into_iter(),
+        )
+        .expect_err("session id flag should be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("Unknown argument '--session-id'")
+        );
+    }
 }

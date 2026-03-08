@@ -64,16 +64,14 @@ For example, orchestrator mode can be launched with:
         "vibe-kanban@latest",
         "--mcp",
         "--mode",
-        "orchestrator",
-        "--session-id",
-        "123e4567-e89b-12d3-a456-426614174000"
+        "orchestrator"
       ]
     }
   }
 }
 ```
 
-`--session-id` is required in orchestrator mode. If you only specify `--mcp`, the server defaults to `global` mode.
+In orchestrator mode, the MCP server now derives its attached session from the active workspace context automatically. If you only specify `--mcp`, the server defaults to `global` mode.
 
 ## Available MCP Tools
 
