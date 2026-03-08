@@ -136,7 +136,9 @@ async function ensureDesktopBundle(tauriPlatform, onProgress) {
   if (LOCAL_DEV_MODE) {
     const localDir = path.join(LOCAL_DIST_DIR, "tauri", tauriPlatform);
     if (fs.existsSync(localDir)) {
-      return { dir: localDir, archivePath: null, type: null };
+      const files = fs.readdirSync(localDir);
+      const archive = files.find(f => f.endsWith('.tar.gz') || f.endsWith('-setup.exe'));
+      return { dir: localDir, archivePath: archive ? path.join(localDir, archive) : null, type: null };
     }
     throw new Error(
       `Local desktop bundle not found: ${localDir}\n` +
