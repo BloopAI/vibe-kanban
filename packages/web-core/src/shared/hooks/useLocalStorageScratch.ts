@@ -78,21 +78,20 @@ export const useLocalStorageScratch = (
   const [scratch, setScratch] = useState<Scratch | null>(() =>
     enabled ? readFromStorage(storageKey) : null
   );
-  // Start as `enabled` — when enabled, the useState initializer above already
-  // synchronously reads from localStorage, so data is available on the first
-  // render and there is no need for an extra "loading" cycle.
-  const [isInitialized, setIsInitialized] = useState(enabled);
+  const [loadedKey, setLoadedKey] = useState<string | null>(
+    enabled ? storageKey : null
+  );
 
   useEffect(() => {
     if (!enabled) {
       setScratch(null);
-      setIsInitialized(false);
+      setLoadedKey(null);
       return;
     }
 
     const stored = readFromStorage(storageKey);
     setScratch(stored);
-    setIsInitialized(true);
+    setLoadedKey(storageKey);
   }, [storageKey, enabled]);
 
   useEffect(() => {
@@ -131,7 +130,7 @@ export const useLocalStorageScratch = (
 
   return {
     scratch,
-    isLoading: !isInitialized && enabled,
+    isLoading: enabled && loadedKey !== storageKey,
     isConnected: true,
     error: null,
     updateScratch,

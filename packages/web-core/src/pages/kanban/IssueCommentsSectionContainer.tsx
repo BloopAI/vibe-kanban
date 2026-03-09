@@ -110,9 +110,10 @@ function IssueCommentsSectionContent() {
   } = useDebouncedCallback(persistCommentDraft, 500);
 
   useEffect(() => {
+    cancelDebouncedPersistCommentDraft();
     hasLoadedCommentDraftRef.current = false;
     setCommentInput('');
-  }, [commentDraftId]);
+  }, [commentDraftId, cancelDebouncedPersistCommentDraft]);
 
   useEffect(() => {
     if (isCommentDraftLoading) return;
