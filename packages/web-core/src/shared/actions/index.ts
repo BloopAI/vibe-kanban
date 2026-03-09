@@ -226,6 +226,7 @@ export const Actions = {
           ctx.runtime
         );
         if (!draftId) {
+          setCreateModeSeedState(null);
           await ConfirmDialog.show({
             title: 'Error',
             message: 'Failed to prepare workspace draft. Please try again.',
@@ -411,6 +412,7 @@ export const Actions = {
           ctx.runtime
         );
         if (!draftId) {
+          setCreateModeSeedState(null);
           await ConfirmDialog.show({
             title: 'Error',
             message: 'Failed to prepare workspace draft. Please try again.',
