@@ -16,6 +16,16 @@ export function setCreateModeSeedState(
 export function consumeCreateModeSeedState(): CreateModeInitialState | null {
   const state = pendingSeedState;
   pendingSeedState = null;
-  console.log('[SeedStore] CONSUME:', state ? JSON.stringify({ hasPrompt: !!state.initialPrompt, hasLinkedIssue: !!state.linkedIssue, repoCount: state.preferredRepos?.length ?? 0, hasExecutorConfig: !!state.executorConfig }) : 'null');
+  console.log(
+    '[SeedStore] CONSUME:',
+    state
+      ? JSON.stringify({
+          hasPrompt: !!state.initialPrompt,
+          hasLinkedIssue: !!state.linkedIssue,
+          repoCount: state.preferredRepos?.length ?? 0,
+          hasExecutorConfig: !!state.executorConfig,
+        })
+      : 'null'
+  );
   return state;
 }

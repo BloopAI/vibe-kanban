@@ -103,7 +103,16 @@ export async function persistWorkspaceCreateDraft(
   runtime: AppRuntime = 'local'
 ): Promise<string | null> {
   const draftData = toDraftWorkspaceData(initialState);
-  console.log('[persistDraft] writing to scratch:', JSON.stringify({ draftId, runtime, hasLinkedIssue: !!draftData.linked_issue, linkedIssue: draftData.linked_issue, repoCount: draftData.repos.length }));
+  console.log(
+    '[persistDraft] writing to scratch:',
+    JSON.stringify({
+      draftId,
+      runtime,
+      hasLinkedIssue: !!draftData.linked_issue,
+      linkedIssue: draftData.linked_issue,
+      repoCount: draftData.repos.length,
+    })
+  );
   const payload = {
     type: 'DRAFT_WORKSPACE' as const,
     data: draftData,
