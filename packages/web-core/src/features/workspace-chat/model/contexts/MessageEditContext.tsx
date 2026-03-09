@@ -33,14 +33,16 @@ export function MessageEditProvider({
   const [activeEdit, setActiveEdit] = useState<EditState | null>(null);
   const { entries } = useEntries();
 
-  // Build entry order map from entries
+  // Build entry order map from entries — only when actively editing
+  // to avoid expensive rebuilds during streaming when edit mode is inactive
   const entryOrder = useMemo(() => {
+    if (!activeEdit) return {};
     const order: Record<string, number> = {};
     entries.forEach((entry, idx) => {
       order[entry.patchKey] = idx;
     });
     return order;
-  }, [entries]);
+  }, [entries, activeEdit]);
 
   const startEdit = useCallback(
     (entryKey: string, processId: string, originalMessage: string) => {

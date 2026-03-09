@@ -370,11 +370,10 @@ export const useConversationHistory = ({
                 return [];
             }
 
-            // Track that setup/cleanup scripts have run
             if (scriptContext === 'SetupScript') {
-              setHasSetupScriptRun(true);
+              setHasSetupScriptRun((prev) => (prev ? prev : true));
             } else if (scriptContext === 'CleanupScript') {
-              setHasCleanupScriptRun(true);
+              setHasCleanupScriptRun((prev) => (prev ? prev : true));
             }
 
             const executionProcess = getLiveExecutionProcess(
@@ -475,8 +474,9 @@ export const useConversationHistory = ({
           return entries;
         });
 
-      // Update running process state
-      setHasRunningProcess(hasRunningProcess);
+      setHasRunningProcess((prev) =>
+        prev === hasRunningProcess ? prev : hasRunningProcess
+      );
 
       // Emit the next action bar if no process running
       if (!hasRunningProcess && !hasPendingApproval) {
