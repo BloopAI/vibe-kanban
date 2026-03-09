@@ -20,8 +20,8 @@ rust-embed = "8.2"
 directories = "6.0.0"
 open = "5.3.2"
 regex = "1.11.1"
-sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
-sentry-tracing = { version = "0.41.0", default-features = false, features = ["backtrace"] }
+sentry = { version = "0.46.2", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest", "rustls"] }
+sentry-tracing = { version = "0.46.2", default-features = false, features = ["backtrace"] }
 json-patch = "2.0"
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"] }
 tokio = { workspace = true }

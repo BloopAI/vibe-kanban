@@ -24,7 +24,7 @@ chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 futures-util = "0.3"
 async-trait = "0.1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls-webpki-roots-no-provider", "stream"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "query", "form", "stream", "rustls"] }
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 bytes = "1"
 hyper = { version = "1", features = ["client", "server", "http1"] }

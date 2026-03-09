@@ -37,7 +37,7 @@ http = "1"
 hyper = { version = "1", features = ["client", "server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 tokio = { version = "1.0", features = ["full"] }
-tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
 tokio-util = { version = "0.7", features = ["io"] }
 tokio-yamux = "0.3.17"
 tracing = "0.1.43"
