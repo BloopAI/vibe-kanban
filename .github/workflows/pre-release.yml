@@ -784,7 +784,12 @@ jobs:
           echo "APPLE_API_KEY_PATH=$KEY_PATH" >> $GITHUB_ENV
 
       - name: Build Tauri app
-        run: cargo tauri build --target ${{ matrix.target }} --ci
+        run: |
+          # Avoid aws-lc-sys CMake failures on ARM64 Windows cross-compilation.
+          if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            export CARGO_PROFILE_RELEASE_DEBUG=0
+          fi
+          cargo tauri build --target ${{ matrix.target }} --ci
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -798,8 +803,6 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-          # Avoid aws-lc-sys CMake failures on ARM64 Windows cross-compilation.
-          CARGO_PROFILE_RELEASE_DEBUG: ${{ matrix.target == 'aarch64-pc-windows-msvc' && '0' || '' }}
 
       - name: Sign Windows artifacts with Azure Trusted Signing
         if: runner.os == 'Windows' && env.AZURE_ENDPOINT != ''
