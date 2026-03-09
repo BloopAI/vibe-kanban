@@ -8,6 +8,7 @@ import {
   TrashIcon,
   PaperclipIcon,
   ImageIcon,
+  EyeIcon,
 } from '@phosphor-icons/react';
 import {
   IssueTagsRow,
@@ -391,35 +392,65 @@ export function KanbanIssuePanel({
               ),
               showStaticToolbar: isDescriptionEditing,
               saveStatus: descriptionSaveStatus,
-              staticToolbarActions: isDescriptionEditing && onBrowseAttachment ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          if (!isSubmitting && !isUploading) {
-                            onBrowseAttachment();
-                          }
-                        }}
-                        disabled={isSubmitting || isUploading}
-                        className={cn(
-                          'p-half rounded-sm transition-colors',
-                          'text-low hover:text-normal hover:bg-panel/50',
-                          'disabled:opacity-50 disabled:cursor-not-allowed'
-                        )}
-                        title={t('kanban.attachFile')}
-                        aria-label={t('kanban.attachFile')}
-                      >
-                        <PaperclipIcon className="size-icon-sm" />
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {t('kanban.attachFileHint')}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+              staticToolbarActions: isDescriptionEditing ? (
+                <>
+                  {onBrowseAttachment && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              if (!isSubmitting && !isUploading) {
+                                onBrowseAttachment();
+                              }
+                            }}
+                            disabled={isSubmitting || isUploading}
+                            className={cn(
+                              'p-half rounded-sm transition-colors',
+                              'text-low hover:text-normal hover:bg-panel/50',
+                              'disabled:opacity-50 disabled:cursor-not-allowed'
+                            )}
+                            title={t('kanban.attachFile')}
+                            aria-label={t('kanban.attachFile')}
+                          >
+                            <PaperclipIcon className="size-icon-sm" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t('kanban.attachFileHint')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  {!isCreateMode && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setIsDescriptionEditing(false);
+                            }}
+                            className={cn(
+                              'p-half rounded-sm transition-colors',
+                              'text-low hover:text-normal hover:bg-panel/50'
+                            )}
+                            title={t('kanban.previewDescription', 'Preview')}
+                            aria-label={t('kanban.previewDescription', 'Preview')}
+                          >
+                            <EyeIcon className="size-icon-sm" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {t('kanban.previewDescription', 'Preview')}
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </>
               ) : null,
             })}
             {attachmentError && (
