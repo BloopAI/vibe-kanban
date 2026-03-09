@@ -18,6 +18,9 @@ import {
 } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
 
+import { buildConversationRows } from '../model/conversation-row-model';
+import { useConversationVirtualizer } from '../model/useConversationVirtualizer';
+
 import { cn } from '@/shared/lib/utils';
 import {
   INITIAL_TOP_ITEM,
@@ -326,6 +329,17 @@ export const ConversationList = forwardRef<
   const entries = channelData?.data ?? [];
   const hasEntries = entries.length > 0;
 
+  // ---- TanStack Virtual plumbing (alongside Virtuoso until Task 12 swap) ----
+  const tanstackScrollRef = useRef<HTMLDivElement | null>(null);
+  const conversationRows = useMemo(
+    () => buildConversationRows(entries),
+    [entries]
+  );
+  const conversationVirtualizer = useConversationVirtualizer({
+    rows: conversationRows,
+    scrollContainerRef: tanstackScrollRef,
+  });
+
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
     !hasSetupScript && !hasSetupScriptRun && hasEntries;
@@ -357,7 +371,8 @@ export const ConversationList = forwardRef<
     ]
   );
 
-  // Expose scroll to previous user message functionality via ref
+  // Expose scroll functionality via ref — currently delegates to Virtuoso;
+  // Task 12 will switch to conversationVirtualizer as the primary backend.
   useImperativeHandle(
     ref,
     () => ({
@@ -365,17 +380,14 @@ export const ConversationList = forwardRef<
         const data = channelData?.data;
         if (!data || !messageListRef.current) return;
 
-        // Get currently rendered items to find visible range
         const rendered = messageListRef.current.data.getCurrentlyRendered();
         if (!rendered.length) return;
 
-        // Find the index of the first visible item in the full data array
         const firstVisibleKey = rendered[0]?.patchKey;
         const firstVisibleIndex = data.findIndex(
           (item) => item.patchKey === firstVisibleKey
         );
 
-        // Find all user message indices
         const userMessageIndices: number[] = [];
         data.forEach((item, index) => {
           if (
@@ -386,7 +398,6 @@ export const ConversationList = forwardRef<
           }
         });
 
-        // Find the user message before the first visible item
         const targetIndex = userMessageIndices
           .reverse()
           .find((idx) => idx < firstVisibleIndex);
@@ -410,6 +421,10 @@ export const ConversationList = forwardRef<
     }),
     [channelData]
   );
+
+  // Suppress unused variable lint — conversationVirtualizer is wired in
+  // but not yet the active scroll backend (Task 12 activates it).
+  void conversationVirtualizer;
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
