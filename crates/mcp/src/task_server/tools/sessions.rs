@@ -8,6 +8,7 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use utils::approvals::{ApprovalOutcome, ApprovalResponse};
 use uuid::Uuid;
 
 use super::McpServer;
@@ -497,17 +498,18 @@ impl McpServer {
         }): Parameters<RespondApprovalRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let status = status.trim().to_ascii_lowercase();
-        let status_value = match status.as_str() {
-            "approved" | "approve" => serde_json::json!({ "status": "approved" }),
-            "denied" | "deny" => {
-                let mut payload = serde_json::json!({ "status": "denied" });
-                if let Some(reason) = reason
-                    && !reason.trim().is_empty()
-                {
-                    payload["reason"] = serde_json::json!(reason.trim());
-                }
-                payload
-            }
+        let approval_status = match status.as_str() {
+            "approved" | "approve" => ApprovalOutcome::Approved,
+            "denied" | "deny" => ApprovalOutcome::Denied {
+                reason: reason.and_then(|reason| {
+                    let trimmed = reason.trim();
+                    if trimmed.is_empty() {
+                        None
+                    } else {
+                        Some(trimmed.to_string())
+                    }
+                }),
+            },
             _ => {
                 return Self::err(
                     format!("invalid approval status '{status}'"),
@@ -520,12 +522,14 @@ impl McpServer {
             return Ok(error_result);
         }
 
+        let approval_response = ApprovalResponse {
+            execution_process_id: execution_id,
+            status: approval_status,
+        };
+
         let url = self.url(&format!("/api/approvals/{approval_id}/respond"));
         let outcome: Value = match self
-            .send_json(self.client.post(&url).json(&serde_json::json!({
-                "execution_process_id": execution_id,
-                "status": status_value,
-            })))
+            .send_json(self.client.post(&url).json(&approval_response))
             .await
         {
             Ok(value) => value,
