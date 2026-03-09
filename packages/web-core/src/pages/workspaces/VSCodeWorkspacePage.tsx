@@ -2,12 +2,16 @@
 import '@/integrations/vscode/bridge';
 
 import { useCallback, useRef, useState } from 'react';
+import type { Session } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { AppWithStyleOverride } from '@/shared/lib/StyleOverride';
 import { useStyleOverrideThemeSetter } from '@/shared/lib/StyleOverride';
 import { WebviewContextMenu } from '@/integrations/vscode/ContextMenu';
 import { ArrowDownIcon } from '@phosphor-icons/react';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import {
+  useWorkspaceContext,
+  useWorkspaceDiffContext,
+} from '@/shared/hooks/useWorkspaceContext';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { SessionChatBoxContainer } from '@/features/workspace-chat/ui/SessionChatBoxContainer';
 import {
@@ -19,6 +23,57 @@ import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/Me
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
+
+function VSCodeChatBox({
+  session,
+  workspaceId,
+  isNewSessionMode,
+  sessions,
+  onSelectSession,
+  onStartNewSession,
+  onScrollToPreviousMessage,
+  onScrollToBottom,
+}: {
+  session: Session | undefined;
+  workspaceId: string | undefined;
+  isNewSessionMode: boolean;
+  sessions: Session[];
+  onSelectSession: (sessionId: string) => void;
+  onStartNewSession: () => void;
+  onScrollToPreviousMessage: () => void;
+  onScrollToBottom: () => void;
+}) {
+  const { diffStats } = useWorkspaceDiffContext();
+
+  return (
+    <SessionChatBoxContainer
+      {...(isNewSessionMode && workspaceId
+        ? {
+            mode: 'new-session' as const,
+            workspaceId,
+            onSelectSession,
+          }
+        : session
+          ? {
+              mode: 'existing-session' as const,
+              session,
+              onSelectSession,
+              onStartNewSession,
+            }
+          : {
+              mode: 'placeholder' as const,
+            })}
+      sessions={sessions}
+      filesChanged={diffStats.files_changed}
+      linesAdded={diffStats.lines_added}
+      linesRemoved={diffStats.lines_removed}
+      disableViewCode
+      showOpenWorkspaceButton={false}
+      onScrollToPreviousMessage={onScrollToPreviousMessage}
+      onScrollToBottom={onScrollToBottom}
+    />
+  );
+}
 
 export function VSCodeWorkspacePage() {
   const { t } = useTranslation('common');
@@ -32,7 +87,6 @@ export function VSCodeWorkspacePage() {
     selectedSession,
     selectSession,
     isLoading,
-    diffStats,
     isNewSessionMode,
     startNewSession,
   } = useWorkspaceContext();
@@ -111,29 +165,13 @@ export function VSCodeWorkspacePage() {
                   </div>
                 )}
                 <div className="flex justify-center @container pl-px">
-                  <SessionChatBoxContainer
-                    {...(isNewSessionMode && workspaceWithSession
-                      ? {
-                          mode: 'new-session',
-                          workspaceId: workspaceWithSession.id,
-                          onSelectSession: selectSession,
-                        }
-                      : selectedSession
-                        ? {
-                            mode: 'existing-session',
-                            session: selectedSession,
-                            onSelectSession: selectSession,
-                            onStartNewSession: startNewSession,
-                          }
-                        : {
-                            mode: 'placeholder',
-                          })}
+                  <VSCodeChatBox
+                    session={selectedSession}
+                    workspaceId={workspaceWithSession?.id}
+                    isNewSessionMode={isNewSessionMode}
                     sessions={sessions}
-                    filesChanged={diffStats.files_changed}
-                    linesAdded={diffStats.lines_added}
-                    linesRemoved={diffStats.lines_removed}
-                    disableViewCode
-                    showOpenWorkspaceButton={false}
+                    onSelectSession={selectSession}
+                    onStartNewSession={startNewSession}
                     onScrollToPreviousMessage={handleScrollToPreviousMessage}
                     onScrollToBottom={handleScrollToBottom}
                   />
@@ -141,7 +179,6 @@ export function VSCodeWorkspacePage() {
               </MessageEditProvider>
             </EntriesProvider>
           </ApprovalFeedbackProvider>
-          {/* NO ContextBarContainer here - intentionally excluded for VS Code */}
         </main>
       </div>
     </AppWithStyleOverride>

@@ -3,7 +3,7 @@ import {
   useUiPreferencesStore,
   RIGHT_MAIN_PANEL_MODES,
 } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 import {
   ChangesViewContext,
   type ScrollToFileCallback,
@@ -14,7 +14,7 @@ interface ChangesViewProviderProps {
 }
 
 export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
-  const { diffPaths } = useWorkspaceContext();
+  const { diffPaths } = useWorkspaceDiffContext();
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
   const [selectedLineNumber, setSelectedLineNumber] = useState<number | null>(
     null

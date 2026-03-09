@@ -19,7 +19,64 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
+
+/**
+ * Isolated component that reads diffStats from WorkspaceContext.
+ * By pushing the context subscription down to this leaf, the parent
+ * WorkspacesMainContainer (and its ConversationList child) no longer
+ * rerenders when diffs/comments/repos stream in.
+ */
+function ChatBoxWithDiffStats({
+  session,
+  workspaceId,
+  isNewSessionMode,
+  sessions,
+  onSelectSession,
+  onStartNewSession,
+  onScrollToPreviousMessage,
+  onScrollToBottom,
+}: {
+  session: Session | undefined;
+  workspaceId: string | undefined;
+  isNewSessionMode: boolean;
+  sessions: Session[];
+  onSelectSession: (sessionId: string) => void;
+  onStartNewSession: () => void;
+  onScrollToPreviousMessage: () => void;
+  onScrollToBottom: () => void;
+}) {
+  const { diffStats } = useWorkspaceDiffContext();
+
+  return (
+    <SessionChatBoxContainer
+      {...(isNewSessionMode && workspaceId
+        ? {
+            mode: 'new-session' as const,
+            workspaceId,
+            onSelectSession,
+          }
+        : session
+          ? {
+              mode: 'existing-session' as const,
+              session,
+              onSelectSession,
+              onStartNewSession,
+            }
+          : {
+              mode: 'placeholder' as const,
+            })}
+      sessions={sessions}
+      filesChanged={diffStats.files_changed}
+      linesAdded={diffStats.lines_added}
+      linesRemoved={diffStats.lines_removed}
+      disableViewCode={false}
+      showOpenWorkspaceButton={false}
+      onScrollToPreviousMessage={onScrollToPreviousMessage}
+      onScrollToBottom={onScrollToBottom}
+    />
+  );
+}
 
 export interface WorkspacesMainContainerHandle {
   scrollToBottom: () => void;
@@ -52,11 +109,9 @@ export const WorkspacesMainContainer = forwardRef<
   },
   ref
 ) {
-  const { diffStats } = useWorkspaceContext();
   const containerRef = useRef<HTMLElement>(null);
   const conversationListRef = useRef<ConversationListHandle>(null);
 
-  // Create WorkspaceWithSession for ConversationList
   const workspaceWithSession = useMemo(() => {
     if (!selectedWorkspace) return undefined;
     return createWorkspaceWithSession(selectedWorkspace, selectedSession);
@@ -95,29 +150,13 @@ export const WorkspacesMainContainer = forwardRef<
   ) : null;
 
   const chatBoxContent = (
-    <SessionChatBoxContainer
-      {...(isNewSessionMode && workspaceWithSession
-        ? {
-            mode: 'new-session' as const,
-            workspaceId: workspaceWithSession.id,
-            onSelectSession,
-          }
-        : session
-          ? {
-              mode: 'existing-session' as const,
-              session,
-              onSelectSession,
-              onStartNewSession,
-            }
-          : {
-              mode: 'placeholder' as const,
-            })}
+    <ChatBoxWithDiffStats
+      session={session}
+      workspaceId={workspaceWithSession?.id}
+      isNewSessionMode={isNewSessionMode}
       sessions={sessions}
-      filesChanged={diffStats.files_changed}
-      linesAdded={diffStats.lines_added}
-      linesRemoved={diffStats.lines_removed}
-      disableViewCode={false}
-      showOpenWorkspaceButton={false}
+      onSelectSession={onSelectSession}
+      onStartNewSession={onStartNewSession}
       onScrollToPreviousMessage={handleScrollToPreviousMessage}
       onScrollToBottom={handleScrollToBottom}
     />
