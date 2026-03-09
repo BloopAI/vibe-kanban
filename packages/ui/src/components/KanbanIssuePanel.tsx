@@ -9,6 +9,7 @@ import {
   PaperclipIcon,
   ImageIcon,
   EyeIcon,
+  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 import {
   IssueTagsRow,
@@ -68,6 +69,7 @@ export interface KanbanIssueDescriptionEditorProps {
   saveStatus?: 'idle' | 'saved';
   staticToolbarActions?: ReactNode;
   onRequestEdit?: () => void;
+  hideActions?: boolean;
 }
 
 export interface KanbanIssuePanelProps {
@@ -392,6 +394,7 @@ export function KanbanIssuePanel({
                 !isDescriptionEditing && !formData.description && 'text-low'
               ),
               showStaticToolbar: !isCreateMode || isDescriptionEditing,
+              hideActions: true,
               saveStatus: descriptionSaveStatus,
               onRequestEdit: !isCreateMode ? () => setIsDescriptionEditing(true) : undefined,
               staticToolbarActions: (
@@ -426,7 +429,7 @@ export function KanbanIssuePanel({
                       </Tooltip>
                     </TooltipProvider>
                   )}
-                  {isDescriptionEditing && !isCreateMode && (
+                  {!isCreateMode && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -434,20 +437,24 @@ export function KanbanIssuePanel({
                             type="button"
                             onMouseDown={(e) => {
                               e.preventDefault();
-                              setIsDescriptionEditing(false);
+                              setIsDescriptionEditing(!isDescriptionEditing);
                             }}
                             className={cn(
                               'p-half rounded-sm transition-colors',
                               'text-low hover:text-normal hover:bg-panel/50'
                             )}
-                            title={t('kanban.previewDescription', 'Preview')}
-                            aria-label={t('kanban.previewDescription', 'Preview')}
+                            title={isDescriptionEditing ? t('kanban.previewDescription', 'Preview') : t('kanban.editDescription', 'Edit')}
+                            aria-label={isDescriptionEditing ? t('kanban.previewDescription', 'Preview') : t('kanban.editDescription', 'Edit')}
                           >
-                            <EyeIcon className="size-icon-sm" />
+                            {isDescriptionEditing ? (
+                              <EyeIcon className="size-icon-sm" />
+                            ) : (
+                              <PencilSimpleIcon className="size-icon-sm" />
+                            )}
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {t('kanban.previewDescription', 'Preview')}
+                          {isDescriptionEditing ? t('kanban.previewDescription', 'Preview') : t('kanban.editDescription', 'Edit')}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
