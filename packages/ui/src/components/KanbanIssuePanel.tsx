@@ -67,6 +67,7 @@ export interface KanbanIssueDescriptionEditorProps {
   showStaticToolbar?: boolean;
   saveStatus?: 'idle' | 'saved';
   staticToolbarActions?: ReactNode;
+  onRequestEdit?: () => void;
 }
 
 export interface KanbanIssuePanelProps {
@@ -390,11 +391,12 @@ export function KanbanIssuePanel({
                 isDescriptionEditing ? 'min-h-[100px]' : 'min-h-[2rem]',
                 !isDescriptionEditing && !formData.description && 'text-low'
               ),
-              showStaticToolbar: isDescriptionEditing,
+              showStaticToolbar: !isCreateMode || isDescriptionEditing,
               saveStatus: descriptionSaveStatus,
-              staticToolbarActions: isDescriptionEditing ? (
+              onRequestEdit: !isCreateMode ? () => setIsDescriptionEditing(true) : undefined,
+              staticToolbarActions: (
                 <>
-                  {onBrowseAttachment && (
+                  {isDescriptionEditing && onBrowseAttachment && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -424,7 +426,7 @@ export function KanbanIssuePanel({
                       </Tooltip>
                     </TooltipProvider>
                   )}
-                  {!isCreateMode && (
+                  {isDescriptionEditing && !isCreateMode && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -451,7 +453,7 @@ export function KanbanIssuePanel({
                     </TooltipProvider>
                   )}
                 </>
-              ) : null,
+              ),
             })}
             {attachmentError && (
               <div className="px-base">

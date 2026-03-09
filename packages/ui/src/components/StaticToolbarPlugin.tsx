@@ -42,19 +42,44 @@ function ToolbarButton({ onClick, icon: Icon, label }: ToolbarButtonProps) {
 interface StaticToolbarPluginProps {
   saveStatus?: 'idle' | 'saved';
   extraActions?: ReactNode;
+  /** Called when a formatting button is clicked while the editor is read-only.
+   *  The parent should switch to edit mode; the command will be dispatched after. */
+  onRequestEdit?: () => void;
+  /** Whether the editor is currently in read-only / preview mode */
+  readOnly?: boolean;
 }
 
 export function StaticToolbarPlugin({
   saveStatus,
   extraActions,
+  onRequestEdit,
+  readOnly,
 }: StaticToolbarPluginProps) {
   const [editor] = useLexicalComposerContext();
+
+  /** Dispatch a command, switching to edit mode first if needed */
+  const dispatch = (fn: () => void) => {
+    if (readOnly && onRequestEdit) {
+      onRequestEdit();
+      // Dispatch after a tick so the editor becomes editable first
+      requestAnimationFrame(() => {
+        editor.focus();
+        editor.update(fn);
+      });
+    } else {
+      fn();
+    }
+  };
 
   return (
     <div className="flex items-center gap-half mt-half px-base py-half border-t border-border/50">
       {/* Undo button */}
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
+        onClick={() =>
+          dispatch(() =>
+            editor.dispatchCommand(UNDO_COMMAND, undefined)
+          )
+        }
         icon={ArrowCounterClockwise}
         label="Undo"
       />
@@ -65,24 +90,38 @@ export function StaticToolbarPlugin({
       {/* Text formatting buttons — these dispatch FORMAT_TEXT_COMMAND which
           MarkdownInsertPlugin intercepts to insert markdown syntax as text */}
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
+        onClick={() =>
+          dispatch(() =>
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')
+          )
+        }
         icon={TextB}
         label="Bold"
       />
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
+        onClick={() =>
+          dispatch(() =>
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')
+          )
+        }
         icon={TextItalic}
         label="Italic"
       />
       <ToolbarButton
         onClick={() =>
-          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
+          dispatch(() =>
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
+          )
         }
         icon={TextStrikethrough}
         label="Strikethrough"
       />
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
+        onClick={() =>
+          dispatch(() =>
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')
+          )
+        }
         icon={Code}
         label="Inline Code"
       />
@@ -93,14 +132,18 @@ export function StaticToolbarPlugin({
       {/* List buttons */}
       <ToolbarButton
         onClick={() =>
-          editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'bullet')
+          dispatch(() =>
+            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'bullet')
+          )
         }
         icon={ListBullets}
         label="Bullet List"
       />
       <ToolbarButton
         onClick={() =>
-          editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'number')
+          dispatch(() =>
+            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'number')
+          )
         }
         icon={ListNumbers}
         label="Numbered List"

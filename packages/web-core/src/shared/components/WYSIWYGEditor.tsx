@@ -137,6 +137,8 @@ type WysiwygProps = {
   saveStatus?: 'idle' | 'saved';
   /** Additional actions to render in static toolbar */
   staticToolbarActions?: ReactNode;
+  /** Called when a toolbar button is clicked in preview mode to request edit */
+  onRequestEdit?: () => void;
 };
 
 /** Ref interface for WYSIWYGEditor, exposing imperative methods */
@@ -273,6 +275,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       showStaticToolbar = false,
       saveStatus,
       staticToolbarActions,
+      onRequestEdit,
     }: WysiwygProps,
     ref: React.ForwardedRef<WYSIWYGEditorRef>
   ) {
@@ -544,10 +547,12 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 />
               </div>
 
-              {!disabled && showStaticToolbar && (
+              {showStaticToolbar && (
                 <StaticToolbarPlugin
                   saveStatus={saveStatus}
                   extraActions={staticToolbarActions}
+                  readOnly={disabled}
+                  onRequestEdit={onRequestEdit}
                 />
               )}
 
