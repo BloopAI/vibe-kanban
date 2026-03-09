@@ -146,8 +146,14 @@ Supported relationship types: `blocking`, `related`, `has_duplicate`.
 | `start_workspace` | Create a workspace and start its first coding-agent session | `name`<br/>`executor`<br/>`repositories` | `prompt`<br/>`variant`<br/>`issue_id` | Workspace ID |
 | `create_session` | Create a session in an existing workspace | None | `workspace_id`<br/>`executor` | Session summary |
 | `list_sessions` | List sessions for a workspace | None | `workspace_id` | Session list |
-| `run_session_prompt` | Run a coding-agent prompt inside an existing session | `session_id`<br/>`prompt` | None | Execution details |
+| `get_session` | Get details for a single session | `session_id` | None | Session summary |
+| `run_session_prompt` | Run a coding-agent prompt inside an existing session | `session_id`<br/>`prompt` | `executor`<br/>`variant`<br/>`model_id`<br/>`retry_process_id` | Execution details |
+| `session_queue_message` | Queue a follow-up message for a session | `session_id`<br/>`message`<br/>`executor` | `variant`<br/>`model_id` | Queue status |
+| `session_get_queue` | Inspect the queued follow-up status for a session | `session_id` | None | Queue status |
+| `session_cancel_queue` | Cancel a queued follow-up for a session | `session_id` | None | Queue status |
 | `get_execution` | Inspect execution status and final message | `execution_id` | None | Execution details |
+| `stop_execution` | Stop a running execution process | `execution_id` | None | Stop confirmation |
+| `respond_approval` | Approve or deny a pending tool approval request | `approval_id`<br/>`execution_id`<br/>`status` | `reason` | Approval result |
 
 The `repositories` parameter is an array of objects with:
 - `repo_id`: The repository ID (UUID)

@@ -7,6 +7,7 @@ use rmcp::{
     tool_router,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 use super::McpServer;
@@ -56,6 +57,12 @@ struct ListSessionsRequest {
     workspace_id: Option<Uuid>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct GetSessionRequest {
+    #[schemars(description = "Session ID to inspect")]
+    session_id: Uuid,
+}
+
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct ListSessionsResponse {
     #[schemars(description = "Workspace ID this result is scoped to")]
@@ -70,6 +77,14 @@ struct RunCodingAgentInSessionRequest {
     session_id: Uuid,
     #[schemars(description = "Prompt for the coding agent")]
     prompt: String,
+    #[schemars(description = "Optional executor override")]
+    executor: Option<String>,
+    #[schemars(description = "Optional executor variant override")]
+    variant: Option<String>,
+    #[schemars(description = "Optional model override")]
+    model_id: Option<String>,
+    #[schemars(description = "Optional process ID to retry from")]
+    retry_process_id: Option<Uuid>,
 }
 
 #[derive(Debug, Serialize)]
@@ -112,6 +127,55 @@ struct GetExecutionResponse {
     is_finished: bool,
     execution: serde_json::Value,
     #[schemars(description = "Final assistant message/summary when execution has finished")]
+    final_message: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct SessionQueueMessageRequest {
+    #[schemars(description = "Session ID to queue a message for")]
+    session_id: Uuid,
+    #[schemars(description = "Follow-up message to queue")]
+    message: String,
+    #[schemars(description = "Executor to use for the queued follow-up")]
+    executor: String,
+    #[schemars(description = "Optional executor variant")]
+    variant: Option<String>,
+    #[schemars(description = "Optional model override")]
+    model_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct SessionGetQueueRequest {
+    #[schemars(description = "Session ID to inspect queue status for")]
+    session_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct SessionCancelQueueRequest {
+    #[schemars(description = "Session ID to cancel a queued follow-up for")]
+    session_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct StopExecutionRequest {
+    #[schemars(description = "Execution ID to stop")]
+    execution_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct RespondApprovalRequest {
+    #[schemars(description = "Approval request ID to respond to")]
+    approval_id: String,
+    #[schemars(description = "Execution process ID associated with this approval")]
+    execution_id: Uuid,
+    #[schemars(description = "Either 'approved' or 'denied'")]
+    status: String,
+    #[schemars(description = "Optional deny reason")]
+    reason: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FinalMessageResponse {
     final_message: Option<String>,
 }
 
@@ -187,14 +251,38 @@ impl McpServer {
         })
     }
 
+    #[tool(description = "Get a session by ID.")]
+    async fn get_session(
+        &self,
+        Parameters(GetSessionRequest { session_id }): Parameters<GetSessionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let session_url = self.url(&format!("/api/sessions/{session_id}"));
+        let session: Session = match self.send_json(self.client.get(&session_url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+            return Ok(error_result);
+        }
+
+        Self::success(&CreateSessionResponse {
+            session: self.session_summary(session),
+        })
+    }
+
     #[tool(
         description = "Run a coding agent turn in an existing session and return immediately with the execution process."
     )]
     async fn run_session_prompt(
         &self,
-        Parameters(RunCodingAgentInSessionRequest { session_id, prompt }): Parameters<
-            RunCodingAgentInSessionRequest,
-        >,
+        Parameters(RunCodingAgentInSessionRequest {
+            session_id,
+            prompt,
+            executor,
+            variant,
+            model_id,
+            retry_process_id,
+        }): Parameters<RunCodingAgentInSessionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let prompt = prompt.trim();
         if prompt.is_empty() {
@@ -219,7 +307,9 @@ impl McpServer {
             );
         }
 
-        let executor_config = match Self::executor_config_payload_for_session(&session) {
+        let executor_config = match Self::executor_config_payload_for_request(
+            &session, executor, variant, model_id,
+        ) {
             Ok(config) => config,
             Err(error_result) => return Ok(error_result),
         };
@@ -227,7 +317,7 @@ impl McpServer {
         let payload = FollowUpPayload {
             prompt: prompt.to_string(),
             executor_config,
-            retry_process_id: None,
+            retry_process_id,
             force_when_dirty: None,
             perform_git_reset: None,
         };
@@ -250,6 +340,71 @@ impl McpServer {
             execution_id,
             execution,
         })
+    }
+
+    #[tool(
+        description = "Queue a follow-up message for a session. The queued message will run after the current execution finishes."
+    )]
+    async fn session_queue_message(
+        &self,
+        Parameters(SessionQueueMessageRequest {
+            session_id,
+            message,
+            executor,
+            variant,
+            model_id,
+        }): Parameters<SessionQueueMessageRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let message = message.trim();
+        if message.is_empty() {
+            return Self::err("message must not be empty", None);
+        }
+
+        let executor_config =
+            match Self::executor_config_payload_from_values(Some(executor), variant, model_id) {
+                Ok(config) => config,
+                Err(error_result) => return Ok(error_result),
+            };
+
+        let url = self.url(&format!("/api/sessions/{session_id}/queue"));
+        let status: Value = match self
+            .send_json(self.client.post(&url).json(&serde_json::json!({
+                "message": message,
+                "executor_config": executor_config,
+            })))
+            .await
+        {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        Self::success(&status)
+    }
+
+    #[tool(description = "Get the queued follow-up status for a session.")]
+    async fn session_get_queue(
+        &self,
+        Parameters(SessionGetQueueRequest { session_id }): Parameters<SessionGetQueueRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/sessions/{session_id}/queue"));
+        let status: Value = match self.send_json(self.client.get(&url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+        Self::success(&status)
+    }
+
+    #[tool(description = "Cancel a queued follow-up for a session.")]
+    async fn session_cancel_queue(
+        &self,
+        Parameters(SessionCancelQueueRequest { session_id }): Parameters<SessionCancelQueueRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/sessions/{session_id}/queue"));
+        let status: Value = match self.send_json(self.client.delete(&url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+        Self::success(&status)
     }
 
     #[tool(description = "Get status for an execution.")]
@@ -280,25 +435,119 @@ impl McpServer {
             Err(error_result) => return Ok(error_result),
         };
 
+        let final_message = if is_finished {
+            self.final_message_for_execution(execution_id).await
+        } else {
+            None
+        };
+
         Self::success(&GetExecutionResponse {
             execution_id: execution_process.id.to_string(),
             session_id: execution_process.session_id.to_string(),
             status: Self::execution_process_status_label(&execution_process.status).to_string(),
             is_finished,
             execution: execution_process_value,
-            final_message: None,
+            final_message,
         })
+    }
+
+    #[tool(description = "Stop a running execution process.")]
+    async fn stop_execution(
+        &self,
+        Parameters(StopExecutionRequest { execution_id }): Parameters<StopExecutionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let url = self.url(&format!("/api/execution-processes/{execution_id}/stop"));
+        if let Err(error_result) = self.send_empty_json(self.client.post(&url)).await {
+            return Ok(error_result);
+        }
+
+        Self::success(&serde_json::json!({
+            "success": true,
+            "execution_id": execution_id.to_string(),
+            "status": "killed"
+        }))
+    }
+
+    #[tool(description = "Respond to a pending approval request from a coding agent.")]
+    async fn respond_approval(
+        &self,
+        Parameters(RespondApprovalRequest {
+            approval_id,
+            execution_id,
+            status,
+            reason,
+        }): Parameters<RespondApprovalRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        let status = status.trim().to_ascii_lowercase();
+        let status_value = match status.as_str() {
+            "approved" | "approve" => serde_json::json!({ "status": "approved" }),
+            "denied" | "deny" => {
+                let mut payload = serde_json::json!({ "status": "denied" });
+                if let Some(reason) = reason
+                    && !reason.trim().is_empty()
+                {
+                    payload["reason"] = serde_json::json!(reason.trim());
+                }
+                payload
+            }
+            _ => {
+                return Self::err(
+                    format!("invalid approval status '{status}'"),
+                    Some("use 'approved' or 'denied'".to_string()),
+                );
+            }
+        };
+
+        let url = self.url(&format!("/api/approvals/{approval_id}/respond"));
+        let outcome: Value = match self
+            .send_json(self.client.post(&url).json(&serde_json::json!({
+                "execution_process_id": execution_id,
+                "status": status_value,
+            })))
+            .await
+        {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        Self::success(&outcome)
     }
 }
 
 impl McpServer {
-    fn executor_config_payload_for_session(
+    fn executor_config_payload_for_request(
         session: &Session,
+        executor: Option<String>,
+        variant: Option<String>,
+        model_id: Option<String>,
+    ) -> Result<ExecutorConfigPayload, CallToolResult> {
+        let executor = executor.or_else(|| session.executor.clone());
+        Self::executor_config_payload_from_values(executor, variant, model_id)
+    }
+
+    fn executor_config_payload_from_values(
+        executor: Option<String>,
+        variant: Option<String>,
+        model_id: Option<String>,
     ) -> Result<ExecutorConfigPayload, CallToolResult> {
         Ok(ExecutorConfigPayload {
-            executor: Self::normalize_executor_name(session.executor.as_deref())?,
-            variant: None,
-            model_id: None,
+            executor: Self::normalize_executor_name(executor.as_deref())?,
+            variant: variant.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }),
+            model_id: model_id.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }),
             agent_id: None,
             reasoning_id: None,
             permission_policy: None,
@@ -327,5 +576,363 @@ impl McpServer {
             )
             .unwrap()
         })
+    }
+
+    async fn final_message_for_execution(&self, execution_id: Uuid) -> Option<String> {
+        let url = self.url(&format!(
+            "/api/execution-processes/{execution_id}/final-message"
+        ));
+        self.send_json::<FinalMessageResponse>(self.client.get(&url))
+            .await
+            .ok()
+            .and_then(|response| response.final_message)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Once;
+
+    use rmcp::handler::server::tool::Parameters;
+    use wiremock::{
+        Mock, MockServer, ResponseTemplate,
+        matchers::{body_partial_json, method, path},
+    };
+
+    use super::*;
+
+    fn install_rustls_provider() {
+        static ONCE: Once = Once::new();
+        ONCE.call_once(|| {
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+        });
+    }
+
+    async fn setup() -> (MockServer, McpServer) {
+        install_rustls_provider();
+        let mock = MockServer::start().await;
+        let server = McpServer::new_global(&mock.uri());
+        (mock, server)
+    }
+
+    fn assert_success(result: Result<CallToolResult, ErrorData>) -> CallToolResult {
+        let result = result.expect("tool should not return Err");
+        assert!(
+            !result.is_error.unwrap_or(false),
+            "expected success, got error: {:?}",
+            result.content
+        );
+        result
+    }
+
+    fn assert_error(result: Result<CallToolResult, ErrorData>) -> CallToolResult {
+        let result = result.expect("tool should not return Err");
+        assert!(
+            result.is_error.unwrap_or(false),
+            "expected error result, got success: {:?}",
+            result.content
+        );
+        result
+    }
+
+    fn sample_session(
+        session_id: Uuid,
+        workspace_id: Uuid,
+        executor: Option<&str>,
+    ) -> serde_json::Value {
+        serde_json::json!({
+            "id": session_id,
+            "workspace_id": workspace_id,
+            "executor": executor,
+            "created_at": "2026-03-09T00:00:00Z",
+            "updated_at": "2026-03-09T00:00:00Z"
+        })
+    }
+
+    fn sample_execution(execution_id: Uuid, session_id: Uuid, status: &str) -> serde_json::Value {
+        serde_json::json!({
+            "id": execution_id,
+            "session_id": session_id,
+            "run_reason": "codingagent",
+            "executor_action": {
+                "typ": {
+                    "type": "CodingAgentFollowUpRequest",
+                    "prompt": "hello",
+                    "session_id": "agent-session-1",
+                    "reset_to_message_id": null,
+                    "executor_config": { "executor": "CODEX" },
+                    "working_dir": "exomind"
+                },
+                "next_action": null
+            },
+            "status": status,
+            "exit_code": if status == "completed" { serde_json::json!(0) } else { serde_json::Value::Null },
+            "dropped": false,
+            "started_at": "2026-03-09T00:00:00Z",
+            "completed_at": if status == "completed" { serde_json::json!("2026-03-09T00:01:00Z") } else { serde_json::Value::Null },
+            "created_at": "2026-03-09T00:00:00Z",
+            "updated_at": "2026-03-09T00:00:00Z"
+        })
+    }
+
+    #[tokio::test]
+    async fn get_session_returns_session_summary() {
+        let (mock, server) = setup().await;
+        let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .get_session(Parameters(GetSessionRequest { session_id }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn session_queue_message_posts_trimmed_payload() {
+        let (mock, server) = setup().await;
+        let session_id = Uuid::new_v4();
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/sessions/{session_id}/queue")))
+            .and(body_partial_json(serde_json::json!({
+                "message": "ship it",
+                "executor_config": {
+                    "executor": "CODEX",
+                    "variant": "PLAN",
+                    "model_id": "gpt-5.4"
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": { "status": "queued" }
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .session_queue_message(Parameters(SessionQueueMessageRequest {
+                session_id,
+                message: "  ship it  ".to_string(),
+                executor: "codex".to_string(),
+                variant: Some(" PLAN ".to_string()),
+                model_id: Some(" gpt-5.4 ".to_string()),
+            }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn session_get_queue_returns_status() {
+        let (mock, server) = setup().await;
+        let session_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}/queue")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": { "status": "empty" }
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .session_get_queue(Parameters(SessionGetQueueRequest { session_id }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn session_cancel_queue_deletes_queue() {
+        let (mock, server) = setup().await;
+        let session_id = Uuid::new_v4();
+
+        Mock::given(method("DELETE"))
+            .and(path(format!("/api/sessions/{session_id}/queue")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": { "status": "empty" }
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .session_cancel_queue(Parameters(SessionCancelQueueRequest { session_id }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn stop_execution_posts_stop_request() {
+        let (mock, server) = setup().await;
+        let execution_id = Uuid::new_v4();
+
+        Mock::given(method("POST"))
+            .and(path(format!(
+                "/api/execution-processes/{execution_id}/stop"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": null
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .stop_execution(Parameters(StopExecutionRequest { execution_id }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn respond_approval_denied_trims_reason() {
+        let (mock, server) = setup().await;
+        let execution_id = Uuid::new_v4();
+
+        Mock::given(method("POST"))
+            .and(path("/api/approvals/approval-1/respond"))
+            .and(body_partial_json(serde_json::json!({
+                "execution_process_id": execution_id,
+                "status": { "status": "denied", "reason": "Too risky" }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": { "status": "denied" }
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .respond_approval(Parameters(RespondApprovalRequest {
+                approval_id: "approval-1".to_string(),
+                execution_id,
+                status: " denied ".to_string(),
+                reason: Some("  Too risky  ".to_string()),
+            }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn respond_approval_rejects_invalid_status() {
+        let (_mock, server) = setup().await;
+        let execution_id = Uuid::new_v4();
+
+        let result = server
+            .respond_approval(Parameters(RespondApprovalRequest {
+                approval_id: "approval-1".to_string(),
+                execution_id,
+                status: "maybe".to_string(),
+                reason: None,
+            }))
+            .await;
+
+        assert_error(result);
+    }
+
+    #[tokio::test]
+    async fn run_session_prompt_posts_explicit_executor_overrides_and_retry_process_id() {
+        let (mock, server) = setup().await;
+        let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+        let retry_process_id = Uuid::new_v4();
+        let execution_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
+
+        Mock::given(method("POST"))
+            .and(path(format!("/api/sessions/{session_id}/follow-up")))
+            .and(body_partial_json(serde_json::json!({
+                "prompt": "inspect repo",
+                "retry_process_id": retry_process_id,
+                "executor_config": {
+                    "executor": "CODEX",
+                    "variant": "PLAN",
+                    "model_id": "gpt-5.4"
+                }
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_execution(execution_id, session_id, "running")
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .run_session_prompt(Parameters(RunCodingAgentInSessionRequest {
+                session_id,
+                prompt: " inspect repo ".to_string(),
+                executor: Some("codex".to_string()),
+                variant: Some(" PLAN ".to_string()),
+                model_id: Some(" gpt-5.4 ".to_string()),
+                retry_process_id: Some(retry_process_id),
+            }))
+            .await;
+
+        assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn get_execution_includes_final_message_when_finished() {
+        let (mock, server) = setup().await;
+        let execution_id = Uuid::new_v4();
+        let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/execution-processes/{execution_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_execution(execution_id, session_id, "completed")
+            })))
+            .mount(&mock)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!(
+                "/api/execution-processes/{execution_id}/final-message"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": { "final_message": "done" }
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .get_execution(Parameters(GetExecutionRequest { execution_id }))
+            .await;
+
+        assert_success(result);
     }
 }
