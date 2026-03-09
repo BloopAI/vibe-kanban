@@ -143,6 +143,7 @@ export const WorkspacesMainContainer = forwardRef<
           <ConversationList
             ref={conversationListRef}
             attempt={workspaceWithSession}
+            onAtBottomChange={handleAtBottomChange}
           />
         </RetryUiProvider>
       </div>

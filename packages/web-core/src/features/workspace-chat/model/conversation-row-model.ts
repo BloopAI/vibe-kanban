@@ -334,10 +334,17 @@ export function estimationHintForFamily(family: RowFamily): SizeEstimationHint {
     case 'plan':
     case 'subagent':
     case 'approval':
+      return 'tall';
+
+    // Aggregated groups start collapsed (useState(false)) with ~40-60px
+    // actual height. Estimating 'tall' (280px) caused ~6x overestimate
+    // during streaming aggregation transitions (individual→grouped),
+    // producing scroll jitter under follow-bottom. 'compact' matches the
+    // default collapsed state; ResizeObserver corrects on user expand.
     case 'aggregated_tool':
     case 'aggregated_diff':
     case 'aggregated_thinking':
-      return 'tall';
+      return 'compact';
 
     // Dynamic: height changes significantly based on state
     case 'file_edit':
@@ -462,8 +469,9 @@ export function getUserMessageIndices(rows: ConversationRow[]): number[] {
  * - Synthetic user messages: `{processId}:user` — unique per process.
  * - Synthetic loading: `{processId}:loading` — unique per process.
  * - Script entries: `{processId}:script` — unique per process. The
- *   `:script` suffix was specifically added to prevent Virtuoso height
- *   reuse during streaming->completed transition.
+ *   `:script` suffix provides semantic clarity and avoids collision
+ *   with index-based keys. TanStack's measureElement + ResizeObserver
+ *   handles height changes during streaming->completed transitions.
  * - Next action: `next_action` — singleton.
  * - Aggregated groups: `agg:{firstEntryKey}` — stable because the first
  *   entry's key is stable and aggregation only groups *consecutive*

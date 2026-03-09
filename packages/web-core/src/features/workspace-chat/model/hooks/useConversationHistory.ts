@@ -423,8 +423,11 @@ export const useConversationHistory = ({
               type: 'NORMALIZED_ENTRY',
               content: toolNormalizedEntry,
             };
-            // Use a distinct key suffix so Virtuoso doesn't reuse the
-            // height measured while the script was still streaming logs.
+            // Distinct key suffix for semantic clarity — avoids collision
+            // with index-based keys and clearly identifies script entries
+            // in the virtualizer's key space. (Previously also served as a
+            // Virtuoso height-reuse workaround; TanStack's measureElement +
+            // ResizeObserver makes that unnecessary.)
             const toolPatchWithKey: PatchTypeWithKey = patchWithKey(
               toolPatch,
               p.executionProcess.id,
