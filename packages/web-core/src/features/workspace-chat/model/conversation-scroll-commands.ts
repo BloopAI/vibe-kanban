@@ -1,18 +1,18 @@
 /**
  * Conversation Scroll Commands
  *
- * Declarative scroll intent model for TanStack Virtual migration.
+ * Declarative scroll intent model for TanStack Virtual.
  * Single scroll authority — one pending intent at a time, no queue, no merge.
  * Intents survive the gap between data arrival and measured layout.
  *
- * | Virtuoso Modifier              | ScrollIntent variant  |
- * |--------------------------------|-----------------------|
- * | InitialDataScrollModifier      | initial-bottom        |
- * | AutoScrollToBottom             | follow-bottom         |
- * | ScrollToBottomModifier         | preserve-anchor       |
- * | ScrollToTopOfLastItem          | plan-reveal           |
- * | scrollToItem({ index: 'LAST'}) | jump-to-bottom        |
- * | scrollToItem({ index: N })     | jump-to-index         |
+ * | ScrollIntent variant | Purpose                                    |
+ * |----------------------|--------------------------------------------|
+ * | initial-bottom       | Jump to bottom on first data load          |
+ * | follow-bottom        | Auto-scroll as new content streams in      |
+ * | preserve-anchor      | Keep scroll position during historic loads |
+ * | plan-reveal          | Scroll last item to top of viewport        |
+ * | jump-to-bottom       | Imperative scroll to bottom                |
+ * | jump-to-index        | Imperative scroll to specific index        |
  */
 
 import type { AddEntryType } from '@/shared/hooks/useConversationHistory/types';

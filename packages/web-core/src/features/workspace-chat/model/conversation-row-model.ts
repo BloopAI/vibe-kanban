@@ -417,6 +417,35 @@ export function buildConversationRows(
   return entries.map(buildConversationRow);
 }
 
+/**
+ * Incremental row builder that reuses previous `ConversationRow` objects
+ * when the underlying `DisplayEntry` reference is unchanged.
+ *
+ * During streaming, most entries are stable (same object reference from
+ * the previous emit). Only the tail entries change (new appends or
+ * aggregation boundary shifts). Reusing row objects means:
+ * 1. Less GC pressure from short-lived objects.
+ * 2. TanStack Virtual's internal diffing can skip unchanged rows faster.
+ */
+export function buildConversationRowsIncremental(
+  entries: DisplayEntry[],
+  prevEntries: DisplayEntry[],
+  prevRows: ConversationRow[]
+): ConversationRow[] {
+  const len = entries.length;
+  const rows: ConversationRow[] = new Array(len);
+
+  for (let i = 0; i < len; i++) {
+    if (i < prevRows.length && entries[i] === prevEntries[i]) {
+      rows[i] = prevRows[i];
+    } else {
+      rows[i] = buildConversationRow(entries[i]);
+    }
+  }
+
+  return rows;
+}
+
 // ---------------------------------------------------------------------------
 // Row Queries
 // ---------------------------------------------------------------------------
