@@ -235,10 +235,74 @@ export function classifyRowFamily(entry: DisplayEntry): RowFamily {
 export const SIZE_ESTIMATE_PX: Record<SizeEstimationHint, number> = {
   compact: 40,
   medium: 80,
-  tall: 200,
-  dynamic: 120,
+  tall: 280,
+  dynamic: 150,
   hidden: 0,
 };
+
+// ---------------------------------------------------------------------------
+// Width-Aware Size Estimation
+// ---------------------------------------------------------------------------
+
+/**
+ * Row families whose height is significantly affected by container width
+ * due to text wrapping. These get width-aware adjustments when a container
+ * width is available.
+ *
+ * Adapted from T3's `timelineHeight.ts` — only applied to text-heavy
+ * families. The remaining 17+ families have fixed or state-dependent
+ * heights that don't vary meaningfully with width.
+ */
+const TEXT_HEAVY_FAMILIES = new Set<RowFamily>([
+  'user_message',
+  'assistant_message',
+  'thinking',
+]);
+
+/**
+ * Width threshold below which text-heavy rows get a height bump because
+ * text wraps more aggressively in narrow containers.
+ */
+const NARROW_WIDTH_PX = 600;
+
+/**
+ * Multiplier applied to text-heavy row estimates when the container is
+ * narrower than `NARROW_WIDTH_PX`. Conservative — real measurement
+ * corrects quickly, but this reduces initial scroll position jank.
+ */
+const NARROW_WIDTH_MULTIPLIER = 1.3;
+
+/**
+ * Estimate the pixel height for a conversation row.
+ *
+ * This is the primary estimator consumed by the virtualizer's
+ * `estimateSize` callback. It combines the coarse `SizeEstimationHint`
+ * bucket with an optional width-aware adjustment for text-heavy families.
+ *
+ * @param row - The conversation row to estimate.
+ * @param containerWidthPx - Optional container width in pixels. When
+ *   provided and narrow (< 600px), text-heavy families get a ~30% bump
+ *   to account for increased text wrapping.
+ * @returns Estimated height in pixels.
+ */
+export function estimateSizeForRow(
+  row: ConversationRow,
+  containerWidthPx?: number | null
+): number {
+  const base = SIZE_ESTIMATE_PX[row.estimationHint];
+
+  // Apply width-aware adjustment for text-heavy families in narrow containers
+  if (
+    containerWidthPx != null &&
+    containerWidthPx > 0 &&
+    containerWidthPx < NARROW_WIDTH_PX &&
+    TEXT_HEAVY_FAMILIES.has(row.rowFamily)
+  ) {
+    return Math.round(base * NARROW_WIDTH_MULTIPLIER);
+  }
+
+  return base;
+}
 
 /**
  * Map a `RowFamily` to a `SizeEstimationHint`.

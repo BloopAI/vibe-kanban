@@ -23,6 +23,7 @@ import type { Virtualizer, VirtualItem } from '@tanstack/react-virtual';
 import {
   type ConversationRow,
   SIZE_ESTIMATE_PX,
+  estimateSizeForRow,
   findPreviousUserMessageIndex,
 } from './conversation-row-model';
 import {
@@ -122,7 +123,8 @@ export function useConversationVirtualizer({
     estimateSize: (index) => {
       const row = rows[index];
       if (!row) return SIZE_ESTIMATE_PX.medium;
-      return SIZE_ESTIMATE_PX[row.estimationHint];
+      const containerWidth = scrollContainerRef.current?.clientWidth ?? null;
+      return estimateSizeForRow(row, containerWidth);
     },
     getItemKey: (index) => {
       const row = rows[index];
