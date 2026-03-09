@@ -9,7 +9,10 @@ import {
 } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
 
-import { buildConversationRows } from '../model/conversation-row-model';
+import {
+  buildConversationRowsIncremental,
+  type ConversationRow,
+} from '../model/conversation-row-model';
 import { useConversationVirtualizer } from '../model/useConversationVirtualizer';
 import { useScrollCommandExecutor } from '../model/useScrollCommandExecutor';
 
@@ -51,8 +54,7 @@ export interface ConversationListHandle {
 
 /**
  * Render a single conversation row's content based on its DisplayEntry type.
- * Replaces the Virtuoso `ItemContent` callback with a plain function that
- * dispatches to DisplayConversationEntrySpaced (the default export).
+ * Dispatches to DisplayConversationEntrySpaced (the default export).
  */
 function renderRowContent(
   entry: DisplayEntry,
@@ -142,7 +144,14 @@ export const ConversationList = forwardRef<
     addType: AddEntryType;
     loading: boolean;
   } | null>(null);
-  const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // rAF throttle: at most one state update per animation frame.
+  // Replaces the previous 100ms trailing debounce which never fired during
+  // continuous streaming (upstream rAF in streamJsonPatchEntries reset the
+  // timer every ~16ms). TanStack Virtual has no internal batching — unlike
+  // Virtuoso — so we need to drive renders explicitly via React state.
+  // rAF naturally limits updates to the display refresh rate (~60fps) while
+  // ensuring every frame reflects the latest data.
+  const rafIdRef = useRef<number | null>(null);
 
   // Get repos from workspace context to check if scripts are configured
   let repos: RepoWithTargetBranch[] = [];
@@ -197,18 +206,26 @@ export const ConversationList = forwardRef<
 
   useEffect(() => {
     return () => {
-      if (debounceTimeoutRef.current) {
-        clearTimeout(debounceTimeoutRef.current);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
       }
     };
   }, []);
 
   // ---- TanStack Virtual plumbing ----
   const tanstackScrollRef = useRef<HTMLDivElement | null>(null);
-  const conversationRows = useMemo(
-    () => buildConversationRows(filteredEntries),
-    [filteredEntries]
-  );
+  const prevEntriesRef = useRef<DisplayEntry[]>([]);
+  const prevRowsRef = useRef<ConversationRow[]>([]);
+  const conversationRows = useMemo(() => {
+    const rows = buildConversationRowsIncremental(
+      filteredEntries,
+      prevEntriesRef.current,
+      prevRowsRef.current
+    );
+    prevEntriesRef.current = filteredEntries;
+    prevRowsRef.current = rows;
+    return rows;
+  }, [filteredEntries]);
   const conversationVirtualizer = useConversationVirtualizer({
     rows: conversationRows,
     scrollContainerRef: tanstackScrollRef,
@@ -221,6 +238,38 @@ export const ConversationList = forwardRef<
     isAtBottom: conversationVirtualizer.isAtBottom,
   });
 
+  const flushPendingUpdate = () => {
+    rafIdRef.current = null;
+    const pending = pendingUpdateRef.current;
+    if (!pending) return;
+
+    const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+
+    // Filter out entries that render as null –
+    // leaving them in creates empty items that add spacing.
+    const newFilteredEntries = aggregatedEntries.filter((entry) => {
+      if (
+        'type' in entry &&
+        entry.type === 'NORMALIZED_ENTRY' &&
+        typeof entry.content !== 'string' &&
+        'entry_type' in entry.content
+      ) {
+        const t = entry.content.entry_type.type;
+        return t !== 'next_action' && t !== 'token_usage_info';
+      }
+      return true;
+    });
+
+    setFilteredEntries(newFilteredEntries);
+    setEntries(pending.entries);
+
+    scrollExecutor.onEntriesChanged(pending.addType, loading);
+
+    if (loading) {
+      setLoading(pending.loading);
+    }
+  };
+
   const onEntriesUpdated = (
     newEntries: PatchTypeWithKey[],
     addType: AddEntryType,
@@ -232,40 +281,9 @@ export const ConversationList = forwardRef<
       loading: newLoading,
     };
 
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(flushPendingUpdate);
     }
-
-    debounceTimeoutRef.current = setTimeout(() => {
-      const pending = pendingUpdateRef.current;
-      if (!pending) return;
-
-      const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
-
-      // Filter out entries that render as null –
-      // leaving them in creates empty items that add spacing.
-      const newFilteredEntries = aggregatedEntries.filter((entry) => {
-        if (
-          'type' in entry &&
-          entry.type === 'NORMALIZED_ENTRY' &&
-          typeof entry.content !== 'string' &&
-          'entry_type' in entry.content
-        ) {
-          const t = entry.content.entry_type.type;
-          return t !== 'next_action' && t !== 'token_usage_info';
-        }
-        return true;
-      });
-
-      setFilteredEntries(newFilteredEntries);
-      setEntries(pending.entries);
-
-      scrollExecutor.onEntriesChanged(pending.addType, loading);
-
-      if (loading) {
-        setLoading(pending.loading);
-      }
-    }, 100);
   };
 
   const {

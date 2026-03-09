@@ -64,8 +64,7 @@ export interface ConversationVirtualizerOptions {
 
   /**
    * Called when the at-bottom state changes. Shells use this to show/hide
-   * the scroll-to-bottom affordance. Mirrors the Virtuoso `onAtBottomChange`
-   * contract so shells don't need to change when Task 12 removes Virtuoso.
+   * the scroll-to-bottom affordance.
    */
   onAtBottomChange?: (atBottom: boolean) => void;
 }

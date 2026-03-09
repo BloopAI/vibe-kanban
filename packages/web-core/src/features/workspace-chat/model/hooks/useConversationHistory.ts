@@ -9,7 +9,7 @@ import {
   ToolStatus,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-import { useEntries } from '../contexts/EntriesContext';
+import { useSetTokenUsageInfo } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
@@ -66,7 +66,7 @@ export const useConversationHistory = ({
     isLoading,
     isConnected,
   } = useExecutionProcessesContext();
-  const { setTokenUsageInfo } = useEntries();
+  const setTokenUsageInfo = useSetTokenUsageInfo();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
@@ -75,6 +75,10 @@ export const useConversationHistory = ({
   const previousStatusMapRef = useRef<Map<string, ExecutionProcessStatus>>(
     new Map()
   );
+  // Cache joined script output: avoids O(n) string concat on every emit
+  const scriptOutputCacheRef = useRef<
+    Map<string, { count: number; output: string }>
+  >(new Map());
 
   // Track whether scripts have run in this conversation
   const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
@@ -205,8 +209,8 @@ export const useConversationHistory = ({
       // Check whether a setup script process exists.  When it does, the
       // initial user message is emitted from the script branch (after the
       // script finishes) instead of from the CodingAgentInitialRequest
-      // branch – this avoids a Virtuoso list reorder when the script and
-      // coding agent load at different times.
+      // branch – this avoids a list reorder when the script and coding
+      // agent load at different times.
       const hasSetupScriptProcess = Object.values(executionProcessState).some(
         (p) =>
           p.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
@@ -235,7 +239,7 @@ export const useConversationHistory = ({
           ) {
             // Suppress the initial user message when a setup script exists –
             // the script branch emits it instead (after the script finishes)
-            // to avoid a Virtuoso list reorder.
+            // to avoid a list reorder.
             const isInitialWithSetup =
               p.executionProcess.executor_action.typ.type ===
                 'CodingAgentInitialRequest' && hasSetupScriptProcess;
@@ -399,7 +403,20 @@ export const useConversationHistory = ({
                   ? { status: 'success' }
                   : { status: 'failed' };
 
-            const output = p.entries.map((line) => line.content).join('\n');
+            // Use cached output when entry count hasn't changed
+            const processId = p.executionProcess.id;
+            const entryCount = p.entries.length;
+            const cached = scriptOutputCacheRef.current.get(processId);
+            let output: string;
+            if (cached && cached.count === entryCount) {
+              output = cached.output;
+            } else {
+              output = p.entries.map((line) => line.content).join('\n');
+              scriptOutputCacheRef.current.set(processId, {
+                count: entryCount,
+                output,
+              });
+            }
 
             const toolNormalizedEntry: NormalizedEntry = {
               entry_type: {
@@ -425,9 +442,7 @@ export const useConversationHistory = ({
             };
             // Distinct key suffix for semantic clarity — avoids collision
             // with index-based keys and clearly identifies script entries
-            // in the virtualizer's key space. (Previously also served as a
-            // Virtuoso height-reuse workaround; TanStack's measureElement +
-            // ResizeObserver makes that unnecessary.)
+            // in the virtualizer's key space.
             const toolPatchWithKey: PatchTypeWithKey = patchWithKey(
               toolPatch,
               p.executionProcess.id,
@@ -838,6 +853,7 @@ export const useConversationHistory = ({
     loadedInitialEntries.current = false;
     streamingProcessIdsRef.current.clear();
     previousStatusMapRef.current.clear();
+    scriptOutputCacheRef.current.clear();
     // Reset script run status when attempt changes
     setHasSetupScriptRun(false);
     setHasCleanupScriptRun(false);
