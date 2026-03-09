@@ -19,7 +19,7 @@
       ]
     },
     "model": {
-      "description": "auto, opus-4.6, opus-4.6-thinking, sonnet-4.6, sonnet-4.6-thinking, gpt-5.2, gpt-5.3-codex, grok, composer-1, composer-1.5, gemini-3.1-pro",
+      "description": "auto, opus-4.6, sonnet-4.6, gpt-5.4, gpt-5.4-fast, gpt-5.3-codex, gpt-5.3-codex-fast, gpt-5.3-codex-spark-preview, gpt-5.2, gpt-5.2-codex, gpt-5.2-codex-fast, gpt-5.1, gpt-5.1-codex-max, gpt-5.1-codex-mini, grok, kimi-k2.5, gemini-3.1-pro, gemini-3-pro, gemini-3-flash, opus-4.5, sonnet-4.5, composer-1.5, composer-1",
       "type": [
         "string",
         "null"

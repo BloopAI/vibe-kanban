@@ -47,7 +47,7 @@ pub struct CursorAgent {
     pub force: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(
-        description = "auto, opus-4.6, opus-4.6-thinking, sonnet-4.6, sonnet-4.6-thinking, gpt-5.2, gpt-5.3-codex, grok, composer-1, composer-1.5, gemini-3.1-pro"
+        description = "auto, opus-4.6, sonnet-4.6, gpt-5.4, gpt-5.4-fast, gpt-5.3-codex, gpt-5.3-codex-fast, gpt-5.3-codex-spark-preview, gpt-5.2, gpt-5.2-codex, gpt-5.2-codex-fast, gpt-5.1, gpt-5.1-codex-max, gpt-5.1-codex-mini, grok, kimi-k2.5, gemini-3.1-pro, gemini-3-pro, gemini-3-flash, opus-4.5, sonnet-4.5, composer-1.5, composer-1"
     )]
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -59,6 +59,14 @@ pub struct CursorAgent {
 // get the model full name
 fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>) -> &'a str {
     match (base_model, reasoning) {
+        ("gpt-5.4", Some("medium")) => "gpt-5.4-medium",
+        ("gpt-5.4", Some("high") | None) => "gpt-5.4-high",
+        ("gpt-5.4", Some("xhigh")) => "gpt-5.4-xhigh",
+
+        ("gpt-5.4-fast", Some("medium")) => "gpt-5.4-medium-fast",
+        ("gpt-5.4-fast", Some("high") | None) => "gpt-5.4-high-fast",
+        ("gpt-5.4-fast", Some("xhigh")) => "gpt-5.4-xhigh-fast",
+
         ("gpt-5.3-codex", Some("low")) => "gpt-5.3-codex-low",
         ("gpt-5.3-codex", Some("medium")) => "gpt-5.3-codex",
         ("gpt-5.3-codex", Some("high") | None) => "gpt-5.3-codex-high",
@@ -103,6 +111,9 @@ fn resolve_cursor_model_name<'a>(base_model: &'a str, reasoning: Option<&'a str>
 
 fn cursor_reasoning_options(base_model: &str) -> Vec<ReasoningOption> {
     match base_model {
+        "gpt-5.4" | "gpt-5.4-fast" => {
+            ReasoningOption::from_names(["medium", "high", "xhigh"].map(String::from))
+        }
         "gpt-5.3-codex" | "gpt-5.3-codex-fast" | "gpt-5.2-codex" | "gpt-5.2-codex-fast" => {
             ReasoningOption::from_names(["low", "medium", "high", "xhigh"].map(String::from))
         }
@@ -638,6 +649,8 @@ impl StandardCodingAgentExecutor for CursorAgent {
         let models: Vec<ModelInfo> = [
             ("auto", "Auto"),
             ("composer-1.5", "Composer 1.5"),
+            ("gpt-5.4", "GPT-5.4"),
+            ("gpt-5.4-fast", "GPT-5.4 Fast"),
             ("gemini-3.1-pro", "Gemini 3.1 Pro"),
             ("opus-4.6", "Claude 4.6 Opus"),
             ("sonnet-4.6", "Claude 4.6 Sonnet"),
@@ -670,7 +683,6 @@ impl StandardCodingAgentExecutor for CursorAgent {
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
                 models,
-                default_model: Some("auto".to_string()),
                 ..Default::default()
             },
             ..Default::default()
