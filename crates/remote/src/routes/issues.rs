@@ -1,6 +1,6 @@
 use api_types::{
     CreateIssueRequest, DeleteResponse, Issue, ListIssuesQuery, ListIssuesResponse,
-    MutationResponse, UpdateIssueRequest,
+    MutationResponse, NotificationType, UpdateIssueRequest,
 };
 use axum::{
     Json,
@@ -19,8 +19,14 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::{get_txid, issues::IssueRepository},
+    db::{
+        get_txid, issue_followers::IssueFollowerRepository, issues::IssueRepository,
+        project_statuses::ProjectStatusRepository,
+    },
     mutation_definition::MutationBuilder,
+    services::notifications::{
+        collect_issue_recipients, notify_issue_subscribers, send_issue_notifications,
+    },
 };
 
 /// Mutation definition for Issue - provides both router and TypeScript metadata.
@@ -126,6 +132,13 @@ async fn create_issue(
         db_error(error, "failed to create issue")
     })?;
 
+    // Auto-follow: the creator should receive notifications for all activity on this issue.
+    if let Err(e) =
+        IssueFollowerRepository::create(state.pool(), None, response.data.id, ctx.user.id).await
+    {
+        tracing::warn!(?e, issue_id = %response.data.id, "failed to auto-follow issue for creator");
+    }
+
     if let Some(analytics) = state.analytics() {
         analytics.track(
             ctx.user.id,
@@ -176,7 +189,24 @@ async fn update_issue(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
 
-    ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
+    let organization_id =
+        ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
+
+    let status_changed = payload
+        .status_id
+        .is_some_and(|new| new != issue.status_id);
+    let old_status_id = issue.status_id;
+
+    let title_changed = payload
+        .title
+        .as_ref()
+        .is_some_and(|new| *new != issue.title);
+    let old_title = issue.title.clone();
+
+    let description_changed = payload
+        .description
+        .as_ref()
+        .is_some_and(|new| *new != issue.description);
 
     let mut tx = state.pool().begin().await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
@@ -214,6 +244,64 @@ async fn update_issue(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
+    if status_changed {
+        let old_status_name = ProjectStatusRepository::find_by_id(state.pool(), old_status_id)
+            .await
+            .ok()
+            .flatten()
+            .map(|s| s.name);
+        let new_status_name = ProjectStatusRepository::find_by_id(state.pool(), data.status_id)
+            .await
+            .ok()
+            .flatten()
+            .map(|s| s.name);
+
+        notify_issue_subscribers(
+            state.pool(),
+            organization_id,
+            ctx.user.id,
+            &data,
+            NotificationType::IssueStatusChanged,
+            serde_json::json!({
+                "old_status_id": old_status_id.to_string(),
+                "new_status_id": data.status_id.to_string(),
+                "old_status_name": old_status_name,
+                "new_status_name": new_status_name,
+            }),
+            None,
+        )
+        .await;
+    }
+
+    if title_changed {
+        notify_issue_subscribers(
+            state.pool(),
+            organization_id,
+            ctx.user.id,
+            &data,
+            NotificationType::IssueTitleChanged,
+            serde_json::json!({
+                "old_title": old_title,
+                "new_title": data.title,
+            }),
+            None,
+        )
+        .await;
+    }
+
+    if description_changed {
+        notify_issue_subscribers(
+            state.pool(),
+            organization_id,
+            ctx.user.id,
+            &data,
+            NotificationType::IssueDescriptionChanged,
+            serde_json::json!({}),
+            None,
+        )
+        .await;
+    }
+
     Ok(Json(MutationResponse { data, txid }))
 }
 
@@ -235,7 +323,13 @@ async fn delete_issue(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue not found"))?;
 
-    ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
+    let organization_id =
+        ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
+
+    let recipients =
+        collect_issue_recipients(state.pool(), organization_id, issue.id, ctx.user.id)
+            .await
+            .unwrap_or_default();
 
     let response = IssueRepository::delete(state.pool(), issue_id)
         .await
@@ -243,6 +337,18 @@ async fn delete_issue(
             tracing::error!(?error, "failed to delete issue");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
+
+    send_issue_notifications(
+        state.pool(),
+        organization_id,
+        ctx.user.id,
+        &recipients,
+        &issue,
+        NotificationType::IssueDeleted,
+        serde_json::json!({}),
+        None,
+    )
+    .await;
 
     Ok(Json(response))
 }

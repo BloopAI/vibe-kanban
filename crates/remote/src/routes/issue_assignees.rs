@@ -1,6 +1,6 @@
 use api_types::{
     CreateIssueAssigneeRequest, DeleteResponse, IssueAssignee, ListIssueAssigneesQuery,
-    ListIssueAssigneesResponse, MutationResponse,
+    ListIssueAssigneesResponse, MutationResponse, NotificationType,
 };
 use axum::{
     Json,
@@ -17,8 +17,9 @@ use super::{
 use crate::{
     AppState,
     auth::RequestContext,
-    db::issue_assignees::IssueAssigneeRepository,
+    db::{issue_assignees::IssueAssigneeRepository, issues::IssueRepository},
     mutation_definition::{MutationBuilder, NoUpdate},
+    services::notifications::notify_user,
 };
 
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
@@ -95,7 +96,7 @@ async fn create_issue_assignee(
     Extension(ctx): Extension<RequestContext>,
     Json(payload): Json<CreateIssueAssigneeRequest>,
 ) -> Result<Json<MutationResponse<IssueAssignee>>, ErrorResponse> {
-    ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
+    let organization_id = ensure_issue_access(state.pool(), ctx.user.id, payload.issue_id).await?;
 
     let response = IssueAssigneeRepository::create(
         state.pool(),
@@ -108,6 +109,25 @@ async fn create_issue_assignee(
         tracing::error!(?error, "failed to create issue assignee");
         db_error(error, "failed to create issue assignee")
     })?;
+
+    // if payload.user_id != ctx.user.id {
+    if let Ok(Some(issue)) =
+        IssueRepository::find_by_id(state.pool(), payload.issue_id).await
+    {
+        notify_user(
+            state.pool(),
+            organization_id,
+            payload.user_id,
+            &issue,
+            NotificationType::IssueAssigneeChanged,
+            serde_json::json!({
+                "actor_user_id": ctx.user.id.to_string(),
+                "assignee_user_id": payload.user_id.to_string(),
+            }),
+        )
+        .await;
+    }
+    // }
 
     Ok(Json(response))
 }
