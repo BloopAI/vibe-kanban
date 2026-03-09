@@ -191,7 +191,7 @@ interface PierreDiffCardProps {
   diff: Diff;
   expanded: boolean;
   onToggle: () => void;
-  attemptId: string;
+  workspaceId: string;
   className: string;
 }
 
@@ -211,7 +211,7 @@ export function PierreDiffCard({
   diff,
   expanded,
   onToggle,
-  attemptId,
+  workspaceId,
   className = '',
 }: PierreDiffCardProps) {
   const { t } = useTranslation('tasks');
@@ -230,7 +230,7 @@ export function PierreDiffCard({
   const oldPath = diff.oldPath;
   const changeKind = diff.change;
 
-  const openInEditor = useOpenInEditor(attemptId);
+  const openInEditor = useOpenInEditor(workspaceId);
   const handleOpenInIde = useCallback(() => {
     openInEditor({ filePath });
   }, [openInEditor, filePath]);

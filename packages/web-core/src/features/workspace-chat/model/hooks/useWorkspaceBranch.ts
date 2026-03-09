@@ -1,14 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 
-export function useAttemptBranch(attemptId?: string) {
+export function useWorkspaceBranch(workspaceId?: string) {
   const query = useQuery({
-    queryKey: ['attemptBranch', attemptId],
+    queryKey: ['attemptBranch', workspaceId],
     queryFn: async () => {
-      const attempt = await attemptsApi.get(attemptId!);
+      const attempt = await workspacesApi.get(workspaceId!);
       return attempt.branch ?? null;
     },
-    enabled: !!attemptId,
+    enabled: !!workspaceId,
   });
 
   return {

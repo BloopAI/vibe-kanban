@@ -22,7 +22,7 @@ import {
 } from '@vibe/ui/components/Select';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/shared/lib/modals';
-import { attemptsApi, repoApi } from '@/shared/lib/api';
+import { workspacesApi, repoApi } from '@/shared/lib/api';
 import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { SearchableDropdownContainer } from '@/shared/components/ui-new/containers/SearchableDropdownContainer';
 import type { OpenPrInfo, GitRemote } from 'shared/types';
@@ -139,7 +139,7 @@ const CreateWorkspaceFromPrDialogImpl =
         ) {
           throw new Error('Missing required fields');
         }
-        const result = await attemptsApi.createFromPr({
+        const result = await workspacesApi.createFromPr({
           repo_id: selectedRepoId,
           pr_number: selectedPrNumber as unknown as bigint,
           pr_title: selectedPr.title,

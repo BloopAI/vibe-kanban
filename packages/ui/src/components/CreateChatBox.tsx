@@ -5,7 +5,7 @@ import { Checkbox } from './Checkbox';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 import { PrimaryButton } from './PrimaryButton';
-import type { LocalImageMetadata } from './TaskAttemptContext';
+import type { LocalImageMetadata } from './WorkspaceContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 
 export interface EditorProps {

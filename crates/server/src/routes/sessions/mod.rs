@@ -29,7 +29,10 @@ use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, middleware::load_session_middleware};
+use crate::{
+    DeploymentImpl, error::ApiError, middleware::load_session_middleware,
+    routes::workspaces::execution::RunScriptError,
+};
 
 #[derive(Debug, Deserialize)]
 pub struct SessionQuery {
@@ -232,11 +235,69 @@ pub async fn reset_process(
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
+pub async fn run_setup_script(
+    Extension(session): Extension<Session>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ExecutionProcess, RunScriptError>>, ApiError> {
+    let pool = &deployment.db().pool;
+
+    let workspace = Workspace::find_by_id(pool, session.workspace_id)
+        .await?
+        .ok_or(ApiError::Workspace(WorkspaceError::ValidationError(
+            "Workspace not found".to_string(),
+        )))?;
+
+    if ExecutionProcess::has_running_non_dev_server_processes_for_workspace(pool, workspace.id)
+        .await?
+    {
+        return Ok(ResponseJson(ApiResponse::error_with_data(
+            RunScriptError::ProcessAlreadyRunning,
+        )));
+    }
+
+    deployment
+        .container()
+        .ensure_container_exists(&workspace)
+        .await?;
+
+    let repos = WorkspaceRepo::find_repos_for_workspace(pool, workspace.id).await?;
+    let executor_action = match deployment.container().setup_actions_for_repos(&repos) {
+        Some(action) => action,
+        None => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                RunScriptError::NoScriptConfigured,
+            )));
+        }
+    };
+
+    let execution_process = deployment
+        .container()
+        .start_execution(
+            &workspace,
+            &session,
+            &executor_action,
+            &ExecutionProcessRunReason::SetupScript,
+        )
+        .await?;
+
+    deployment
+        .track_if_analytics_allowed(
+            "setup_script_executed",
+            serde_json::json!({
+                "workspace_id": workspace.id.to_string(),
+            }),
+        )
+        .await;
+
+    Ok(ResponseJson(ApiResponse::success(execution_process)))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let session_id_router = Router::new()
         .route("/", get(get_session))
         .route("/follow-up", post(follow_up))
         .route("/reset", post(reset_process))
+        .route("/setup", post(run_setup_script))
         .route("/review", post(review::start_review))
         .layer(from_fn_with_state(
             deployment.clone(),

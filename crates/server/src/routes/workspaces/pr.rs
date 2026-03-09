@@ -2,9 +2,10 @@ use std::path::PathBuf;
 
 use api_types::{PullRequestStatus, UpsertPullRequestRequest};
 use axum::{
-    Extension, Json,
+    Extension, Json, Router,
     extract::{Query, State},
     response::Json as ResponseJson,
+    routing::{get, post},
 };
 use db::models::{
     coding_agent_turn::CodingAgentTurn,
@@ -827,4 +828,11 @@ pub async fn create_workspace_from_pr(
     Ok(ResponseJson(ApiResponse::success(
         CreateWorkspaceFromPrResponse { workspace },
     )))
+}
+
+pub fn router() -> Router<DeploymentImpl> {
+    Router::new()
+        .route("/", post(create_pr))
+        .route("/attach", post(attach_existing_pr))
+        .route("/comments", get(get_pr_comments))
 }

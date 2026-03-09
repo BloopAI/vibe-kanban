@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use db::models::requests::{
     CreateAndStartWorkspaceRequest, CreateAndStartWorkspaceResponse, LinkedIssueInfo,
     WorkspaceRepoInput,
 };
-use executors::{executors::BaseCodingAgent, profile::ExecutorConfig};
+use executors::profile::ExecutorConfig;
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
@@ -12,33 +10,32 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpWorkspaceRepoInput {
     #[schemars(description = "The repository ID")]
     repo_id: Uuid,
-    #[schemars(description = "The base branch for this repository")]
-    base_branch: String,
+    #[schemars(description = "The branch for this repository")]
+    branch: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-struct StartWorkspaceSessionRequest {
-    #[schemars(description = "A title for the workspace (used as the task name)")]
-    title: String,
-    #[serde(default, alias = "prompt")]
+struct StartWorkspaceRequest {
+    #[schemars(description = "Name for the workspace")]
+    name: String,
     #[schemars(
-        description = "Optional prompt override for the first workspace session. If omitted/empty, the linked issue title/description is used."
+        description = "Optional prompt for the first workspace session. If omitted/empty, the linked issue title/description is used."
     )]
-    prompt_override: Option<String>,
+    prompt: Option<String>,
     #[schemars(
         description = "The coding agent executor to run ('CLAUDE_CODE', 'AMP', 'GEMINI', 'CODEX', 'OPENCODE', 'CURSOR_AGENT', 'QWEN_CODE', 'COPILOT', 'DROID')"
     )]
     executor: String,
     #[schemars(description = "Optional executor variant, if needed")]
     variant: Option<String>,
-    #[schemars(description = "Base branch for each repository in the project")]
-    repos: Vec<McpWorkspaceRepoInput>,
+    #[schemars(description = "Repository selection for the workspace")]
+    repositories: Vec<McpWorkspaceRepoInput>,
     #[schemars(
         description = "Optional issue ID to link the workspace to. When provided, the workspace will be associated with this remote issue."
     )]
@@ -46,12 +43,12 @@ struct StartWorkspaceSessionRequest {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-struct StartWorkspaceSessionResponse {
+struct StartWorkspaceResponse {
     workspace_id: String,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
-struct McpLinkWorkspaceRequest {
+struct LinkWorkspaceIssueRequest {
     #[schemars(description = "The workspace ID to link")]
     workspace_id: Uuid,
     #[schemars(description = "The issue ID to link the workspace to")]
@@ -59,7 +56,7 @@ struct McpLinkWorkspaceRequest {
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
-struct McpLinkWorkspaceResponse {
+struct LinkWorkspaceIssueResponse {
     #[schemars(description = "Whether the linking was successful")]
     success: bool,
     #[schemars(description = "The workspace ID that was linked")]
@@ -93,20 +90,20 @@ fn build_workspace_prompt_from_issue(issue: &api_types::Issue) -> Option<String>
 }
 
 #[tool_router(router = task_attempts_tools_router, vis = "pub")]
-impl TaskServer {
-    #[tool(description = "Start a new workspace session.")]
-    async fn start_workspace_session(
+impl McpServer {
+    #[tool(description = "Create a new workspace and start its first session.")]
+    async fn start_workspace(
         &self,
-        Parameters(StartWorkspaceSessionRequest {
-            title,
-            prompt_override,
+        Parameters(StartWorkspaceRequest {
+            name,
+            prompt,
             executor,
             variant,
-            repos,
+            repositories,
             issue_id,
-        }): Parameters<StartWorkspaceSessionRequest>,
+        }): Parameters<StartWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        if repos.is_empty() {
+        if repositories.is_empty() {
             return Self::err("At least one repository must be specified.", None::<&str>);
         }
 
@@ -115,7 +112,7 @@ impl TaskServer {
             return Self::err("Executor must not be empty.", None::<&str>);
         }
 
-        let prompt_override = prompt_override.and_then(|prompt| {
+        let prompt = prompt.and_then(|prompt| {
             let trimmed = prompt.trim();
             if trimmed.is_empty() {
                 None
@@ -124,8 +121,7 @@ impl TaskServer {
             }
         });
 
-        let normalized_executor = executor_trimmed.replace('-', "_").to_ascii_uppercase();
-        let base_executor = match BaseCodingAgent::from_str(&normalized_executor) {
+        let base_executor = match Self::parse_executor_agent(executor_trimmed) {
             Ok(exec) => exec,
             Err(_) => {
                 return Self::err(
@@ -144,11 +140,11 @@ impl TaskServer {
             }
         });
 
-        let workspace_repos: Vec<WorkspaceRepoInput> = repos
+        let workspace_repos: Vec<WorkspaceRepoInput> = repositories
             .into_iter()
             .map(|r| WorkspaceRepoInput {
                 repo_id: r.repo_id,
-                target_branch: r.base_branch,
+                target_branch: r.branch,
             })
             .collect();
 
@@ -170,18 +166,18 @@ impl TaskServer {
             (None, None)
         };
 
-        let workspace_prompt = match prompt_override.or(issue_prompt) {
+        let workspace_prompt = match prompt.or(issue_prompt) {
             Some(prompt) => prompt,
             None => {
                 return Self::err(
-                    "Provide `prompt_override`, or `issue_id` that has a non-empty title/description.",
+                    "Provide `prompt`, or `issue_id` that has a non-empty title/description.",
                     None::<&str>,
                 );
             }
         };
 
         let create_and_start_payload = CreateAndStartWorkspaceRequest {
-            name: Some(title.clone()),
+            name: Some(name.clone()),
             repos: workspace_repos,
             linked_issue,
             executor_config: ExecutorConfig {
@@ -196,7 +192,7 @@ impl TaskServer {
             image_ids: None,
         };
 
-        let create_and_start_url = self.url("/api/task-attempts/create-and-start");
+        let create_and_start_url = self.url("/api/workspaces/start");
         let create_and_start_response: CreateAndStartWorkspaceResponse = match self
             .send_json(
                 self.client
@@ -218,28 +214,28 @@ impl TaskServer {
             return Ok(e);
         }
 
-        let response = StartWorkspaceSessionResponse {
+        let response = StartWorkspaceResponse {
             workspace_id: create_and_start_response.workspace.id.to_string(),
         };
 
-        TaskServer::success(&response)
+        McpServer::success(&response)
     }
 
     #[tool(
         description = "Link an existing workspace to a remote issue. This associates the workspace with the issue for tracking."
     )]
-    async fn link_workspace(
+    async fn link_workspace_issue(
         &self,
-        Parameters(McpLinkWorkspaceRequest {
+        Parameters(LinkWorkspaceIssueRequest {
             workspace_id,
             issue_id,
-        }): Parameters<McpLinkWorkspaceRequest>,
+        }): Parameters<LinkWorkspaceIssueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         if let Err(e) = self.link_workspace_to_issue(workspace_id, issue_id).await {
             return Ok(e);
         }
 
-        TaskServer::success(&McpLinkWorkspaceResponse {
+        McpServer::success(&LinkWorkspaceIssueResponse {
             success: true,
             workspace_id: workspace_id.to_string(),
             issue_id: issue_id.to_string(),

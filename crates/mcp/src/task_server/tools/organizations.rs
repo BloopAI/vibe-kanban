@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct OrganizationSummary {
@@ -62,7 +62,7 @@ struct McpListOrgMembersResponse {
 }
 
 #[tool_router(router = organizations_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all the available organizations")]
     async fn list_organizations(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/organizations");
@@ -83,7 +83,7 @@ impl TaskServer {
             })
             .collect();
 
-        TaskServer::success(&McpListOrganizationsResponse {
+        McpServer::success(&McpListOrganizationsResponse {
             count: org_summaries.len(),
             organizations: org_summaries,
         })
@@ -124,7 +124,7 @@ impl TaskServer {
             })
             .collect();
 
-        TaskServer::success(&McpListOrgMembersResponse {
+        McpServer::success(&McpListOrgMembersResponse {
             organization_id: organization_id.to_string(),
             count: members.len(),
             members,

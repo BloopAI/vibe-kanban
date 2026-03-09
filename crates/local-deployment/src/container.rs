@@ -690,6 +690,51 @@ impl LocalContainerService {
                     }
                 }
 
+                // When a parallel setup script finishes and no coding agent is running,
+                // consume any queued message that was stuck waiting
+                if matches!(
+                    ctx.execution_process.run_reason,
+                    ExecutionProcessRunReason::SetupScript
+                ) && !container.should_finalize(&ctx)
+                {
+                    let has_running_agent = ExecutionProcess::has_running_coding_agent_for_session(
+                        &db.pool,
+                        ctx.session.id,
+                    )
+                    .await
+                    .unwrap_or(true);
+
+                    if !has_running_agent
+                        && let Some(queued_msg) =
+                            container.queued_message_service.take_queued(ctx.session.id)
+                    {
+                        tracing::info!(
+                            "Parallel setup script finished with queued message for session {}, starting follow-up",
+                            ctx.session.id
+                        );
+
+                        if let Err(e) =
+                            Scratch::delete(&db.pool, ctx.session.id, &ScratchType::DraftFollowUp)
+                                .await
+                        {
+                            tracing::warn!(
+                                "Failed to delete scratch after consuming queued message: {}",
+                                e
+                            );
+                        }
+
+                        if let Err(e) = container
+                            .start_queued_follow_up(&ctx, &queued_msg.data)
+                            .await
+                        {
+                            tracing::error!(
+                                "Failed to start queued follow-up from setup script completion: {}",
+                                e
+                            );
+                        }
+                    }
+                }
+
                 // Fire analytics event when CodingAgent execution has finished
                 if config.read().await.analytics_enabled
                     && matches!(
@@ -1307,7 +1352,6 @@ impl ContainerService for LocalContainerService {
         // Always inject workspace/session context
         env.insert("VK_WORKSPACE_ID", workspace.id.to_string());
         env.insert("VK_WORKSPACE_BRANCH", &workspace.branch);
-        env.insert("VK_SESSION_ID", execution_process.session_id.to_string());
 
         // Create the child and stream, add to execution tracker with timeout
         let mut spawned = tokio::time::timeout(

@@ -18,6 +18,11 @@ pub struct WorkspaceRepoInput {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
+pub struct CreateWorkspaceApiRequest {
+    pub name: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, TS)]
 pub struct LinkedIssueInfo {
     pub remote_project_id: Uuid,
     pub issue_id: Uuid,

@@ -1,13 +1,13 @@
 import { useDiffStream } from '@/shared/hooks/useDiffStream';
 import { useMemo } from 'react';
 
-export function useDiffSummary(attemptId: string | null) {
-  const { diffs, error } = useDiffStream(attemptId, true, {
+export function useDiffSummary(workspaceId: string | null) {
+  const { diffs, error } = useDiffStream(workspaceId, true, {
     statsOnly: true,
   });
 
   const { fileCount, added, deleted } = useMemo(() => {
-    if (!attemptId || diffs.length === 0) {
+    if (!workspaceId || diffs.length === 0) {
       return { fileCount: 0, added: 0, deleted: 0 };
     }
 
@@ -19,7 +19,7 @@ export function useDiffSummary(attemptId: string | null) {
       },
       { fileCount: diffs.length, added: 0, deleted: 0 }
     );
-  }, [attemptId, diffs]);
+  }, [workspaceId, diffs]);
 
   return { fileCount, added, deleted, error };
 }

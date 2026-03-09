@@ -19,7 +19,7 @@
     },
     "dialog": {
       "title": "Rebase Task Attempt",
-      "description": "Choose a new base branch to rebase this task attempt onto.",
+      "description": "Choose a new base branch to rebase this workspace onto.",
       "upstreamLabel": "Upstream Branch",
       "upstreamPlaceholder": "Select an upstream branch",
       "targetLabel": "Target Branch",
@@ -31,7 +31,7 @@
     "changeTarget": {
       "dialog": {
         "title": "Change target branch",
-        "description": "Choose a new target branch for the task attempt.",
+        "description": "Choose a new target branch for the workspace.",
         "placeholder": "Select a target branch",
         "action": "Change Branch",
         "inProgress": "Changing..."
@@ -348,7 +348,7 @@
   },
   "createPrDialog": {
     "title": "Create Pull Request",
-    "description": "Create a pull request for this task attempt.",
+    "description": "Create a pull request for this workspace.",
     "titleLabel": "Title",
     "titlePlaceholder": "Enter PR title",
     "descriptionLabel": "Description (optional)",

@@ -21,13 +21,13 @@ interface UseDiffStreamResult {
 }
 
 export const useDiffStream = (
-  attemptId: string | null,
+  workspaceId: string | null,
   enabled: boolean,
   options?: UseDiffStreamOptions
 ): UseDiffStreamResult => {
   const endpoint = (() => {
-    if (!attemptId) return undefined;
-    const query = `/api/task-attempts/${attemptId}/diff/ws`;
+    if (!workspaceId) return undefined;
+    const query = `/api/workspaces/${workspaceId}/git/diff/ws`;
     if (typeof options?.statsOnly === 'boolean') {
       const params = new URLSearchParams();
       params.set('stats_only', String(options.statsOnly));
@@ -46,7 +46,7 @@ export const useDiffStream = (
 
   const { data, error, isInitialized } = useJsonPatchWsStream<DiffStreamEvent>(
     endpoint,
-    enabled && !!attemptId,
+    enabled && !!workspaceId,
     initialData
     // No need for injectInitialEntry or deduplicatePatches for diffs
   );

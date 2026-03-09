@@ -50,17 +50,17 @@ function shouldAutoCollapse(diff: Diff): boolean {
 interface ChangesPanelContainerProps {
   className: string;
   /** Attempt ID for opening files in IDE */
-  attemptId: string;
+  workspaceId: string;
 }
 
 const PersistedDiffItem = memo(function PersistedDiffItem({
   diff,
   initialExpanded,
-  attemptId,
+  workspaceId,
 }: {
   diff: Diff;
   initialExpanded: boolean;
-  attemptId: string;
+  workspaceId: string;
 }) {
   const path = diff.newPath || diff.oldPath || '';
   const [expanded, toggle] = usePersistedExpanded(
@@ -73,7 +73,7 @@ const PersistedDiffItem = memo(function PersistedDiffItem({
       diff={diff}
       expanded={expanded}
       onToggle={toggle}
-      attemptId={attemptId}
+      workspaceId={workspaceId}
       className=""
     />
   );
@@ -81,7 +81,7 @@ const PersistedDiffItem = memo(function PersistedDiffItem({
 
 export function ChangesPanelContainer({
   className,
-  attemptId,
+  workspaceId,
 }: ChangesPanelContainerProps) {
   const { diffs } = useWorkspaceContext();
   const {
@@ -295,11 +295,11 @@ export function ChangesPanelContainer({
   }, []);
 
   const renderDiffItem = useCallback(
-    ({ diff, initialExpanded, attemptId }: RenderDiffItemProps<Diff>) => (
+    ({ diff, initialExpanded, workspaceId }: RenderDiffItemProps<Diff>) => (
       <PersistedDiffItem
         diff={diff}
         initialExpanded={initialExpanded ?? true}
-        attemptId={attemptId}
+        workspaceId={workspaceId}
       />
     ),
     []
@@ -314,7 +314,7 @@ export function ChangesPanelContainer({
       onScrollerRef={handleScrollerRef}
       onRangeChanged={handleRangeChanged}
       renderDiffItem={renderDiffItem}
-      attemptId={attemptId}
+      workspaceId={workspaceId}
     />
   );
 }

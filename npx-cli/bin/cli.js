@@ -98,6 +98,20 @@ function showProgress(downloaded, total) {
   process.stderr.write(`\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`);
 }
 
+function buildMcpArgs(args) {
+  const mcpFlagIndex = args.indexOf("--mcp");
+  if (mcpFlagIndex === -1) {
+    return ["--mode", "global"];
+  }
+
+  const forwardedArgs = [
+    ...args.slice(0, mcpFlagIndex),
+    ...args.slice(mcpFlagIndex + 1),
+  ];
+
+  return forwardedArgs.length > 0 ? forwardedArgs : ["--mode", "global"];
+}
+
 async function extractAndRun(baseName, launch) {
   const binName = getBinaryName(baseName);
   const binPath = path.join(versionCacheDir, binName);
@@ -184,8 +198,9 @@ async function main() {
   }
 
   if (isMcpMode) {
+    const mcpArgs = buildMcpArgs(args);
     await extractAndRun("vibe-kanban-mcp", (bin) => {
-      const proc = spawn(bin, [], { stdio: "inherit" });
+      const proc = spawn(bin, mcpArgs, { stdio: "inherit" });
       proc.on("exit", (c) => process.exit(c || 0));
       proc.on("error", (e) => {
         console.error("MCP server error:", e.message);

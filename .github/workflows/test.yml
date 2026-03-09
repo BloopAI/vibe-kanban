@@ -63,6 +63,7 @@ jobs:
               - 'crates/executors/**'
               - 'crates/git/**'
               - 'crates/local-deployment/**'
+              - 'crates/mcp/**'
               - 'crates/review/**'
               - 'crates/server/**'
               - 'crates/services/**'

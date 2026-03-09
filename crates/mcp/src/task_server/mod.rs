@@ -1,17 +1,15 @@
 mod handler;
 mod tools;
 
+use std::path::Path;
+
+use anyhow::Context;
 use db::models::{requests::ContainerQuery, workspace::WorkspaceContext};
 use rmcp::{handler::server::tool::ToolRouter, schemars};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Deserialize)]
-struct ApiResponseEnvelope<T> {
-    success: bool,
-    data: Option<T>,
-    message: Option<String>,
-}
+pub(crate) use crate::ApiResponseEnvelope;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub struct McpRepoContext {
@@ -31,6 +29,9 @@ pub struct McpContext {
     pub project_id: Option<Uuid>,
     #[schemars(description = "The remote issue ID (if workspace is linked to a remote issue)")]
     pub issue_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "The orchestrator session ID when running in orchestrator mode")]
+    pub orchestrator_session_id: Option<Uuid>,
     pub workspace_id: Uuid,
     pub workspace_branch: String,
     #[schemars(
@@ -40,14 +41,41 @@ pub struct McpContext {
 }
 
 #[derive(Debug, Clone)]
-pub struct TaskServer {
-    client: reqwest::Client,
-    base_url: String,
-    tool_router: ToolRouter<TaskServer>,
-    context: Option<McpContext>,
+pub enum McpMode {
+    Global,
+    Orchestrator,
 }
 
-impl TaskServer {
+#[derive(Debug, Clone)]
+pub struct McpServer {
+    client: reqwest::Client,
+    base_url: String,
+    tool_router: ToolRouter<McpServer>,
+    context: Option<McpContext>,
+    mode: McpMode,
+}
+
+impl McpServer {
+    pub fn new_global(base_url: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            base_url: base_url.to_string(),
+            tool_router: Self::global_mode_router(),
+            context: None,
+            mode: McpMode::Global,
+        }
+    }
+
+    pub fn new_orchestrator(base_url: &str) -> Self {
+        Self {
+            client: reqwest::Client::new(),
+            base_url: base_url.to_string(),
+            tool_router: Self::orchestrator_mode_router(),
+            context: None,
+            mode: McpMode::Orchestrator,
+        }
+    }
+
     fn url(&self, path: &str) -> String {
         format!(
             "{}/{}",
@@ -56,8 +84,8 @@ impl TaskServer {
         )
     }
 
-    pub async fn init(mut self) -> Self {
-        let context = self.fetch_context_at_startup().await;
+    pub async fn init(mut self) -> anyhow::Result<Self> {
+        let context = self.fetch_context_at_startup().await?;
 
         if context.is_none() {
             self.tool_router.map.remove("get_context");
@@ -67,17 +95,37 @@ impl TaskServer {
         }
 
         self.context = context;
-        self
+        Ok(self)
     }
 
-    async fn fetch_context_at_startup(&self) -> Option<McpContext> {
-        let current_dir = std::env::current_dir().ok()?;
+    pub fn mode(&self) -> &McpMode {
+        &self.mode
+    }
+
+    async fn fetch_context_at_startup(&self) -> anyhow::Result<Option<McpContext>> {
+        let current_dir = std::env::current_dir().context("Failed to resolve current directory")?;
         let canonical_path = current_dir.canonicalize().unwrap_or(current_dir);
         let normalized_path = utils::path::normalize_macos_private_alias(&canonical_path);
 
+        match self.try_fetch_attempt_context(&normalized_path).await {
+            Ok(Some(ctx)) => Ok(Some(
+                self.build_mcp_context_from_workspace_context(&ctx).await,
+            )),
+            Ok(None) | Err(_) if matches!(self.mode(), McpMode::Global) => Ok(None),
+            Ok(None) => anyhow::bail!(
+                "Failed to load orchestrator MCP context from /api/containers/attempt-context"
+            ),
+            Err(error) => Err(error.context("Failed to load orchestrator MCP context")),
+        }
+    }
+
+    async fn try_fetch_attempt_context(
+        &self,
+        path: &Path,
+    ) -> anyhow::Result<Option<WorkspaceContext>> {
         let url = self.url("/api/containers/attempt-context");
         let query = ContainerQuery {
-            container_ref: normalized_path.to_string_lossy().to_string(),
+            container_ref: path.to_string_lossy().to_string(),
         };
 
         let response = tokio::time::timeout(
@@ -85,48 +133,58 @@ impl TaskServer {
             self.client.get(&url).query(&query).send(),
         )
         .await
-        .ok()?
-        .ok()?;
+        .context("Timed out fetching /api/containers/attempt-context")?
+        .context("Failed to fetch /api/containers/attempt-context")?;
 
         if !response.status().is_success() {
-            return None;
+            return Ok(None);
         }
 
-        let api_response: ApiResponseEnvelope<WorkspaceContext> = response.json().await.ok()?;
+        let api_response: ApiResponseEnvelope<WorkspaceContext> = response
+            .json()
+            .await
+            .context("Failed to parse /api/containers/attempt-context response")?;
 
         if !api_response.success {
-            return None;
+            return Ok(None);
         }
 
-        let ctx = api_response.data?;
+        Ok(api_response.data)
+    }
 
+    async fn build_mcp_context_from_workspace_context(&self, ctx: &WorkspaceContext) -> McpContext {
         let workspace_repos: Vec<McpRepoContext> = ctx
             .workspace_repos
-            .into_iter()
+            .iter()
             .map(|rwb| McpRepoContext {
                 repo_id: rwb.repo.id,
-                repo_name: rwb.repo.name,
-                target_branch: rwb.target_branch,
+                repo_name: rwb.repo.name.clone(),
+                target_branch: rwb.target_branch.clone(),
             })
             .collect();
 
         let workspace_id = ctx.workspace.id;
         let workspace_branch = ctx.workspace.branch.clone();
+        let orchestrator_session_id = if matches!(self.mode(), McpMode::Orchestrator) {
+            ctx.orchestrator_session_id
+        } else {
+            None
+        };
 
-        // Look up remote workspace to get remote project_id, issue_id, and organization_id
         let (project_id, issue_id, organization_id) = self
             .fetch_remote_workspace_context(workspace_id)
             .await
             .unwrap_or((None, None, None));
 
-        Some(McpContext {
+        McpContext {
             organization_id,
             project_id,
             issue_id,
+            orchestrator_session_id,
             workspace_id,
             workspace_branch,
             workspace_repos,
-        })
+        }
     }
 
     async fn fetch_remote_workspace_context(

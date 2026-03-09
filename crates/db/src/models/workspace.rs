@@ -11,6 +11,7 @@ const WORKSPACE_NAME_MAX_LEN: usize = 60;
 
 use super::{
     execution_process::ExecutorActionField,
+    session::Session,
     workspace_repo::{RepoWithTargetBranch, WorkspaceRepo},
 };
 
@@ -29,6 +30,12 @@ pub enum WorkspaceError {
 #[derive(Debug, Clone, Serialize)]
 pub struct ContainerInfo {
     pub workspace_id: Uuid,
+}
+
+#[derive(Debug)]
+struct WorkspaceContainerRefRow {
+    id: Uuid,
+    container_ref: String,
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
@@ -78,6 +85,7 @@ pub struct AttemptResumeContext {
 pub struct WorkspaceContext {
     pub workspace: Workspace,
     pub workspace_repos: Vec<RepoWithTargetBranch>,
+    pub orchestrator_session_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, TS)]
@@ -123,10 +131,14 @@ impl Workspace {
 
         let workspace_repos =
             WorkspaceRepo::find_repos_with_target_branch_for_workspace(pool, workspace_id).await?;
+        let orchestrator_session_id = Session::find_first_by_workspace_id(pool, workspace_id)
+            .await?
+            .map(|session| session.id);
 
         Ok(WorkspaceContext {
             workspace,
             workspace_repos,
+            orchestrator_session_id,
         })
     }
 
@@ -359,26 +371,47 @@ impl Workspace {
         })
     }
 
-    /// Find workspace by path, also trying the parent directory.
-    /// Used by VSCode extension which may open a repo subfolder (single-repo case)
-    /// rather than the workspace root directory (multi-repo case).
+    /// Find workspace by path using container-ref path containment.
+    /// Used by clients that may open a repo subfolder rather than the workspace root.
     pub async fn resolve_container_ref_by_prefix(
         pool: &SqlitePool,
         path: &str,
     ) -> Result<ContainerInfo, sqlx::Error> {
-        // First try exact match
-        if let Ok(info) = Self::resolve_container_ref(pool, path).await {
-            return Ok(info);
-        }
+        let workspaces = sqlx::query_as!(
+            WorkspaceContainerRefRow,
+            r#"SELECT id as "id!: Uuid",
+                      container_ref as "container_ref!"
+               FROM workspaces
+               WHERE container_ref IS NOT NULL"#,
+        )
+        .fetch_all(pool)
+        .await?;
 
-        if let Some(parent) = std::path::Path::new(path).parent()
-            && let Some(parent_str) = parent.to_str()
-            && let Ok(info) = Self::resolve_container_ref(pool, parent_str).await
-        {
-            return Ok(info);
-        }
+        Self::best_matching_container_ref(
+            path,
+            workspaces
+                .iter()
+                .map(|ws| (ws.id, ws.container_ref.as_str())),
+        )
+        .map(|workspace_id| ContainerInfo { workspace_id })
+        .ok_or(sqlx::Error::RowNotFound)
+    }
 
-        Err(sqlx::Error::RowNotFound)
+    fn best_matching_container_ref<'a>(
+        path: &str,
+        candidates: impl Iterator<Item = (Uuid, &'a str)>,
+    ) -> Option<Uuid> {
+        let path = std::path::Path::new(path);
+
+        candidates
+            .filter(|(_, container_ref)| {
+                let container_ref = std::path::Path::new(container_ref);
+                path.starts_with(container_ref) || container_ref.starts_with(path)
+            })
+            .max_by_key(|(_, container_ref)| {
+                std::path::Path::new(container_ref).components().count()
+            })
+            .map(|(workspace_id, _)| workspace_id)
     }
 
     pub async fn set_archived(
@@ -667,5 +700,46 @@ impl Workspace {
         }
 
         Ok(Some(ws))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use super::Workspace;
+
+    #[test]
+    fn best_matching_container_ref_prefers_deepest_match() {
+        let broad_id = Uuid::new_v4();
+        let exact_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/ws/repo/packages/app",
+            [(broad_id, "/tmp"), (exact_id, "/tmp/ws")].into_iter(),
+        );
+
+        assert_eq!(selected, Some(exact_id));
+    }
+
+    #[test]
+    fn best_matching_container_ref_supports_parent_request_path() {
+        let workspace_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/ws/repo",
+            [(workspace_id, "/tmp/ws/repo/packages/app")].into_iter(),
+        );
+
+        assert_eq!(selected, Some(workspace_id));
+    }
+
+    #[test]
+    fn best_matching_container_ref_ignores_unrelated_paths() {
+        let workspace_id = Uuid::new_v4();
+        let selected = Workspace::best_matching_container_ref(
+            "/tmp/other/path",
+            [(workspace_id, "/tmp/ws")].into_iter(),
+        );
+
+        assert_eq!(selected, None);
     }
 }

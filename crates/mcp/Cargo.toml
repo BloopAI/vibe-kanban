@@ -1,7 +1,12 @@
 [package]
 name = "mcp"
-version = "0.1.25"
+version = "0.1.26"
 edition = "2024"
+autobins = false
+
+[[bin]]
+name = "vibe-kanban-mcp"
+path = "src/bin/vibe_kanban_mcp.rs"
 
 [lints.clippy]
 uninlined-format-args = "allow"

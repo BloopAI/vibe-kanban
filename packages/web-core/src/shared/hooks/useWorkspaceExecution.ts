@@ -4,12 +4,12 @@ import {
   useMutationState,
   useQueries,
 } from '@tanstack/react-query';
-import { attemptsApi, executionProcessesApi } from '@/shared/lib/api';
+import { workspacesApi, executionProcessesApi } from '@/shared/lib/api';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
 import type { AttemptData } from '@/shared/lib/types';
 import type { ExecutionProcess } from 'shared/types';
 
-export function useAttemptExecution(workspaceId?: string) {
+export function useWorkspaceExecution(workspaceId?: string) {
   const stopMutationKey = useMemo(
     () => ['stopWorkspaceExecution', workspaceId] as const,
     [workspaceId]
@@ -19,7 +19,7 @@ export function useAttemptExecution(workspaceId?: string) {
     mutationKey: stopMutationKey,
     mutationFn: async () => {
       if (!workspaceId) return;
-      await attemptsApi.stop(workspaceId);
+      await workspacesApi.stop(workspaceId);
     },
   });
 

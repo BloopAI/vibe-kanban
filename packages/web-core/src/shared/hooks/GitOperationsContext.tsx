@@ -12,14 +12,14 @@ const GitOperationsContext = createHmrContext<GitOperationsContextType | null>(
 );
 
 export const GitOperationsProvider: React.FC<{
-  attemptId: string | undefined;
+  workspaceId: string | undefined;
   children: React.ReactNode;
-}> = ({ attemptId, children }) => {
+}> = ({ workspaceId, children }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setError(null);
-  }, [attemptId]);
+  }, [workspaceId]);
 
   return (
     <GitOperationsContext.Provider value={{ error, setError }}>

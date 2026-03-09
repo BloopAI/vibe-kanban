@@ -9,7 +9,7 @@ import { useUserContext } from '@/shared/hooks/useUserContext';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import {
   buildLinkedIssueCreateState,
@@ -217,7 +217,7 @@ export function IssueWorkspacesSectionContainer({
 
       if (result === 'confirmed') {
         try {
-          await attemptsApi.unlinkFromIssue(localWorkspaceId);
+          await workspacesApi.unlinkFromIssue(localWorkspaceId);
         } catch (error) {
           ConfirmDialog.show({
             title: t('common:error'),
@@ -266,10 +266,10 @@ export function IssueWorkspacesSectionContainer({
 
       try {
         // Delete local workspace first
-        await attemptsApi.delete(localWorkspaceId, result.deleteBranches);
+        await workspacesApi.delete(localWorkspaceId, result.deleteBranches);
         // Unlink from remote after successful deletion
         if (result.unlinkFromIssue) {
-          await attemptsApi.unlinkFromIssue(localWorkspaceId);
+          await workspacesApi.unlinkFromIssue(localWorkspaceId);
         }
       } catch (error) {
         ConfirmDialog.show({

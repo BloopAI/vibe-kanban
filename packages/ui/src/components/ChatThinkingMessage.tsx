@@ -11,14 +11,14 @@ export interface ChatThinkingMessageRenderProps {
 interface ChatThinkingMessageProps {
   content: string;
   className?: string;
-  taskAttemptId?: string;
+  workspaceId?: string;
   renderMarkdown: (props: ChatThinkingMessageRenderProps) => ReactNode;
 }
 
 export function ChatThinkingMessage({
   content,
   className,
-  taskAttemptId,
+  workspaceId,
   renderMarkdown,
 }: ChatThinkingMessageProps) {
   return (
@@ -28,7 +28,7 @@ export function ChatThinkingMessage({
       <ChatDotsIcon className="shrink-0 size-icon-base pt-0.5" />
       {renderMarkdown({
         content,
-        workspaceId: taskAttemptId,
+        workspaceId: workspaceId,
         className: 'text-sm',
       })}
     </div>

@@ -15,7 +15,7 @@ import { defineModal, getErrorMessage } from '@/shared/lib/modals';
 import { useRenameBranch } from '@/shared/hooks/useRenameBranch';
 
 export interface EditBranchNameDialogProps {
-  attemptId: string;
+  workspaceId: string;
   currentBranchName: string;
 }
 
@@ -25,7 +25,7 @@ export type EditBranchNameDialogResult = {
 };
 
 const EditBranchNameDialogImpl = create<EditBranchNameDialogProps>(
-  ({ attemptId, currentBranchName }) => {
+  ({ workspaceId, currentBranchName }) => {
     const modal = useModal();
     const { t } = useTranslation(['tasks', 'common']);
     const [branchName, setBranchName] = useState<string>(currentBranchName);
@@ -37,7 +37,7 @@ const EditBranchNameDialogImpl = create<EditBranchNameDialogProps>(
     }, [currentBranchName]);
 
     const renameMutation = useRenameBranch(
-      attemptId,
+      workspaceId,
       (newBranch) => {
         modal.resolve({
           action: 'confirmed',

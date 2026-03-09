@@ -23,7 +23,7 @@ import { BranchRebaseDialog } from '@/shared/dialogs/command-bar/BranchRebaseDia
 import { CreatePRDialog } from '@/shared/dialogs/command-bar/CreatePRDialog';
 
 import { useTranslation } from 'react-i18next';
-import { useAttemptRepo } from '@/shared/hooks/useAttemptRepo';
+import { useWorkspaceRepo } from '@/shared/hooks/useWorkspaceRepo';
 import { useGitOperations } from '@/shared/hooks/useGitOperations';
 import { useRepoBranches } from '@/shared/hooks/useRepoBranches';
 
@@ -50,7 +50,7 @@ function GitOperations({
 }: GitOperationsProps) {
   const { t } = useTranslation('tasks');
 
-  const { repos, selectedRepoId, setSelectedRepoId } = useAttemptRepo(
+  const { repos, selectedRepoId, setSelectedRepoId } = useWorkspaceRepo(
     selectedAttempt.id
   );
   const git = useGitOperations(selectedAttempt.id, selectedRepoId ?? undefined);

@@ -24,7 +24,7 @@ import {
   DropdownMenuSeparator,
 } from './Dropdown';
 import { PrimaryButton } from './PrimaryButton';
-import type { LocalImageMetadata } from './TaskAttemptContext';
+import type { LocalImageMetadata } from './WorkspaceContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { ContextUsageGauge, type ContextUsageInfo } from './ContextUsageGauge';
 import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';

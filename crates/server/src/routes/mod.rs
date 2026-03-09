@@ -21,21 +21,22 @@ pub mod oauth;
 pub mod organizations;
 pub mod relay_auth;
 pub mod relay_ws;
+pub mod releases;
 pub mod remote;
 pub mod repo;
 pub mod scratch;
 pub mod search;
 pub mod sessions;
 pub mod tags;
-pub mod task_attempts;
 pub mod terminal;
+pub mod workspaces;
 
 pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
     let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
         .merge(containers::router(&deployment))
-        .merge(task_attempts::router(&deployment))
+        .merge(workspaces::router(&deployment))
         .merge(execution_processes::router(&deployment))
         .merge(tags::router(&deployment))
         .merge(oauth::router())
@@ -46,6 +47,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(search::router(&deployment))
+        .merge(releases::router())
         .merge(migration::router())
         .merge(sessions::router(&deployment))
         .merge(terminal::router())

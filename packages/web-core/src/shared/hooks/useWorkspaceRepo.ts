@@ -1,33 +1,40 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
-import { attemptsApi } from '@/shared/lib/api';
+import { workspacesApi } from '@/shared/lib/api';
 import type { RepoWithTargetBranch } from 'shared/types';
 
-interface UseAttemptRepoOptions {
+interface UseWorkspaceRepoOptions {
   enabled?: boolean;
 }
 
-export function useAttemptRepo(
-  attemptId?: string,
-  options: UseAttemptRepoOptions = {}
+export const workspaceRepoKeys = {
+  byWorkspace: (workspaceId: string | undefined) =>
+    ['workspaceRepos', workspaceId] as const,
+  selection: (workspaceId: string | undefined) =>
+    ['workspaceRepoSelection', workspaceId] as const,
+};
+
+export function useWorkspaceRepo(
+  workspaceId?: string,
+  options: UseWorkspaceRepoOptions = {}
 ) {
   const { enabled = true } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery<RepoWithTargetBranch[]>({
-    queryKey: ['attemptRepo', attemptId],
+    queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
     queryFn: async () => {
-      const repos = await attemptsApi.getRepos(attemptId!);
+      const repos = await workspacesApi.getRepos(workspaceId!);
       return repos;
     },
-    enabled: enabled && !!attemptId,
+    enabled: enabled && !!workspaceId,
   });
 
   const repos = useMemo(() => query.data ?? [], [query.data]);
 
   // Use React Query cache for shared state across all hook consumers
   const { data: selectedRepoId = null } = useQuery<string | null>({
-    queryKey: ['attemptRepoSelection', attemptId],
+    queryKey: workspaceRepoKeys.selection(workspaceId),
     queryFn: () => null,
     enabled: false,
     staleTime: Infinity,
@@ -35,9 +42,9 @@ export function useAttemptRepo(
 
   const setSelectedRepoId = useCallback(
     (id: string | null) => {
-      queryClient.setQueryData(['attemptRepoSelection', attemptId], id);
+      queryClient.setQueryData(workspaceRepoKeys.selection(workspaceId), id);
     },
-    [queryClient, attemptId]
+    [queryClient, workspaceId]
   );
 
   // Auto-select first repo when none selected

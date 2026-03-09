@@ -113,6 +113,29 @@ impl Session {
         .await
     }
 
+    /// Find the first-created session for a workspace.
+    /// This is a temporary policy for orchestrator MCP session discovery.
+    pub async fn find_first_by_workspace_id(
+        pool: &SqlitePool,
+        workspace_id: Uuid,
+    ) -> Result<Option<Self>, sqlx::Error> {
+        sqlx::query_as::<_, Session>(
+            r#"SELECT id,
+                      workspace_id,
+                      executor,
+                      agent_working_dir,
+                      created_at,
+                      updated_at
+               FROM sessions
+               WHERE workspace_id = ?
+               ORDER BY created_at ASC, id ASC
+               LIMIT 1"#,
+        )
+        .bind(workspace_id)
+        .fetch_optional(pool)
+        .await
+    }
+
     pub async fn create(
         pool: &SqlitePool,
         data: &CreateSession,

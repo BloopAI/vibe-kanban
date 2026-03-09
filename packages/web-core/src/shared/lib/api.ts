@@ -29,7 +29,7 @@ import {
   ImageResponse,
   GitOperationError,
   ApprovalResponse,
-  RebaseTaskAttemptRequest,
+  RebaseWorkspaceRequest,
   ChangeTargetBranchRequest,
   ChangeTargetBranchResponse,
   RenameBranchRequest,
@@ -69,8 +69,8 @@ import {
   CurrentUserResponse,
   QueueStatus,
   PrCommentsResponse,
-  MergeTaskAttemptRequest,
-  PushTaskAttemptRequest,
+  MergeWorkspaceRequest,
+  PushWorkspaceRequest,
   RepoBranchStatus,
   AbortConflictsRequest,
   ContinueRebaseRequest,
@@ -327,14 +327,25 @@ export const sessionsApi = {
     });
     return handleApiResponse<void>(response);
   },
+
+  runSetupScript: async (
+    sessionId: string
+  ): Promise<Result<ExecutionProcess, RunScriptError>> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}/setup`, {
+      method: 'POST',
+    });
+    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
+      response
+    );
+  },
 };
 
-// Task Attempts APIs
-export const attemptsApi = {
+// Workspace APIs
+export const workspacesApi = {
   createAndStart: async (
     data: CreateAndStartWorkspaceRequest
   ): Promise<CreateAndStartWorkspaceResponse> => {
-    const response = await makeRequest(`/api/task-attempts/create-and-start`, {
+    const response = await makeRequest(`/api/workspaces/start`, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -342,26 +353,26 @@ export const attemptsApi = {
   },
 
   getAll: async (taskId: string): Promise<Workspace[]> => {
-    const response = await makeRequest(`/api/task-attempts?task_id=${taskId}`);
+    const response = await makeRequest(`/api/workspaces?task_id=${taskId}`);
     return handleApiResponse<Workspace[]>(response);
   },
 
   /** Get all workspaces across all tasks (newest first) */
   getAllWorkspaces: async (): Promise<Workspace[]> => {
-    const response = await makeRequest('/api/task-attempts');
+    const response = await makeRequest('/api/workspaces');
     return handleApiResponse<Workspace[]>(response);
   },
 
-  get: async (attemptId: string): Promise<Workspace> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}`);
+  get: async (workspaceId: string): Promise<Workspace> => {
+    const response = await makeRequest(`/api/workspaces/${workspaceId}`);
     return handleApiResponse<Workspace>(response);
   },
 
   update: async (
-    attemptId: string,
+    workspaceId: string,
     data: { archived?: boolean; pinned?: boolean; name?: string }
   ): Promise<Workspace> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}`, {
+    const response = await makeRequest(`/api/workspaces/${workspaceId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -369,23 +380,28 @@ export const attemptsApi = {
   },
 
   /** Get workspace with latest session */
-  getWithSession: async (attemptId: string): Promise<WorkspaceWithSession> => {
+  getWithSession: async (
+    workspaceId: string
+  ): Promise<WorkspaceWithSession> => {
     const [workspace, sessions] = await Promise.all([
-      attemptsApi.get(attemptId),
-      sessionsApi.getByWorkspace(attemptId),
+      workspacesApi.get(workspaceId),
+      sessionsApi.getByWorkspace(workspaceId),
     ]);
     return createWorkspaceWithSession(workspace, sessions[0]);
   },
 
-  stop: async (attemptId: string): Promise<void> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/stop`, {
-      method: 'POST',
-    });
+  stop: async (workspaceId: string): Promise<void> => {
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/execution/stop`,
+      {
+        method: 'POST',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
   delete: async (
-    attemptId: string,
+    workspaceId: string,
     deleteBranches?: boolean
   ): Promise<void> => {
     const params = new URLSearchParams();
@@ -393,7 +409,7 @@ export const attemptsApi = {
       params.set('delete_branches', 'true');
     }
     const queryString = params.toString();
-    const url = `/api/task-attempts/${attemptId}${queryString ? `?${queryString}` : ''}`;
+    const url = `/api/workspaces/${workspaceId}${queryString ? `?${queryString}` : ''}`;
     const response = await makeRequest(url, {
       method: 'DELETE',
     });
@@ -405,30 +421,26 @@ export const attemptsApi = {
     projectId: string,
     issueId: string
   ): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${workspaceId}/link`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ project_id: projectId, issue_id: issueId }),
-      }
-    );
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/links`, {
+      method: 'POST',
+      body: JSON.stringify({ project_id: projectId, issue_id: issueId }),
+    });
     return handleApiResponse<void>(response);
   },
 
   unlinkFromIssue: async (workspaceId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${workspaceId}/unlink`,
-      { method: 'POST' }
-    );
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/links`, {
+      method: 'DELETE',
+    });
     return handleApiResponse<void>(response);
   },
 
   runAgentSetup: async (
-    attemptId: string,
+    workspaceId: string,
     data: RunAgentSetupRequest
   ): Promise<RunAgentSetupResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-agent-setup`,
+      `/api/workspaces/${workspaceId}/integration/agent/setup`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -438,11 +450,11 @@ export const attemptsApi = {
   },
 
   openEditor: async (
-    attemptId: string,
+    workspaceId: string,
     data: OpenEditorRequest
   ): Promise<OpenEditorResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/open-editor`,
+      `/api/workspaces/${workspaceId}/integration/editor/open`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -451,31 +463,31 @@ export const attemptsApi = {
     return handleApiResponse<OpenEditorResponse>(response);
   },
 
-  getBranchStatus: async (attemptId: string): Promise<RepoBranchStatus[]> => {
+  getBranchStatus: async (workspaceId: string): Promise<RepoBranchStatus[]> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/branch-status`
+      `/api/workspaces/${workspaceId}/git/status`
     );
     return handleApiResponse<RepoBranchStatus[]>(response);
   },
 
-  getRepos: async (attemptId: string): Promise<RepoWithTargetBranch[]> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/repos`);
+  getRepos: async (workspaceId: string): Promise<RepoWithTargetBranch[]> => {
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/repos`);
     return handleApiResponse<RepoWithTargetBranch[]>(response);
   },
 
-  getFirstUserMessage: async (attemptId: string): Promise<string | null> => {
+  getFirstUserMessage: async (workspaceId: string): Promise<string | null> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/first-message`
+      `/api/workspaces/${workspaceId}/messages/first`
     );
     return handleApiResponse<string | null>(response);
   },
 
   merge: async (
-    attemptId: string,
-    data: MergeTaskAttemptRequest
+    workspaceId: string,
+    data: MergeWorkspaceRequest
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/merge`,
+      `/api/workspaces/${workspaceId}/git/merge`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -485,22 +497,25 @@ export const attemptsApi = {
   },
 
   push: async (
-    attemptId: string,
-    data: PushTaskAttemptRequest
+    workspaceId: string,
+    data: PushWorkspaceRequest
   ): Promise<Result<void, PushError>> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/push`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/git/push`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponseAsResult<void, PushError>(response);
   },
 
   forcePush: async (
-    attemptId: string,
-    data: PushTaskAttemptRequest
+    workspaceId: string,
+    data: PushWorkspaceRequest
   ): Promise<Result<void, PushError>> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/push/force`,
+      `/api/workspaces/${workspaceId}/git/push/force`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -510,11 +525,11 @@ export const attemptsApi = {
   },
 
   rebase: async (
-    attemptId: string,
-    data: RebaseTaskAttemptRequest
+    workspaceId: string,
+    data: RebaseWorkspaceRequest
   ): Promise<Result<void, GitOperationError>> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/rebase`,
+      `/api/workspaces/${workspaceId}/git/rebase`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -524,13 +539,13 @@ export const attemptsApi = {
   },
 
   change_target_branch: async (
-    attemptId: string,
+    workspaceId: string,
     data: ChangeTargetBranchRequest
   ): Promise<ChangeTargetBranchResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/change-target-branch`,
+      `/api/workspaces/${workspaceId}/git/target-branch`,
       {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(data),
       }
     );
@@ -538,16 +553,16 @@ export const attemptsApi = {
   },
 
   renameBranch: async (
-    attemptId: string,
+    workspaceId: string,
     newBranchName: string
   ): Promise<RenameBranchResponse> => {
     const payload: RenameBranchRequest = {
       new_branch_name: newBranchName,
     };
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/rename-branch`,
+      `/api/workspaces/${workspaceId}/git/branch`,
       {
-        method: 'POST',
+        method: 'PUT',
         body: JSON.stringify(payload),
       }
     );
@@ -555,11 +570,11 @@ export const attemptsApi = {
   },
 
   abortConflicts: async (
-    attemptId: string,
+    workspaceId: string,
     data: AbortConflictsRequest
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/conflicts/abort`,
+      `/api/workspaces/${workspaceId}/git/conflicts/abort`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -569,11 +584,11 @@ export const attemptsApi = {
   },
 
   continueRebase: async (
-    attemptId: string,
+    workspaceId: string,
     data: ContinueRebaseRequest
   ): Promise<void> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/rebase/continue`,
+      `/api/workspaces/${workspaceId}/git/rebase/continue`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -583,23 +598,26 @@ export const attemptsApi = {
   },
 
   createPR: async (
-    attemptId: string,
+    workspaceId: string,
     data: CreatePrApiRequest
   ): Promise<Result<string, PrError>> => {
-    const response = await makeRequest(`/api/task-attempts/${attemptId}/pr`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeRequest(
+      `/api/workspaces/${workspaceId}/pull-requests`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponseAsResult<string, PrError>(response);
   },
 
   /** Try to auto-attach a PR by matching the workspace branch */
   attachPr: async (
-    attemptId: string,
+    workspaceId: string,
     data: AttachExistingPrRequest
   ): Promise<Result<AttachPrResponse, PrError>> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/pr/attach`,
+      `/api/workspaces/${workspaceId}/pull-requests/attach`,
       {
         method: 'POST',
         body: JSON.stringify(data),
@@ -608,9 +626,9 @@ export const attemptsApi = {
     return handleApiResponseAsResult<AttachPrResponse, PrError>(response);
   },
 
-  startDevServer: async (attemptId: string): Promise<ExecutionProcess[]> => {
+  startDevServer: async (workspaceId: string): Promise<ExecutionProcess[]> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/start-dev-server`,
+      `/api/workspaces/${workspaceId}/execution/dev-server/start`,
       {
         method: 'POST',
       }
@@ -618,9 +636,9 @@ export const attemptsApi = {
     return handleApiResponse<ExecutionProcess[]>(response);
   },
 
-  setupGhCli: async (attemptId: string): Promise<ExecutionProcess> => {
+  setupGhCli: async (workspaceId: string): Promise<ExecutionProcess> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/gh-cli-setup`,
+      `/api/workspaces/${workspaceId}/integration/github/cli/setup`,
       {
         method: 'POST',
       }
@@ -629,24 +647,23 @@ export const attemptsApi = {
   },
 
   runSetupScript: async (
-    attemptId: string
+    workspaceId: string
   ): Promise<Result<ExecutionProcess, RunScriptError>> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-setup-script`,
-      {
-        method: 'POST',
-      }
-    );
-    return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
-      response
-    );
+    const sessions = await sessionsApi.getByWorkspace(workspaceId);
+    const session =
+      sessions[0] ??
+      (await sessionsApi.create({
+        workspace_id: workspaceId,
+      }));
+
+    return sessionsApi.runSetupScript(session.id);
   },
 
   runCleanupScript: async (
-    attemptId: string
+    workspaceId: string
   ): Promise<Result<ExecutionProcess, RunScriptError>> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-cleanup-script`,
+      `/api/workspaces/${workspaceId}/execution/cleanup`,
       {
         method: 'POST',
       }
@@ -657,10 +674,10 @@ export const attemptsApi = {
   },
 
   runArchiveScript: async (
-    attemptId: string
+    workspaceId: string
   ): Promise<Result<ExecutionProcess, RunScriptError>> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/run-archive-script`,
+      `/api/workspaces/${workspaceId}/execution/archive`,
       {
         method: 'POST',
       }
@@ -671,23 +688,20 @@ export const attemptsApi = {
   },
 
   getPrComments: async (
-    attemptId: string,
+    workspaceId: string,
     repoId: string
   ): Promise<PrCommentsResponse> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/pr/comments?repo_id=${encodeURIComponent(repoId)}`
+      `/api/workspaces/${workspaceId}/pull-requests/comments?repo_id=${encodeURIComponent(repoId)}`
     );
     return handleApiResponse<PrCommentsResponse>(response);
   },
 
   /** Mark all coding agent turns for a workspace as seen */
-  markSeen: async (attemptId: string): Promise<void> => {
-    const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/mark-seen`,
-      {
-        method: 'PUT',
-      }
-    );
+  markSeen: async (workspaceId: string): Promise<void> => {
+    const response = await makeRequest(`/api/workspaces/${workspaceId}/seen`, {
+      method: 'PUT',
+    });
     return handleApiResponse<void>(response);
   },
 
@@ -695,7 +709,7 @@ export const attemptsApi = {
   createFromPr: async (
     data: CreateWorkspaceFromPrBody
   ): Promise<Result<CreateWorkspaceFromPrResponse, CreateFromPrError>> => {
-    const response = await makeRequest('/api/task-attempts/from-pr', {
+    const response = await makeRequest('/api/workspaces/from-pr', {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -1028,11 +1042,11 @@ export const imagesApi = {
   },
 
   /**
-   * Upload an image for a task attempt and immediately copy it to the container.
+   * Upload an image for a workspace and immediately copy it to the container.
    * Returns the image with a file_path that can be used in markdown.
    */
   uploadForAttempt: async (
-    attemptId: string,
+    workspaceId: string,
     sessionId: string,
     file: File
   ): Promise<ImageResponse> => {
@@ -1040,7 +1054,7 @@ export const imagesApi = {
     formData.append('image', file);
 
     const response = await makeLocalApiRequest(
-      `/api/task-attempts/${attemptId}/images/upload?session_id=${sessionId}`,
+      `/api/workspaces/${workspaceId}/images/upload?session_id=${sessionId}`,
       {
         method: 'POST',
         body: formData,
@@ -1488,6 +1502,26 @@ export const relayApi = {
       }
     );
     return handleApiResponse<RemoveRelayPairedClientResponse>(response);
+  },
+};
+
+// Releases API (GitHub releases proxy)
+export interface GitHubRelease {
+  name: string;
+  tag_name: string;
+  published_at: string;
+  body: string;
+}
+
+interface ReleasesResponse {
+  releases: GitHubRelease[];
+}
+
+export const releasesApi = {
+  list: async (): Promise<GitHubRelease[]> => {
+    const response = await makeRequest('/api/releases');
+    const result = await handleApiResponse<ReleasesResponse>(response);
+    return result.releases;
   },
 };
 

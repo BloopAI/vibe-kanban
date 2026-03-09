@@ -1,3 +1,4 @@
+mod tls;
 mod ws_io;
 
 pub mod client;

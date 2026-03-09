@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
 import { imagesApi } from '@/shared/lib/api';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
-import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
+import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useBranchStatus } from '@/shared/hooks/useBranchStatus';
 import { useVariant } from '@/shared/hooks/useVariant';
@@ -27,9 +27,9 @@ export function RetryEditorInline({
   onCancelled?: () => void;
 }) {
   const { t } = useTranslation(['common']);
-  const attemptId = attempt.id;
-  const { isAttemptRunning, attemptData } = useAttemptExecution(attemptId);
-  const { data: branchStatus } = useBranchStatus(attemptId);
+  const workspaceId = attempt.id;
+  const { isAttemptRunning, attemptData } = useWorkspaceExecution(workspaceId);
+  const { data: branchStatus } = useBranchStatus(workspaceId);
   const { profiles } = useUserSystem();
 
   const [message, setMessage] = useState(initialContent);
@@ -101,7 +101,7 @@ export function RetryEditorInline({
       if (!sessionId) {
         console.warn(
           'Skipping retry image upload: missing session id for attempt',
-          attemptId
+          workspaceId
         );
         return;
       }
@@ -109,7 +109,7 @@ export function RetryEditorInline({
       for (const file of files) {
         try {
           const response = await imagesApi.uploadForAttempt(
-            attemptId,
+            workspaceId,
             sessionId,
             file
           );
@@ -122,7 +122,7 @@ export function RetryEditorInline({
         }
       }
     },
-    [attempt.session?.id, attemptId]
+    [attempt.session?.id, workspaceId]
   );
 
   // Attachment button handlers
@@ -154,7 +154,7 @@ export function RetryEditorInline({
           onCmdEnter={handleCmdEnter}
           onPasteFiles={handlePasteFiles}
           className={cn('min-h-[40px]', 'bg-background')}
-          taskAttemptId={attemptId}
+          workspaceId={workspaceId}
           sessionId={attempt.session?.id}
         />
         {isSending && (

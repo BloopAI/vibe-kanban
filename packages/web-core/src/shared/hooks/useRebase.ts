@@ -1,11 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi, Result } from '@/shared/lib/api';
-import type { RebaseTaskAttemptRequest } from 'shared/types';
+import { workspacesApi, Result } from '@/shared/lib/api';
+import type { RebaseWorkspaceRequest } from 'shared/types';
 import type { GitOperationError } from 'shared/types';
 import { repoBranchKeys } from '@/shared/hooks/useRepoBranches';
+import { workspaceRepoKeys } from '@/shared/hooks/useWorkspaceRepo';
 
 export function useRebase(
-  attemptId: string | undefined,
+  workspaceId: string | undefined,
   repoId: string | undefined,
   onSuccess?: () => void,
   onError?: (err: Result<void, GitOperationError>) => void
@@ -21,16 +22,16 @@ export function useRebase(
   return useMutation<void, Result<void, GitOperationError>, RebaseMutationArgs>(
     {
       mutationFn: (args) => {
-        if (!attemptId) return Promise.resolve();
+        if (!workspaceId) return Promise.resolve();
         const { repoId, newBaseBranch, oldBaseBranch } = args ?? {};
 
-        const data: RebaseTaskAttemptRequest = {
+        const data: RebaseWorkspaceRequest = {
           repo_id: repoId,
           old_base_branch: oldBaseBranch ?? null,
           new_base_branch: newBaseBranch ?? null,
         };
 
-        return attemptsApi.rebase(attemptId, data).then((res) => {
+        return workspacesApi.rebase(workspaceId, data).then((res) => {
           if (!res.success) {
             // Propagate typed failure Result for caller to handle (no manual ApiError construction)
             return Promise.reject(res);
@@ -40,17 +41,17 @@ export function useRebase(
       onSuccess: () => {
         // Refresh branch status immediately
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: ['branchStatus', workspaceId],
         });
 
-        // Invalidate taskAttempt query to refresh attempt.target_branch
+        // Invalidate workspaceWithSession query to refresh attempt.target_branch
         queryClient.invalidateQueries({
-          queryKey: ['taskAttempt', attemptId],
+          queryKey: ['workspaceWithSession', workspaceId],
         });
 
         // Refresh repos to update target_branch in RepoCard
         queryClient.invalidateQueries({
-          queryKey: ['attemptRepo', attemptId],
+          queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
         });
 
         // Refresh branch list
@@ -66,7 +67,7 @@ export function useRebase(
         console.error('Failed to rebase:', err);
         // Even on failure (likely conflicts), re-fetch branch status immediately to show rebase-in-progress
         queryClient.invalidateQueries({
-          queryKey: ['branchStatus', attemptId],
+          queryKey: ['branchStatus', workspaceId],
         });
         onError?.(err);
       },

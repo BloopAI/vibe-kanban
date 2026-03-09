@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { imagesApi } from '@/shared/lib/api';
-import type { LocalImageMetadata } from '@vibe/ui/components/TaskAttemptContext';
+import type { LocalImageMetadata } from '@vibe/ui/components/WorkspaceContext';
 import type { DraftWorkspaceImage } from 'shared/types';
 
 /**

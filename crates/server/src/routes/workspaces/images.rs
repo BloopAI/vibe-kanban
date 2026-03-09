@@ -11,10 +11,15 @@ use axum::{
 };
 use db::models::{image::Image, session::Session, workspace::Workspace};
 use deployment::Deployment;
-use serde::Deserialize;
-use services::services::{container::ContainerService, image::ImageError};
+use serde::{Deserialize, Serialize};
+use services::services::{
+    container::ContainerService,
+    image::{ImageError, ImageService},
+    remote_client::RemoteClient,
+};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
@@ -35,6 +40,21 @@ pub struct ImageMetadataQuery {
 #[derive(Debug, Deserialize)]
 pub struct SessionScopedQuery {
     pub session_id: Uuid,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct AssociateWorkspaceImagesRequest {
+    pub image_ids: Vec<Uuid>,
+}
+
+#[derive(Debug, Deserialize, Serialize, TS)]
+pub struct ImportIssueAttachmentsRequest {
+    pub issue_id: Uuid,
+}
+
+#[derive(Debug, Serialize, TS)]
+pub struct ImportIssueAttachmentsResponse {
+    pub image_ids: Vec<Uuid>,
 }
 
 /// List all images associated with a workspace.
@@ -65,6 +85,42 @@ pub async fn upload_image(
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(image_response)))
+}
+
+pub async fn associate_workspace_images(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    axum::Json(payload): axum::Json<AssociateWorkspaceImagesRequest>,
+) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
+    let managed_workspace = deployment
+        .workspace_manager()
+        .load_managed_workspace(workspace)
+        .await?;
+    managed_workspace
+        .associate_images(&payload.image_ids)
+        .await?;
+
+    Ok(ResponseJson(ApiResponse::success(())))
+}
+
+pub async fn import_issue_attachments(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    axum::Json(payload): axum::Json<ImportIssueAttachmentsRequest>,
+) -> Result<ResponseJson<ApiResponse<ImportIssueAttachmentsResponse>>, ApiError> {
+    let client = deployment.remote_client()?;
+    let image_ids =
+        import_issue_attachment_images(&client, deployment.image(), payload.issue_id).await?;
+
+    let managed_workspace = deployment
+        .workspace_manager()
+        .load_managed_workspace(workspace)
+        .await?;
+    managed_workspace.associate_images(&image_ids).await?;
+
+    Ok(ResponseJson(ApiResponse::success(
+        ImportIssueAttachmentsResponse { image_ids },
+    )))
 }
 
 /// Get metadata about an image in the workspace's worktree.
@@ -129,7 +185,7 @@ pub async fn get_image_metadata(
     // Build proxy URL - the path after .vibe-images/
     let image_path = query.path.strip_prefix(&vibe_images_prefix).unwrap_or("");
     let proxy_url = format!(
-        "/api/task-attempts/{}/images/file/{}?session_id={}",
+        "/api/workspaces/{}/images/file/{}?session_id={}",
         workspace.id, image_path, query.session_id
     );
 
@@ -254,9 +310,75 @@ async fn load_workspace_with_wildcard(
     Ok(next.run(request).await)
 }
 
+/// Downloads image attachments from a remote issue and stores them locally.
+pub(crate) async fn import_issue_attachment_images(
+    client: &RemoteClient,
+    image_service: &ImageService,
+    issue_id: Uuid,
+) -> Result<Vec<Uuid>, ApiError> {
+    let response = client
+        .list_issue_attachments(issue_id)
+        .await
+        .map_err(ApiError::from)?;
+
+    let mut imported_image_ids = Vec::new();
+
+    for entry in response.attachments {
+        let is_image = entry
+            .attachment
+            .mime_type
+            .as_ref()
+            .is_some_and(|mime_type| mime_type.starts_with("image/"));
+        if !is_image {
+            continue;
+        }
+
+        let Some(file_url) = entry.file_url.as_deref() else {
+            tracing::warn!(
+                "No file_url for attachment {}, skipping",
+                entry.attachment.id
+            );
+            continue;
+        };
+
+        let bytes = match client.download_from_url(file_url).await {
+            Ok(bytes) => bytes,
+            Err(error) => {
+                tracing::warn!(
+                    "Failed to download attachment {}: {}",
+                    entry.attachment.id,
+                    error
+                );
+                continue;
+            }
+        };
+
+        let image = match image_service
+            .store_image(&bytes, &entry.attachment.original_name)
+            .await
+        {
+            Ok(image) => image,
+            Err(error) => {
+                tracing::warn!(
+                    "Failed to store imported image '{}': {}",
+                    entry.attachment.original_name,
+                    error
+                );
+                continue;
+            }
+        };
+
+        imported_image_ids.push(image.id);
+    }
+
+    Ok(imported_image_ids)
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let metadata_router = Router::new()
         .route("/", get(get_workspace_images))
+        .route("/associate", post(associate_workspace_images))
+        .route("/import-issue-attachments", post(import_issue_attachments))
         .route("/metadata", get(get_image_metadata))
         .route(
             "/upload",

@@ -50,6 +50,8 @@ Add the following configuration to your agent's MCP servers configuration:
 }
 ```
 
+`--mcp` launches the local MCP stdio server. Any additional arguments after `--mcp` are passed through to the `vibe-kanban-mcp` binary.
+
 ## Available MCP Tools
 
 The Vibe Kanban MCP server provides tools for managing organisations, projects, issues, workspaces, and task execution.
@@ -135,23 +137,27 @@ Supported relationship types: `blocking`, `related`, `has_duplicate`.
 | `list_workspaces` | List local workspaces | None | `archived`<br/>`pinned`<br/>`branch`<br/>`name_search`<br/>`limit`<br/>`offset` | Paginated list of workspaces |
 | `update_workspace` | Update a workspace's properties | None | `workspace_id`<br/>`archived`<br/>`pinned`<br/>`name` | Updated workspace details |
 | `delete_workspace` | Delete a local workspace | None | `workspace_id`<br/>`delete_remote`<br/>`delete_branches` | Deletion confirmation |
-| `link_workspace` | Link a workspace to a remote issue | `workspace_id`<br/>`issue_id` | None | Link confirmation |
+| `link_workspace_issue` | Link a workspace to a remote issue | `workspace_id`<br/>`issue_id` | None | Link confirmation |
 
 ### Workspace Sessions
 
 | Tool | Purpose | Required Parameters | Optional Parameters | Returns |
 |------|---------|-------------------|-------------------|---------|
-| `start_workspace_session` | Start a new workspace session with a coding agent | `title`<br/>`executor`<br/>`repos` | `prompt_override` (alias: `prompt`)<br/>`variant`<br/>`issue_id` | Workspace ID |
+| `start_workspace` | Create a workspace and start its first coding-agent session | `name`<br/>`executor`<br/>`repositories` | `prompt`<br/>`variant`<br/>`issue_id` | Workspace ID |
+| `create_session` | Create a session in an existing workspace | None | `workspace_id`<br/>`executor` | Session summary |
+| `list_sessions` | List sessions for a workspace | None | `workspace_id` | Session list |
+| `run_session_prompt` | Run a coding-agent prompt inside an existing session | `session_id`<br/>`prompt` | None | Execution details |
+| `get_execution` | Inspect execution status and final message | `execution_id` | None | Execution details |
 
-The `repos` parameter is an array of objects with:
+The `repositories` parameter is an array of objects with:
 - `repo_id`: The repository ID (UUID)
-- `base_branch`: The base branch for this repository
+- `branch`: The branch for this repository
 
-When `issue_id` is provided, the workspace is automatically linked to the remote issue. If `prompt_override` is omitted, the linked issue's title and description are used as the workspace prompt.
+When `issue_id` is provided, the workspace is automatically linked to the remote issue. If `prompt` is omitted, the linked issue's title and description are used as the workspace prompt.
 
 ### Supported Executors
 
-When using `start_workspace_session`, the following executors are supported (case-insensitive, accepts hyphens or underscores):
+When using `start_workspace`, the following executors are supported (case-insensitive, accepts hyphens or underscores):
 
 - `claude-code` / `CLAUDE_CODE`
 - `amp` / `AMP`
@@ -170,7 +176,7 @@ Once you have the MCP server configured, you can leverage it to streamline your 
 1. **Plan Your Work**: Describe a large feature or project to your MCP client
 2. **Request Issue Creation**: At the end of your description, simply add "then turn this plan into issues"
 3. **Automatic Issue Generation**: Your MCP client will use the Vibe Kanban MCP server to automatically create structured issues in your project
-4. **Start Workspace Sessions**: Use `start_workspace_session` to programmatically begin work on issues with specific coding agents
+4. **Start Workspaces**: Use `start_workspace` to programmatically begin work on issues with specific coding agents
 
 ## Example Usage
 
@@ -197,15 +203,15 @@ After issues are created, you can start work on them programmatically:
 Start working on the user registration issue using Claude Code on the main branch.
 ```
 
-Your MCP client will use the `start_workspace_session` tool with parameters like:
+Your MCP client will use the `start_workspace` tool with parameters like:
 ```json
 {
-  "title": "User registration with email validation",
+  "name": "User registration with email validation",
   "executor": "claude-code",
-  "repos": [
+  "repositories": [
     {
       "repo_id": "987fcdeb-51a2-3d4e-b678-426614174001",
-      "base_branch": "main"
+      "branch": "main"
     }
   ],
   "issue_id": "123e4567-e89b-12d3-a456-426614174000"
@@ -225,7 +231,7 @@ This creates a new workspace, links it to the issue, generates a feature branch,
 6. Start a workspace session for the issue using Amp on the develop branch
 ```
 
-Each step uses the appropriate MCP tool (`list_organizations`, `list_projects`, `list_issues`, `create_issue`, `assign_issue`, `start_workspace_session`) to manage the complete workflow from planning to execution.
+Each step uses the appropriate MCP tool (`list_organizations`, `list_projects`, `list_issues`, `create_issue`, `assign_issue`, `start_workspace`) to manage the complete workflow from planning to execution.
 
 ### Internal Coding Agents (Within Vibe Kanban)
 

@@ -8,7 +8,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpCreateIssueRelationshipRequest {
@@ -40,7 +40,7 @@ struct McpDeleteIssueRelationshipResponse {
 }
 
 #[tool_router(router = issue_relationships_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(
         description = "Create a relationship between two issues. Types: 'blocking', 'related', 'has_duplicate'."
     )]
@@ -66,7 +66,7 @@ impl TaskServer {
                 Err(e) => return Ok(e),
             };
 
-        TaskServer::success(&McpCreateIssueRelationshipResponse {
+        McpServer::success(&McpCreateIssueRelationshipResponse {
             relationship_id: response.data.id.to_string(),
         })
     }
@@ -86,7 +86,7 @@ impl TaskServer {
             return Ok(e);
         }
 
-        TaskServer::success(&McpDeleteIssueRelationshipResponse {
+        McpServer::success(&McpDeleteIssueRelationshipResponse {
             success: true,
             deleted_relationship_id: relationship_id.to_string(),
         })

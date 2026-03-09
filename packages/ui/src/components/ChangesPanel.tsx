@@ -30,7 +30,7 @@ export interface RenderDiffItemProps<
 > {
   diff: TDiff;
   initialExpanded?: boolean;
-  attemptId: string;
+  workspaceId: string;
 }
 
 export interface ChangesPanelProps<
@@ -45,7 +45,7 @@ export interface ChangesPanelProps<
   /** Callback when visible range changes (for scroll sync) */
   onRangeChanged?: (range: { startIndex: number; endIndex: number }) => void;
   /** Attempt ID for opening files in IDE */
-  attemptId: string;
+  workspaceId: string;
 }
 
 const HEADER_HEIGHT = 48;
@@ -91,7 +91,7 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
     onDiffRef,
     onScrollerRef,
     onRangeChanged,
-    attemptId,
+    workspaceId,
   }: ChangesPanelProps<TDiff>,
   ref: ForwardedRef<ChangesPanelHandle>
 ) => {
@@ -157,7 +157,7 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
           const path = getDiffPath(diff);
           return (
             <div ref={(el) => onDiffRef?.(path, el)}>
-              {renderDiffItem({ diff, initialExpanded, attemptId })}
+              {renderDiffItem({ diff, initialExpanded, workspaceId })}
             </div>
           );
         }}

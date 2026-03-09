@@ -37,11 +37,11 @@ import {
 } from '@vibe/ui/components/component-info-node';
 import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
-  TaskAttemptContext,
+  WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
   LocalImagesContext,
   type LocalImageMetadata,
-} from '@vibe/ui/components/TaskAttemptContext';
+} from '@vibe/ui/components/WorkspaceContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import {
   FileTagTypeaheadPlugin,
@@ -122,7 +122,7 @@ type WysiwygProps = {
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
   /** Task attempt ID for resolving .vibe-images paths */
-  taskAttemptId?: string;
+  workspaceId?: string;
   /** Session ID used for workspace-scoped APIs (images, slash command discovery) */
   sessionId?: string;
   /** Repo ID for slash commands when no workspace yet */
@@ -271,7 +271,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       onCmdEnter,
       onShiftCmdEnter,
       sendShortcut,
-      taskAttemptId,
+      workspaceId,
       sessionId,
       repoId,
       localImages,
@@ -317,7 +317,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       (state) => state.setFileSearchRepo
     );
     const slashCommandsQuery = useSlashCommands(executor, {
-      workspaceId: sessionId ? taskAttemptId : undefined,
+      workspaceId: sessionId ? workspaceId : undefined,
       sessionId,
       repoId,
     });
@@ -565,14 +565,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
               disabled
               hideActions
               className={className}
-              taskAttemptId={taskAttemptId}
+              workspaceId={workspaceId}
               sessionId={sessionId}
               localImages={localImages}
             />
           </div>
         )}
 
-        <TaskAttemptContext.Provider value={taskAttemptId}>
+        <EditorWorkspaceContext.Provider value={workspaceId}>
           <SessionContext.Provider value={sessionId}>
             <LocalImagesContext.Provider value={localImages ?? []}>
               <LexicalComposer initialConfig={initialConfig}>
@@ -682,7 +682,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
               </LexicalComposer>
             </LocalImagesContext.Provider>
           </SessionContext.Provider>
-        </TaskAttemptContext.Provider>
+        </EditorWorkspaceContext.Provider>
       </div>
     );
 

@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
 struct McpRepoSummary {
@@ -79,7 +79,7 @@ struct ListReposResponse {
 }
 
 #[tool_router(router = repos_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List all repositories.")]
     async fn list_repos(&self) -> Result<CallToolResult, ErrorData> {
         let url = self.url("/api/repos");
@@ -101,7 +101,7 @@ impl TaskServer {
             repos: repo_summaries,
         };
 
-        TaskServer::success(&response)
+        McpServer::success(&response)
     }
 
     #[tool(
@@ -116,7 +116,7 @@ impl TaskServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&RepoDetails {
+        McpServer::success(&RepoDetails {
             id: repo.id.to_string(),
             name: repo.name,
             display_name: repo.display_name,
@@ -148,7 +148,7 @@ impl TaskServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "setup_script".to_string(),
@@ -177,7 +177,7 @@ impl TaskServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "cleanup_script".to_string(),
@@ -206,7 +206,7 @@ impl TaskServer {
             Ok(r) => r,
             Err(e) => return Ok(e),
         };
-        TaskServer::success(&UpdateRepoScriptResponse {
+        McpServer::success(&UpdateRepoScriptResponse {
             success: true,
             repo_id: repo_id.to_string(),
             field: "dev_server_script".to_string(),

@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi } from '@/shared/lib/api';
-import type { PushError, PushTaskAttemptRequest } from 'shared/types';
+import { workspacesApi } from '@/shared/lib/api';
+import type { PushError, PushWorkspaceRequest } from 'shared/types';
 
 class PushErrorWithData extends Error {
   constructor(
@@ -13,20 +13,20 @@ class PushErrorWithData extends Error {
 }
 
 export function usePush(
-  attemptId?: string,
+  workspaceId?: string,
   onSuccess?: () => void,
   onError?: (
     err: unknown,
     errorData?: PushError,
-    params?: PushTaskAttemptRequest
+    params?: PushWorkspaceRequest
   ) => void
 ) {
   const queryClient = useQueryClient();
 
-  return useMutation<void, unknown, PushTaskAttemptRequest>({
-    mutationFn: async (params: PushTaskAttemptRequest) => {
-      if (!attemptId) return;
-      const result = await attemptsApi.push(attemptId, params);
+  return useMutation<void, unknown, PushWorkspaceRequest>({
+    mutationFn: async (params: PushWorkspaceRequest) => {
+      if (!workspaceId) return;
+      const result = await workspacesApi.push(workspaceId, params);
       if (!result.success) {
         throw new PushErrorWithData(
           result.message || 'Push failed',
@@ -36,7 +36,9 @@ export function usePush(
     },
     onSuccess: () => {
       // A push only affects remote status; invalidate the same branchStatus
-      queryClient.invalidateQueries({ queryKey: ['branchStatus', attemptId] });
+      queryClient.invalidateQueries({
+        queryKey: ['branchStatus', workspaceId],
+      });
       onSuccess?.();
     },
     onError: (err, variables) => {

@@ -6,7 +6,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::TaskServer;
+use super::McpServer;
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpListWorkspacesRequest {
@@ -97,7 +97,7 @@ struct McpDeleteWorkspaceResponse {
 }
 
 #[tool_router(router = workspaces_tools_router, vis = "pub")]
-impl TaskServer {
+impl McpServer {
     #[tool(description = "List local workspaces with optional filters and pagination.")]
     async fn list_workspaces(
         &self,
@@ -110,7 +110,7 @@ impl TaskServer {
             offset,
         }): Parameters<McpListWorkspacesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let url = self.url("/api/task-attempts");
+        let url = self.url("/api/workspaces");
         let mut workspaces: Vec<Workspace> = match self.send_json(self.client.get(&url)).await {
             Ok(ws) => ws,
             Err(e) => return Ok(e),
@@ -157,7 +157,7 @@ impl TaskServer {
             })
             .collect::<Vec<_>>();
 
-        TaskServer::success(&McpListWorkspacesResponse {
+        McpServer::success(&McpListWorkspacesResponse {
             returned_count: workspace_summaries.len(),
             total_count,
             limit,
@@ -178,20 +178,15 @@ impl TaskServer {
             name,
         }): Parameters<McpUpdateWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let workspace_id = match workspace_id {
-            Some(id) => id,
-            None => match self.context.as_ref() {
-                Some(ctx) => ctx.workspace_id,
-                None => {
-                    return Self::err(
-                        "workspace_id is required (not available from workspace context)",
-                        None::<&str>,
-                    );
-                }
-            },
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(error_result),
         };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(error_result);
+        }
 
-        let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
+        let url = self.url(&format!("/api/workspaces/{}", workspace_id));
         let payload = UpdateWorkspace {
             archived,
             pinned,
@@ -203,7 +198,7 @@ impl TaskServer {
             Err(e) => return Ok(e),
         };
 
-        TaskServer::success(&McpUpdateWorkspaceResponse {
+        McpServer::success(&McpUpdateWorkspaceResponse {
             success: true,
             workspace_id: updated.id.to_string(),
             archived: updated.archived,
@@ -223,23 +218,18 @@ impl TaskServer {
             delete_branches,
         }): Parameters<McpDeleteWorkspaceRequest>,
     ) -> Result<CallToolResult, ErrorData> {
-        let workspace_id = match workspace_id {
-            Some(id) => id,
-            None => match self.context.as_ref() {
-                Some(ctx) => ctx.workspace_id,
-                None => {
-                    return Self::err(
-                        "workspace_id is required (not available from workspace context)",
-                        None::<&str>,
-                    );
-                }
-            },
+        let workspace_id = match self.resolve_workspace_id(workspace_id) {
+            Ok(id) => id,
+            Err(error_result) => return Ok(error_result),
         };
+        if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
+            return Ok(error_result);
+        }
 
         let delete_remote = delete_remote.unwrap_or(false);
         let delete_branches = delete_branches.unwrap_or(false);
 
-        let url = self.url(&format!("/api/task-attempts/{}", workspace_id));
+        let url = self.url(&format!("/api/workspaces/{}", workspace_id));
         if let Err(e) = self
             .send_empty_json(self.client.delete(&url).query(&[
                 ("delete_remote", delete_remote),
@@ -250,7 +240,7 @@ impl TaskServer {
             return Ok(e);
         }
 
-        TaskServer::success(&McpDeleteWorkspaceResponse {
+        McpServer::success(&McpDeleteWorkspaceResponse {
             success: true,
             workspace_id: workspace_id.to_string(),
             delete_remote,

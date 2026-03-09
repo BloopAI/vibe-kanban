@@ -8,17 +8,17 @@ import {
 
 export function ReviewProvider({
   children,
-  attemptId,
+  workspaceId,
 }: {
   children: ReactNode;
-  attemptId?: string;
+  workspaceId?: string;
 }) {
   const [comments, setComments] = useState<ReviewComment[]>([]);
   const [drafts, setDrafts] = useState<Record<string, ReviewDraft>>({});
 
   useEffect(() => {
     return () => clearComments();
-  }, [attemptId]);
+  }, [workspaceId]);
 
   const addComment = (comment: Omit<ReviewComment, 'id'>) => {
     const newComment: ReviewComment = {

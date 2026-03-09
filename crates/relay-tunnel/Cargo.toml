@@ -20,7 +20,6 @@ server = [
     "dep:tracing-subscriber",
     "dep:serde",
     "dep:thiserror",
-    "dep:rustls",
 ]
 
 [[bin]]
@@ -37,9 +36,8 @@ futures-util = "0.3"
 http = "1"
 hyper = { version = "1", features = ["client", "server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
-native-tls = "0.2"
 tokio = { version = "1.0", features = ["full"] }
-tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 tokio-util = { version = "0.7", features = ["io"] }
 tokio-yamux = "0.3.17"
 tracing = "0.1.43"
@@ -51,7 +49,7 @@ axum-extra = { version = "0.10.3", features = ["typed-header"], optional = true 
 base64 = { version = "0.22", optional = true }
 chrono = { version = "0.4", features = ["serde"], optional = true }
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"], optional = true }
-rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"], optional = true }
+rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 secrecy = { version = "0.10.3", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }
 sha2 = { version = "0.10", optional = true }
@@ -60,8 +58,5 @@ thiserror = { version = "2.0.12", optional = true }
 tower-http = { version = "0.5", features = ["cors", "request-id", "trace", "fs", "validate-request"], optional = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"], optional = true }
 uuid = { version = "1", features = ["serde", "v4"], optional = true }
-
-[target.'cfg(target_os = "linux")'.dependencies]
-openssl = { version = "0.10", features = ["vendored"] }
 
 [workspace]

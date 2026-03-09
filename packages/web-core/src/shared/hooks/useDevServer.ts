@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { attemptsApi, executionProcessesApi } from '@/shared/lib/api';
-import { useAttemptExecution } from '@/shared/hooks/useAttemptExecution';
+import { workspacesApi, executionProcessesApi } from '@/shared/lib/api';
+import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import {
   filterRunningDevServers,
   filterDevServerProcesses,
@@ -17,11 +17,11 @@ interface UseDevServerOptions {
 }
 
 export function useDevServer(
-  attemptId: string | undefined,
+  workspaceId: string | undefined,
   options?: UseDevServerOptions
 ) {
   const queryClient = useQueryClient();
-  const { attemptData } = useAttemptExecution(attemptId);
+  const { attemptData } = useWorkspaceExecution(workspaceId);
 
   const runningDevServers = useMemo(
     () => filterRunningDevServers(attemptData.processes),
@@ -47,10 +47,10 @@ export function useDevServer(
   }, [runningDevServers.length, pendingStart]);
 
   const startMutation = useMutation({
-    mutationKey: ['startDevServer', attemptId],
+    mutationKey: ['startDevServer', workspaceId],
     mutationFn: async () => {
-      if (!attemptId) return;
-      await attemptsApi.startDevServer(attemptId);
+      if (!workspaceId) return;
+      await workspacesApi.startDevServer(workspaceId);
     },
     onMutate: () => {
       setPendingStart(true);
@@ -58,7 +58,7 @@ export function useDevServer(
     onSuccess: async () => {
       // Don't clear pendingStart here - wait for process to appear via useEffect
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: ['executionProcesses', workspaceId],
       });
       queryClient.invalidateQueries({ queryKey: workspaceSummaryKeys.all });
       options?.onStartSuccess?.();
@@ -71,7 +71,7 @@ export function useDevServer(
   });
 
   const stopMutation = useMutation({
-    mutationKey: ['stopDevServer', attemptId],
+    mutationKey: ['stopDevServer', workspaceId],
     mutationFn: async () => {
       if (runningDevServers.length === 0) return;
       await Promise.all(
@@ -82,7 +82,7 @@ export function useDevServer(
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({
-        queryKey: ['executionProcesses', attemptId],
+        queryKey: ['executionProcesses', workspaceId],
       });
       for (const ds of runningDevServers) {
         queryClient.invalidateQueries({

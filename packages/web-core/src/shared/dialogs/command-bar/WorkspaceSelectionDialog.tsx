@@ -3,7 +3,7 @@ import { create, useModal } from '@ebay/nice-modal-react';
 import { useTranslation } from 'react-i18next';
 import { GitBranchIcon, PlusIcon } from '@phosphor-icons/react';
 import { defineModal } from '@/shared/lib/modals';
-import { ApiError, attemptsApi } from '@/shared/lib/api';
+import { ApiError, workspacesApi } from '@/shared/lib/api';
 import { getWorkspaceDefaults } from '@/shared/lib/workspaceDefaults';
 import { ErrorDialog } from '@vibe/ui/components/ErrorDialog';
 import { useProjectWorkspaceCreateDraft } from '@/shared/hooks/useProjectWorkspaceCreateDraft';
@@ -140,7 +140,7 @@ function WorkspaceSelectionContent({
 
       setIsLinking(true);
       try {
-        await attemptsApi.linkToIssue(workspaceId, projectId, issueId);
+        await workspacesApi.linkToIssue(workspaceId, projectId, issueId);
         // Success - close dialog. UI will auto-update via Electric sync.
         modal.hide();
       } catch (err) {

@@ -98,7 +98,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedThinkingGroup={null}
         entry={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -114,7 +114,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedThinkingGroup={null}
         entry={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -130,7 +130,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedThinkingGroup={data}
         entry={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -151,7 +151,7 @@ const ItemContent: VirtuosoMessageListProps<
         aggregatedDiffGroup={null}
         aggregatedThinkingGroup={null}
         executionProcessId={data.executionProcessId}
-        taskAttempt={attempt}
+        workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
@@ -291,7 +291,22 @@ export const ConversationList = forwardRef<
 
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
-      setChannelData({ data: aggregatedEntries, scrollModifier });
+      // Filter out entries that render as null in the new design –
+      // leaving them in creates empty Virtuoso items that add spacing.
+      const filteredEntries = aggregatedEntries.filter((entry) => {
+        if (
+          'type' in entry &&
+          entry.type === 'NORMALIZED_ENTRY' &&
+          typeof entry.content !== 'string' &&
+          'entry_type' in entry.content
+        ) {
+          const t = entry.content.entry_type.type;
+          return t !== 'next_action' && t !== 'token_usage_info';
+        }
+        return true;
+      });
+
+      setChannelData({ data: filteredEntries, scrollModifier });
       setEntries(pending.entries);
 
       if (loading) {

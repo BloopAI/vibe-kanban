@@ -8,7 +8,7 @@ import {
 export function RetryUiProvider({
   children,
 }: {
-  attemptId?: string;
+  workspaceId?: string;
   children: React.ReactNode;
 }) {
   const { executionProcessesAll: executionProcesses } =

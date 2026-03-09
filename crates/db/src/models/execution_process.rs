@@ -279,6 +279,24 @@ impl ExecutionProcess {
         .await
     }
 
+    /// Check if there's a running coding agent process for a session
+    pub async fn has_running_coding_agent_for_session(
+        pool: &SqlitePool,
+        session_id: Uuid,
+    ) -> Result<bool, sqlx::Error> {
+        let count: i64 = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) as "count!: i64"
+               FROM execution_processes ep
+               WHERE ep.session_id = $1
+                 AND ep.status = 'running'
+                 AND ep.run_reason = 'codingagent'"#,
+            session_id
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(count > 0)
+    }
+
     /// Check if there are running processes (excluding dev servers) for a workspace (across all sessions)
     pub async fn has_running_non_dev_server_processes_for_workspace(
         pool: &SqlitePool,
