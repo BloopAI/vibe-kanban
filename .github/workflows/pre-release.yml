@@ -372,9 +372,6 @@ jobs:
           # Avoid aws-lc-sys CMake failures when Rust's `release` profile includes debug info.
           # Without this, cmake-rs selects RelWithDebInfo and CMake fails when ASM is enabled.
           CARGO_PROFILE_RELEASE_DEBUG: 0
-          # Use CMake builder for aws-lc-sys to avoid sccache/clang-cl argument mangling
-          # with the default cc-rs builder (sccache wraps clang-cl and breaks -Fo flags).
-          AWS_LC_SYS_CMAKE_BUILDER: 1
 
       - name: Setup Sentry CLI
         uses: matbour/setup-sentry-cli@v2
