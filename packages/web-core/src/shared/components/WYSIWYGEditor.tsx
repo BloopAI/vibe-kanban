@@ -70,7 +70,7 @@ import { TableNode, TableRowNode, TableCellNode } from '@lexical/table';
 import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
 import { type EditorState, type LexicalEditor } from 'lexical';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { WorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { WorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 import { useSlashCommands } from '@/shared/hooks/useExecutorDiscovery';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
@@ -305,10 +305,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     // Copy button state
     const [copied, setCopied] = useState(false);
-    const workspaceContext = useContext(WorkspaceContext);
+    const diffContext = useContext(WorkspaceDiffContext);
     const diffPaths = useMemo(
-      () => workspaceContext?.diffPaths ?? new Set<string>(),
-      [workspaceContext?.diffPaths]
+      () => diffContext?.diffPaths ?? new Set<string>(),
+      [diffContext?.diffPaths]
     );
     const preferredRepoId = useUiPreferencesStore(
       (state) => state.fileSearchRepoId
