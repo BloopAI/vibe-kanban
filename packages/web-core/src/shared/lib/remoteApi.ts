@@ -107,7 +107,7 @@ export async function fetchRemoteWorkspaceByLocalId(
       { method: 'GET' }
     );
     if (!response.ok) return null;
-    return response.json();
+    return await response.json();
   } catch {
     return null;
   }
