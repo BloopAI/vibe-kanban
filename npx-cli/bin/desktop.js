@@ -10,6 +10,7 @@ function getTauriPlatform(npxPlatformDir) {
     'linux-x64': 'linux-x86_64',
     'linux-arm64': 'linux-aarch64',
     'windows-x64': 'windows-x86_64',
+    'windows-arm64': 'windows-aarch64',
   };
   return map[npxPlatformDir] || null;
 }

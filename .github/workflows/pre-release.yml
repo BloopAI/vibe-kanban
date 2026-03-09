@@ -707,6 +707,9 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             platform: windows-x86_64
+          - target: aarch64-pc-windows-msvc
+            os: windows-latest
+            platform: windows-aarch64
     env:
       CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
@@ -795,6 +798,8 @@ jobs:
           POSTHOG_API_ENDPOINT: ${{ secrets.POSTHOG_API_ENDPOINT }}
           VK_SHARED_API_BASE: ${{ secrets.VK_SHARED_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          # Avoid aws-lc-sys CMake failures on ARM64 Windows cross-compilation.
+          CARGO_PROFILE_RELEASE_DEBUG: ${{ matrix.target == 'aarch64-pc-windows-msvc' && '0' || '' }}
 
       - name: Sign Windows artifacts with Azure Trusted Signing
         if: runner.os == 'Windows' && env.AZURE_ENDPOINT != ''
@@ -901,7 +906,7 @@ jobs:
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
 
           # Upload individual platform artifacts
-          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 linux-aarch64 windows-x86_64; do
+          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 linux-aarch64 windows-x86_64 windows-aarch64; do
             if [ -d "tauri-artifacts/$platform" ]; then
               for file in tauri-artifacts/$platform/*; do
                 [ -f "$file" ] || continue
