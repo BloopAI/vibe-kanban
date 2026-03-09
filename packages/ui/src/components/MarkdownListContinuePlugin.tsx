@@ -9,6 +9,7 @@ import {
   $createRangeSelection,
   $setSelection,
 } from 'lexical';
+import { useTypeaheadOpen } from './TypeaheadOpenContext';
 
 // Matches bullet prefixes: "- ", "* ", "+ "
 const BULLET_PREFIX_RE = /^(\s*)([-*+]) $/;
@@ -27,12 +28,15 @@ const NUMBER_LINE_RE = /^(\s*)(\d+)\. (.+)/;
  */
 export function MarkdownListContinuePlugin() {
   const [editor] = useLexicalComposerContext();
+  const { isOpen: isTypeaheadOpen } = useTypeaheadOpen();
 
   useEffect(() => {
     const unregister = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event: KeyboardEvent | null) => {
         if (!event) return false;
+        // Let typeahead handle Enter for option selection.
+        if (isTypeaheadOpen) return false;
         // Don't interfere with Shift+Enter (line break) or modifier combos
         if (event.shiftKey || event.metaKey || event.ctrlKey) return false;
 
@@ -106,7 +110,7 @@ export function MarkdownListContinuePlugin() {
     );
 
     return unregister;
-  }, [editor]);
+  }, [editor, isTypeaheadOpen]);
 
   return null;
 }

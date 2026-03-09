@@ -565,9 +565,9 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
                   <MarkdownInsertPlugin />
-                  <MarkdownListContinuePlugin />
                   <PasteMarkdownPlugin transformers={activeTransformers} />
                   <TypeaheadOpenProvider>
+                    <MarkdownListContinuePlugin />
                     <FileTagTypeaheadPlugin
                       repoIds={repoIds}
                       diffPaths={diffPaths}
