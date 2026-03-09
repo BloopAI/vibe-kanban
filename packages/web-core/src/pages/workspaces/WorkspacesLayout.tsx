@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -53,13 +53,11 @@ export function WorkspacesLayout() {
     isCreateMode ? t('workspaces.newWorkspace') : selectedWorkspace?.name
   );
 
-  const seedStateRef = useRef<ReturnType<
-    typeof consumeCreateModeSeedState
-  > | null>(null);
-  if (isCreateMode && seedStateRef.current === null) {
-    seedStateRef.current = consumeCreateModeSeedState();
-  }
-  const seedState = isCreateMode ? seedStateRef.current : null;
+  const seedState = useMemo(
+    () => (isCreateMode ? consumeCreateModeSeedState() : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isCreateMode]
+  );
 
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
