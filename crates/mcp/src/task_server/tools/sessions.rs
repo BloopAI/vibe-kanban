@@ -359,9 +359,18 @@ impl McpServer {
         if message.is_empty() {
             return Self::err("message must not be empty", None);
         }
+        let session = match self.fetch_session_scoped(session_id).await {
+            Ok(session) => session,
+            Err(error_result) => return Ok(error_result),
+        };
 
         let executor_config =
-            match Self::executor_config_payload_from_values(Some(executor), variant, model_id) {
+            match Self::executor_config_payload_for_request(
+                &session,
+                Some(executor),
+                variant,
+                model_id,
+            ) {
                 Ok(config) => config,
                 Err(error_result) => return Ok(error_result),
             };
@@ -386,6 +395,9 @@ impl McpServer {
         &self,
         Parameters(SessionGetQueueRequest { session_id }): Parameters<SessionGetQueueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        if let Err(error_result) = self.fetch_session_scoped(session_id).await {
+            return Ok(error_result);
+        }
         let url = self.url(&format!("/api/sessions/{session_id}/queue"));
         let status: Value = match self.send_json(self.client.get(&url)).await {
             Ok(value) => value,
@@ -399,6 +411,9 @@ impl McpServer {
         &self,
         Parameters(SessionCancelQueueRequest { session_id }): Parameters<SessionCancelQueueRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        if let Err(error_result) = self.fetch_session_scoped(session_id).await {
+            return Ok(error_result);
+        }
         let url = self.url(&format!("/api/sessions/{session_id}/queue"));
         let status: Value = match self.send_json(self.client.delete(&url)).await {
             Ok(value) => value,
@@ -456,6 +471,9 @@ impl McpServer {
         &self,
         Parameters(StopExecutionRequest { execution_id }): Parameters<StopExecutionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
+        if let Err(error_result) = self.fetch_execution_scoped(execution_id).await {
+            return Ok(error_result);
+        }
         let url = self.url(&format!("/api/execution-processes/{execution_id}/stop"));
         if let Err(error_result) = self.send_empty_json(self.client.post(&url)).await {
             return Ok(error_result);
@@ -498,6 +516,10 @@ impl McpServer {
             }
         };
 
+        if let Err(error_result) = self.fetch_execution_scoped(execution_id).await {
+            return Ok(error_result);
+        }
+
         let url = self.url(&format!("/api/approvals/{approval_id}/respond"));
         let outcome: Value = match self
             .send_json(self.client.post(&url).json(&serde_json::json!({
@@ -515,6 +537,23 @@ impl McpServer {
 }
 
 impl McpServer {
+    async fn fetch_session_scoped(&self, session_id: Uuid) -> Result<Session, CallToolResult> {
+        let session_url = self.url(&format!("/api/sessions/{session_id}"));
+        let session: Session = self.send_json(self.client.get(&session_url)).await?;
+        self.scope_allows_workspace(session.workspace_id)?;
+        Ok(session)
+    }
+
+    async fn fetch_execution_scoped(
+        &self,
+        execution_id: Uuid,
+    ) -> Result<ExecutionProcess, CallToolResult> {
+        let process_url = self.url(&format!("/api/execution-processes/{execution_id}"));
+        let execution_process: ExecutionProcess = self.send_json(self.client.get(&process_url)).await?;
+        let _session = self.fetch_session_scoped(execution_process.session_id).await?;
+        Ok(execution_process)
+    }
+
     fn executor_config_payload_for_request(
         session: &Session,
         executor: Option<String>,
@@ -675,6 +714,24 @@ mod tests {
         })
     }
 
+    fn scoped_orchestrator_server(mock: &MockServer, workspace_id: Uuid) -> McpServer {
+        McpServer {
+            client: reqwest::Client::new(),
+            base_url: mock.uri(),
+            tool_router: McpServer::orchestrator_mode_router(),
+            context: Some(crate::task_server::McpContext {
+                organization_id: None,
+                project_id: None,
+                issue_id: None,
+                orchestrator_session_id: Some(Uuid::new_v4()),
+                workspace_id,
+                workspace_branch: "main".to_string(),
+                workspace_repos: vec![],
+            }),
+            mode: crate::task_server::McpMode::Orchestrator,
+        }
+    }
+
     #[tokio::test]
     async fn get_session_returns_session_summary() {
         let (mock, server) = setup().await;
@@ -701,6 +758,16 @@ mod tests {
     async fn session_queue_message_posts_trimmed_payload() {
         let (mock, server) = setup().await;
         let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
 
         Mock::given(method("POST"))
             .and(path(format!("/api/sessions/{session_id}/queue")))
@@ -736,6 +803,16 @@ mod tests {
     async fn session_get_queue_returns_status() {
         let (mock, server) = setup().await;
         let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
 
         Mock::given(method("GET"))
             .and(path(format!("/api/sessions/{session_id}/queue")))
@@ -757,6 +834,16 @@ mod tests {
     async fn session_cancel_queue_deletes_queue() {
         let (mock, server) = setup().await;
         let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
 
         Mock::given(method("DELETE"))
             .and(path(format!("/api/sessions/{session_id}/queue")))
@@ -778,6 +865,26 @@ mod tests {
     async fn stop_execution_posts_stop_request() {
         let (mock, server) = setup().await;
         let execution_id = Uuid::new_v4();
+        let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/execution-processes/{execution_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_execution(execution_id, session_id, "running")
+            })))
+            .mount(&mock)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
 
         Mock::given(method("POST"))
             .and(path(format!(
@@ -801,6 +908,26 @@ mod tests {
     async fn respond_approval_denied_trims_reason() {
         let (mock, server) = setup().await;
         let execution_id = Uuid::new_v4();
+        let session_id = Uuid::new_v4();
+        let workspace_id = Uuid::new_v4();
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/execution-processes/{execution_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_execution(execution_id, session_id, "running")
+            })))
+            .mount(&mock)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
 
         Mock::given(method("POST"))
             .and(path("/api/approvals/approval-1/respond"))
@@ -934,5 +1061,69 @@ mod tests {
             .await;
 
         assert_success(result);
+    }
+
+    #[tokio::test]
+    async fn session_queue_message_rejects_session_outside_orchestrator_scope() {
+        let (mock, _server) = setup().await;
+        let scoped_workspace_id = Uuid::new_v4();
+        let other_workspace_id = Uuid::new_v4();
+        let session_id = Uuid::new_v4();
+        let server = scoped_orchestrator_server(&mock, scoped_workspace_id);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, other_workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .session_queue_message(Parameters(SessionQueueMessageRequest {
+                session_id,
+                message: "ship it".to_string(),
+                executor: "codex".to_string(),
+                variant: None,
+                model_id: None,
+            }))
+            .await;
+
+        assert_error(result);
+    }
+
+    #[tokio::test]
+    async fn stop_execution_rejects_execution_outside_orchestrator_scope() {
+        let (mock, _server) = setup().await;
+        let scoped_workspace_id = Uuid::new_v4();
+        let other_workspace_id = Uuid::new_v4();
+        let session_id = Uuid::new_v4();
+        let execution_id = Uuid::new_v4();
+        let server = scoped_orchestrator_server(&mock, scoped_workspace_id);
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/execution-processes/{execution_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_execution(execution_id, session_id, "running")
+            })))
+            .mount(&mock)
+            .await;
+
+        Mock::given(method("GET"))
+            .and(path(format!("/api/sessions/{session_id}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "success": true,
+                "data": sample_session(session_id, other_workspace_id, Some("CODEX"))
+            })))
+            .mount(&mock)
+            .await;
+
+        let result = server
+            .stop_execution(Parameters(StopExecutionRequest { execution_id }))
+            .await;
+
+        assert_error(result);
     }
 }
