@@ -199,7 +199,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1568,7 +1568,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1611,7 +1611,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2239,7 +2239,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -2860,7 +2860,7 @@ dependencies = [
 
 [[package]]
 name = "git"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2875,7 +2875,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "async-trait",
  "backon",
@@ -4095,7 +4095,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -4284,7 +4284,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -5971,7 +5971,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-control"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -6023,7 +6023,6 @@ dependencies = [
  "log",
  "percent-encoding",
  "pin-project-lite",
- "quinn",
  "rustls",
  "rustls-pki-types",
  "serde",
@@ -6032,12 +6031,14 @@ dependencies = [
  "sync_wrapper",
  "tokio",
  "tokio-rustls",
+ "tokio-util",
  "tower",
  "tower-http 0.6.8",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams 0.4.2",
  "web-sys",
  "webpki-roots 1.0.6",
 ]
@@ -6079,13 +6080,13 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
+ "wasm-streams 0.5.0",
  "web-sys",
 ]
 
 [[package]]
 name = "review"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -6093,7 +6094,7 @@ dependencies = [
  "dirs 5.0.1",
  "flate2",
  "indicatif",
- "reqwest 0.13.2",
+ "reqwest 0.12.28",
  "rustls",
  "serde",
  "serde_json",
@@ -6285,7 +6286,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758025cb5fccfd3bc2fd74708fd4682be41d99e5dff73c377c0646c6012c73a4"
 dependencies = [
  "aws-lc-rs",
- "log",
  "once_cell",
  "ring",
  "rustls-pki-types",
@@ -6607,14 +6607,12 @@ dependencies = [
 
 [[package]]
 name = "sentry"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d92d893ba7469d361a6958522fa440e4e2bc8bf4c5803cd1bf40b9af63f8f9a8"
+checksum = "507ac2be9bf2da56c831da57faf1dadd81f434bd282935cdb06193d0c94e8811"
 dependencies = [
- "cfg_aliases 0.2.1",
  "httpdate",
  "reqwest 0.12.28",
- "rustls",
  "sentry-anyhow",
  "sentry-backtrace",
  "sentry-core",
@@ -6622,14 +6620,13 @@ dependencies = [
  "sentry-panic",
  "sentry-tracing",
  "tokio",
- "ureq",
 ]
 
 [[package]]
 name = "sentry-anyhow"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6924ad794a4786c26739816afc9b54b31c13cad479698f53c0398c5f6400954"
+checksum = "1fce8e095bb4e66cbf92f7eb3fb0ff7014f7943de3e4f55b3ef69261cf32d913"
 dependencies = [
  "anyhow",
  "sentry-backtrace",
@@ -6638,9 +6635,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-backtrace"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f8784d0a27b5cd4b5f75769ffc84f0b7580e3c35e1af9cd83cb90b612d769cc"
+checksum = "eb4416302fa5325181a120e0fe7d4afd83cd95e52a9b86afa34a8161383fe0dc"
 dependencies = [
  "backtrace",
  "regex",
@@ -6649,22 +6646,21 @@ dependencies = [
 
 [[package]]
 name = "sentry-core"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0b1e7ca40f965db239da279bf278d87b7407469b98835f27f0c8e59ed189b06"
+checksum = "00e9bd2cadaeda3af41e9fa5d14645127d6f6a4aec73da3ae38e477ecafd3682"
 dependencies = [
  "rand 0.9.2",
  "sentry-types",
  "serde",
  "serde_json",
- "url",
 ]
 
 [[package]]
 name = "sentry-debug-images"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "002561e49ea3a9de316e2efadc40fae553921b8ff41448f02ea85fd135a778d6"
+checksum = "e1e074fe9a0970c91999b23ed3195e6e30990d589fba3a68f20a1686af0f5cda"
 dependencies = [
  "findshlibs",
  "sentry-core",
@@ -6672,9 +6668,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-panic"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8906f8be87aea5ac7ef937323fb655d66607427f61007b99b7cb3504dc5a156c"
+checksum = "4651d34f3ba649d9e6dc1268443cae6728b8f741c2f0264004f8ecf5b247330d"
 dependencies = [
  "sentry-backtrace",
  "sentry-core",
@@ -6682,9 +6678,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-tracing"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5b07eefe04486316c57aba08ab53dd44753c25102d1d3fe05775cc93a13262d9"
+checksum = "c25c47d36bc80c74d26d568ffe970c37b337c061b7234ad6f2d159439c16f000"
 dependencies = [
  "bitflags 2.11.0",
  "sentry-backtrace",
@@ -6695,9 +6691,9 @@ dependencies = [
 
 [[package]]
 name = "sentry-types"
-version = "0.46.2"
+version = "0.41.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "567711f01f86a842057e1fc17779eba33a336004227e1a1e7e6cc2599e22e259"
+checksum = "a08e7154abe2cd557f26fd70038452810748aefdf39bc973f674421224b147c1"
 dependencies = [
  "debugid",
  "hex",
@@ -6926,7 +6922,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6968,7 +6964,7 @@ dependencies = [
  "strip-ansi-escapes",
  "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite 0.26.2",
+ "tokio-tungstenite 0.24.0",
  "tokio-util",
  "tokio-yamux",
  "tower-http 0.5.2",
@@ -6985,14 +6981,14 @@ dependencies = [
 
 [[package]]
 name = "server-info"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "services"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "api-types",
@@ -8459,22 +8455,6 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a9daff607c6d2bf6c16fd681ccb7eecc83e4e2cdc1ca067ffaadfca5de7f084"
-dependencies = [
- "futures-util",
- "log",
- "rustls",
- "rustls-native-certs",
- "rustls-pki-types",
- "tokio",
- "tokio-rustls",
- "tungstenite 0.26.2",
-]
-
-[[package]]
-name = "tokio-tungstenite"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25a406cddcc431a75d3d9afc6a7c0f7428d4891dd973e4d54c56b46127bf857"
@@ -8791,7 +8771,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -8878,25 +8858,6 @@ dependencies = [
  "rustls-pki-types",
  "sha1",
  "thiserror 1.0.69",
- "utf-8",
-]
-
-[[package]]
-name = "tungstenite"
-version = "0.26.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4793cb5e56680ecbb1d843515b23b6de9a75eb04b66643e256a396d43be33c13"
-dependencies = [
- "bytes",
- "data-encoding",
- "http",
- "httparse",
- "log",
- "rand 0.9.2",
- "rustls",
- "rustls-pki-types",
- "sha1",
- "thiserror 2.0.18",
  "utf-8",
 ]
 
@@ -9045,34 +9006,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
-name = "ureq"
-version = "3.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fdc97a28575b85cfedf2a7e7d3cc64b3e11bd8ac766666318003abbacc7a21fc"
-dependencies = [
- "base64 0.22.1",
- "log",
- "percent-encoding",
- "rustls",
- "rustls-pki-types",
- "ureq-proto",
- "utf-8",
- "webpki-roots 1.0.6",
-]
-
-[[package]]
-name = "ureq-proto"
-version = "0.5.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d81f9efa9df032be5934a46a068815a10a042b494b6a58cb0a1a97bb5467ed6f"
-dependencies = [
- "base64 0.22.1",
- "http",
- "httparse",
- "log",
-]
-
-[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -9117,7 +9050,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "api-types",
  "axum",
@@ -9193,7 +9126,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vibe-kanban-tauri"
-version = "0.1.25-pthis.9"
+version = "0.1.27-pthis.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -9377,6 +9310,19 @@ dependencies = [
  "indexmap 2.13.0",
  "wasm-encoder",
  "wasmparser",
+]
+
+[[package]]
+name = "wasm-streams"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -10201,7 +10147,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-manager"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "db",
  "git",
@@ -10216,7 +10162,7 @@ dependencies = [
 
 [[package]]
 name = "worktree-manager"
-version = "0.1.27"
+version = "0.1.27-pthis.0"
 dependencies = [
  "dunce",
  "git",
