@@ -52,7 +52,7 @@ export function localStorageScratchUpdate(
   scratchType: ScratchType,
   id: string,
   update: UpdateScratch
-): void {
+): boolean {
   const key = buildStorageKey(scratchType, id);
   const previousRaw = (() => {
     try {
@@ -68,17 +68,21 @@ export function localStorageScratchUpdate(
   try {
     localStorage.setItem(key, nextRaw);
   } catch {
-    return;
+    return false;
   }
 
-  window.dispatchEvent(
-    new StorageEvent('storage', {
-      key,
-      oldValue: previousRaw,
-      newValue: nextRaw,
-      storageArea: localStorage,
-    })
-  );
+  try {
+    window.dispatchEvent(
+      new StorageEvent('storage', {
+        key,
+        oldValue: previousRaw,
+        newValue: nextRaw,
+        storageArea: localStorage,
+      })
+    );
+  } catch {}
+
+  return true;
 }
 
 interface UseLocalStorageScratchOptions {

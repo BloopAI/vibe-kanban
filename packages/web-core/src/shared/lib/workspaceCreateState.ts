@@ -108,9 +108,16 @@ export async function persistWorkspaceCreateDraft(
 
   try {
     if (runtime === 'remote') {
-      localStorageScratchUpdate(ScratchType.DRAFT_WORKSPACE, draftId, {
-        payload,
-      });
+      const didPersist = localStorageScratchUpdate(
+        ScratchType.DRAFT_WORKSPACE,
+        draftId,
+        {
+          payload,
+        }
+      );
+      if (!didPersist) {
+        throw new Error('Failed to persist create-workspace draft in storage');
+      }
     } else {
       await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
         payload,
