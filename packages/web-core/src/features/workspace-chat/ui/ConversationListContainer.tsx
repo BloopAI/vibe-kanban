@@ -20,6 +20,7 @@ import { SpinnerIcon } from '@phosphor-icons/react';
 
 import { buildConversationRows } from '../model/conversation-row-model';
 import { useConversationVirtualizer } from '../model/useConversationVirtualizer';
+import { useScrollCommandExecutor } from '../model/useScrollCommandExecutor';
 
 import { cn } from '@/shared/lib/utils';
 import {
@@ -312,6 +313,8 @@ export const ConversationList = forwardRef<
       setChannelData({ data: filteredEntries, scrollModifier });
       setEntries(pending.entries);
 
+      scrollExecutor.onEntriesChanged(pending.addType, loading);
+
       if (loading) {
         setLoading(pending.loading);
       }
@@ -339,6 +342,12 @@ export const ConversationList = forwardRef<
     rows: conversationRows,
     scrollContainerRef: tanstackScrollRef,
     onAtBottomChange,
+  });
+
+  const scrollExecutor = useScrollCommandExecutor({
+    virtualizer: conversationVirtualizer.virtualizer,
+    itemCount: conversationRows.length,
+    isAtBottom: conversationVirtualizer.isAtBottom,
   });
 
   // Show placeholders only if script not configured AND not already run AND first turn
@@ -413,11 +422,9 @@ export const ConversationList = forwardRef<
           }
         }
 
-        // Fallback: TanStack Virtual (for when Virtuoso is removed)
         conversationVirtualizer.scrollToPreviousUserMessage();
       },
       scrollToBottom: () => {
-        // Primary: Virtuoso (active renderer)
         if (messageListRef.current) {
           messageListRef.current.scrollToItem({
             index: 'LAST',
@@ -427,11 +434,10 @@ export const ConversationList = forwardRef<
           return;
         }
 
-        // Fallback: TanStack Virtual
-        conversationVirtualizer.scrollToBottom();
+        scrollExecutor.requestJumpToBottom();
       },
     }),
-    [channelData, conversationVirtualizer]
+    [channelData, conversationVirtualizer, scrollExecutor]
   );
 
   // Determine if content is ready to show (has data or finished loading)
