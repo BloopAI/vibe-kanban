@@ -597,9 +597,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                     extraActions={staticToolbarActions}
                     isPreviewMode={isPreviewMode}
                     onTogglePreview={
-                      !disabled
-                        ? () => setIsPreviewMode((p) => !p)
-                        : undefined
+                      !disabled ? () => setIsPreviewMode((p) => !p) : undefined
                     }
                     readOnly={disabled}
                     onRequestEdit={onRequestEdit}
