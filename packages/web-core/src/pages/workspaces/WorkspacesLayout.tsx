@@ -56,19 +56,7 @@ export function WorkspacesLayout() {
   const seedState = useMemo(
     () => {
       if (!isCreateMode) return null;
-      const state = consumeCreateModeSeedState();
-      console.log(
-        '[WorkspacesLayout] consumeCreateModeSeedState:',
-        state
-          ? JSON.stringify({
-              hasPrompt: !!state.initialPrompt,
-              hasLinkedIssue: !!state.linkedIssue,
-              repoCount: state.preferredRepos?.length ?? 0,
-              hasExecutorConfig: !!state.executorConfig,
-            })
-          : 'null'
-      );
-      return state;
+      return consumeCreateModeSeedState();
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [isCreateMode]

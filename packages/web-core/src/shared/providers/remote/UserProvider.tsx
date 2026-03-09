@@ -20,15 +20,6 @@ export function UserProvider({ children }: UserProviderProps) {
 
   // Shape subscriptions
   const workspacesResult = useShape(USER_WORKSPACES_SHAPE, params, { enabled });
-  console.log('[UserProvider] isSignedIn:', isSignedIn, 'enabled:', enabled);
-  console.log(
-    '[UserProvider] workspaces:',
-    workspacesResult.data.length,
-    'isLoading:',
-    workspacesResult.isLoading,
-    'error:',
-    workspacesResult.error
-  );
 
   // Lookup helpers
   const getWorkspacesForIssue = useCallback(

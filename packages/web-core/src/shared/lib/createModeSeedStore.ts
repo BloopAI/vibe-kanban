@@ -9,23 +9,11 @@ let pendingSeedState: CreateModeInitialState | null = null;
 export function setCreateModeSeedState(
   state: CreateModeInitialState | null
 ): void {
-  console.log('[SeedStore] SET:', JSON.stringify(state, null, 2));
   pendingSeedState = state;
 }
 
 export function consumeCreateModeSeedState(): CreateModeInitialState | null {
   const state = pendingSeedState;
   pendingSeedState = null;
-  console.log(
-    '[SeedStore] CONSUME:',
-    state
-      ? JSON.stringify({
-          hasPrompt: !!state.initialPrompt,
-          hasLinkedIssue: !!state.linkedIssue,
-          repoCount: state.preferredRepos?.length ?? 0,
-          hasExecutorConfig: !!state.executorConfig,
-        })
-      : 'null'
-  );
   return state;
 }

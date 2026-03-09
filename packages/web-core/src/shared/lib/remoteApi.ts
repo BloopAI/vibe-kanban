@@ -98,21 +98,6 @@ async function makeAuthenticatedRequest(
   return response;
 }
 
-export async function fetchRemoteWorkspaceByLocalId(
-  localWorkspaceId: string
-): Promise<{ issue_id: string | null; project_id: string } | null> {
-  try {
-    const response = await makeRequest(
-      `/v1/workspaces/by-local-id/${localWorkspaceId}`,
-      { method: 'GET' }
-    );
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
 export interface BulkUpdateIssueItem {
   id: string;
   changes: Partial<UpdateIssueRequest>;
