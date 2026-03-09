@@ -58,8 +58,14 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Get remote workspaces (optional — not available on all routes)
   const userCtx = useContext(UserContext);
   const projectCtx = useContext(ProjectContext);
-  console.log('[ActionsProvider] userCtx:', userCtx ? `${userCtx.workspaces.length} workspaces` : 'null');
-  console.log('[ActionsProvider] projectCtx:', projectCtx ? `${projectCtx.workspaces.length} workspaces` : 'null');
+  console.log(
+    '[ActionsProvider] userCtx:',
+    userCtx ? `${userCtx.workspaces.length} workspaces` : 'null'
+  );
+  console.log(
+    '[ActionsProvider] projectCtx:',
+    projectCtx ? `${projectCtx.workspaces.length} workspaces` : 'null'
+  );
 
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
