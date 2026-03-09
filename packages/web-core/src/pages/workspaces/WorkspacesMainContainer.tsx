@@ -6,7 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import type { Workspace, Session } from 'shared/types';
+import type { Workspace, Session, RepoWithTargetBranch } from 'shared/types';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { WorkspacesMain } from '@vibe/ui/components/WorkspacesMain';
 import {
@@ -86,11 +86,10 @@ interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
   selectedSession: Session | undefined;
   sessions: Session[];
+  repos: RepoWithTargetBranch[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
-  /** Whether user is creating a new session */
   isNewSessionMode: boolean;
-  /** Callback to start new session mode */
   onStartNewSession: () => void;
 }
 
@@ -102,6 +101,7 @@ export const WorkspacesMainContainer = forwardRef<
     selectedWorkspace,
     selectedSession,
     sessions,
+    repos,
     onSelectSession,
     isLoading,
     isNewSessionMode,
@@ -143,6 +143,7 @@ export const WorkspacesMainContainer = forwardRef<
           <ConversationList
             ref={conversationListRef}
             attempt={workspaceWithSession}
+            repos={repos}
             onAtBottomChange={handleAtBottomChange}
           />
         </RetryUiProvider>
