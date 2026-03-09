@@ -1,0 +1,435 @@
+/**
+ * Conversation Row Model
+ *
+ * Semantic row identity and metadata layer for TanStack Virtual migration.
+ * Wraps `DisplayEntry` with explicit identity, row family classification,
+ * execution-process affiliation, and size estimation hints needed by the
+ * virtualizer without reading render DOM.
+ *
+ * Design decisions:
+ * - `ConversationRow` is additive: existing `DisplayEntry` consumers are
+ *   unaffected; the row model is a higher-level view built *on top of*
+ *   `DisplayEntry[]`.
+ * - `semanticKey` replaces the incidental `patchKey`-based identity with
+ *   deliberate, stable keys suitable for `getItemKey`.
+ * - `rowFamily` provides a discriminant the virtualizer can use to select
+ *   per-family size estimators without inspecting entry internals.
+ * - `SizeEstimationHint` gives the virtualizer an entry-type-aware initial
+ *   height estimate, avoiding the "all items are 50px" cold-start problem.
+ */
+
+import type { DisplayEntry } from '@/shared/hooks/useConversationHistory/types';
+
+// ---------------------------------------------------------------------------
+// Row Family
+// ---------------------------------------------------------------------------
+
+/**
+ * Exhaustive classification of every visual row the conversation list can
+ * render. Each member maps 1:1 to a renderer branch in
+ * `DisplayConversationEntry`.
+ *
+ * Aggregated families correspond to the three `AGGREGATED_*` group types
+ * produced by `aggregateConsecutiveEntries`.
+ */
+export type RowFamily =
+  // Atomic NormalizedEntry types
+  | 'user_message'
+  | 'assistant_message'
+  | 'system_message'
+  | 'thinking'
+  | 'error_message'
+  | 'loading'
+  | 'next_action'
+  | 'token_usage_info'
+  | 'user_feedback'
+  | 'user_answered_questions'
+  // Tool-use sub-variants (dispatched by action_type.action)
+  | 'tool_summary' // file_read, search, web_fetch, command_run (non-script), generic tool
+  | 'file_edit'
+  | 'script' // Setup Script, Cleanup Script, Archive Script, Tool Install Script
+  | 'plan' // plan_presentation
+  | 'todo' // todo_management
+  | 'subagent' // task_create
+  | 'approval' // any tool_use with status === 'pending_approval' (generic)
+  // Aggregated group types
+  | 'aggregated_tool' // AGGREGATED_GROUP
+  | 'aggregated_diff' // AGGREGATED_DIFF_GROUP
+  | 'aggregated_thinking'; // AGGREGATED_THINKING_GROUP
+
+// ---------------------------------------------------------------------------
+// Size Estimation Hint
+// ---------------------------------------------------------------------------
+
+/**
+ * Coarse height bucket for entry-type-aware initial size estimation.
+ *
+ * The virtualizer uses this to pick a reasonable `estimateSize` per row
+ * *before* the DOM is measured, reducing layout jank on first render.
+ *
+ * | Hint      | Typical px | Representative rows                              |
+ * |-----------|-----------|--------------------------------------------------|
+ * | compact   | 32-48     | tool_summary, loading, token_usage_info           |
+ * | medium    | 60-120    | user_message, system_message, error, script       |
+ * | tall      | 150-300   | assistant_message, plan, subagent, aggregated     |
+ * | dynamic   | varies    | file_edit (diff), thinking (streaming)            |
+ * | hidden    | 0         | next_action, token_usage_info (filtered pre-list) |
+ */
+export type SizeEstimationHint =
+  | 'compact'
+  | 'medium'
+  | 'tall'
+  | 'dynamic'
+  | 'hidden';
+
+// ---------------------------------------------------------------------------
+// Conversation Row
+// ---------------------------------------------------------------------------
+
+/**
+ * A single semantic row in the conversation list.
+ *
+ * This is the primary type consumed by the TanStack Virtual virtualizer.
+ * It wraps `DisplayEntry` with metadata that enables:
+ *
+ * 1. **Stable identity** (`semanticKey`) for `getItemKey`.
+ * 2. **Family classification** (`rowFamily`) for per-type size estimation
+ *    and renderer dispatch.
+ * 3. **Process affiliation** (`processId`) for scroll-to-process and
+ *    group-by-turn operations.
+ * 4. **Size hints** (`estimationHint`) for cold-start height estimation.
+ * 5. **User-message search** (`isUserMessage`) for
+ *    `scrollToPreviousUserMessage` without re-scanning the full list.
+ */
+export interface ConversationRow {
+  /**
+   * Stable semantic identity for this row.
+   *
+   * Key contracts:
+   * - Unique within the list at any point in time.
+   * - Survives aggregation transitions (individual <-> grouped).
+   * - Survives streaming-to-completed transitions for script rows.
+   * - Suitable as the return value of `getItemKey`.
+   *
+   * Key format conventions:
+   * - Backend entries: `conv-{processId}:{entryIndex}`
+   * - Synthetic user messages: `conv-{processId}:user`
+   * - Synthetic loading: `conv-{processId}:loading`
+   * - Script entries: `conv-{processId}:script`
+   * - Next action: `conv-next_action`
+   * - Aggregated tool groups: `conv-agg:{firstEntryKey}`
+   * - Aggregated diff groups: `conv-agg-diff:{firstEntryKey}`
+   * - Aggregated thinking groups: `conv-agg-thinking:{firstEntryKey}`
+   */
+  readonly semanticKey: string;
+
+  /** Classification of what this row renders. */
+  readonly rowFamily: RowFamily;
+
+  /**
+   * The execution process this row belongs to, or `null` for rows that
+   * span processes (e.g., `next_action`).
+   */
+  readonly processId: string | null;
+
+  /** Coarse height estimate for the virtualizer's `estimateSize`. */
+  readonly estimationHint: SizeEstimationHint;
+
+  /**
+   * Whether this row is a user message. Pre-computed flag to enable
+   * O(1) checks during `scrollToPreviousUserMessage` scans.
+   */
+  readonly isUserMessage: boolean;
+
+  /**
+   * The original `DisplayEntry` this row wraps. Passed through to the
+   * row renderer unchanged.
+   */
+  readonly entry: DisplayEntry;
+}
+
+// ---------------------------------------------------------------------------
+// Row Family Detection
+// ---------------------------------------------------------------------------
+
+const SCRIPT_TOOL_NAMES = new Set([
+  'Setup Script',
+  'Cleanup Script',
+  'Archive Script',
+  'Tool Install Script',
+]);
+
+/**
+ * Determine the `RowFamily` for a `DisplayEntry`.
+ *
+ * This encapsulates the dispatch logic currently spread across
+ * `ConversationListContainer.ItemContent` and `DisplayConversationEntry`
+ * into a single, testable function.
+ */
+export function classifyRowFamily(entry: DisplayEntry): RowFamily {
+  // Aggregated group types
+  if (entry.type === 'AGGREGATED_GROUP') return 'aggregated_tool';
+  if (entry.type === 'AGGREGATED_DIFF_GROUP') return 'aggregated_diff';
+  if (entry.type === 'AGGREGATED_THINKING_GROUP') return 'aggregated_thinking';
+
+  // Non-normalized entries (STDOUT/STDERR/DIFF) — treat as tool summary
+  if (entry.type !== 'NORMALIZED_ENTRY') return 'tool_summary';
+
+  const entryType = entry.content.entry_type;
+
+  switch (entryType.type) {
+    case 'user_message':
+      return 'user_message';
+    case 'assistant_message':
+      return 'assistant_message';
+    case 'system_message':
+      return 'system_message';
+    case 'thinking':
+      return 'thinking';
+    case 'error_message':
+      return 'error_message';
+    case 'loading':
+      return 'loading';
+    case 'next_action':
+      return 'next_action';
+    case 'token_usage_info':
+      return 'token_usage_info';
+    case 'user_feedback':
+      return 'user_feedback';
+    case 'user_answered_questions':
+      return 'user_answered_questions';
+    case 'tool_use': {
+      // Check pending_approval first — generic approval card overrides
+      // specific tool renderers (except file_edit and plan_presentation
+      // which have their own approval handling).
+      const { action_type, status, tool_name } = entryType;
+
+      if (action_type.action === 'file_edit') return 'file_edit';
+      if (action_type.action === 'plan_presentation') return 'plan';
+      if (action_type.action === 'todo_management') return 'todo';
+      if (action_type.action === 'task_create') return 'subagent';
+
+      // Script entries
+      if (
+        action_type.action === 'command_run' &&
+        SCRIPT_TOOL_NAMES.has(tool_name)
+      ) {
+        return 'script';
+      }
+
+      // Generic approval (non-file_edit, non-plan)
+      if (status.status === 'pending_approval') return 'approval';
+
+      return 'tool_summary';
+    }
+    default:
+      return 'tool_summary';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Size Estimation
+// ---------------------------------------------------------------------------
+
+/** Default estimated sizes in pixels for each hint bucket. */
+export const SIZE_ESTIMATE_PX: Record<SizeEstimationHint, number> = {
+  compact: 40,
+  medium: 80,
+  tall: 200,
+  dynamic: 120,
+  hidden: 0,
+};
+
+/**
+ * Map a `RowFamily` to a `SizeEstimationHint`.
+ *
+ * This is deliberately coarse — real sizes vary based on content length,
+ * expansion state, etc. The hint just gives the virtualizer a reasonable
+ * starting point to reduce initial layout jank.
+ */
+export function estimationHintForFamily(family: RowFamily): SizeEstimationHint {
+  switch (family) {
+    // Compact: single-line or minimal-height rows
+    case 'tool_summary':
+    case 'loading':
+    case 'token_usage_info':
+    case 'todo':
+      return 'compact';
+
+    // Medium: multi-line but bounded rows
+    case 'user_message':
+    case 'system_message':
+    case 'error_message':
+    case 'user_feedback':
+    case 'user_answered_questions':
+    case 'script':
+      return 'medium';
+
+    // Tall: potentially large content
+    case 'assistant_message':
+    case 'plan':
+    case 'subagent':
+    case 'approval':
+    case 'aggregated_tool':
+    case 'aggregated_diff':
+    case 'aggregated_thinking':
+      return 'tall';
+
+    // Dynamic: height changes significantly based on state
+    case 'file_edit':
+    case 'thinking':
+      return 'dynamic';
+
+    // Hidden: filtered before reaching the list
+    case 'next_action':
+      return 'hidden';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Semantic Key Generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Produce a stable semantic key for a `DisplayEntry`.
+ *
+ * This replaces the ad-hoc `'conv-' + data.patchKey` pattern with
+ * explicitly namespaced keys that encode the row's origin:
+ *
+ * - Aggregated groups: `conv-agg:{firstEntryKey}`,
+ *   `conv-agg-diff:{firstEntryKey}`, `conv-agg-thinking:{firstEntryKey}`
+ * - Regular entries: `conv-{patchKey}`
+ *
+ * The `conv-` prefix is preserved for backward compatibility with
+ * persisted expansion state keys in `useUiPreferencesStore`.
+ */
+export function semanticKeyForEntry(entry: DisplayEntry): string {
+  // The patchKey already contains the aggregation prefix
+  // (e.g., `agg:`, `agg-diff:`, `agg-thinking:`) for aggregated groups.
+  // We just need to add the `conv-` prefix.
+  return `conv-${entry.patchKey}`;
+}
+
+// ---------------------------------------------------------------------------
+// Row Builder
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a `DisplayEntry` into a `ConversationRow`.
+ *
+ * This is the primary entry point for consumers that want to build the
+ * row model from an existing `DisplayEntry[]` pipeline.
+ */
+export function buildConversationRow(entry: DisplayEntry): ConversationRow {
+  const rowFamily = classifyRowFamily(entry);
+  const hint = estimationHintForFamily(rowFamily);
+
+  return {
+    semanticKey: semanticKeyForEntry(entry),
+    rowFamily,
+    processId: entry.executionProcessId || null,
+    estimationHint: hint,
+    isUserMessage: rowFamily === 'user_message',
+    entry,
+  };
+}
+
+/**
+ * Convert a `DisplayEntry[]` into `ConversationRow[]`.
+ *
+ * Preserves order. Can be used as a drop-in transformation step in the
+ * data pipeline between `aggregateConsecutiveEntries` and the virtualizer.
+ */
+export function buildConversationRows(
+  entries: DisplayEntry[]
+): ConversationRow[] {
+  return entries.map(buildConversationRow);
+}
+
+// ---------------------------------------------------------------------------
+// Row Queries
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the index of the previous user-message row before `beforeIndex`.
+ *
+ * Used by `scrollToPreviousUserMessage` to locate the scroll target
+ * without re-scanning entry internals.
+ *
+ * @returns The index of the previous user message, or -1 if none found.
+ */
+export function findPreviousUserMessageIndex(
+  rows: ConversationRow[],
+  beforeIndex: number
+): number {
+  for (let i = beforeIndex - 1; i >= 0; i--) {
+    if (rows[i].isUserMessage) return i;
+  }
+  return -1;
+}
+
+/**
+ * Collect indices of all user-message rows.
+ *
+ * Useful for building a jump-list or breadcrumb navigation between
+ * conversation turns.
+ */
+export function getUserMessageIndices(rows: ConversationRow[]): number[] {
+  const indices: number[] = [];
+  for (let i = 0; i < rows.length; i++) {
+    if (rows[i].isUserMessage) indices.push(i);
+  }
+  return indices;
+}
+
+// ---------------------------------------------------------------------------
+// Key Contract Audit Notes
+// ---------------------------------------------------------------------------
+
+/**
+ * KEY CONTRACT AUDIT
+ *
+ * Traced all key production paths. Findings:
+ *
+ * ## Stable keys
+ * - Backend entries: `{processId}:{index}` — stable as long as the entry
+ *   array for a process doesn't get reordered (it doesn't; entries are
+ *   append-only within a process).
+ * - Synthetic user messages: `{processId}:user` — unique per process.
+ * - Synthetic loading: `{processId}:loading` — unique per process.
+ * - Script entries: `{processId}:script` — unique per process. The
+ *   `:script` suffix was specifically added to prevent Virtuoso height
+ *   reuse during streaming->completed transition.
+ * - Next action: `next_action` — singleton.
+ * - Aggregated groups: `agg:{firstEntryKey}` — stable because the first
+ *   entry's key is stable and aggregation only groups *consecutive*
+ *   entries (the first entry of a group is always the same entry).
+ *
+ * ## Potential instabilities
+ * 1. **Index-based keys during streaming**: While a process is streaming,
+ *    entries are re-indexed on every `onEntries` callback (entries.map
+ *    with index). If entries are *replaced* (not appended), keys could
+ *    shift. In practice, the stream appears to be append-only, so this
+ *    is low risk but worth monitoring.
+ *
+ * 2. **Process reload on status transition**: When a process transitions
+ *    from running to completed, entries are reloaded from the historic
+ *    endpoint. The reloaded entries get fresh index-based keys. This
+ *    is intentional — the full entry set replaces the streaming set —
+ *    but means all keys for that process change in one batch. The
+ *    virtualizer must handle this as a bulk replacement, not an update.
+ *
+ * 3. **Setup-script user message deduplication**: The initial user
+ *    message can appear from either the script branch or the coding
+ *    agent branch. Both use the key `{processId}:user` but with
+ *    different processIds, so there's no collision. The suppression
+ *    logic (`isInitialWithSetup`) ensures only one is emitted.
+ *
+ * 4. **Aggregation boundary shifts**: When a new entry arrives that
+ *    matches the aggregation type of the previous entry, a single
+ *    entry becomes a group. The group's key is `agg:{singleEntryKey}`,
+ *    which is different from the original entry's key. This means the
+ *    virtualizer sees the old key removed and a new key added. This
+ *    is correct behavior but the virtualizer must not try to animate
+ *    between the old and new states.
+ */
