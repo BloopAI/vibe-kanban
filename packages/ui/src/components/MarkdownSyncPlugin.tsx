@@ -7,12 +7,21 @@ import {
 } from '@lexical/markdown';
 import { $getRoot, type EditorState } from 'lexical';
 
+// Lexical escapes markdown-special characters (*, _, ~, etc.) when they
+// appear as literal text.  In plain-text editing mode the user *intends*
+// those characters so we strip the backslash escapes.
+const MARKDOWN_ESCAPE_RE = /\\([\\`*_{}[\]()#+\-.!~>|])/g;
+
 type MarkdownSyncPluginProps = {
   value: string;
   onChange?: (markdown: string) => void;
   onEditorStateChange?: (state: EditorState) => void;
   editable: boolean;
   transformers: Transformer[];
+  /** When true, strip backslash-escapes from the exported markdown so that
+   *  literal markdown syntax typed by the user (e.g. **bold**) is preserved
+   *  rather than being escaped to \*\*bold\*\*. */
+  preserveMarkdownSyntax?: boolean;
 };
 
 /**
@@ -26,9 +35,17 @@ export function MarkdownSyncPlugin({
   onEditorStateChange,
   editable,
   transformers,
+  preserveMarkdownSyntax = false,
 }: MarkdownSyncPluginProps) {
   const [editor] = useLexicalComposerContext();
   const lastSerializedRef = useRef<string | undefined>(undefined);
+  const prevTransformersRef = useRef(transformers);
+
+  // Detect transformer changes (e.g., toggling preview mode) and force re-parse
+  if (transformers !== prevTransformersRef.current) {
+    prevTransformersRef.current = transformers;
+    lastSerializedRef.current = undefined;
+  }
 
   // Handle editable state
   useEffect(() => {
@@ -70,15 +87,25 @@ export function MarkdownSyncPlugin({
       onEditorStateChange?.(editorState);
       if (!onChange) return;
 
-      const markdown = editorState.read(() =>
+      let markdown = editorState.read(() =>
         $convertToMarkdownString(transformers)
       );
+      if (preserveMarkdownSyntax) {
+        markdown = markdown.replace(MARKDOWN_ESCAPE_RE, '$1');
+      }
+
       if (markdown === lastSerializedRef.current) return;
 
       lastSerializedRef.current = markdown;
       onChange(markdown);
     });
-  }, [editor, onChange, onEditorStateChange, transformers]);
+  }, [
+    editor,
+    onChange,
+    onEditorStateChange,
+    transformers,
+    preserveMarkdownSyntax,
+  ]);
 
   return null;
 }

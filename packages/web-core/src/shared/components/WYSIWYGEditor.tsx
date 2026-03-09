@@ -15,8 +15,14 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
-import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
-import { TRANSFORMERS, CODE, type Transformer } from '@lexical/markdown';
+import {
+  TRANSFORMERS,
+  TEXT_FORMAT_TRANSFORMERS,
+  CODE,
+  type Transformer,
+} from '@lexical/markdown';
+import { MarkdownInsertPlugin } from '@vibe/ui/components/MarkdownInsertPlugin';
+import { MarkdownListContinuePlugin } from '@vibe/ui/components/MarkdownListContinuePlugin';
 import {
   PrCommentNode,
   PR_COMMENT_TRANSFORMER,
@@ -49,7 +55,6 @@ import { ReadOnlyLinkPlugin } from '@vibe/ui/components/ReadOnlyLinkPlugin';
 import { ClickableCodePlugin } from '@vibe/ui/components/ClickableCodePlugin';
 import { ToolbarPlugin } from '@vibe/ui/components/ToolbarPlugin';
 import { StaticToolbarPlugin } from '@vibe/ui/components/StaticToolbarPlugin';
-import { CodeBlockShortcutPlugin } from '@vibe/ui/components/CodeBlockShortcutPlugin';
 import { PasteMarkdownPlugin } from '@vibe/ui/components/PasteMarkdownPlugin';
 import { MarkdownSyncPlugin } from '@vibe/ui/components/MarkdownSyncPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
@@ -124,6 +129,8 @@ type WysiwygProps = {
   findMatchingDiffPath?: (text: string) => string | null;
   /** Callback when clickable inline code is clicked (only in read-only mode) */
   onCodeClick?: (fullPath: string) => void;
+  /** Hide the copy/edit/delete action buttons in read-only mode */
+  hideActions?: boolean;
   /** Show a static toolbar below the editor content */
   showStaticToolbar?: boolean;
   /** Save status indicator for static toolbar */
@@ -262,6 +269,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       autoFocus = false,
       findMatchingDiffPath,
       onCodeClick,
+      hideActions = false,
       showStaticToolbar = false,
       saveStatus,
       staticToolbarActions,
@@ -426,8 +434,23 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       [ImageNode]
     );
 
-    // Extended transformers with image, PR comment, and code block support (memoized to prevent unnecessary re-renders)
-    const extendedTransformers: Transformer[] = useMemo(
+    // Edit mode: custom elements + text format transformers (so asterisks
+    // aren't escaped during $convertToMarkdownString and preview can parse them).
+    // CODE is excluded so triple-backtick fences stay as raw text.
+    const editTransformers: Transformer[] = useMemo(
+      () => [
+        IMAGE_TRANSFORMER,
+        PR_COMMENT_EXPORT_TRANSFORMER,
+        PR_COMMENT_TRANSFORMER,
+        COMPONENT_INFO_EXPORT_TRANSFORMER,
+        COMPONENT_INFO_TRANSFORMER,
+        ...TEXT_FORMAT_TRANSFORMERS,
+      ],
+      [IMAGE_TRANSFORMER]
+    );
+
+    // Display mode: full markdown rendering
+    const displayTransformers: Transformer[] = useMemo(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
@@ -440,6 +463,11 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       ],
       [IMAGE_TRANSFORMER]
     );
+
+    // Use display transformers for read-only, edit transformers for editing
+    const activeTransformers = disabled
+      ? displayTransformers
+      : editTransformers;
 
     // Memoized handlers for ContentEditable to prevent re-renders
     const handlePaste = useCallback(
@@ -496,9 +524,10 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 onChange={onChange}
                 onEditorStateChange={onEditorStateChange}
                 editable={!disabled}
-                transformers={extendedTransformers}
+                transformers={activeTransformers}
+                preserveMarkdownSyntax={!disabled}
               />
-              {!disabled && <ToolbarPlugin />}
+              {!disabled && !showStaticToolbar && <ToolbarPlugin />}
               <div className="relative">
                 <RichTextPlugin
                   contentEditable={
@@ -530,8 +559,9 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                 <>
                   {autoFocus && <AutoFocusPlugin />}
                   <HistoryPlugin />
-                  <MarkdownShortcutPlugin transformers={extendedTransformers} />
-                  <PasteMarkdownPlugin transformers={extendedTransformers} />
+                  <MarkdownInsertPlugin />
+                  <MarkdownListContinuePlugin />
+                  <PasteMarkdownPlugin transformers={activeTransformers} />
                   <TypeaheadOpenProvider>
                     <FileTagTypeaheadPlugin
                       repoIds={repoIds}
@@ -556,7 +586,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                       onCmdEnter={onCmdEnter}
                       onShiftCmdEnter={onShiftCmdEnter}
                       onChange={onChange}
-                      transformers={extendedTransformers}
+                      transformers={activeTransformers}
                       sendShortcut={sendShortcut}
                     />
                   </TypeaheadOpenProvider>
@@ -564,7 +594,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   <ComponentInfoKeyboardPlugin
                     isTargetNode={$isComponentInfoNode}
                   />
-                  <CodeBlockShortcutPlugin />
                 </>
               )}
               {/* Link sanitization for read-only mode */}
@@ -583,7 +612,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     );
 
     // Wrap with action buttons in read-only mode
-    if (disabled) {
+    if (disabled && !hideActions) {
       return (
         <div className="relative group">
           <div className="sticky top-0 right-2 z-10 pointer-events-none h-0">
