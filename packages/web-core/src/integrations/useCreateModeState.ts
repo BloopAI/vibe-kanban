@@ -266,6 +266,7 @@ export function useCreateModeState({
   const [state, dispatch] = useReducer(draftReducer, draftInitialState);
 
   // Capture initial seed state once on mount.
+  console.log('[useCreateModeState] mount/render — initialState:', initialState ? JSON.stringify({ hasPrompt: !!initialState.initialPrompt, hasLinkedIssue: !!initialState.linkedIssue, repoCount: initialState.preferredRepos?.length ?? 0 }) : 'null');
   const seedStateRef = useRef<CreateModeInitialState | null>(
     initialState ?? null
   );
@@ -287,12 +288,14 @@ export function useCreateModeState({
   // Single initialization effect
   // ============================================================================
   useEffect(() => {
+    console.log('[useCreateModeState] init effect — hasInitialized:', hasInitialized.current, 'scratchLoading:', scratchLoading, 'hasProfiles:', !!profiles, 'scratchId:', scratchId);
     if (hasInitialized.current) return;
     if (scratchLoading) return;
     if (!profiles) return;
 
     hasInitialized.current = true;
     const seedState = seedStateRef.current;
+    console.log('[useCreateModeState] → calling initializeState with seedState:', !!seedState, 'scratch:', !!scratch);
 
     // Determine initialization source and execute
     initializeState({
@@ -695,12 +698,22 @@ async function initializeState({
     const hasPreferredRepos = (seedState?.preferredRepos?.length ?? 0) > 0;
     const hasExecutorConfig = !!seedState?.executorConfig;
 
+    console.log('[initializeState] === START ===');
+    console.log('[initializeState] seedState:', seedState ? JSON.stringify({ initialPrompt: seedState.initialPrompt?.slice(0, 30), linkedIssue: seedState.linkedIssue, preferredRepos: seedState.preferredRepos?.length, executorConfig: seedState.executorConfig }) : 'null');
+    console.log('[initializeState] scratch present:', !!scratch, 'type:', scratch?.payload?.type);
+    if (scratch?.payload?.type === 'DRAFT_WORKSPACE') {
+      const sd = scratch.payload.data;
+      console.log('[initializeState] SCRATCH DATA:', JSON.stringify({ message: sd.message?.slice(0, 30), repoCount: sd.repos?.length, linkedIssue: sd.linked_issue, executorConfig: !!sd.executor_config, imageCount: sd.images?.length }));
+    }
+    console.log('[initializeState] P1 flags:', { hasInitialPrompt, hasLinkedIssue, hasPreferredRepos, hasExecutorConfig });
+
     if (
       hasInitialPrompt ||
       hasLinkedIssue ||
       hasPreferredRepos ||
       hasExecutorConfig
     ) {
+      console.log('[initializeState] → entering Priority 1');
       const data: Partial<DraftState> = {};
       let appliedSeedState = false;
 
@@ -737,18 +750,22 @@ async function initializeState({
       }
 
       if (appliedSeedState) {
+        console.log('[initializeState] → P1 APPLIED:', JSON.stringify({ hasMessage: !!data.message, hasLinkedIssue: !!data.linkedIssue, repoCount: data.repos?.length, hasExecutorConfig: !!data.executorConfig }));
         dispatch({ type: 'INIT_COMPLETE', data });
         return;
       }
+      console.log('[initializeState] → P1 had flags but nothing applied, falling through');
     }
 
     // Priority 2: Restore from scratch
+    console.log('[initializeState] → entering Priority 2 (scratch)');
     const scratchData: DraftWorkspaceData | undefined =
       scratch?.payload?.type === 'DRAFT_WORKSPACE'
         ? scratch.payload.data
         : undefined;
 
     if (scratchData) {
+      console.log('[initializeState] → P2 has scratch data, restoring...');
       const restoredData: Partial<DraftState> = {};
 
       // Restore message
@@ -793,11 +810,13 @@ async function initializeState({
         }
       }
 
+      console.log('[initializeState] → P2 APPLIED:', JSON.stringify({ hasMessage: !!restoredData.message, hasLinkedIssue: !!restoredData.linkedIssue, linkedIssue: restoredData.linkedIssue, repoCount: restoredData.repos?.length, hasExecutorConfig: !!restoredData.executorConfig }));
       dispatch({ type: 'INIT_COMPLETE', data: restoredData });
       return;
     }
 
     // Priority 3: Fresh start
+    console.log('[initializeState] → P3 fresh start (no seed, no scratch)');
     dispatch({
       type: 'INIT_COMPLETE',
       data: {},
