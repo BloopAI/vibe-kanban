@@ -29,7 +29,9 @@
                 "issue_comment_added",
                 "issue_status_changed",
                 "issue_assignee_changed",
-                "issue_deleted"
+                "issue_deleted",
+                "issue_title_changed",
+                "issue_description_changed"
               ]
             }
           }

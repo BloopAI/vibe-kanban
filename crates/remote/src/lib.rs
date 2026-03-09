@@ -12,6 +12,7 @@ mod middleware;
 pub mod mutation_definition;
 pub mod r2;
 pub mod routes;
+pub mod services;
 pub mod shape_definition;
 pub mod shape_route;
 pub mod shape_routes;

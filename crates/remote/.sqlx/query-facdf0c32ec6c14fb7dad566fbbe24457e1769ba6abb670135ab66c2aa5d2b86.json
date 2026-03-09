@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE notifications SET seen = TRUE WHERE user_id = $1 AND organization_id = $2 AND seen = FALSE",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "facdf0c32ec6c14fb7dad566fbbe24457e1769ba6abb670135ab66c2aa5d2b86"
+}

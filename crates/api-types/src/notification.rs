@@ -8,12 +8,15 @@ use uuid::Uuid;
 use crate::some_if_present;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[serde(rename_all = "snake_case")]
 #[sqlx(type_name = "notification_type", rename_all = "snake_case")]
 pub enum NotificationType {
     IssueCommentAdded,
     IssueStatusChanged,
     IssueAssigneeChanged,
     IssueDeleted,
+    IssueTitleChanged,
+    IssueDescriptionChanged,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

@@ -8,7 +8,7 @@ export type Project = { id: string, organization_id: string, name: string, color
 
 export type Notification = { id: string, organization_id: string, user_id: string, notification_type: NotificationType, payload: JsonValue, issue_id: string | null, comment_id: string | null, seen: boolean, dismissed_at: string | null, created_at: string, };
 
-export type NotificationType = "IssueCommentAdded" | "IssueStatusChanged" | "IssueAssigneeChanged" | "IssueDeleted";
+export type NotificationType = "issue_comment_added" | "issue_status_changed" | "issue_assignee_changed" | "issue_deleted" | "issue_title_changed" | "issue_description_changed";
 
 export type Workspace = { id: string, project_id: string, owner_user_id: string, issue_id: string | null, local_workspace_id: string | null, name: string | null, archived: boolean, files_changed: number | null, lines_added: number | null, lines_removed: number | null, created_at: string, updated_at: string, };
 

@@ -33,6 +33,11 @@ pub struct MarkAllSeenResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct MarkAllSeenRequest {
+    pub organization_id: Uuid,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ListNotificationsQuery {
     #[serde(default)]
     pub include_dismissed: bool,
@@ -187,19 +192,21 @@ async fn delete_notification(
 
 #[instrument(
     name = "notifications.mark_all_seen",
-    skip(state, ctx),
+    skip(state, ctx, payload),
     fields(user_id = %ctx.user.id)
 )]
 async fn mark_all_seen(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<MarkAllSeenRequest>,
 ) -> Result<Json<MarkAllSeenResponse>, ErrorResponse> {
-    let updated = NotificationRepository::mark_all_seen(state.pool(), ctx.user.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to mark all notifications as seen");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+    let updated =
+        NotificationRepository::mark_all_seen(state.pool(), ctx.user.id, payload.organization_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, "failed to mark all notifications as seen");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
 
     Ok(Json(MarkAllSeenResponse { updated }))
 }

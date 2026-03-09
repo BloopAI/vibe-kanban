@@ -216,13 +216,18 @@ impl NotificationRepository {
         Ok(record)
     }
 
-    pub async fn mark_all_seen<'e, E>(executor: E, user_id: Uuid) -> Result<u64, NotificationError>
+    pub async fn mark_all_seen<'e, E>(
+        executor: E,
+        user_id: Uuid,
+        organization_id: Uuid,
+    ) -> Result<u64, NotificationError>
     where
         E: Executor<'e, Database = Postgres>,
     {
         let result = sqlx::query!(
-            "UPDATE notifications SET seen = TRUE WHERE user_id = $1 AND seen = FALSE",
-            user_id
+            "UPDATE notifications SET seen = TRUE WHERE user_id = $1 AND organization_id = $2 AND seen = FALSE",
+            user_id,
+            organization_id
         )
         .execute(executor)
         .await?;
