@@ -129,7 +129,9 @@ async function resolveLinkedIssue(
     console.log('[resolveLinkedIssue] found via Electric shape');
     return { issueId: remoteWs.issue_id, remoteProjectId: remoteWs.project_id };
   }
-  console.log('[resolveLinkedIssue] not found in Electric, trying REST fallback...');
+  console.log(
+    '[resolveLinkedIssue] not found in Electric, trying REST fallback...'
+  );
   const fetched = await fetchRemoteWorkspaceByLocalId(workspaceId);
   console.log('[resolveLinkedIssue] REST fallback result:', fetched);
   if (fetched?.issue_id) {
