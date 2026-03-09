@@ -23,7 +23,10 @@ import {
   useState,
   type RefObject,
 } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import {
+  useVirtualizer,
+  measureElement as defaultMeasureElement,
+} from '@tanstack/react-virtual';
 import type { Virtualizer, VirtualItem } from '@tanstack/react-virtual';
 
 import {
@@ -76,6 +79,14 @@ export interface ConversationVirtualizerResult {
 
   /** Total pixel size of all items (for the scroll spacer). */
   totalSize: number;
+
+  /**
+   * Ref callback for row DOM elements. Attach to each rendered row's
+   * container element alongside `data-index={virtualItem.index}`.
+   * TanStack Virtual uses this to measure real DOM heights and attach
+   * a ResizeObserver for automatic re-measurement on size changes.
+   */
+  measureElement: (node: Element | null) => void;
 
   /** Scroll to the absolute bottom of the list. */
   scrollToBottom: (behavior?: ScrollToOptionsBehavior) => void;
@@ -151,6 +162,8 @@ export function useConversationVirtualizer({
       return row ? row.semanticKey : index;
     },
     overscan: OVERSCAN,
+    measureElement: defaultMeasureElement,
+    useAnimationFrameWithResizeObserver: true,
   });
 
   // -------------------------------------------------------------------------
@@ -179,6 +192,35 @@ export function useConversationVirtualizer({
       virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
     };
   }, [virtualizer]);
+
+  // -------------------------------------------------------------------------
+  // Container resize invalidation
+  //
+  // Width change → text wrapping changes → all row heights stale.
+  // virtualizer.measure() invalidates cached sizes so rows re-measure.
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let lastWidth = el.clientWidth;
+
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const newWidth = Math.round(
+          entry.contentBoxSize?.[0]?.inlineSize ?? el.clientWidth
+        );
+        if (newWidth !== lastWidth) {
+          lastWidth = newWidth;
+          virtualizer.measure();
+        }
+      }
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollContainerRef, virtualizer]);
 
   // -------------------------------------------------------------------------
   // Reactive isAtBottom state
@@ -299,6 +341,7 @@ export function useConversationVirtualizer({
     virtualizer,
     virtualItems,
     totalSize,
+    measureElement: virtualizer.measureElement,
     scrollToBottom,
     scrollToIndex,
     scrollToPreviousUserMessage,
