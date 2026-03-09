@@ -1,13 +1,4 @@
 import {
-  DataWithScrollModifier,
-  type ListScrollLocation,
-  ScrollModifier,
-  VirtuosoMessageList,
-  VirtuosoMessageListLicense,
-  VirtuosoMessageListMethods,
-  VirtuosoMessageListProps,
-} from '@virtuoso.dev/message-list';
-import {
   forwardRef,
   useCallback,
   useEffect,
@@ -23,11 +14,6 @@ import { useConversationVirtualizer } from '../model/useConversationVirtualizer'
 import { useScrollCommandExecutor } from '../model/useScrollCommandExecutor';
 
 import { cn } from '@/shared/lib/utils';
-import {
-  INITIAL_TOP_ITEM,
-  InitialDataScrollModifier,
-  ScrollToBottomModifier,
-} from '@/shared/lib/virtuoso-modifiers';
 import DisplayConversationEntry from './DisplayConversationEntry';
 import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
 import { useEntries } from '../model/contexts/EntriesContext';
@@ -63,98 +49,77 @@ export interface ConversationListHandle {
   scrollToBottom: () => void;
 }
 
-interface MessageListContext {
-  attempt: WorkspaceWithSession;
-  onConfigureSetup: (() => void) | undefined;
-  onConfigureCleanup: (() => void) | undefined;
-  showSetupPlaceholder: boolean;
-  showCleanupPlaceholder: boolean;
-  resetAction: UseResetProcessResult;
-}
-
-const AutoScrollToBottom: ScrollModifier = {
-  type: 'auto-scroll-to-bottom',
-  autoScroll: 'smooth',
-};
-
-const ScrollToTopOfLastItem: ScrollModifier = {
-  type: 'item-location',
-  location: {
-    index: 'LAST',
-    align: 'start',
-  },
-};
-
-const ItemContent: VirtuosoMessageListProps<
-  DisplayEntry,
-  MessageListContext
->['ItemContent'] = ({ data, context }) => {
-  const attempt = context?.attempt;
-  const resetAction = context?.resetAction;
-
-  // Handle aggregated tool groups (file_read, search, web_fetch)
-  if (isAggregatedGroup(data)) {
+/**
+ * Render a single conversation row's content based on its DisplayEntry type.
+ * Replaces the Virtuoso `ItemContent` callback with a plain function that
+ * dispatches to DisplayConversationEntrySpaced (the default export).
+ */
+function renderRowContent(
+  entry: DisplayEntry,
+  attempt: WorkspaceWithSession,
+  resetAction: UseResetProcessResult
+): React.ReactNode {
+  if (isAggregatedGroup(entry)) {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
-        aggregatedGroup={data}
+        expansionKey={entry.patchKey}
+        aggregatedGroup={entry}
         aggregatedDiffGroup={null}
         aggregatedThinkingGroup={null}
         entry={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
   }
 
-  // Handle aggregated diff groups (file_edit by same path)
-  if (isAggregatedDiffGroup(data)) {
+  if (isAggregatedDiffGroup(entry)) {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
+        expansionKey={entry.patchKey}
         aggregatedGroup={null}
-        aggregatedDiffGroup={data}
+        aggregatedDiffGroup={entry}
         aggregatedThinkingGroup={null}
         entry={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
   }
 
-  // Handle aggregated thinking groups (thinking entries in previous turns)
-  if (isAggregatedThinkingGroup(data)) {
+  if (isAggregatedThinkingGroup(entry)) {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
+        expansionKey={entry.patchKey}
         aggregatedGroup={null}
         aggregatedDiffGroup={null}
-        aggregatedThinkingGroup={data}
+        aggregatedThinkingGroup={entry}
         entry={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
       />
     );
   }
 
-  if (data.type === 'STDOUT') {
-    return <p>{data.content}</p>;
+  if (entry.type === 'STDOUT') {
+    return <p>{entry.content}</p>;
   }
-  if (data.type === 'STDERR') {
-    return <p>{data.content}</p>;
+  if (entry.type === 'STDERR') {
+    return <p>{entry.content}</p>;
   }
-  if (data.type === 'NORMALIZED_ENTRY' && attempt) {
+
+  if (entry.type === 'NORMALIZED_ENTRY') {
     return (
       <DisplayConversationEntry
-        expansionKey={data.patchKey}
-        entry={data.content}
+        expansionKey={entry.patchKey}
+        entry={entry.content}
         aggregatedGroup={null}
         aggregatedDiffGroup={null}
         aggregatedThinkingGroup={null}
-        executionProcessId={data.executionProcessId}
+        executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
       />
@@ -162,25 +127,14 @@ const ItemContent: VirtuosoMessageListProps<
   }
 
   return null;
-};
-
-const computeItemKey: VirtuosoMessageListProps<
-  DisplayEntry,
-  MessageListContext
->['computeItemKey'] = ({ data }) => `conv-${data.patchKey}`;
-
-const itemIdentity: VirtuosoMessageListProps<
-  DisplayEntry,
-  MessageListContext
->['itemIdentity'] = (item) => item.patchKey;
+}
 
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
 >(function ConversationList({ attempt, onAtBottomChange }, ref) {
   const resetAction = useResetProcess();
-  const [channelData, setChannelData] =
-    useState<DataWithScrollModifier<DisplayEntry> | null>(null);
+  const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
   const pendingUpdateRef = useRef<{
@@ -189,17 +143,6 @@ export const ConversationList = forwardRef<
     loading: boolean;
   } | null>(null);
   const debounceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const lastAtBottomRef = useRef(true);
-  const handleScroll = useCallback(
-    (location: ListScrollLocation) => {
-      if (location.isAtBottom !== lastAtBottomRef.current) {
-        lastAtBottomRef.current = location.isAtBottom;
-        onAtBottomChange?.(location.isAtBottom);
-      }
-    },
-    [onAtBottomChange]
-  );
 
   // Get repos from workspace context to check if scripts are configured
   let repos: RepoWithTargetBranch[] = [];
@@ -248,7 +191,7 @@ export const ConversationList = forwardRef<
 
   useEffect(() => {
     setLoading(true);
-    setChannelData(null);
+    setFilteredEntries([]);
     reset();
   }, [attempt.id, reset]);
 
@@ -259,6 +202,24 @@ export const ConversationList = forwardRef<
       }
     };
   }, []);
+
+  // ---- TanStack Virtual plumbing ----
+  const tanstackScrollRef = useRef<HTMLDivElement | null>(null);
+  const conversationRows = useMemo(
+    () => buildConversationRows(filteredEntries),
+    [filteredEntries]
+  );
+  const conversationVirtualizer = useConversationVirtualizer({
+    rows: conversationRows,
+    scrollContainerRef: tanstackScrollRef,
+    onAtBottomChange,
+  });
+
+  const scrollExecutor = useScrollCommandExecutor({
+    virtualizer: conversationVirtualizer.virtualizer,
+    itemCount: conversationRows.length,
+    isAtBottom: conversationVirtualizer.isAtBottom,
+  });
 
   const onEntriesUpdated = (
     newEntries: PatchTypeWithKey[],
@@ -279,25 +240,11 @@ export const ConversationList = forwardRef<
       const pending = pendingUpdateRef.current;
       if (!pending) return;
 
-      let scrollModifier: ScrollModifier;
-
-      if (loading) {
-        // First data load: purge estimated sizes and jump to bottom
-        scrollModifier = InitialDataScrollModifier;
-      } else if (pending.addType === 'plan') {
-        scrollModifier = ScrollToTopOfLastItem;
-      } else if (pending.addType === 'running') {
-        scrollModifier = AutoScrollToBottom;
-      } else {
-        // Historic/subsequent updates: scroll to bottom but keep measured sizes
-        scrollModifier = ScrollToBottomModifier;
-      }
-
       const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
-      // Filter out entries that render as null in the new design –
-      // leaving them in creates empty Virtuoso items that add spacing.
-      const filteredEntries = aggregatedEntries.filter((entry) => {
+      // Filter out entries that render as null –
+      // leaving them in creates empty items that add spacing.
+      const newFilteredEntries = aggregatedEntries.filter((entry) => {
         if (
           'type' in entry &&
           entry.type === 'NORMALIZED_ENTRY' &&
@@ -310,7 +257,7 @@ export const ConversationList = forwardRef<
         return true;
       });
 
-      setChannelData({ data: filteredEntries, scrollModifier });
+      setFilteredEntries(newFilteredEntries);
       setEntries(pending.entries);
 
       scrollExecutor.onEntriesChanged(pending.addType, loading);
@@ -329,26 +276,7 @@ export const ConversationList = forwardRef<
   } = useConversationHistory({ attempt, onEntriesUpdated });
 
   // Determine if there are entries to show placeholders
-  const entries = channelData?.data ?? [];
-  const hasEntries = entries.length > 0;
-
-  // ---- TanStack Virtual plumbing (alongside Virtuoso until Task 12 swap) ----
-  const tanstackScrollRef = useRef<HTMLDivElement | null>(null);
-  const conversationRows = useMemo(
-    () => buildConversationRows(entries),
-    [entries]
-  );
-  const conversationVirtualizer = useConversationVirtualizer({
-    rows: conversationRows,
-    scrollContainerRef: tanstackScrollRef,
-    onAtBottomChange,
-  });
-
-  const scrollExecutor = useScrollCommandExecutor({
-    virtualizer: conversationVirtualizer.virtualizer,
-    itemCount: conversationRows.length,
-    isAtBottom: conversationVirtualizer.isAtBottom,
-  });
+  const hasEntries = filteredEntries.length > 0;
 
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
@@ -360,94 +288,30 @@ export const ConversationList = forwardRef<
     hasEntries &&
     isFirstTurn;
 
-  const messageListRef = useRef<VirtuosoMessageListMethods | null>(null);
-  const messageListContext = useMemo(
-    () => ({
-      attempt,
-      onConfigureSetup: canConfigure ? handleConfigureSetup : undefined,
-      onConfigureCleanup: canConfigure ? handleConfigureCleanup : undefined,
-      showSetupPlaceholder,
-      showCleanupPlaceholder,
-      resetAction,
-    }),
-    [
-      attempt,
-      canConfigure,
-      handleConfigureSetup,
-      handleConfigureCleanup,
-      showSetupPlaceholder,
-      showCleanupPlaceholder,
-      resetAction,
-    ]
-  );
-
-  // Expose scroll functionality via ref — delegates to Virtuoso as primary,
-  // with TanStack Virtual as secondary. Task 12 removes Virtuoso paths.
+  // Expose scroll functionality via ref — delegates to TanStack Virtual
   useImperativeHandle(
     ref,
     () => ({
       scrollToPreviousUserMessage: () => {
-        // Primary: Virtuoso (active renderer)
-        const data = channelData?.data;
-        if (data && messageListRef.current) {
-          const rendered = messageListRef.current.data.getCurrentlyRendered();
-          if (rendered.length) {
-            const firstVisibleKey = rendered[0]?.patchKey;
-            const firstVisibleIndex = data.findIndex(
-              (item) => item.patchKey === firstVisibleKey
-            );
-
-            const userMessageIndices: number[] = [];
-            data.forEach((item, index) => {
-              if (
-                item.type === 'NORMALIZED_ENTRY' &&
-                item.content.entry_type.type === 'user_message'
-              ) {
-                userMessageIndices.push(index);
-              }
-            });
-
-            const targetIndex = userMessageIndices
-              .reverse()
-              .find((idx) => idx < firstVisibleIndex);
-
-            if (targetIndex !== undefined) {
-              messageListRef.current.scrollToItem({
-                index: targetIndex,
-                align: 'start',
-                behavior: 'smooth',
-              });
-              return;
-            }
-          }
-        }
-
         conversationVirtualizer.scrollToPreviousUserMessage();
       },
       scrollToBottom: () => {
-        if (messageListRef.current) {
-          messageListRef.current.scrollToItem({
-            index: 'LAST',
-            align: 'end',
-            behavior: 'smooth',
-          });
-          return;
-        }
-
         scrollExecutor.requestJumpToBottom();
       },
     }),
-    [channelData, conversationVirtualizer, scrollExecutor]
+    [conversationVirtualizer, scrollExecutor]
   );
 
   // Determine if content is ready to show (has data or finished loading)
-  const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
+  const hasContent = !loading || filteredEntries.length > 0;
+
+  const { virtualItems, totalSize, measureElement } = conversationVirtualizer;
 
   return (
     <ApprovalFormProvider>
       <div
         className={cn(
-          'virtuoso-license-wrapper relative h-full overflow-hidden transition-opacity duration-300',
+          'relative h-full overflow-hidden transition-opacity duration-300',
           hasContent ? 'opacity-100' : 'opacity-0'
         )}
       >
@@ -456,45 +320,66 @@ export const ConversationList = forwardRef<
             <SpinnerIcon className="size-6 animate-spin text-low" />
           </div>
         )}
-        <VirtuosoMessageListLicense
-          licenseKey={import.meta.env.VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY}
+        <div
+          ref={tanstackScrollRef}
+          className="h-full overflow-y-auto scrollbar-none"
         >
-          <VirtuosoMessageList<DisplayEntry, MessageListContext>
-            ref={messageListRef}
-            className="h-full scrollbar-none"
-            data={channelData}
-            initialLocation={INITIAL_TOP_ITEM}
-            context={messageListContext}
-            computeItemKey={computeItemKey}
-            itemIdentity={itemIdentity}
-            ItemContent={ItemContent}
-            onScroll={handleScroll}
-            Header={({ context }) => (
-              <div className="pt-2">
-                {context?.showSetupPlaceholder && (
-                  <div className="my-base px-double">
-                    <ChatScriptPlaceholder
-                      type="setup"
-                      onConfigure={context.onConfigureSetup}
-                    />
-                  </div>
-                )}
+          {/* Header placeholder */}
+          <div className="pt-2">
+            {showSetupPlaceholder && (
+              <div className="my-base px-double">
+                <ChatScriptPlaceholder
+                  type="setup"
+                  onConfigure={canConfigure ? handleConfigureSetup : undefined}
+                />
               </div>
             )}
-            Footer={({ context }) => (
-              <div className="pb-2">
-                {context?.showCleanupPlaceholder && (
-                  <div className="my-base px-double">
-                    <ChatScriptPlaceholder
-                      type="cleanup"
-                      onConfigure={context.onConfigureCleanup}
-                    />
-                  </div>
-                )}
+          </div>
+
+          {/* Virtualized conversation rows */}
+          <div
+            style={{
+              height: `${totalSize}px`,
+              width: '100%',
+              position: 'relative',
+            }}
+          >
+            {virtualItems.map((virtualItem) => {
+              const row = conversationRows[virtualItem.index];
+              if (!row) return null;
+              return (
+                <div
+                  key={row.semanticKey}
+                  data-index={virtualItem.index}
+                  ref={measureElement}
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  {renderRowContent(row.entry, attempt, resetAction)}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Footer placeholder */}
+          <div className="pb-2">
+            {showCleanupPlaceholder && (
+              <div className="my-base px-double">
+                <ChatScriptPlaceholder
+                  type="cleanup"
+                  onConfigure={
+                    canConfigure ? handleConfigureCleanup : undefined
+                  }
+                />
               </div>
             )}
-          />
-        </VirtuosoMessageListLicense>
+          </div>
+        </div>
       </div>
     </ApprovalFormProvider>
   );
