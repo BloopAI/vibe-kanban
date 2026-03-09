@@ -455,12 +455,12 @@ export function ProjectRightSidebarContainer() {
       return { kind: 'closed' };
     }
 
-    if (workspaceId) {
-      return { kind: 'issue-workspace', workspaceId };
-    }
-
     if (isCreateMode) {
       return { kind: 'create-issue' };
+    }
+
+    if (workspaceId) {
+      return { kind: 'issue-workspace', workspaceId };
     }
 
     if (issueId) {
