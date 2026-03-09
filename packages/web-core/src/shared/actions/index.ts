@@ -107,16 +107,35 @@ async function resolveLinkedIssue(
     project_id: string;
   }[]
 ): Promise<{ issueId: string; remoteProjectId: string } | undefined> {
+  console.log('[resolveLinkedIssue] workspaceId:', workspaceId);
+  console.log(
+    '[resolveLinkedIssue] remoteWorkspaces count:',
+    remoteWorkspaces.length
+  );
+  console.log(
+    '[resolveLinkedIssue] remoteWorkspaces:',
+    remoteWorkspaces.map((w) => ({
+      id: 'id' in w ? (w as Record<string, unknown>).id : '?',
+      local_workspace_id: w.local_workspace_id,
+      issue_id: w.issue_id,
+      project_id: w.project_id,
+    }))
+  );
   const remoteWs = remoteWorkspaces.find(
     (w) => w.local_workspace_id === workspaceId
   );
+  console.log('[resolveLinkedIssue] matched remoteWs:', remoteWs);
   if (remoteWs?.issue_id) {
+    console.log('[resolveLinkedIssue] found via Electric shape');
     return { issueId: remoteWs.issue_id, remoteProjectId: remoteWs.project_id };
   }
+  console.log('[resolveLinkedIssue] not found in Electric, trying REST fallback...');
   const fetched = await fetchRemoteWorkspaceByLocalId(workspaceId);
+  console.log('[resolveLinkedIssue] REST fallback result:', fetched);
   if (fetched?.issue_id) {
     return { issueId: fetched.issue_id, remoteProjectId: fetched.project_id };
   }
+  console.log('[resolveLinkedIssue] no linked issue found');
   return undefined;
 }
 
