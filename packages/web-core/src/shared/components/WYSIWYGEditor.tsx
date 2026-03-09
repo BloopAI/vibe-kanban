@@ -80,9 +80,7 @@ import { Button } from '@vibe/ui/components/Button';
 import {
   Check,
   Clipboard,
-  Eye,
   Pencil,
-  PencilLine,
   Trash2,
 } from 'lucide-react';
 import type { RepoItem } from '@/shared/types/selectionItems';
@@ -147,6 +145,8 @@ type WysiwygProps = {
   saveStatus?: 'idle' | 'saved';
   /** Additional actions to render in static toolbar */
   staticToolbarActions?: ReactNode;
+  /** Called when a toolbar button is clicked in preview mode to request edit */
+  onRequestEdit?: () => void;
 };
 
 /** Ref interface for WYSIWYGEditor, exposing imperative methods */
@@ -284,6 +284,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       showStaticToolbar = false,
       saveStatus,
       staticToolbarActions,
+      onRequestEdit,
     }: WysiwygProps,
     ref: React.ForwardedRef<WYSIWYGEditorRef>
   ) {
@@ -536,27 +537,6 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
 
     const editorContent = (
       <div className="wysiwyg text-base relative">
-        {/* Preview toggle — top-right corner of every editable editor */}
-        {!disabled && (
-          <div className="absolute top-0 right-0 z-20">
-            <Button
-              type="button"
-              variant="icon"
-              size="icon"
-              aria-label={isPreviewMode ? 'Edit' : 'Preview'}
-              title={isPreviewMode ? 'Edit' : 'Preview'}
-              onClick={() => setIsPreviewMode((p) => !p)}
-              className="h-6 w-6 p-1 text-muted-foreground hover:text-foreground"
-            >
-              {isPreviewMode ? (
-                <PencilLine className="w-3.5 h-3.5" />
-              ) : (
-                <Eye className="w-3.5 h-3.5" />
-              )}
-            </Button>
-          </div>
-        )}
-
         {/* Preview: render a read-only editor with full markdown rendering */}
         {!disabled && isPreviewMode && (
           <div className={cn(className)}>
@@ -616,12 +596,18 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   />
                 </div>
 
-                {!disabled && showStaticToolbar && (
+                {showStaticToolbar && (
                   <StaticToolbarPlugin
                     saveStatus={saveStatus}
                     extraActions={staticToolbarActions}
                     isPreviewMode={isPreviewMode}
-                    onTogglePreview={() => setIsPreviewMode((p) => !p)}
+                    onTogglePreview={
+                      !disabled
+                        ? () => setIsPreviewMode((p) => !p)
+                        : undefined
+                    }
+                    readOnly={disabled}
+                    onRequestEdit={onRequestEdit}
                   />
                 )}
 
