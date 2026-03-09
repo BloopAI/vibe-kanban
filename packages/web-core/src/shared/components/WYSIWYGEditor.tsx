@@ -371,7 +371,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         namespace: 'md-wysiwyg',
         onError: console.error,
         theme: {
-          paragraph: 'mb-2 last:mb-0',
+          paragraph: 'mb-1 last:mb-0',
           heading: {
             h1: 'mt-4 mb-2 text-2xl font-semibold',
             h2: 'mt-3 mb-2 text-xl font-semibold',

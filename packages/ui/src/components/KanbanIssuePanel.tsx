@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from 'react';
+import { useState, useEffect, useRef, useCallback, type ReactNode, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
 import {
@@ -188,6 +188,22 @@ export function KanbanIssuePanel({
     creatorUser?.first_name?.trim() || creatorUser?.username?.trim() || null;
   const showCreator = !isCreateMode && Boolean(creatorName);
 
+  // Description edit state: in edit mode, show preview by default; in create mode, always editable
+  const [isDescriptionEditing, setIsDescriptionEditing] = useState(isCreateMode);
+  const descriptionContainerRef = useRef<HTMLDivElement>(null);
+
+  // Reset description editing state when switching between create/edit mode or when issue changes
+  useEffect(() => {
+    setIsDescriptionEditing(isCreateMode);
+  }, [isCreateMode, issueId]);
+
+  // Click outside the description area to exit editing
+  const handleDescriptionBlur = useCallback(() => {
+    if (!isCreateMode) {
+      setIsDescriptionEditing(false);
+    }
+  }, [isCreateMode]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       const target = e.target as HTMLElement;
@@ -196,6 +212,14 @@ export function KanbanIssuePanel({
         target.tagName === 'TEXTAREA' ||
         target.isContentEditable;
       if (isEditable) {
+        // If editing description, exit edit mode first
+        if (
+          isDescriptionEditing &&
+          !isCreateMode &&
+          descriptionContainerRef.current?.contains(target)
+        ) {
+          setIsDescriptionEditing(false);
+        }
         target.blur();
         (e.currentTarget as HTMLElement).focus();
         e.stopPropagation();
@@ -324,23 +348,50 @@ export function KanbanIssuePanel({
           </div>
 
           {/* Description WYSIWYG Editor with image dropzone */}
-          <div {...dropzoneProps?.getRootProps()} className="relative mt-base">
-            <input
-              {...(dropzoneProps?.getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)}
-              data-dropzone-input
-            />
+          <div
+            ref={descriptionContainerRef}
+            {...(isDescriptionEditing ? dropzoneProps?.getRootProps() : {})}
+            className={cn(
+              'relative mt-base',
+              !isDescriptionEditing && !isCreateMode && 'cursor-text'
+            )}
+            onClick={() => {
+              if (!isDescriptionEditing && !isCreateMode && !isSubmitting) {
+                setIsDescriptionEditing(true);
+              }
+            }}
+            onBlur={(e) => {
+              // Exit edit mode when focus leaves the description container
+              if (
+                descriptionContainerRef.current &&
+                !descriptionContainerRef.current.contains(e.relatedTarget as Node)
+              ) {
+                handleDescriptionBlur();
+              }
+            }}
+          >
+            {isDescriptionEditing && (
+              <input
+                {...(dropzoneProps?.getInputProps() as React.InputHTMLAttributes<HTMLInputElement>)}
+                data-dropzone-input
+              />
+            )}
             {renderDescriptionEditor({
-              placeholder: t('kanban.issueDescriptionPlaceholder'),
+              placeholder: isDescriptionEditing ? t('kanban.issueDescriptionPlaceholder') : (formData.description ? '' : t('kanban.issueDescriptionPlaceholder')),
               value: formData.description ?? '',
               onChange: (value) => onFormChange('description', value || null),
               onCmdEnter: onCmdEnterSubmit,
-              onPasteFiles,
-              disabled: isSubmitting,
+              onPasteFiles: isDescriptionEditing ? onPasteFiles : undefined,
+              disabled: !isDescriptionEditing || isSubmitting,
               autoFocus: false,
-              className: 'min-h-[100px] px-base',
-              showStaticToolbar: true,
+              className: cn(
+                'px-base',
+                isDescriptionEditing ? 'min-h-[100px]' : 'min-h-[2rem]',
+                !isDescriptionEditing && !formData.description && 'text-low'
+              ),
+              showStaticToolbar: isDescriptionEditing,
               saveStatus: descriptionSaveStatus,
-              staticToolbarActions: onBrowseAttachment ? (
+              staticToolbarActions: isDescriptionEditing && onBrowseAttachment ? (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
