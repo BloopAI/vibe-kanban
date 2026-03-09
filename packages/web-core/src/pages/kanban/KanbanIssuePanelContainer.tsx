@@ -482,7 +482,10 @@ export function KanbanIssuePanelContainer({
           title: composerDraft.title,
           description: composerDraft.description ?? null,
           statusId: composerDraft.statusId ?? createModeDefaults.statusId,
-          priority: composerDraft.priority ?? createModeDefaults.priority,
+          priority:
+            composerDraft.priority === undefined
+              ? createModeDefaults.priority
+              : composerDraft.priority,
           assigneeIds:
             composerDraft.assigneeIds ?? createModeDefaults.assigneeIds,
           tagIds: composerDraft.tagIds ?? createModeDefaults.tagIds,
