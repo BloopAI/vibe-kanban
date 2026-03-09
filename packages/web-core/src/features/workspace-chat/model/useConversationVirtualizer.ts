@@ -16,7 +16,13 @@
  * - estimateSize using SIZE_ESTIMATE_PX[row.estimationHint]
  */
 
-import { useCallback, useEffect, type RefObject } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Virtualizer, VirtualItem } from '@tanstack/react-virtual';
 
@@ -52,6 +58,13 @@ export interface ConversationVirtualizerOptions {
 
   /** Ref to the scrollable container element. */
   scrollContainerRef: RefObject<HTMLDivElement | null>;
+
+  /**
+   * Called when the at-bottom state changes. Shells use this to show/hide
+   * the scroll-to-bottom affordance. Mirrors the Virtuoso `onAtBottomChange`
+   * contract so shells don't need to change when Task 12 removes Virtuoso.
+   */
+  onAtBottomChange?: (atBottom: boolean) => void;
 }
 
 export interface ConversationVirtualizerResult {
@@ -82,8 +95,14 @@ export interface ConversationVirtualizerResult {
    */
   scrollToPreviousUserMessage: () => boolean;
 
-  /** Whether the scroll container is currently near the bottom. */
-  isAtBottom: () => boolean;
+  /**
+   * Whether the scroll container is currently near the bottom.
+   * Reactive — updates via scroll event listener, not just point-in-time.
+   */
+  isAtBottom: boolean;
+
+  /** Point-in-time check (non-reactive). Reads DOM directly. */
+  checkIsAtBottom: () => boolean;
 
   /**
    * Look up the ConversationRow index for a given virtual item.
@@ -112,6 +131,7 @@ export interface ConversationVirtualizerResult {
 export function useConversationVirtualizer({
   rows,
   scrollContainerRef,
+  onAtBottomChange,
 }: ConversationVirtualizerOptions): ConversationVirtualizerResult {
   // -------------------------------------------------------------------------
   // Virtualizer instance
@@ -159,6 +179,42 @@ export function useConversationVirtualizer({
       virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
     };
   }, [virtualizer]);
+
+  // -------------------------------------------------------------------------
+  // Reactive isAtBottom state
+  // -------------------------------------------------------------------------
+
+  const [isAtBottomState, setIsAtBottomState] = useState(true);
+  const onAtBottomChangeRef = useRef(onAtBottomChange);
+  onAtBottomChangeRef.current = onAtBottomChange;
+
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+
+    let lastValue = true;
+
+    const handleScroll = () => {
+      const atBottom = isNearBottom(
+        el.scrollTop,
+        el.clientHeight,
+        el.scrollHeight
+      );
+      if (atBottom !== lastValue) {
+        lastValue = atBottom;
+        setIsAtBottomState(atBottom);
+        onAtBottomChangeRef.current?.(atBottom);
+      }
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    // Check initial state
+    handleScroll();
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+    };
+  }, [scrollContainerRef]);
 
   // -------------------------------------------------------------------------
   // Derived state
@@ -215,7 +271,7 @@ export function useConversationVirtualizer({
     return true;
   }, [virtualizer, rows]);
 
-  const isAtBottom = useCallback((): boolean => {
+  const checkIsAtBottom = useCallback((): boolean => {
     const el = scrollContainerRef.current;
     if (!el) return true;
     return isNearBottom(el.scrollTop, el.clientHeight, el.scrollHeight);
@@ -246,7 +302,8 @@ export function useConversationVirtualizer({
     scrollToBottom,
     scrollToIndex,
     scrollToPreviousUserMessage,
-    isAtBottom,
+    isAtBottom: isAtBottomState,
+    checkIsAtBottom,
     rowIndexForVirtualItem,
     rowForVirtualItem,
   };

@@ -338,6 +338,7 @@ export const ConversationList = forwardRef<
   const conversationVirtualizer = useConversationVirtualizer({
     rows: conversationRows,
     scrollContainerRef: tanstackScrollRef,
+    onAtBottomChange,
   });
 
   // Show placeholders only if script not configured AND not already run AND first turn
@@ -371,60 +372,67 @@ export const ConversationList = forwardRef<
     ]
   );
 
-  // Expose scroll functionality via ref — currently delegates to Virtuoso;
-  // Task 12 will switch to conversationVirtualizer as the primary backend.
+  // Expose scroll functionality via ref — delegates to Virtuoso as primary,
+  // with TanStack Virtual as secondary. Task 12 removes Virtuoso paths.
   useImperativeHandle(
     ref,
     () => ({
       scrollToPreviousUserMessage: () => {
+        // Primary: Virtuoso (active renderer)
         const data = channelData?.data;
-        if (!data || !messageListRef.current) return;
+        if (data && messageListRef.current) {
+          const rendered = messageListRef.current.data.getCurrentlyRendered();
+          if (rendered.length) {
+            const firstVisibleKey = rendered[0]?.patchKey;
+            const firstVisibleIndex = data.findIndex(
+              (item) => item.patchKey === firstVisibleKey
+            );
 
-        const rendered = messageListRef.current.data.getCurrentlyRendered();
-        if (!rendered.length) return;
+            const userMessageIndices: number[] = [];
+            data.forEach((item, index) => {
+              if (
+                item.type === 'NORMALIZED_ENTRY' &&
+                item.content.entry_type.type === 'user_message'
+              ) {
+                userMessageIndices.push(index);
+              }
+            });
 
-        const firstVisibleKey = rendered[0]?.patchKey;
-        const firstVisibleIndex = data.findIndex(
-          (item) => item.patchKey === firstVisibleKey
-        );
+            const targetIndex = userMessageIndices
+              .reverse()
+              .find((idx) => idx < firstVisibleIndex);
 
-        const userMessageIndices: number[] = [];
-        data.forEach((item, index) => {
-          if (
-            item.type === 'NORMALIZED_ENTRY' &&
-            item.content.entry_type.type === 'user_message'
-          ) {
-            userMessageIndices.push(index);
+            if (targetIndex !== undefined) {
+              messageListRef.current.scrollToItem({
+                index: targetIndex,
+                align: 'start',
+                behavior: 'smooth',
+              });
+              return;
+            }
           }
-        });
-
-        const targetIndex = userMessageIndices
-          .reverse()
-          .find((idx) => idx < firstVisibleIndex);
-
-        if (targetIndex !== undefined) {
-          messageListRef.current.scrollToItem({
-            index: targetIndex,
-            align: 'start',
-            behavior: 'smooth',
-          });
         }
+
+        // Fallback: TanStack Virtual (for when Virtuoso is removed)
+        conversationVirtualizer.scrollToPreviousUserMessage();
       },
       scrollToBottom: () => {
-        if (!messageListRef.current) return;
-        messageListRef.current.scrollToItem({
-          index: 'LAST',
-          align: 'end',
-          behavior: 'smooth',
-        });
+        // Primary: Virtuoso (active renderer)
+        if (messageListRef.current) {
+          messageListRef.current.scrollToItem({
+            index: 'LAST',
+            align: 'end',
+            behavior: 'smooth',
+          });
+          return;
+        }
+
+        // Fallback: TanStack Virtual
+        conversationVirtualizer.scrollToBottom();
       },
     }),
-    [channelData]
+    [channelData, conversationVirtualizer]
   );
-
-  // Suppress unused variable lint — conversationVirtualizer is wired in
-  // but not yet the active scroll backend (Task 12 activates it).
-  void conversationVirtualizer;
 
   // Determine if content is ready to show (has data or finished loading)
   const hasContent = !loading || (channelData?.data?.length ?? 0) > 0;
