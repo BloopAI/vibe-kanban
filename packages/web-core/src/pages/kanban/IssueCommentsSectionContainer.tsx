@@ -81,7 +81,8 @@ function IssueCommentsSectionContent() {
     commentDraftScratch?.payload?.type === 'DRAFT_TASK'
       ? commentDraftScratch.payload.data
       : undefined;
-  const hasLoadedCommentDraftRef = useRef(false);
+  const hydratedCommentDraftIdRef = useRef<string | null>(null);
+  const skipNextPersistRef = useRef(false);
 
   const persistCommentDraft = useCallback(
     async (value: string) => {
@@ -111,22 +112,32 @@ function IssueCommentsSectionContent() {
 
   useEffect(() => {
     cancelDebouncedPersistCommentDraft();
-    hasLoadedCommentDraftRef.current = false;
+    hydratedCommentDraftIdRef.current = null;
+    skipNextPersistRef.current = false;
     setCommentInput('');
   }, [commentDraftId, cancelDebouncedPersistCommentDraft]);
 
   useEffect(() => {
     if (isCommentDraftLoading) return;
-    if (hasLoadedCommentDraftRef.current) return;
+    if (hydratedCommentDraftIdRef.current === commentDraftId) return;
 
-    hasLoadedCommentDraftRef.current = true;
-    setCommentInput(commentDraft ?? '');
-  }, [isCommentDraftLoading, commentDraft]);
+    const nextCommentInput = commentDraft ?? '';
+    const shouldSkipNextPersist = nextCommentInput !== commentInput;
+
+    hydratedCommentDraftIdRef.current = commentDraftId;
+    skipNextPersistRef.current = shouldSkipNextPersist;
+    setCommentInput(nextCommentInput);
+  }, [isCommentDraftLoading, commentDraft, commentDraftId, commentInput]);
 
   useEffect(() => {
-    if (!hasLoadedCommentDraftRef.current) return;
+    if (hydratedCommentDraftIdRef.current !== commentDraftId) return;
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
+
     debouncedPersistCommentDraft(commentInput);
-  }, [commentInput, debouncedPersistCommentDraft]);
+  }, [commentInput, commentDraftId, debouncedPersistCommentDraft]);
 
   const handleCommentMarkdownInsert = useCallback((markdown: string) => {
     setCommentInput((prev) =>
