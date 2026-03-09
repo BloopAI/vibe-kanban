@@ -1,4 +1,11 @@
-import { useMemo, useCallback, useState, useRef, type Ref } from 'react';
+import {
+  useMemo,
+  useCallback,
+  useState,
+  useRef,
+  useEffect,
+  type Ref,
+} from 'react';
 import { useDropzone } from 'react-dropzone';
 import { useTranslation } from 'react-i18next';
 import { IssueProvider } from '@/integrations/remote/IssueProvider';
