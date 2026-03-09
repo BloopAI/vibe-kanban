@@ -53,6 +53,7 @@ use strum_macros::{AsRefStr, EnumString};
 use tokio::process::Command;
 use ts_rs::TS;
 use workspace_utils::msg_store::MsgStore;
+use workspace_utils::shell::resolve_executable_path_blocking;
 
 use self::{
     client::{AppServerClient, LogWriter},
@@ -400,8 +401,19 @@ impl StandardCodingAgentExecutor for Codex {
 }
 
 impl Codex {
-    pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.107.0"
+    const LATEST_NPM_VERSION: &'static str = "0.112.0";
+
+    fn default_base_command(codex_path: Option<&Path>) -> String {
+        if codex_path.is_some() {
+            "codex".to_string()
+        } else {
+            format!("npx -y @openai/codex@{}", Self::LATEST_NPM_VERSION)
+        }
+    }
+
+    pub fn base_command() -> String {
+        let codex_path = resolve_executable_path_blocking("codex");
+        Self::default_base_command(codex_path.as_deref())
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -706,5 +718,24 @@ impl Codex {
             exit_signal: Some(exit_signal_rx),
             cancel: Some(cancel),
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use super::Codex;
+
+    #[test]
+    fn default_base_command_prefers_installed_codex_binary() {
+        let command = Codex::default_base_command(Some(Path::new("C:/Users/test/AppData/Roaming/npm/codex.ps1")));
+        assert_eq!(command, "codex");
+    }
+
+    #[test]
+    fn default_base_command_falls_back_to_latest_npx_version() {
+        let command = Codex::default_base_command(None);
+        assert_eq!(command, "npx -y @openai/codex@0.112.0");
     }
 }

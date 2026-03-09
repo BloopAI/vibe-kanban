@@ -15,7 +15,8 @@ use codex_app_server_protocol::{
     GetAccountRateLimitsResponse, GetAccountResponse, InitializeCapabilities, InitializeParams,
     InitializeResponse, ItemCompletedNotification, JSONRPCError, JSONRPCNotification,
     JSONRPCRequest, JSONRPCResponse, ListMcpServerStatusParams, ListMcpServerStatusResponse,
-    RequestId, ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerRequest,
+    McpServerElicitationAction, McpServerElicitationRequestResponse, RequestId,
+    ReviewStartParams, ReviewStartResponse, ReviewTarget, ServerRequest,
     ThreadCompactStartParams, ThreadCompactStartResponse, ThreadForkParams, ThreadForkResponse,
     ThreadItem, ThreadReadParams, ThreadReadResponse, ThreadStartParams, ThreadStartResponse,
     ToolRequestUserInputAnswer, ToolRequestUserInputQuestion, ToolRequestUserInputResponse,
@@ -396,6 +397,18 @@ impl AppServerClient {
                     _ => ToolRequestUserInputResponse {
                         answers: HashMap::new(),
                     },
+                };
+                send_server_response(peer, request_id, response).await?;
+                Ok(())
+            }
+            ServerRequest::McpServerElicitationRequest { request_id, params } => {
+                tracing::warn!(
+                    server_name = %params.server_name,
+                    "Codex MCP elicitation is not supported by the Vibe Kanban client yet; cancelling request"
+                );
+                let response = McpServerElicitationRequestResponse {
+                    action: McpServerElicitationAction::Cancel,
+                    content: None,
                 };
                 send_server_response(peer, request_id, response).await?;
                 Ok(())
