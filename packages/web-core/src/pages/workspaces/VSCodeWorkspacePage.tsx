@@ -89,6 +89,7 @@ export function VSCodeWorkspacePage() {
     isLoading,
     isNewSessionMode,
     startNewSession,
+    repos,
   } = useWorkspaceContext();
 
   usePageTitle(workspace?.name);
@@ -139,6 +140,7 @@ export function VSCodeWorkspacePage() {
                         <ConversationList
                           ref={conversationListRef}
                           attempt={workspaceWithSession}
+                          repos={repos}
                           onAtBottomChange={handleAtBottomChange}
                         />
                       </RetryUiProvider>

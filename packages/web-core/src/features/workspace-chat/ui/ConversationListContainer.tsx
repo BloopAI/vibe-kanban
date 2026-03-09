@@ -38,12 +38,12 @@ import { useConversationHistory } from '../model/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
+  repos?: RepoWithTargetBranch[];
   onAtBottomChange?: (atBottom: boolean) => void;
 }
 
@@ -52,14 +52,11 @@ export interface ConversationListHandle {
   scrollToBottom: () => void;
 }
 
-/**
- * Render a single conversation row's content based on its DisplayEntry type.
- * Dispatches to DisplayConversationEntrySpaced (the default export).
- */
 function renderRowContent(
   entry: DisplayEntry,
   attempt: WorkspaceWithSession,
-  resetAction: UseResetProcessResult
+  resetAction: UseResetProcessResult,
+  repos: RepoWithTargetBranch[]
 ): React.ReactNode {
   if (isAggregatedGroup(entry)) {
     return (
@@ -72,6 +69,7 @@ function renderRowContent(
         executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
@@ -87,6 +85,7 @@ function renderRowContent(
         executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
@@ -102,6 +101,7 @@ function renderRowContent(
         executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
@@ -124,6 +124,7 @@ function renderRowContent(
         executionProcessId={entry.executionProcessId}
         workspaceWithSession={attempt}
         resetAction={resetAction}
+        repos={repos}
       />
     );
   }
@@ -134,8 +135,12 @@ function renderRowContent(
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
->(function ConversationList({ attempt, onAtBottomChange }, ref) {
-  const resetAction = useResetProcess();
+>(function ConversationList(
+  { attempt, repos: reposProp = [], onAtBottomChange },
+  ref
+) {
+  const repos = reposProp;
+  const resetAction = useResetProcess(attempt.id, attempt.session?.id);
   const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const { setEntries, reset } = useEntries();
@@ -152,15 +157,6 @@ export const ConversationList = forwardRef<
   // rAF naturally limits updates to the display refresh rate (~60fps) while
   // ensuring every frame reflects the latest data.
   const rafIdRef = useRef<number | null>(null);
-
-  // Get repos from workspace context to check if scripts are configured
-  let repos: RepoWithTargetBranch[] = [];
-  try {
-    const workspaceContext = useWorkspaceContext();
-    repos = workspaceContext.repos;
-  } catch {
-    // Context not available
-  }
 
   // Use ref to access current repos without causing callback recreation
   const reposRef = useRef(repos);
@@ -378,7 +374,7 @@ export const ConversationList = forwardRef<
                     transform: `translateY(${virtualItem.start}px)`,
                   }}
                 >
-                  {renderRowContent(row.entry, attempt, resetAction)}
+                  {renderRowContent(row.entry, attempt, resetAction, repos)}
                 </div>
               );
             })}
