@@ -7,7 +7,6 @@ import {
   usePairRemoteCloudHostMutation,
   useRemoteCloudHostsState,
   useRemoveRemoteCloudHostMutation,
-  useSetActiveRemoteCloudHostMutation,
 } from '@/shared/hooks/useRemoteCloudHosts';
 import {
   SettingsCard,
@@ -28,7 +27,6 @@ export function RemoteCloudHostsSettingsCard() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [removingHostId, setRemovingHostId] = useState<string | null>(null);
-  const [activatingHostId, setActivatingHostId] = useState<string | null>(null);
 
   const { data: relayHosts = [], isLoading: relayHostsLoading } = useQuery({
     ...useRelayRemoteHostsQuery(),
@@ -38,8 +36,6 @@ export function RemoteCloudHostsSettingsCard() {
     usePairRemoteCloudHostMutation();
   const { mutateAsync: removeHost, isPending: isRemoving } =
     useRemoveRemoteCloudHostMutation();
-  const { mutateAsync: setActiveHost, isPending: isActivating } =
-    useSetActiveRemoteCloudHostMutation();
 
   useEffect(() => {
     if (relayHosts.length === 0) {
@@ -68,14 +64,8 @@ export function RemoteCloudHostsSettingsCard() {
 
   const connectedHosts = useMemo(() => {
     const hosts = data?.hosts ?? [];
-    const activeHostId = data?.activeHostId ?? null;
-
-    return [...hosts].sort((a, b) => {
-      if (a.id === activeHostId) return -1;
-      if (b.id === activeHostId) return 1;
-      return b.lastUsedAt.localeCompare(a.lastUsedAt);
-    });
-  }, [data?.activeHostId, data?.hosts]);
+    return [...hosts].sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
+  }, [data?.hosts]);
 
   const canSubmitPairing =
     !!selectedHostId &&
@@ -156,19 +146,6 @@ export function RemoteCloudHostsSettingsCard() {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
       setRemovingHostId(null);
-    }
-  };
-
-  const handleSetActive = async (hostId: string) => {
-    setActivatingHostId(hostId);
-    setErrorMessage(null);
-
-    try {
-      await setActiveHost(hostId);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : String(error));
-    } finally {
-      setActivatingHostId(null);
     }
   };
 
@@ -302,8 +279,6 @@ export function RemoteCloudHostsSettingsCard() {
         {!isLoading && connectedHosts.length > 0 && (
           <div className="space-y-2">
             {connectedHosts.map((host) => {
-              const isActive = host.id === (data?.activeHostId ?? null);
-
               return (
                 <div
                   key={host.id}
@@ -317,25 +292,6 @@ export function RemoteCloudHostsSettingsCard() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {isActive ? (
-                      <span className="text-xs text-success">
-                        {t('settings.relay.remoteCloudHost.active', 'Active')}
-                      </span>
-                    ) : (
-                      <PrimaryButton
-                        variant="tertiary"
-                        value={t(
-                          'settings.relay.remoteCloudHost.makeActive',
-                          'Make active'
-                        )}
-                        onClick={() => void handleSetActive(host.id)}
-                        disabled={isActivating || isRemoving}
-                        actionIcon={
-                          activatingHostId === host.id ? 'spinner' : undefined
-                        }
-                      />
-                    )}
-
                     <PrimaryButton
                       variant="tertiary"
                       value={t(
@@ -343,7 +299,7 @@ export function RemoteCloudHostsSettingsCard() {
                         'Remove'
                       )}
                       onClick={() => void handleRemove(host.id)}
-                      disabled={isRemoving || isActivating}
+                      disabled={isRemoving}
                       actionIcon={
                         removingHostId === host.id ? 'spinner' : undefined
                       }

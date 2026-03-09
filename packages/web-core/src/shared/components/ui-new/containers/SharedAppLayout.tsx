@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Outlet } from '@tanstack/react-router';
+import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
 import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
@@ -46,10 +46,7 @@ import {
 } from 'shared/remote-types';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
-import {
-  useRemoteCloudHostsAppBarModel,
-  useSetActiveRemoteCloudHostMutation,
-} from '@/shared/hooks/useRemoteCloudHosts';
+import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -66,10 +63,9 @@ export function SharedAppLayout() {
   const { data: starCount } = useGitHubStars();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAppBarHovered, setIsAppBarHovered] = useState(false);
-  const { hosts: remoteCloudHosts, activeHostId: activeRemoteHostId } =
-    useRemoteCloudHostsAppBarModel();
-  const { mutateAsync: setActiveRemoteCloudHost } =
-    useSetActiveRemoteCloudHostMutation();
+  const { hosts: remoteCloudHosts } = useRemoteCloudHostsAppBarModel();
+  const { hostId: routeHostId } = useParams({ strict: false });
+  const navigate = useNavigate();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -304,10 +300,12 @@ export function SharedAppLayout() {
         return;
       }
 
-      void setActiveRemoteCloudHost(hostId);
-      appNavigation.goToWorkspaces();
+      void navigate({
+        to: '/hosts/$hostId/workspaces',
+        params: { hostId },
+      });
     },
-    [appNavigation, setActiveRemoteCloudHost]
+    [navigate]
   );
 
   const handlePairHostClick = useCallback(() => {
@@ -329,7 +327,7 @@ export function SharedAppLayout() {
             projects={orderedProjects}
             hosts={remoteCloudHosts}
             hostsLabel="HOSTS"
-            activeHostId={activeRemoteHostId}
+            activeHostId={routeHostId ?? null}
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
             onHostClick={handleHostClick}

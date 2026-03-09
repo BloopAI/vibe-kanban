@@ -11,6 +11,11 @@ import { router } from '@web/app/router';
 import { oauthApi } from '@/shared/lib/api';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
+import { setLocalApiTransport } from '@/shared/lib/localApiTransport';
+import {
+  openWebSocketViaHostScopedLocalApi,
+  requestViaHostScopedLocalApi,
+} from '@web/shared/lib/hostScopedLocalApiTransport';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
 
@@ -47,6 +52,11 @@ configureAuthRuntime({
   triggerRefresh: () => tokenManager.triggerRefresh(),
   registerShape: (shape) => tokenManager.registerShape(shape),
   getCurrentUser: () => oauthApi.getCurrentUser(),
+});
+
+setLocalApiTransport({
+  request: requestViaHostScopedLocalApi,
+  openWebSocket: openWebSocketViaHostScopedLocalApi,
 });
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

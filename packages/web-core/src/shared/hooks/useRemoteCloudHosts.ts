@@ -18,35 +18,12 @@ export interface RemoteCloudHost {
 
 interface RemoteCloudHostsState {
   hosts: RemoteCloudHost[];
-  activeHostId: string | null;
 }
-
-const ACTIVE_HOST_STORAGE_KEY = 'vk-remote-cloud-active-host-id';
 
 export const REMOTE_CLOUD_HOSTS_STATE_QUERY_KEY = [
   'remote-cloud-hosts',
   'state',
 ] as const;
-
-function readActiveHostId(): string | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  return window.localStorage.getItem(ACTIVE_HOST_STORAGE_KEY);
-}
-
-function writeActiveHostId(hostId: string | null): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-
-  if (!hostId) {
-    window.localStorage.removeItem(ACTIVE_HOST_STORAGE_KEY);
-    return;
-  }
-
-  window.localStorage.setItem(ACTIVE_HOST_STORAGE_KEY, hostId);
-}
 
 function normalizeRemoteCloudHostStatus(
   status: RelayHost['status'] | undefined
@@ -63,7 +40,7 @@ async function fetchRemoteCloudHostsState(): Promise<RemoteCloudHostsState> {
   try {
     pairedHosts = await relayApi.listPairedRelayHosts();
   } catch {
-    return { hosts: [], activeHostId: null };
+    return { hosts: [] };
   }
 
   let remoteHosts: RelayHost[] = [];
@@ -91,17 +68,7 @@ async function fetchRemoteCloudHostsState(): Promise<RemoteCloudHostsState> {
     })
     .sort((a, b) => b.pairedAt.localeCompare(a.pairedAt));
 
-  const storedActiveHostId = readActiveHostId();
-  const activeHostId =
-    storedActiveHostId && hosts.some((host) => host.id === storedActiveHostId)
-      ? storedActiveHostId
-      : (hosts[0]?.id ?? null);
-
-  if (activeHostId !== storedActiveHostId) {
-    writeActiveHostId(activeHostId);
-  }
-
-  return { hosts, activeHostId };
+  return { hosts };
 }
 
 export function useRemoteCloudHostsState() {
@@ -139,30 +106,13 @@ export function useRemoveRemoteCloudHostMutation() {
   });
 }
 
-export function useSetActiveRemoteCloudHostMutation() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (hostId: string) => {
-      writeActiveHostId(hostId);
-    },
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({
-        queryKey: REMOTE_CLOUD_HOSTS_STATE_QUERY_KEY,
-      });
-    },
-  });
-}
-
 export function useRemoteCloudHostsAppBarModel(): {
   hosts: AppBarHost[];
-  activeHostId: string | null;
   remoteHosts: RemoteCloudHost[];
 } {
   const { data } = useRemoteCloudHostsState();
 
   const remoteHosts = data?.hosts ?? [];
-  const activeHostId = data?.activeHostId ?? null;
 
   const hosts = useMemo<AppBarHost[]>(
     () =>
@@ -176,7 +126,6 @@ export function useRemoteCloudHostsAppBarModel(): {
 
   return {
     hosts,
-    activeHostId,
     remoteHosts,
   };
 }
