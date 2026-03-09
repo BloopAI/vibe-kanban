@@ -75,7 +75,10 @@ import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
-import { buildWorkspaceCreateInitialState } from '@/shared/lib/workspaceCreateState';
+import {
+  buildWorkspaceCreateInitialState,
+  persistWorkspaceCreateDraft,
+} from '@/shared/lib/workspaceCreateState';
 import { setCreateModeSeedState } from '@/shared/lib/createModeSeedStore';
 
 // Mirrored sidebar icon for right sidebar toggle
@@ -238,6 +241,22 @@ export const Actions = {
           executorConfig,
         });
         setCreateModeSeedState(createState);
+        const draftId = await persistWorkspaceCreateDraft(
+          createState,
+          undefined,
+          ctx.runtime
+        );
+        if (!draftId) {
+          setCreateModeSeedState(null);
+          await ConfirmDialog.show({
+            title: 'Error',
+            message: 'Failed to prepare workspace draft. Please try again.',
+            confirmText: 'OK',
+            showCancelButton: false,
+          });
+          return;
+        }
+
         ctx.appNavigation.goToWorkspacesCreate();
       } catch {
         ctx.appNavigation.goToWorkspacesCreate();
@@ -408,6 +427,22 @@ export const Actions = {
           linkedIssue,
         });
         setCreateModeSeedState(createState);
+        const draftId = await persistWorkspaceCreateDraft(
+          createState,
+          undefined,
+          ctx.runtime
+        );
+        if (!draftId) {
+          setCreateModeSeedState(null);
+          await ConfirmDialog.show({
+            title: 'Error',
+            message: 'Failed to prepare workspace draft. Please try again.',
+            confirmText: 'OK',
+            showCancelButton: false,
+          });
+          return;
+        }
+
         ctx.appNavigation.goToWorkspacesCreate();
       } catch {
         ctx.appNavigation.goToWorkspacesCreate();
