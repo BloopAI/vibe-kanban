@@ -65,7 +65,7 @@ export function StaticToolbarPlugin({
   const [editor] = useLexicalComposerContext();
 
   return (
-    <div className="flex items-center gap-half mt-base p-base border-t border-border/50">
+    <div className="flex items-center gap-half mt-half px-base py-half border-t border-border/50">
       {/* Undo button */}
       <ToolbarButton
         onClick={() => editor.dispatchCommand(UNDO_COMMAND, undefined)}
