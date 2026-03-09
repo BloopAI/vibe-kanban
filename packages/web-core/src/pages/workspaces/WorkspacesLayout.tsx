@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
@@ -7,6 +7,7 @@ import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
 import { CreateModeProvider } from '@/integrations/CreateModeProvider';
+import { consumeCreateModeSeedState } from '@/shared/lib/createModeSeedStore';
 import { ReviewProvider } from '@/shared/hooks/ReviewProvider';
 import { ChangesViewProvider } from '@/shared/hooks/ChangesViewProvider';
 import { WorkspacesSidebarContainer } from './WorkspacesSidebarContainer';
@@ -50,6 +51,12 @@ export function WorkspacesLayout() {
   const { t } = useTranslation('common');
   usePageTitle(
     isCreateMode ? t('workspaces.newWorkspace') : selectedWorkspace?.name
+  );
+
+  const seedState = useMemo(
+    () => (isCreateMode ? consumeCreateModeSeedState() : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isCreateMode]
   );
 
   const isMobile = useIsMobile();
@@ -240,7 +247,9 @@ export function WorkspacesLayout() {
       <div className="flex flex-1 min-h-0 h-full">
         <div className="flex-1 min-w-0 h-full">
           {isCreateMode ? (
-            <CreateModeProvider>{mobileContent}</CreateModeProvider>
+            <CreateModeProvider initialState={seedState}>
+              {mobileContent}
+            </CreateModeProvider>
           ) : (
             mobileContent
           )}
@@ -342,7 +351,9 @@ export function WorkspacesLayout() {
 
       <div className="flex-1 min-w-0 h-full">
         {isCreateMode ? (
-          <CreateModeProvider>{mainContent}</CreateModeProvider>
+          <CreateModeProvider initialState={seedState}>
+            {mainContent}
+          </CreateModeProvider>
         ) : (
           mainContent
         )}
