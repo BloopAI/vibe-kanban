@@ -444,6 +444,10 @@ export function ProjectRightSidebarContainer() {
   ]);
 
   const rightPanelState = useMemo<RightPanelState>(() => {
+    if (isCreateMode) {
+      return { kind: 'create-issue' };
+    }
+
     if (isWorkspaceCreateMode) {
       if (draftId) {
         return {
@@ -453,10 +457,6 @@ export function ProjectRightSidebarContainer() {
         };
       }
       return { kind: 'closed' };
-    }
-
-    if (isCreateMode) {
-      return { kind: 'create-issue' };
     }
 
     if (workspaceId) {
