@@ -361,6 +361,9 @@ export function KanbanIssuePanel({
             )}
             onClick={() => {
               if (!isDescriptionEditing && !isCreateMode && !isSubmitting) {
+                // Don't enter edit mode if the user was selecting text
+                const selection = window.getSelection();
+                if (selection && selection.toString().length > 0) return;
                 setIsDescriptionEditing(true);
               }
             }}
