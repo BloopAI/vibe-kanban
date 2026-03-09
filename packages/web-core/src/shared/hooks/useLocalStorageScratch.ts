@@ -54,8 +54,31 @@ export function localStorageScratchUpdate(
   update: UpdateScratch
 ): void {
   const key = buildStorageKey(scratchType, id);
+  const previousRaw = (() => {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  })();
+
   const next = buildScratchEntry(id, update, readFromStorage(key));
-  writeToStorage(key, next);
+  const nextRaw = JSON.stringify(next);
+
+  try {
+    localStorage.setItem(key, nextRaw);
+  } catch {
+    return;
+  }
+
+  window.dispatchEvent(
+    new StorageEvent('storage', {
+      key,
+      oldValue: previousRaw,
+      newValue: nextRaw,
+      storageArea: localStorage,
+    })
+  );
 }
 
 interface UseLocalStorageScratchOptions {

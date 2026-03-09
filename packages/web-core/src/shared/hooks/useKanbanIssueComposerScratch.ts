@@ -53,6 +53,7 @@ export function useKanbanIssueComposerScratch() {
   const isRemote = runtime === 'remote';
   const isApplyingRef = useRef(false);
   const hasHydratedRef = useRef(false);
+  const prevByKeyRef = useRef(useKanbanIssueComposerStore.getState().byKey);
 
   // Hydrate synchronously during render (not in an effect) to ensure
   // the store has data before any child components mount.
@@ -67,6 +68,7 @@ export function useKanbanIssueComposerScratch() {
       isApplyingRef.current = true;
       useKanbanIssueComposerStore.setState({ byKey: merged });
       isApplyingRef.current = false;
+      prevByKeyRef.current = merged;
     }
   }
 
@@ -75,6 +77,8 @@ export function useKanbanIssueComposerScratch() {
 
     const unsubscribe = useKanbanIssueComposerStore.subscribe((state) => {
       if (isApplyingRef.current) return;
+      if (prevByKeyRef.current === state.byKey) return;
+      prevByKeyRef.current = state.byKey;
       writeStoredComposerState(state.byKey);
     });
 
