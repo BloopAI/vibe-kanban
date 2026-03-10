@@ -424,7 +424,7 @@ export function AppBar({
         ) : (
           appVersion && (
             <p
-              className="text-[9px] font-ibm-plex-mono text-low leading-none truncate max-w-full"
+              className="text-[9px] font-ibm-plex-mono text-low leading-none truncate max-w-10 text-center"
               title={`v${appVersion}`}
             >
               v{appVersion}
