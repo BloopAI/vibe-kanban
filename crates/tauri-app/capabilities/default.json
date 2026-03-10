@@ -13,7 +13,6 @@
     "shell:allow-open",
     "opener:default",
     "updater:default",
-    "core:tray:default",
     "notification:default"
   ]
 }
