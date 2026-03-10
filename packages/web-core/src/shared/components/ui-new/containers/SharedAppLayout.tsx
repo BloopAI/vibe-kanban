@@ -304,7 +304,7 @@ export function SharedAppLayout() {
             <div
               data-tauri-drag-region
               className="bg-secondary"
-              style={isTauriMac() ? { minWidth: 78 } : undefined}
+              style={isTauriMac() ? { minWidth: 56 } : undefined}
             />
             {/* Row 1, col 2: Navbar stretches full width */}
             <NavbarContainer
