@@ -121,7 +121,7 @@ pub async fn collect_issue_recipients(
 
     let mut user_ids: HashSet<Uuid> = assignees.iter().map(|a| a.user_id).collect();
     user_ids.extend(followers.iter().map(|f| f.user_id));
-    // user_ids.remove(&exclude_user_id);
+    user_ids.remove(&exclude_user_id);
 
     let mut recipients = Vec::with_capacity(user_ids.len());
     for user_id in user_ids {

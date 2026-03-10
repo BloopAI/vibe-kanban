@@ -110,24 +110,24 @@ async fn create_issue_assignee(
         db_error(error, "failed to create issue assignee")
     })?;
 
-    // if payload.user_id != ctx.user.id {
-    if let Ok(Some(issue)) =
-        IssueRepository::find_by_id(state.pool(), payload.issue_id).await
-    {
-        notify_user(
-            state.pool(),
-            organization_id,
-            payload.user_id,
-            &issue,
-            NotificationType::IssueAssigneeChanged,
-            serde_json::json!({
-                "actor_user_id": ctx.user.id.to_string(),
-                "assignee_user_id": payload.user_id.to_string(),
-            }),
-        )
-        .await;
+    if payload.user_id != ctx.user.id {
+        if let Ok(Some(issue)) =
+            IssueRepository::find_by_id(state.pool(), payload.issue_id).await
+        {
+            notify_user(
+                state.pool(),
+                organization_id,
+                payload.user_id,
+                &issue,
+                NotificationType::IssueAssigneeChanged,
+                serde_json::json!({
+                    "actor_user_id": ctx.user.id.to_string(),
+                    "assignee_user_id": payload.user_id.to_string(),
+                }),
+            )
+            .await;
+        }
     }
-    // }
 
     Ok(Json(response))
 }
