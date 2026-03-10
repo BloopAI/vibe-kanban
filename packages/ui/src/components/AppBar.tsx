@@ -412,7 +412,7 @@ export function AppBar({
               type="button"
               onClick={onUpdateClick}
               className={cn(
-                'flex items-center justify-center px-1.5 py-1 rounded-md max-w-10',
+                'flex items-center justify-center py-1 rounded-md w-10',
                 'text-[9px] font-ibm-plex-mono font-medium leading-none',
                 'bg-brand text-on-brand hover:bg-brand-hover',
                 'transition-colors cursor-pointer'
