@@ -38,7 +38,9 @@
     "prepare-db:check": "node scripts/prepare-db.js --check",
     "build:bippy-bundle": "node scripts/build-bippy-bundle.mjs",
     "build:npx": "bash ./local-build.sh",
-    "prepack": "pnpm run build:npx",
+    "build:npx-cli": "esbuild npx-cli/src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=npx-cli/bin/cli.js --external:adm-zip --banner:js=\"#!/usr/bin/env node\"",
+    "check:npx-cli": "tsc --noEmit -p npx-cli/tsconfig.json",
+    "prepack": "pnpm run build:npx && pnpm run build:npx-cli",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose --env-file .env.remote down -v",
     "remote:dev:clean": "cd crates/remote && docker compose --env-file .env.remote down -v",
     "remote:prepare-db": "cd crates/remote && bash scripts/prepare-db.sh",
@@ -47,10 +49,13 @@
     "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.7",
+    "@types/node": "^20.0.0",
     "bippy": "0.5.28",
     "concurrently": "^8.2.2",
     "esbuild": "^0.27.2",
     "jwt-decode": "^4.0.0",
+    "typescript": "^5.7.0",
     "vite": "^7.3.1"
   },
   "engines": {

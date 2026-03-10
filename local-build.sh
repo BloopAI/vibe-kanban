@@ -132,6 +132,11 @@ if [[ "$1" == "--desktop" || "$1" == "--all" ]]; then
 fi
 
 echo ""
+echo "🔨 Building npx-cli TypeScript..."
+mkdir -p npx-cli/bin
+npx esbuild npx-cli/src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=npx-cli/bin/cli.js --external:adm-zip --banner:js="#!/usr/bin/env node"
+
+echo ""
 echo "🚀 To test locally, run:"
-echo "   cd npx-cli && node bin/cli.js"
-echo "   cd npx-cli && node bin/cli.js --browser   # browser mode"
+echo "   cd npx-cli && node bin/cli.js                # browser mode (default)"
+echo "   cd npx-cli && node bin/cli.js --desktop       # desktop mode (requires --desktop or --all build flag)"

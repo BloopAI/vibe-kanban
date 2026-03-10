@@ -6,6 +6,10 @@
   "bin": {
     "vibe-kanban": "bin/cli.js"
   },
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=bin/cli.js --external:adm-zip --banner:js=\"#!/usr/bin/env node\"",
+    "check": "tsc --noEmit -p tsconfig.json"
+  },
   "keywords": [],
   "author": "bloop",
   "repository": {
