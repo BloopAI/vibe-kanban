@@ -312,6 +312,7 @@ pub struct AuthConfig {
     google: Option<OAuthProviderConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
+    pub allowed_emails: Vec<String>,
 }
 
 impl AuthConfig {
@@ -352,11 +353,31 @@ impl AuthConfig {
         let public_base_url =
             env::var("SERVER_PUBLIC_BASE_URL").unwrap_or_else(|_| "http://localhost:8081".into());
 
+        let allowed_emails = env::var("ALLOWED_EMAILS")
+            .ok()
+            .map(|s| {
+                s.split(',')
+                    .map(|e| e.trim().to_lowercase())
+                    .filter(|e| !e.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        if allowed_emails.is_empty() {
+            tracing::info!("ALLOWED_EMAILS not set — all authenticated users are allowed");
+        } else {
+            tracing::info!(
+                count = allowed_emails.len(),
+                "ALLOWED_EMAILS set — restricting sign-in to allowed list"
+            );
+        }
+
         Ok(Self {
             github,
             google,
             jwt_secret,
             public_base_url,
+            allowed_emails,
         })
     }
 

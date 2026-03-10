@@ -293,6 +293,9 @@ fn classify_handoff_error(error: &HandoffError) -> (StatusCode, Cow<'_, str>) {
             StatusCode::INTERNAL_SERVER_ERROR,
             Cow::Borrowed("internal_error"),
         ),
+        HandoffError::EmailNotAllowed => {
+            (StatusCode::FORBIDDEN, Cow::Borrowed("email_not_allowed"))
+        }
         HandoffError::Authorization(auth_err) => match auth_err {
             OAuthHandoffError::NotAuthorized => (StatusCode::GONE, Cow::Borrowed("not_authorized")),
             OAuthHandoffError::AlreadyRedeemed => {

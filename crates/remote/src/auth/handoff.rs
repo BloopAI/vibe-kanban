@@ -67,6 +67,8 @@ pub enum HandoffError {
     Jwt(#[from] JwtError),
     #[error(transparent)]
     Authorization(#[from] OAuthHandoffError),
+    #[error("email not in allowed list")]
+    EmailNotAllowed,
 }
 
 #[derive(Debug, Clone)]
@@ -103,6 +105,7 @@ pub struct OAuthHandoffService {
     providers: Arc<ProviderRegistry>,
     jwt: Arc<JwtService>,
     public_origin: String,
+    allowed_emails: Vec<String>,
 }
 
 impl OAuthHandoffService {
@@ -111,6 +114,7 @@ impl OAuthHandoffService {
         providers: Arc<ProviderRegistry>,
         jwt: Arc<JwtService>,
         public_origin: String,
+        allowed_emails: Vec<String>,
     ) -> Self {
         let trimmed_origin = public_origin.trim_end_matches('/').to_string();
         Self {
@@ -118,6 +122,7 @@ impl OAuthHandoffService {
             providers,
             jwt,
             public_origin: trimmed_origin,
+            allowed_emails,
         }
     }
 
@@ -431,6 +436,14 @@ impl OAuthHandoffService {
         let org_repo = OrganizationRepository::new(&self.pool);
 
         let email = ensure_email(provider.name(), profile);
+
+        if !self.allowed_emails.is_empty()
+            && !self.allowed_emails.contains(&email.to_lowercase())
+        {
+            tracing::warn!(email = %email, "sign-in rejected: email not in ALLOWED_EMAILS");
+            return Err(HandoffError::EmailNotAllowed);
+        }
+
         let username = derive_username(provider.name(), profile);
         let display_name = derive_display_name(profile);
 
