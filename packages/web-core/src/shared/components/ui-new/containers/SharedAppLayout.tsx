@@ -443,43 +443,46 @@ export function SharedAppLayout() {
             )}
           </div>
         </MobileDrawer>
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0">
           <NavbarContainer
             mobileMode={isMobile}
             onCreateOrg={handleCreateOrg}
             onOrgSelect={setSelectedOrgId}
             onOpenDrawer={() => setIsDrawerOpen(true)}
           />
-          <div className="relative flex-1 min-h-0 overflow-hidden">
-            {isWorkspaceSidebarPreviewEnabled && (
-              <div className="absolute inset-y-0 left-0 z-20 flex items-center">
-                <WorkspacesSidebarReopenTag
-                  active={sidebarPreview.isPreviewOpen}
-                  onHoverStart={sidebarPreview.handleHandleHoverStart}
-                  onHoverEnd={sidebarPreview.handleHandleHoverEnd}
-                  ariaLabel="Workspaces"
-                />
-              </div>
-            )}
-
-            {isWorkspaceSidebarPreviewEnabled && (
-              <div
-                className={cn(
-                  'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
-                  sidebarPreview.isPreviewOpen
-                    ? 'translate-x-0 pointer-events-auto'
-                    : '-translate-x-full pointer-events-none'
-                )}
-                onMouseEnter={sidebarPreview.handlePreviewHoverStart}
-                onMouseLeave={sidebarPreview.handlePreviewHoverEnd}
-              >
-                <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
-                  <WorkspacesSidebarContainer />
+          <div className="relative flex-1 min-h-0">
+            {isWorkspaceSidebarPreviewEnabled &&
+              !sidebarPreview.isPreviewOpen && (
+                <div className="absolute left-0 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2">
+                  <WorkspacesSidebarReopenTag
+                    active={false}
+                    onHoverStart={sidebarPreview.handleHandleHoverStart}
+                    onHoverEnd={sidebarPreview.handleHandleHoverEnd}
+                    ariaLabel="Workspaces"
+                  />
                 </div>
-              </div>
-            )}
+              )}
 
-            <Outlet />
+            <div className="relative h-full overflow-hidden">
+              {isWorkspaceSidebarPreviewEnabled && (
+                <div
+                  className={cn(
+                    'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
+                    sidebarPreview.isPreviewOpen
+                      ? 'translate-x-0 pointer-events-auto'
+                      : '-translate-x-full pointer-events-none'
+                  )}
+                  onMouseEnter={sidebarPreview.handlePreviewHoverStart}
+                  onMouseLeave={sidebarPreview.handlePreviewHoverEnd}
+                >
+                  <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
+                    <WorkspacesSidebarContainer />
+                  </div>
+                </div>
+              )}
+
+              <Outlet />
+            </div>
           </div>
         </div>
       </div>

@@ -396,26 +396,6 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
   const { uploadFiles, localImages, clearUploadedImages } =
     useSessionAttachments(workspaceId, sessionId, handleInsertMarkdown);
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      const imageFiles = acceptedFiles.filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (imageFiles.length > 0) {
-        uploadFiles(imageFiles);
-      }
-    },
-    [uploadFiles]
-  );
-
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    accept: { 'image/*': [] },
-    disabled: mode === 'placeholder' || isAttemptRunning,
-    noClick: true,
-    noKeyboard: true,
-  });
-
   // Unified executor + variant + model selector options resolution
   const {
     executorConfig,
@@ -614,6 +594,37 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     editContext.cancelEdit();
     cancelDebouncedSave();
     setLocalMessage('');
+  });
+
+  const areAttachmentInputsDisabled =
+    mode === 'placeholder' ||
+    isQueued ||
+    isSending ||
+    isStopping ||
+    !!feedbackContext?.isSubmitting ||
+    editRetryMutation.isPending ||
+    isApproving ||
+    isDenying ||
+    isAnswering;
+
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const imageFiles = acceptedFiles.filter((f) =>
+        f.type.startsWith('image/')
+      );
+      if (imageFiles.length > 0) {
+        uploadFiles(imageFiles);
+      }
+    },
+    [uploadFiles]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+    disabled: areAttachmentInputsDisabled,
+    noClick: true,
+    noKeyboard: true,
   });
 
   // Handle edit submission

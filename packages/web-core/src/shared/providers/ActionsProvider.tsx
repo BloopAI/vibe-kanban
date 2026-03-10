@@ -27,6 +27,7 @@ import {
 } from '@/shared/types/actions';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { UserContext } from '@/shared/hooks/useUserContext';
+import { ProjectContext } from '@/shared/hooks/useProjectContext';
 import { useDevServer } from '@/shared/hooks/useDevServer';
 import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
 import { useLogStream } from '@/shared/hooks/useLogStream';
@@ -56,7 +57,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     useWorkspaceContext();
   // Get remote workspaces (optional — not available on all routes)
   const userCtx = useContext(UserContext);
-
+  const projectCtx = useContext(ProjectContext);
   // Get dev server state
   const { start, stop, runningDevServers } = useDevServer(workspaceId);
 
@@ -228,7 +229,14 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       kanbanOrgId: selectedOrgId ?? undefined,
       kanbanProjectId: projectId,
       projectMutations: projectMutations ?? undefined,
-      remoteWorkspaces: userCtx?.workspaces ?? [],
+      remoteWorkspaces: (() => {
+        const userWs = userCtx?.workspaces ?? [];
+        const projectWs = projectCtx?.workspaces ?? [];
+        if (projectWs.length === 0) return userWs;
+        if (userWs.length === 0) return projectWs;
+        const seen = new Set(userWs.map((w) => w.id));
+        return [...userWs, ...projectWs.filter((w) => !seen.has(w.id))];
+      })(),
     };
   }, [
     runtime,
@@ -254,6 +262,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
     projectId,
     projectMutations,
     userCtx?.workspaces,
+    projectCtx?.workspaces,
   ]);
 
   // Main action executor with centralized target validation and error handling
