@@ -77,8 +77,8 @@ impl TunnelManager {
         // If signing session rotated, replace the existing tunnel.
         {
             let mut tunnels = self.tunnels.lock().await;
-            if let Some(tunnel) = tunnels.get(&key) {
-                if !tunnel.cancel.is_cancelled() {
+            if let Some(tunnel) = tunnels.get(&key)
+                && !tunnel.cancel.is_cancelled() {
                     if tunnel.signing_session_id == signing_session_id {
                         return Ok(tunnel.local_port);
                     }
@@ -92,7 +92,6 @@ impl TunnelManager {
                     tunnel.cancel.cancel();
                     tunnels.remove(&key);
                 }
-            }
         }
 
         // Create new tunnel
