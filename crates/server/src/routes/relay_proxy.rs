@@ -17,13 +17,31 @@ use crate::{
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
-        .route("/host/{host_id}", any(proxy_host))
-        .route("/host/{host_id}/{*tail}", any(proxy_host))
+        .route("/host/{host_id}", any(proxy_host_root))
+        .route("/host/{host_id}/{*tail}", any(proxy_host_tail))
+}
+
+async fn proxy_host_root(
+    State(deployment): State<DeploymentImpl>,
+    Path(host_id): Path<Uuid>,
+    ws_upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
+    request: Request,
+) -> Response {
+    proxy_host(deployment, host_id, ws_upgrade, request).await
+}
+
+async fn proxy_host_tail(
+    State(deployment): State<DeploymentImpl>,
+    Path((host_id, _tail)): Path<(Uuid, String)>,
+    ws_upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
+    request: Request,
+) -> Response {
+    proxy_host(deployment, host_id, ws_upgrade, request).await
 }
 
 async fn proxy_host(
-    State(deployment): State<DeploymentImpl>,
-    Path(host_id): Path<Uuid>,
+    deployment: DeploymentImpl,
+    host_id: Uuid,
     ws_upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
     request: Request,
 ) -> Response {
