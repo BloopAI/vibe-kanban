@@ -195,7 +195,7 @@ export const Actions = {
         const draftId = await persistWorkspaceCreateDraft(
           createState,
           undefined,
-          ctx.runtime
+          ctx.appRuntime
         );
         if (!draftId) {
           await ConfirmDialog.show({
@@ -385,7 +385,7 @@ export const Actions = {
         const draftId = await persistWorkspaceCreateDraft(
           createState,
           undefined,
-          ctx.runtime
+          ctx.appRuntime
         );
         if (!draftId) {
           await ConfirmDialog.show({
