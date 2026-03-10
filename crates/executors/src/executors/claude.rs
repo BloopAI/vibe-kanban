@@ -102,6 +102,17 @@ fn normalize_claude_stderr_logs(
 }
 
 use derivative::Derivative;
+use strum_macros::{AsRefStr, EnumString};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema, AsRefStr, EnumString)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum ClaudeEffort {
+    Low,
+    Medium,
+    High,
+    Max,
+}
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -116,6 +127,8 @@ pub struct ClaudeCode {
     pub approvals: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<ClaudeEffort>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -164,6 +177,9 @@ impl ClaudeCode {
         }
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
+        }
+        if let Some(effort) = &self.effort {
+            builder = builder.extend_params(["--effort", effort.as_ref()]);
         }
         if let Some(agent) = &self.agent {
             builder = builder.extend_params(["--agent", agent]);
@@ -249,27 +265,36 @@ impl ClaudeCode {
 fn default_discovered_options() -> crate::executor_discovery::ExecutorDiscoveredOptions {
     use crate::{
         executor_discovery::ExecutorDiscoveredOptions,
-        model_selector::{ModelInfo, ModelSelectorConfig},
+        model_selector::{ModelInfo, ModelSelectorConfig, ReasoningOption},
     };
+
+    let effort_options =
+        ReasoningOption::from_names(["low", "medium", "high", "max"].map(String::from));
+
+    let supports_effort = |id: &str| -> bool { id.contains("opus") || id.contains("sonnet") };
 
     ExecutorDiscoveredOptions {
         model_selector: ModelSelectorConfig {
             providers: vec![],
             models: [
-                ("claude-opus-4-6", "Opus"),
-                ("claude-opus-4-6[1m]", "Opus (1M context)"),
-                ("claude-haiku-4-5-20251001", "Haiku"),
-                ("claude-sonnet-4-6", "Sonnet"),
+                ("opus", "Opus"),
+                ("opus[1m]", "Opus (1M context)"),
+                ("sonnet", "Sonnet"),
+                ("haiku", "Haiku"),
             ]
             .into_iter()
             .map(|(id, name)| ModelInfo {
                 id: id.to_string(),
                 name: name.to_string(),
                 provider_id: None,
-                reasoning_options: vec![],
+                reasoning_options: if supports_effort(id) {
+                    effort_options.clone()
+                } else {
+                    vec![]
+                },
             })
             .collect(),
-            default_model: Some("claude-opus-4-6".to_string()),
+            default_model: Some("opus".to_string()),
             agents: vec![],
             permissions: vec![
                 PermissionPolicy::Auto,
@@ -293,6 +318,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         }
         if let Some(agent) = &executor_config.agent_id {
             self.agent = Some(agent.clone());
+        }
+        if let Some(reasoning_id) = &executor_config.reasoning_id {
+            self.effort = reasoning_id.parse().ok();
         }
         if let Some(permission_policy) = executor_config.permission_policy.clone() {
             match permission_policy {
@@ -553,7 +581,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
-            reasoning_id: None,
+            reasoning_id: self.effort.as_ref().map(|e| e.as_ref().to_owned()),
             permission_policy: Some(permission_policy),
         }
     }
@@ -2788,6 +2816,7 @@ mod tests {
             plan: None,
             approvals: None,
             model: None,
+            effort: None,
             agent: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,

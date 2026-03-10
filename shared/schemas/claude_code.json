@@ -35,6 +35,19 @@
         "null"
       ]
     },
+    "effort": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "max",
+        null
+      ]
+    },
     "agent": {
       "type": [
         "string",
