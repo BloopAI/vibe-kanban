@@ -17,13 +17,14 @@ use uuid::Uuid;
 /// Key for deduplicating tunnels.
 #[derive(Clone, Debug, Hash, Eq, PartialEq)]
 struct TunnelKey {
-    relay_session_base_url: String,
+    host_id: Uuid,
     api_path: String,
 }
 
 struct ActiveTunnel {
     id: Uuid,
     local_port: u16,
+    relay_session_base_url: String,
     signing_session_id: String,
     cancel: CancellationToken,
 }
@@ -42,6 +43,7 @@ impl TunnelManager {
     /// Returns the local port to connect to.
     pub async fn get_or_create_ssh_tunnel(
         &self,
+        host_id: Uuid,
         relay_session_base_url: &str,
         signing_key: &SigningKey,
         signing_session_id: &str,
@@ -49,6 +51,7 @@ impl TunnelManager {
     ) -> anyhow::Result<u16> {
         let local_port = self
             .get_or_create_tunnel_for_path(
+                host_id,
                 relay_session_base_url,
                 signing_key,
                 signing_session_id,
@@ -62,6 +65,7 @@ impl TunnelManager {
 
     async fn get_or_create_tunnel_for_path(
         &self,
+        host_id: Uuid,
         relay_session_base_url: &str,
         signing_key: &SigningKey,
         signing_session_id: &str,
@@ -69,29 +73,34 @@ impl TunnelManager {
         api_path: &str,
     ) -> anyhow::Result<u16> {
         let key = TunnelKey {
-            relay_session_base_url: relay_session_base_url.to_string(),
+            host_id,
             api_path: api_path.to_string(),
         };
 
         // Check for existing healthy tunnel.
-        // If signing session rotated, replace the existing tunnel.
+        // If signing session or relay session rotated, replace the existing tunnel.
         {
             let mut tunnels = self.tunnels.lock().await;
-            if let Some(tunnel) = tunnels.get(&key)
-                && !tunnel.cancel.is_cancelled() {
-                    if tunnel.signing_session_id == signing_session_id {
+            if let Some(tunnel) = tunnels.get(&key) {
+                if !tunnel.cancel.is_cancelled() {
+                    if tunnel.signing_session_id == signing_session_id
+                        && tunnel.relay_session_base_url == relay_session_base_url
+                    {
                         return Ok(tunnel.local_port);
                     }
 
                     tracing::info!(
+                        previous_relay_session_base_url = %tunnel.relay_session_base_url,
+                        new_relay_session_base_url = %relay_session_base_url,
                         previous_signing_session_id = %tunnel.signing_session_id,
                         new_signing_session_id = %signing_session_id,
                         local_port = tunnel.local_port,
-                        "Replacing tunnel after signing session rotation"
+                        "Replacing tunnel after session rotation"
                     );
                     tunnel.cancel.cancel();
                     tunnels.remove(&key);
                 }
+            }
         }
 
         // Create new tunnel
@@ -103,7 +112,8 @@ impl TunnelManager {
 
         let cancel = CancellationToken::new();
         let cancel_clone = cancel.clone();
-        let relay_session_base_url = relay_session_base_url.to_string();
+        let relay_session_base_url_owned = relay_session_base_url.to_string();
+        let relay_session_base_url_for_task = relay_session_base_url_owned.clone();
         let signing_key = signing_key.clone();
         let signing_session_id_owned = signing_session_id.to_string();
         let tunnels = self.tunnels.clone();
@@ -114,7 +124,7 @@ impl TunnelManager {
         tokio::spawn(async move {
             run_tunnel_listener(
                 listener,
-                &relay_session_base_url,
+                &relay_session_base_url_for_task,
                 &signing_key,
                 &signing_session_id_owned,
                 server_verify_key,
@@ -138,6 +148,7 @@ impl TunnelManager {
             ActiveTunnel {
                 id: tunnel_id,
                 local_port,
+                relay_session_base_url: relay_session_base_url_owned,
                 signing_session_id: signing_session_id.to_string(),
                 cancel,
             },
@@ -168,8 +179,15 @@ async fn run_tunnel_listener(
                         let api_path = api_path.to_string();
                         tokio::spawn(async move {
                             if let Err(error) = bridge_tcp_to_relay(
-                                tcp_stream, &relay_session_base_url, &signing_key, &signing_session_id, server_verify_key, &api_path,
-                            ).await {
+                                tcp_stream,
+                                &relay_session_base_url,
+                                &signing_key,
+                                &signing_session_id,
+                                server_verify_key,
+                                &api_path,
+                            )
+                            .await
+                            {
                                 tracing::warn!(?error, "Tunnel bridge failed");
                             }
                         });

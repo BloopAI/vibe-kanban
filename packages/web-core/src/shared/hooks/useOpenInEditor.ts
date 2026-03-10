@@ -30,6 +30,7 @@ export function useOpenInEditor(
                 host_id: hostId,
                 workspace_id: workspaceId,
                 editor_type: editorType ?? null,
+                file_path: filePath ?? null,
               })
             : await workspacesApi.openEditor(workspaceId, {
                 editor_type: editorType ?? null,

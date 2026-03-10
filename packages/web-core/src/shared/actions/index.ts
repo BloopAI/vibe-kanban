@@ -766,6 +766,7 @@ export const Actions = {
                 host_id: ctx.currentHostId,
                 workspace_id: ctx.currentWorkspaceId,
                 editor_type: null,
+                file_path: null,
               })
             : await workspacesApi.openEditor(ctx.currentWorkspaceId, {
                 editor_type: null,

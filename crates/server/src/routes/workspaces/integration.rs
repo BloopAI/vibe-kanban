@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use axum::{
     Extension, Json, Router,
-    extract::State,
+    extract::{Query, State},
     response::Json as ResponseJson,
     routing::{get, post},
 };
@@ -42,6 +42,11 @@ pub struct OpenEditorResponse {
 #[derive(Debug, Serialize, TS)]
 pub struct OpenEditorPathResponse {
     pub workspace_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OpenEditorPathQuery {
+    file_path: Option<String>,
 }
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -136,8 +141,10 @@ pub async fn open_workspace_in_editor(
 pub async fn get_workspace_editor_path(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
+    Query(query): Query<OpenEditorPathQuery>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorPathResponse>>, ApiError> {
-    let path = resolve_workspace_editor_path(&deployment, &workspace, None).await?;
+    let path =
+        resolve_workspace_editor_path(&deployment, &workspace, query.file_path.as_deref()).await?;
 
     Ok(ResponseJson(ApiResponse::success(OpenEditorPathResponse {
         workspace_path: path.to_string_lossy().into_owned(),
