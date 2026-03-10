@@ -10,14 +10,13 @@ base64 = "0.22"
 dirs = "5"
 ed25519-dalek = { version = "2", features = ["pkcs8"] }
 ssh-key = { version = "0.6", features = ["ed25519"] }
-native-tls = "0.2"
 relay-control = { path = "../relay-control", features = ["tungstenite"] }
 relay-tunnel = { path = "../relay-tunnel" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10"
 tokio = { version = "1.0", features = ["full"] }
-tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
 tokio-util = "0.7"
 thiserror = "2.0"
 tracing = "0.1"

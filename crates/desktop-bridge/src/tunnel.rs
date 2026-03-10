@@ -8,7 +8,7 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Context as _;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use relay_control::{signed_ws::signed_websocket, signing};
-use relay_tunnel::ws_io::tungstenite_ws_stream_io;
+use relay_tunnel::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
 use tokio::{net::TcpListener, sync::Mutex};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_util::sync::CancellationToken;
@@ -220,20 +220,10 @@ async fn bridge_tcp_to_relay(
         sig.signature_b64.parse()?,
     );
 
-    let mut tls_builder = native_tls::TlsConnector::builder();
-    if cfg!(debug_assertions) {
-        tls_builder.danger_accept_invalid_certs(true);
-    }
-    let tls_connector = tls_builder.build().context("Failed to build TLS")?;
-
-    let (ws_stream, _response) = tokio_tungstenite::connect_async_tls_with_config(
-        request,
-        None,
-        false,
-        Some(tokio_tungstenite::Connector::NativeTls(tls_connector)),
-    )
-    .await
-    .context("Failed to connect relay tunnel WS")?;
+    let (ws_stream, _response) =
+        tokio_tungstenite::connect_async_tls_with_config(request, None, false, ws_connector())
+            .await
+            .context("Failed to connect relay tunnel WS")?;
 
     let signed_ws = signed_websocket(
         sig.signing_session_id,

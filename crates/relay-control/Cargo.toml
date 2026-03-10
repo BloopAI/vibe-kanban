@@ -23,4 +23,4 @@ uuid = { version = "1.0", features = ["v4"] }
 
 # Optional transport impls for RelayTransportMessage
 axum = { version = "0.8.4", features = ["ws"], optional = true }
-tokio-tungstenite = { version = "0.24", optional = true }
+tokio-tungstenite = { version = "0.26", optional = true }

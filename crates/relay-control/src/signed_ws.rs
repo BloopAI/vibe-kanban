@@ -103,10 +103,10 @@ mod tungstenite_impl {
     impl RelayTransportMessage for tungstenite::Message {
         fn decompose(self) -> RelayWsFrame {
             let (msg_type, payload) = match self {
-                Self::Text(text) => (RelayWsMessageType::Text, text.into_bytes()),
-                Self::Binary(data) => (RelayWsMessageType::Binary, data),
-                Self::Ping(data) => (RelayWsMessageType::Ping, data),
-                Self::Pong(data) => (RelayWsMessageType::Pong, data),
+                Self::Text(text) => (RelayWsMessageType::Text, text.to_string().into_bytes()),
+                Self::Binary(data) => (RelayWsMessageType::Binary, data.to_vec()),
+                Self::Ping(data) => (RelayWsMessageType::Ping, data.to_vec()),
+                Self::Pong(data) => (RelayWsMessageType::Pong, data.to_vec()),
                 Self::Close(frame) => {
                     let payload = if let Some(f) = frame {
                         let code: u16 = f.code.into();
@@ -129,11 +129,11 @@ mod tungstenite_impl {
                 RelayWsMessageType::Text => {
                     let text =
                         String::from_utf8(frame.payload).context("invalid UTF-8 text frame")?;
-                    Ok(Self::Text(text))
+                    Ok(Self::Text(text.into()))
                 }
-                RelayWsMessageType::Binary => Ok(Self::Binary(frame.payload)),
-                RelayWsMessageType::Ping => Ok(Self::Ping(frame.payload)),
-                RelayWsMessageType::Pong => Ok(Self::Pong(frame.payload)),
+                RelayWsMessageType::Binary => Ok(Self::Binary(frame.payload.into())),
+                RelayWsMessageType::Ping => Ok(Self::Ping(frame.payload.into())),
+                RelayWsMessageType::Pong => Ok(Self::Pong(frame.payload.into())),
                 RelayWsMessageType::Close => {
                     if frame.payload.is_empty() {
                         return Ok(Self::Close(None));

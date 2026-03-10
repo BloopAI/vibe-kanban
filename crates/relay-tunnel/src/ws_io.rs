@@ -172,5 +172,5 @@ fn read_tungstenite_message(message: tungstenite::Message) -> WsIoReadMessage {
 }
 
 fn write_tungstenite_message(bytes: Vec<u8>) -> tungstenite::Message {
-    tungstenite::Message::Binary(bytes)
+    tungstenite::Message::Binary(bytes.into())
 }

@@ -9,7 +9,7 @@ use services::services::container::ContainerService;
 
 use crate::{
     DeploymentImpl,
-    routes::relay_ws::{SignedWebSocket, SignedWsUpgrade},
+    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
 };
 
 #[derive(Debug, Deserialize)]
@@ -53,7 +53,7 @@ pub async fn stream_workspace_diff_ws(
 }
 
 async fn handle_workspace_diff_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     workspace: db::models::workspace::Workspace,
     stats_only: bool,
@@ -98,7 +98,7 @@ async fn handle_workspace_diff_ws(
 }
 
 async fn handle_workspaces_ws(
-    mut socket: SignedWebSocket,
+    mut socket: MaybeSignedWebSocket,
     deployment: DeploymentImpl,
     archived: Option<bool>,
     limit: Option<i64>,

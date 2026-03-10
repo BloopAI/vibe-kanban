@@ -1,4 +1,4 @@
-mod tls;
+pub mod tls;
 pub mod ws_io;
 
 pub mod client;
