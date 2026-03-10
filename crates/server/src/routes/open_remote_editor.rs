@@ -1,3 +1,5 @@
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use axum::{
     Json, Router,
     extract::State,
@@ -5,8 +7,11 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
+use ed25519_dalek::Signer;
 use serde::{Deserialize, Serialize};
+use trusted_key_auth::refresh::build_refresh_message;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -17,6 +22,7 @@ use crate::{
         api::{RelayApiClient, get_signed_relay_api},
         relay_session_url,
     },
+    routes::relay_auth::{RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse},
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -46,7 +52,6 @@ pub async fn open_remote_workspace_in_editor(
     };
 
     let signing_key = deployment.relay_signing().signing_key().clone();
-    let signing_session_id = host_signing.signing_session_id;
 
     let mut remote_session =
         match get_or_create_cached_relay_remote_session(&deployment, req.host_id).await {
@@ -69,6 +74,35 @@ pub async fn open_remote_workspace_in_editor(
             }
         };
 
+    let mut signing_session_id = match get_or_refresh_cached_signing_session(
+        &deployment,
+        req.host_id,
+        host_signing.client_id,
+        &signing_key,
+        &remote_session,
+        false,
+    )
+    .await
+    {
+        Ok(signing_session_id) => signing_session_id,
+        Err(error) => {
+            tracing::warn!(
+                ?error,
+                host_id = %req.host_id,
+                "Failed to initialize relay signing session for remote editor open"
+            );
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Failed to initialize signing session for host"
+                )),
+            )
+                .into_response();
+        }
+    };
+
     let editor_path_api_path =
         build_workspace_editor_path_api_path(req.workspace_id, req.file_path.as_deref());
 
@@ -87,63 +121,113 @@ pub async fn open_remote_workspace_in_editor(
                 ?first_error,
                 host_id = %req.host_id,
                 workspace_id = %req.workspace_id,
-                "Failed to resolve workspace editor path; refreshing relay session and retrying"
+                "Failed to resolve workspace editor path; refreshing signing session and retrying"
             );
 
-            deployment
-                .invalidate_cached_relay_remote_session_id(req.host_id)
-                .await;
-            remote_session = match create_relay_remote_session(&deployment, req.host_id).await {
-                Ok(remote_session) => {
-                    deployment
-                        .cache_relay_remote_session_id(req.host_id, remote_session.id)
-                        .await;
-                    remote_session
-                }
+            signing_session_id = match get_or_refresh_cached_signing_session(
+                &deployment,
+                req.host_id,
+                host_signing.client_id,
+                &signing_key,
+                &remote_session,
+                true,
+            )
+            .await
+            {
+                Ok(signing_session_id) => signing_session_id,
                 Err(error) => {
                     tracing::warn!(
                         ?error,
                         host_id = %req.host_id,
-                        "Failed to refresh relay session for remote editor open"
+                        "Failed to refresh signing session for remote editor open"
                     );
                     return (
                         StatusCode::BAD_REQUEST,
                         Json(ApiResponse::<
                             desktop_bridge::service::OpenRemoteEditorResponse,
                         >::error(
-                            "Failed to create relay session for host"
+                            "Failed to initialize signing session for host"
                         )),
                     )
                         .into_response();
                 }
             };
 
-            match fetch_relay_editor_path(
+            let second_attempt = fetch_relay_editor_path(
                 req.host_id,
                 remote_session.id,
                 &editor_path_api_path,
                 &signing_key,
                 &signing_session_id,
             )
-            .await
-            {
+            .await;
+            match second_attempt {
                 Ok(path) => path,
-                Err(error) => {
+                Err(second_error) => {
                     tracing::warn!(
-                        ?error,
+                        ?second_error,
                         host_id = %req.host_id,
                         workspace_id = %req.workspace_id,
-                        "Failed to resolve workspace editor path"
+                        "Failed to resolve workspace editor path after signing refresh; refreshing relay session"
                     );
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(ApiResponse::<
-                            desktop_bridge::service::OpenRemoteEditorResponse,
-                        >::error(
-                            "Failed to resolve editor path for host workspace"
-                        )),
+
+                    deployment
+                        .invalidate_cached_relay_remote_session_id(req.host_id)
+                        .await;
+                    remote_session =
+                        match create_relay_remote_session(&deployment, req.host_id).await {
+                            Ok(remote_session) => {
+                                deployment
+                                    .cache_relay_remote_session_id(req.host_id, remote_session.id)
+                                    .await;
+                                remote_session
+                            }
+                            Err(error) => {
+                                tracing::warn!(
+                                    ?error,
+                                    host_id = %req.host_id,
+                                    "Failed to refresh relay session for remote editor open"
+                                );
+                                return (
+                                    StatusCode::BAD_REQUEST,
+                                    Json(ApiResponse::<
+                                        desktop_bridge::service::OpenRemoteEditorResponse,
+                                    >::error(
+                                        "Failed to create relay session for host"
+                                    )),
+                                )
+                                    .into_response();
+                            }
+                        };
+
+                    match fetch_relay_editor_path(
+                        req.host_id,
+                        remote_session.id,
+                        &editor_path_api_path,
+                        &signing_key,
+                        &signing_session_id,
                     )
-                        .into_response();
+                    .await
+                    {
+                        Ok(path) => path,
+                        Err(error) => {
+                            tracing::warn!(
+                                ?error,
+                                host_id = %req.host_id,
+                                workspace_id = %req.workspace_id,
+                                "Failed to resolve workspace editor path"
+                            );
+                            return (
+                                StatusCode::BAD_REQUEST,
+                                Json(ApiResponse::<
+                                    desktop_bridge::service::OpenRemoteEditorResponse,
+                                >::error(
+                                    "Failed to resolve editor path for host workspace"
+                                )),
+                            )
+                                .into_response();
+                        }
+                    }
                 }
             }
         }
@@ -249,6 +333,67 @@ async fn fetch_relay_editor_path(
     .await
 }
 
+async fn get_or_refresh_cached_signing_session(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+    client_id: Uuid,
+    signing_key: &ed25519_dalek::SigningKey,
+    remote_session: &crate::relay::api::RemoteSession,
+    force_refresh: bool,
+) -> anyhow::Result<String> {
+    if !force_refresh
+        && let Some(signing_session_id) = deployment
+            .get_cached_relay_signing_session_id(host_id)
+            .await
+    {
+        return Ok(signing_session_id);
+    }
+
+    let remote_client = deployment.remote_client()?;
+    let access_token = remote_client.access_token().await?;
+    let relay_client = RelayApiClient::new(access_token);
+    let refreshed =
+        refresh_signing_session(&relay_client, remote_session, signing_key, client_id).await?;
+    let signing_session_id = refreshed.signing_session_id.to_string();
+    deployment
+        .cache_relay_signing_session_id(host_id, signing_session_id.clone())
+        .await;
+    Ok(signing_session_id)
+}
+
+async fn refresh_signing_session(
+    relay_client: &RelayApiClient,
+    remote_session: &crate::relay::api::RemoteSession,
+    signing_key: &ed25519_dalek::SigningKey,
+    client_id: Uuid,
+) -> anyhow::Result<RefreshRelaySigningSessionResponse> {
+    let timestamp = unix_timestamp_now()?;
+    let nonce = Uuid::new_v4().simple().to_string();
+    let refresh_message = build_refresh_message(timestamp, &nonce, client_id);
+    let signature_b64 =
+        BASE64_STANDARD.encode(signing_key.sign(refresh_message.as_bytes()).to_bytes());
+
+    let payload = RefreshRelaySigningSessionRequest {
+        client_id,
+        timestamp,
+        nonce,
+        signature_b64,
+    };
+
+    relay_client
+        .post_session_api(
+            remote_session,
+            "/api/relay-auth/server/signing-session/refresh",
+            &payload,
+        )
+        .await
+}
+
+fn unix_timestamp_now() -> anyhow::Result<i64> {
+    let duration = SystemTime::now().duration_since(UNIX_EPOCH)?;
+    Ok(duration.as_secs() as i64)
+}
+
 async fn get_or_create_cached_relay_remote_session(
     deployment: &DeploymentImpl,
     host_id: Uuid,
@@ -278,7 +423,7 @@ async fn create_relay_remote_session(
 }
 
 struct HostSigningInfo {
-    signing_session_id: String,
+    client_id: Uuid,
     server_verify_key: ed25519_dalek::VerifyingKey,
 }
 
@@ -314,8 +459,24 @@ async fn get_host_signing_info(
                 .into_response()
         })?;
 
+    let client_id = credentials
+        .client_id
+        .as_ref()
+        .and_then(|value| value.parse::<Uuid>().ok())
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Host pairing is missing client metadata. Re-pair it."
+                )),
+            )
+                .into_response()
+        })?;
+
     Ok(HostSigningInfo {
-        signing_session_id: credentials.signing_session_id,
+        client_id,
         server_verify_key,
     })
 }

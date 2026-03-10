@@ -85,25 +85,34 @@ pub async fn pair_relay_host(
                 .into_response();
         }
     };
+    let PairedCredentials {
+        signing_session_id,
+        client_id,
+        server_public_key_b64,
+    } = paired_credentials;
 
     match deployment
         .upsert_relay_host_credentials(
             req.host_id,
-            paired_credentials.signing_session_id,
             Some(req.host_name.clone()),
             Some(Utc::now().to_rfc3339()),
-            Some(paired_credentials.client_id),
-            Some(paired_credentials.server_public_key_b64),
+            Some(client_id),
+            Some(server_public_key_b64),
         )
         .await
     {
-        Ok(()) => (
-            StatusCode::OK,
-            Json(ApiResponse::<PairRelayHostResponse>::success(
-                PairRelayHostResponse { paired: true },
-            )),
-        )
-            .into_response(),
+        Ok(()) => {
+            deployment
+                .cache_relay_signing_session_id(req.host_id, signing_session_id)
+                .await;
+            (
+                StatusCode::OK,
+                Json(ApiResponse::<PairRelayHostResponse>::success(
+                    PairRelayHostResponse { paired: true },
+                )),
+            )
+                .into_response()
+        }
         Err(error) => {
             tracing::error!(?error, "Failed to persist paired relay host credentials");
             (
@@ -183,7 +192,7 @@ async fn pair_relay_host_credentials(
             .await
             .context("Failed to get access token for relay auth code")?,
     );
-    let relay_browser_session = relay_client.create_session(req.host_id).await?;
+    let relay_remote_session = relay_client.create_session(req.host_id).await?;
 
     let normalized_code = normalize_enrollment_code(&req.enrollment_code)
         .map_err(|error| anyhow::anyhow!(error.to_string()))?;
@@ -196,7 +205,7 @@ async fn pair_relay_host_credentials(
 
     let start_response: StartSpake2EnrollmentResponse = relay_client
         .post_session_api(
-            &relay_browser_session,
+            &relay_remote_session,
             "/api/relay-auth/server/spake2/start",
             &StartSpake2EnrollmentRequest {
                 enrollment_code: normalized_code,
@@ -213,12 +222,12 @@ async fn pair_relay_host_credentials(
         .map_err(|_| anyhow::anyhow!("Failed to complete relay PAKE handshake"))?;
 
     let signing_key = deployment.relay_signing().signing_key();
-    let browser_public_key = signing_key.verifying_key();
-    let browser_public_key_b64 = BASE64_STANDARD.encode(browser_public_key.as_bytes());
+    let client_public_key = signing_key.verifying_key();
+    let client_public_key_b64 = BASE64_STANDARD.encode(client_public_key.as_bytes());
     let client_proof_b64 = build_client_proof(
         &shared_key,
         &start_response.enrollment_id,
-        browser_public_key.as_bytes(),
+        client_public_key.as_bytes(),
     )
     .map_err(|_| anyhow::anyhow!("Failed to build relay PAKE client proof"))?;
 
@@ -226,7 +235,7 @@ async fn pair_relay_host_credentials(
     let client_id = Uuid::new_v4();
     let finish_response: FinishSpake2EnrollmentResponse = relay_client
         .post_session_api(
-            &relay_browser_session,
+            &relay_remote_session,
             "/api/relay-auth/server/spake2/finish",
             &FinishSpake2EnrollmentRequest {
                 enrollment_id: start_response.enrollment_id,
@@ -235,7 +244,7 @@ async fn pair_relay_host_credentials(
                 client_browser: "local-backend".to_string(),
                 client_os: format!("{} {}", os.os_type(), os.version()),
                 client_device: "desktop".to_string(),
-                public_key_b64: browser_public_key_b64,
+                public_key_b64: client_public_key_b64,
                 client_proof_b64,
             },
         )
@@ -247,7 +256,7 @@ async fn pair_relay_host_credentials(
     verify_server_proof(
         &shared_key,
         &start_response.enrollment_id,
-        browser_public_key.as_bytes(),
+        client_public_key.as_bytes(),
         server_public_key.as_bytes(),
         &finish_response.server_proof_b64,
     )

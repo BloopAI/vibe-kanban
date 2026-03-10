@@ -72,7 +72,7 @@ pub struct LocalDeployment {
     pty: PtyService,
     tunnel_manager: Arc<TunnelManager>,
     relay_host_credentials: Arc<RwLock<HashMap<Uuid, RelayHostCredentials>>>,
-    relay_remote_sessions: Arc<RwLock<HashMap<Uuid, Uuid>>>,
+    relay_sessions: Arc<RwLock<HashMap<Uuid, RelaySessionCacheEntry>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -81,9 +81,14 @@ struct PendingHandoff {
     app_verifier: String,
 }
 
+#[derive(Debug, Clone, Default)]
+struct RelaySessionCacheEntry {
+    remote_session_id: Option<Uuid>,
+    signing_session_id: Option<String>,
+}
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RelayHostCredentials {
-    pub signing_session_id: String,
     pub host_name: Option<String>,
     pub paired_at: Option<String>,
     pub client_id: Option<String>,
@@ -238,7 +243,7 @@ impl Deployment for LocalDeployment {
         let pty = PtyService::new();
         let tunnel_manager = Arc::new(TunnelManager::new());
         let relay_host_credentials = Arc::new(RwLock::new(load_relay_host_credentials_map().await));
-        let relay_remote_sessions = Arc::new(RwLock::new(HashMap::new()));
+        let relay_sessions = Arc::new(RwLock::new(HashMap::new()));
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -277,7 +282,7 @@ impl Deployment for LocalDeployment {
             pty,
             tunnel_manager,
             relay_host_credentials,
-            relay_remote_sessions,
+            relay_sessions,
         };
 
         Ok(deployment)
@@ -435,28 +440,68 @@ impl LocalDeployment {
     }
 
     pub async fn get_cached_relay_remote_session_id(&self, host_id: Uuid) -> Option<Uuid> {
-        self.relay_remote_sessions
+        self.relay_sessions
             .read()
             .await
             .get(&host_id)
-            .copied()
+            .and_then(|entry| entry.remote_session_id)
     }
 
     pub async fn cache_relay_remote_session_id(&self, host_id: Uuid, session_id: Uuid) {
-        self.relay_remote_sessions
+        self.relay_sessions
             .write()
             .await
-            .insert(host_id, session_id);
+            .entry(host_id)
+            .or_default()
+            .remote_session_id = Some(session_id);
     }
 
     pub async fn invalidate_cached_relay_remote_session_id(&self, host_id: Uuid) {
-        self.relay_remote_sessions.write().await.remove(&host_id);
+        let mut sessions = self.relay_sessions.write().await;
+        let should_remove = if let Some(entry) = sessions.get_mut(&host_id) {
+            entry.remote_session_id = None;
+            entry.signing_session_id.is_none()
+        } else {
+            false
+        };
+        if should_remove {
+            sessions.remove(&host_id);
+        }
+    }
+
+    pub async fn get_cached_relay_signing_session_id(&self, host_id: Uuid) -> Option<String> {
+        self.relay_sessions
+            .read()
+            .await
+            .get(&host_id)
+            .and_then(|entry| entry.signing_session_id.clone())
+    }
+
+    pub async fn cache_relay_signing_session_id(&self, host_id: Uuid, session_id: String) {
+        self.relay_sessions
+            .write()
+            .await
+            .entry(host_id)
+            .or_default()
+            .signing_session_id = Some(session_id);
+    }
+
+    pub async fn invalidate_cached_relay_signing_session_id(&self, host_id: Uuid) {
+        let mut sessions = self.relay_sessions.write().await;
+        let should_remove = if let Some(entry) = sessions.get_mut(&host_id) {
+            entry.signing_session_id = None;
+            entry.remote_session_id.is_none()
+        } else {
+            false
+        };
+        if should_remove {
+            sessions.remove(&host_id);
+        }
     }
 
     pub async fn upsert_relay_host_credentials(
         &self,
         host_id: Uuid,
-        signing_session_id: String,
         host_name: Option<String>,
         paired_at: Option<String>,
         client_id: Option<String>,
@@ -467,7 +512,6 @@ impl LocalDeployment {
         credentials.insert(
             host_id,
             RelayHostCredentials {
-                signing_session_id,
                 host_name: host_name
                     .or_else(|| existing.as_ref().and_then(|value| value.host_name.clone())),
                 paired_at: paired_at
@@ -514,6 +558,8 @@ impl LocalDeployment {
 
         if removed {
             self.invalidate_cached_relay_remote_session_id(host_id)
+                .await;
+            self.invalidate_cached_relay_signing_session_id(host_id)
                 .await;
             persist_relay_host_credentials_map(&credentials).await?;
         }

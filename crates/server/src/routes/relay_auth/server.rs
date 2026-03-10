@@ -191,7 +191,7 @@ async fn finish_spake2_enrollment(
         return Err(ApiError::Unauthorized);
     };
 
-    let browser_public_key = parse_public_key_base64(&payload.public_key_b64)
+    let client_public_key = parse_public_key_base64(&payload.public_key_b64)
         .map_err(|_| ApiError::BadRequest("Invalid public_key_b64".to_string()))?;
 
     let server_public_key = deployment.relay_signing().server_public_key();
@@ -200,12 +200,12 @@ async fn finish_spake2_enrollment(
     verify_client_proof(
         &shared_key,
         &payload.enrollment_id,
-        browser_public_key.as_bytes(),
+        client_public_key.as_bytes(),
         &payload.client_proof_b64,
     )
     .map_err(|_| ApiError::Unauthorized)?;
 
-    // Persist the browser's public key so it survives server restarts
+    // Persist the paired client's public key so it survives server restarts
     if let Err(e) = deployment
         .trusted_key_auth()
         .persist_trusted_client(TrustedRelayClient {
@@ -223,13 +223,13 @@ async fn finish_spake2_enrollment(
 
     let signing_session_id = deployment
         .relay_signing()
-        .create_session(browser_public_key)
+        .create_session(client_public_key)
         .await;
 
     let server_proof_b64 = build_server_proof(
         &shared_key,
         &payload.enrollment_id,
-        browser_public_key.as_bytes(),
+        client_public_key.as_bytes(),
         server_public_key.as_bytes(),
     )
     .map_err(|_| ApiError::Unauthorized)?;
@@ -238,7 +238,7 @@ async fn finish_spake2_enrollment(
         enrollment_id = %payload.enrollment_id,
         client_id = %payload.client_id,
         signing_session_id = %signing_session_id,
-        public_key_b64 = %BASE64_STANDARD.encode(browser_public_key.as_bytes()),
+        public_key_b64 = %BASE64_STANDARD.encode(client_public_key.as_bytes()),
         "completed relay PAKE enrollment"
     );
 
@@ -280,7 +280,7 @@ async fn refresh_relay_signing_session(
         .await?
         .ok_or(ApiError::Unauthorized)?;
 
-    let browser_public_key = parse_public_key_base64(&trusted_client.public_key_b64)
+    let client_public_key = parse_public_key_base64(&trusted_client.public_key_b64)
         .map_err(|_| ApiError::Unauthorized)?;
 
     validate_refresh_timestamp(payload.timestamp)?;
@@ -291,15 +291,11 @@ async fn refresh_relay_signing_session(
 
     let refresh_message =
         build_refresh_message(payload.timestamp, &payload.nonce, payload.client_id);
-    verify_refresh_signature(
-        &browser_public_key,
-        &refresh_message,
-        &payload.signature_b64,
-    )?;
+    verify_refresh_signature(&client_public_key, &refresh_message, &payload.signature_b64)?;
 
     let signing_session_id = deployment
         .relay_signing()
-        .create_session(browser_public_key)
+        .create_session(client_public_key)
         .await;
 
     Ok(Json(ApiResponse::success(

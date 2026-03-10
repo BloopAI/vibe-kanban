@@ -105,7 +105,7 @@ pub fn build_response_signing_message(
 // ---------------------------------------------------------------------------
 
 struct RelaySigningSession {
-    browser_public_key: VerifyingKey,
+    client_public_key: VerifyingKey,
     created_at: Instant,
     last_used_at: Instant,
     seen_nonces: HashMap<String, Instant>,
@@ -191,14 +191,14 @@ impl RelaySigningService {
         &self.server_signing_key
     }
 
-    pub async fn create_session(&self, browser_public_key: VerifyingKey) -> Uuid {
+    pub async fn create_session(&self, client_public_key: VerifyingKey) -> Uuid {
         let signing_session_id = Uuid::new_v4();
         let now = Instant::now();
         let mut sessions = self.sessions.write().await;
         sessions.insert(
             signing_session_id,
             RelaySigningSession {
-                browser_public_key,
+                client_public_key,
                 created_at: now,
                 last_used_at: now,
                 seen_nonces: HashMap::new(),
@@ -232,7 +232,7 @@ impl RelaySigningService {
         }
 
         session
-            .browser_public_key
+            .client_public_key
             .verify(message, &signature)
             .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
 
@@ -252,7 +252,7 @@ impl RelaySigningService {
             if now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
                 && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
             {
-                Some(session.browser_public_key)
+                Some(session.client_public_key)
             } else {
                 None
             }
@@ -267,7 +267,7 @@ impl RelaySigningService {
         sessions.values().any(|session| {
             now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
                 && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
-                && session.browser_public_key.as_bytes() == key_bytes
+                && session.client_public_key.as_bytes() == key_bytes
         })
     }
 

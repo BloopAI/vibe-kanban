@@ -68,6 +68,7 @@ pub struct RelayConnection {
     remote_session: RemoteSession,
     signing_key: SigningKey,
     credentials: RelayHostCredentials,
+    signing_session_id: String,
 }
 
 impl RelayConnection {
@@ -92,6 +93,15 @@ impl RelayConnection {
             get_or_create_cached_remote_session(deployment, &relay_client, host_id).await?;
 
         let signing_key = deployment.relay_signing().signing_key().clone();
+        let signing_session_id = get_or_create_cached_signing_session(
+            deployment,
+            &relay_client,
+            &remote_session,
+            host_id,
+            &credentials,
+            &signing_key,
+        )
+        .await?;
 
         Ok(Self {
             deployment: deployment.clone(),
@@ -100,6 +110,7 @@ impl RelayConnection {
             remote_session,
             signing_key,
             credentials,
+            signing_session_id,
         })
     }
 
@@ -265,7 +276,7 @@ impl RelayConnection {
     ) -> Result<(SignedUpstreamSocket, Option<String>), WsConnectError> {
         let request_signature = signing::build_request_signature(
             &self.signing_key,
-            &self.credentials.signing_session_id,
+            &self.signing_session_id,
             "GET",
             target_path,
             &[],
@@ -314,7 +325,7 @@ impl RelayConnection {
             .map(ToOwned::to_owned);
 
         let upstream_socket = signed_websocket(
-            self.credentials.signing_session_id.clone(),
+            self.signing_session_id.clone(),
             request_signature.nonce,
             self.signing_key.clone(),
             server_verify_key,
@@ -333,7 +344,7 @@ impl RelayConnection {
     ) -> anyhow::Result<reqwest::Response> {
         let signature = signing::build_request_signature(
             &self.signing_key,
-            &self.credentials.signing_session_id,
+            &self.signing_session_id,
             method.as_str(),
             target_path,
             body,
@@ -375,30 +386,13 @@ impl RelayConnection {
             Some(id) => id,
             None => return false,
         };
-        let timestamp = match unix_timestamp_now() {
-            Ok(ts) => ts,
-            Err(_) => return false,
-        };
-        let nonce = Uuid::new_v4().simple().to_string();
-        let refresh_message = build_refresh_message(timestamp, &nonce, client_id);
-        let signature_b64 =
-            BASE64_STANDARD.encode(self.signing_key.sign(refresh_message.as_bytes()).to_bytes());
-
-        let payload = RefreshRelaySigningSessionRequest {
+        let refreshed = match refresh_signing_session(
+            &self.relay_client,
+            &self.remote_session,
+            &self.signing_key,
             client_id,
-            timestamp,
-            nonce,
-            signature_b64,
-        };
-
-        let refreshed: RefreshRelaySigningSessionResponse = match self
-            .relay_client
-            .post_session_api(
-                &self.remote_session,
-                "/api/relay-auth/server/signing-session/refresh",
-                &payload,
-            )
-            .await
+        )
+        .await
         {
             Ok(value) => value,
             Err(error) => {
@@ -412,27 +406,10 @@ impl RelayConnection {
         };
 
         let updated_signing_session_id = refreshed.signing_session_id.to_string();
-        if let Err(error) = self
-            .deployment
-            .upsert_relay_host_credentials(
-                self.host_id,
-                updated_signing_session_id.clone(),
-                self.credentials.host_name.clone(),
-                self.credentials.paired_at.clone(),
-                self.credentials.client_id.clone(),
-                self.credentials.server_public_key_b64.clone(),
-            )
-            .await
-        {
-            tracing::warn!(
-                ?error,
-                host_id = %self.host_id,
-                "Failed to persist refreshed relay signing session for host proxy request"
-            );
-            return false;
-        }
-
-        self.credentials.signing_session_id = updated_signing_session_id;
+        self.deployment
+            .cache_relay_signing_session_id(self.host_id, updated_signing_session_id.clone())
+            .await;
+        self.signing_session_id = updated_signing_session_id;
         true
     }
 
@@ -444,7 +421,7 @@ impl RelayConnection {
         let remote_session = match self.relay_client.create_session(self.host_id).await {
             Ok(value) => value,
             Err(error) => {
-                tracing::warn!(?error, host_id = %self.host_id, "Failed to rotate relay browser session");
+                tracing::warn!(?error, host_id = %self.host_id, "Failed to rotate relay remote session");
                 return false;
             }
         };
@@ -473,13 +450,81 @@ async fn get_or_create_cached_remote_session(
         .create_session(host_id)
         .await
         .map_err(|error| {
-            tracing::warn!(?error, %host_id, "Failed to create relay browser session");
-            RelayProxyError::BadGateway("Failed to create relay browser session")
+            tracing::warn!(?error, %host_id, "Failed to create relay remote session");
+            RelayProxyError::BadGateway("Failed to create relay remote session")
         })?;
     deployment
         .cache_relay_remote_session_id(host_id, remote_session.id)
         .await;
     Ok(remote_session)
+}
+
+async fn get_or_create_cached_signing_session(
+    deployment: &DeploymentImpl,
+    relay_client: &RelayApiClient,
+    remote_session: &RemoteSession,
+    host_id: Uuid,
+    credentials: &RelayHostCredentials,
+    signing_key: &SigningKey,
+) -> Result<String, RelayProxyError> {
+    if let Some(signing_session_id) = deployment
+        .get_cached_relay_signing_session_id(host_id)
+        .await
+    {
+        return Ok(signing_session_id);
+    }
+
+    let client_id = credentials
+        .client_id
+        .as_ref()
+        .and_then(|value| value.parse::<Uuid>().ok())
+        .ok_or(RelayProxyError::BadRequest(
+            "This host pairing is missing required client metadata. Re-pair it.",
+        ))?;
+
+    let refreshed = refresh_signing_session(relay_client, remote_session, signing_key, client_id)
+        .await
+        .map_err(|error| {
+            tracing::warn!(
+                ?error,
+                host_id = %host_id,
+                "Failed to bootstrap relay signing session"
+            );
+            RelayProxyError::BadGateway("Failed to initialize relay signing session")
+        })?;
+    let signing_session_id = refreshed.signing_session_id.to_string();
+    deployment
+        .cache_relay_signing_session_id(host_id, signing_session_id.clone())
+        .await;
+    Ok(signing_session_id)
+}
+
+async fn refresh_signing_session(
+    relay_client: &RelayApiClient,
+    remote_session: &RemoteSession,
+    signing_key: &SigningKey,
+    client_id: Uuid,
+) -> anyhow::Result<RefreshRelaySigningSessionResponse> {
+    let timestamp = unix_timestamp_now()?;
+    let nonce = Uuid::new_v4().simple().to_string();
+    let refresh_message = build_refresh_message(timestamp, &nonce, client_id);
+    let signature_b64 =
+        BASE64_STANDARD.encode(signing_key.sign(refresh_message.as_bytes()).to_bytes());
+
+    let payload = RefreshRelaySigningSessionRequest {
+        client_id,
+        timestamp,
+        nonce,
+        signature_b64,
+    };
+
+    relay_client
+        .post_session_api(
+            remote_session,
+            "/api/relay-auth/server/signing-session/refresh",
+            &payload,
+        )
+        .await
 }
 
 // ---------------------------------------------------------------------------
