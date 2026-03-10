@@ -72,7 +72,7 @@ type SignedAxumSocket = relay_control::signed_ws::SignedWebSocket<WebSocket, Mes
 
 enum WebSocketInner {
     Plain(SplitSink<WebSocket, Message>, SplitStream<WebSocket>),
-    Signed(SignedAxumSocket),
+    Signed(Box<SignedAxumSocket>),
 }
 
 impl SignedWsUpgrade {
@@ -84,13 +84,13 @@ impl SignedWsUpgrade {
         let relay_signing = self.relay_signing;
         self.ws.on_upgrade(move |socket| async move {
             let inner = match relay_signing {
-                Some(params) => WebSocketInner::Signed(signed_websocket(
+                Some(params) => WebSocketInner::Signed(Box::new(signed_websocket(
                     params.session_id,
                     params.nonce,
                     params.signing_key,
                     params.verify_key,
                     socket,
-                )),
+                ))),
                 None => {
                     let (sink, stream) = socket.split();
                     WebSocketInner::Plain(sink, stream)
@@ -144,7 +144,7 @@ impl Stream for MaybeSignedWebSocket {
                 Poll::Ready(Some(Ok(msg))) => Poll::Ready(Some(Ok(msg))),
                 Poll::Ready(Some(Err(e))) => Poll::Ready(Some(Err(anyhow::Error::from(e)))),
             },
-            WebSocketInner::Signed(ws) => Pin::new(ws).poll_next(cx),
+            WebSocketInner::Signed(ws) => Pin::new(&mut **ws).poll_next(cx),
         }
     }
 }
@@ -158,7 +158,7 @@ impl Sink<Message> for MaybeSignedWebSocket {
             WebSocketInner::Plain(sink, _) => {
                 Pin::new(sink).poll_ready(cx).map_err(anyhow::Error::from)
             }
-            WebSocketInner::Signed(ws) => Pin::new(ws).poll_ready(cx),
+            WebSocketInner::Signed(ws) => Pin::new(&mut **ws).poll_ready(cx),
         }
     }
 
@@ -168,7 +168,7 @@ impl Sink<Message> for MaybeSignedWebSocket {
             WebSocketInner::Plain(sink, _) => {
                 Pin::new(sink).start_send(item).map_err(anyhow::Error::from)
             }
-            WebSocketInner::Signed(ws) => Pin::new(ws).start_send(item),
+            WebSocketInner::Signed(ws) => Pin::new(&mut **ws).start_send(item),
         }
     }
 
@@ -178,7 +178,7 @@ impl Sink<Message> for MaybeSignedWebSocket {
             WebSocketInner::Plain(sink, _) => {
                 Pin::new(sink).poll_flush(cx).map_err(anyhow::Error::from)
             }
-            WebSocketInner::Signed(ws) => Pin::new(ws).poll_flush(cx),
+            WebSocketInner::Signed(ws) => Pin::new(&mut **ws).poll_flush(cx),
         }
     }
 
@@ -188,7 +188,7 @@ impl Sink<Message> for MaybeSignedWebSocket {
             WebSocketInner::Plain(sink, _) => {
                 Pin::new(sink).poll_close(cx).map_err(anyhow::Error::from)
             }
-            WebSocketInner::Signed(ws) => Pin::new(ws).poll_close(cx),
+            WebSocketInner::Signed(ws) => Pin::new(&mut **ws).poll_close(cx),
         }
     }
 }

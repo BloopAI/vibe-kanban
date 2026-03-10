@@ -81,25 +81,25 @@ impl TunnelManager {
         // If signing session or relay session rotated, replace the existing tunnel.
         {
             let mut tunnels = self.tunnels.lock().await;
-            if let Some(tunnel) = tunnels.get(&key) {
-                if !tunnel.cancel.is_cancelled() {
-                    if tunnel.signing_session_id == signing_session_id
-                        && tunnel.relay_session_base_url == relay_session_base_url
-                    {
-                        return Ok(tunnel.local_port);
-                    }
-
-                    tracing::info!(
-                        previous_relay_session_base_url = %tunnel.relay_session_base_url,
-                        new_relay_session_base_url = %relay_session_base_url,
-                        previous_signing_session_id = %tunnel.signing_session_id,
-                        new_signing_session_id = %signing_session_id,
-                        local_port = tunnel.local_port,
-                        "Replacing tunnel after session rotation"
-                    );
-                    tunnel.cancel.cancel();
-                    tunnels.remove(&key);
+            if let Some(tunnel) = tunnels.get(&key)
+                && !tunnel.cancel.is_cancelled()
+            {
+                if tunnel.signing_session_id == signing_session_id
+                    && tunnel.relay_session_base_url == relay_session_base_url
+                {
+                    return Ok(tunnel.local_port);
                 }
+
+                tracing::info!(
+                    previous_relay_session_base_url = %tunnel.relay_session_base_url,
+                    new_relay_session_base_url = %relay_session_base_url,
+                    previous_signing_session_id = %tunnel.signing_session_id,
+                    new_signing_session_id = %signing_session_id,
+                    local_port = tunnel.local_port,
+                    "Replacing tunnel after session rotation"
+                );
+                tunnel.cancel.cancel();
+                tunnels.remove(&key);
             }
         }
 

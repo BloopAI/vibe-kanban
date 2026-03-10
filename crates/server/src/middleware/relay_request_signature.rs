@@ -117,7 +117,7 @@ pub async fn sign_relay_response(
         response_timestamp,
         status,
         &signature_input.path_and_query,
-        &signature_input.signing_session_id,
+        signature_input.signing_session_id,
         &signature_input.nonce,
         &response_nonce,
         &body_bytes,
