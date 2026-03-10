@@ -5,7 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use relay_client::{get_signed_relay_api, relay_session_url};
+use relay_client::{RelayHostTransport, RelayTransportBootstrapError, RelayTransportError};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -13,10 +13,9 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl,
-    relay::session::{
-        PairedRelayHostMetadataError, RelayClientBuildError, RelayHostContext,
-        RelayHostContextInitError, RelayHostSessionInitError, RelayOperationAttempt,
-        RelayRecoveryError,
+    host_relay::transport::{
+        PairedRelayHostMetadataError, RelayClientBuildError, RelayTransportBuildError,
+        build_relay_host_transport, persist_relay_auth_state,
     },
 };
 
@@ -41,39 +40,25 @@ pub async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
-    let (host_metadata, mut relay_session) =
-        match get_host_context_response(&deployment, req.host_id).await {
-            Ok(host_context) => host_context.into_parts(),
-            Err(response) => return response,
-        };
+    let mut relay_transport = match get_host_transport_response(&deployment, req.host_id).await {
+        Ok(relay_transport) => relay_transport,
+        Err(response) => return response,
+    };
 
     let editor_path_api_path =
         build_workspace_editor_path_api_path(req.workspace_id, req.file_path.as_deref());
+    let editor_path_result: Result<RelayEditorPathResponse, RelayTransportError> =
+        relay_transport.get_signed_json(&editor_path_api_path).await;
+    persist_relay_auth_state(&deployment, req.host_id, relay_transport.auth_state()).await;
 
-    let editor_path: RelayEditorPathResponse = match relay_session
-        .retry_error_recovery(
-            |session| {
-                let editor_path_api_path = editor_path_api_path.clone();
-                Box::pin(async move {
-                    fetch_relay_editor_path(
-                        session.relay_base_url(),
-                        req.host_id,
-                        session.remote_session().id,
-                        &editor_path_api_path,
-                        session.signing_key(),
-                        session.signing_session_id(),
-                    )
-                    .await
-                })
-            },
-            |_| true,
-            "Failed to refresh signing session for remote editor open",
-            "Failed to refresh relay session for remote editor open",
-        )
-        .await
-    {
+    let editor_path = match editor_path_result {
         Ok(path) => path,
-        Err(RelayRecoveryError::Refresh(_)) => {
+        Err(RelayTransportError::SigningSession(error)) => {
+            tracing::warn!(
+                ?error,
+                host_id = %req.host_id,
+                "Failed to initialize relay signing session for remote editor open"
+            );
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::<
@@ -84,7 +69,12 @@ pub async fn open_remote_workspace_in_editor(
             )
                 .into_response();
         }
-        Err(RelayRecoveryError::Rotate(_)) => {
+        Err(RelayTransportError::RemoteSession(error)) => {
+            tracing::warn!(
+                ?error,
+                host_id = %req.host_id,
+                "Failed to create relay session for remote editor open"
+            );
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::<
@@ -95,33 +85,13 @@ pub async fn open_remote_workspace_in_editor(
             )
                 .into_response();
         }
-        Err(RelayRecoveryError::Operation { error, attempt }) => {
-            match attempt {
-                RelayOperationAttempt::Initial => {
-                    tracing::warn!(
-                        ?error,
-                        host_id = %req.host_id,
-                        workspace_id = %req.workspace_id,
-                        "Failed to resolve workspace editor path; refreshing signing session and retrying"
-                    );
-                }
-                RelayOperationAttempt::AfterSigningRefresh => {
-                    tracing::warn!(
-                        ?error,
-                        host_id = %req.host_id,
-                        workspace_id = %req.workspace_id,
-                        "Failed to resolve workspace editor path after signing refresh; refreshing relay session"
-                    );
-                }
-                RelayOperationAttempt::AfterSessionRotation => {
-                    tracing::warn!(
-                        ?error,
-                        host_id = %req.host_id,
-                        workspace_id = %req.workspace_id,
-                        "Failed to resolve workspace editor path"
-                    );
-                }
-            }
+        Err(RelayTransportError::Upstream(error)) => {
+            tracing::warn!(
+                ?error,
+                host_id = %req.host_id,
+                workspace_id = %req.workspace_id,
+                "Failed to resolve workspace editor path"
+            );
             return (
                 StatusCode::BAD_REQUEST,
                 Json(ApiResponse::<
@@ -134,20 +104,15 @@ pub async fn open_remote_workspace_in_editor(
         }
     };
 
-    let relay_url = relay_session_url(
-        relay_session.relay_base_url(),
-        req.host_id,
-        relay_session.remote_session().id,
-    );
-
+    let relay_url = relay_transport.relay_url();
     let local_port = match deployment
         .tunnel_manager()
         .get_or_create_ssh_tunnel(
             req.host_id,
             &relay_url,
-            relay_session.signing_key(),
-            relay_session.signing_session_id(),
-            host_metadata.server_verify_key,
+            relay_transport.signing_key(),
+            &relay_transport.auth_state().signing_session_id,
+            relay_transport.server_verify_key().to_owned(),
         )
         .await
     {
@@ -166,7 +131,7 @@ pub async fn open_remote_workspace_in_editor(
 
     match desktop_bridge::service::open_remote_editor(
         local_port,
-        relay_session.signing_key(),
+        relay_transport.signing_key(),
         &req.host_id.to_string(),
         &editor_path.workspace_path,
         req.editor_type.as_deref(),
@@ -208,33 +173,14 @@ fn build_workspace_editor_path_api_path(workspace_id: Uuid, file_path: Option<&s
     format!("{base}?{query}")
 }
 
-async fn fetch_relay_editor_path(
-    relay_base_url: &str,
-    host_id: Uuid,
-    relay_session_id: Uuid,
-    api_path: &str,
-    signing_key: &ed25519_dalek::SigningKey,
-    signing_session_id: &str,
-) -> anyhow::Result<RelayEditorPathResponse> {
-    get_signed_relay_api(
-        relay_base_url,
-        host_id,
-        relay_session_id,
-        api_path,
-        signing_key,
-        signing_session_id,
-    )
-    .await
-}
-
-async fn get_host_context_response(
+async fn get_host_transport_response(
     deployment: &DeploymentImpl,
     host_id: Uuid,
-) -> Result<RelayHostContext, Response> {
-    RelayHostContext::for_host(deployment, host_id)
+) -> Result<RelayHostTransport, Response> {
+    build_relay_host_transport(deployment, host_id)
         .await
         .map_err(|error| match error {
-            RelayHostContextInitError::Metadata(error) => match error {
+            RelayTransportBuildError::Metadata(error) => match error {
                 PairedRelayHostMetadataError::NotPaired => (
                     StatusCode::BAD_REQUEST,
                     Json(ApiResponse::<
@@ -263,7 +209,7 @@ async fn get_host_context_response(
                 )
                     .into_response(),
             },
-            RelayHostContextInitError::ClientBuild(error) => match error {
+            RelayTransportBuildError::ClientBuild(error) => match error {
                 RelayClientBuildError::NotConfigured => (
                     StatusCode::BAD_REQUEST,
                     Json(ApiResponse::<
@@ -290,8 +236,8 @@ async fn get_host_context_response(
                         .into_response()
                 }
             },
-            RelayHostContextInitError::Session(error) => match error {
-                RelayHostSessionInitError::RemoteSession(error) => {
+            RelayTransportBuildError::Bootstrap(error) => match error {
+                RelayTransportBootstrapError::RemoteSession(error) => {
                     tracing::warn!(
                         ?error,
                         host_id = %host_id,
@@ -307,7 +253,7 @@ async fn get_host_context_response(
                     )
                         .into_response()
                 }
-                RelayHostSessionInitError::SigningSession(error) => {
+                RelayTransportBootstrapError::SigningSession(error) => {
                     tracing::warn!(
                         ?error,
                         host_id = %host_id,

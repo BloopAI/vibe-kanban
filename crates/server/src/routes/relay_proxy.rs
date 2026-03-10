@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl,
-    relay::proxy::{RelayConnection, RelayProxyError},
+    host_relay::proxy::{RelayConnection, RelayProxyError},
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;

@@ -36,7 +36,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-    relay::registration,
+    runtime::relay_registration,
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -202,8 +202,10 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
-    let old_relay_host_name = registration::effective_relay_host_name(old, deployment.user_id());
-    let new_relay_host_name = registration::effective_relay_host_name(new, deployment.user_id());
+    let old_relay_host_name =
+        relay_registration::effective_relay_host_name(old, deployment.user_id());
+    let new_relay_host_name =
+        relay_registration::effective_relay_host_name(new, deployment.user_id());
 
     deployment
         .server_info()
@@ -211,11 +213,11 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
         .await;
 
     match (old.relay_enabled, new.relay_enabled) {
-        (false, true) => registration::spawn_relay(deployment).await,
-        (true, false) => registration::stop_relay(deployment).await,
+        (false, true) => relay_registration::spawn_relay(deployment).await,
+        (true, false) => relay_registration::stop_relay(deployment).await,
         (true, true) => {
             if old_relay_host_name != new_relay_host_name {
-                registration::spawn_relay(deployment).await;
+                relay_registration::spawn_relay(deployment).await;
             }
         }
         (false, false) => (),

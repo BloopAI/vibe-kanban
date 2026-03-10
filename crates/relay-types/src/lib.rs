@@ -32,6 +32,12 @@ pub struct RemoteSession {
     pub id: Uuid,
 }
 
+#[derive(Debug, Clone)]
+pub struct RelayAuthState {
+    pub remote_session: RemoteSession,
+    pub signing_session_id: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct StartSpake2EnrollmentRequest {
     pub enrollment_code: String,

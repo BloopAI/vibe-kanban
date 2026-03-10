@@ -13,8 +13,8 @@ use relay_control::{
 };
 use relay_types::{
     FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, PairRelayHostRequest,
-    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RemoteSession,
-    StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
+    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayAuthState,
+    RemoteSession, StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -250,6 +250,274 @@ pub struct PairRelayHostResult {
     pub server_public_key_b64: String,
 }
 
+#[derive(Debug, Clone)]
+pub struct RelayHostIdentity {
+    pub host_id: Uuid,
+    pub client_id: Uuid,
+    pub server_verify_key: VerifyingKey,
+}
+
+#[derive(Debug)]
+pub enum RelayTransportBootstrapError {
+    RemoteSession(anyhow::Error),
+    SigningSession(anyhow::Error),
+}
+
+#[derive(Debug)]
+pub enum RelayTransportError {
+    Upstream(anyhow::Error),
+    SigningSession(anyhow::Error),
+    RemoteSession(anyhow::Error),
+}
+
+pub struct RelayHostTransport {
+    api_client: RelayApiClient,
+    identity: RelayHostIdentity,
+    auth_state: RelayAuthState,
+    signing_key: SigningKey,
+}
+
+impl RelayHostTransport {
+    pub async fn bootstrap(
+        api_client: RelayApiClient,
+        identity: RelayHostIdentity,
+        signing_key: SigningKey,
+        cached_remote_session: Option<RemoteSession>,
+        cached_signing_session_id: Option<String>,
+    ) -> Result<Self, RelayTransportBootstrapError> {
+        let remote_session = match cached_remote_session {
+            Some(remote_session) => remote_session,
+            None => api_client
+                .create_session(identity.host_id)
+                .await
+                .map_err(RelayTransportBootstrapError::RemoteSession)?,
+        };
+        let signing_session_id = match cached_signing_session_id {
+            Some(signing_session_id) => signing_session_id,
+            None => api_client
+                .refresh_signing_session(&remote_session, &signing_key, identity.client_id)
+                .await
+                .map(|response| response.signing_session_id.to_string())
+                .map_err(RelayTransportBootstrapError::SigningSession)?,
+        };
+
+        Ok(Self {
+            api_client,
+            identity,
+            auth_state: RelayAuthState {
+                remote_session,
+                signing_session_id,
+            },
+            signing_key,
+        })
+    }
+
+    pub fn auth_state(&self) -> &RelayAuthState {
+        &self.auth_state
+    }
+
+    pub fn relay_base_url(&self) -> &str {
+        self.api_client.base_url()
+    }
+
+    pub fn relay_url(&self) -> String {
+        relay_session_url(
+            self.relay_base_url(),
+            self.identity.host_id,
+            self.auth_state.remote_session.id,
+        )
+    }
+
+    pub fn signing_key(&self) -> &SigningKey {
+        &self.signing_key
+    }
+
+    pub fn server_verify_key(&self) -> &VerifyingKey {
+        &self.identity.server_verify_key
+    }
+
+    pub async fn send_http(
+        &mut self,
+        method: &Method,
+        target_path: &str,
+        headers: &HeaderMap,
+        body: &[u8],
+    ) -> Result<reqwest::Response, RelayTransportError> {
+        let first = self
+            .send_http_once(method, target_path, headers, body)
+            .await
+            .map_err(RelayTransportError::Upstream)?;
+        if !is_auth_failure_status(first.status()) {
+            return Ok(first);
+        }
+
+        if self.refresh_signing_session().await.is_err() {
+            return Ok(first);
+        }
+
+        let second = self
+            .send_http_once(method, target_path, headers, body)
+            .await
+            .map_err(RelayTransportError::Upstream)?;
+        if !is_auth_failure_status(second.status()) {
+            return Ok(second);
+        }
+
+        if self.rotate_remote_session().await.is_err() {
+            return Ok(second);
+        }
+
+        self.send_http_once(method, target_path, headers, body)
+            .await
+            .map_err(RelayTransportError::Upstream)
+    }
+
+    pub async fn connect_ws(
+        &mut self,
+        target_path: &str,
+        protocols: Option<&str>,
+    ) -> Result<(SignedUpstreamSocket, Option<String>), RelayTransportError> {
+        match self.connect_ws_once(target_path, protocols).await {
+            Ok(result) => return Ok(result),
+            Err(RelayWsConnectError::AuthFailure) => {}
+            Err(error) => {
+                return Err(RelayTransportError::Upstream(relay_ws_error_to_anyhow(
+                    error,
+                    "Failed to connect relay host websocket",
+                )));
+            }
+        }
+
+        self.refresh_signing_session()
+            .await
+            .map_err(RelayTransportError::SigningSession)?;
+
+        match self.connect_ws_once(target_path, protocols).await {
+            Ok(result) => return Ok(result),
+            Err(RelayWsConnectError::AuthFailure) => {}
+            Err(error) => {
+                return Err(RelayTransportError::Upstream(relay_ws_error_to_anyhow(
+                    error,
+                    "Failed to connect relay host websocket after signing refresh",
+                )));
+            }
+        }
+
+        self.rotate_remote_session()
+            .await
+            .map_err(RelayTransportError::RemoteSession)?;
+
+        self.connect_ws_once(target_path, protocols)
+            .await
+            .map_err(|error| {
+                RelayTransportError::Upstream(relay_ws_error_to_anyhow(
+                    error,
+                    "Failed to connect relay host websocket after session rotation",
+                ))
+            })
+    }
+
+    pub async fn get_signed_json<TData>(&mut self, path: &str) -> Result<TData, RelayTransportError>
+    where
+        TData: DeserializeOwned,
+    {
+        match self.get_signed_json_once(path).await {
+            Ok(data) => return Ok(data),
+            Err(_) => {}
+        }
+
+        self.refresh_signing_session()
+            .await
+            .map_err(RelayTransportError::SigningSession)?;
+
+        match self.get_signed_json_once(path).await {
+            Ok(data) => return Ok(data),
+            Err(_) => {}
+        }
+
+        self.rotate_remote_session()
+            .await
+            .map_err(RelayTransportError::RemoteSession)?;
+
+        self.get_signed_json_once(path)
+            .await
+            .map_err(RelayTransportError::Upstream)
+    }
+
+    async fn send_http_once(
+        &self,
+        method: &Method,
+        target_path: &str,
+        headers: &HeaderMap,
+        body: &[u8],
+    ) -> anyhow::Result<reqwest::Response> {
+        send_signed_http(
+            self.relay_base_url(),
+            &self.auth_state.remote_session,
+            &self.signing_key,
+            &self.auth_state.signing_session_id,
+            method,
+            target_path,
+            headers,
+            body,
+        )
+        .await
+    }
+
+    async fn connect_ws_once(
+        &self,
+        target_path: &str,
+        protocols: Option<&str>,
+    ) -> Result<(SignedUpstreamSocket, Option<String>), RelayWsConnectError> {
+        connect_signed_upstream_ws(
+            self.relay_base_url(),
+            &self.auth_state.remote_session,
+            &self.signing_key,
+            &self.auth_state.signing_session_id,
+            target_path,
+            protocols,
+            self.identity.server_verify_key,
+        )
+        .await
+    }
+
+    async fn get_signed_json_once<TData>(&self, path: &str) -> anyhow::Result<TData>
+    where
+        TData: DeserializeOwned,
+    {
+        get_signed_relay_api(
+            self.relay_base_url(),
+            self.identity.host_id,
+            self.auth_state.remote_session.id,
+            path,
+            &self.signing_key,
+            &self.auth_state.signing_session_id,
+        )
+        .await
+    }
+
+    async fn refresh_signing_session(&mut self) -> anyhow::Result<()> {
+        let refreshed = self
+            .api_client
+            .refresh_signing_session(
+                &self.auth_state.remote_session,
+                &self.signing_key,
+                self.identity.client_id,
+            )
+            .await?;
+        self.auth_state.signing_session_id = refreshed.signing_session_id.to_string();
+        Ok(())
+    }
+
+    async fn rotate_remote_session(&mut self) -> anyhow::Result<()> {
+        self.auth_state.remote_session = self
+            .api_client
+            .create_session(self.identity.host_id)
+            .await?;
+        Ok(())
+    }
+}
+
 #[derive(Debug)]
 pub enum RelayWsConnectError {
     AuthFailure,
@@ -263,7 +531,7 @@ pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> Str
     )
 }
 
-pub async fn get_signed_relay_api<TData>(
+async fn get_signed_relay_api<TData>(
     base_url: &str,
     host_id: Uuid,
     session_id: Uuid,
@@ -306,7 +574,7 @@ where
         .ok_or_else(|| anyhow::anyhow!("Missing response data for relay path '{path}'"))
 }
 
-pub async fn send_signed_http(
+async fn send_signed_http(
     base_url: &str,
     remote_session: &RemoteSession,
     signing_key: &SigningKey,
@@ -351,7 +619,7 @@ pub async fn send_signed_http(
     builder.send().await.context("Relay request to host failed")
 }
 
-pub async fn connect_signed_upstream_ws(
+async fn connect_signed_upstream_ws(
     base_url: &str,
     remote_session: &RemoteSession,
     signing_key: &SigningKey,
@@ -423,6 +691,13 @@ fn relay_http_to_ws_url(http_url: &str) -> anyhow::Result<String> {
         Ok(format!("ws://{rest}"))
     } else {
         anyhow::bail!("unsupported URL scheme: {http_url}")
+    }
+}
+
+fn relay_ws_error_to_anyhow(error: RelayWsConnectError, context: &'static str) -> anyhow::Error {
+    match error {
+        RelayWsConnectError::AuthFailure => anyhow::anyhow!("{context}: authentication failed"),
+        RelayWsConnectError::Other(error) => anyhow::anyhow!("{context}: {error}"),
     }
 }
 
