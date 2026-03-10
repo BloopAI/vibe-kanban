@@ -1,108 +1,188 @@
-use deployment::Deployment;
+use ed25519_dalek::{SigningKey, VerifyingKey};
+use http::{HeaderMap, Method};
+use local_deployment::relay_host_store::RelayHostStore;
 use relay_client::{
     RelayApiClient, RelayHostIdentity, RelayHostTransport, RelayTransportBootstrapError,
+    RelayTransportError, SignedUpstreamSocket,
 };
-use relay_types::{RelayAuthState, RemoteSession};
+use serde::de::DeserializeOwned;
+use services::services::remote_client::RemoteClient;
 use trusted_key_auth::trusted_keys::parse_public_key_base64;
 use uuid::Uuid;
 
-use crate::DeploymentImpl;
-
 #[derive(Debug)]
-pub enum RelayClientBuildError {
-    NotConfigured,
-    Authentication(anyhow::Error),
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum PairedRelayHostMetadataError {
+pub enum HostRelayResolveError {
     NotPaired,
     MissingClientMetadata,
     MissingSigningMetadata,
+    RelayNotConfigured,
+    Authentication(anyhow::Error),
+    RemoteSession(anyhow::Error),
+    SigningSession(anyhow::Error),
 }
 
 #[derive(Debug)]
-pub enum RelayTransportBuildError {
-    Metadata(PairedRelayHostMetadataError),
-    ClientBuild(RelayClientBuildError),
-    Bootstrap(RelayTransportBootstrapError),
+pub enum HostRelayOperationError {
+    Upstream(anyhow::Error),
+    SigningSession(anyhow::Error),
+    RemoteSession(anyhow::Error),
 }
 
-pub async fn build_relay_host_transport(
-    deployment: &DeploymentImpl,
+#[derive(Debug, Clone)]
+pub struct RelayTunnelAccess {
+    pub relay_url: String,
+    pub signing_key: SigningKey,
+    pub signing_session_id: String,
+    pub server_verify_key: VerifyingKey,
+}
+
+#[derive(Clone)]
+pub struct HostRelayResolver {
+    store: RelayHostStore,
+    remote_client: RemoteClient,
+    relay_base_url: String,
+    signing_key: SigningKey,
+}
+
+pub struct ResolvedHostRelay {
+    store: RelayHostStore,
     host_id: Uuid,
-) -> Result<RelayHostTransport, RelayTransportBuildError> {
-    let identity = load_paired_relay_host_identity(deployment, host_id)
-        .await
-        .map_err(RelayTransportBuildError::Metadata)?;
-    let relay_client = build_relay_client(deployment)
-        .await
-        .map_err(RelayTransportBuildError::ClientBuild)?;
-    let cached_auth_state = load_cached_relay_auth_state(deployment, host_id).await;
-
-    RelayHostTransport::bootstrap(
-        relay_client,
-        identity,
-        deployment.relay_signing().signing_key().clone(),
-        cached_auth_state
-            .as_ref()
-            .map(|value| value.remote_session.clone()),
-        cached_auth_state.map(|value| value.signing_session_id),
-    )
-    .await
-    .map_err(RelayTransportBuildError::Bootstrap)
+    transport: RelayHostTransport,
 }
 
-pub async fn persist_relay_auth_state(
-    deployment: &DeploymentImpl,
-    host_id: Uuid,
-    auth_state: &RelayAuthState,
-) {
-    deployment
-        .cache_relay_remote_session_id(host_id, auth_state.remote_session.id)
-        .await;
-    deployment
-        .cache_relay_signing_session_id(host_id, auth_state.signing_session_id.clone())
-        .await;
+impl HostRelayResolver {
+    pub fn new(
+        store: RelayHostStore,
+        remote_client: RemoteClient,
+        relay_base_url: String,
+        signing_key: SigningKey,
+    ) -> Self {
+        Self {
+            store,
+            remote_client,
+            relay_base_url,
+            signing_key,
+        }
+    }
+
+    pub async fn resolve(&self, host_id: Uuid) -> Result<ResolvedHostRelay, HostRelayResolveError> {
+        let identity = load_paired_relay_host_identity(&self.store, host_id).await?;
+        let access_token = self
+            .remote_client
+            .access_token()
+            .await
+            .map_err(anyhow::Error::from)
+            .map_err(HostRelayResolveError::Authentication)?;
+        let cached_auth_state = self.store.load_auth_state(host_id).await;
+        let transport = RelayHostTransport::bootstrap(
+            RelayApiClient::new(self.relay_base_url.clone(), access_token),
+            identity,
+            self.signing_key.clone(),
+            cached_auth_state
+                .as_ref()
+                .map(|value| value.remote_session.clone()),
+            cached_auth_state.map(|value| value.signing_session_id),
+        )
+        .await
+        .map_err(map_bootstrap_error)?;
+
+        Ok(ResolvedHostRelay {
+            store: self.store.clone(),
+            host_id,
+            transport,
+        })
+    }
 }
 
-async fn build_relay_client(
-    deployment: &DeploymentImpl,
-) -> Result<RelayApiClient, RelayClientBuildError> {
-    let remote_client = deployment
-        .remote_client()
-        .map_err(|_| RelayClientBuildError::NotConfigured)?;
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(anyhow::Error::from)
-        .map_err(RelayClientBuildError::Authentication)?;
-    let relay_base_url = deployment
-        .shared_api_base()
-        .ok_or(RelayClientBuildError::NotConfigured)?;
+impl ResolvedHostRelay {
+    pub async fn send_http(
+        &mut self,
+        method: &Method,
+        target_path: &str,
+        headers: &HeaderMap,
+        body: &[u8],
+    ) -> Result<reqwest::Response, HostRelayOperationError> {
+        let response = self
+            .transport
+            .send_http(method, target_path, headers, body)
+            .await
+            .map_err(HostRelayOperationError::from);
+        self.persist_auth_state().await;
+        response
+    }
 
-    Ok(RelayApiClient::new(relay_base_url, access_token))
+    pub async fn connect_ws(
+        &mut self,
+        target_path: &str,
+        protocols: Option<&str>,
+    ) -> Result<(SignedUpstreamSocket, Option<String>), HostRelayOperationError> {
+        let response = self
+            .transport
+            .connect_ws(target_path, protocols)
+            .await
+            .map_err(HostRelayOperationError::from);
+        self.persist_auth_state().await;
+        response
+    }
+
+    pub async fn get_json<TData>(&mut self, path: &str) -> Result<TData, HostRelayOperationError>
+    where
+        TData: DeserializeOwned,
+    {
+        let response = self
+            .transport
+            .get_signed_json(path)
+            .await
+            .map_err(HostRelayOperationError::from);
+        self.persist_auth_state().await;
+        response
+    }
+
+    pub fn tunnel_access(&self) -> RelayTunnelAccess {
+        RelayTunnelAccess {
+            relay_url: self.transport.relay_url(),
+            signing_key: self.transport.signing_key().clone(),
+            signing_session_id: self.transport.auth_state().signing_session_id.clone(),
+            server_verify_key: *self.transport.server_verify_key(),
+        }
+    }
+
+    async fn persist_auth_state(&self) {
+        self.store
+            .cache_auth_state(self.host_id, self.transport.auth_state())
+            .await;
+    }
+}
+
+impl From<RelayTransportError> for HostRelayOperationError {
+    fn from(value: RelayTransportError) -> Self {
+        match value {
+            RelayTransportError::Upstream(error) => Self::Upstream(error),
+            RelayTransportError::SigningSession(error) => Self::SigningSession(error),
+            RelayTransportError::RemoteSession(error) => Self::RemoteSession(error),
+        }
+    }
 }
 
 async fn load_paired_relay_host_identity(
-    deployment: &DeploymentImpl,
+    store: &RelayHostStore,
     host_id: Uuid,
-) -> Result<RelayHostIdentity, PairedRelayHostMetadataError> {
-    let credentials = deployment
-        .get_relay_host_credentials(host_id)
+) -> Result<RelayHostIdentity, HostRelayResolveError> {
+    let credentials = store
+        .get_credentials(host_id)
         .await
-        .ok_or(PairedRelayHostMetadataError::NotPaired)?;
+        .ok_or(HostRelayResolveError::NotPaired)?;
 
     let client_id = credentials
         .client_id
         .as_ref()
         .and_then(|value| value.parse::<Uuid>().ok())
-        .ok_or(PairedRelayHostMetadataError::MissingClientMetadata)?;
+        .ok_or(HostRelayResolveError::MissingClientMetadata)?;
     let server_verify_key = credentials
         .server_public_key_b64
         .as_deref()
         .and_then(|key| parse_public_key_base64(key).ok())
-        .ok_or(PairedRelayHostMetadataError::MissingSigningMetadata)?;
+        .ok_or(HostRelayResolveError::MissingSigningMetadata)?;
 
     Ok(RelayHostIdentity {
         host_id,
@@ -111,22 +191,13 @@ async fn load_paired_relay_host_identity(
     })
 }
 
-async fn load_cached_relay_auth_state(
-    deployment: &DeploymentImpl,
-    host_id: Uuid,
-) -> Option<RelayAuthState> {
-    let remote_session_id = deployment
-        .get_cached_relay_remote_session_id(host_id)
-        .await?;
-    let signing_session_id = deployment
-        .get_cached_relay_signing_session_id(host_id)
-        .await?;
-
-    Some(RelayAuthState {
-        remote_session: RemoteSession {
-            host_id,
-            id: remote_session_id,
-        },
-        signing_session_id,
-    })
+fn map_bootstrap_error(error: RelayTransportBootstrapError) -> HostRelayResolveError {
+    match error {
+        RelayTransportBootstrapError::RemoteSession(error) => {
+            HostRelayResolveError::RemoteSession(error)
+        }
+        RelayTransportBootstrapError::SigningSession(error) => {
+            HostRelayResolveError::SigningSession(error)
+        }
+    }
 }

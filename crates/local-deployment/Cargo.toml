@@ -11,6 +11,7 @@ deployment = { path = "../deployment" }
 desktop-bridge = { path = "../desktop-bridge" }
 embedded-ssh = { path = "../embedded-ssh" }
 relay-control = { path = "../relay-control" }
+relay-types = { path = "../relay-types" }
 russh = "0.48"
 server-info = { path = "../server-info" }
 services = { path = "../services" }

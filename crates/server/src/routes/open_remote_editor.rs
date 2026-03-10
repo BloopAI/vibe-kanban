@@ -5,7 +5,6 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
-use relay_client::{RelayHostTransport, RelayTransportBootstrapError, RelayTransportError};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -13,9 +12,9 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl,
-    host_relay::transport::{
-        PairedRelayHostMetadataError, RelayClientBuildError, RelayTransportBuildError,
-        build_relay_host_transport, persist_relay_auth_state,
+    host_relay::{
+        transport::{HostRelayOperationError, HostRelayResolveError, ResolvedHostRelay},
+        wiring::{HostRelayResolverBuildError, build_host_relay_resolver},
     },
 };
 
@@ -40,20 +39,19 @@ pub async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
-    let mut relay_transport = match get_host_transport_response(&deployment, req.host_id).await {
-        Ok(relay_transport) => relay_transport,
+    let mut host = match resolve_host_relay_response(&deployment, req.host_id).await {
+        Ok(host) => host,
         Err(response) => return response,
     };
 
     let editor_path_api_path =
         build_workspace_editor_path_api_path(req.workspace_id, req.file_path.as_deref());
-    let editor_path_result: Result<RelayEditorPathResponse, RelayTransportError> =
-        relay_transport.get_signed_json(&editor_path_api_path).await;
-    persist_relay_auth_state(&deployment, req.host_id, relay_transport.auth_state()).await;
+    let editor_path_result: Result<RelayEditorPathResponse, HostRelayOperationError> =
+        host.get_json(&editor_path_api_path).await;
 
     let editor_path = match editor_path_result {
         Ok(path) => path,
-        Err(RelayTransportError::SigningSession(error)) => {
+        Err(HostRelayOperationError::SigningSession(error)) => {
             tracing::warn!(
                 ?error,
                 host_id = %req.host_id,
@@ -69,7 +67,7 @@ pub async fn open_remote_workspace_in_editor(
             )
                 .into_response();
         }
-        Err(RelayTransportError::RemoteSession(error)) => {
+        Err(HostRelayOperationError::RemoteSession(error)) => {
             tracing::warn!(
                 ?error,
                 host_id = %req.host_id,
@@ -85,7 +83,7 @@ pub async fn open_remote_workspace_in_editor(
             )
                 .into_response();
         }
-        Err(RelayTransportError::Upstream(error)) => {
+        Err(HostRelayOperationError::Upstream(error)) => {
             tracing::warn!(
                 ?error,
                 host_id = %req.host_id,
@@ -104,15 +102,15 @@ pub async fn open_remote_workspace_in_editor(
         }
     };
 
-    let relay_url = relay_transport.relay_url();
+    let tunnel_access = host.tunnel_access();
     let local_port = match deployment
         .tunnel_manager()
         .get_or_create_ssh_tunnel(
             req.host_id,
-            &relay_url,
-            relay_transport.signing_key(),
-            &relay_transport.auth_state().signing_session_id,
-            relay_transport.server_verify_key().to_owned(),
+            &tunnel_access.relay_url,
+            &tunnel_access.signing_key,
+            &tunnel_access.signing_session_id,
+            tunnel_access.server_verify_key,
         )
         .await
     {
@@ -131,7 +129,7 @@ pub async fn open_remote_workspace_in_editor(
 
     match desktop_bridge::service::open_remote_editor(
         local_port,
-        relay_transport.signing_key(),
+        &tunnel_access.signing_key,
         &req.host_id.to_string(),
         &editor_path.workspace_path,
         req.editor_type.as_deref(),
@@ -173,44 +171,69 @@ fn build_workspace_editor_path_api_path(workspace_id: Uuid, file_path: Option<&s
     format!("{base}?{query}")
 }
 
-async fn get_host_transport_response(
+async fn resolve_host_relay_response(
     deployment: &DeploymentImpl,
     host_id: Uuid,
-) -> Result<RelayHostTransport, Response> {
-    build_relay_host_transport(deployment, host_id)
+) -> Result<ResolvedHostRelay, Response> {
+    let resolver = build_host_relay_resolver(deployment).map_err(|error| match error {
+        HostRelayResolverBuildError::NotConfigured => (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::<
+                desktop_bridge::service::OpenRemoteEditorResponse,
+            >::error(
+                "Failed to initialize relay access for host"
+            )),
+        )
+            .into_response(),
+    })?;
+
+    resolver
+        .resolve(host_id)
         .await
         .map_err(|error| match error {
-            RelayTransportBuildError::Metadata(error) => match error {
-                PairedRelayHostMetadataError::NotPaired => (
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiResponse::<
-                        desktop_bridge::service::OpenRemoteEditorResponse,
-                    >::error(&format!(
-                        "Open-in-IDE credentials are unavailable for host '{host_id}'"
-                    ))),
-                )
-                    .into_response(),
-                PairedRelayHostMetadataError::MissingSigningMetadata => (
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiResponse::<
-                        desktop_bridge::service::OpenRemoteEditorResponse,
-                    >::error(
-                        "Host pairing is missing signing metadata. Re-pair it."
-                    )),
-                )
-                    .into_response(),
-                PairedRelayHostMetadataError::MissingClientMetadata => (
-                    StatusCode::BAD_REQUEST,
-                    Json(ApiResponse::<
-                        desktop_bridge::service::OpenRemoteEditorResponse,
-                    >::error(
-                        "Host pairing is missing client metadata. Re-pair it."
-                    )),
-                )
-                    .into_response(),
-            },
-            RelayTransportBuildError::ClientBuild(error) => match error {
-                RelayClientBuildError::NotConfigured => (
+            HostRelayResolveError::NotPaired => (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(&format!(
+                    "Open-in-IDE credentials are unavailable for host '{host_id}'"
+                ))),
+            )
+                .into_response(),
+            HostRelayResolveError::MissingSigningMetadata => (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Host pairing is missing signing metadata. Re-pair it."
+                )),
+            )
+                .into_response(),
+            HostRelayResolveError::MissingClientMetadata => (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Host pairing is missing client metadata. Re-pair it."
+                )),
+            )
+                .into_response(),
+            HostRelayResolveError::RelayNotConfigured => (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<
+                    desktop_bridge::service::OpenRemoteEditorResponse,
+                >::error(
+                    "Failed to initialize relay access for host"
+                )),
+            )
+                .into_response(),
+            HostRelayResolveError::Authentication(error) => {
+                tracing::warn!(
+                    ?error,
+                    host_id = %host_id,
+                    "Failed to initialize relay API client for remote editor open"
+                );
+                (
                     StatusCode::BAD_REQUEST,
                     Json(ApiResponse::<
                         desktop_bridge::service::OpenRemoteEditorResponse,
@@ -218,57 +241,39 @@ async fn get_host_transport_response(
                         "Failed to initialize relay access for host"
                     )),
                 )
-                    .into_response(),
-                RelayClientBuildError::Authentication(error) => {
-                    tracing::warn!(
-                        ?error,
-                        host_id = %host_id,
-                        "Failed to initialize relay API client for remote editor open"
-                    );
-                    (
-                        StatusCode::BAD_REQUEST,
-                        Json(ApiResponse::<
-                            desktop_bridge::service::OpenRemoteEditorResponse,
-                        >::error(
-                            "Failed to initialize relay access for host"
-                        )),
-                    )
-                        .into_response()
-                }
-            },
-            RelayTransportBuildError::Bootstrap(error) => match error {
-                RelayTransportBootstrapError::RemoteSession(error) => {
-                    tracing::warn!(
-                        ?error,
-                        host_id = %host_id,
-                        "Failed to create relay session for remote editor open"
-                    );
-                    (
-                        StatusCode::BAD_REQUEST,
-                        Json(ApiResponse::<
-                            desktop_bridge::service::OpenRemoteEditorResponse,
-                        >::error(
-                            "Failed to create relay session for host"
-                        )),
-                    )
-                        .into_response()
-                }
-                RelayTransportBootstrapError::SigningSession(error) => {
-                    tracing::warn!(
-                        ?error,
-                        host_id = %host_id,
-                        "Failed to initialize relay signing session for remote editor open"
-                    );
-                    (
-                        StatusCode::BAD_REQUEST,
-                        Json(ApiResponse::<
-                            desktop_bridge::service::OpenRemoteEditorResponse,
-                        >::error(
-                            "Failed to initialize signing session for host"
-                        )),
-                    )
-                        .into_response()
-                }
-            },
+                    .into_response()
+            }
+            HostRelayResolveError::RemoteSession(error) => {
+                tracing::warn!(
+                    ?error,
+                    host_id = %host_id,
+                    "Failed to create relay session for remote editor open"
+                );
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiResponse::<
+                        desktop_bridge::service::OpenRemoteEditorResponse,
+                    >::error(
+                        "Failed to create relay session for host"
+                    )),
+                )
+                    .into_response()
+            }
+            HostRelayResolveError::SigningSession(error) => {
+                tracing::warn!(
+                    ?error,
+                    host_id = %host_id,
+                    "Failed to initialize relay signing session for remote editor open"
+                );
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ApiResponse::<
+                        desktop_bridge::service::OpenRemoteEditorResponse,
+                    >::error(
+                        "Failed to initialize signing session for host"
+                    )),
+                )
+                    .into_response()
+            }
         })
 }
