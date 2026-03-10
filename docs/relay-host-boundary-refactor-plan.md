@@ -43,8 +43,8 @@ This plan is now complete.
   now thin route adapters over `relay_pairing` wiring.
 - Done: the paired-host route now uses the dedicated relay host store through
   the pairing boundary.
-- Done: `DeploymentImpl` now appears inside relay pairing only in the wiring
-  adapter.
+- Done: `DeploymentImpl` now appears inside relay pairing only in the module
+  adapter layer.
 - Validation: `cargo check -p local-deployment`, `cargo check -p server`, and
   `pnpm run format`.
 
@@ -326,6 +326,8 @@ The refactor is complete only when all of the following are true.
   `trusted_key_auth` or `relay_signing` directly
 - `DeploymentImpl` appears only in relay pairing wiring, not in the
   `relay_pairing` application API
+- `DeploymentImpl` appears only in host-relay module wiring, not in the
+  `host_relay::transport` application API
 
 ### Storage Boundary
 
@@ -351,7 +353,7 @@ Use these checks to confirm the boundaries after implementation:
 - `rg "auth_state\\(" crates/server/src/routes`
   - expected result: no direct route reads of relay transport auth state
 - `rg "DeploymentImpl" crates/server/src/relay_pairing`
-  - expected result: only `crates/server/src/relay_pairing/wiring.rs`
+  - expected result: only `crates/server/src/relay_pairing/mod.rs`
 - `rg "trusted_key_auth\\(|relay_signing\\(|remote_client\\(|shared_api_base\\(|relay_host_store\\(" crates/server/src/routes/relay_auth`
   - expected result: no matches
 - `RUSTC_WRAPPER= cargo check -p relay-client`

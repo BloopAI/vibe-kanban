@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::{
     DeploymentImpl,
-    relay_pairing::{client::RelayPairingClientError, wiring::build_relay_pairing_client},
+    relay_pairing::{build_relay_pairing_client, client::RelayPairingClientError},
 };
 
 pub fn router() -> Router<DeploymentImpl> {

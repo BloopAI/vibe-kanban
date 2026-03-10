@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    relay_pairing::{server::is_relay_request, wiring::build_relay_pairing_server},
+    relay_pairing::{build_relay_pairing_server, server::is_relay_request},
 };
 
 #[derive(Debug, Serialize)]

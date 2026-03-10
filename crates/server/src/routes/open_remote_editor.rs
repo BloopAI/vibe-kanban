@@ -13,8 +13,8 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     host_relay::{
+        HostRelayResolverBuildError, build_host_relay_resolver,
         transport::{HostRelayOperationError, HostRelayResolveError, ResolvedHostRelay},
-        wiring::{HostRelayResolverBuildError, build_host_relay_resolver},
     },
 };
 
