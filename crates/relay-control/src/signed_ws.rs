@@ -527,15 +527,16 @@ fn ws_signing_input(
 
 #[cfg(test)]
 mod tests {
+    use futures_channel::mpsc;
     use futures_util::StreamExt;
 
     use super::*;
 
     fn test_channel() -> (
-        futures_util::channel::mpsc::UnboundedSender<Vec<u8>>,
-        futures_util::channel::mpsc::UnboundedReceiver<Vec<u8>>,
+        mpsc::UnboundedSender<TestMessage>,
+        mpsc::UnboundedReceiver<TestMessage>,
     ) {
-        futures_util::channel::mpsc::unbounded()
+        mpsc::unbounded()
     }
 
     /// Minimal message type for testing without axum/tungstenite features.
@@ -571,7 +572,7 @@ mod tests {
             "session-1".into(),
             "nonce-1".into(),
             verify_key,
-            rx.map(Ok::<_, futures_util::channel::mpsc::SendError>),
+            rx.map(Ok::<_, mpsc::SendError>),
         );
 
         sender
@@ -600,9 +601,7 @@ mod tests {
             tx,
         );
 
-        let stream = futures_util::stream::empty::<
-            Result<TestMessage, futures_util::channel::mpsc::SendError>,
-        >();
+        let stream = futures_util::stream::empty::<Result<TestMessage, mpsc::SendError>>();
         let mut receiver = SignedWsReceiver::<_, TestMessage>::new(
             "session-1".into(),
             "nonce-1".into(),

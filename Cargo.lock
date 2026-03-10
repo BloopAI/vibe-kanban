@@ -4937,6 +4937,7 @@ dependencies = [
  "axum",
  "base64",
  "ed25519-dalek",
+ "futures-channel",
  "futures-util",
  "rand 0.8.5",
  "serde",

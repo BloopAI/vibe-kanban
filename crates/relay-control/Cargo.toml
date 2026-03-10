@@ -14,7 +14,7 @@ tokio = { workspace = true }
 tokio-util = { version = "0.7", features = ["io"] }
 base64 = "0.22"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
-futures-util = "0.3"
+futures-util = { version = "0.3", features = ["sink"] }
 rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -26,5 +26,5 @@ axum = { version = "0.8.4", features = ["ws"], optional = true }
 tokio-tungstenite = { version = "0.26", optional = true }
 
 [dev-dependencies]
-futures-util = { version = "0.3", features = ["channel"] }
+futures-channel = { version = "0.3", features = ["sink"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
