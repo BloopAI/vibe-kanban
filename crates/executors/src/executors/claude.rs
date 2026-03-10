@@ -1411,8 +1411,12 @@ impl ClaudeLogProcessor {
                                 worktree_path,
                                 ToolStatus::Created,
                             );
-                            let is_new = entry_index.is_none();
-                            let id_num = entry_index.unwrap_or_else(|| entry_index_provider.next());
+                            let existing_idx = entry_index.or_else(|| {
+                                self.tool_map.get(id).map(|info| info.entry_index)
+                            });
+                            let is_new = existing_idx.is_none();
+                            let id_num =
+                                existing_idx.unwrap_or_else(|| entry_index_provider.next());
                             self.tool_map.insert(
                                 id.clone(),
                                 ClaudeToolCallInfo {
@@ -1683,8 +1687,18 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolUse { tool_data, id, .. } => {
                 let (entry, tool_name_value, content_text) =
                     Self::build_tool_use_entry(tool_data, worktree_path, ToolStatus::Created);
-                let idx = entry_index_provider.next();
-                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                let existing = self.tool_map.get(id);
+                let (idx, is_new) = if let Some(info) = existing {
+                    (info.entry_index, false)
+                } else {
+                    (entry_index_provider.next(), true)
+                };
+                let patch = if is_new {
+                    ConversationPatch::add_normalized_entry(idx, entry)
+                } else {
+                    ConversationPatch::replace(idx, entry)
+                };
+                patches.push(patch);
 
                 self.tool_map.insert(
                     id.clone(),
