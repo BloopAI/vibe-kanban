@@ -1,3 +1,4 @@
+use deployment::Deployment;
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use http::{HeaderMap, Method};
 use local_deployment::relay_host_store::RelayHostStore;
@@ -9,6 +10,8 @@ use serde::de::DeserializeOwned;
 use services::services::remote_client::RemoteClient;
 use trusted_key_auth::trusted_keys::parse_public_key_base64;
 use uuid::Uuid;
+
+use crate::DeploymentImpl;
 
 #[derive(Debug)]
 pub enum HostRelayResolveError {
@@ -40,6 +43,26 @@ pub struct ResolvedHostRelay {
     store: RelayHostStore,
     host_id: Uuid,
     transport: RelayHostTransport,
+}
+
+pub async fn open_host_relay(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+) -> Result<ResolvedHostRelay, HostRelayResolveError> {
+    let remote_client = deployment
+        .remote_client()
+        .map_err(|_| HostRelayResolveError::RelayNotConfigured)?;
+    let relay_base_url =
+        Deployment::shared_api_base(deployment).ok_or(HostRelayResolveError::RelayNotConfigured)?;
+
+    ResolvedHostRelay::open(
+        host_id,
+        deployment.relay_host_store(),
+        remote_client,
+        relay_base_url,
+        deployment.relay_signing().signing_key().clone(),
+    )
+    .await
 }
 
 impl ResolvedHostRelay {

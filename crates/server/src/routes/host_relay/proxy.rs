@@ -17,8 +17,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     host_relay::{
-        open_host_relay,
-        transport::{HostRelayOperationError, HostRelayResolveError, ResolvedHostRelay},
+        HostRelayOperationError, HostRelayResolveError, ResolvedHostRelay, open_host_relay,
     },
 };
 

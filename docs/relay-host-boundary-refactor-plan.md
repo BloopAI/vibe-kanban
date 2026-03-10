@@ -11,7 +11,7 @@ This plan supersedes the narrower transport cleanup in
 `relay-host-transport-refactor-plan.md`.
 
 The goal is not to keep polishing
-`crates/server/src/host_relay/transport.rs`, but to redraw the relay
+`crates/server/src/host_relay.rs`, but to redraw the relay
 boundaries so the code follows actual responsibilities:
 
 - protocol and wire types
@@ -53,7 +53,7 @@ This plan is now complete.
 
 Before this refactor the relay code had these boundary problems:
 
-- `crates/server/src/host_relay/transport.rs` is not transport. It resolves
+- `crates/server/src/host_relay.rs` is not transport. It resolves
   state, bootstraps the SDK, and persists cache mutations.
 - `crates/server/src/host_relay/proxy.rs` and
   `crates/server/src/routes/open_remote_editor.rs` both orchestrate the same
@@ -240,7 +240,7 @@ Outcome:
 ### Phase 2: Introduce Host Relay Resolver and Handle
 
 Replace the current free-function API in
-`crates/server/src/host_relay/transport.rs` with:
+`crates/server/src/host_relay.rs` with:
 
 - a cloneable resolver built from owned dependencies
 - a resolved host handle that owns the `RelayHostTransport`
@@ -340,7 +340,7 @@ The refactor is complete only when all of the following are true.
 - `DeploymentImpl` appears only in relay pairing wiring, not in the
   `relay_pairing` application API
 - `DeploymentImpl` appears only in host-relay module wiring, not in the
-  `host_relay::transport` application API
+  `host_relay` application API
 
 ### Storage Boundary
 

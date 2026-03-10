@@ -20,7 +20,7 @@ This is a structural refactor, not a compatibility-preserving cleanup.
 - Done: `relay-types` now owns `RelayAuthState`.
 - Done: `relay-client` now owns `RelayHostIdentity`, `RelayHostTransport`, bootstrap, and transport recovery.
 - Done: low-level relay transport helpers are now private to `relay-client`, so callers go through the SDK transport surface instead of bypassing it.
-- Done: the old `server::relay::session` layer has been replaced by `server::host_relay::transport`, which now resolves environment state and persists relay auth state instead of owning transport behaviour.
+- Done: the old `server::relay::session` layer has been replaced by `server::host_relay`, which now resolves environment state and persists relay auth state instead of owning transport behaviour.
 - Done: the old `server::relay::proxy` path has been reduced to `server::host_relay::proxy`, and both it and `open_remote_editor` now use `RelayHostTransport`.
 - Done: the remaining server-local relay code now lives under role-based modules instead of a catch-all `server::relay` bucket.
 - Next: add focused SDK and server integration tests around auth recovery, cache persistence, and route-level error mapping.
