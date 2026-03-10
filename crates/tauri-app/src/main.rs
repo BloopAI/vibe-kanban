@@ -80,8 +80,15 @@ fn main() {
                 tracing::info!("Running in dev mode — using external frontend/backend servers");
                 create_window(app, tauri::WebviewUrl::App("index.html".into()))?;
             } else {
-                // Production: start the Axum server first, then open the window
-                // once it's ready so the user never sees a blank/error page.
+                // Production: show a splash page immediately, start the Axum
+                // server in the background, then navigate the webview to the
+                // server URL once it's ready.
+                //
+                // We use WebviewUrl::App (Tauri's custom protocol) instead of
+                // WebviewUrl::External so that macOS WKWebView applies the same
+                // content scaling as in dev mode — using External causes the
+                // native traffic-light buttons to appear smaller relative to
+                // the web content.
                 let app_handle = app.handle().clone();
 
                 // Register native Tauri notifications before the server starts.
@@ -89,25 +96,25 @@ fn main() {
                     app_handle: app_handle.clone(),
                 }));
 
+                // Show splash window immediately so the user doesn't stare at
+                // a blank screen while the server boots.
+                create_window(app, tauri::WebviewUrl::App("index.html".into()))?;
+
                 let token = shutdown_token.clone();
                 tauri::async_runtime::spawn(async move {
                     match server::startup::start().await {
                         Ok(server_handle) => {
                             let url = server_handle.url();
 
-                            // Create the window on the main thread — macOS
-                            // silently drops windows created from async tasks.
+                            // Navigate the existing window to the server URL.
                             let url_clone = url.clone();
-                            let create_handle = app_handle.clone();
+                            let nav_handle = app_handle.clone();
                             let _ = app_handle.run_on_main_thread(move || {
-                                let webview_url =
-                                    tauri::WebviewUrl::External(url_clone.parse().unwrap());
-                                match create_window(&create_handle, webview_url) {
-                                    Ok(_) => {}
-                                    Err(e) => tracing::error!("Failed to create window: {e}"),
+                                if let Some(window) = nav_handle.get_webview_window("main") {
+                                    let _ = window.navigate(url_clone.parse().unwrap());
                                 }
                             });
-                            tracing::info!("Window opened at {url}");
+                            tracing::info!("Window navigated to {url}");
 
                             // Wait for either the server to exit on its own or
                             // the external shutdown token to be cancelled.
