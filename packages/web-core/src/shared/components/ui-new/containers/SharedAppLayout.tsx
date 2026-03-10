@@ -303,7 +303,7 @@ export function SharedAppLayout() {
             {/* Row 1, col 1: corner spacer — seamless with AppBar bg */}
             <div
               data-tauri-drag-region
-              className="bg-secondary border-b border-border"
+              className="bg-secondary"
               style={isTauriMac() ? { minWidth: 78 } : undefined}
             />
             {/* Row 1, col 2: Navbar stretches full width */}
