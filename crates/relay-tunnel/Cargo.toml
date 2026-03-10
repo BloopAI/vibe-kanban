@@ -15,6 +15,7 @@ server = [
     "dep:chrono",
     "dep:axum-extra",
     "dep:api-types",
+    "dep:relay-types",
     "dep:uuid",
     "dep:tower-http",
     "dep:tracing-subscriber",
@@ -49,6 +50,7 @@ axum-extra = { version = "0.10.3", features = ["typed-header"], optional = true 
 base64 = { version = "0.22", optional = true }
 chrono = { version = "0.4", features = ["serde"], optional = true }
 jsonwebtoken = { version = "10.2.0", features = ["rust_crypto"], optional = true }
+relay-types = { path = "../relay-types", optional = true }
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 secrecy = { version = "0.10.3", optional = true }
 serde = { version = "1.0", features = ["derive"], optional = true }

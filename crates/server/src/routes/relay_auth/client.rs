@@ -6,28 +6,17 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use chrono::Utc;
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
-use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
-use trusted_key_auth::{
-    key_confirmation::{build_client_proof, verify_server_proof},
-    spake2::normalize_enrollment_code,
-    trusted_keys::parse_public_key_base64,
+use relay_client::RelayApiClient;
+use relay_types::{
+    ListRelayPairedHostsResponse, PairRelayHostRequest, PairRelayHostResponse, RelayPairedHost,
+    RemoveRelayPairedHostResponse,
 };
-use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::types::{
-    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
-    StartSpake2EnrollmentResponse,
-};
-use crate::{DeploymentImpl, relay::api::RelayApiClient};
-
-const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
-const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
+use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -37,35 +26,6 @@ pub fn router() -> Router<DeploymentImpl> {
             "/relay-auth/client/hosts/{host_id}",
             delete(remove_relay_paired_host),
         )
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PairRelayHostRequest {
-    pub host_id: Uuid,
-    pub host_name: String,
-    pub enrollment_code: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PairRelayHostResponse {
-    pub paired: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RelayPairedHost {
-    pub host_id: Uuid,
-    pub host_name: Option<String>,
-    pub paired_at: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct ListRelayPairedHostsResponse {
-    pub hosts: Vec<RelayPairedHost>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RemoveRelayPairedHostResponse {
-    pub removed: bool,
 }
 
 pub async fn pair_relay_host(
@@ -85,7 +45,7 @@ pub async fn pair_relay_host(
                 .into_response();
         }
     };
-    let PairedCredentials {
+    let relay_client::PairRelayHostResult {
         signing_session_id,
         client_id,
         server_public_key_b64,
@@ -96,14 +56,14 @@ pub async fn pair_relay_host(
             req.host_id,
             Some(req.host_name.clone()),
             Some(Utc::now().to_rfc3339()),
-            Some(client_id),
+            Some(client_id.to_string()),
             Some(server_public_key_b64),
         )
         .await
     {
         Ok(()) => {
             deployment
-                .cache_relay_signing_session_id(req.host_id, signing_session_id)
+                .cache_relay_signing_session_id(req.host_id, signing_session_id.to_string())
                 .await;
             (
                 StatusCode::OK,
@@ -174,97 +134,19 @@ pub async fn remove_relay_paired_host(
     }
 }
 
-#[derive(Debug, Clone)]
-struct PairedCredentials {
-    signing_session_id: String,
-    client_id: String,
-    server_public_key_b64: String,
-}
-
 async fn pair_relay_host_credentials(
     deployment: &DeploymentImpl,
     req: &PairRelayHostRequest,
-) -> anyhow::Result<PairedCredentials> {
+) -> anyhow::Result<relay_client::PairRelayHostResult> {
     let remote_client = deployment.remote_client()?;
-    let relay_client = RelayApiClient::new(
-        remote_client
-            .access_token()
-            .await
-            .context("Failed to get access token for relay auth code")?,
-    );
-    let relay_remote_session = relay_client.create_session(req.host_id).await?;
-
-    let normalized_code = normalize_enrollment_code(&req.enrollment_code)
-        .map_err(|error| anyhow::anyhow!(error.to_string()))?;
-
-    let password = Password::new(normalized_code.as_bytes());
-    let id_a = Identity::new(SPAKE2_CLIENT_ID);
-    let id_b = Identity::new(SPAKE2_SERVER_ID);
-    let (client_state, client_message) =
-        Spake2::<Ed25519Group>::start_a_with_rng(&password, &id_a, &id_b, UnwrapErr(SysRng));
-
-    let start_response: StartSpake2EnrollmentResponse = relay_client
-        .post_session_api(
-            &relay_remote_session,
-            "/api/relay-auth/server/spake2/start",
-            &StartSpake2EnrollmentRequest {
-                enrollment_code: normalized_code,
-                client_message_b64: BASE64_STANDARD.encode(client_message),
-            },
-        )
-        .await?;
-
-    let server_message = BASE64_STANDARD
-        .decode(&start_response.server_message_b64)
-        .context("Invalid server_message_b64 in relay PAKE response")?;
-    let shared_key = client_state
-        .finish(&server_message)
-        .map_err(|_| anyhow::anyhow!("Failed to complete relay PAKE handshake"))?;
-
-    let signing_key = deployment.relay_signing().signing_key();
-    let client_public_key = signing_key.verifying_key();
-    let client_public_key_b64 = BASE64_STANDARD.encode(client_public_key.as_bytes());
-    let client_proof_b64 = build_client_proof(
-        &shared_key,
-        &start_response.enrollment_id,
-        client_public_key.as_bytes(),
-    )
-    .map_err(|_| anyhow::anyhow!("Failed to build relay PAKE client proof"))?;
-
-    let os = os_info::get();
-    let client_id = Uuid::new_v4();
-    let finish_response: FinishSpake2EnrollmentResponse = relay_client
-        .post_session_api(
-            &relay_remote_session,
-            "/api/relay-auth/server/spake2/finish",
-            &FinishSpake2EnrollmentRequest {
-                enrollment_id: start_response.enrollment_id,
-                client_id,
-                client_name: format!("Vibe Kanban Relay Pairing ({})", req.host_name),
-                client_browser: "local-backend".to_string(),
-                client_os: format!("{} {}", os.os_type(), os.version()),
-                client_device: "desktop".to_string(),
-                public_key_b64: client_public_key_b64,
-                client_proof_b64,
-            },
-        )
-        .await?;
-
-    let server_public_key = parse_public_key_base64(&finish_response.server_public_key_b64)
-        .map_err(|_| anyhow::anyhow!("Invalid server_public_key_b64 in relay PAKE response"))?;
-
-    verify_server_proof(
-        &shared_key,
-        &start_response.enrollment_id,
-        client_public_key.as_bytes(),
-        server_public_key.as_bytes(),
-        &finish_response.server_proof_b64,
-    )
-    .map_err(|_| anyhow::anyhow!("Relay server proof verification failed"))?;
-
-    Ok(PairedCredentials {
-        signing_session_id: finish_response.signing_session_id.to_string(),
-        client_id: client_id.to_string(),
-        server_public_key_b64: finish_response.server_public_key_b64,
-    })
+    let access_token = remote_client
+        .access_token()
+        .await
+        .context("Failed to get access token for relay auth code")?;
+    let relay_base_url = deployment
+        .shared_api_base()
+        .ok_or_else(|| anyhow::anyhow!("VK_SHARED_RELAY_API_BASE is not configured"))?;
+    let relay_client = RelayApiClient::new(relay_base_url, access_token);
+    let signing_key = deployment.relay_signing().signing_key().clone();
+    relay_client.pair_host(req, &signing_key).await
 }

@@ -8,6 +8,12 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
+use relay_client::RELAY_HEADER;
+use relay_types::{
+    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, ListRelayPairedClientsResponse,
+    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayPairedClient,
+    RemoveRelayPairedClientResponse, StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
+};
 use serde::Serialize;
 use trusted_key_auth::{
     key_confirmation::{build_server_proof, verify_client_proof},
@@ -15,16 +21,10 @@ use trusted_key_auth::{
     spake2::{generate_one_time_code, start_spake2_enrollment},
     trusted_keys::{TrustedRelayClient, parse_public_key_base64},
 };
-use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::types::{
-    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse,
-    RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse,
-    StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
-};
-use crate::{DeploymentImpl, error::ApiError, relay::RELAY_HEADER};
+use crate::{DeploymentImpl, error::ApiError};
 
 const RATE_LIMIT_WINDOW: Duration = Duration::from_secs(60);
 const GENERATE_CODE_GLOBAL_LIMIT: usize = 5;
@@ -34,25 +34,6 @@ const SIGNING_SESSION_REFRESH_GLOBAL_LIMIT: usize = 30;
 #[derive(Debug, Serialize)]
 struct GenerateEnrollmentCodeResponse {
     enrollment_code: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct RelayPairedClient {
-    client_id: Uuid,
-    client_name: String,
-    client_browser: String,
-    client_os: String,
-    client_device: String,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct ListRelayPairedClientsResponse {
-    clients: Vec<RelayPairedClient>,
-}
-
-#[derive(Debug, Serialize, TS)]
-pub struct RemoveRelayPairedClientResponse {
-    removed: bool,
 }
 
 pub fn router() -> Router<DeploymentImpl> {

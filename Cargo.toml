@@ -2,7 +2,9 @@
 resolver = "3"
 members = [
     "crates/api-types",
+    "crates/relay-client",
     "crates/server",
+    "crates/relay-types",
     "crates/trusted-key-auth",
     "crates/mcp",
     "crates/db",
@@ -45,4 +47,3 @@ async-trait = "0.1"
 debug = 1
 split-debuginfo = "packed"
 strip = true
-

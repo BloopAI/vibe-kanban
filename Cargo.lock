@@ -4937,6 +4937,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "relay-client"
+version = "0.1.27"
+dependencies = [
+ "anyhow",
+ "base64",
+ "ed25519-dalek",
+ "http",
+ "os_info",
+ "relay-control",
+ "relay-types",
+ "reqwest 0.13.2",
+ "serde",
+ "spake2",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "trusted-key-auth",
+ "uuid",
+]
+
+[[package]]
 name = "relay-control"
 version = "0.1.28"
 dependencies = [
@@ -4975,6 +4995,17 @@ dependencies = [
  "tokio-yamux",
  "tracing",
  "url",
+]
+
+[[package]]
+name = "relay-types"
+version = "0.1.27"
+dependencies = [
+ "chrono",
+ "serde",
+ "sqlx",
+ "ts-rs 11.0.1",
+ "uuid",
 ]
 
 [[package]]
@@ -6049,8 +6080,10 @@ dependencies = [
  "os_info",
  "rand 0.8.5",
  "regex",
+ "relay-client",
  "relay-control",
  "relay-tunnel",
+ "relay-types",
  "reqwest 0.13.2",
  "rmp-serde",
  "rust-embed",

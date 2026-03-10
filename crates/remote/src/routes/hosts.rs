@@ -1,10 +1,10 @@
-use api_types::ListRelayHostsResponse;
 use axum::{
     Json, Router,
     extract::{Extension, State},
     http::StatusCode,
     routing::get,
 };
+use relay_types::ListRelayHostsResponse;
 
 use super::error::ErrorResponse;
 use crate::{AppState, auth::RequestContext, db::hosts::HostRepository};

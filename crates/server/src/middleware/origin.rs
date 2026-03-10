@@ -6,9 +6,8 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
+use relay_client::RELAY_HEADER;
 use url::Url;
-
-use crate::relay::RELAY_HEADER;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct OriginKey {
