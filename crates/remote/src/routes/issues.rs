@@ -24,9 +24,7 @@ use crate::{
         project_statuses::ProjectStatusRepository,
     },
     mutation_definition::MutationBuilder,
-    services::notifications::{
-        collect_issue_recipients, notify_issue_subscribers, send_issue_notifications,
-    },
+    services::notifications::{collect_issue_recipients, send_issue_notifications},
 };
 
 /// Mutation definition for Issue - provides both router and TypeScript metadata.
@@ -244,6 +242,15 @@ async fn update_issue(
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
 
+    let needs_notification = status_changed || title_changed || description_changed;
+    let recipients = if needs_notification {
+        collect_issue_recipients(state.pool(), organization_id, data.id, ctx.user.id)
+            .await
+            .unwrap_or_default()
+    } else {
+        vec![]
+    };
+
     if status_changed {
         let old_status_name = ProjectStatusRepository::find_by_id(state.pool(), old_status_id)
             .await
@@ -256,10 +263,11 @@ async fn update_issue(
             .flatten()
             .map(|s| s.name);
 
-        notify_issue_subscribers(
+        send_issue_notifications(
             state.pool(),
             organization_id,
             ctx.user.id,
+            &recipients,
             &data,
             NotificationType::IssueStatusChanged,
             serde_json::json!({
@@ -274,10 +282,11 @@ async fn update_issue(
     }
 
     if title_changed {
-        notify_issue_subscribers(
+        send_issue_notifications(
             state.pool(),
             organization_id,
             ctx.user.id,
+            &recipients,
             &data,
             NotificationType::IssueTitleChanged,
             serde_json::json!({
@@ -290,10 +299,11 @@ async fn update_issue(
     }
 
     if description_changed {
-        notify_issue_subscribers(
+        send_issue_notifications(
             state.pool(),
             organization_id,
             ctx.user.id,
+            &recipients,
             &data,
             NotificationType::IssueDescriptionChanged,
             serde_json::json!({}),

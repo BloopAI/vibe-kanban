@@ -81,6 +81,7 @@ pub async fn send_issue_notifications(
 pub async fn notify_user(
     pool: &PgPool,
     organization_id: Uuid,
+    actor_user_id: Uuid,
     recipient_user_id: Uuid,
     issue: &Issue,
     notification_type: NotificationType,
@@ -93,7 +94,7 @@ pub async fn notify_user(
         return;
     }
 
-    let payload = build_payload(issue, recipient_user_id, extra_payload);
+    let payload = build_payload(issue, actor_user_id, extra_payload);
 
     if let Err(e) = NotificationRepository::create(
         pool,

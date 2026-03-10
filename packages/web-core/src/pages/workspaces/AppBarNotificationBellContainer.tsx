@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { BellIcon } from '@phosphor-icons/react';
 import { cn } from '@vibe/ui/lib/cn';
@@ -7,9 +6,7 @@ import { useNotifications } from '@/shared/hooks/useNotifications';
 
 export function AppBarNotificationBellContainer() {
   const navigate = useNavigate();
-  const { data, enabled } = useNotifications();
-
-  const unseenCount = useMemo(() => data.filter((n) => !n.seen).length, [data]);
+  const { unseenCount, enabled } = useNotifications();
 
   if (!enabled) return null;
 

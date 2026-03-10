@@ -46,9 +46,10 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
   const title = payload.issue_title ?? 'an issue';
   const actorId = payload.actor_user_id;
 
+  const actor = actorId ? [user(actorId)] : [text('Someone')];
+
   switch (n.notification_type) {
     case 'issue_title_changed': {
-      const actor = actorId ? [user(actorId)] : [text('Someone')];
       if (payload.old_title && payload.new_title) {
         return [
           ...actor,
@@ -61,7 +62,6 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
       return [...actor, text(' changed the title on '), bold(title)];
     }
     case 'issue_assignee_changed': {
-      const actor = actorId ? [user(actorId)] : [text('Someone')];
       const assigneeId = payload.assignee_user_id;
       const assignee = assigneeId ? [user(assigneeId)] : [text('Someone')];
       return [
@@ -73,7 +73,6 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
       ];
     }
     case 'issue_description_changed': {
-      const actor = actorId ? [user(actorId)] : [text('Someone')];
       return [
         text('Description updated on '),
         bold(title),
@@ -82,11 +81,9 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
       ];
     }
     case 'issue_comment_added': {
-      const actor = actorId ? [user(actorId)] : [text('Someone')];
       return [...actor, text(' commented on '), bold(title)];
     }
     case 'issue_status_changed': {
-      const actor = actorId ? [user(actorId)] : [text('Someone')];
       if (payload.old_status_name && payload.new_status_name) {
         return [
           ...actor,
@@ -101,7 +98,6 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
       return [...actor, text(' changed status on '), bold(title)];
     }
     case 'issue_deleted': {
-      const actor = actorId ? [user(actorId)] : [text('Someone')];
       return [...actor, text(' deleted '), bold(title)];
     }
     default:

@@ -117,11 +117,11 @@ async fn create_issue_assignee(
             notify_user(
                 state.pool(),
                 organization_id,
+                ctx.user.id,
                 payload.user_id,
                 &issue,
                 NotificationType::IssueAssigneeChanged,
                 serde_json::json!({
-                    "actor_user_id": ctx.user.id.to_string(),
                     "assignee_user_id": payload.user_id.to_string(),
                 }),
             )

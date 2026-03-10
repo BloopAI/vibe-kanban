@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import {
   NOTIFICATIONS_SHAPE,
@@ -24,5 +25,10 @@ export function useNotifications() {
     }
   );
 
-  return { ...result, enabled };
+  const unseenCount = useMemo(
+    () => result.data.filter((n) => !n.seen).length,
+    [result.data]
+  );
+
+  return { ...result, enabled, unseenCount };
 }

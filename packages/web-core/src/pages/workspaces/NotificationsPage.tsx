@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useRouter } from '@tanstack/react-router';
 import { BellIcon, ChecksIcon } from '@phosphor-icons/react';
 import type { Notification } from 'shared/remote-types';
@@ -48,7 +48,7 @@ function NotificationMessage({
 export function NotificationsPage() {
   const router = useRouter();
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
-  const { data, update, enabled } = useNotifications();
+  const { data, update, enabled, unseenCount } = useNotifications();
   const { data: members = [] } = useOrganizationMembers(
     selectedOrgId ?? undefined
   );
@@ -60,8 +60,6 @@ export function NotificationsPage() {
       ),
     [data]
   );
-
-  const unseenCount = useMemo(() => data.filter((n) => !n.seen).length, [data]);
 
   const handleClick = useCallback(
     (n: Notification) => {
@@ -77,12 +75,8 @@ export function NotificationsPage() {
   );
 
   const handleMarkAllSeen = useCallback(async () => {
-    if (!selectedOrgId) return;
-    await makeRequest(
-      `/v1/notifications/mark-all-seen?organization_id=${selectedOrgId}`,
-      { method: 'POST' }
-    );
-  }, [selectedOrgId]);
+    await makeRequest('/v1/notifications/mark-all-seen', { method: 'POST' });
+  }, []);
 
   if (!enabled) {
     return (
