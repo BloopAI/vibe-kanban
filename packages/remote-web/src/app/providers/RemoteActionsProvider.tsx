@@ -43,7 +43,7 @@ function noOpSelection(name: string) {
 export function RemoteActionsProvider({
   children,
 }: RemoteActionsProviderProps) {
-  const runtime = useAppRuntime();
+  const appRuntime = useAppRuntime();
   const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
   const { projectId, hostId } = useParams({ strict: false });
@@ -100,6 +100,8 @@ export function RemoteActionsProvider({
 
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
+      appRuntime,
+      currentHostId: hostId ?? null,
       appNavigation,
       queryClient,
       selectWorkspace: () => {
@@ -129,10 +131,10 @@ export function RemoteActionsProvider({
       kanbanProjectId: projectId,
       projectMutations: projectMutations ?? undefined,
       remoteWorkspaces: userCtx?.workspaces ?? [],
-      runtime,
     }),
     [
-      runtime,
+      appRuntime,
+      hostId,
       queryClient,
       openStatusSelection,
       openPrioritySelection,
