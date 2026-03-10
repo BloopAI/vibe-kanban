@@ -1,0 +1,621 @@
+{
+  "settings": {
+    "common": {
+      "unsavedChanges": "• Você tem alterações não salvas",
+      "discardChangesConfirm": "Descartar alterações não salvas?"
+    },
+    "unsavedChanges": {
+      "title": "Alterações Não Salvas",
+      "message": "Você tem alterações não salvas. Tem certeza de que deseja fechar sem salvar?",
+      "discard": "Descartar Alterações",
+      "cancel": "Continuar Editando"
+    },
+    "layout": {
+      "nav": {
+        "title": "Configurações",
+        "general": "Geral",
+        "generalDesc": "Tema, notificações e preferências",
+        "projects": "Projetos",
+        "projectsDesc": "Repositórios e configuração de projetos",
+        "repos": "Repositórios",
+        "reposDesc": "Scripts e configuração de repositórios",
+        "agents": "Agentes",
+        "agentsDesc": "Configurações de agentes de codificação",
+        "mcp": "Servidores MCP",
+        "mcpDesc": "Servidores do Model Context Protocol",
+        "organizations": "Configurações da Organização",
+        "organizationsDesc": "Gerenciar membros e permissões da organização",
+        "remote-projects": "Projetos",
+        "remote-projectsDesc": "Gerenciar projetos",
+        "relay": "Acesso Remoto",
+        "relayDesc": "Túnel de relay e inscrição"
+      }
+    },
+    "general": {
+      "loading": "Carregando configurações...",
+      "loadError": "Falha ao carregar configuração.",
+      "save": {
+        "button": "Salvar Configurações",
+        "success": "✓ Configurações salvas com sucesso!",
+        "error": "Falha ao salvar configuração",
+        "unsavedChanges": "• Você tem alterações não salvas",
+        "discard": "Descartar"
+      },
+      "appearance": {
+        "title": "Aparência",
+        "description": "Personalize como o aplicativo se parece e se comporta.",
+        "theme": {
+          "label": "Tema",
+          "placeholder": "Selecione o tema",
+          "helper": "Escolha seu esquema de cores preferido."
+        },
+        "language": {
+          "label": "Idioma",
+          "placeholder": "Selecione o idioma",
+          "helper": "Escolha seu idioma preferido. Padrão do Navegador segue seu idioma do sistema."
+        }
+      },
+      "taskExecution": {
+        "title": "Agente de Codificação Padrão",
+        "description": "Escolha o agente de codificação padrão para tarefas.",
+        "executor": {
+          "label": "Configuração Padrão do Agente",
+          "placeholder": "Selecione o perfil",
+          "helper": "Escolha a configuração do agente padrão para usar ao criar um workspace."
+        },
+        "variant": "DEFAULT",
+        "defaultLabel": "Padrão"
+      },
+      "editor": {
+        "title": "Editor",
+        "description": "Configure sua experiência de edição de código.",
+        "type": {
+          "label": "Tipo de Editor",
+          "placeholder": "Selecione o editor",
+          "helper": "Escolha sua interface de editor de código preferida."
+        },
+        "customCommand": {
+          "label": "Comando Personalizado do Editor",
+          "placeholder": "ex: code, subl, vim",
+          "helper": "Digite o comando para iniciar seu editor personalizado. Isso será usado para abrir arquivos."
+        },
+        "remoteSsh": {
+          "host": {
+            "label": "Host SSH Remoto (Opcional)",
+            "placeholder": "ex: hostname ou endereço IP",
+            "helper": "Defina isso se o Vibe Kanban estiver sendo executado em um servidor remoto. Quando definido, clicar em \"Abrir no Editor\" gerará uma URL para abrir seu editor via SSH em vez de iniciar um comando local."
+          },
+          "user": {
+            "label": "Usuário SSH Remoto (Opcional)",
+            "placeholder": "ex: nome de usuário",
+            "helper": "Nome de usuário SSH para a conexão remota. Se não definido, o VS Code usará sua configuração SSH ou pedirá que você digite."
+          }
+        },
+        "autoInstallExtension": {
+          "label": "Instalar Automaticamente Extensão do VS Code",
+          "helper": "Instale automaticamente a extensão Vibe Kanban ao abrir um projeto no VS Code ou Cursor. Isso é executado em segundo plano e não tem efeito se a extensão já estiver instalada."
+        },
+        "availability": {
+          "checking": "Verificando disponibilidade...",
+          "available": "Disponível",
+          "notFound": "Não encontrado no PATH"
+        }
+      },
+      "github": {
+        "title": "Integração com GitHub",
+        "cliSetup": {
+          "title": "Configuração da CLI do GitHub",
+          "description": "A autenticação da CLI do GitHub é necessária para criar pull requests e interagir com repositórios do GitHub.",
+          "setupWillTitle": "Esta configuração irá:",
+          "steps": {
+            "checkInstalled": "Verificar se a CLI do GitHub (gh) está instalada",
+            "installHomebrew": "Instalá-la via Homebrew se necessário (macOS)",
+            "authenticate": "Autenticar com GitHub usando OAuth"
+          },
+          "setupNote": "A configuração será executada na janela de chat. Você precisará completar a autenticação no seu navegador.",
+          "runSetup": "Executar Configuração",
+          "running": "Executando...",
+          "errors": {
+            "brewMissing": "Homebrew não está instalado. Instale-o para habilitar a configuração automática.",
+            "notSupported": "Configuração automática não é suportada nesta plataforma. Instale a CLI do GitHub manualmente.",
+            "setupFailed": "Falha ao executar a configuração da CLI do GitHub."
+          },
+          "help": {
+            "homebrew": {
+              "description": "A instalação automática requer Homebrew. Instale o Homebrew a partir de",
+              "brewSh": "brew.sh",
+              "manualInstall": "e depois execute a configuração novamente. Alternativamente, instale a CLI do GitHub manualmente com:",
+              "afterInstall": "Após a instalação, autentique-se com:"
+            },
+            "manual": {
+              "description": "Instale a CLI do GitHub a partir da",
+              "officialDocs": "documentação oficial",
+              "andAuthenticate": "e depois autentique-se com sua conta do GitHub."
+            }
+          }
+        }
+      },
+      "git": {
+        "title": "Git",
+        "description": "Configure as preferências de nomeação de branches do git",
+        "branchPrefix": {
+          "label": "Prefixo do Branch",
+          "placeholder": "vk",
+          "helper": "Prefixo para nomes de branches gerados automaticamente. Deixe vazio para sem prefixo.",
+          "preview": "Visualização:",
+          "previewWithPrefix": "{{prefix}}/1a2b-nome-da-tarefa",
+          "previewNoPrefix": "1a2b-nome-da-tarefa",
+          "errors": {
+            "slash": "O prefixo não pode conter '/'.",
+            "startsWithDot": "O prefixo não pode começar com '.'.",
+            "endsWithDot": "O prefixo não pode terminar com '.' ou '.lock'.",
+            "invalidSequence": "Contém sequência inválida (.., @{).",
+            "invalidChars": "Contém caracteres inválidos.",
+            "controlChars": "Contém caracteres de controle."
+          }
+        },
+        "workspaceDir": {
+          "label": "Diretório do Workspace",
+          "placeholder": "~/",
+          "helper": "Os workspaces serão criados em um subdiretório .vibe-kanban-workspaces dentro deste caminho. Deixe vazio para usar o padrão do sistema. As alterações exigem reinicialização do aplicativo.",
+          "browse": "Navegar",
+          "dialogTitle": "Selecionar Diretório do Workspace",
+          "dialogDescription": "Escolha um diretório. Os workspaces serão criados em um subdiretório .vibe-kanban-workspaces dentro dele."
+        }
+      },
+      "pullRequests": {
+        "title": "Pull Requests",
+        "description": "Configure o comportamento de criação de PR",
+        "autoDescription": {
+          "label": "Gerar automaticamente descrição do PR por padrão",
+          "helper": "Quando ativado, o agente de IA atualizará automaticamente o título e a descrição do PR após a criação."
+        },
+        "customPrompt": {
+          "useCustom": "Usar prompt personalizado",
+          "helper": "Prompt personalizado para o agente de IA ao gerar descrições de PR. Use {pr_number} e {pr_url} como espaços reservados."
+        }
+      },
+      "commits": {
+        "title": "Commits",
+        "description": "Configure o comportamento de commit para workspaces",
+        "reminder": {
+          "label": "Lembrete de commit",
+          "helper": "Solicite que os agentes suportados façam commit das alterações antes de parar."
+        },
+        "customPrompt": {
+          "useCustom": "Usar prompt personalizado",
+          "helper": "Prompt personalizado para o lembrete de commit. O status do git será anexado automaticamente."
+        }
+      },
+      "notifications": {
+        "title": "Notificações",
+        "description": "Controle quando e como você recebe notificações.",
+        "sound": {
+          "label": "Notificações Sonoras",
+          "helper": "Tocar um som quando os workspaces terminarem de executar.",
+          "fileLabel": "Som",
+          "filePlaceholder": "Selecione o som",
+          "fileHelper": "Escolha o som para tocar quando as tarefas são concluídas. Clique no botão de volume para visualizar."
+        },
+        "push": {
+          "label": "Notificações Push",
+          "helper": "Mostrar notificações do sistema quando os workspaces terminarem de executar."
+        }
+      },
+      "messageInput": {
+        "title": "Entrada de Mensagem",
+        "description": "Configure como as mensagens são enviadas na entrada de chat.",
+        "shortcut": {
+          "label": "Enviar mensagem com",
+          "helper": "Escolha o atalho de teclado para enviar mensagens.",
+          "enterLabel": "Enter (Shift+Enter para nova linha)"
+        }
+      },
+      "privacy": {
+        "title": "Privacidade",
+        "description": "Ajude a melhorar o Vibe-Kanban compartilhando dados de uso anônimos.",
+        "telemetry": {
+          "label": "Habilitar Telemetria",
+          "helper": "Habilita o rastreamento de eventos de uso anônimos para ajudar a melhorar o aplicativo. Nenhum prompt ou informação de projeto é coletado."
+        }
+      },
+      "taskTemplates": {
+        "title": "Tags",
+        "description": "Crie snippets de texto reutilizáveis que podem ser inseridos nas descrições das tarefas usando @nome_da_tag."
+      },
+      "tags": {
+        "manager": {
+          "title": "Tags de Tarefa",
+          "addTag": "Adicionar Tag",
+          "noTags": "Ainda não há tags. Crie snippets de texto reutilizáveis para descrições de tarefas comuns. Use @nome_da_tag em qualquer tarefa.",
+          "table": {
+            "tagName": "Nome da Tag",
+            "content": "Conteúdo",
+            "actions": "Ações"
+          },
+          "actions": {
+            "editTag": "Editar tag",
+            "deleteTag": "Excluir tag"
+          },
+          "deleteConfirm": "Tem certeza de que deseja excluir a tag \"{{tagName}}\"?"
+        },
+        "dialog": {
+          "createTitle": "Criar Tag",
+          "editTitle": "Editar Tag",
+          "tagName": {
+            "label": "Nome da Tag",
+            "required": "*",
+            "hint": "Use este nome com @ nas descrições das tarefas: @{{tagName}}",
+            "placeholder": "ex: correcao_bug, plano_teste, api_docs",
+            "error": "O nome da tag não pode conter espaços. Use sublinhados em vez disso (ex: minha_tag)"
+          },
+          "content": {
+            "label": "Conteúdo",
+            "required": "*",
+            "hint": "Texto que será inserido quando você usar @{{tagName}} nas descrições das tarefas",
+            "placeholder": "Digite o texto que será inserido quando você usar esta tag"
+          },
+          "errors": {
+            "nameRequired": "O nome da tag é obrigatório",
+            "saveFailed": "Falha ao salvar a tag"
+          },
+          "buttons": {
+            "cancel": "Cancelar",
+            "create": "Criar",
+            "update": "Atualizar"
+          }
+        }
+      },
+      "safety": {
+        "title": "Segurança & Avisos",
+        "description": "Redefina reconhecimentos para avisos de segurança e integração.",
+        "disclaimer": {
+          "title": "Reconhecimento de Aviso",
+          "description": "Redefina o aviso de segurança.",
+          "button": "Redefinir"
+        },
+        "onboarding": {
+          "title": "Integração",
+          "description": "Redefina o fluxo de integração.",
+          "button": "Redefinir"
+        }
+      },
+      "beta": {
+        "title": "Recursos Beta",
+        "description": "Experimente recursos experimentais antes de serem lançados.",
+        "workspaces": {
+          "label": "Habilitar Workspaces Beta",
+          "helper": "Use a nova interface de workspaces ao visualizar workspaces. As tarefas serão abertas primeiro na visualização de tarefas e as tentativas serão abertas na nova visualização de workspaces."
+        }
+      }
+    },
+    "agents": {
+      "title": "Configurações de Agente de Codificação",
+      "description": "Personalize o comportamento dos agentes de codificação com diferentes configurações.",
+      "loading": "Carregando configurações de agentes...",
+      "selectAgent": "Selecione o agente",
+      "save": {
+        "button": "Salvar Configurações de Agentes",
+        "success": "✓ Configurações do executor salvas com sucesso!",
+        "unsavedChanges": "• Você tem alterações não salvas"
+      },
+      "availability": {
+        "checking": "Verificando...",
+        "checkingAvailability": "Verificando disponibilidade...",
+        "available": "Agente disponível",
+        "notFoundSimple": "Agente não encontrado",
+        "loginDetected": "Uso Recente Detectado",
+        "loginDetectedTooltip": "Credenciais de autenticação recentes encontradas para este agente",
+        "installationFound": "Uso Anterior Detectado",
+        "installationFoundTooltip": "Configuração do agente encontrada. Você pode precisar fazer login para usá-lo."
+      },
+      "editor": {
+        "formLabel": "Editar JSON",
+        "agentLabel": "Agente",
+        "agentPlaceholder": "Selecione o tipo de executor",
+        "configLabel": "Configuração",
+        "configPlaceholder": "Selecione a configuração",
+        "createNew": "Criar novo...",
+        "deleteTitle": "Não é possível excluir a última configuração",
+        "deleteButton": "Excluir {{name}}",
+        "deleteText": "Excluir",
+        "makeDefault": "Tornar Padrão",
+        "isDefault": "Padrão",
+        "jsonLabel": "Configuração do Agente (JSON)",
+        "jsonPlaceholder": "Carregando perfis...",
+        "jsonLoading": "Carregando...",
+        "pathLabel": "Localização do arquivo de configuração:"
+      },
+      "errors": {
+        "deleteFailed": "Falha ao excluir configuração. Por favor, tente novamente.",
+        "saveFailed": "Falha ao salvar configurações de agentes. Por favor, tente novamente.",
+        "saveConfigFailed": "Falha ao salvar configuração. Por favor, tente novamente.",
+        "schemaNotFound": "Schema não encontrado para o tipo de executor: {{executor}}"
+      },
+      "tree": {
+        "search": "Pesquisar configurações...",
+        "expandAll": "Expandir Todos",
+        "collapseAll": "Recolher Todos",
+        "noResults": "Nenhuma configuração correspondente",
+        "noConfigs": "Nenhuma configuração disponível",
+        "selectConfig": "Selecione uma configuração na barra lateral para visualizar e editar suas configurações."
+      },
+      "deleteConfigDialog": {
+        "title": "Excluir Configuração?",
+        "description": "Isso removerá permanentemente \"{{configName}}\" do executor {{executorType}}. Você não pode desfazer esta ação."
+      }
+    },
+    "mcp": {
+      "title": "Configuração do Servidor MCP",
+      "description": "Configure servidores do Model Context Protocol para estender as capacidades dos agentes de codificação com ferramentas e recursos personalizados.",
+      "loading": "Carregando configuração MCP...",
+      "applying": "Aplicando configuração...",
+      "labels": {
+        "agent": "Agente",
+        "agentPlaceholder": "Selecione o executor",
+        "agentHelper": "Escolha para qual agente configurar os servidores MCP.",
+        "serverConfig": "Configuração do Servidor (JSON)",
+        "popularServers": "Servidores populares",
+        "serverHelper": "Clique em um cartão para inserir esse Servidor MCP no JSON acima.",
+        "saveLocation": "As alterações serão salvas em:"
+      },
+      "loadingStates": {
+        "jsonEditor": "Carregando...",
+        "configuration": "Carregando configuração atual do servidor MCP..."
+      },
+      "errors": {
+        "loadFailed": "Falha ao carregar configuração.",
+        "invalidJson": "Formato JSON inválido",
+        "validationError": "Erro de validação",
+        "saveFailed": "Falha ao salvar servidores MCP",
+        "applyFailed": "Falha ao aplicar configuração do servidor MCP",
+        "addServerFailed": "Falha ao adicionar servidor pré-configurado",
+        "mcpError": "Erro de Configuração MCP: {{error}}",
+        "notSupported": "MCP Não Suportado",
+        "supportMessage": "Para usar servidores MCP, por favor selecione um executor diferente que suporte MCP (Claude, Amp, Gemini, Codex ou Opencode) acima."
+      },
+      "save": {
+        "button": "Salvar Configuração MCP",
+        "success": "Configurações Salvas!",
+        "successMessage": "✓ Configuração MCP salva com sucesso!",
+        "loading": "Carregando configuração atual do servidor MCP...",
+        "unsavedChanges": "• Você tem alterações não salvas"
+      }
+    },
+    "projects": {
+      "title": "Configuração do Projeto",
+      "description": "Configure scripts e configurações específicas do projeto.",
+      "loading": "Carregando projetos...",
+      "loadError": "Falha ao carregar projetos.",
+      "selector": {
+        "label": "Selecionar Projeto",
+        "placeholder": "Escolha um projeto para configurar",
+        "helper": "Selecione um projeto para visualizar e editar sua configuração.",
+        "noProjects": "Nenhum projeto disponível"
+      },
+      "general": {
+        "title": "Configurações Gerais",
+        "description": "Configure informações básicas do projeto.",
+        "name": {
+          "label": "Nome do Projeto",
+          "placeholder": "Digite o nome do projeto",
+          "helper": "Um nome de exibição para este projeto."
+        },
+        "repoPath": {
+          "label": "Caminho do Repositório Git",
+          "placeholder": "/caminho/para/seu/repositorio/existente",
+          "helper": "O caminho absoluto para seu repositório git no disco."
+        }
+      },
+      "save": {
+        "button": "Salvar Configurações do Projeto",
+        "saving": "Salvando...",
+        "success": "✓ Configurações do projeto salvas com sucesso!",
+        "error": "Falha ao salvar configurações do projeto",
+        "unsavedChanges": "• Você tem alterações não salvas",
+        "discard": "Descartar",
+        "confirmSwitch": "Você tem alterações não salvas. Tem certeza de que deseja mudar de projeto? Suas alterações serão perdidas."
+      },
+      "repositories": {
+        "title": "Repositórios",
+        "description": "Gerencie os repositórios git neste projeto",
+        "noRepositories": "Nenhum repositório configurado",
+        "addRepository": "Adicionar Repositório"
+      }
+    },
+    "repos": {
+      "title": "Configuração do Repositório",
+      "description": "Configure scripts que são executados quando este repositório é usado em workspaces.",
+      "loading": "Carregando repositórios...",
+      "loadError": "Falha ao carregar repositórios.",
+      "addRepo": {
+        "button": "Adicionar Repositório",
+        "dialogTitle": "Selecionar Repositório Git",
+        "dialogDescription": "Escolha um repositório git existente para registrar.",
+        "error": "Falha ao registrar repositório"
+      },
+      "selector": {
+        "label": "Selecionar Repositório",
+        "placeholder": "Escolha um repositório para configurar",
+        "helper": "Selecione um repositório para visualizar e editar sua configuração.",
+        "noRepos": "Nenhum repositório disponível"
+      },
+      "general": {
+        "title": "Configurações Gerais",
+        "description": "Configure informações básicas do repositório.",
+        "displayName": {
+          "label": "Nome de Exibição",
+          "placeholder": "Digite o nome de exibição",
+          "helper": "Um nome amigável para este repositório."
+        },
+        "path": {
+          "label": "Caminho do Repositório"
+        },
+        "defaultWorkingDir": {
+          "label": "Diretório de Trabalho Padrão",
+          "placeholder": "ex: packages/frontend",
+          "helper": "Subdiretório relativo à raiz do repositório onde o agente de codificação é executado para workspaces de único repositório. Definido quando o workspace é criado. Deixe vazio para usar a raiz do repositório."
+        },
+        "defaultTargetBranch": {
+          "label": "Branch de Destino Padrão",
+          "placeholder": "Selecione um branch",
+          "helper": "O branch base padrão para novos workspaces. Worktrees bifurcam a partir deste branch e os PRs o terão como alvo.",
+          "search": "Pesquisar branches",
+          "noBranches": "Nenhum branch encontrado",
+          "loading": "Carregando branches...",
+          "useCurrent": "Usar branch atual"
+        }
+      },
+      "scripts": {
+        "title": "Scripts & Configuração",
+        "description": "Configure servidor de dev, setup, cleanup e copiar arquivos para este repositório. Estes scripts são executados sempre que o repositório é usado em qualquer workspace.",
+        "setup": {
+          "label": "Script de Setup",
+          "helper": "Este script é executado de dentro do worktree após ser criado e antes do agente de codificação iniciar. Use-o para tarefas de setup como instalar dependências ou preparar o ambiente.",
+          "parallelLabel": "Executar script de setup em paralelo com o agente de codificação",
+          "parallelHelper": "Quando ativado, o script de setup é executado simultaneamente com o agente de codificação em vez de esperar pelo setup completar primeiro."
+        },
+        "cleanup": {
+          "label": "Script de Cleanup",
+          "helper": "Este script é executado de dentro do worktree após a execução do agente de codificação, apenas se alterações foram feitas. Use-o para tarefas de garantia de qualidade como executar linters, formatadores, testes ou outras etapas de validação."
+        },
+        "archive": {
+          "label": "Script de Arquivo",
+          "helper": "Este script é executado de dentro do worktree quando o workspace é arquivado. Use-o para tarefas de limpeza como parar serviços, liberar recursos ou salvar estado."
+        },
+        "copyFiles": {
+          "label": "Copiar Arquivos",
+          "helper": "Lista separada por vírgulas de arquivos para copiar do diretório original do repositório para o worktree. Útil para arquivos de ambiente como .env. Certifique-se de que eles são gitignored!",
+          "placeholder": "Caminhos de arquivos ou padrões glob (ex: .env, config/*.json)"
+        },
+        "devServer": {
+          "label": "Script do Servidor de Dev",
+          "helper": "Inicia um servidor de desenvolvimento para este repositório. Os scripts são executados de dentro do diretório do worktree do repositório."
+        }
+      },
+      "linkedProjects": {
+        "title": "Projetos Vinculados",
+        "description": "Projetos que usam este repositório em sua configuração padrão de workspace.",
+        "loading": "Verificando projetos…",
+        "none": "Nenhum projeto vinculado"
+      },
+      "remove": {
+        "title": "Remover Repositório",
+        "description": "Desvincule este repositório do Vibe Kanban. Os arquivos no disco não serão excluídos.",
+        "button": "Remover",
+        "confirm": "Remover Repositório",
+        "dialogTitle": "Remover \"{{name}}\"?",
+        "dialogDescription": "Isso desvinculará o repositório do Vibe Kanban. Seus arquivos no disco não serão afetados. Você pode readicioná-lo mais tarde.",
+        "success": "Repositório removido com sucesso.",
+        "error": "Falha ao remover repositório."
+      },
+      "save": {
+        "button": "Salvar Configurações do Repositório",
+        "success": "Configurações do repositório salvas com sucesso!",
+        "error": "Falha ao salvar configurações do repositório",
+        "unsavedChanges": "Você tem alterações não salvas",
+        "discard": "Descartar",
+        "confirmSwitch": "Você tem alterações não salvas. Tem certeza de que deseja mudar de repositório? Suas alterações serão perdidas."
+      }
+    },
+    "relay": {
+      "title": "Acesso Remoto",
+      "description": "Permita acesso a esta instância da web através de túnel de relay.",
+      "enabled": {
+        "label": "Habilitar acesso remoto",
+        "helper": "Quando ativado, esta instância pode ser acessada remotamente através de um túnel de relay."
+      },
+      "enrollmentCode": {
+        "label": "Código de Emparelhamento",
+        "helper": "Digite este código no navegador para emparelhar com esta instância.",
+        "loginRequired": "Faça login para gerar um código de emparelhamento.",
+        "fetchError": "Falha ao buscar código de emparelhamento.",
+        "show": "Mostrar código de emparelhamento"
+      }
+    },
+    "remoteProjects": {
+      "title": "Projetos Remotos",
+      "description": "Gerencie projetos sincronizados na nuvem entre organizações.",
+      "loading": "Carregando projetos remotos...",
+      "loadError": "Falha ao carregar organizações",
+      "noProjects": "Ainda não há projetos. Crie um para começar.",
+      "selectOrg": "Selecione uma organização",
+      "createSuccess": "Projeto criado com sucesso",
+      "deleteSuccess": "Projeto excluído com sucesso",
+      "nameRequired": "O nome do projeto é obrigatório",
+      "saveSuccess": "Projeto atualizado com sucesso",
+      "saveError": "Falha ao atualizar projeto",
+      "columns": {
+        "organizations": "Organizações",
+        "projects": "Projetos"
+      },
+      "actions": {
+        "addProject": "Adicionar Projeto"
+      },
+      "form": {
+        "name": {
+          "label": "Nome do Projeto",
+          "placeholder": "Digite o nome do projeto"
+        },
+        "color": {
+          "label": "Cor do Projeto"
+        },
+        "statuses": {
+          "label": "Status do Projeto",
+          "description": "Gerencie colunas do kanban para este projeto."
+        },
+        "defaultRepos": {
+          "label": "Repositórios Padrão",
+          "description": "Repositórios que são automaticamente adicionados ao criar workspaces a partir das issues deste projeto.",
+          "empty": "Nenhum repositório padrão configurado",
+          "addButton": "Adicionar",
+          "addNew": "Adicionar novo repositório...",
+          "branchLabel": "Branch",
+          "noBranches": "Nenhum branch encontrado para este repositório",
+          "fetchError": "Não foi possível carregar repositórios",
+          "saveError": "Falha ao salvar repositórios padrão"
+        }
+      },
+      "loginRequired": {
+        "title": "Login necessário",
+        "description": "Faça login para gerenciar seus projetos remotos.",
+        "action": "Entrar"
+      }
+    }
+  },
+  "integrations": {
+    "github": {
+      "cliSetup": {
+        "title": "Configuração da CLI do GitHub",
+        "description": "A autenticação da CLI do GitHub é necessária para criar pull requests e interagir com repositórios do GitHub.",
+        "setupWillTitle": "Esta configuração irá:",
+        "steps": {
+          "checkInstalled": "Verificar se a CLI do GitHub (gh) está instalada",
+          "installHomebrew": "Instalá-la via Homebrew se necessário (macOS)",
+          "authenticate": "Autenticar com GitHub usando OAuth"
+        },
+        "setupNote": "A configuração será executada na janela de chat. Você precisará completar a autenticação no seu navegador.",
+        "runSetup": "Executar Configuração",
+        "running": "Executando...",
+        "errors": {
+          "brewMissing": "Homebrew não está instalado. Instale-o para habilitar a configuração automática.",
+          "notSupported": "Configuração automática não é suportada nesta plataforma. Instale a CLI do GitHub manualmente.",
+          "setupFailed": "Falha ao executar a configuração da CLI do GitHub."
+        },
+        "help": {
+          "homebrew": {
+            "description": "A instalação automática requer Homebrew. Instale o Homebrew a partir de",
+            "brewSh": "brew.sh",
+            "manualInstall": "e depois execute a configuração novamente. Alternativamente, instale a CLI do GitHub manualmente com:",
+            "afterInstall": "Após a instalação, autentique-se com:"
+          },
+          "manual": {
+            "description": "Instale a CLI do GitHub a partir da",
+            "officialDocs": "documentação oficial",
+            "andAuthenticate": "e depois autentique-se com sua conta do GitHub."
+          }
+        }
+      }
+    }
+  }
+}
