@@ -1,5 +1,6 @@
 use deployment::Deployment;
 use ed25519_dalek::{SigningKey, VerifyingKey};
+use futures_util::future::BoxFuture;
 use relay_client::RelayApiClient;
 use relay_types::RemoteSession;
 use trusted_key_auth::trusted_keys::parse_public_key_base64;
@@ -19,6 +20,30 @@ pub enum RelayHostSessionInitError {
     SigningSession(anyhow::Error),
 }
 
+#[derive(Debug)]
+pub enum RelayHostContextInitError {
+    ClientBuild(RelayClientBuildError),
+    Metadata(PairedRelayHostMetadataError),
+    Session(RelayHostSessionInitError),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RelayOperationAttempt {
+    Initial,
+    AfterSigningRefresh,
+    AfterSessionRotation,
+}
+
+#[derive(Debug)]
+pub enum RelayRecoveryError<E> {
+    Operation {
+        error: E,
+        attempt: RelayOperationAttempt,
+    },
+    Refresh(anyhow::Error),
+    Rotate(anyhow::Error),
+}
+
 #[derive(Debug, Clone)]
 pub struct PairedRelayHostMetadata {
     pub client_id: Uuid,
@@ -32,7 +57,7 @@ pub enum PairedRelayHostMetadataError {
     MissingSigningMetadata,
 }
 
-pub async fn build_relay_client(
+async fn build_relay_client(
     deployment: &DeploymentImpl,
 ) -> Result<RelayApiClient, RelayClientBuildError> {
     let remote_client = deployment
@@ -50,7 +75,7 @@ pub async fn build_relay_client(
     Ok(RelayApiClient::new(relay_base_url, access_token))
 }
 
-pub async fn load_paired_relay_host_metadata(
+async fn load_paired_relay_host_metadata(
     deployment: &DeploymentImpl,
     host_id: Uuid,
 ) -> Result<PairedRelayHostMetadata, PairedRelayHostMetadataError> {
@@ -74,6 +99,40 @@ pub async fn load_paired_relay_host_metadata(
         client_id,
         server_verify_key,
     })
+}
+
+pub struct RelayHostContext {
+    metadata: PairedRelayHostMetadata,
+    session: RelayHostSession,
+}
+
+impl RelayHostContext {
+    pub async fn for_host(
+        deployment: &DeploymentImpl,
+        host_id: Uuid,
+    ) -> Result<Self, RelayHostContextInitError> {
+        let metadata = load_paired_relay_host_metadata(deployment, host_id)
+            .await
+            .map_err(RelayHostContextInitError::Metadata)?;
+        let relay_client = build_relay_client(deployment)
+            .await
+            .map_err(RelayHostContextInitError::ClientBuild)?;
+        let session = RelayHostSession::for_host(
+            deployment,
+            relay_client,
+            host_id,
+            metadata.client_id,
+            deployment.relay_signing().signing_key().clone(),
+        )
+        .await
+        .map_err(RelayHostContextInitError::Session)?;
+
+        Ok(Self { metadata, session })
+    }
+
+    pub fn into_parts(self) -> (PairedRelayHostMetadata, RelayHostSession) {
+        (self.metadata, self.session)
+    }
 }
 
 pub struct RelayHostSession {
@@ -164,6 +223,125 @@ impl RelayHostSession {
             .await;
         self.remote_session = remote_session;
         Ok(())
+    }
+
+    pub async fn retry_response_recovery<T, RetryCheck, Operation>(
+        &mut self,
+        mut operation: Operation,
+        should_retry: RetryCheck,
+        refresh_failure_context: &'static str,
+        rotate_failure_context: &'static str,
+    ) -> anyhow::Result<T>
+    where
+        RetryCheck: Fn(&T) -> bool,
+        Operation: for<'a> FnMut(&'a Self) -> BoxFuture<'a, anyhow::Result<T>>,
+    {
+        let first = operation(self).await?;
+        if !should_retry(&first) {
+            return Ok(first);
+        }
+
+        if self
+            .refresh_signing_session_with_context(refresh_failure_context)
+            .await
+            .is_err()
+        {
+            return Ok(first);
+        }
+
+        let second = operation(self).await?;
+        if !should_retry(&second) {
+            return Ok(second);
+        }
+
+        if self
+            .rotate_remote_session_with_context(rotate_failure_context)
+            .await
+            .is_err()
+        {
+            return Ok(second);
+        }
+
+        operation(self).await
+    }
+
+    pub async fn retry_error_recovery<T, E, RetryCheck, Operation>(
+        &mut self,
+        mut operation: Operation,
+        should_retry: RetryCheck,
+        refresh_failure_context: &'static str,
+        rotate_failure_context: &'static str,
+    ) -> Result<T, RelayRecoveryError<E>>
+    where
+        RetryCheck: Fn(&E) -> bool,
+        Operation: for<'a> FnMut(&'a Self) -> BoxFuture<'a, Result<T, E>>,
+    {
+        match operation(self).await {
+            Ok(value) => return Ok(value),
+            Err(error) if !should_retry(&error) => {
+                return Err(RelayRecoveryError::Operation {
+                    error,
+                    attempt: RelayOperationAttempt::Initial,
+                });
+            }
+            Err(_) => {}
+        }
+
+        self.refresh_signing_session_with_context(refresh_failure_context)
+            .await
+            .map_err(RelayRecoveryError::Refresh)?;
+
+        match operation(self).await {
+            Ok(value) => return Ok(value),
+            Err(error) if !should_retry(&error) => {
+                return Err(RelayRecoveryError::Operation {
+                    error,
+                    attempt: RelayOperationAttempt::AfterSigningRefresh,
+                });
+            }
+            Err(_) => {}
+        }
+
+        self.rotate_remote_session_with_context(rotate_failure_context)
+            .await
+            .map_err(RelayRecoveryError::Rotate)?;
+
+        operation(self)
+            .await
+            .map_err(|error| RelayRecoveryError::Operation {
+                error,
+                attempt: RelayOperationAttempt::AfterSessionRotation,
+            })
+    }
+
+    async fn refresh_signing_session_with_context(
+        &mut self,
+        failure_context: &'static str,
+    ) -> anyhow::Result<()> {
+        self.refresh_signing_session().await.map_err(|error| {
+            tracing::warn!(
+                ?error,
+                host_id = %self.host_id,
+                context = failure_context,
+                "Relay signing session refresh failed"
+            );
+            error
+        })
+    }
+
+    async fn rotate_remote_session_with_context(
+        &mut self,
+        failure_context: &'static str,
+    ) -> anyhow::Result<()> {
+        self.rotate_remote_session().await.map_err(|error| {
+            tracing::warn!(
+                ?error,
+                host_id = %self.host_id,
+                context = failure_context,
+                "Relay remote session rotation failed"
+            );
+            error
+        })
     }
 }
 

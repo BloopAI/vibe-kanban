@@ -7,7 +7,6 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use deployment::Deployment;
 use ed25519_dalek::VerifyingKey;
 use futures_util::{SinkExt, StreamExt};
 use relay_client::{
@@ -19,8 +18,9 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     relay::session::{
-        PairedRelayHostMetadataError, RelayClientBuildError, RelayHostSession,
-        RelayHostSessionInitError, build_relay_client, load_paired_relay_host_metadata,
+        PairedRelayHostMetadataError, RelayClientBuildError, RelayHostContext,
+        RelayHostContextInitError, RelayHostSession, RelayHostSessionInitError,
+        RelayOperationAttempt, RelayRecoveryError,
     },
 };
 
@@ -52,55 +52,48 @@ impl RelayConnection {
         deployment: &DeploymentImpl,
         host_id: Uuid,
     ) -> Result<Self, RelayProxyError> {
-        let host_metadata = load_paired_relay_host_metadata(deployment, host_id)
+        let (host_metadata, session) = RelayHostContext::for_host(deployment, host_id)
             .await
+            .map(RelayHostContext::into_parts)
             .map_err(|error| match error {
-                PairedRelayHostMetadataError::NotPaired => {
-                    RelayProxyError::BadRequest("No paired relay credentials for this host")
-                }
-                PairedRelayHostMetadataError::MissingClientMetadata => {
-                    RelayProxyError::BadRequest(
-                        "This host pairing is missing required client metadata. Re-pair it.",
-                    )
-                }
-                PairedRelayHostMetadataError::MissingSigningMetadata => {
-                    tracing::warn!(host_id = %host_id, "Missing or invalid server_public_key_b64 for relay WS bridge");
-                    RelayProxyError::BadRequest(
-                        "This host pairing is missing required signing metadata. Re-pair it.",
-                    )
-                }
+                RelayHostContextInitError::Metadata(error) => match error {
+                    PairedRelayHostMetadataError::NotPaired => {
+                        RelayProxyError::BadRequest("No paired relay credentials for this host")
+                    }
+                    PairedRelayHostMetadataError::MissingClientMetadata => {
+                        RelayProxyError::BadRequest(
+                            "This host pairing is missing required client metadata. Re-pair it.",
+                        )
+                    }
+                    PairedRelayHostMetadataError::MissingSigningMetadata => {
+                        tracing::warn!(host_id = %host_id, "Missing or invalid server_public_key_b64 for relay WS bridge");
+                        RelayProxyError::BadRequest(
+                            "This host pairing is missing required signing metadata. Re-pair it.",
+                        )
+                    }
+                },
+                RelayHostContextInitError::ClientBuild(error) => match error {
+                    RelayClientBuildError::NotConfigured => {
+                        RelayProxyError::BadRequest("Remote relay API is not configured")
+                    }
+                    RelayClientBuildError::Authentication(error) => {
+                        tracing::warn!(?error, "Failed to get access token for relay host proxy");
+                        RelayProxyError::Unauthorized(
+                            "Authentication required for relay host proxy",
+                        )
+                    }
+                },
+                RelayHostContextInitError::Session(error) => match error {
+                    RelayHostSessionInitError::RemoteSession(error) => {
+                        tracing::warn!(?error, %host_id, "Failed to create relay remote session");
+                        RelayProxyError::BadGateway("Failed to create relay remote session")
+                    }
+                    RelayHostSessionInitError::SigningSession(error) => {
+                        tracing::warn!(?error, %host_id, "Failed to initialize relay signing session");
+                        RelayProxyError::BadGateway("Failed to initialize relay signing session")
+                    }
+                },
             })?;
-
-        let relay_client = build_relay_client(deployment)
-            .await
-            .map_err(|error| match error {
-                RelayClientBuildError::NotConfigured => {
-                    RelayProxyError::BadRequest("Remote relay API is not configured")
-                }
-                RelayClientBuildError::Authentication(error) => {
-                    tracing::warn!(?error, "Failed to get access token for relay host proxy");
-                    RelayProxyError::Unauthorized("Authentication required for relay host proxy")
-                }
-            })?;
-
-        let session = RelayHostSession::for_host(
-            deployment,
-            relay_client,
-            host_id,
-            host_metadata.client_id,
-            deployment.relay_signing().signing_key().clone(),
-        )
-        .await
-        .map_err(|error| match error {
-            RelayHostSessionInitError::RemoteSession(error) => {
-                tracing::warn!(?error, %host_id, "Failed to create relay remote session");
-                RelayProxyError::BadGateway("Failed to create relay remote session")
-            }
-            RelayHostSessionInitError::SigningSession(error) => {
-                tracing::warn!(?error, %host_id, "Failed to initialize relay signing session");
-                RelayProxyError::BadGateway("Failed to initialize relay signing session")
-            }
-        })?;
 
         Ok(Self {
             session,
@@ -113,43 +106,50 @@ impl RelayConnection {
     /// The request URI should already be rewritten to the target path (e.g. `/api/...`).
     pub async fn forward_http(&mut self, request: Request) -> Result<Response, RelayProxyError> {
         let (parts, body) = request.into_parts();
+        let method = parts.method.clone();
+        let headers = parts.headers.clone();
         let target_path = parts
             .uri
             .path_and_query()
             .map(|pq| pq.as_str())
-            .unwrap_or("/");
+            .unwrap_or("/")
+            .to_string();
         let body_bytes = to_bytes(body, usize::MAX).await.map_err(|error| {
             tracing::warn!(?error, "Failed to read relay proxy request body");
             RelayProxyError::BadRequest("Invalid request body")
         })?;
 
-        let mut response = self
-            .call_upstream_http(&parts.method, target_path, &parts.headers, &body_bytes)
+        let response = self
+            .session
+            .retry_response_recovery(
+                |session| {
+                    let method = method.clone();
+                    let headers = headers.clone();
+                    let target_path = target_path.clone();
+                    let body_bytes = body_bytes.clone();
+                    Box::pin(async move {
+                        send_signed_http(
+                            session.relay_base_url(),
+                            session.remote_session(),
+                            session.signing_key(),
+                            session.signing_session_id(),
+                            &method,
+                            &target_path,
+                            &headers,
+                            &body_bytes,
+                        )
+                        .await
+                    })
+                },
+                |response| is_auth_failure_status(response.status()),
+                "Failed to refresh relay signing session for host proxy request",
+                "Failed to rotate relay remote session",
+            )
             .await
             .map_err(|error| {
                 tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host HTTP request failed");
                 RelayProxyError::BadGateway("Failed to call relay host")
             })?;
-
-        if is_auth_failure_status(response.status()) && self.try_refresh().await {
-            response = self
-                .call_upstream_http(&parts.method, target_path, &parts.headers, &body_bytes)
-                .await
-                .map_err(|error| {
-                    tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host HTTP retry failed");
-                    RelayProxyError::BadGateway("Failed to call relay host")
-                })?;
-        }
-
-        if is_auth_failure_status(response.status()) && self.rotate_remote_session().await {
-            response = self
-                .call_upstream_http(&parts.method, target_path, &parts.headers, &body_bytes)
-                .await
-                .map_err(|error| {
-                    tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host HTTP retry after session rotation failed");
-                    RelayProxyError::BadGateway("Failed to call relay host")
-                })?;
-        }
 
         Ok(relay_http_response(response))
     }
@@ -175,9 +175,50 @@ impl RelayConnection {
             .and_then(|v| v.to_str().ok())
             .map(ToOwned::to_owned);
 
+        let server_verify_key = self.server_verify_key;
         let (upstream_socket, selected_protocol) = self
-            .connect_ws_with_retry(&target_path, protocols.as_deref())
-            .await?;
+            .session
+            .retry_error_recovery(
+                |session| {
+                    let target_path = target_path.clone();
+                    let protocols = protocols.clone();
+                    Box::pin(async move {
+                        connect_signed_upstream_ws(
+                            session.relay_base_url(),
+                            session.remote_session(),
+                            session.signing_key(),
+                            session.signing_session_id(),
+                            &target_path,
+                            protocols.as_deref(),
+                            server_verify_key,
+                        )
+                        .await
+                    })
+                },
+                |error| matches!(error, RelayWsConnectError::AuthFailure),
+                "Failed to refresh relay signing session for host proxy request",
+                "Failed to rotate relay remote session",
+            )
+            .await
+            .map_err(|error| match error {
+                RelayRecoveryError::Operation { error, attempt } => {
+                    match attempt {
+                        RelayOperationAttempt::Initial => {
+                            tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host WS connect failed");
+                        }
+                        RelayOperationAttempt::AfterSigningRefresh => {
+                            tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host WS retry failed after signing refresh");
+                        }
+                        RelayOperationAttempt::AfterSessionRotation => {
+                            tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host WS retry failed after session rotation");
+                        }
+                    }
+                    RelayProxyError::BadGateway("Failed to connect relay host WS")
+                }
+                RelayRecoveryError::Refresh(_) | RelayRecoveryError::Rotate(_) => {
+                    RelayProxyError::BadGateway("Failed to connect relay host WS")
+                }
+            })?;
 
         let mut ws = ws_upgrade;
         if let Some(p) = &selected_protocol {
@@ -196,118 +237,6 @@ impl RelayConnection {
     // -----------------------------------------------------------------------
     // Private
     // -----------------------------------------------------------------------
-
-    async fn connect_ws_with_retry(
-        &mut self,
-        target_path: &str,
-        protocols: Option<&str>,
-    ) -> Result<(SignedUpstreamSocket, Option<String>), RelayProxyError> {
-        let server_verify_key = self.server_verify_key;
-
-        match self
-            .call_upstream_ws(target_path, protocols, server_verify_key)
-            .await
-        {
-            Ok(result) => return Ok(result),
-            Err(RelayWsConnectError::AuthFailure) if self.try_refresh().await => {
-                match self
-                    .call_upstream_ws(target_path, protocols, server_verify_key)
-                    .await
-                {
-                    Ok(result) => return Ok(result),
-                    Err(RelayWsConnectError::AuthFailure) => {}
-                    Err(error) => {
-                        tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host WS retry failed after signing refresh");
-                        return Err(RelayProxyError::BadGateway(
-                            "Failed to connect relay host WS",
-                        ));
-                    }
-                }
-            }
-            Err(RelayWsConnectError::AuthFailure) => {}
-            Err(error) => {
-                tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host WS connect failed");
-                return Err(RelayProxyError::BadGateway(
-                    "Failed to connect relay host WS",
-                ));
-            }
-        }
-
-        if !self.rotate_remote_session().await {
-            return Err(RelayProxyError::BadGateway(
-                "Failed to connect relay host WS",
-            ));
-        }
-
-        self.call_upstream_ws(target_path, protocols, server_verify_key)
-            .await
-            .map_err(|error| {
-                tracing::warn!(?error, host_id = %self.session.host_id(), "Relay host WS retry failed after session rotation");
-                RelayProxyError::BadGateway("Failed to connect relay host WS")
-            })
-    }
-
-    async fn call_upstream_http(
-        &self,
-        method: &http::Method,
-        target_path: &str,
-        headers: &http::HeaderMap,
-        body: &[u8],
-    ) -> anyhow::Result<reqwest::Response> {
-        send_signed_http(
-            self.session.relay_base_url(),
-            self.session.remote_session(),
-            self.session.signing_key(),
-            self.session.signing_session_id(),
-            method,
-            target_path,
-            headers,
-            body,
-        )
-        .await
-    }
-
-    async fn call_upstream_ws(
-        &self,
-        target_path: &str,
-        protocols: Option<&str>,
-        server_verify_key: VerifyingKey,
-    ) -> Result<(SignedUpstreamSocket, Option<String>), RelayWsConnectError> {
-        connect_signed_upstream_ws(
-            self.session.relay_base_url(),
-            self.session.remote_session(),
-            self.session.signing_key(),
-            self.session.signing_session_id(),
-            target_path,
-            protocols,
-            server_verify_key,
-        )
-        .await
-    }
-
-    async fn try_refresh(&mut self) -> bool {
-        match self.session.refresh_signing_session().await {
-            Ok(()) => true,
-            Err(error) => {
-                tracing::warn!(
-                    ?error,
-                    host_id = %self.session.host_id(),
-                    "Failed to refresh relay signing session for host proxy request"
-                );
-                false
-            }
-        }
-    }
-
-    async fn rotate_remote_session(&mut self) -> bool {
-        match self.session.rotate_remote_session().await {
-            Ok(()) => true,
-            Err(error) => {
-                tracing::warn!(?error, host_id = %self.session.host_id(), "Failed to rotate relay remote session");
-                false
-            }
-        }
-    }
 }
 
 fn is_hop_by_hop_header(name: &str) -> bool {
