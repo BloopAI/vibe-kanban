@@ -279,6 +279,7 @@ export function SessionChatBox<TExecutor extends string = string>({
     hasContent && !['sending', 'stopping', 'queue-loading'].includes(status);
   const isQueued = status === 'queued';
   const isRunning = status === 'running' || status === 'queued';
+  const areContentInsertActionsDisabled = isDisabled || isQueued;
   const showRunningAnimation =
     (status === 'running' || status === 'queued' || status === 'sending') &&
     !isInApprovalMode &&
@@ -844,7 +845,7 @@ export function SessionChatBox<TExecutor extends string = string>({
             aria-label={t('tasks:taskFormDialog.attachImage')}
             title={t('tasks:taskFormDialog.attachImage')}
             onClick={handleAttachClick}
-            disabled={isDisabled || isRunning}
+            disabled={areContentInsertActionsDisabled}
           />
           <input
             ref={fileInputRef}
@@ -860,7 +861,7 @@ export function SessionChatBox<TExecutor extends string = string>({
               aria-label="Add PR Comments"
               title="Insert PR comments into message"
               onClick={onPrCommentClick}
-              disabled={isDisabled || isRunning}
+              disabled={areContentInsertActionsDisabled}
             />
           )}
           {toolbarActions?.items.map((item) => (
