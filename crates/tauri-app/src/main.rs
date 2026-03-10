@@ -5,11 +5,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use services::services::notification::{PushNotifier, set_global_push_notifier};
-use tauri::{
-    Emitter, Listener, Manager,
-    menu::{MenuBuilder, MenuItemBuilder},
-    tray::TrayIconBuilder,
-};
+use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
@@ -78,33 +74,6 @@ fn main() {
 
     builder
         .setup(move |app| {
-            // --- System tray ---
-            let show_item = MenuItemBuilder::with_id("show", "Show Window").build(app)?;
-            let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
-            let tray_menu = MenuBuilder::new(app)
-                .item(&show_item)
-                .separator()
-                .item(&quit_item)
-                .build()?;
-
-            let _tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().cloned().unwrap())
-                .menu(&tray_menu)
-                .tooltip("Vibe Kanban")
-                .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => show_window(app),
-                    "quit" => {
-                        app.exit(0);
-                    }
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let tauri::tray::TrayIconEvent::DoubleClick { .. } = event {
-                        show_window(tray.app_handle());
-                    }
-                })
-                .build(app)?;
-
             if cfg!(debug_assertions) {
                 // Dev mode: frontend dev server (Vite) and backend are started
                 // externally. Create the window immediately pointing to devUrl.
@@ -178,16 +147,12 @@ fn main() {
                 tauri::WindowEvent::CloseRequested { api, .. } => {
                     // Hide the window instead of closing it so the app keeps
                     // running in the background (agents/processes stay alive).
+                    // The dock icon stays visible so users can click it to reopen.
                     api.prevent_close();
                     let _ = window.hide();
-                    // Remove the dock icon on macOS so only the tray icon remains.
-                    #[cfg(target_os = "macos")]
-                    let _ = window
-                        .app_handle()
-                        .set_activation_policy(tauri::ActivationPolicy::Accessory);
                 }
                 tauri::WindowEvent::Destroyed => {
-                    // Only fires on actual app exit (e.g. tray Quit).
+                    // Only fires on actual app exit (e.g. Cmd+Q).
                     shutdown_token_for_event.cancel();
                 }
                 _ => {}
@@ -205,11 +170,6 @@ fn main() {
 }
 
 fn show_window(app: &tauri::AppHandle) {
-    // Restore the dock icon on macOS before showing the window.
-    #[cfg(target_os = "macos")]
-    {
-        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
-    }
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();
         let _ = window.set_focus();
