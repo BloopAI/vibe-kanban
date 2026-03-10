@@ -19,8 +19,7 @@ use crate::{
     AppState,
     auth::RequestContext,
     db::{
-        issue_comments::IssueCommentRepository,
-        issues::IssueRepository,
+        issue_comments::IssueCommentRepository, issues::IssueRepository,
         organization_members::check_user_role,
     },
     mutation_definition::MutationBuilder,
@@ -134,8 +133,7 @@ async fn create_issue_comment(
         );
     }
 
-    if let Ok(Some(issue)) =
-        IssueRepository::find_by_id(state.pool(), response.data.issue_id).await
+    if let Ok(Some(issue)) = IssueRepository::find_by_id(state.pool(), response.data.issue_id).await
     {
         let comment_preview = response.data.message.chars().take(100).collect::<String>();
         notify_issue_subscribers(

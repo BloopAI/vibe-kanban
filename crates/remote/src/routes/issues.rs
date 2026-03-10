@@ -190,9 +190,7 @@ async fn update_issue(
     let organization_id =
         ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let status_changed = payload
-        .status_id
-        .is_some_and(|new| new != issue.status_id);
+    let status_changed = payload.status_id.is_some_and(|new| new != issue.status_id);
     let old_status_id = issue.status_id;
 
     let title_changed = payload
@@ -336,10 +334,9 @@ async fn delete_issue(
     let organization_id =
         ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let recipients =
-        collect_issue_recipients(state.pool(), organization_id, issue.id, ctx.user.id)
-            .await
-            .unwrap_or_default();
+    let recipients = collect_issue_recipients(state.pool(), organization_id, issue.id, ctx.user.id)
+        .await
+        .unwrap_or_default();
 
     let response = IssueRepository::delete(state.pool(), issue_id)
         .await

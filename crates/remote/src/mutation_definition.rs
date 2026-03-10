@@ -78,6 +78,7 @@ pub struct MutationBuilder<E, C = (), U = ()> {
     table: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
+    #[allow(clippy::type_complexity)]
     _phantom: PhantomData<fn() -> (E, C, U)>,
 }
 

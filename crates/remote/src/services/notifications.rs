@@ -1,14 +1,13 @@
+use std::collections::HashSet;
+
 use api_types::{Issue, NotificationType};
 use serde_json::json;
 use sqlx::PgPool;
-use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::db::{
-    issue_assignees::IssueAssigneeRepository,
-    issue_followers::IssueFollowerRepository,
-    notifications::NotificationRepository,
-    organization_members::is_member,
+    issue_assignees::IssueAssigneeRepository, issue_followers::IssueFollowerRepository,
+    notifications::NotificationRepository, organization_members::is_member,
 };
 
 pub async fn notify_issue_subscribers(
@@ -20,14 +19,15 @@ pub async fn notify_issue_subscribers(
     extra_payload: serde_json::Value,
     comment_id: Option<Uuid>,
 ) {
-    let recipients =
-        match collect_issue_recipients(pool, organization_id, issue.id, actor_user_id).await {
-            Ok(r) => r,
-            Err(e) => {
-                tracing::warn!(?e, issue_id = %issue.id, "failed to collect notification recipients");
-                return;
-            }
-        };
+    let recipients = match collect_issue_recipients(pool, organization_id, issue.id, actor_user_id)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::warn!(?e, issue_id = %issue.id, "failed to collect notification recipients");
+            return;
+        }
+    };
 
     send_issue_notifications(
         pool,
@@ -45,6 +45,7 @@ pub async fn notify_issue_subscribers(
 /// Like `notify_issue_subscribers` but with pre-collected recipients.
 /// Use when recipients must be gathered before an operation (e.g. delete) but
 /// notifications should only be sent after it succeeds.
+#[allow(clippy::too_many_arguments)]
 pub async fn send_issue_notifications(
     pool: &PgPool,
     organization_id: Uuid,
