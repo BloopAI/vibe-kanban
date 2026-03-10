@@ -62,6 +62,23 @@ pub enum EditorType {
     Custom,
 }
 
+impl EditorType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EditorType::VsCode => "VS_CODE",
+            EditorType::VsCodeInsiders => "VS_CODE_INSIDERS",
+            EditorType::Cursor => "CURSOR",
+            EditorType::Windsurf => "WINDSURF",
+            EditorType::IntelliJ => "INTELLI_J",
+            EditorType::Zed => "ZED",
+            EditorType::Xcode => "XCODE",
+            EditorType::GoogleAntigravity => "GOOGLE_ANTIGRAVITY",
+            EditorType::CodeServer => "CODE_SERVER",
+            EditorType::Custom => "CUSTOM",
+        }
+    }
+}
+
 impl Default for EditorConfig {
     fn default() -> Self {
         Self {
