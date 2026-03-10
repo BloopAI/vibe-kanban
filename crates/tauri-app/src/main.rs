@@ -231,11 +231,13 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
 
     // macOS: overlay title bar keeps traffic lights but removes title bar chrome,
     // letting web content extend to the top of the window.
+    // Traffic lights are vertically centered within the navbar height (~28px).
     #[cfg(target_os = "macos")]
     {
         builder = builder
             .title_bar_style(tauri::TitleBarStyle::Overlay)
-            .hidden_title(true);
+            .hidden_title(true)
+            .traffic_light_position(tauri::LogicalPosition::new(12.0, 7.0));
     }
 
     // Windows/Linux: remove native decorations entirely.
