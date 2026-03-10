@@ -20,6 +20,10 @@ rust-embed = "8.2"
 directories = "6.0.0"
 open = "5.3.2"
 regex = "1.11.1"
+# TODO: Remove once sentry publishes a version that depends on reqwest 0.13.
+# reqwest 0.12 is added here to enable TLS features for sentry's internal reqwest 0.12 dependency
+# via cargo feature unification (the workspace uses reqwest 0.13 which doesn't unify with 0.12).
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots-no-provider"] }
 sentry = { version = "0.41.0", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest"] }
 sentry-tracing = { version = "0.41.0", default-features = false, features = ["backtrace"] }
 json-patch = "2.0"

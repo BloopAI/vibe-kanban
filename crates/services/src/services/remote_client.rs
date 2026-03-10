@@ -136,14 +136,9 @@ impl RemoteClient {
 
     pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
         let base = Url::parse(base_url).map_err(|e| RemoteClientError::Url(e.to_string()))?;
-        let mut builder = Client::builder()
+        let builder = Client::builder()
             .timeout(Self::REQUEST_TIMEOUT)
             .user_agent(concat!("remote-client/", env!("CARGO_PKG_VERSION")));
-
-        #[cfg(debug_assertions)]
-        {
-            builder = builder.danger_accept_invalid_certs(true);
-        }
 
         let http = builder
             .build()
