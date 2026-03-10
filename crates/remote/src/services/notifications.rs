@@ -95,21 +95,17 @@ pub async fn notify_user(
         return;
     }
 
-    let payload = build_payload(issue, actor_user_id, extra_payload);
-
-    if let Err(e) = NotificationRepository::create(
+    send_issue_notifications(
         pool,
         organization_id,
-        recipient_user_id,
+        actor_user_id,
+        &[recipient_user_id],
+        issue,
         notification_type,
-        payload,
-        Some(issue.id),
+        extra_payload,
         None,
     )
-    .await
-    {
-        tracing::warn!(?e, %recipient_user_id, issue_id = %issue.id, "failed to create notification");
-    }
+    .await;
 }
 
 pub async fn collect_issue_recipients(
