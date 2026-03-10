@@ -290,27 +290,29 @@ export function SharedAppLayout() {
     <SyncErrorProvider>
       <div
         className={cn(
-          'flex bg-primary',
+          'bg-primary',
           isMobile
-            ? 'fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : 'h-screen'
+            ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
+            : !isMigrateRoute
+              ? 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
+              : 'flex h-screen'
         )}
       >
         {!isMobile && !isMigrateRoute && (
           <>
-            {/* Grid row 1, col 1: empty corner (blends AppBar + Navbar) — drag region */}
+            {/* Row 1, col 1: corner spacer — seamless with AppBar bg */}
             <div
               data-tauri-drag-region
-              className="bg-secondary"
+              className="bg-secondary border-b border-r border-border"
               style={isTauriMac() ? { minWidth: 78 } : undefined}
             />
-            {/* Grid row 1, col 2: Navbar */}
+            {/* Row 1, col 2: Navbar stretches full width */}
             <NavbarContainer
               onCreateOrg={handleCreateOrg}
               onOrgSelect={setSelectedOrgId}
               onOpenDrawer={() => setIsDrawerOpen(true)}
             />
-            {/* Grid row 2, col 1: AppBar */}
+            {/* Row 2, col 1: AppBar sidebar */}
             <AppBar
               projects={orderedProjects}
               onCreateProject={handleCreateProject}
@@ -342,7 +344,7 @@ export function SharedAppLayout() {
               githubIconPath={siGithub.path}
               discordIconPath={siDiscord.path}
             />
-            {/* Grid row 2, col 2: Content */}
+            {/* Row 2, col 2: Content */}
             <div className="relative min-h-0 overflow-hidden">
               {isWorkspaceSidebarPreviewEnabled && (
                 <div className="absolute inset-y-0 left-0 z-20 flex items-center">
