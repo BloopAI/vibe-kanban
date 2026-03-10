@@ -486,16 +486,21 @@ pub struct CheckEditorAvailabilityResponse {
 }
 
 async fn check_editor_availability(
-    State(_deployment): State<DeploymentImpl>,
+    State(deployment): State<DeploymentImpl>,
     Query(query): Query<CheckEditorAvailabilityQuery>,
 ) -> ResponseJson<ApiResponse<CheckEditorAvailabilityResponse>> {
+    let config = deployment.config().read().await;
+    let custom_command = (config.editor.editor_type == query.editor_type)
+        .then(|| config.editor.custom_command.clone())
+        .flatten();
+
     // Construct a minimal EditorConfig for checking
     let editor_config = EditorConfig::new(
         query.editor_type,
-        None,  // custom_command
-        None,  // remote_ssh_host
-        None,  // remote_ssh_user
-        false, // auto_install_extension
+        custom_command, // custom_command
+        None,           // remote_ssh_host
+        None,           // remote_ssh_user
+        false,          // auto_install_extension
     );
 
     let available = editor_config.check_availability().await;

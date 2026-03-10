@@ -340,12 +340,12 @@ export function GeneralSettingsSection() {
           <SettingsField
             label={
               draft?.editor.editor_type === EditorType.CODE_SERVER
-                ? 'Code Server URL'
+                ? t('settings.general.editor.codeServerUrl.label')
                 : t('settings.general.editor.customCommand.label')
             }
             description={
               draft?.editor.editor_type === EditorType.CODE_SERVER
-                ? 'Required. Browser URL to your code-server instance. Vibe Kanban will open this URL in a new tab and append the workspace folder path.'
+                ? t('settings.general.editor.codeServerUrl.helper')
                 : t('settings.general.editor.customCommand.helper')
             }
           >

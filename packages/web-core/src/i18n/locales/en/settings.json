@@ -80,6 +80,8 @@
           "helper": "Enter the command to launch your custom editor. This will be used to open files."
         },
         "codeServerUrl": {
+          "label": "Code Server URL",
+          "helper": "Required. Browser URL to your code-server instance. Vibe Kanban will open this URL in a new tab and append the workspace folder path.",
           "placeholder": "https://code-server.example.com"
         },
         "remoteSsh": {
