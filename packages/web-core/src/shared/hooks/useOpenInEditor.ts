@@ -3,8 +3,7 @@ import { workspacesApi, relayApi } from '@/shared/lib/api';
 import { EditorSelectionDialog } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
 import type { EditorType } from 'shared/types';
 import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
-import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
-import { getDestinationHostId } from '@/shared/lib/routes/appNavigation';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 
 type OpenEditorOptions = {
   editorType?: EditorType;
@@ -16,8 +15,7 @@ export function useOpenInEditor(
   onShowEditorDialog?: () => void
 ) {
   const appRuntime = useAppRuntime();
-  const currentDestination = useCurrentAppDestination();
-  const hostId = getDestinationHostId(currentDestination);
+  const hostId = useHostId();
 
   return useCallback(
     async (options?: OpenEditorOptions): Promise<void> => {

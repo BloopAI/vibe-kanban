@@ -1,3 +1,5 @@
+import { getCurrentHostId } from '@/shared/providers/HostIdProvider';
+
 export interface LocalApiTransport {
   request: (pathOrUrl: string, init?: RequestInit) => Promise<Response>;
   openWebSocket: (pathOrUrl: string) => Promise<WebSocket> | WebSocket;
@@ -7,20 +9,34 @@ function isAbsoluteUrl(pathOrUrl: string): boolean {
   return /^https?:\/\//i.test(pathOrUrl) || /^wss?:\/\//i.test(pathOrUrl);
 }
 
-function toAbsoluteWsUrl(pathOrUrl: string): string {
-  if (/^wss?:\/\//i.test(pathOrUrl)) {
-    return pathOrUrl;
+function toPathAndQuery(pathOrUrl: string): string {
+  if (isAbsoluteUrl(pathOrUrl)) {
+    const url = new URL(pathOrUrl);
+    return `${url.pathname}${url.search}`;
   }
+  return pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+}
 
-  if (/^https?:\/\//i.test(pathOrUrl)) {
-    return pathOrUrl.replace(/^http/i, 'ws');
-  }
+function toAbsoluteWsUrl(pathOrUrl: string): string {
+  if (/^wss?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+  if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl.replace(/^http/i, 'ws');
 
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const normalizedPath = pathOrUrl.startsWith('/')
-    ? pathOrUrl
-    : `/${pathOrUrl}`;
-  return `${protocol}//${window.location.host}${normalizedPath}`;
+  const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  return `${protocol}//${window.location.host}${path}`;
+}
+
+/** Prefix `/api/…` paths with `/api/host/{hostId}` when a host is active. */
+function applyHostScope(pathOrUrl: string): string {
+  const hostId = getCurrentHostId();
+  if (!hostId) return pathOrUrl;
+
+  const path = toPathAndQuery(pathOrUrl);
+  if (!path.startsWith('/api/') || path.startsWith('/api/host/'))
+    return pathOrUrl;
+
+  const suffix = path.slice('/api'.length);
+  return `/api/host/${hostId}${suffix}`;
 }
 
 const defaultTransport: LocalApiTransport = {
@@ -38,32 +54,11 @@ export async function makeLocalApiRequest(
   pathOrUrl: string,
   init: RequestInit = {}
 ): Promise<Response> {
-  return transport.request(pathOrUrl, init);
+  return transport.request(applyHostScope(pathOrUrl), init);
 }
 
 export async function openLocalApiWebSocket(
   pathOrUrl: string
 ): Promise<WebSocket> {
-  return transport.openWebSocket(pathOrUrl);
-}
-
-export function isLocalApiPath(pathOrUrl: string): boolean {
-  if (isAbsoluteUrl(pathOrUrl)) {
-    const url = new URL(pathOrUrl);
-    return url.pathname.startsWith('/api/');
-  }
-
-  const normalizedPath = pathOrUrl.startsWith('/')
-    ? pathOrUrl
-    : `/${pathOrUrl}`;
-  return normalizedPath.startsWith('/api/');
-}
-
-export function toPathAndQuery(pathOrUrl: string): string {
-  if (isAbsoluteUrl(pathOrUrl)) {
-    const url = new URL(pathOrUrl);
-    return `${url.pathname}${url.search}`;
-  }
-
-  return pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  return transport.openWebSocket(applyHostScope(pathOrUrl));
 }

@@ -14,6 +14,7 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcessesProvider';
 import { LogsPanelProvider } from '@/shared/providers/LogsPanelProvider';
 import { ActionsProvider } from '@/shared/providers/ActionsProvider';
+import { HostIdProvider } from '@/shared/providers/HostIdProvider';
 import '@/app/styles/new/index.css';
 
 function ExecutionProcessesProviderWrapper({
@@ -82,11 +83,13 @@ function RootRouteComponent() {
         <WorkspaceProvider>
           <ExecutionProcessesProviderWrapper>
             <LogsPanelProvider>
-              <ActionsProvider>
-                <NiceModalProvider>
-                  <Outlet />
-                </NiceModalProvider>
-              </ActionsProvider>
+              <HostIdProvider>
+                <ActionsProvider>
+                  <NiceModalProvider>
+                    <Outlet />
+                  </NiceModalProvider>
+                </ActionsProvider>
+              </HostIdProvider>
             </LogsPanelProvider>
           </ExecutionProcessesProviderWrapper>
         </WorkspaceProvider>

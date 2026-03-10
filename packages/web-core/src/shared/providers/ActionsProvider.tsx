@@ -10,7 +10,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Workspace } from 'shared/types';
 import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
-import { getDestinationHostId } from '@/shared/lib/routes/appNavigation';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 import {
   buildKanbanIssueComposerKey,
   openKanbanIssueComposer,
@@ -33,7 +33,6 @@ import { useLogStream } from '@/shared/hooks/useLogStream';
 import { ActionsContext } from '@/shared/hooks/useActions';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
-import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 
 interface ActionsProviderProps {
   children: ReactNode;
@@ -43,11 +42,7 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   const appRuntime = useAppRuntime();
   const appNavigation = useAppNavigation();
   const { projectId } = useParams({ strict: false });
-  const currentDestination = useCurrentAppDestination();
-  const hostId = useMemo(
-    () => getDestinationHostId(currentDestination),
-    [currentDestination]
-  );
+  const hostId = useHostId();
   const queryClient = useQueryClient();
   // Get selected organization ID from store (for kanban context)
   const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
