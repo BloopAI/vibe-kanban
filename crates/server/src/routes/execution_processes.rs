@@ -7,6 +7,7 @@ use axum::{
     routing::{get, post},
 };
 use db::models::{
+    coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessError, ExecutionProcessStatus},
     execution_process_repo_state::ExecutionProcessRepoState,
 };
@@ -268,9 +269,27 @@ pub async fn get_execution_process_repo_states(
     Ok(ResponseJson(ApiResponse::success(repo_states)))
 }
 
+#[derive(Debug, serde::Serialize)]
+pub struct FinalMessageResponse {
+    pub final_message: Option<String>,
+}
+
+pub async fn get_execution_process_final_message(
+    Extension(execution_process): Extension<ExecutionProcess>,
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<FinalMessageResponse>>, ApiError> {
+    let pool = &deployment.db().pool;
+    let turn = CodingAgentTurn::find_by_execution_process_id(pool, execution_process.id).await?;
+
+    Ok(ResponseJson(ApiResponse::success(FinalMessageResponse {
+        final_message: turn.and_then(|turn| turn.summary),
+    })))
+}
+
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let workspace_id_router = Router::new()
         .route("/", get(get_execution_process_by_id))
+        .route("/final-message", get(get_execution_process_final_message))
         .route("/stop", post(stop_execution_process))
         .route("/repo-states", get(get_execution_process_repo_states))
         .route("/raw-logs/ws", get(stream_raw_logs_ws))

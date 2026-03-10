@@ -382,9 +382,7 @@ mod tests {
 
     fn install_rustls_provider() {
         RUSTLS_PROVIDER.call_once(|| {
-            rustls::crypto::aws_lc_rs::default_provider()
-                .install_default()
-                .expect("Failed to install rustls crypto provider");
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
         });
     }
 
@@ -403,8 +401,14 @@ mod tests {
             "create_session".to_string(),
             "get_context".to_string(),
             "get_execution".to_string(),
+            "get_session".to_string(),
             "list_sessions".to_string(),
+            "respond_approval".to_string(),
             "run_session_prompt".to_string(),
+            "session_cancel_queue".to_string(),
+            "session_get_queue".to_string(),
+            "session_queue_message".to_string(),
+            "stop_execution".to_string(),
             "update_workspace".to_string(),
         ]);
 
