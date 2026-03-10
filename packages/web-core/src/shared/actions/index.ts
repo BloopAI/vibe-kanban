@@ -73,7 +73,7 @@ import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDi
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
 import { buildWorkspaceCreateInitialState } from '@/shared/lib/workspaceCreateState';
-import { setCreateModeSeedState } from '@/shared/lib/createModeSeedStore';
+import { setCreateModeSeedState } from '@/features/create-mode/model/createModeSeedStore';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(

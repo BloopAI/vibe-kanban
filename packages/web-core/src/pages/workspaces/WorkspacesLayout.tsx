@@ -1,13 +1,24 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Group, Layout, Panel, Separator } from 'react-resizable-panels';
+import type { CreateModeInitialState } from '@/shared/types/createMode';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { usePageTitle } from '@/shared/hooks/usePageTitle';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useMobileActiveTab } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
-import { CreateModeProvider } from '@/integrations/CreateModeProvider';
-import { consumeCreateModeSeedState } from '@/shared/lib/createModeSeedStore';
+import { CreateModeProvider } from '@/features/create-mode/model/CreateModeProvider';
+import {
+  consumeCreateModeSeedState,
+  getCreateModeSeedVersion,
+  subscribeCreateModeSeedState,
+} from '@/features/create-mode/model/createModeSeedStore';
 import { ReviewProvider } from '@/shared/hooks/ReviewProvider';
 import { ChangesViewProvider } from '@/shared/hooks/ChangesViewProvider';
 import { WorkspacesSidebarContainer } from './WorkspacesSidebarContainer';
@@ -53,14 +64,46 @@ export function WorkspacesLayout() {
     isCreateMode ? t('workspaces.newWorkspace') : selectedWorkspace?.name
   );
 
-  const seedState = useMemo(
-    () => {
-      if (!isCreateMode) return null;
-      return consumeCreateModeSeedState();
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isCreateMode]
+  const seedVersion = useSyncExternalStore(
+    subscribeCreateModeSeedState,
+    getCreateModeSeedVersion,
+    getCreateModeSeedVersion
   );
+  const consumedSeedVersionRef = useRef(0);
+  const [createModeSeed, setCreateModeSeed] = useState<{
+    version: number;
+    state: CreateModeInitialState | null;
+  }>({
+    version: 0,
+    state: null,
+  });
+
+  useEffect(() => {
+    if (!isCreateMode) {
+      consumedSeedVersionRef.current = 0;
+      setCreateModeSeed((current) =>
+        current.version === 0 && current.state === null
+          ? current
+          : { version: 0, state: null }
+      );
+      return;
+    }
+
+    if (seedVersion === 0 || seedVersion === consumedSeedVersionRef.current) {
+      return;
+    }
+
+    consumedSeedVersionRef.current = seedVersion;
+    setCreateModeSeed({
+      version: seedVersion,
+      state: consumeCreateModeSeedState(),
+    });
+  }, [isCreateMode, seedVersion]);
+
+  const createModeProviderKey =
+    createModeSeed.version > 0
+      ? `create-mode-seed-${createModeSeed.version}`
+      : 'create-mode-seed-default';
 
   const isMobile = useIsMobile();
   const [mobileTab] = useMobileActiveTab();
@@ -250,7 +293,10 @@ export function WorkspacesLayout() {
       <div className="flex flex-1 min-h-0 h-full">
         <div className="flex-1 min-w-0 h-full">
           {isCreateMode ? (
-            <CreateModeProvider initialState={seedState}>
+            <CreateModeProvider
+              key={createModeProviderKey}
+              initialState={createModeSeed.state}
+            >
               {mobileContent}
             </CreateModeProvider>
           ) : (
@@ -354,7 +400,10 @@ export function WorkspacesLayout() {
 
       <div className="flex-1 min-w-0 h-full">
         {isCreateMode ? (
-          <CreateModeProvider initialState={seedState}>
+          <CreateModeProvider
+            key={createModeProviderKey}
+            initialState={createModeSeed.state}
+          >
             {mainContent}
           </CreateModeProvider>
         ) : (

@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDropzone } from 'react-dropzone';
-import { useCreateMode } from '@/shared/hooks/useCreateMode';
+import { useCreateMode } from '@/features/create-mode/model/useCreateMode';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';

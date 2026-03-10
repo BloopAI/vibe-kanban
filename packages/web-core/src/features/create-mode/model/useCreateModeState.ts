@@ -22,7 +22,7 @@ import { useDebouncedCallback } from '@/shared/hooks/useDebouncedCallback';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import { repoApi } from '@/shared/lib/api';
-import { resolveCreateModeBootstrap } from '@/shared/lib/createModeBootstrap';
+import { resolveCreateModeBootstrap } from '@/features/create-mode/model/createModeBootstrap';
 import { useWorkspaceCreateDefaults } from '@/shared/hooks/useWorkspaceCreateDefaults';
 import { getValidProjectRepoDefaults } from '@/shared/hooks/useProjectRepoDefaults';
 import type {
