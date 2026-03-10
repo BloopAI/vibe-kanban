@@ -471,10 +471,10 @@ export const workspacesApi = {
   },
 
   getEditorPath: async (
-    attemptId: string
+    workspaceId: string
   ): Promise<{ workspace_path: string }> => {
     const response = await makeRequest(
-      `/api/task-attempts/${attemptId}/editor-path`
+      `/api/workspaces/${workspaceId}/integration/editor/path`
     );
     return handleApiResponse<{ workspace_path: string }>(response);
   },

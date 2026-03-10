@@ -69,7 +69,10 @@ pub async fn open_remote_workspace_in_editor(
     let editor_path: RelayEditorPathResponse = match get_signed_relay_api(
         req.host_id,
         remote_session.id,
-        &format!("/api/task-attempts/{}/editor-path", req.workspace_id),
+        &format!(
+            "/api/workspaces/{}/integration/editor/path",
+            req.workspace_id
+        ),
         &signing_key,
         &signing_session_id,
     )

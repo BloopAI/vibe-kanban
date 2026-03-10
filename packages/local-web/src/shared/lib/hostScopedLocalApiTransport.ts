@@ -4,7 +4,7 @@ const HOSTS_SEGMENT = 'hosts';
 
 const HOST_RUNTIME_API_PREFIXES = [
   '/api/sessions',
-  '/api/task-attempts',
+  '/api/workspaces',
   '/api/execution-processes',
   '/api/filesystem',
   '/api/repos',
