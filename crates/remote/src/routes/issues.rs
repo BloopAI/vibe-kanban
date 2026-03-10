@@ -275,6 +275,7 @@ async fn update_issue(
                 "new_status_name": new_status_name,
             }),
             None,
+            Some(data.id),
         )
         .await;
     }
@@ -292,6 +293,7 @@ async fn update_issue(
                 "new_title": data.title,
             }),
             None,
+            Some(data.id),
         )
         .await;
     }
@@ -306,6 +308,7 @@ async fn update_issue(
             NotificationType::IssueDescriptionChanged,
             serde_json::json!({}),
             None,
+            Some(data.id),
         )
         .await;
     }
@@ -353,6 +356,7 @@ async fn delete_issue(
         &issue,
         NotificationType::IssueDeleted,
         serde_json::json!({}),
+        None,
         None,
     )
     .await;

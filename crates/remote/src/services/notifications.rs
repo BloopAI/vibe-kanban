@@ -38,6 +38,7 @@ pub async fn notify_issue_subscribers(
         notification_type,
         extra_payload,
         comment_id,
+        Some(issue.id),
     )
     .await;
 }
@@ -55,6 +56,7 @@ pub async fn send_issue_notifications(
     notification_type: NotificationType,
     extra_payload: serde_json::Value,
     comment_id: Option<Uuid>,
+    issue_id: Option<Uuid>,
 ) {
     if recipients.is_empty() {
         return;
@@ -69,7 +71,7 @@ pub async fn send_issue_notifications(
             recipient_id,
             notification_type,
             payload.clone(),
-            Some(issue.id),
+            issue_id,
             comment_id,
         )
         .await
@@ -104,6 +106,7 @@ pub async fn notify_user(
         notification_type,
         extra_payload,
         None,
+        Some(issue.id),
     )
     .await;
 }
