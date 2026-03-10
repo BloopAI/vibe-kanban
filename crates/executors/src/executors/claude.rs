@@ -1271,92 +1271,92 @@ impl ClaudeLogProcessor {
                     Some("compact_boundary") => {}
                     Some("task_started") => {
                         if let Some(tool_use_id) = tool_use_id
-                            && !self.tool_map.contains_key(tool_use_id) {
-                                let desc =
-                                    description.clone().unwrap_or_else(|| "Task".to_string());
-                                let subagent_type = task_type.clone();
-                                let entry = Self::tool_use_entry(
-                                    "Task".to_string(),
-                                    ActionType::TaskCreate {
-                                        description: desc.clone(),
-                                        subagent_type: subagent_type.clone(),
-                                        result: None,
+                            && !self.tool_map.contains_key(tool_use_id)
+                        {
+                            let desc = description.clone().unwrap_or_else(|| "Task".to_string());
+                            let subagent_type = task_type.clone();
+                            let entry = Self::tool_use_entry(
+                                "Task".to_string(),
+                                ActionType::TaskCreate {
+                                    description: desc.clone(),
+                                    subagent_type: subagent_type.clone(),
+                                    result: None,
+                                },
+                                ToolStatus::Created,
+                                desc.clone(),
+                            );
+                            let idx = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                            self.tool_map.insert(
+                                tool_use_id.clone(),
+                                ClaudeToolCallInfo {
+                                    entry_index: idx,
+                                    tool_name: "Task".to_string(),
+                                    tool_data: ClaudeToolData::Task {
+                                        subagent_type,
+                                        description: description.clone(),
+                                        prompt: prompt.clone(),
                                     },
-                                    ToolStatus::Created,
-                                    desc.clone(),
-                                );
-                                let idx = entry_index_provider.next();
-                                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
-                                self.tool_map.insert(
-                                    tool_use_id.clone(),
-                                    ClaudeToolCallInfo {
-                                        entry_index: idx,
-                                        tool_name: "Task".to_string(),
-                                        tool_data: ClaudeToolData::Task {
-                                            subagent_type,
-                                            description: description.clone(),
-                                            prompt: prompt.clone(),
-                                        },
-                                        content: desc,
-                                    },
-                                );
-                            }
+                                    content: desc,
+                                },
+                            );
+                        }
                     }
                     Some("task_progress") => {
                         if let (Some(tool_use_id), Some(desc)) = (tool_use_id, description)
-                            && let Some(info) = self.tool_map.get(tool_use_id).cloned() {
-                                let subagent_type =
-                                    if let ClaudeToolData::Task { subagent_type, .. } =
-                                        &info.tool_data
-                                    {
-                                        subagent_type.clone()
-                                    } else {
-                                        None
-                                    };
-                                let entry = Self::tool_use_entry(
-                                    info.tool_name.clone(),
-                                    ActionType::TaskCreate {
-                                        description: info.content.clone(),
-                                        subagent_type,
-                                        result: None,
-                                    },
-                                    ToolStatus::Created,
-                                    desc.clone(),
-                                );
-                                patches.push(ConversationPatch::replace(info.entry_index, entry));
-                            }
+                            && let Some(info) = self.tool_map.get(tool_use_id).cloned()
+                        {
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
+                                };
+                            let entry = Self::tool_use_entry(
+                                info.tool_name.clone(),
+                                ActionType::TaskCreate {
+                                    description: info.content.clone(),
+                                    subagent_type,
+                                    result: None,
+                                },
+                                ToolStatus::Created,
+                                desc.clone(),
+                            );
+                            patches.push(ConversationPatch::replace(info.entry_index, entry));
+                        }
                     }
                     Some("task_notification") => {
                         if let Some(tool_use_id) = tool_use_id
-                            && let Some(info) = self.tool_map.get(tool_use_id).cloned() {
-                                let task_status = match status.as_deref() {
-                                    Some("failed") | Some("error") => ToolStatus::Failed,
-                                    _ => ToolStatus::Success,
+                            && let Some(info) = self.tool_map.get(tool_use_id).cloned()
+                        {
+                            let task_status = match status.as_deref() {
+                                Some("failed") | Some("error") => ToolStatus::Failed,
+                                _ => ToolStatus::Success,
+                            };
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
                                 };
-                                let subagent_type =
-                                    if let ClaudeToolData::Task { subagent_type, .. } =
-                                        &info.tool_data
-                                    {
-                                        subagent_type.clone()
-                                    } else {
-                                        None
-                                    };
-                                let desc = summary
-                                    .clone()
-                                    .or(description.clone())
-                                    .unwrap_or_else(|| info.content.clone());
-                                let entry = Self::tool_use_entry(
-                                    info.tool_name.clone(),
-                                    ActionType::TaskCreate {
-                                        description: desc.clone(),
-                                        subagent_type,
-                                        result: None,
-                                    },
-                                    task_status,
-                                    desc,
-                                );
-                                patches.push(ConversationPatch::replace(info.entry_index, entry));
-                            }
+                            let desc = summary
+                                .clone()
+                                .or(description.clone())
+                                .unwrap_or_else(|| info.content.clone());
+                            let entry = Self::tool_use_entry(
+                                info.tool_name.clone(),
+                                ActionType::TaskCreate {
+                                    description: desc.clone(),
+                                    subagent_type,
+                                    result: None,
+                                },
+                                task_status,
+                                desc,
+                            );
+                            patches.push(ConversationPatch::replace(info.entry_index, entry));
+                        }
                     }
                     Some(subtype) => {
                         let entry = NormalizedEntry {
