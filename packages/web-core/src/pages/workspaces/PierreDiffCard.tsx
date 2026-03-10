@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
   ChatCircleIcon,
+  CopyIcon,
   GithubLogoIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
@@ -31,7 +32,9 @@ import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
 import { isRealMobileDevice } from '@/shared/hooks/useIsMobile';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
+import { CopyButton } from '@/shared/components/CopyButton';
 import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
+import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import { CommentWidgetLine } from './CommentWidgetLine';
@@ -234,6 +237,9 @@ export function PierreDiffCard({
   const handleOpenInIde = useCallback(() => {
     openInEditor({ filePath });
   }, [openInEditor, filePath]);
+  const handleCopyFilePath = useCallback(() => {
+    void writeClipboardViaBridge(filePath);
+  }, [filePath]);
 
   // Transform diff to pierre/diffs metadata
   const fileDiffMetadata = useMemo(
@@ -486,13 +492,23 @@ export function PierreDiffCard({
             {changeLabel}
           </span>
         )}
-        <div
-          className={cn(
-            'text-sm flex-1 min-w-0',
-            changeKind === 'deleted' && 'text-error line-through'
-          )}
-        >
-          <DisplayTruncatedPath path={filePath} />
+        <div className="flex items-center gap-half flex-1 min-w-0">
+          <div
+            className={cn(
+              'text-sm min-w-0 flex-1',
+              changeKind === 'deleted' && 'text-error line-through'
+            )}
+          >
+            <DisplayTruncatedPath path={filePath} />
+          </div>
+          <span onClick={(e) => e.stopPropagation()} className="shrink-0">
+            <CopyButton
+              onCopy={handleCopyFilePath}
+              disabled={false}
+              iconSize="size-icon-xs"
+              icon={CopyIcon}
+            />
+          </span>
         </div>
         {(changeKind === 'renamed' || changeKind === 'copied') && oldPath && (
           <span className="text-low text-sm shrink-0">
