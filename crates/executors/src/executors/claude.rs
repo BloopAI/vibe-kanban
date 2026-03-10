@@ -1270,8 +1270,8 @@ impl ClaudeLogProcessor {
                     }
                     Some("compact_boundary") => {}
                     Some("task_started") => {
-                        if let Some(tool_use_id) = tool_use_id {
-                            if !self.tool_map.contains_key(tool_use_id) {
+                        if let Some(tool_use_id) = tool_use_id
+                            && !self.tool_map.contains_key(tool_use_id) {
                                 let desc =
                                     description.clone().unwrap_or_else(|| "Task".to_string());
                                 let subagent_type = task_type.clone();
@@ -1301,11 +1301,10 @@ impl ClaudeLogProcessor {
                                     },
                                 );
                             }
-                        }
                     }
                     Some("task_progress") => {
-                        if let (Some(tool_use_id), Some(desc)) = (tool_use_id, description) {
-                            if let Some(info) = self.tool_map.get(tool_use_id).cloned() {
+                        if let (Some(tool_use_id), Some(desc)) = (tool_use_id, description)
+                            && let Some(info) = self.tool_map.get(tool_use_id).cloned() {
                                 let subagent_type =
                                     if let ClaudeToolData::Task { subagent_type, .. } =
                                         &info.tool_data
@@ -1326,11 +1325,10 @@ impl ClaudeLogProcessor {
                                 );
                                 patches.push(ConversationPatch::replace(info.entry_index, entry));
                             }
-                        }
                     }
                     Some("task_notification") => {
-                        if let Some(tool_use_id) = tool_use_id {
-                            if let Some(info) = self.tool_map.get(tool_use_id).cloned() {
+                        if let Some(tool_use_id) = tool_use_id
+                            && let Some(info) = self.tool_map.get(tool_use_id).cloned() {
                                 let task_status = match status.as_deref() {
                                     Some("failed") | Some("error") => ToolStatus::Failed,
                                     _ => ToolStatus::Success,
@@ -1359,7 +1357,6 @@ impl ClaudeLogProcessor {
                                 );
                                 patches.push(ConversationPatch::replace(info.entry_index, entry));
                             }
-                        }
                     }
                     Some(subtype) => {
                         let entry = NormalizedEntry {
@@ -1411,9 +1408,8 @@ impl ClaudeLogProcessor {
                                 worktree_path,
                                 ToolStatus::Created,
                             );
-                            let existing_idx = entry_index.or_else(|| {
-                                self.tool_map.get(id).map(|info| info.entry_index)
-                            });
+                            let existing_idx = entry_index
+                                .or_else(|| self.tool_map.get(id).map(|info| info.entry_index));
                             let is_new = existing_idx.is_none();
                             let id_num =
                                 existing_idx.unwrap_or_else(|| entry_index_provider.next());
