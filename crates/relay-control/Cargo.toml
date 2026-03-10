@@ -24,3 +24,7 @@ uuid = { version = "1.0", features = ["v4"] }
 # Optional transport impls for RelayTransportMessage
 axum = { version = "0.8.4", features = ["ws"], optional = true }
 tokio-tungstenite = { version = "0.26", optional = true }
+
+[dev-dependencies]
+futures-util = { version = "0.3", features = ["channel"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
