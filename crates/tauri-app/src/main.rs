@@ -197,7 +197,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
         builder = builder
             .title_bar_style(tauri::TitleBarStyle::Overlay)
             .hidden_title(true)
-            .traffic_light_position(tauri::LogicalPosition::new(2.0, 7.0));
+            .traffic_light_position(tauri::LogicalPosition::new(12.0, 7.0));
     }
 
     // Windows/Linux: remove native decorations entirely.

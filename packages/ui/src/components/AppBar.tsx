@@ -72,6 +72,7 @@ interface AppBarProps {
   onUpdateClick?: () => void;
   githubIconPath: string;
   discordIconPath: string;
+  className?: string;
 }
 
 export interface AppBarProject {
@@ -130,6 +131,7 @@ export function AppBar({
   onUpdateClick,
   githubIconPath,
   discordIconPath,
+  className,
 }: AppBarProps) {
   const { t } = useTranslation('common');
   const showHostsSection =
@@ -140,8 +142,9 @@ export function AppBar({
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       className={cn(
-        'flex flex-col items-center w-14 h-full min-h-0 overflow-y-auto p-base gap-base',
-        'bg-secondary border-r border-border'
+        'flex flex-col items-center w-14 shrink-0 h-full min-h-0 overflow-y-auto p-base gap-base',
+        'bg-secondary border-r border-border',
+        className
       )}
     >
       {showHostsSection && (
