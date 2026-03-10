@@ -181,6 +181,7 @@ pub struct SignedWebSocket<S, M> {
 
 impl<S, M> SignedWebSocket<S, M> {
     /// Split into the underlying sender and receiver for concurrent use.
+    #[allow(clippy::type_complexity)]
     pub fn split(
         self,
     ) -> (
