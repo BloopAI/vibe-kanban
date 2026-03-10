@@ -6,7 +6,6 @@ import {
 } from '@hello-pangea/dnd';
 import type { ReactNode } from 'react';
 import {
-  ArrowsClockwiseIcon,
   LayoutIcon,
   LinkIcon,
   PlusIcon,
@@ -141,7 +140,7 @@ export function AppBar({
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       className={cn(
-        'flex flex-col items-center h-full min-h-0 overflow-y-auto p-base gap-base',
+        'flex flex-col items-center w-14 h-full min-h-0 overflow-y-auto p-base gap-base',
         'bg-secondary border-r border-border'
       )}
     >
@@ -413,13 +412,12 @@ export function AppBar({
               type="button"
               onClick={onUpdateClick}
               className={cn(
-                'flex items-center gap-0.5 px-1.5 py-1 rounded-md',
+                'px-1 py-1 rounded-md',
                 'text-[9px] font-ibm-plex-mono font-medium leading-none',
                 'bg-brand text-on-brand hover:bg-brand-hover',
                 'transition-colors cursor-pointer'
               )}
             >
-              <ArrowsClockwiseIcon size={10} weight="bold" />
               Update
             </button>
           </Tooltip>
