@@ -451,16 +451,17 @@ export function SharedAppLayout() {
             onOpenDrawer={() => setIsDrawerOpen(true)}
           />
           <div className="relative flex-1 min-h-0">
-            {isWorkspaceSidebarPreviewEnabled && (
-              <div className="absolute left-0 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2">
-                <WorkspacesSidebarReopenTag
-                  active={sidebarPreview.isPreviewOpen}
-                  onHoverStart={sidebarPreview.handleHandleHoverStart}
-                  onHoverEnd={sidebarPreview.handleHandleHoverEnd}
-                  ariaLabel="Workspaces"
-                />
-              </div>
-            )}
+            {isWorkspaceSidebarPreviewEnabled &&
+              !sidebarPreview.isPreviewOpen && (
+                <div className="absolute left-0 top-1/2 z-40 -translate-x-1/2 -translate-y-1/2">
+                  <WorkspacesSidebarReopenTag
+                    active={false}
+                    onHoverStart={sidebarPreview.handleHandleHoverStart}
+                    onHoverEnd={sidebarPreview.handleHandleHoverEnd}
+                    ariaLabel="Workspaces"
+                  />
+                </div>
+              )}
 
             <div className="relative h-full overflow-hidden">
               {isWorkspaceSidebarPreviewEnabled && (
