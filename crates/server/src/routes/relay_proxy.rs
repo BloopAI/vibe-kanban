@@ -1,7 +1,7 @@
 use axum::{
     Router,
     extract::{
-        OriginalUri, Path, Request, State,
+        Path, Request, State,
         ws::{WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
     },
     http::Uri,
@@ -15,77 +15,47 @@ use crate::{
     relay::proxy::{RelayConnection, RelayProxyError},
 };
 
+type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
+
 pub fn router() -> Router<DeploymentImpl> {
-    Router::new()
-        .route("/host/{host_id}", any(proxy_host_root))
-        .route("/host/{host_id}/{*tail}", any(proxy_host_tail))
+    Router::new().route("/host/{host_id}/{*tail}", any(proxy_host_request))
 }
 
-async fn proxy_host_root(
+async fn proxy_host_request(
     State(deployment): State<DeploymentImpl>,
-    Path(host_id): Path<Uuid>,
-    ws_upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
-    request: Request,
+    Path((host_id, tail)): Path<(Uuid, String)>,
+    ws_upgrade: MaybeWsUpgrade,
+    mut request: Request,
 ) -> Response {
-    proxy_host(deployment, host_id, ws_upgrade, request).await
+    let query = request.uri().query().map(str::to_owned);
+    let upstream_uri = match upstream_api_uri(&tail, query.as_deref()) {
+        Ok(uri) => uri,
+        Err(error) => return error.into_response(),
+    };
+    *request.uri_mut() = upstream_uri;
+
+    let mut connection = match RelayConnection::for_host(&deployment, host_id).await {
+        Ok(connection) => connection,
+        Err(error) => return error.into_response(),
+    };
+
+    let response = match ws_upgrade {
+        Ok(ws_upgrade) => connection.forward_ws(request, ws_upgrade).await,
+        Err(_) => connection.forward_http(request).await,
+    };
+
+    response.unwrap_or_else(IntoResponse::into_response)
 }
 
-async fn proxy_host_tail(
-    State(deployment): State<DeploymentImpl>,
-    Path((host_id, _tail)): Path<(Uuid, String)>,
-    ws_upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
-    request: Request,
-) -> Response {
-    proxy_host(deployment, host_id, ws_upgrade, request).await
-}
+fn upstream_api_uri(tail: &str, query: Option<&str>) -> Result<Uri, RelayProxyError> {
+    let mut uri = String::from("/api/");
+    uri.push_str(tail);
 
-async fn proxy_host(
-    deployment: DeploymentImpl,
-    host_id: Uuid,
-    ws_upgrade: Result<WebSocketUpgrade, WebSocketUpgradeRejection>,
-    request: Request,
-) -> Response {
-    let request = match rewrite_relay_path(request, host_id) {
-        Ok(r) => r,
-        Err(e) => return e.into_response(),
-    };
-    let mut conn = match RelayConnection::for_host(&deployment, host_id).await {
-        Ok(c) => c,
-        Err(e) => return e.into_response(),
-    };
-    let result = match ws_upgrade {
-        Ok(ws) => conn.forward_ws(request, ws).await,
-        Err(_) => conn.forward_http(request).await,
-    };
-    result.unwrap_or_else(IntoResponse::into_response)
-}
+    if let Some(query) = query {
+        uri.push('?');
+        uri.push_str(query);
+    }
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-fn rewrite_relay_path(request: Request, host_id: Uuid) -> Result<Request, RelayProxyError> {
-    let original_uri = request
-        .extensions()
-        .get::<OriginalUri>()
-        .map(|v| v.0.clone())
-        .unwrap_or_else(|| request.uri().clone());
-
-    let raw = original_uri
-        .path_and_query()
-        .map(|pq| pq.as_str())
-        .unwrap_or_else(|| original_uri.path());
-    let prefix = format!("/api/host/{host_id}");
-    let suffix = raw
-        .strip_prefix(&prefix)
-        .ok_or(RelayProxyError::BadRequest(
-            "Request URI does not match host relay path",
-        ))?;
-    let new_uri: Uri = format!("/api{suffix}")
-        .parse()
-        .map_err(|_| RelayProxyError::BadRequest("Invalid rewritten relay path"))?;
-
-    let (mut parts, body) = request.into_parts();
-    parts.uri = new_uri;
-    Ok(Request::from_parts(parts, body))
+    uri.parse()
+        .map_err(|_| RelayProxyError::BadRequest("Invalid rewritten relay path"))
 }
