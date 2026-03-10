@@ -5,7 +5,10 @@ export interface LocalApiTransport {
   openWebSocket: (pathOrUrl: string) => Promise<WebSocket> | WebSocket;
 }
 
-const LOCAL_ONLY_API_PREFIXES = ['/api/open-remote-editor/'];
+const LOCAL_ONLY_API_PREFIXES = [
+  '/api/open-remote-editor/',
+  '/api/relay-auth/client/',
+];
 
 function isAbsoluteUrl(pathOrUrl: string): boolean {
   return /^https?:\/\//i.test(pathOrUrl) || /^wss?:\/\//i.test(pathOrUrl);
