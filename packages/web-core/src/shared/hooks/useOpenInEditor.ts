@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { workspacesApi } from '@/shared/lib/api';
 import { EditorSelectionDialog } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
+import { alertIfCodeServerNotConfigured } from '@/shared/lib/editorWarnings';
 import type { EditorType } from 'shared/types';
 
 type OpenEditorOptions = {
@@ -29,6 +30,9 @@ export function useOpenInEditor(
           window.open(response.url, '_blank');
         }
       } catch (err) {
+        if (alertIfCodeServerNotConfigured(err)) {
+          return;
+        }
         console.error('Failed to open editor:', err);
         if (!editorType) {
           if (onShowEditorDialog) {

@@ -66,6 +66,7 @@ import { RenameWorkspaceDialog } from '@vibe/ui/components/RenameWorkspaceDialog
 import { ProjectsGuideDialog } from '@vibe/ui/components/ProjectsGuideDialog';
 import { CreatePRDialog } from '@/shared/dialogs/command-bar/CreatePRDialog';
 import { getIdeName } from '@/shared/lib/ideName';
+import { alertIfCodeServerNotConfigured } from '@/shared/lib/editorWarnings';
 import { EditorSelectionDialog } from '@/shared/dialogs/command-bar/EditorSelectionDialog';
 import { StartReviewDialog } from '@/shared/dialogs/command-bar/StartReviewDialog';
 import posthog from 'posthog-js';
@@ -770,7 +771,10 @@ export const Actions = {
         if (response.url) {
           window.open(response.url, '_blank');
         }
-      } catch {
+      } catch (err) {
+        if (alertIfCodeServerNotConfigured(err)) {
+          return;
+        }
         // Show editor selection dialog on failure
         EditorSelectionDialog.show({
           selectedAttemptId: ctx.currentWorkspaceId,
@@ -1140,6 +1144,9 @@ export const Actions = {
           window.open(response.url, '_blank');
         }
       } catch (err) {
+        if (alertIfCodeServerNotConfigured(err)) {
+          return;
+        }
         console.error('Failed to open repo in editor:', err);
         throw new Error('Failed to open repository in IDE');
       }

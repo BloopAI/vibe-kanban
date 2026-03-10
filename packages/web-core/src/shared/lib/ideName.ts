@@ -18,6 +18,8 @@ export function getIdeName(editorType: EditorType | undefined | null): string {
       return 'Zed';
     case EditorType.XCODE:
       return 'Xcode';
+    case EditorType.CODE_SERVER:
+      return 'Code Server';
     case EditorType.CUSTOM:
       return i18n.t('common:editorNames.custom');
     case EditorType.GOOGLE_ANTIGRAVITY:
