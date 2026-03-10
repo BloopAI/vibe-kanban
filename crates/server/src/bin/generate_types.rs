@@ -134,7 +134,7 @@ fn generate_types_content() -> String {
         server::routes::workspaces::integration::OpenEditorRequest::decl(),
         server::routes::workspaces::integration::OpenEditorResponse::decl(),
         desktop_bridge::service::OpenRemoteEditorResponse::decl(),
-        server::routes::open_remote_editor::OpenRemoteWorkspaceInEditorRequest::decl(),
+        server::routes::host_relay::OpenRemoteWorkspaceInEditorRequest::decl(),
         relay_types::PairRelayHostRequest::decl(),
         relay_types::PairRelayHostResponse::decl(),
         relay_types::RelayPairedHost::decl(),

@@ -17,7 +17,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     host_relay::{
-        HostRelayResolverBuildError, build_host_relay_resolver,
+        open_host_relay,
         transport::{HostRelayOperationError, HostRelayResolveError, ResolvedHostRelay},
     },
 };
@@ -79,13 +79,7 @@ async fn proxy_host_request(
 
 impl RelayConnection {
     async fn for_host(deployment: &DeploymentImpl, host_id: Uuid) -> Result<Self, RelayProxyError> {
-        let resolver = build_host_relay_resolver(deployment).map_err(|error| match error {
-            HostRelayResolverBuildError::NotConfigured => {
-                RelayProxyError::BadRequest("Remote relay API is not configured")
-            }
-        })?;
-        let host = resolver
-            .resolve(host_id)
+        let host = open_host_relay(deployment, host_id)
             .await
             .map_err(|error| map_resolve_error(host_id, error))?;
 

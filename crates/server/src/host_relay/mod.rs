@@ -1,28 +1,27 @@
 pub mod transport;
 
 use deployment::Deployment;
+use transport::{HostRelayResolveError, ResolvedHostRelay};
+use uuid::Uuid;
 
-use crate::{DeploymentImpl, host_relay::transport::HostRelayResolver};
+use crate::DeploymentImpl;
 
-#[derive(Debug, Clone, Copy)]
-pub enum HostRelayResolverBuildError {
-    NotConfigured,
-}
-
-pub fn build_host_relay_resolver(
+pub async fn open_host_relay(
     deployment: &DeploymentImpl,
-) -> Result<HostRelayResolver, HostRelayResolverBuildError> {
+    host_id: Uuid,
+) -> Result<ResolvedHostRelay, HostRelayResolveError> {
     let remote_client = deployment
         .remote_client()
-        .map_err(|_| HostRelayResolverBuildError::NotConfigured)?;
-    let relay_base_url = deployment
-        .shared_api_base()
-        .ok_or(HostRelayResolverBuildError::NotConfigured)?;
+        .map_err(|_| HostRelayResolveError::RelayNotConfigured)?;
+    let relay_base_url =
+        Deployment::shared_api_base(deployment).ok_or(HostRelayResolveError::RelayNotConfigured)?;
 
-    Ok(HostRelayResolver::new(
+    ResolvedHostRelay::open(
+        host_id,
         deployment.relay_host_store(),
         remote_client,
         relay_base_url,
         deployment.relay_signing().signing_key().clone(),
-    ))
+    )
+    .await
 }

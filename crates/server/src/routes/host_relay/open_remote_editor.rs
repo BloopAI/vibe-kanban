@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     host_relay::{
-        HostRelayResolverBuildError, build_host_relay_resolver,
+        open_host_relay,
         transport::{HostRelayOperationError, HostRelayResolveError, ResolvedHostRelay},
     },
 };
@@ -35,7 +35,7 @@ pub struct OpenRemoteWorkspaceInEditorRequest {
     pub file_path: Option<String>,
 }
 
-pub async fn open_remote_workspace_in_editor(
+async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
@@ -175,20 +175,7 @@ async fn resolve_host_relay_response(
     deployment: &DeploymentImpl,
     host_id: Uuid,
 ) -> Result<ResolvedHostRelay, Response> {
-    let resolver = build_host_relay_resolver(deployment).map_err(|error| match error {
-        HostRelayResolverBuildError::NotConfigured => (
-            StatusCode::BAD_REQUEST,
-            Json(ApiResponse::<
-                desktop_bridge::service::OpenRemoteEditorResponse,
-            >::error(
-                "Failed to initialize relay access for host"
-            )),
-        )
-            .into_response(),
-    })?;
-
-    resolver
-        .resolve(host_id)
+    open_host_relay(deployment, host_id)
         .await
         .map_err(|error| match error {
             HostRelayResolveError::NotPaired => (

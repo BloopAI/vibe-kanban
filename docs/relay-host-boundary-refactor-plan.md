@@ -31,8 +31,9 @@ This plan is now complete.
 
 - Done: relay host credential and auth-state access now live behind a
   dedicated `RelayHostStore`.
-- Done: the host-relay application API now exposes `HostRelayResolver` and
-  `ResolvedHostRelay` instead of bootstrap and persist free functions.
+- Done: the host-relay application API now exposes `ResolvedHostRelay`
+  directly, using a narrow module-level opening function instead of bootstrap
+  and persist free functions or a dedicated dependency bundle type.
 - Done: the host-relay application layer no longer depends on
   `DeploymentImpl`.
 - Done: `relay_proxy` and `open_remote_editor` now consume the resolved host
@@ -154,16 +155,28 @@ proxy/editor host access beyond low-level SDK usage.
 The host-relay boundary should expose one application-facing entrypoint:
 
 ```rust
-#[derive(Clone)]
-pub struct HostRelayResolver { ... }
-
 pub struct ResolvedHostRelay { ... }
 
-impl HostRelayResolver {
-    pub async fn resolve(&self, host_id: Uuid)
+pub async fn open_host_relay(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+) -> Result<ResolvedHostRelay, HostRelayResolveError>;
+
+impl ResolvedHostRelay {
+    pub async fn open(
+        host_id: Uuid,
+        store: RelayHostStore,
+        remote_client: RemoteClient,
+        relay_base_url: String,
+        signing_key: SigningKey,
+    )
         -> Result<ResolvedHostRelay, HostRelayResolveError>;
 }
+```
 
+The resolved handle should then expose host operations:
+
+```rust
 impl ResolvedHostRelay {
     pub async fn send_http(
         &mut self,
@@ -189,8 +202,8 @@ impl ResolvedHostRelay {
 ```
 
 The exact type names can change. The important part is that the route layer
-gets one resolved host handle, not a bag of bootstrap and persistence
-functions.
+gets a resolved host handle from a narrow opening function, not a bag of
+bootstrap and persistence functions.
 
 ## Supporting Services
 

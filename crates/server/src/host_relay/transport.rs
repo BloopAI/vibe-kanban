@@ -36,48 +36,31 @@ pub struct RelayTunnelAccess {
     pub server_verify_key: VerifyingKey,
 }
 
-#[derive(Clone)]
-pub struct HostRelayResolver {
-    store: RelayHostStore,
-    remote_client: RemoteClient,
-    relay_base_url: String,
-    signing_key: SigningKey,
-}
-
 pub struct ResolvedHostRelay {
     store: RelayHostStore,
     host_id: Uuid,
     transport: RelayHostTransport,
 }
 
-impl HostRelayResolver {
-    pub fn new(
+impl ResolvedHostRelay {
+    pub async fn open(
+        host_id: Uuid,
         store: RelayHostStore,
         remote_client: RemoteClient,
         relay_base_url: String,
         signing_key: SigningKey,
-    ) -> Self {
-        Self {
-            store,
-            remote_client,
-            relay_base_url,
-            signing_key,
-        }
-    }
-
-    pub async fn resolve(&self, host_id: Uuid) -> Result<ResolvedHostRelay, HostRelayResolveError> {
-        let identity = load_paired_relay_host_identity(&self.store, host_id).await?;
-        let access_token = self
-            .remote_client
+    ) -> Result<Self, HostRelayResolveError> {
+        let identity = load_paired_relay_host_identity(&store, host_id).await?;
+        let access_token = remote_client
             .access_token()
             .await
             .map_err(anyhow::Error::from)
             .map_err(HostRelayResolveError::Authentication)?;
-        let cached_auth_state = self.store.load_auth_state(host_id).await;
+        let cached_auth_state = store.load_auth_state(host_id).await;
         let transport = RelayHostTransport::bootstrap(
-            RelayApiClient::new(self.relay_base_url.clone(), access_token),
+            RelayApiClient::new(relay_base_url, access_token),
             identity,
-            self.signing_key.clone(),
+            signing_key,
             cached_auth_state
                 .as_ref()
                 .map(|value| value.remote_session.clone()),
@@ -86,15 +69,13 @@ impl HostRelayResolver {
         .await
         .map_err(map_bootstrap_error)?;
 
-        Ok(ResolvedHostRelay {
-            store: self.store.clone(),
+        Ok(Self {
+            store,
             host_id,
             transport,
         })
     }
-}
 
-impl ResolvedHostRelay {
     pub async fn send_http(
         &mut self,
         method: &Method,
