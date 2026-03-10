@@ -7,7 +7,6 @@ import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
-import { isTauriMac } from '@/shared/lib/platform';
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
 import { MobileDrawer } from '@vibe/ui/components/MobileDrawer';
@@ -292,52 +291,57 @@ export function SharedAppLayout() {
           'flex bg-primary',
           isMobile
             ? 'fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : 'h-screen'
+            : 'flex-col h-screen'
         )}
       >
         {!isMobile && !isMigrateRoute && (
           <>
-            {/* Left column: AppBar sidebar */}
-            <AppBar
-              projects={orderedProjects}
-              onCreateProject={handleCreateProject}
-              onWorkspacesClick={handleWorkspacesClick}
-              onProjectClick={handleProjectClick}
-              onProjectsDragEnd={handleProjectsDragEnd}
-              isSavingProjectOrder={isSavingProjectOrder}
-              isWorkspacesActive={isWorkspacesActive}
-              activeProjectId={activeProjectId}
-              isSignedIn={isSignedIn}
-              isLoadingProjects={isLoading}
-              onSignIn={handleSignIn}
-              onMigrate={handleMigrate}
-              onHoverStart={() => setIsAppBarHovered(true)}
-              onHoverEnd={() => setIsAppBarHovered(false)}
-              userPopover={
-                <AppBarUserPopoverContainer
-                  organizations={organizations}
-                  selectedOrgId={selectedOrgId ?? ''}
-                  onOrgSelect={setSelectedOrgId}
-                  onCreateOrg={handleCreateOrg}
-                />
-              }
-              starCount={starCount}
-              onlineCount={onlineCount}
-              appVersion={appVersion}
-              updateVersion={updateVersion}
-              onUpdateClick={restartForUpdate ?? undefined}
-              githubIconPath={siGithub.path}
-              discordIconPath={siDiscord.path}
-              className={isTauriMac() ? 'pt-[28px]' : undefined}
-            />
-            {/* Right column: Navbar + Content */}
-            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            {/* Top row: corner spacer + Navbar */}
+            <div className="flex shrink-0">
+              <div
+                data-tauri-drag-region
+                className="w-14 shrink-0 bg-secondary border-b"
+              />
               <NavbarContainer
                 onCreateOrg={handleCreateOrg}
                 onOrgSelect={setSelectedOrgId}
                 onOpenDrawer={() => setIsDrawerOpen(true)}
               />
-              <div className="relative flex-1 min-h-0 overflow-hidden">
+            </div>
+            {/* Bottom row: AppBar + Content */}
+            <div className="flex flex-1 min-h-0">
+              <AppBar
+                projects={orderedProjects}
+                onCreateProject={handleCreateProject}
+                onWorkspacesClick={handleWorkspacesClick}
+                onProjectClick={handleProjectClick}
+                onProjectsDragEnd={handleProjectsDragEnd}
+                isSavingProjectOrder={isSavingProjectOrder}
+                isWorkspacesActive={isWorkspacesActive}
+                activeProjectId={activeProjectId}
+                isSignedIn={isSignedIn}
+                isLoadingProjects={isLoading}
+                onSignIn={handleSignIn}
+                onMigrate={handleMigrate}
+                onHoverStart={() => setIsAppBarHovered(true)}
+                onHoverEnd={() => setIsAppBarHovered(false)}
+                userPopover={
+                  <AppBarUserPopoverContainer
+                    organizations={organizations}
+                    selectedOrgId={selectedOrgId ?? ''}
+                    onOrgSelect={setSelectedOrgId}
+                    onCreateOrg={handleCreateOrg}
+                  />
+                }
+                starCount={starCount}
+                onlineCount={onlineCount}
+                appVersion={appVersion}
+                updateVersion={updateVersion}
+                onUpdateClick={restartForUpdate ?? undefined}
+                githubIconPath={siGithub.path}
+                discordIconPath={siDiscord.path}
+              />
+              <div className="relative flex-1 min-w-0 overflow-hidden">
                 {isWorkspaceSidebarPreviewEnabled && (
                   <div className="absolute inset-y-0 left-0 z-20 flex items-center">
                     <WorkspacesSidebarReopenTag
