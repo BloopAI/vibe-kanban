@@ -1,8 +1,3 @@
-use std::{
-    collections::HashMap,
-    sync::{LazyLock, RwLock},
-};
-
 use axum::{
     Json, Router,
     extract::State,
@@ -40,9 +35,6 @@ pub struct OpenRemoteWorkspaceInEditorRequest {
     #[serde(default)]
     pub file_path: Option<String>,
 }
-
-static RELAY_EDITOR_SESSION_CACHE: LazyLock<RwLock<HashMap<Uuid, Uuid>>> =
-    LazyLock::new(|| RwLock::new(HashMap::new()));
 
 pub async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
@@ -98,10 +90,14 @@ pub async fn open_remote_workspace_in_editor(
                 "Failed to resolve workspace editor path; refreshing relay session and retrying"
             );
 
-            remove_cached_relay_session(req.host_id);
+            deployment
+                .invalidate_cached_relay_remote_session_id(req.host_id)
+                .await;
             remote_session = match create_relay_remote_session(&deployment, req.host_id).await {
                 Ok(remote_session) => {
-                    cache_relay_session(req.host_id, remote_session.id);
+                    deployment
+                        .cache_relay_remote_session_id(req.host_id, remote_session.id)
+                        .await;
                     remote_session
                 }
                 Err(error) => {
@@ -253,30 +249,11 @@ async fn fetch_relay_editor_path(
     .await
 }
 
-fn get_cached_relay_session(host_id: Uuid) -> Option<Uuid> {
-    RELAY_EDITOR_SESSION_CACHE
-        .read()
-        .ok()
-        .and_then(|cache| cache.get(&host_id).copied())
-}
-
-fn cache_relay_session(host_id: Uuid, session_id: Uuid) {
-    if let Ok(mut cache) = RELAY_EDITOR_SESSION_CACHE.write() {
-        cache.insert(host_id, session_id);
-    }
-}
-
-fn remove_cached_relay_session(host_id: Uuid) {
-    if let Ok(mut cache) = RELAY_EDITOR_SESSION_CACHE.write() {
-        cache.remove(&host_id);
-    }
-}
-
 async fn get_or_create_cached_relay_remote_session(
     deployment: &DeploymentImpl,
     host_id: Uuid,
 ) -> anyhow::Result<crate::relay::api::RemoteSession> {
-    if let Some(session_id) = get_cached_relay_session(host_id) {
+    if let Some(session_id) = deployment.get_cached_relay_remote_session_id(host_id).await {
         return Ok(crate::relay::api::RemoteSession {
             host_id,
             id: session_id,
@@ -284,7 +261,9 @@ async fn get_or_create_cached_relay_remote_session(
     }
 
     let remote_session = create_relay_remote_session(deployment, host_id).await?;
-    cache_relay_session(host_id, remote_session.id);
+    deployment
+        .cache_relay_remote_session_id(host_id, remote_session.id)
+        .await;
     Ok(remote_session)
 }
 

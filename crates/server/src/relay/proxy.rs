@@ -88,13 +88,8 @@ impl RelayConnection {
         })?;
         let relay_client = RelayApiClient::new(access_token);
 
-        let remote_session = relay_client
-            .create_session(host_id)
-            .await
-            .map_err(|error| {
-                tracing::warn!(?error, %host_id, "Failed to create relay browser session");
-                RelayProxyError::BadGateway("Failed to create relay browser session")
-            })?;
+        let remote_session =
+            get_or_create_cached_remote_session(deployment, &relay_client, host_id).await?;
 
         let signing_key = deployment.relay_signing().signing_key().clone();
 
@@ -123,7 +118,7 @@ impl RelayConnection {
             RelayProxyError::BadRequest("Invalid request body")
         })?;
 
-        let response = self
+        let mut response = self
             .send_signed_http(&parts.method, target_path, &parts.headers, &body_bytes)
             .await
             .map_err(|error| {
@@ -132,14 +127,23 @@ impl RelayConnection {
             })?;
 
         if is_auth_failure_status(response.status()) && self.try_refresh().await {
-            let response = self
+            response = self
                 .send_signed_http(&parts.method, target_path, &parts.headers, &body_bytes)
                 .await
                 .map_err(|error| {
                     tracing::warn!(?error, host_id = %self.host_id, "Relay host HTTP retry failed");
                     RelayProxyError::BadGateway("Failed to call relay host")
                 })?;
-            return Ok(relay_http_response(response));
+        }
+
+        if is_auth_failure_status(response.status()) && self.rotate_remote_session().await {
+            response = self
+                .send_signed_http(&parts.method, target_path, &parts.headers, &body_bytes)
+                .await
+                .map_err(|error| {
+                    tracing::warn!(?error, host_id = %self.host_id, "Relay host HTTP retry after session rotation failed");
+                    RelayProxyError::BadGateway("Failed to call relay host")
+                })?;
         }
 
         Ok(relay_http_response(response))
@@ -213,7 +217,22 @@ impl RelayConnection {
             .await
         {
             Ok(result) => return Ok(result),
-            Err(WsConnectError::AuthFailure) if self.try_refresh().await => {}
+            Err(WsConnectError::AuthFailure) if self.try_refresh().await => {
+                match self
+                    .connect_upstream_ws(target_path, protocols, server_verify_key)
+                    .await
+                {
+                    Ok(result) => return Ok(result),
+                    Err(WsConnectError::AuthFailure) => {}
+                    Err(error) => {
+                        tracing::warn!(?error, host_id = %self.host_id, "Relay host WS retry failed after signing refresh");
+                        return Err(RelayProxyError::BadGateway(
+                            "Failed to connect relay host WS",
+                        ));
+                    }
+                }
+            }
+            Err(WsConnectError::AuthFailure) => {}
             Err(error) => {
                 tracing::warn!(?error, host_id = %self.host_id, "Relay host WS connect failed");
                 return Err(RelayProxyError::BadGateway(
@@ -222,10 +241,16 @@ impl RelayConnection {
             }
         }
 
+        if !self.rotate_remote_session().await {
+            return Err(RelayProxyError::BadGateway(
+                "Failed to connect relay host WS",
+            ));
+        }
+
         self.connect_upstream_ws(target_path, protocols, server_verify_key)
             .await
             .map_err(|error| {
-                tracing::warn!(?error, host_id = %self.host_id, "Relay host WS retry failed");
+                tracing::warn!(?error, host_id = %self.host_id, "Relay host WS retry failed after session rotation");
                 RelayProxyError::BadGateway("Failed to connect relay host WS")
             })
     }
@@ -410,6 +435,51 @@ impl RelayConnection {
         self.credentials.signing_session_id = updated_signing_session_id;
         true
     }
+
+    async fn rotate_remote_session(&mut self) -> bool {
+        self.deployment
+            .invalidate_cached_relay_remote_session_id(self.host_id)
+            .await;
+
+        let remote_session = match self.relay_client.create_session(self.host_id).await {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::warn!(?error, host_id = %self.host_id, "Failed to rotate relay browser session");
+                return false;
+            }
+        };
+
+        self.deployment
+            .cache_relay_remote_session_id(self.host_id, remote_session.id)
+            .await;
+        self.remote_session = remote_session;
+        true
+    }
+}
+
+async fn get_or_create_cached_remote_session(
+    deployment: &DeploymentImpl,
+    relay_client: &RelayApiClient,
+    host_id: Uuid,
+) -> Result<RemoteSession, RelayProxyError> {
+    if let Some(session_id) = deployment.get_cached_relay_remote_session_id(host_id).await {
+        return Ok(RemoteSession {
+            host_id,
+            id: session_id,
+        });
+    }
+
+    let remote_session = relay_client
+        .create_session(host_id)
+        .await
+        .map_err(|error| {
+            tracing::warn!(?error, %host_id, "Failed to create relay browser session");
+            RelayProxyError::BadGateway("Failed to create relay browser session")
+        })?;
+    deployment
+        .cache_relay_remote_session_id(host_id, remote_session.id)
+        .await;
+    Ok(remote_session)
 }
 
 // ---------------------------------------------------------------------------

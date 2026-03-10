@@ -72,6 +72,7 @@ pub struct LocalDeployment {
     pty: PtyService,
     tunnel_manager: Arc<TunnelManager>,
     relay_host_credentials: Arc<RwLock<HashMap<Uuid, RelayHostCredentials>>>,
+    relay_remote_sessions: Arc<RwLock<HashMap<Uuid, Uuid>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -237,6 +238,7 @@ impl Deployment for LocalDeployment {
         let pty = PtyService::new();
         let tunnel_manager = Arc::new(TunnelManager::new());
         let relay_host_credentials = Arc::new(RwLock::new(load_relay_host_credentials_map().await));
+        let relay_remote_sessions = Arc::new(RwLock::new(HashMap::new()));
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -275,6 +277,7 @@ impl Deployment for LocalDeployment {
             pty,
             tunnel_manager,
             relay_host_credentials,
+            relay_remote_sessions,
         };
 
         Ok(deployment)
@@ -431,6 +434,25 @@ impl LocalDeployment {
         &self.tunnel_manager
     }
 
+    pub async fn get_cached_relay_remote_session_id(&self, host_id: Uuid) -> Option<Uuid> {
+        self.relay_remote_sessions
+            .read()
+            .await
+            .get(&host_id)
+            .copied()
+    }
+
+    pub async fn cache_relay_remote_session_id(&self, host_id: Uuid, session_id: Uuid) {
+        self.relay_remote_sessions
+            .write()
+            .await
+            .insert(host_id, session_id);
+    }
+
+    pub async fn invalidate_cached_relay_remote_session_id(&self, host_id: Uuid) {
+        self.relay_remote_sessions.write().await.remove(&host_id);
+    }
+
     pub async fn upsert_relay_host_credentials(
         &self,
         host_id: Uuid,
@@ -491,6 +513,8 @@ impl LocalDeployment {
         let removed = credentials.remove(&host_id).is_some();
 
         if removed {
+            self.invalidate_cached_relay_remote_session_id(host_id)
+                .await;
             persist_relay_host_credentials_map(&credentials).await?;
         }
 
