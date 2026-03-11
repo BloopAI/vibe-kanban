@@ -1,7 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use services::services::notification::{PushNotifier, set_global_push_notifier};
@@ -60,6 +60,12 @@ fn main() {
     // Shared token so we can tell the server to shut down when the app quits.
     let shutdown_token = Arc::new(CancellationToken::new());
     let shutdown_token_for_event = shutdown_token.clone();
+
+    // Holds downloaded update bytes until the app exits or user restarts.
+    // Created here (outside setup) so the RunEvent::Exit handler can access it.
+    let pending_update: Arc<Mutex<Option<Vec<u8>>>> = Arc::new(Mutex::new(None));
+    let pending_for_setup = pending_update.clone();
+    let pending_for_exit = pending_update.clone();
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -134,16 +140,30 @@ fn main() {
                     }
                 });
 
-                // Check for updates in the background
+                // Check for updates in the background. We only *download*
+                // the update here — installing it (which replaces the app
+                // bundle on disk) is deferred until the user exits or
+                // triggers a restart.  Installing while the app is running
+                // causes a code-signature mismatch on macOS, which makes
+                // NSOpenPanel (and other XPC services) return NULL and
+                // crash the app.  See tauri-apps/tauri#13047.
                 let update_handle = app.handle().clone();
+                let pending_for_download = pending_for_setup.clone();
                 tauri::async_runtime::spawn(async move {
-                    check_for_updates(update_handle).await;
+                    check_for_updates(update_handle, pending_for_download).await;
                 });
 
-                // Listen for restart request from frontend (after update installed).
+                // Listen for restart request from frontend (after update downloaded).
+                // Install the previously downloaded bytes *now*, then restart.
                 let restart_handle = app.handle().clone();
+                let pending_for_install = pending_for_setup.clone();
                 app.listen("restart-app", move |_| {
-                    restart_handle.restart();
+                    let handle = restart_handle.clone();
+                    let pending = pending_for_install.clone();
+                    tauri::async_runtime::spawn(async move {
+                        install_pending_update(&handle, &pending).await;
+                        handle.restart();
+                    });
                 });
             }
 
@@ -167,11 +187,19 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app, _event| {
+        .run(move |_app, _event| {
             // macOS: clicking the dock icon when the window is hidden should reopen it.
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Reopen { .. } = _event {
                 show_window(_app);
+            }
+
+            // Install any pending update when the app exits (e.g. Cmd+Q)
+            // so the next launch uses the new version.
+            if let tauri::RunEvent::Exit = _event {
+                // block_on is safe here — we're on the main (AppKit) thread,
+                // not inside the tokio runtime.
+                tauri::async_runtime::block_on(install_pending_update(_app, &pending_for_exit));
             }
         });
 }
@@ -223,7 +251,39 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
         .build()
 }
 
-async fn check_for_updates(app: tauri::AppHandle) {
+/// Takes the pending update bytes (if any) and installs them.
+/// Requires a network call to re-fetch the `Update` metadata.
+async fn install_pending_update(app: &tauri::AppHandle, pending: &Mutex<Option<Vec<u8>>>) {
+    let bytes = match pending.lock().ok().and_then(|mut g| g.take()) {
+        Some(b) => b,
+        None => return,
+    };
+    tracing::info!("Installing pending update…");
+    let updater = match app.updater() {
+        Ok(u) => u,
+        Err(e) => {
+            tracing::error!("Failed to init updater for install: {e}");
+            return;
+        }
+    };
+    match updater.check().await {
+        Ok(Some(update)) => {
+            if let Err(e) = update.install(bytes) {
+                tracing::error!("Failed to install update: {e}");
+            } else {
+                tracing::info!("Update installed, will apply on next launch");
+            }
+        }
+        Ok(None) => {
+            tracing::warn!("Update no longer available when trying to install");
+        }
+        Err(e) => {
+            tracing::error!("Failed to check for update during install: {e}");
+        }
+    }
+}
+
+async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Option<Vec<u8>>>>) {
     let updater = match app.updater() {
         Ok(updater) => updater,
         Err(e) => {
@@ -249,17 +309,22 @@ async fn check_for_updates(app: tauri::AppHandle) {
                 }),
             );
 
+            // Only *download* the update — do NOT install yet.
+            // Installing replaces the app bundle on disk which
+            // invalidates the code signature of the running process,
+            // causing macOS XPC services (NSOpenPanel etc.) to fail.
             let new_version = update.version.to_string();
-            match update.download_and_install(|_, _| {}, || {}).await {
-                Ok(_) => {
-                    tracing::info!("Update installed successfully, restart required");
+            match update.download(|_, _| {}, || {}).await {
+                Ok(bytes) => {
+                    tracing::info!("Update {new_version} downloaded, waiting for user to restart");
+                    *pending_update.lock().unwrap() = Some(bytes);
                     let _ = app.emit(
                         "update-installed",
                         serde_json::json!({ "newVersion": new_version }),
                     );
                 }
                 Err(e) => {
-                    tracing::error!("Failed to install update: {}", e);
+                    tracing::error!("Failed to download update: {}", e);
                 }
             }
         }
