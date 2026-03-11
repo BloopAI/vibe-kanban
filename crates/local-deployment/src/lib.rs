@@ -9,6 +9,7 @@ use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use relay_control::{RelayControl, signing::RelaySigningService};
+use relay_hosts::{RelayHostStore, RelayHosts};
 use remote_info::RemoteInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
@@ -44,8 +45,6 @@ mod command;
 pub mod container;
 mod copy;
 pub mod pty;
-pub mod relay_host_store;
-use relay_host_store::RelayHostStore;
 
 #[derive(Clone)]
 pub struct LocalDeployment {
@@ -71,10 +70,9 @@ pub struct LocalDeployment {
     relay_control: Arc<RelayControl>,
     client_info: Arc<ClientInfo>,
     remote_info: Arc<RemoteInfo>,
+    relay_hosts: Arc<RelayHosts>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
-    tunnel_manager: Arc<TunnelManager>,
-    relay_host_store: RelayHostStore,
 }
 
 #[derive(Debug, Clone)]
@@ -238,6 +236,18 @@ impl Deployment for LocalDeployment {
         let pty = PtyService::new();
         let tunnel_manager = Arc::new(TunnelManager::new());
         let relay_host_store = RelayHostStore::load().await;
+        let mut relay_hosts = RelayHosts::new(relay_host_store);
+        if let Some(remote_client) = remote_client.clone().ok()
+            && let Some(relay_base_url) = remote_info.get_relay_api_base()
+        {
+            relay_hosts = relay_hosts.with_runtime(
+                remote_client,
+                relay_base_url,
+                relay_signing.clone(),
+                tunnel_manager,
+            );
+        }
+        let relay_hosts = Arc::new(relay_hosts);
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -272,10 +282,9 @@ impl Deployment for LocalDeployment {
             relay_control,
             client_info,
             remote_info,
+            relay_hosts,
             ssh_config,
             pty,
-            tunnel_manager,
-            relay_host_store,
         };
 
         Ok(deployment)
@@ -353,6 +362,10 @@ impl Deployment for LocalDeployment {
         &self.remote_info
     }
 
+    fn relay_hosts(&self) -> &Arc<RelayHosts> {
+        &self.relay_hosts
+    }
+
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {
         &self.trusted_key_auth
     }
@@ -426,13 +439,5 @@ impl LocalDeployment {
 
     pub fn ssh_config(&self) -> &Arc<russh::server::Config> {
         &self.ssh_config
-    }
-
-    pub fn tunnel_manager(&self) -> &Arc<TunnelManager> {
-        &self.tunnel_manager
-    }
-
-    pub fn relay_host_store(&self) -> RelayHostStore {
-        self.relay_host_store.clone()
     }
 }

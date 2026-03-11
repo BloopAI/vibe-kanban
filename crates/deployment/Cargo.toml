@@ -14,6 +14,7 @@ async-trait = { workspace = true }
 thiserror = { workspace = true } 
 anyhow = { workspace = true }
 relay-control = { path = "../relay-control" }
+relay-hosts = { path = "../relay-hosts" }
 trusted-key-auth = { path = "../trusted-key-auth" }
 client-info = { path = "../client-info" }
 remote-info = { path = "../remote-info" }

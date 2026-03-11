@@ -5,15 +5,14 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
+use deployment::Deployment;
+use relay_hosts::OpenRemoteEditorError;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    host_relay::{HostRelayService, OpenRemoteEditorError},
-};
+use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new().route(
@@ -33,12 +32,13 @@ pub struct OpenRemoteWorkspaceInEditorRequest {
 }
 
 async fn open_remote_workspace_in_editor(
-    State(host_relay): State<HostRelayService>,
+    State(deployment): State<DeploymentImpl>,
     Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
-    match host_relay
+    match deployment
+        .relay_hosts()
+        .host(req.host_id)
         .open_workspace_in_editor(
-            req.host_id,
             req.workspace_id,
             req.editor_type.as_deref(),
             req.file_path.as_deref(),

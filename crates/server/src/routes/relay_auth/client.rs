@@ -5,6 +5,8 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
+use deployment::Deployment;
+use relay_hosts::RelayPairingClientError;
 use relay_types::{
     ListRelayPairedHostsResponse, PairRelayHostRequest, PairRelayHostResponse,
     RemoveRelayPairedHostResponse,
@@ -12,10 +14,7 @@ use relay_types::{
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    relay_pairing::{build_relay_pairing_client, client::RelayPairingClientError},
-};
+use crate::DeploymentImpl;
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -31,9 +30,7 @@ pub async fn pair_relay_host(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<PairRelayHostRequest>,
 ) -> Response {
-    let client = build_relay_pairing_client(&deployment);
-
-    match client.pair_host(&req).await {
+    match deployment.relay_hosts().pair_host(&req).await {
         Ok(()) => (
             StatusCode::OK,
             Json(ApiResponse::<PairRelayHostResponse>::success(
@@ -46,8 +43,7 @@ pub async fn pair_relay_host(
 }
 
 pub async fn list_relay_paired_hosts(State(deployment): State<DeploymentImpl>) -> Response {
-    let client = build_relay_pairing_client(&deployment);
-    let hosts = client.list_hosts().await;
+    let hosts = deployment.relay_hosts().list_hosts().await;
 
     (
         StatusCode::OK,
@@ -62,9 +58,7 @@ pub async fn remove_relay_paired_host(
     State(deployment): State<DeploymentImpl>,
     Path(host_id): Path<Uuid>,
 ) -> Response {
-    let client = build_relay_pairing_client(&deployment);
-
-    match client.remove_host(host_id).await {
+    match deployment.relay_hosts().remove_host(host_id).await {
         Ok(removed) => (
             StatusCode::OK,
             Json(ApiResponse::<RemoveRelayPairedHostResponse>::success(

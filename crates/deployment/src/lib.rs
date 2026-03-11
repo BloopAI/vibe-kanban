@@ -10,6 +10,7 @@ use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
 use relay_control::{RelayControl, signing::RelaySigningService};
+use relay_hosts::RelayHosts;
 use remote_info::RemoteInfo;
 use serde_json::Value;
 use services::services::{
@@ -111,6 +112,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn client_info(&self) -> &Arc<ClientInfo>;
 
     fn remote_info(&self) -> &Arc<RemoteInfo>;
+
+    fn relay_hosts(&self) -> &Arc<RelayHosts>;
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 

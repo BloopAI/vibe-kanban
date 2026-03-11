@@ -1495,6 +1495,7 @@ dependencies = [
  "git",
  "git2",
  "relay-control",
+ "relay-hosts",
  "remote-info",
  "serde_json",
  "services",
@@ -3515,6 +3516,7 @@ dependencies = [
  "globwalk",
  "portable-pty",
  "relay-control",
+ "relay-hosts",
  "relay-types",
  "remote-info",
  "russh",
@@ -4984,6 +4986,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "relay-hosts"
+version = "0.1.27"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "desktop-bridge",
+ "ed25519-dalek",
+ "http",
+ "relay-client",
+ "relay-control",
+ "relay-types",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "services",
+ "tokio",
+ "tracing",
+ "trusted-key-auth",
+ "url",
+ "utils",
+ "uuid",
+]
+
+[[package]]
 name = "relay-tunnel"
 version = "0.1.5"
 dependencies = [
@@ -6093,6 +6119,7 @@ dependencies = [
  "regex",
  "relay-client",
  "relay-control",
+ "relay-hosts",
  "relay-tunnel",
  "relay-types",
  "reqwest 0.13.2",

@@ -9,15 +9,14 @@ use axum::{
     response::{IntoResponse, Response},
     routing::any,
 };
+use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
 use relay_client::SignedUpstreamSocket;
 use relay_control::signed_ws::{RelayTransportMessage, RelayWsMessageType};
+use relay_hosts::{HostRelayProxyError, HostRelayWsConnection};
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    host_relay::{HostRelayProxyError, HostRelayService, HostRelayWsConnection},
-};
+use crate::DeploymentImpl;
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
 
@@ -44,7 +43,7 @@ pub fn router() -> Router<DeploymentImpl> {
 }
 
 async fn proxy_host_request(
-    State(host_relay): State<HostRelayService>,
+    State(deployment): State<DeploymentImpl>,
     Path((host_id, tail)): Path<(Uuid, String)>,
     ws_upgrade: MaybeWsUpgrade,
     mut request: Request,
@@ -57,15 +56,15 @@ async fn proxy_host_request(
     *request.uri_mut() = upstream_uri;
 
     let response = match ws_upgrade {
-        Ok(ws_upgrade) => forward_ws(&host_relay, host_id, request, ws_upgrade).await,
-        Err(_) => forward_http(&host_relay, host_id, request).await,
+        Ok(ws_upgrade) => forward_ws(&deployment, host_id, request, ws_upgrade).await,
+        Err(_) => forward_http(&deployment, host_id, request).await,
     };
 
     response.unwrap_or_else(IntoResponse::into_response)
 }
 
 async fn forward_http(
-    host_relay: &HostRelayService,
+    deployment: &DeploymentImpl,
     host_id: Uuid,
     request: Request,
 ) -> Result<Response, RelayProxyError> {
@@ -83,8 +82,10 @@ async fn forward_http(
         RelayProxyError::BadRequest("Invalid request body")
     })?;
 
-    let response = host_relay
-        .proxy_http(host_id, &method, &target_path, &headers, &body_bytes)
+    let response = deployment
+        .relay_hosts()
+        .host(host_id)
+        .proxy_http(&method, &target_path, &headers, &body_bytes)
         .await
         .map_err(|error| map_http_proxy_error(host_id, error))?;
 
@@ -92,7 +93,7 @@ async fn forward_http(
 }
 
 async fn forward_ws(
-    host_relay: &HostRelayService,
+    deployment: &DeploymentImpl,
     host_id: Uuid,
     request: Request,
     ws_upgrade: WebSocketUpgrade,
@@ -112,8 +113,10 @@ async fn forward_ws(
     let HostRelayWsConnection {
         upstream_socket,
         selected_protocol,
-    } = host_relay
-        .proxy_ws(host_id, &target_path, protocols.as_deref())
+    } = deployment
+        .relay_hosts()
+        .host(host_id)
+        .proxy_ws(&target_path, protocols.as_deref())
         .await
         .map_err(|error| map_ws_proxy_error(host_id, error))?;
 
