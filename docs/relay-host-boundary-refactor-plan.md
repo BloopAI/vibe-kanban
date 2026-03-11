@@ -31,13 +31,13 @@ This plan is now complete.
 
 - Done: relay host credential and auth-state access now live behind a
   dedicated `RelayHostStore`.
-- Done: the host-relay application API now exposes `ResolvedHostRelay`
-  directly, using a narrow module-level opening function instead of bootstrap
-  and persist free functions or a dedicated dependency bundle type.
+- Done: the host-relay application API is now `HostRelayService`, which owns
+  host opening, relay transport bootstrap, and auth-state persistence
+  internally.
 - Done: the host-relay application layer no longer depends on
   `DeploymentImpl`.
 - Done: `relay_proxy` and `open_remote_editor` now consume the resolved host
-  boundary instead of managing auth-state persistence directly.
+  service instead of managing auth-state persistence directly.
 - Done: pairing and relay-auth flows now live behind the dedicated
   `relay_pairing` application boundary.
 - Done: `routes/relay_auth/client.rs` and `routes/relay_auth/server.rs` are
@@ -152,58 +152,41 @@ proxy/editor host access beyond low-level SDK usage.
 
 ## Proposed Public Shape
 
-The host-relay boundary should expose one application-facing entrypoint:
+The host-relay boundary should expose one application-facing service:
 
 ```rust
-pub struct ResolvedHostRelay { ... }
+pub struct HostRelayService { ... }
 
-pub async fn open_host_relay(
-    deployment: &DeploymentImpl,
-    host_id: Uuid,
-) -> Result<ResolvedHostRelay, HostRelayResolveError>;
-
-impl ResolvedHostRelay {
-    pub async fn open(
+impl HostRelayService {
+    pub async fn proxy_http(
+        &self,
         host_id: Uuid,
-        store: RelayHostStore,
-        remote_client: RemoteClient,
-        relay_base_url: String,
-        signing_key: SigningKey,
-    )
-        -> Result<ResolvedHostRelay, HostRelayResolveError>;
-}
-```
-
-The resolved handle should then expose host operations:
-
-```rust
-impl ResolvedHostRelay {
-    pub async fn send_http(
-        &mut self,
         method: &Method,
         target_path: &str,
         headers: &HeaderMap,
         body: &[u8],
-    ) -> Result<reqwest::Response, HostRelayOperationError>;
+    ) -> Result<reqwest::Response, HostRelayProxyError>;
 
-    pub async fn connect_ws(
-        &mut self,
+    pub async fn proxy_ws(
+        &self,
+        host_id: Uuid,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(SignedUpstreamSocket, Option<String>), HostRelayOperationError>;
+    ) -> Result<HostRelayWsConnection, HostRelayProxyError>;
 
-    pub async fn get_json<T>(&mut self, path: &str)
-        -> Result<T, HostRelayOperationError>
-    where
-        T: DeserializeOwned;
-
-    pub fn tunnel_access(&self) -> RelayTunnelAccess;
+    pub async fn open_workspace_in_editor(
+        &self,
+        host_id: Uuid,
+        workspace_id: Uuid,
+        editor_type: Option<&str>,
+        file_path: Option<&str>,
+    ) -> Result<OpenRemoteEditorResponse, OpenRemoteEditorError>;
 }
 ```
 
-The exact type names can change. The important part is that the route layer
-gets a resolved host handle from a narrow opening function, not a bag of
-bootstrap and persistence functions.
+Routes should depend on that service, not on a resolved host handle or free
+bootstrap/persistence helpers. The relay SDK bootstrap and auth-state cache
+updates remain internal to the service.
 
 ## Supporting Services
 
