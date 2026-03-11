@@ -1,6 +1,6 @@
 use api_types::{
-    DeleteResponse, Issue, IssuePriority, IssueSortField, ListIssuesQuery, ListIssuesResponse,
-    MutationResponse, PullRequestStatus, SortDirection,
+    DeleteResponse, Issue, IssuePriority, IssueSortField, ListIssuesResponse,
+    MutationResponse, PullRequestStatus, SearchIssuesRequest, SortDirection,
 };
 use chrono::{DateTime, Utc};
 use serde_json::Value;
@@ -60,9 +60,9 @@ impl IssueRepository {
             .replace('_', r"\_")
     }
 
-    pub async fn list(
+    pub async fn search(
         pool: &PgPool,
-        query: &ListIssuesQuery,
+        query: &SearchIssuesRequest,
     ) -> Result<ListIssuesResponse, IssueError> {
         let status_ids = query.status_ids.as_deref();
         let search_pattern = query

@@ -10,11 +10,11 @@ use api_types::{
     GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
     HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
     ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
-    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesQuery, ListIssuesResponse,
-    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
-    ListProjectsResponse, ListPullRequestsResponse, ListTagsResponse, MutationResponse,
-    Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
-    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
+    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
+    ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
+    RevokeInvitationRequest, SearchIssuesRequest, Tag, TokenRefreshRequest, TokenRefreshResponse,
+    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
     UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
@@ -754,16 +754,18 @@ impl RemoteClient {
     /// Lists issues for a project.
     pub async fn list_issues(
         &self,
-        query: &ListIssuesQuery,
+        project_id: Uuid,
     ) -> Result<ListIssuesResponse, RemoteClientError> {
-        let query_pairs = query.to_query_pairs();
-        self.send_internal_with_request(reqwest::Method::GET, "/v1/issues", true, None, |req| {
-            req.query(&query_pairs)
-        })
-        .await?
-        .json::<ListIssuesResponse>()
-        .await
-        .map_err(|e| RemoteClientError::Serde(e.to_string()))
+        self.get_authed(&format!("/v1/issues?project_id={project_id}"))
+            .await
+    }
+
+    /// Searches issues for a project using the canonical JSON request shape.
+    pub async fn search_issues(
+        &self,
+        request: &SearchIssuesRequest,
+    ) -> Result<ListIssuesResponse, RemoteClientError> {
+        self.post_authed("/v1/issues/search", Some(request)).await
     }
 
     /// Gets a single issue by ID.

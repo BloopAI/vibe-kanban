@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use api_types::{
     CreateIssueRequest, Issue, IssuePriority, IssueRelationshipType, IssueSortField,
-    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesQuery, ListIssuesResponse,
-    ListPullRequestsResponse, ListTagsResponse, MutationResponse, PullRequestStatus, SortDirection,
-    UpdateIssueRequest,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse,
+    ListPullRequestsResponse, ListTagsResponse, MutationResponse, PullRequestStatus,
+    SearchIssuesRequest, SortDirection, UpdateIssueRequest,
 };
 use rmcp::{
     ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
@@ -419,7 +419,7 @@ impl McpServer {
                 offset: offset.unwrap_or(0).max(0) as usize,
             }
         } else {
-            let query = ListIssuesQuery {
+            let query = SearchIssuesRequest {
                 project_id,
                 status_id,
                 status_ids,
@@ -435,11 +435,8 @@ impl McpServer {
                 limit: Some(limit.unwrap_or(50).max(0)),
                 offset: Some(offset.unwrap_or(0).max(0)),
             };
-            let url = self.url("/api/remote/issues");
-            match self
-                .send_json(self.client.get(&url).query(&query.to_query_pairs()))
-                .await
-            {
+            let url = self.url("/api/remote/issues/search");
+            match self.send_json(self.client.post(&url).json(&query)).await {
                 Ok(r) => r,
                 Err(e) => return Ok(e),
             }
