@@ -39,6 +39,8 @@ export function useAllOrganizationProjects(
       return;
     }
 
+    setIsLoading(true);
+
     const subscriptions: { unsubscribe: () => void }[] = [];
     const projectsByOrg = new Map<string, Project[]>();
 

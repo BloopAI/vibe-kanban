@@ -209,27 +209,33 @@ export function NavbarContainer({
   const shouldResolveIssueBreadcrumb =
     shouldResolveBreadcrumbData && !!linkedIssueId;
 
-  const { data: allProjects } = useAllOrganizationProjects({
-    enabled: shouldResolveBreadcrumbData,
-  });
+  const { data: allProjects, isLoading: isProjectsLoading } =
+    useAllOrganizationProjects({
+      enabled: shouldResolveBreadcrumbData,
+    });
   const { data: projectIssues, isLoading: isProjectIssuesLoading } = useShape(
     PROJECT_ISSUES_SHAPE,
     { project_id: linkedProjectId || '' },
     { enabled: shouldResolveIssueBreadcrumb }
   );
+  const linkedProject = allProjects.find((p) => p.id === linkedProjectId);
+  const isWaitingForProjectBreadcrumb =
+    shouldResolveBreadcrumbData && !linkedProject && isProjectsLoading;
   const isWaitingForIssueBreadcrumb =
     shouldResolveIssueBreadcrumb && isProjectIssuesLoading;
+  const isWaitingForBreadcrumbData =
+    isWaitingForProjectBreadcrumb || isWaitingForIssueBreadcrumb;
 
   const breadcrumbs = useMemo((): NavbarBreadcrumbItem[] | undefined => {
     if (
       !shouldResolveBreadcrumbData ||
       !linkedProjectId ||
-      isWaitingForIssueBreadcrumb
+      isWaitingForBreadcrumbData
     ) {
       return undefined;
     }
 
-    const project = allProjects.find((p) => p.id === linkedProjectId);
+    const project = linkedProject;
     if (!project) return undefined;
 
     const items: NavbarBreadcrumbItem[] = [
@@ -261,8 +267,8 @@ export function NavbarContainer({
     shouldResolveBreadcrumbData,
     linkedProjectId,
     linkedIssueId,
-    isWaitingForIssueBreadcrumb,
-    allProjects,
+    linkedProject,
+    isWaitingForBreadcrumbData,
     projectIssues,
     selectedWorkspace?.name,
     selectedWorkspace?.branch,
@@ -333,7 +339,7 @@ export function NavbarContainer({
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}
       leftSlot={
         !breadcrumbs &&
-        !isWaitingForIssueBreadcrumb &&
+        !isWaitingForBreadcrumbData &&
         linkedRemoteWorkspace?.issue_id ? (
           <RemoteIssueLink
             projectId={linkedRemoteWorkspace.project_id}
