@@ -1705,6 +1705,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "jsonwebtoken",
+ "relay-types",
  "rustls",
  "secrecy",
  "serde",
@@ -1719,6 +1720,17 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
+ "uuid",
+]
+
+[[package]]
+name = "relay-types"
+version = "0.1.27"
+dependencies = [
+ "chrono",
+ "serde",
+ "sqlx",
+ "ts-rs",
  "uuid",
 ]
 

@@ -2,13 +2,15 @@ use std::{collections::HashMap, sync::Arc};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
+use client_info::ClientInfo;
 use db::DBService;
-use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
+use deployment::{Deployment, DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
 use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use relay_control::{RelayControl, signing::RelaySigningService};
-use server_info::ServerInfo;
+use relay_hosts::RelayHosts;
+use remote_info::RemoteInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -29,8 +31,8 @@ use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
     assets::{
-        config_path, credentials_path, relay_host_credentials_path, server_signing_key_path,
-        ssh_host_key_path, trusted_keys_path,
+        config_path, credentials_path, server_signing_key_path, ssh_host_key_path,
+        trusted_keys_path,
     },
     msg_store::MsgStore,
 };
@@ -61,45 +63,23 @@ pub struct LocalDeployment {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
-    shared_api_base: Option<String>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     trusted_key_auth: TrustedKeyAuthRuntime,
     relay_signing: RelaySigningService,
     relay_control: Arc<RelayControl>,
-    server_info: Arc<ServerInfo>,
+    client_info: ClientInfo,
+    remote_info: RemoteInfo,
+    tunnel_manager: Arc<TunnelManager>,
+    relay_hosts: Option<Arc<RelayHosts>>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
-    tunnel_manager: Arc<TunnelManager>,
-    relay_host_credentials: Arc<RwLock<HashMap<Uuid, RelayHostCredentials>>>,
-    relay_sessions: Arc<RwLock<HashMap<Uuid, RelaySessionCacheEntry>>>,
 }
 
 #[derive(Debug, Clone)]
 struct PendingHandoff {
     provider: String,
     app_verifier: String,
-}
-
-#[derive(Debug, Clone, Default)]
-struct RelaySessionCacheEntry {
-    remote_session_id: Option<Uuid>,
-    signing_session_id: Option<String>,
-}
-
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct RelayHostCredentials {
-    pub host_name: Option<String>,
-    pub paired_at: Option<String>,
-    pub client_id: Option<String>,
-    pub server_public_key_b64: Option<String>,
-}
-
-#[derive(Debug, Clone)]
-pub struct RelayHostCredentialSummary {
-    pub host_id: Uuid,
-    pub host_name: Option<String>,
-    pub paired_at: Option<String>,
 }
 
 #[async_trait]
@@ -186,9 +166,23 @@ impl Deployment for LocalDeployment {
         let api_base = std::env::var("VK_SHARED_API_BASE")
             .ok()
             .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
+        let relay_api_base = std::env::var("VK_SHARED_RELAY_API_BASE")
+            .ok()
+            .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()));
+        let remote_info = RemoteInfo::new();
+        if let Some(api_base) = api_base.clone() {
+            remote_info
+                .set_api_base(api_base)
+                .expect("api_base already set");
+        }
+        if let Some(relay_api_base) = relay_api_base {
+            remote_info
+                .set_relay_api_base(relay_api_base)
+                .expect("relay_api_base already set");
+        }
 
-        let remote_client = match &api_base {
-            Some(url) => match RemoteClient::new(url, auth_context.clone()) {
+        let remote_client = match remote_info.get_api_base() {
+            Some(url) => match RemoteClient::new(&url, auth_context.clone()) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
                     Ok(client)
@@ -209,7 +203,7 @@ impl Deployment for LocalDeployment {
         let relay_signing = RelaySigningService::load_or_generate(&server_signing_key_path())
             .expect("Failed to load or generate server signing key");
         let relay_control = Arc::new(RelayControl::new());
-        let server_info = Arc::new(ServerInfo::new());
+        let client_info = ClientInfo::new();
 
         let ssh_host_key = embedded_ssh::host_key::load_or_generate(&ssh_host_key_path())
             .expect("Failed to load or generate SSH host key");
@@ -242,8 +236,12 @@ impl Deployment for LocalDeployment {
 
         let pty = PtyService::new();
         let tunnel_manager = Arc::new(TunnelManager::new());
-        let relay_host_credentials = Arc::new(RwLock::new(load_relay_host_credentials_map().await));
-        let relay_sessions = Arc::new(RwLock::new(HashMap::new()));
+        let relay_hosts = match remote_client.clone().ok() {
+            Some(remote_client) => Some(Arc::new(
+                RelayHosts::load(remote_client, remote_info.clone(), relay_signing.clone()).await,
+            )),
+            None => None,
+        };
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -271,18 +269,17 @@ impl Deployment for LocalDeployment {
             approvals,
             queued_message_service,
             remote_client,
-            shared_api_base: api_base,
             auth_context,
             oauth_handoffs,
             trusted_key_auth,
             relay_signing,
             relay_control,
-            server_info,
+            client_info,
+            remote_info,
+            tunnel_manager,
+            relay_hosts,
             ssh_config,
             pty,
-            tunnel_manager,
-            relay_host_credentials,
-            relay_sessions,
         };
 
         Ok(deployment)
@@ -352,16 +349,24 @@ impl Deployment for LocalDeployment {
         &self.relay_signing
     }
 
-    fn server_info(&self) -> &Arc<ServerInfo> {
-        &self.server_info
+    fn client_info(&self) -> &ClientInfo {
+        &self.client_info
+    }
+
+    fn remote_info(&self) -> &RemoteInfo {
+        &self.remote_info
+    }
+
+    fn tunnel_manager(&self) -> &Arc<TunnelManager> {
+        &self.tunnel_manager
+    }
+
+    fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
+        self.relay_hosts.as_ref().ok_or(RelayHostsNotConfigured)
     }
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {
         &self.trusted_key_auth
-    }
-
-    fn shared_api_base(&self) -> Option<String> {
-        self.shared_api_base.clone()
     }
 }
 
@@ -434,164 +439,4 @@ impl LocalDeployment {
     pub fn ssh_config(&self) -> &Arc<russh::server::Config> {
         &self.ssh_config
     }
-
-    pub fn tunnel_manager(&self) -> &Arc<TunnelManager> {
-        &self.tunnel_manager
-    }
-
-    pub async fn get_cached_relay_remote_session_id(&self, host_id: Uuid) -> Option<Uuid> {
-        self.relay_sessions
-            .read()
-            .await
-            .get(&host_id)
-            .and_then(|entry| entry.remote_session_id)
-    }
-
-    pub async fn cache_relay_remote_session_id(&self, host_id: Uuid, session_id: Uuid) {
-        self.relay_sessions
-            .write()
-            .await
-            .entry(host_id)
-            .or_default()
-            .remote_session_id = Some(session_id);
-    }
-
-    pub async fn invalidate_cached_relay_remote_session_id(&self, host_id: Uuid) {
-        let mut sessions = self.relay_sessions.write().await;
-        let should_remove = if let Some(entry) = sessions.get_mut(&host_id) {
-            entry.remote_session_id = None;
-            entry.signing_session_id.is_none()
-        } else {
-            false
-        };
-        if should_remove {
-            sessions.remove(&host_id);
-        }
-    }
-
-    pub async fn get_cached_relay_signing_session_id(&self, host_id: Uuid) -> Option<String> {
-        self.relay_sessions
-            .read()
-            .await
-            .get(&host_id)
-            .and_then(|entry| entry.signing_session_id.clone())
-    }
-
-    pub async fn cache_relay_signing_session_id(&self, host_id: Uuid, session_id: String) {
-        self.relay_sessions
-            .write()
-            .await
-            .entry(host_id)
-            .or_default()
-            .signing_session_id = Some(session_id);
-    }
-
-    pub async fn invalidate_cached_relay_signing_session_id(&self, host_id: Uuid) {
-        let mut sessions = self.relay_sessions.write().await;
-        let should_remove = if let Some(entry) = sessions.get_mut(&host_id) {
-            entry.signing_session_id = None;
-            entry.remote_session_id.is_none()
-        } else {
-            false
-        };
-        if should_remove {
-            sessions.remove(&host_id);
-        }
-    }
-
-    pub async fn upsert_relay_host_credentials(
-        &self,
-        host_id: Uuid,
-        host_name: Option<String>,
-        paired_at: Option<String>,
-        client_id: Option<String>,
-        server_public_key_b64: Option<String>,
-    ) -> anyhow::Result<()> {
-        let mut credentials = self.relay_host_credentials.write().await;
-        let existing = credentials.get(&host_id).cloned();
-        credentials.insert(
-            host_id,
-            RelayHostCredentials {
-                host_name: host_name
-                    .or_else(|| existing.as_ref().and_then(|value| value.host_name.clone())),
-                paired_at: paired_at
-                    .or_else(|| existing.as_ref().and_then(|value| value.paired_at.clone())),
-                client_id: client_id
-                    .or_else(|| existing.as_ref().and_then(|value| value.client_id.clone())),
-                server_public_key_b64: server_public_key_b64.or_else(|| {
-                    existing
-                        .as_ref()
-                        .and_then(|value| value.server_public_key_b64.clone())
-                }),
-            },
-        );
-
-        // Persist while holding the write lock so concurrent upserts cannot
-        // write older snapshots after newer updates.
-        persist_relay_host_credentials_map(&credentials).await
-    }
-
-    pub async fn get_relay_host_credentials(&self, host_id: Uuid) -> Option<RelayHostCredentials> {
-        self.relay_host_credentials
-            .read()
-            .await
-            .get(&host_id)
-            .cloned()
-    }
-
-    pub async fn list_relay_host_credentials_summary(&self) -> Vec<RelayHostCredentialSummary> {
-        self.relay_host_credentials
-            .read()
-            .await
-            .iter()
-            .map(|(host_id, value)| RelayHostCredentialSummary {
-                host_id: *host_id,
-                host_name: value.host_name.clone(),
-                paired_at: value.paired_at.clone(),
-            })
-            .collect()
-    }
-
-    pub async fn remove_relay_host_credentials(&self, host_id: Uuid) -> anyhow::Result<bool> {
-        let mut credentials = self.relay_host_credentials.write().await;
-        let removed = credentials.remove(&host_id).is_some();
-
-        if removed {
-            self.invalidate_cached_relay_remote_session_id(host_id)
-                .await;
-            self.invalidate_cached_relay_signing_session_id(host_id)
-                .await;
-            persist_relay_host_credentials_map(&credentials).await?;
-        }
-
-        Ok(removed)
-    }
-}
-
-async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {
-    let path = relay_host_credentials_path();
-    let Ok(raw) = tokio::fs::read_to_string(&path).await else {
-        return HashMap::new();
-    };
-
-    match serde_json::from_str::<HashMap<Uuid, RelayHostCredentials>>(&raw) {
-        Ok(value) => value,
-        Err(error) => {
-            tracing::warn!(
-                ?error,
-                path = %path.display(),
-                "Failed to parse relay host credentials file"
-            );
-            HashMap::new()
-        }
-    }
-}
-
-async fn persist_relay_host_credentials_map(
-    map: &HashMap<Uuid, RelayHostCredentials>,
-) -> anyhow::Result<()> {
-    let path = relay_host_credentials_path();
-    let json = serde_json::to_string_pretty(map)?;
-    tokio::fs::write(&path, json).await?;
-    Ok(())
 }

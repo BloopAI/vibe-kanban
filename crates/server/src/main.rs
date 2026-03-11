@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, relay::registration, routes};
+use server::{DeploymentImpl, preview_proxy, routes, runtime::relay_registration};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
@@ -88,8 +88,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     tokio::spawn(async move {
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
-    let app_router = routes::router(deployment.clone());
-
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
         .ok()
@@ -131,6 +129,17 @@ async fn main() -> Result<(), VibeKanbanError> {
         actual_proxy_port
     );
 
+    deployment
+        .client_info()
+        .set_port(actual_main_port)
+        .expect("client port already set");
+    deployment
+        .client_info()
+        .set_hostname(host.clone())
+        .expect("client hostname already set");
+
+    let app_router = routes::router(deployment.clone());
+
     // Production only: open browser
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
@@ -169,13 +178,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    deployment.server_info().set_port(actual_main_port).await;
-    let relay_host_name = {
-        let config = deployment.config().read().await;
-        registration::effective_relay_host_name(&config, deployment.user_id())
-    };
-    deployment.server_info().set_hostname(relay_host_name).await;
-    registration::spawn_relay(&deployment).await;
+    relay_registration::spawn_relay(&deployment).await;
 
     tokio::select! {
         _ = shutdown_signal() => {

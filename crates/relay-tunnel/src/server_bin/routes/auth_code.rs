@@ -1,12 +1,12 @@
 //! Generate one-time auth codes for relay browser-session exchange.
 
-use api_types::CreateRemoteSessionResponse;
 use axum::{
     Extension, Json,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use relay_types::CreateRemoteSessionResponse;
 use uuid::Uuid;
 
 use super::super::{

@@ -881,6 +881,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 
 [[package]]
+name = "client-info"
+version = "0.1.28"
+
+[[package]]
 name = "clipboard-win"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1484,14 +1488,17 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "client-info",
  "db",
+ "desktop-bridge",
  "executors",
  "futures",
  "git",
  "git2",
  "relay-control",
+ "relay-hosts",
+ "remote-info",
  "serde_json",
- "server-info",
  "services",
  "sqlx",
  "thiserror 2.0.18",
@@ -3497,6 +3504,7 @@ dependencies = [
  "api-types",
  "async-trait",
  "base64",
+ "client-info",
  "command-group",
  "db",
  "deployment",
@@ -3509,10 +3517,12 @@ dependencies = [
  "globwalk",
  "portable-pty",
  "relay-control",
+ "relay-hosts",
+ "relay-types",
+ "remote-info",
  "russh",
  "serde",
  "serde_json",
- "server-info",
  "services",
  "sqlx",
  "tempfile",
@@ -4937,6 +4947,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
+name = "relay-client"
+version = "0.1.27"
+dependencies = [
+ "anyhow",
+ "base64",
+ "ed25519-dalek",
+ "http",
+ "os_info",
+ "relay-control",
+ "relay-types",
+ "reqwest 0.13.2",
+ "serde",
+ "spake2",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "trusted-key-auth",
+ "uuid",
+]
+
+[[package]]
 name = "relay-control"
 version = "0.1.28"
 dependencies = [
@@ -4953,6 +4983,31 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.26.2",
  "tokio-util",
+ "uuid",
+]
+
+[[package]]
+name = "relay-hosts"
+version = "0.1.27"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "desktop-bridge",
+ "ed25519-dalek",
+ "http",
+ "relay-client",
+ "relay-control",
+ "relay-types",
+ "remote-info",
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "services",
+ "tokio",
+ "tracing",
+ "trusted-key-auth",
+ "url",
+ "utils",
  "uuid",
 ]
 
@@ -4976,6 +5031,21 @@ dependencies = [
  "tracing",
  "url",
 ]
+
+[[package]]
+name = "relay-types"
+version = "0.1.27"
+dependencies = [
+ "chrono",
+ "serde",
+ "sqlx",
+ "ts-rs 11.0.1",
+ "uuid",
+]
+
+[[package]]
+name = "remote-info"
+version = "0.1.27"
 
 [[package]]
 name = "reqwest"
@@ -6049,8 +6119,11 @@ dependencies = [
  "os_info",
  "rand 0.8.5",
  "regex",
+ "relay-client",
  "relay-control",
+ "relay-hosts",
  "relay-tunnel",
+ "relay-types",
  "reqwest 0.13.2",
  "rmp-serde",
  "rust-embed",
@@ -6080,13 +6153,6 @@ dependencies = [
  "uuid",
  "workspace-manager",
  "worktree-manager",
-]
-
-[[package]]
-name = "server-info"
-version = "0.1.28"
-dependencies = [
- "tokio",
 ]
 
 [[package]]

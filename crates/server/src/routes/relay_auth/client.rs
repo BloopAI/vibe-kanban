@@ -1,33 +1,20 @@
-use anyhow::Context as _;
 use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Json as ResponseJson, Response},
     routing::{delete, get, post},
 };
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use chrono::Utc;
 use deployment::Deployment;
-use serde::{Deserialize, Serialize};
-use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
-use trusted_key_auth::{
-    key_confirmation::{build_client_proof, verify_server_proof},
-    spake2::normalize_enrollment_code,
-    trusted_keys::parse_public_key_base64,
+use relay_hosts::RelayPairingClientError;
+use relay_types::{
+    ListRelayPairedHostsResponse, PairRelayHostRequest, PairRelayHostResponse,
+    RemoveRelayPairedHostResponse,
 };
-use ts_rs::TS;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use super::types::{
-    FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, StartSpake2EnrollmentRequest,
-    StartSpake2EnrollmentResponse,
-};
-use crate::{DeploymentImpl, relay::api::RelayApiClient};
-
-const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
-const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
+use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -39,121 +26,46 @@ pub fn router() -> Router<DeploymentImpl> {
         )
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PairRelayHostRequest {
-    pub host_id: Uuid,
-    pub host_name: String,
-    pub enrollment_code: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct PairRelayHostResponse {
-    pub paired: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RelayPairedHost {
-    pub host_id: Uuid,
-    pub host_name: Option<String>,
-    pub paired_at: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct ListRelayPairedHostsResponse {
-    pub hosts: Vec<RelayPairedHost>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct RemoveRelayPairedHostResponse {
-    pub removed: bool,
-}
-
 pub async fn pair_relay_host(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<PairRelayHostRequest>,
 ) -> Response {
-    let paired_credentials = match pair_relay_host_credentials(&deployment, &req).await {
-        Ok(credentials) => credentials,
-        Err(error) => {
-            tracing::warn!(?error, host_id = %req.host_id, "Failed to pair relay host");
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(ApiResponse::<PairRelayHostResponse>::error(
-                    &error.to_string(),
-                )),
-            )
-                .into_response();
-        }
+    let relay_hosts = match deployment.relay_hosts() {
+        Ok(relay_hosts) => relay_hosts,
+        Err(error) => return ApiError::from(error).into_response(),
     };
-    let PairedCredentials {
-        signing_session_id,
-        client_id,
-        server_public_key_b64,
-    } = paired_credentials;
 
-    match deployment
-        .upsert_relay_host_credentials(
-            req.host_id,
-            Some(req.host_name.clone()),
-            Some(Utc::now().to_rfc3339()),
-            Some(client_id),
-            Some(server_public_key_b64),
+    match relay_hosts.pair_host(&req).await {
+        Ok(()) => (
+            StatusCode::OK,
+            Json(ApiResponse::<PairRelayHostResponse>::success(
+                PairRelayHostResponse { paired: true },
+            )),
         )
-        .await
-    {
-        Ok(()) => {
-            deployment
-                .cache_relay_signing_session_id(req.host_id, signing_session_id)
-                .await;
-            (
-                StatusCode::OK,
-                Json(ApiResponse::<PairRelayHostResponse>::success(
-                    PairRelayHostResponse { paired: true },
-                )),
-            )
-                .into_response()
-        }
-        Err(error) => {
-            tracing::error!(?error, "Failed to persist paired relay host credentials");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ApiResponse::<PairRelayHostResponse>::error(
-                    "Failed to persist paired relay host credentials",
-                )),
-            )
-                .into_response()
-        }
+            .into_response(),
+        Err(error) => map_pair_relay_host_error(req.host_id, error),
     }
 }
 
-pub async fn list_relay_paired_hosts(State(deployment): State<DeploymentImpl>) -> Response {
-    let mut hosts = deployment
-        .list_relay_host_credentials_summary()
-        .await
-        .into_iter()
-        .map(|value| RelayPairedHost {
-            host_id: value.host_id,
-            host_name: value.host_name,
-            paired_at: value.paired_at,
-        })
-        .collect::<Vec<_>>();
-
-    hosts.sort_by(|a, b| b.paired_at.cmp(&a.paired_at));
-
-    (
-        StatusCode::OK,
-        Json(ApiResponse::<ListRelayPairedHostsResponse>::success(
-            ListRelayPairedHostsResponse { hosts },
-        )),
-    )
-        .into_response()
+pub async fn list_relay_paired_hosts(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ListRelayPairedHostsResponse>>, ApiError> {
+    let hosts = deployment.relay_hosts()?.list_hosts().await;
+    Ok(ResponseJson(ApiResponse::success(
+        ListRelayPairedHostsResponse { hosts },
+    )))
 }
 
 pub async fn remove_relay_paired_host(
     State(deployment): State<DeploymentImpl>,
     Path(host_id): Path<Uuid>,
 ) -> Response {
-    match deployment.remove_relay_host_credentials(host_id).await {
+    let relay_hosts = match deployment.relay_hosts() {
+        Ok(relay_hosts) => relay_hosts,
+        Err(error) => return ApiError::from(error).into_response(),
+    };
+
+    match relay_hosts.remove_host(host_id).await {
         Ok(removed) => (
             StatusCode::OK,
             Json(ApiResponse::<RemoveRelayPairedHostResponse>::success(
@@ -174,97 +86,44 @@ pub async fn remove_relay_paired_host(
     }
 }
 
-#[derive(Debug, Clone)]
-struct PairedCredentials {
-    signing_session_id: String,
-    client_id: String,
-    server_public_key_b64: String,
-}
-
-async fn pair_relay_host_credentials(
-    deployment: &DeploymentImpl,
-    req: &PairRelayHostRequest,
-) -> anyhow::Result<PairedCredentials> {
-    let remote_client = deployment.remote_client()?;
-    let relay_client = RelayApiClient::new(
-        remote_client
-            .access_token()
-            .await
-            .context("Failed to get access token for relay auth code")?,
-    );
-    let relay_remote_session = relay_client.create_session(req.host_id).await?;
-
-    let normalized_code = normalize_enrollment_code(&req.enrollment_code)
-        .map_err(|error| anyhow::anyhow!(error.to_string()))?;
-
-    let password = Password::new(normalized_code.as_bytes());
-    let id_a = Identity::new(SPAKE2_CLIENT_ID);
-    let id_b = Identity::new(SPAKE2_SERVER_ID);
-    let (client_state, client_message) =
-        Spake2::<Ed25519Group>::start_a_with_rng(&password, &id_a, &id_b, UnwrapErr(SysRng));
-
-    let start_response: StartSpake2EnrollmentResponse = relay_client
-        .post_session_api(
-            &relay_remote_session,
-            "/api/relay-auth/server/spake2/start",
-            &StartSpake2EnrollmentRequest {
-                enrollment_code: normalized_code,
-                client_message_b64: BASE64_STANDARD.encode(client_message),
-            },
+fn map_pair_relay_host_error(host_id: Uuid, error: RelayPairingClientError) -> Response {
+    match error {
+        RelayPairingClientError::NotConfigured => (
+            StatusCode::BAD_REQUEST,
+            Json(ApiResponse::<PairRelayHostResponse>::error(
+                "Remote relay API is not configured",
+            )),
         )
-        .await?;
-
-    let server_message = BASE64_STANDARD
-        .decode(&start_response.server_message_b64)
-        .context("Invalid server_message_b64 in relay PAKE response")?;
-    let shared_key = client_state
-        .finish(&server_message)
-        .map_err(|_| anyhow::anyhow!("Failed to complete relay PAKE handshake"))?;
-
-    let signing_key = deployment.relay_signing().signing_key();
-    let client_public_key = signing_key.verifying_key();
-    let client_public_key_b64 = BASE64_STANDARD.encode(client_public_key.as_bytes());
-    let client_proof_b64 = build_client_proof(
-        &shared_key,
-        &start_response.enrollment_id,
-        client_public_key.as_bytes(),
-    )
-    .map_err(|_| anyhow::anyhow!("Failed to build relay PAKE client proof"))?;
-
-    let os = os_info::get();
-    let client_id = Uuid::new_v4();
-    let finish_response: FinishSpake2EnrollmentResponse = relay_client
-        .post_session_api(
-            &relay_remote_session,
-            "/api/relay-auth/server/spake2/finish",
-            &FinishSpake2EnrollmentRequest {
-                enrollment_id: start_response.enrollment_id,
-                client_id,
-                client_name: format!("Vibe Kanban Relay Pairing ({})", req.host_name),
-                client_browser: "local-backend".to_string(),
-                client_os: format!("{} {}", os.os_type(), os.version()),
-                client_device: "desktop".to_string(),
-                public_key_b64: client_public_key_b64,
-                client_proof_b64,
-            },
-        )
-        .await?;
-
-    let server_public_key = parse_public_key_base64(&finish_response.server_public_key_b64)
-        .map_err(|_| anyhow::anyhow!("Invalid server_public_key_b64 in relay PAKE response"))?;
-
-    verify_server_proof(
-        &shared_key,
-        &start_response.enrollment_id,
-        client_public_key.as_bytes(),
-        server_public_key.as_bytes(),
-        &finish_response.server_proof_b64,
-    )
-    .map_err(|_| anyhow::anyhow!("Relay server proof verification failed"))?;
-
-    Ok(PairedCredentials {
-        signing_session_id: finish_response.signing_session_id.to_string(),
-        client_id: client_id.to_string(),
-        server_public_key_b64: finish_response.server_public_key_b64,
-    })
+            .into_response(),
+        RelayPairingClientError::Authentication(error) => {
+            tracing::warn!(?error, %host_id, "Failed to authenticate relay host pairing");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<PairRelayHostResponse>::error(
+                    "Failed to authenticate relay host pairing",
+                )),
+            )
+                .into_response()
+        }
+        RelayPairingClientError::Pairing(error) => {
+            tracing::warn!(?error, %host_id, "Failed to pair relay host");
+            (
+                StatusCode::BAD_REQUEST,
+                Json(ApiResponse::<PairRelayHostResponse>::error(
+                    &error.to_string(),
+                )),
+            )
+                .into_response()
+        }
+        RelayPairingClientError::Store(error) => {
+            tracing::error!(?error, %host_id, "Failed to persist paired relay host credentials");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ApiResponse::<PairRelayHostResponse>::error(
+                    "Failed to persist paired relay host credentials",
+                )),
+            )
+                .into_response()
+        }
+    }
 }

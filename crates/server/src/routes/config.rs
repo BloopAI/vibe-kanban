@@ -36,7 +36,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-    relay::registration,
+    runtime::relay_registration,
 };
 
 pub fn router() -> Router<DeploymentImpl> {
@@ -104,7 +104,7 @@ pub struct UserSystemInfo {
 async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
-    let config = deployment.config().read().await;
+    let config = deployment.config().read().await.clone();
     let login_status = tokio::time::timeout(
         std::time::Duration::from_secs(2),
         deployment.get_login_status(),
@@ -114,7 +114,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        config: config.clone(),
+        config,
         analytics_user_id: deployment.user_id().to_string(),
         login_status,
         profiles: ExecutorConfigs::get_cached(),
@@ -129,7 +129,7 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.shared_api_base(),
+        shared_api_base: deployment.remote_info().get_api_base(),
         preview_proxy_port: crate::preview_proxy::get_proxy_port(),
     };
 
@@ -202,20 +202,15 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
-    let old_relay_host_name = registration::effective_relay_host_name(old, deployment.user_id());
-    let new_relay_host_name = registration::effective_relay_host_name(new, deployment.user_id());
-
-    deployment
-        .server_info()
-        .set_hostname(new_relay_host_name.clone())
-        .await;
+    let old_host_nickname = relay_registration::clean_host_nickname(old, deployment.user_id());
+    let new_host_nickname = relay_registration::clean_host_nickname(new, deployment.user_id());
 
     match (old.relay_enabled, new.relay_enabled) {
-        (false, true) => registration::spawn_relay(deployment).await,
-        (true, false) => registration::stop_relay(deployment).await,
+        (false, true) => relay_registration::spawn_relay(deployment).await,
+        (true, false) => relay_registration::stop_relay(deployment).await,
         (true, true) => {
-            if old_relay_host_name != new_relay_host_name {
-                registration::spawn_relay(deployment).await;
+            if old_host_nickname != new_host_nickname {
+                relay_registration::spawn_relay(deployment).await;
             }
         }
         (false, false) => (),

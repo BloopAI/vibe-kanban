@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 db = { path = "../db" }
+desktop-bridge = { path = "../desktop-bridge" }
 utils = { path = "../utils" }
 git = { path = "../git" }
 services = { path = "../services" }
@@ -14,8 +15,10 @@ async-trait = { workspace = true }
 thiserror = { workspace = true } 
 anyhow = { workspace = true }
 relay-control = { path = "../relay-control" }
+relay-hosts = { path = "../relay-hosts" }
 trusted-key-auth = { path = "../trusted-key-auth" }
-server-info = { path = "../server-info" }
+client-info = { path = "../client-info" }
+remote-info = { path = "../remote-info" }
 tokio = { workspace = true }
 sqlx = "0.8.6"
 serde_json = { workspace = true }

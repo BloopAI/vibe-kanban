@@ -1,4 +1,4 @@
-use api_types::RelayHost;
+use relay_types::RelayHost;
 use sqlx::PgPool;
 use uuid::Uuid;
 

@@ -11,19 +11,19 @@ use crate::DeploymentImpl;
 const RELAY_RECONNECT_INITIAL_DELAY_SECS: u64 = 1;
 const RELAY_RECONNECT_MAX_DELAY_SECS: u64 = 30;
 
-pub fn default_relay_host_name(user_id: &str) -> String {
+pub fn default_host_nickname(user_id: &str) -> String {
     let os_type = os_info::get().os_type().to_string();
     format!("{os_type} host ({user_id})")
 }
 
-pub fn effective_relay_host_name(config: &Config, user_id: &str) -> String {
+pub fn clean_host_nickname(config: &Config, user_id: &str) -> String {
     config
-        .relay_host_name
+        .host_nickname
         .as_deref()
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .map(str::to_string)
-        .unwrap_or_else(|| default_relay_host_name(user_id))
+        .unwrap_or_else(|| default_host_nickname(user_id))
 }
 
 struct RelayParams {
@@ -31,7 +31,7 @@ struct RelayParams {
     remote_client: RemoteClient,
     relay_base: String,
     machine_id: String,
-    host_name: String,
+    host_nickname: String,
 }
 
 /// Resolve all preconditions for starting the relay. Returns `None` if any
@@ -42,9 +42,10 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         tracing::info!("Relay disabled by config");
         return None;
     }
+    let host_nickname = clean_host_nickname(&config, deployment.user_id());
     drop(config);
 
-    let relay_base = super::relay_api_base().or_else(|| {
+    let relay_base = deployment.remote_info().get_relay_api_base().or_else(|| {
         tracing::debug!("VK_SHARED_RELAY_API_BASE not set; relay unavailable");
         None
     })?;
@@ -60,13 +61,8 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         return None;
     }
 
-    let local_port = deployment.server_info().get_port().await.or_else(|| {
+    let local_port = deployment.client_info().get_port().or_else(|| {
         tracing::warn!("Relay local port not set; cannot spawn relay");
-        None
-    })?;
-
-    let host_name = deployment.server_info().get_hostname().await.or_else(|| {
-        tracing::warn!("Server hostname not set; cannot spawn relay");
         None
     })?;
 
@@ -75,7 +71,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         remote_client,
         relay_base,
         machine_id: deployment.user_id().to_string(),
-        host_name,
+        host_nickname,
     })
 }
 
@@ -130,7 +126,7 @@ async fn start_relay(
 
     let encoded_name = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("machine_id", &params.machine_id)
-        .append_pair("name", &params.host_name)
+        .append_pair("name", &params.host_nickname)
         .append_pair("agent_version", env!("CARGO_PKG_VERSION"))
         .finish();
 

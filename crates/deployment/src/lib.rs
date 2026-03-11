@@ -3,14 +3,17 @@ use std::sync::Arc;
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use axum::response::sse::Event;
+use client_info::ClientInfo;
 use db::{DBService, models::workspace::WorkspaceError};
+use desktop_bridge::tunnel::TunnelManager;
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
 use relay_control::{RelayControl, signing::RelaySigningService};
+use relay_hosts::RelayHosts;
+use remote_info::RemoteInfo;
 use serde_json::Value;
-use server_info::ServerInfo;
 use services::services::{
     analytics::AnalyticsService,
     approvals::Approvals,
@@ -36,6 +39,10 @@ use worktree_manager::WorktreeError;
 #[derive(Debug, Clone, Copy, Error)]
 #[error("Remote client not configured")]
 pub struct RemoteClientNotConfigured;
+
+#[derive(Debug, Clone, Copy, Error)]
+#[error("Relay hosts not configured")]
+pub struct RelayHostsNotConfigured;
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -107,16 +114,20 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn relay_signing(&self) -> &RelaySigningService;
 
-    fn server_info(&self) -> &Arc<ServerInfo>;
+    fn client_info(&self) -> &ClientInfo;
+
+    fn remote_info(&self) -> &RemoteInfo;
+
+    fn tunnel_manager(&self) -> &Arc<TunnelManager>;
+
+    fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
+        Err(RelayHostsNotConfigured)
+    }
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)
-    }
-
-    fn shared_api_base(&self) -> Option<String> {
-        None
     }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {

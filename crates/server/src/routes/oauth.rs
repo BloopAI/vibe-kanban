@@ -18,7 +18,7 @@ use ts_rs::TS;
 use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, relay::registration};
+use crate::{DeploymentImpl, error::ApiError, runtime::relay_registration};
 
 /// Response from GET /api/auth/token - returns the current access token
 #[derive(Debug, Serialize, TS)]
@@ -228,7 +228,7 @@ async fn handoff_complete(
     // Start relay if enabled
     let relay_deployment = deployment.clone();
     tokio::spawn(async move {
-        registration::spawn_relay(&relay_deployment).await;
+        relay_registration::spawn_relay(&relay_deployment).await;
     });
 
     Ok(close_window_response(format!(
@@ -250,7 +250,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
 
     auth_context.clear_profile().await;
 
-    registration::stop_relay(&deployment).await;
+    relay_registration::stop_relay(&deployment).await;
 
     Ok(StatusCode::NO_CONTENT)
 }
