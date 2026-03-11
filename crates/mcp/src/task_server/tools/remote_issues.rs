@@ -401,34 +401,15 @@ impl McpServer {
             Err(e) => return Ok(e),
         };
 
-        let (tag_id, tag_ids, missing_tag_name_match) = match (tag_id, tag_name.as_deref()) {
-            (Some(tag_id), Some(tag_name)) => {
-                let matching_tag_ids = match self.find_tag_ids_by_name(project_id, tag_name).await {
-                    Ok(tag_ids) => tag_ids,
-                    Err(e) => return Ok(e),
-                };
-                let missing_tag_name_match = matching_tag_ids.is_empty();
-                (
-                    Some(tag_id),
-                    (!missing_tag_name_match).then_some(matching_tag_ids),
-                    missing_tag_name_match,
-                )
-            }
-            (Some(tag_id), None) => (Some(tag_id), None, false),
-            (None, Some(tag_name)) => {
-                let matching_tag_ids = match self.find_tag_ids_by_name(project_id, tag_name).await {
-                    Ok(tag_ids) => tag_ids,
-                    Err(e) => return Ok(e),
-                };
-                let missing_tag_name_match = matching_tag_ids.is_empty();
-                (
-                    None,
-                    (!missing_tag_name_match).then_some(matching_tag_ids),
-                    missing_tag_name_match,
-                )
-            }
-            (None, None) => (None, None, false),
+        let matching_tag_ids = match tag_name.as_deref() {
+            Some(tag_name) => match self.find_tag_ids_by_name(project_id, tag_name).await {
+                Ok(tag_ids) => Some(tag_ids),
+                Err(e) => return Ok(e),
+            },
+            None => None,
         };
+        let (tag_id, tag_ids, missing_tag_name_match) =
+            Self::resolve_tag_filters(tag_id, matching_tag_ids);
 
         let response = if missing_status_name_match || missing_tag_name_match {
             ListIssuesResponse {
@@ -917,6 +898,31 @@ impl McpServer {
             .map(|(id, _)| id)
             .collect()
     }
+
+    fn resolve_tag_filters(
+        tag_id: Option<Uuid>,
+        matching_tag_ids: Option<Vec<Uuid>>,
+    ) -> (Option<Uuid>, Option<Vec<Uuid>>, bool) {
+        match (tag_id, matching_tag_ids) {
+            (Some(tag_id), Some(matching_tag_ids)) => {
+                if matching_tag_ids.contains(&tag_id) {
+                    (Some(tag_id), None, false)
+                } else {
+                    (None, None, true)
+                }
+            }
+            (None, Some(matching_tag_ids)) => {
+                let missing_tag_name_match = matching_tag_ids.is_empty();
+                (
+                    None,
+                    (!missing_tag_name_match).then_some(matching_tag_ids),
+                    missing_tag_name_match,
+                )
+            }
+            (Some(tag_id), None) => (Some(tag_id), None, false),
+            (None, None) => (None, None, false),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -965,6 +971,28 @@ mod tests {
         assert_eq!(
             McpServer::matching_ids_by_name(tags, "BUG"),
             vec![first_id, second_id]
+        );
+    }
+
+    #[test]
+    fn resolve_tag_filters_requires_explicit_tag_id_to_match_tag_name() {
+        let tag_id = Uuid::new_v4();
+        let other_tag_id = Uuid::new_v4();
+
+        assert_eq!(
+            McpServer::resolve_tag_filters(Some(tag_id), Some(vec![other_tag_id])),
+            (None, None, true)
+        );
+    }
+
+    #[test]
+    fn resolve_tag_filters_preserves_exact_tag_id_intersection() {
+        let tag_id = Uuid::new_v4();
+        let other_tag_id = Uuid::new_v4();
+
+        assert_eq!(
+            McpServer::resolve_tag_filters(Some(tag_id), Some(vec![other_tag_id, tag_id])),
+            (Some(tag_id), None, false)
         );
     }
 }
