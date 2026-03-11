@@ -113,9 +113,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open status selection dialog (uses dynamic import to avoid circular deps)
   const openStatusSelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/shared/dialogs/command-bar/selections/ProjectSelectionDialog');
       await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'status', issueIds },
@@ -127,9 +126,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open priority selection dialog (uses dynamic import to avoid circular deps)
   const openPrioritySelection = useCallback(
     async (projectId: string, issueIds: string[]) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/shared/dialogs/command-bar/selections/ProjectSelectionDialog');
       await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'priority', issueIds },
@@ -141,9 +139,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open assignee selection dialog (uses dynamic import to avoid circular deps)
   const openAssigneeSelection = useCallback(
     async (projectId: string, issueIds: string[], isCreateMode = false) => {
-      const { AssigneeSelectionDialog } = await import(
-        '@/shared/dialogs/kanban/AssigneeSelectionDialog'
-      );
+      const { AssigneeSelectionDialog } =
+        await import('@/shared/dialogs/kanban/AssigneeSelectionDialog');
       await AssigneeSelectionDialog.show({ projectId, issueIds, isCreateMode });
     },
     []
@@ -156,9 +153,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       parentIssueId: string,
       mode: 'addChild' | 'setParent' = 'addChild'
     ) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/shared/dialogs/command-bar/selections/ProjectSelectionDialog');
       return (await ProjectSelectionDialog.show({
         projectId,
         selection: { type: 'subIssue', parentIssueId, mode },
@@ -170,9 +166,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
   // Open workspace selection dialog (uses dynamic import to avoid circular deps)
   const openWorkspaceSelection = useCallback(
     async (projectId: string, issueId: string) => {
-      const { WorkspaceSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/WorkspaceSelectionDialog'
-      );
+      const { WorkspaceSelectionDialog } =
+        await import('@/shared/dialogs/command-bar/WorkspaceSelectionDialog');
       await WorkspaceSelectionDialog.show({ projectId, issueId });
     },
     []
@@ -186,9 +181,8 @@ export function ActionsProvider({ children }: ActionsProviderProps) {
       relationshipType: 'blocking' | 'related' | 'has_duplicate',
       direction: 'forward' | 'reverse'
     ) => {
-      const { ProjectSelectionDialog } = await import(
-        '@/shared/dialogs/command-bar/selections/ProjectSelectionDialog'
-      );
+      const { ProjectSelectionDialog } =
+        await import('@/shared/dialogs/command-bar/selections/ProjectSelectionDialog');
       await ProjectSelectionDialog.show({
         projectId,
         selection: {
