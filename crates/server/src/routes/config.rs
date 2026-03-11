@@ -104,7 +104,7 @@ pub struct UserSystemInfo {
 async fn get_user_system_info(
     State(deployment): State<DeploymentImpl>,
 ) -> ResponseJson<ApiResponse<UserSystemInfo>> {
-    let config = deployment.config().read().await;
+    let config = deployment.config().read().await.clone();
     let login_status = tokio::time::timeout(
         std::time::Duration::from_secs(2),
         deployment.get_login_status(),
@@ -114,7 +114,7 @@ async fn get_user_system_info(
 
     let user_system_info = UserSystemInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
-        config: config.clone(),
+        config,
         analytics_user_id: deployment.user_id().to_string(),
         login_status,
         profiles: ExecutorConfigs::get_cached(),
@@ -129,7 +129,7 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.shared_api_base(),
+        shared_api_base: deployment.shared_api_base().await,
         preview_proxy_port: crate::preview_proxy::get_proxy_port(),
     };
 

@@ -1498,6 +1498,7 @@ dependencies = [
  "git",
  "git2",
  "relay-control",
+ "remote-info",
  "serde_json",
  "services",
  "sqlx",
@@ -3518,6 +3519,7 @@ dependencies = [
  "portable-pty",
  "relay-control",
  "relay-types",
+ "remote-info",
  "russh",
  "serde",
  "serde_json",
@@ -5014,6 +5016,13 @@ dependencies = [
  "sqlx",
  "ts-rs 11.0.1",
  "uuid",
+]
+
+[[package]]
+name = "remote-info"
+version = "0.1.27"
+dependencies = [
+ "tokio",
 ]
 
 [[package]]

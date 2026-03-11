@@ -11,12 +11,12 @@ use crate::{
     },
 };
 
-pub fn build_relay_pairing_client(deployment: &DeploymentImpl) -> RelayPairingClient {
+pub async fn build_relay_pairing_client(deployment: &DeploymentImpl) -> RelayPairingClient {
     let client = RelayPairingClient::new(deployment.relay_host_store());
     let Ok(remote_client) = deployment.remote_client() else {
         return client;
     };
-    let Some(relay_base_url) = deployment.shared_api_base() else {
+    let Some(relay_base_url) = deployment.shared_relay_api_base().await else {
         return client;
     };
 

@@ -10,6 +10,7 @@ use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
 use relay_control::{RelayControl, signing::RelaySigningService};
+use remote_info::RemoteInfo;
 use serde_json::Value;
 use services::services::{
     analytics::AnalyticsService,
@@ -109,9 +110,17 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn client_info(&self) -> &Arc<ClientInfo>;
 
-    // fn remote_server_info(&self) -> &Arc<ClientInfo>;
+    fn remote_info(&self) -> &Arc<RemoteInfo>;
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
+
+    async fn shared_api_base(&self) -> Option<String> {
+        self.remote_info().get_api_base().await
+    }
+
+    async fn shared_relay_api_base(&self) -> Option<String> {
+        self.remote_info().get_relay_api_base().await
+    }
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)

@@ -14,6 +14,7 @@ members = [
     "crates/workspace-manager",
     "crates/relay-control",
     "crates/client-info",
+    "crates/remote-info",
     "crates/utils",
     "crates/git",
     "crates/git-host",

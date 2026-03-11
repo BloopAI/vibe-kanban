@@ -9,6 +9,7 @@ use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use relay_control::{RelayControl, signing::RelaySigningService};
+use remote_info::RemoteInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -69,6 +70,7 @@ pub struct LocalDeployment {
     relay_signing: RelaySigningService,
     relay_control: Arc<RelayControl>,
     client_info: Arc<ClientInfo>,
+    remote_info: Arc<RemoteInfo>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
     tunnel_manager: Arc<TunnelManager>,
@@ -165,9 +167,19 @@ impl Deployment for LocalDeployment {
         let api_base = std::env::var("VK_SHARED_API_BASE")
             .ok()
             .or_else(|| option_env!("VK_SHARED_API_BASE").map(|s| s.to_string()));
+        let relay_api_base = std::env::var("VK_SHARED_RELAY_API_BASE")
+            .ok()
+            .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()));
+        let remote_info = Arc::new(RemoteInfo::new());
+        if let Some(api_base) = api_base.clone() {
+            remote_info.set_api_base(api_base).await;
+        }
+        if let Some(relay_api_base) = relay_api_base {
+            remote_info.set_relay_api_base(relay_api_base).await;
+        }
 
-        let remote_client = match &api_base {
-            Some(url) => match RemoteClient::new(url, auth_context.clone()) {
+        let remote_client = match remote_info.get_api_base().await {
+            Some(url) => match RemoteClient::new(&url, auth_context.clone()) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
                     Ok(client)
@@ -255,6 +267,7 @@ impl Deployment for LocalDeployment {
             relay_signing,
             relay_control,
             client_info,
+            remote_info,
             ssh_config,
             pty,
             tunnel_manager,
@@ -330,6 +343,10 @@ impl Deployment for LocalDeployment {
 
     fn client_info(&self) -> &Arc<ClientInfo> {
         &self.client_info
+    }
+
+    fn remote_info(&self) -> &Arc<RemoteInfo> {
+        &self.remote_info
     }
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {

@@ -14,6 +14,7 @@ relay-control = { path = "../relay-control" }
 relay-types = { path = "../relay-types" }
 russh = "0.48"
 client-info = { path = "../client-info" }
+remote-info = { path = "../remote-info" }
 services = { path = "../services" }
 worktree-manager = { path = "../worktree-manager" }
 workspace-manager = { path = "../workspace-manager" }

@@ -16,6 +16,7 @@ anyhow = { workspace = true }
 relay-control = { path = "../relay-control" }
 trusted-key-auth = { path = "../trusted-key-auth" }
 client-info = { path = "../client-info" }
+remote-info = { path = "../remote-info" }
 tokio = { workspace = true }
 sqlx = "0.8.6"
 serde_json = { workspace = true }
