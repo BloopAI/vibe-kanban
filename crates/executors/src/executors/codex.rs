@@ -35,6 +35,7 @@ pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> 
         config: params.config,
         base_instructions: params.base_instructions,
         developer_instructions: params.developer_instructions,
+        service_tier: params.service_tier,
         ..Default::default()
     }
 }
@@ -380,6 +381,12 @@ impl StandardCodingAgentExecutor for Codex {
                     name: "mcp".to_string(),
                     description: Some("list configured MCP tools".to_string()),
                 },
+                SlashCommandDescription {
+                    name: "fast".to_string(),
+                    description: Some(
+                        "toggle fast mode for highest speed inference (2× plan usage). Use `/fast on` or `/fast off` to set explicitly".to_string(),
+                    ),
+                },
             ],
             ..Default::default()
         };
@@ -409,7 +416,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.110.0"
+        "npx -y @openai/codex@0.114.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
