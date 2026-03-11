@@ -220,7 +220,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "base64",
  "chrono",
@@ -1429,7 +1429,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1483,7 +1483,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2052,7 +2052,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -2506,7 +2506,7 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "git"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2521,7 +2521,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "async-trait",
  "backon",
@@ -3498,7 +3498,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -3647,7 +3647,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -4968,7 +4968,7 @@ dependencies = [
 
 [[package]]
 name = "relay-control"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "axum",
@@ -5130,7 +5130,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "clap",
@@ -6091,7 +6091,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6156,8 +6156,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "server-info"
+version = "0.1.29"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "services"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -7390,7 +7397,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -7647,7 +7654,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "api-types",
  "axum",
@@ -8601,7 +8608,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-manager"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "db",
  "git",
@@ -8616,7 +8623,7 @@ dependencies = [
 
 [[package]]
 name = "worktree-manager"
-version = "0.1.28"
+version = "0.1.29"
 dependencies = [
  "dunce",
  "git",
