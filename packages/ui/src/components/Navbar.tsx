@@ -114,6 +114,44 @@ export interface NavbarBreadcrumbItem {
   onClick?: () => void;
 }
 
+interface NavbarBreadcrumbsProps {
+  breadcrumbs: NavbarBreadcrumbItem[];
+  textClassName: string;
+}
+
+function NavbarBreadcrumbs({
+  breadcrumbs,
+  textClassName,
+}: NavbarBreadcrumbsProps) {
+  return (
+    <div className={cn('flex items-center gap-1 min-w-0', textClassName)}>
+      {breadcrumbs.map((crumb, index) => {
+        const isLast = index === breadcrumbs.length - 1;
+        return (
+          <span key={index} className="flex items-center gap-1 min-w-0">
+            {index > 0 && <span className="text-low shrink-0">/</span>}
+            {crumb.onClick && !isLast ? (
+              <button
+                type="button"
+                className="text-low hover:text-normal truncate cursor-pointer"
+                onClick={crumb.onClick}
+              >
+                {crumb.label}
+              </button>
+            ) : (
+              <span
+                className={cn('truncate', isLast ? 'text-normal' : 'text-low')}
+              >
+                {crumb.label}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export interface NavbarProps {
   workspaceTitle?: string;
   breadcrumbs?: NavbarBreadcrumbItem[];
@@ -360,39 +398,10 @@ export function Navbar({
             <div className="flex items-center gap-base flex-1 min-w-0">
               {leftSlot}
               {breadcrumbs && breadcrumbs.length > 0 ? (
-                <div className="flex items-center gap-1 min-w-0 text-sm">
-                  {breadcrumbs.map((crumb, index) => {
-                    const isLast = index === breadcrumbs.length - 1;
-                    return (
-                      <span
-                        key={index}
-                        className="flex items-center gap-1 min-w-0"
-                      >
-                        {index > 0 && (
-                          <span className="text-low shrink-0">/</span>
-                        )}
-                        {crumb.onClick && !isLast ? (
-                          <button
-                            type="button"
-                            className="text-low hover:text-normal truncate cursor-pointer"
-                            onClick={crumb.onClick}
-                          >
-                            {crumb.label}
-                          </button>
-                        ) : (
-                          <span
-                            className={cn(
-                              'truncate',
-                              isLast ? 'text-normal' : 'text-low'
-                            )}
-                          >
-                            {crumb.label}
-                          </span>
-                        )}
-                      </span>
-                    );
-                  })}
-                </div>
+                <NavbarBreadcrumbs
+                  breadcrumbs={breadcrumbs}
+                  textClassName="text-sm"
+                />
               ) : (
                 <p className="text-sm text-low truncate">{workspaceTitle}</p>
               )}
@@ -425,34 +434,10 @@ export function Navbar({
       {/* Center - Breadcrumbs or Workspace Title */}
       <div className="flex-1 flex items-center justify-center min-w-0">
         {breadcrumbs && breadcrumbs.length > 0 ? (
-          <div className="flex items-center gap-1 min-w-0 text-base">
-            {breadcrumbs.map((crumb, index) => {
-              const isLast = index === breadcrumbs.length - 1;
-              return (
-                <span key={index} className="flex items-center gap-1 min-w-0">
-                  {index > 0 && <span className="text-low shrink-0">/</span>}
-                  {crumb.onClick && !isLast ? (
-                    <button
-                      type="button"
-                      className="text-low hover:text-normal truncate cursor-pointer"
-                      onClick={crumb.onClick}
-                    >
-                      {crumb.label}
-                    </button>
-                  ) : (
-                    <span
-                      className={cn(
-                        'truncate',
-                        isLast ? 'text-normal' : 'text-low'
-                      )}
-                    >
-                      {crumb.label}
-                    </span>
-                  )}
-                </span>
-              );
-            })}
-          </div>
+          <NavbarBreadcrumbs
+            breadcrumbs={breadcrumbs}
+            textClassName="text-base"
+          />
         ) : (
           <p className="text-base text-low truncate">{workspaceTitle ?? ''}</p>
         )}
