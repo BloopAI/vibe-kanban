@@ -109,9 +109,9 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn relay_signing(&self) -> &RelaySigningService;
 
-    fn client_info(&self) -> &Arc<ClientInfo>;
+    fn client_info(&self) -> &ClientInfo;
 
-    fn remote_info(&self) -> &Arc<RemoteInfo>;
+    fn remote_info(&self) -> &RemoteInfo;
 
     fn relay_hosts(&self) -> &Arc<RelayHosts>;
 

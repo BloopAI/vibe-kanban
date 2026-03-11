@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 /// Runtime information about the local server.
+#[derive(Clone)]
 pub struct ClientInfo {
     port: OnceLock<u16>,
     hostname: OnceLock<String>,

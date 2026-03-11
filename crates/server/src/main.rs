@@ -88,8 +88,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     tokio::spawn(async move {
         executors::executors::utils::preload_global_executor_options_cache().await;
     });
-    let app_router = routes::router(deployment.clone());
-
     let port = std::env::var("BACKEND_PORT")
         .or_else(|_| std::env::var("PORT"))
         .ok()
@@ -131,6 +129,17 @@ async fn main() -> Result<(), VibeKanbanError> {
         actual_proxy_port
     );
 
+    deployment
+        .client_info()
+        .set_port(actual_main_port)
+        .expect("client port already set");
+    deployment
+        .client_info()
+        .set_hostname(host.clone())
+        .expect("client hostname already set");
+
+    let app_router = routes::router(deployment.clone());
+
     // Production only: open browser
     if !cfg!(debug_assertions) {
         tracing::info!("Opening browser...");
@@ -169,14 +178,6 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    deployment
-        .client_info()
-        .set_port(actual_main_port)
-        .expect("client port already set");
-    deployment
-        .client_info()
-        .set_hostname(host.clone())
-        .expect("client hostname already set");
     relay_registration::spawn_relay(&deployment).await;
 
     tokio::select! {

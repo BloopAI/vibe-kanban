@@ -68,8 +68,8 @@ pub struct LocalDeployment {
     trusted_key_auth: TrustedKeyAuthRuntime,
     relay_signing: RelaySigningService,
     relay_control: Arc<RelayControl>,
-    client_info: Arc<ClientInfo>,
-    remote_info: Arc<RemoteInfo>,
+    client_info: ClientInfo,
+    remote_info: RemoteInfo,
     relay_hosts: Arc<RelayHosts>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
@@ -168,7 +168,7 @@ impl Deployment for LocalDeployment {
         let relay_api_base = std::env::var("VK_SHARED_RELAY_API_BASE")
             .ok()
             .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()));
-        let remote_info = Arc::new(RemoteInfo::new());
+        let remote_info = RemoteInfo::new();
         if let Some(api_base) = api_base.clone() {
             remote_info
                 .set_api_base(api_base)
@@ -202,7 +202,7 @@ impl Deployment for LocalDeployment {
         let relay_signing = RelaySigningService::load_or_generate(&server_signing_key_path())
             .expect("Failed to load or generate server signing key");
         let relay_control = Arc::new(RelayControl::new());
-        let client_info = Arc::new(ClientInfo::new());
+        let client_info = ClientInfo::new();
 
         let ssh_host_key = embedded_ssh::host_key::load_or_generate(&ssh_host_key_path())
             .expect("Failed to load or generate SSH host key");
@@ -354,11 +354,11 @@ impl Deployment for LocalDeployment {
         &self.relay_signing
     }
 
-    fn client_info(&self) -> &Arc<ClientInfo> {
+    fn client_info(&self) -> &ClientInfo {
         &self.client_info
     }
 
-    fn remote_info(&self) -> &Arc<RemoteInfo> {
+    fn remote_info(&self) -> &RemoteInfo {
         &self.remote_info
     }
 

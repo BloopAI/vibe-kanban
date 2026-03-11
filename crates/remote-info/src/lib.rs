@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 /// Runtime information about configured remote endpoints.
+#[derive(Clone)]
 pub struct RemoteInfo {
     api_base: OnceLock<String>,
     relay_api_base: OnceLock<String>,
