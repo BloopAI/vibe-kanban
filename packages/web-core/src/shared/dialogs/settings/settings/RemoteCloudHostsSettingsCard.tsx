@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate, useParams } from '@tanstack/react-router';
 import { SpinnerIcon } from '@phosphor-icons/react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
@@ -20,6 +21,8 @@ import { useRelayRemoteHostsQuery } from './useRelayRemoteHostMutations';
 
 export function RemoteCloudHostsSettingsCard() {
   const { t } = useTranslation(['settings', 'common']);
+  const navigate = useNavigate();
+  const { hostId: routeHostId } = useParams({ strict: false });
   const [showConnectForm, setShowConnectForm] = useState(false);
   const [hostName, setHostName] = useState('');
   const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
@@ -142,6 +145,9 @@ export function RemoteCloudHostsSettingsCard() {
 
     try {
       await removeHost(hostId);
+      if (hostId === routeHostId) {
+        void navigate({ to: '/workspaces' });
+      }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
     } finally {
@@ -151,10 +157,7 @@ export function RemoteCloudHostsSettingsCard() {
 
   return (
     <SettingsCard
-      title={t(
-        'settings.relay.remoteCloudHost.title',
-        'Remote Cloud Hosts (preview)'
-      )}
+      title={t('settings.relay.remoteCloudHost.title', 'Remote Cloud Hosts')}
       description={t(
         'settings.relay.remoteCloudHost.description',
         'Pair remote hosts using enrollment codes and manage local paired hosts.'
