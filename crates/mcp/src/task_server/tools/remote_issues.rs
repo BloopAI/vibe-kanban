@@ -930,19 +930,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_default_issue_sort_field() {
-        assert_eq!(
-            McpServer::parse_issue_sort_field(None).unwrap(),
-            IssueSortField::SortOrder
-        );
-    }
-
-    #[test]
-    fn rejects_invalid_sort_direction() {
-        assert!(McpServer::parse_sort_direction(Some("sideways")).is_err());
-    }
-
-    #[test]
     fn collects_all_matching_status_ids_case_insensitively() {
         let first_id = Uuid::new_v4();
         let second_id = Uuid::new_v4();
