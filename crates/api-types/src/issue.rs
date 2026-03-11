@@ -195,57 +195,10 @@ pub struct SearchIssuesRequest {
     pub offset: Option<i32>,
 }
 
-impl From<ListIssuesQuery> for SearchIssuesRequest {
-    fn from(query: ListIssuesQuery) -> Self {
-        Self {
-            project_id: query.project_id,
-            status_id: None,
-            status_ids: None,
-            priority: None,
-            parent_issue_id: None,
-            search: None,
-            simple_id: None,
-            assignee_user_id: None,
-            tag_id: None,
-            tag_ids: None,
-            sort_field: None,
-            sort_direction: None,
-            limit: None,
-            offset: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesResponse {
     pub issues: Vec<Issue>,
     pub total_count: usize,
     pub limit: usize,
     pub offset: usize,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn search_issues_request_from_list_issues_query_is_unfiltered() {
-        let project_id = Uuid::new_v4();
-        let request = SearchIssuesRequest::from(ListIssuesQuery { project_id });
-
-        assert_eq!(request.project_id, project_id);
-        assert_eq!(request.status_id, None);
-        assert_eq!(request.status_ids, None);
-        assert_eq!(request.priority, None);
-        assert_eq!(request.parent_issue_id, None);
-        assert_eq!(request.search, None);
-        assert_eq!(request.simple_id, None);
-        assert_eq!(request.assignee_user_id, None);
-        assert_eq!(request.tag_id, None);
-        assert_eq!(request.tag_ids, None);
-        assert_eq!(request.sort_field, None);
-        assert_eq!(request.sort_direction, None);
-        assert_eq!(request.limit, None);
-        assert_eq!(request.offset, None);
-    }
 }
