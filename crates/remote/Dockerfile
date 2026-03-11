@@ -15,6 +15,7 @@ ENV VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=${VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_
 RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/local-web/package.json packages/local-web/package.json
 COPY packages/remote-web/package.json packages/remote-web/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/web-core/package.json packages/web-core/package.json
@@ -58,6 +59,23 @@ WORKDIR /app
 COPY rust-toolchain.toml ./
 RUN cargo --version >/dev/null
 COPY Cargo.toml Cargo.lock ./
+# Copy workspace member manifests so Cargo can resolve workspace-shared deps
+# without invalidating the build on every unrelated source change.
+COPY crates/server/Cargo.toml crates/server/Cargo.toml
+COPY crates/trusted-key-auth/Cargo.toml crates/trusted-key-auth/Cargo.toml
+COPY crates/mcp/Cargo.toml crates/mcp/Cargo.toml
+COPY crates/db/Cargo.toml crates/db/Cargo.toml
+COPY crates/executors/Cargo.toml crates/executors/Cargo.toml
+COPY crates/services/Cargo.toml crates/services/Cargo.toml
+COPY crates/worktree-manager/Cargo.toml crates/worktree-manager/Cargo.toml
+COPY crates/workspace-manager/Cargo.toml crates/workspace-manager/Cargo.toml
+COPY crates/relay-control/Cargo.toml crates/relay-control/Cargo.toml
+COPY crates/server-info/Cargo.toml crates/server-info/Cargo.toml
+COPY crates/git/Cargo.toml crates/git/Cargo.toml
+COPY crates/git-host/Cargo.toml crates/git-host/Cargo.toml
+COPY crates/local-deployment/Cargo.toml crates/local-deployment/Cargo.toml
+COPY crates/deployment/Cargo.toml crates/deployment/Cargo.toml
+COPY crates/review/Cargo.toml crates/review/Cargo.toml
 COPY crates/api-types crates/api-types
 COPY crates/remote crates/remote
 COPY crates/utils crates/utils
