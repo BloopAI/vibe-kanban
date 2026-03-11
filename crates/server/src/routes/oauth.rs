@@ -312,17 +312,24 @@ async fn status(
 ) -> Result<ResponseJson<ApiResponse<StatusResponse>>, ApiError> {
     use api_types::LoginStatus;
 
-    match deployment.get_login_status().await {
+    let login_status = deployment.get_login_status().await;
+    let degraded = deployment
+        .auth_context()
+        .remote_auth_degraded_slug()
+        .await
+        .map(|_| true);
+
+    match login_status {
         LoginStatus::LoggedOut => Ok(ResponseJson(ApiResponse::success(StatusResponse {
             logged_in: false,
             profile: None,
-            degraded: None,
+            degraded,
         }))),
         LoginStatus::LoggedIn { profile } => {
             Ok(ResponseJson(ApiResponse::success(StatusResponse {
                 logged_in: true,
-                profile: Some(profile),
-                degraded: None,
+                profile,
+                degraded,
             })))
         }
     }
@@ -335,10 +342,7 @@ async fn get_token(
     let remote_client = deployment.remote_client()?;
 
     // This will auto-refresh the token if expired
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
 
     let creds = deployment.auth_context().get_credentials().await;
     let expires_at = creds.and_then(|c| c.expires_at);
@@ -355,10 +359,7 @@ async fn get_current_user(
     let remote_client = deployment.remote_client()?;
 
     // Get the access token from remote client
-    let access_token = remote_client
-        .access_token()
-        .await
-        .map_err(|_| ApiError::Unauthorized)?;
+    let access_token = remote_client.access_token().await.map_err(ApiError::from)?;
 
     // Extract user ID from the JWT token's 'sub' claim
     let user_id = utils::jwt::extract_subject(&access_token)

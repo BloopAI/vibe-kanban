@@ -388,12 +388,13 @@ impl LocalDeployment {
     pub async fn get_login_status(&self) -> LoginStatus {
         if self.auth_context.get_credentials().await.is_none() {
             self.auth_context.clear_profile().await;
+            self.auth_context.clear_remote_auth_degraded_slug().await;
             return LoginStatus::LoggedOut;
         };
 
         if let Some(cached_profile) = self.auth_context.cached_profile().await {
             return LoginStatus::LoggedIn {
-                profile: cached_profile,
+                profile: Some(cached_profile),
             };
         }
 
@@ -403,15 +404,33 @@ impl LocalDeployment {
 
         match client.profile().await {
             Ok(profile) => {
+                self.auth_context.clear_remote_auth_degraded_slug().await;
                 self.auth_context.set_profile(profile.clone()).await;
-                LoginStatus::LoggedIn { profile }
+                LoginStatus::LoggedIn {
+                    profile: Some(profile),
+                }
             }
             Err(RemoteClientError::Auth) => {
                 let _ = self.auth_context.clear_credentials().await;
                 self.auth_context.clear_profile().await;
+                self.auth_context.clear_remote_auth_degraded_slug().await;
                 LoginStatus::LoggedOut
             }
-            Err(_) => LoginStatus::LoggedOut,
+            Err(err) => {
+                if self.auth_context.get_credentials().await.is_none() {
+                    self.auth_context.clear_profile().await;
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
+                    return LoginStatus::LoggedOut;
+                }
+
+                self.auth_context
+                    .set_remote_auth_degraded_slug(
+                        err.degraded_slug()
+                            .unwrap_or_else(RemoteClientError::generic_degraded_slug),
+                    )
+                    .await;
+                LoginStatus::LoggedIn { profile: None }
+            }
         }
     }
 

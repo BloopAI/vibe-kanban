@@ -521,7 +521,8 @@
     "streamsAffected": "{{count}} flujo afectado",
     "streamsAffected_other": "{{count}} flujos afectados",
     "status": "(estado {{status}})",
-    "refreshPage": "Actualizar página"
+    "refreshPage": "Actualizar página",
+    "remoteAuthUnavailable": "La autenticación remota no está disponible temporalmente. Es posible que algunas funciones remotas no funcionen hasta que se recupere."
   },
   "onboardingSignIn": {
     "subtitle": "Sign in to continue",

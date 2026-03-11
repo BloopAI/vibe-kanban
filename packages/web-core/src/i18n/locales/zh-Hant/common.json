@@ -521,7 +521,8 @@
     "streamsAffected": "{{count}} 個資料流受影響",
     "streamsAffected_other": "{{count}} 個資料流受影響",
     "status": "(狀態 {{status}})",
-    "refreshPage": "重新整理頁面"
+    "refreshPage": "重新整理頁面",
+    "remoteAuthUnavailable": "遠端驗證暫時無法使用。在恢復之前，部分遠端功能可能無法使用。"
   },
   "onboardingSignIn": {
     "subtitle": "Sign in to continue",

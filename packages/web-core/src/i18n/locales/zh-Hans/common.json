@@ -521,7 +521,8 @@
     "streamsAffected": "{{count}} 个数据流受影响",
     "streamsAffected_other": "{{count}} 个数据流受影响",
     "status": "(状态 {{status}})",
-    "refreshPage": "刷新页面"
+    "refreshPage": "刷新页面",
+    "remoteAuthUnavailable": "远程身份验证暂时不可用。在恢复之前，部分远程功能可能无法使用。"
   },
   "onboardingSignIn": {
     "subtitle": "Sign in to continue",

@@ -198,16 +198,16 @@ export function OnboardingSignInPage() {
     });
 
     setPendingProvider(provider);
-    const profile = await OAuthDialog.show({ initialProvider: provider });
+    const didSignIn = await OAuthDialog.show({ initialProvider: provider });
     setPendingProvider(null);
 
     trackRemoteOnboardingEvent(REMOTE_ONBOARDING_EVENTS.PROVIDER_RESULT, {
       stage: 'sign_in',
       provider,
-      result: profile ? 'success' : 'cancelled',
+      result: didSignIn ? 'success' : 'cancelled',
     });
 
-    if (profile) {
+    if (didSignIn) {
       await finishOnboarding({
         method: provider === 'github' ? 'oauth_github' : 'oauth_google',
       });
@@ -259,7 +259,9 @@ export function OnboardingSignInPage() {
               <p className="text-sm text-normal text-center">
                 {t('onboardingSignIn.signedInAs', {
                   name:
-                    loginStatus.profile.username || loginStatus.profile.email,
+                    loginStatus.profile?.username ||
+                    loginStatus.profile?.email ||
+                    'your account',
                 })}
               </p>
               <div className="flex justify-end">

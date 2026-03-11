@@ -37,8 +37,6 @@ pub enum RemoteClientError {
     Transport(String),
     #[error("timeout")]
     Timeout,
-    #[error("token refresh timed out")]
-    TokenRefreshTimeout,
     #[error("http {status}: {body}")]
     Http { status: u16, body: String },
     #[error("api error: {0:?}")]
@@ -56,12 +54,36 @@ pub enum RemoteClientError {
 }
 
 impl RemoteClientError {
+    pub fn generic_degraded_slug() -> &'static str {
+        "remote_auth_unavailable"
+    }
+
     /// Returns true if the error is transient and should be retried.
     pub fn should_retry(&self) -> bool {
         match self {
             Self::Transport(_) | Self::Timeout => true,
             Self::Http { status, .. } => (500..=599).contains(status),
             _ => false,
+        }
+    }
+
+    pub fn is_definitive_auth_failure(&self) -> bool {
+        match self {
+            Self::Auth => true,
+            Self::Api(code) => code.is_definitive_auth_failure(),
+            _ => false,
+        }
+    }
+
+    pub fn degraded_slug(&self) -> Option<&'static str> {
+        match self {
+            Self::Timeout | Self::Transport(_) | Self::Storage(_) | Self::Serde(_) => {
+                Some(Self::generic_degraded_slug())
+            }
+            Self::Http { status, .. } if (500..=599).contains(status) => {
+                Some(Self::generic_degraded_slug())
+            }
+            _ => None,
         }
     }
 }
@@ -77,6 +99,24 @@ pub enum HandoffErrorCode {
     AccessDenied,
     InternalError,
     Other(String),
+}
+
+impl HandoffErrorCode {
+    fn is_definitive_auth_failure(&self) -> bool {
+        match self {
+            Self::Expired | Self::AccessDenied => true,
+            Self::Other(code) => matches!(
+                code.as_str(),
+                "invalid_token"
+                    | "expired_token"
+                    | "session_revoked"
+                    | "token_reuse_detected"
+                    | "provider_token_revoked"
+                    | "identity_error"
+            ),
+            _ => false,
+        }
+    }
 }
 
 fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
@@ -96,12 +136,6 @@ fn map_error_code(code: Option<&str>) -> HandoffErrorCode {
 #[derive(Deserialize)]
 struct ApiErrorResponse {
     error: String,
-}
-
-#[derive(Debug, Clone, Copy)]
-struct RequestTimeoutOptions {
-    timeout: Duration,
-    retry_on_timeout: bool,
 }
 
 /// HTTP client for the remote OAuth server with automatic retries.
@@ -133,7 +167,6 @@ impl Clone for RemoteClient {
 
 impl RemoteClient {
     const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
-    const TOKEN_REFRESH_REQUEST_TIMEOUT: Duration = Duration::from_mins(5);
     const TOKEN_REFRESH_LEEWAY_SECS: i64 = 20;
 
     pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {
@@ -187,6 +220,7 @@ impl RemoteClient {
                 if let Some(token) = latest.access_token.as_ref()
                     && !latest.expires_soon(leeway)
                 {
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
                     return Ok(token.clone());
                 }
 
@@ -194,20 +228,21 @@ impl RemoteClient {
             };
 
             match refreshed {
-                Ok(updated) => updated.access_token.ok_or(RemoteClientError::Auth),
-                Err(RemoteClientError::Auth) => {
-                    let _ = self.auth_context.clear_credentials().await;
-                    Err(RemoteClientError::Auth)
+                Ok(updated) => {
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
+                    updated.access_token.ok_or(RemoteClientError::Auth)
                 }
-                Err(RemoteClientError::TokenRefreshTimeout) => {
-                    tracing::error!(
-                        "Refresh token request timed out after {} minutes. Discarding the refresh token and forcing re-login.",
-                        Self::TOKEN_REFRESH_REQUEST_TIMEOUT.as_secs() / 60
-                    );
+                Err(err) if err.is_definitive_auth_failure() => {
                     let _ = self.auth_context.clear_credentials().await;
-                    Err(RemoteClientError::TokenRefreshTimeout)
+                    self.auth_context.clear_remote_auth_degraded_slug().await;
+                    Err(err)
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    if let Some(slug) = err.degraded_slug() {
+                        self.auth_context.set_remote_auth_degraded_slug(slug).await;
+                    }
+                    Err(err)
+                }
             }
         })
     }
@@ -230,6 +265,7 @@ impl RemoteClient {
             .save_credentials(&new_creds)
             .await
             .map_err(|e| RemoteClientError::Storage(e.to_string()))?;
+        self.auth_context.clear_remote_auth_degraded_slug().await;
         Ok(new_creds)
     }
 
@@ -241,20 +277,8 @@ impl RemoteClient {
             refresh_token: refresh_token.to_string(),
         };
 
-        let timeout_options = RequestTimeoutOptions {
-            timeout: Self::TOKEN_REFRESH_REQUEST_TIMEOUT,
-            retry_on_timeout: false,
-        };
-
-        self.post_public_with_timeout_options("/v1/tokens/refresh", Some(&request), timeout_options)
+        self.post_public("/v1/tokens/refresh", Some(&request))
             .await
-            .map_err(|e| {
-                if matches!(e, RemoteClientError::Timeout) {
-                    RemoteClientError::TokenRefreshTimeout
-                } else {
-                    e
-                }
-            })
             .map_err(|e| self.map_api_error(e))
     }
 
@@ -307,8 +331,7 @@ impl RemoteClient {
     where
         B: Serialize,
     {
-        self.send_internal(method, path, requires_auth, body, None)
-            .await
+        self.send_internal(method, path, requires_auth, body).await
     }
 
     async fn send_internal<B>(
@@ -317,12 +340,11 @@ impl RemoteClient {
         path: &str,
         requires_auth: bool,
         body: Option<&B>,
-        timeout_options: Option<RequestTimeoutOptions>,
     ) -> Result<reqwest::Response, RemoteClientError>
     where
         B: Serialize,
     {
-        self.send_internal_with_request(method, path, requires_auth, timeout_options, |req| {
+        self.send_internal_with_request(method, path, requires_auth, |req| {
             if let Some(body) = body {
                 req.json(body)
             } else {
@@ -337,7 +359,6 @@ impl RemoteClient {
         method: reqwest::Method,
         path: &str,
         requires_auth: bool,
-        timeout_options: Option<RequestTimeoutOptions>,
         customize_request: F,
     ) -> Result<reqwest::Response, RemoteClientError>
     where
@@ -348,18 +369,12 @@ impl RemoteClient {
             .join(path)
             .map_err(|e| RemoteClientError::Url(e.to_string()))?;
 
-        let retry_on_timeout = timeout_options.is_none_or(|o| o.retry_on_timeout);
-
         let operation = || async {
             let mut req = self
                 .http
                 .request(method.clone(), url.clone())
                 .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
                 .header("X-Client-Type", "local-backend");
-
-            if let Some(t) = timeout_options.map(|o| o.timeout) {
-                req = req.timeout(t);
-            }
 
             if requires_auth {
                 let token = self.require_token().await?;
@@ -389,12 +404,7 @@ impl RemoteClient {
                     .with_max_times(2)
                     .with_jitter(),
             )
-            .when(move |e: &RemoteClientError| {
-                if !e.should_retry() {
-                    return false;
-                }
-                retry_on_timeout || !matches!(e, RemoteClientError::Timeout)
-            })
+            .when(RemoteClientError::should_retry)
             .notify(|e, dur| {
                 warn!(
                     "Remote call failed, retrying after {:.2}s: {}",
@@ -424,30 +434,6 @@ impl RemoteClient {
         B: Serialize,
     {
         let res = self.send(reqwest::Method::POST, path, false, body).await?;
-        res.json::<T>()
-            .await
-            .map_err(|e| RemoteClientError::Serde(e.to_string()))
-    }
-
-    async fn post_public_with_timeout_options<T, B>(
-        &self,
-        path: &str,
-        body: Option<&B>,
-        timeout_options: RequestTimeoutOptions,
-    ) -> Result<T, RemoteClientError>
-    where
-        T: for<'de> Deserialize<'de>,
-        B: Serialize,
-    {
-        let res = self
-            .send_internal(
-                reqwest::Method::POST,
-                path,
-                false,
-                body,
-                Some(timeout_options),
-            )
-            .await?;
         res.json::<T>()
             .await
             .map_err(|e| RemoteClientError::Serde(e.to_string()))

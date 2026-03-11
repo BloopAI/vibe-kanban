@@ -206,11 +206,6 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
             "RemoteClientError",
             "Remote service timeout. Please try again.",
         ),
-        RemoteClientError::TokenRefreshTimeout => ErrorInfo::with_status(
-            StatusCode::UNAUTHORIZED,
-            "RemoteClientError",
-            "Remote service timeout during token refresh. Please sign in again.",
-        ),
         RemoteClientError::Transport(_) => ErrorInfo::with_status(
             StatusCode::BAD_GATEWAY,
             "RemoteClientError",
@@ -270,6 +265,21 @@ fn remote_client_error(err: &RemoteClientError) -> ErrorInfo {
                     "Internal remote service error. Please try again.",
                 ),
                 HandoffErrorCode::Other(m) => {
+                    if matches!(
+                        m.as_str(),
+                        "invalid_token"
+                            | "expired_token"
+                            | "session_revoked"
+                            | "token_reuse_detected"
+                            | "provider_token_revoked"
+                            | "identity_error"
+                    ) {
+                        return ErrorInfo::with_status(
+                            StatusCode::UNAUTHORIZED,
+                            "RemoteClientError",
+                            "Unauthorized. Please sign in again.",
+                        );
+                    }
                     return ErrorInfo::bad_request(
                         "RemoteClientError",
                         format!("Authentication error: {}", m),

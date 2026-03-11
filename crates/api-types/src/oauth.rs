@@ -60,7 +60,10 @@ pub struct ProfileResponse {
 #[serde(tag = "status", rename_all = "lowercase")]
 pub enum LoginStatus {
     LoggedOut,
-    LoggedIn { profile: ProfileResponse },
+    LoggedIn {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        profile: Option<ProfileResponse>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]

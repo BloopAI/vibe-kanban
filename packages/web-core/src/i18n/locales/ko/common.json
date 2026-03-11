@@ -521,7 +521,8 @@
     "streamsAffected": "{{count}}개 스트림이 영향을 받음",
     "streamsAffected_other": "{{count}}개 스트림이 영향을 받음",
     "status": "(상태 {{status}})",
-    "refreshPage": "페이지 새로고침"
+    "refreshPage": "페이지 새로고침",
+    "remoteAuthUnavailable": "원격 인증을 일시적으로 사용할 수 없습니다. 복구될 때까지 일부 원격 기능이 작동하지 않을 수 있습니다."
   },
   "onboardingSignIn": {
     "subtitle": "Sign in to continue",

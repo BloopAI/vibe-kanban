@@ -31,7 +31,7 @@ export function AppBarUserPopoverContainer({
   // Extract avatar URL from first provider
   const avatarUrl =
     loginStatus?.status === 'loggedin'
-      ? (loginStatus.profile.providers[0]?.avatar_url ?? null)
+      ? (loginStatus.profile?.providers[0]?.avatar_url ?? null)
       : null;
 
   const handleSignIn = async () => {

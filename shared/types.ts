@@ -200,7 +200,7 @@ export type DiffChangeKind = "added" | "deleted" | "modified" | "renamed" | "cop
 
 export type ApiResponse<T, E = T> = { success: boolean, data: T | null, error_data: E | null, message: string | null, };
 
-export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse, };
+export type LoginStatus = { "status": "loggedout" } | { "status": "loggedin", profile: ProfileResponse | null, };
 
 export type ProfileResponse = { user_id: string, username: string | null, email: string, providers: Array<ProviderProfile>, };
 
@@ -272,7 +272,7 @@ export type TagSearchParams = { search: string | null, };
 
 export type TokenResponse = { access_token: string, expires_at: string | null, };
 
-export type UserSystemInfo = { version: string, config: Config, machine_id: string, login_status: LoginStatus, environment: Environment, 
+export type UserSystemInfo = { version: string, config: Config, machine_id: string, login_status: LoginStatus, remote_auth_degraded: string | null, environment: Environment, 
 /**
  * Capabilities supported per executor (e.g., { "CLAUDE_CODE": ["SESSION_FORK"] })
  */
