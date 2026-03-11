@@ -16,7 +16,7 @@ pub fn build_relay_pairing_client(deployment: &DeploymentImpl) -> RelayPairingCl
     let Ok(remote_client) = deployment.remote_client() else {
         return client;
     };
-    let Some(relay_base_url) = deployment.shared_relay_api_base() else {
+    let Some(relay_base_url) = deployment.remote_info().get_relay_api_base() else {
         return client;
     };
 

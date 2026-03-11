@@ -45,7 +45,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
     let host_nickname = clean_host_nickname(&config, deployment.user_id());
     drop(config);
 
-    let relay_base = deployment.shared_relay_api_base().or_else(|| {
+    let relay_base = deployment.remote_info().get_relay_api_base().or_else(|| {
         tracing::debug!("VK_SHARED_RELAY_API_BASE not set; relay unavailable");
         None
     })?;

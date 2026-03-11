@@ -114,14 +114,6 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 
-    fn shared_api_base(&self) -> Option<String> {
-        self.remote_info().get_api_base()
-    }
-
-    fn shared_relay_api_base(&self) -> Option<String> {
-        self.remote_info().get_relay_api_base()
-    }
-
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)
     }

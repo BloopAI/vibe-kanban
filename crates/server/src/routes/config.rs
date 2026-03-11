@@ -129,7 +129,7 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.shared_api_base(),
+        shared_api_base: deployment.remote_info().get_api_base(),
         preview_proxy_port: crate::preview_proxy::get_proxy_port(),
     };
 

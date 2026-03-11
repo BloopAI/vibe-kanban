@@ -179,7 +179,10 @@ impl HostRelayService {
             .deployment
             .remote_client()
             .map_err(|_| HostRelayResolveError::RelayNotConfigured)?;
-        let relay_base_url = Deployment::shared_relay_api_base(&self.deployment)
+        let relay_base_url = self
+            .deployment
+            .remote_info()
+            .get_relay_api_base()
             .ok_or(HostRelayResolveError::RelayNotConfigured)?;
 
         Ok((
