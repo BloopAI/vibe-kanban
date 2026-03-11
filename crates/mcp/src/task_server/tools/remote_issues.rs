@@ -1,3 +1,5 @@
+use std::{cmp::Ordering, collections::HashMap};
+
 use api_types::{
     CreateIssueRequest, Issue, IssuePriority, IssueRelationshipType, ListIssueAssigneesResponse,
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse,
@@ -64,6 +66,27 @@ struct McpListIssuesRequest {
     tag_id: Option<Uuid>,
     #[schemars(description = "Filter to issues having a tag with this name (case-insensitive)")]
     tag_name: Option<String>,
+    #[schemars(
+        description = "Field to sort by. Allowed values: 'sort_order', 'priority', 'created_at', 'updated_at', 'title'. Default: 'sort_order'."
+    )]
+    sort_field: Option<String>,
+    #[schemars(description = "Sort direction. Allowed values: 'asc', 'desc'. Default: 'asc'.")]
+    sort_direction: Option<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum IssueSortField {
+    SortOrder,
+    Priority,
+    CreatedAt,
+    UpdatedAt,
+    Title,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SortDirection {
+    Asc,
+    Desc,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -325,6 +348,8 @@ impl McpServer {
             assignee_user_id,
             tag_id,
             tag_name,
+            sort_field,
+            sort_direction,
         }): Parameters<McpListIssuesRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
@@ -360,20 +385,30 @@ impl McpServer {
             issues.retain(|issue| issue.simple_id.eq_ignore_ascii_case(&simple_id));
         }
 
-        let status_names_by_id = match self.fetch_project_statuses(project_id).await {
-            Ok(statuses) => Some(
-                statuses
-                    .into_iter()
-                    .map(|status| (status.id, status.name))
-                    .collect::<std::collections::HashMap<_, _>>(),
-            ),
+        let sort_field = match Self::parse_issue_sort_field(sort_field.as_deref()) {
+            Ok(value) => value,
+            Err(e) => return Ok(e),
+        };
+        let sort_direction = match Self::parse_sort_direction(sort_direction.as_deref()) {
+            Ok(value) => value,
+            Err(e) => return Ok(e),
+        };
+
+        let project_statuses = match self.fetch_project_statuses(project_id).await {
+            Ok(statuses) => Some(statuses),
             Err(e) => {
-                if status.is_some() {
+                if status.is_some() || sort_field == IssueSortField::SortOrder {
                     return Ok(e);
                 }
                 None
             }
         };
+        let status_names_by_id = project_statuses.as_ref().map(|statuses| {
+            statuses
+                .iter()
+                .map(|status| (status.id, status.name.clone()))
+                .collect::<HashMap<_, _>>()
+        });
 
         if let Some(status) = status {
             issues.retain(|issue| {
@@ -445,7 +480,21 @@ impl McpServer {
             };
         }
 
-        issues.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+        let status_sort_order = project_statuses.as_ref().map(|statuses| {
+            statuses
+                .iter()
+                .map(|status| (status.id, status.sort_order))
+                .collect::<HashMap<_, _>>()
+        });
+        issues.sort_by(|left, right| {
+            Self::compare_issues(
+                left,
+                right,
+                sort_field,
+                sort_direction,
+                status_sort_order.as_ref(),
+            )
+        });
 
         let total_count = issues.len();
         let offset = offset.unwrap_or(0).max(0) as usize;
@@ -592,10 +641,110 @@ impl McpServer {
 }
 
 impl McpServer {
+    fn compare_issues(
+        left: &Issue,
+        right: &Issue,
+        sort_field: IssueSortField,
+        sort_direction: SortDirection,
+        status_sort_order: Option<&HashMap<Uuid, i32>>,
+    ) -> Ordering {
+        let comparison = match sort_field {
+            IssueSortField::SortOrder => {
+                let status_cmp = status_sort_order
+                    .and_then(|lookup| {
+                        let left = lookup.get(&left.status_id)?;
+                        let right = lookup.get(&right.status_id)?;
+                        Some(left.cmp(right))
+                    })
+                    .unwrap_or(Ordering::Equal);
+                status_cmp.then_with(|| {
+                    left.sort_order
+                        .partial_cmp(&right.sort_order)
+                        .unwrap_or(Ordering::Equal)
+                })
+            }
+            IssueSortField::Priority => {
+                Self::compare_optional_priority(left.priority, right.priority)
+            }
+            IssueSortField::CreatedAt => left.created_at.cmp(&right.created_at),
+            IssueSortField::UpdatedAt => left.updated_at.cmp(&right.updated_at),
+            IssueSortField::Title => left.title.cmp(&right.title),
+        };
+
+        let comparison = match sort_direction {
+            SortDirection::Asc => comparison,
+            SortDirection::Desc => comparison.reverse(),
+        };
+
+        comparison.then_with(|| left.issue_number.cmp(&right.issue_number))
+    }
+
+    fn compare_optional_priority(
+        left: Option<IssuePriority>,
+        right: Option<IssuePriority>,
+    ) -> Ordering {
+        match (
+            left.map(Self::priority_rank),
+            right.map(Self::priority_rank),
+        ) {
+            (Some(left_rank), Some(right_rank)) => left_rank.cmp(&right_rank),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
+        }
+    }
+
+    fn priority_rank(priority: IssuePriority) -> i32 {
+        match priority {
+            IssuePriority::Urgent => 0,
+            IssuePriority::High => 1,
+            IssuePriority::Medium => 2,
+            IssuePriority::Low => 3,
+        }
+    }
+
+    fn parse_issue_sort_field(sort_field: Option<&str>) -> Result<IssueSortField, CallToolResult> {
+        match sort_field.unwrap_or("sort_order").trim().to_ascii_lowercase().as_str() {
+            "sort_order" => Ok(IssueSortField::SortOrder),
+            "priority" => Ok(IssueSortField::Priority),
+            "created_at" => Ok(IssueSortField::CreatedAt),
+            "updated_at" => Ok(IssueSortField::UpdatedAt),
+            "title" => Ok(IssueSortField::Title),
+            other => Err(Self::err(
+                format!(
+                    "Unknown sort_field '{}'. Allowed values: ['sort_order', 'priority', 'created_at', 'updated_at', 'title']",
+                    other
+                ),
+                None::<String>,
+            )
+            .unwrap()),
+        }
+    }
+
+    fn parse_sort_direction(sort_direction: Option<&str>) -> Result<SortDirection, CallToolResult> {
+        match sort_direction
+            .unwrap_or("asc")
+            .trim()
+            .to_ascii_lowercase()
+            .as_str()
+        {
+            "asc" => Ok(SortDirection::Asc),
+            "desc" => Ok(SortDirection::Desc),
+            other => Err(Self::err(
+                format!(
+                    "Unknown sort_direction '{}'. Allowed values: ['asc', 'desc']",
+                    other
+                ),
+                None::<String>,
+            )
+            .unwrap()),
+        }
+    }
+
     fn issue_to_summary(
         &self,
         issue: &Issue,
-        status_names_by_id: Option<&std::collections::HashMap<Uuid, String>>,
+        status_names_by_id: Option<&HashMap<Uuid, String>>,
         pull_requests: &ListPullRequestsResponse,
     ) -> IssueSummary {
         let status = status_names_by_id
@@ -698,7 +847,7 @@ impl McpServer {
             Ok(r) => r,
             Err(_) => return Vec::new(),
         };
-        let tag_map: std::collections::HashMap<Uuid, &api_types::Tag> =
+        let tag_map: HashMap<Uuid, &api_types::Tag> =
             project_tags.tags.iter().map(|t| (t.id, t)).collect();
 
         let url = self.url(&format!("/api/remote/issue-tags?issue_id={}", issue_id));
@@ -745,7 +894,7 @@ impl McpServer {
             .send_json(self.client.get(&issues_url))
             .await
             .unwrap_or(api_types::ListIssuesResponse { issues: Vec::new() });
-        let simple_id_map: std::collections::HashMap<Uuid, &str> = issues_response
+        let simple_id_map: HashMap<Uuid, &str> = issues_response
             .issues
             .iter()
             .map(|i| (i.id, i.simple_id.as_str()))
@@ -794,7 +943,7 @@ impl McpServer {
                 statuses
                     .into_iter()
                     .map(|s| (s.id, s.name))
-                    .collect::<std::collections::HashMap<_, _>>()
+                    .collect::<HashMap<_, _>>()
             });
 
         response
@@ -884,5 +1033,192 @@ impl McpServer {
             }
         }
         Ok(filtered)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    fn make_issue(
+        issue_number: i32,
+        status_id: Uuid,
+        sort_order: f64,
+        priority: Option<IssuePriority>,
+        title: &str,
+        created_at: &str,
+        updated_at: &str,
+    ) -> Issue {
+        Issue {
+            id: Uuid::new_v4(),
+            project_id: Uuid::new_v4(),
+            issue_number,
+            simple_id: format!("PROJ-{issue_number}"),
+            status_id,
+            title: title.to_string(),
+            description: None,
+            priority,
+            start_date: None,
+            target_date: None,
+            completed_at: None,
+            sort_order,
+            parent_issue_id: None,
+            parent_issue_sort_order: None,
+            extension_metadata: json!({}),
+            creator_user_id: None,
+            created_at: created_at.parse().unwrap(),
+            updated_at: updated_at.parse().unwrap(),
+        }
+    }
+
+    #[test]
+    fn sorts_manual_order_by_status_then_sort_order() {
+        let todo = Uuid::new_v4();
+        let doing = Uuid::new_v4();
+        let mut issues = vec![
+            make_issue(
+                3,
+                doing,
+                5.0,
+                None,
+                "c",
+                "2026-03-01T00:00:00Z",
+                "2026-03-03T00:00:00Z",
+            ),
+            make_issue(
+                2,
+                todo,
+                10.0,
+                None,
+                "b",
+                "2026-03-01T00:00:00Z",
+                "2026-03-02T00:00:00Z",
+            ),
+            make_issue(
+                1,
+                todo,
+                1.0,
+                None,
+                "a",
+                "2026-03-01T00:00:00Z",
+                "2026-03-01T00:00:00Z",
+            ),
+        ];
+        let status_order = HashMap::from([(todo, 0), (doing, 1)]);
+
+        issues.sort_by(|left, right| {
+            McpServer::compare_issues(
+                left,
+                right,
+                IssueSortField::SortOrder,
+                SortDirection::Asc,
+                Some(&status_order),
+            )
+        });
+
+        assert_eq!(
+            issues
+                .iter()
+                .map(|issue| issue.issue_number)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn sorts_priority_with_nulls_last_for_ascending() {
+        let status = Uuid::new_v4();
+        let mut issues = vec![
+            make_issue(
+                3,
+                status,
+                0.0,
+                None,
+                "c",
+                "2026-03-01T00:00:00Z",
+                "2026-03-03T00:00:00Z",
+            ),
+            make_issue(
+                2,
+                status,
+                0.0,
+                Some(IssuePriority::Low),
+                "b",
+                "2026-03-01T00:00:00Z",
+                "2026-03-02T00:00:00Z",
+            ),
+            make_issue(
+                1,
+                status,
+                0.0,
+                Some(IssuePriority::Urgent),
+                "a",
+                "2026-03-01T00:00:00Z",
+                "2026-03-01T00:00:00Z",
+            ),
+        ];
+
+        issues.sort_by(|left, right| {
+            McpServer::compare_issues(
+                left,
+                right,
+                IssueSortField::Priority,
+                SortDirection::Asc,
+                None,
+            )
+        });
+
+        assert_eq!(
+            issues
+                .iter()
+                .map(|issue| issue.issue_number)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3]
+        );
+    }
+
+    #[test]
+    fn reverses_order_for_descending_updated_at() {
+        let status = Uuid::new_v4();
+        let mut issues = vec![
+            make_issue(
+                1,
+                status,
+                0.0,
+                None,
+                "a",
+                "2026-03-01T00:00:00Z",
+                "2026-03-01T00:00:00Z",
+            ),
+            make_issue(
+                2,
+                status,
+                0.0,
+                None,
+                "b",
+                "2026-03-01T00:00:00Z",
+                "2026-03-02T00:00:00Z",
+            ),
+        ];
+
+        issues.sort_by(|left, right| {
+            McpServer::compare_issues(
+                left,
+                right,
+                IssueSortField::UpdatedAt,
+                SortDirection::Desc,
+                None,
+            )
+        });
+
+        assert_eq!(
+            issues
+                .iter()
+                .map(|issue| issue.issue_number)
+                .collect::<Vec<_>>(),
+            vec![2, 1]
+        );
     }
 }

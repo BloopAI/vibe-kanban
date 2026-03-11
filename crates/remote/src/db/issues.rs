@@ -117,6 +117,7 @@ impl IssueRepository {
                 updated_at          AS "updated_at!: DateTime<Utc>"
             FROM issues
             WHERE project_id = $1
+            ORDER BY sort_order ASC, issue_number ASC
             "#,
             project_id
         )
