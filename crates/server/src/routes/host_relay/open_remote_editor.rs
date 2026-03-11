@@ -6,7 +6,7 @@ use axum::{
     routing::post,
 };
 use deployment::Deployment;
-use relay_hosts::OpenRemoteEditorError;
+use relay_hosts::{OpenRemoteEditorError, RelayHostLookupError};
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -43,9 +43,14 @@ async fn open_remote_workspace_in_editor(
             OpenRemoteEditorError::RelayNotConfigured,
         );
     };
+    let relay_host = match relay_hosts.host(req.host_id).await {
+        Ok(relay_host) => relay_host,
+        Err(error) => {
+            return map_open_remote_editor_lookup_error(req.host_id, error);
+        }
+    };
 
-    match relay_hosts
-        .host(req.host_id)
+    match relay_host
         .open_workspace_in_editor(
             deployment.tunnel_manager().as_ref(),
             req.workspace_id,
@@ -70,14 +75,9 @@ async fn open_remote_workspace_in_editor(
     }
 }
 
-fn map_open_remote_editor_error(
-    host_id: Uuid,
-    workspace_id: Uuid,
-    _editor_type: Option<&str>,
-    error: OpenRemoteEditorError,
-) -> Response {
+fn map_open_remote_editor_lookup_error(host_id: Uuid, error: RelayHostLookupError) -> Response {
     match error {
-        OpenRemoteEditorError::NotPaired => (
+        RelayHostLookupError::NotPaired => (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::<
                 desktop_bridge::service::OpenRemoteEditorResponse,
@@ -86,7 +86,7 @@ fn map_open_remote_editor_error(
             ))),
         )
             .into_response(),
-        OpenRemoteEditorError::MissingSigningMetadata => (
+        RelayHostLookupError::MissingSigningMetadata => (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::<
                 desktop_bridge::service::OpenRemoteEditorResponse,
@@ -95,7 +95,7 @@ fn map_open_remote_editor_error(
             )),
         )
             .into_response(),
-        OpenRemoteEditorError::MissingClientMetadata => (
+        RelayHostLookupError::MissingClientMetadata => (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::<
                 desktop_bridge::service::OpenRemoteEditorResponse,
@@ -104,6 +104,16 @@ fn map_open_remote_editor_error(
             )),
         )
             .into_response(),
+    }
+}
+
+fn map_open_remote_editor_error(
+    host_id: Uuid,
+    workspace_id: Uuid,
+    _editor_type: Option<&str>,
+    error: OpenRemoteEditorError,
+) -> Response {
+    match error {
         OpenRemoteEditorError::RelayNotConfigured => (
             StatusCode::BAD_REQUEST,
             Json(ApiResponse::<

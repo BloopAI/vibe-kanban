@@ -13,7 +13,7 @@ use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
 use relay_client::SignedUpstreamSocket;
 use relay_control::signed_ws::{RelayTransportMessage, RelayWsMessageType};
-use relay_hosts::{HostRelayProxyError, HostRelayWsConnection};
+use relay_hosts::{HostRelayProxyError, HostRelayWsConnection, RelayHostLookupError};
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -84,9 +84,12 @@ async fn forward_http(
         tracing::warn!(?error, "Failed to read relay proxy request body");
         RelayProxyError::BadRequest("Invalid request body")
     })?;
-
-    let response = relay_hosts
+    let relay_host = relay_hosts
         .host(host_id)
+        .await
+        .map_err(|error| map_host_lookup_error(host_id, error))?;
+
+    let response = relay_host
         .proxy_http(&method, &target_path, &headers, &body_bytes)
         .await
         .map_err(|error| map_http_proxy_error(host_id, error))?;
@@ -114,12 +117,15 @@ async fn forward_ws(
         .get("sec-websocket-protocol")
         .and_then(|v| v.to_str().ok())
         .map(ToOwned::to_owned);
+    let relay_host = relay_hosts
+        .host(host_id)
+        .await
+        .map_err(|error| map_host_lookup_error(host_id, error))?;
 
     let HostRelayWsConnection {
         upstream_socket,
         selected_protocol,
-    } = relay_hosts
-        .host(host_id)
+    } = relay_host
         .proxy_ws(&target_path, protocols.as_deref())
         .await
         .map_err(|error| map_ws_proxy_error(host_id, error))?;
@@ -160,6 +166,26 @@ fn map_ws_proxy_error(host_id: Uuid, error: HostRelayProxyError) -> RelayProxyEr
     )
 }
 
+fn map_host_lookup_error(host_id: Uuid, error: RelayHostLookupError) -> RelayProxyError {
+    match error {
+        RelayHostLookupError::NotPaired => {
+            RelayProxyError::BadRequest("No paired relay credentials for this host")
+        }
+        RelayHostLookupError::MissingClientMetadata => RelayProxyError::BadRequest(
+            "This host pairing is missing required client metadata. Re-pair it.",
+        ),
+        RelayHostLookupError::MissingSigningMetadata => {
+            tracing::warn!(
+                host_id = %host_id,
+                "Missing or invalid server_public_key_b64 for relay WS bridge"
+            );
+            RelayProxyError::BadRequest(
+                "This host pairing is missing required signing metadata. Re-pair it.",
+            )
+        }
+    }
+}
+
 fn map_proxy_error(
     host_id: Uuid,
     error: HostRelayProxyError,
@@ -169,21 +195,6 @@ fn map_proxy_error(
     upstream_message: &'static str,
 ) -> RelayProxyError {
     match error {
-        HostRelayProxyError::NotPaired => {
-            RelayProxyError::BadRequest("No paired relay credentials for this host")
-        }
-        HostRelayProxyError::MissingClientMetadata => RelayProxyError::BadRequest(
-            "This host pairing is missing required client metadata. Re-pair it.",
-        ),
-        HostRelayProxyError::MissingSigningMetadata => {
-            tracing::warn!(
-                host_id = %host_id,
-                "Missing or invalid server_public_key_b64 for relay WS bridge"
-            );
-            RelayProxyError::BadRequest(
-                "This host pairing is missing required signing metadata. Re-pair it.",
-            )
-        }
         HostRelayProxyError::RelayNotConfigured => {
             RelayProxyError::BadRequest("Remote relay API is not configured")
         }
