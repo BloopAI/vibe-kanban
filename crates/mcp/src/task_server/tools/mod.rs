@@ -1,4 +1,4 @@
-use std::{error::Error as StdError, str::FromStr};
+use std::str::FromStr;
 
 use api_types::{Issue, ListProjectStatusesResponse, ProjectStatus};
 use db::models::{execution_process::ExecutionProcessStatus, tag::Tag};
@@ -83,68 +83,20 @@ impl McpServer {
         Self::err_value(v)
     }
 
-    fn format_error_chain(error: &dyn StdError) -> String {
-        let mut parts = vec![error.to_string()];
-        let mut current = error.source();
-
-        while let Some(source) = current {
-            let message = source.to_string();
-            if !message.is_empty() && parts.last().map(|last| last != &message).unwrap_or(true) {
-                parts.push(message);
-            }
-            current = source.source();
-        }
-
-        parts.join(": ")
-    }
-
-    fn format_reqwest_error(error: &reqwest::Error) -> String {
-        let mut message = Self::format_error_chain(error);
-        if let Some(url) = error.url() {
-            message.push_str(&format!(" [url: {url}]"));
-        }
-        message
-    }
-
-    fn extract_error_details_from_response_body(body: &str) -> Option<String> {
-        let trimmed = body.trim();
-        if trimmed.is_empty() {
-            return None;
-        }
-
-        serde_json::from_str::<serde_json::Value>(trimmed)
-            .ok()
-            .and_then(|value| {
-                value
-                    .get("details")
-                    .and_then(|details| details.as_str())
-                    .or_else(|| value.get("error").and_then(|error| error.as_str()))
-                    .or_else(|| value.get("message").and_then(|message| message.as_str()))
-                    .map(ToOwned::to_owned)
-            })
-            .or_else(|| Some(trimmed.to_string()))
-    }
-
     async fn send_json<T: DeserializeOwned>(
         &self,
         rb: reqwest::RequestBuilder,
     ) -> Result<T, CallToolResult> {
-        let resp = rb.send().await.map_err(|e| {
-            Self::err(
-                "Failed to connect to VK API",
-                Some(&Self::format_reqwest_error(&e)),
-            )
-            .unwrap()
-        })?;
+        let resp = rb
+            .send()
+            .await
+            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
 
         if !resp.status().is_success() {
             let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(Self::err(
-                format!("VK API returned error status: {}", status),
-                Self::extract_error_details_from_response_body(&body),
-            )
-            .unwrap());
+            return Err(
+                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
+            );
         }
 
         let api_response = resp.json::<ApiResponseEnvelope<T>>().await.map_err(|e| {
@@ -162,22 +114,16 @@ impl McpServer {
     }
 
     async fn send_empty_json(&self, rb: reqwest::RequestBuilder) -> Result<(), CallToolResult> {
-        let resp = rb.send().await.map_err(|e| {
-            Self::err(
-                "Failed to connect to VK API",
-                Some(&Self::format_reqwest_error(&e)),
-            )
-            .unwrap()
-        })?;
+        let resp = rb
+            .send()
+            .await
+            .map_err(|e| Self::err("Failed to connect to VK API", Some(&e.to_string())).unwrap())?;
 
         if !resp.status().is_success() {
             let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(Self::err(
-                format!("VK API returned error status: {}", status),
-                Self::extract_error_details_from_response_body(&body),
-            )
-            .unwrap());
+            return Err(
+                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
+            );
         }
 
         #[derive(Deserialize)]
@@ -424,7 +370,7 @@ impl McpServer {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeSet, error::Error as StdError, fmt, sync::Once};
+    use std::{collections::BTreeSet, sync::Once};
 
     use rmcp::handler::server::tool::ToolRouter;
     use uuid::Uuid;
@@ -450,24 +396,6 @@ mod tests {
             .collect()
     }
 
-    #[derive(Debug)]
-    struct TestError {
-        message: &'static str,
-        source: Option<Box<dyn StdError + Send + Sync>>,
-    }
-
-    impl fmt::Display for TestError {
-        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            write!(f, "{}", self.message)
-        }
-    }
-
-    impl StdError for TestError {
-        fn source(&self) -> Option<&(dyn StdError + 'static)> {
-            self.source.as_deref().map(|error| error as _)
-        }
-    }
-
     #[test]
     fn orchestrator_mode_exposes_only_scoped_workflow_tools() {
         let actual = tool_names(McpServer::orchestrator_mode_router());
@@ -491,64 +419,6 @@ mod tests {
         assert!(actual.contains("list_workspaces"));
         assert!(actual.contains("delete_workspace"));
         assert!(!actual.contains("output_markdown"));
-    }
-
-    #[test]
-    fn format_error_chain_includes_nested_sources() {
-        let error = TestError {
-            message: "builder error",
-            source: Some(Box::new(TestError {
-                message: "unsupported query sequence",
-                source: Some(Box::new(TestError {
-                    message: "status_ids",
-                    source: None,
-                })),
-            })),
-        };
-
-        assert_eq!(
-            McpServer::format_error_chain(&error),
-            "builder error: unsupported query sequence: status_ids"
-        );
-    }
-
-    #[test]
-    fn format_error_chain_deduplicates_repeated_messages() {
-        let error = TestError {
-            message: "builder error",
-            source: Some(Box::new(TestError {
-                message: "builder error",
-                source: Some(Box::new(TestError {
-                    message: "unsupported value",
-                    source: None,
-                })),
-            })),
-        };
-
-        assert_eq!(
-            McpServer::format_error_chain(&error),
-            "builder error: unsupported value"
-        );
-    }
-
-    #[test]
-    fn extracts_error_details_from_json_response_body() {
-        let body = r#"{"success":false,"error":"Bad request","details":"invalid type: string, expected sequence"}"#;
-
-        assert_eq!(
-            McpServer::extract_error_details_from_response_body(body),
-            Some("invalid type: string, expected sequence".to_string())
-        );
-    }
-
-    #[test]
-    fn falls_back_to_raw_error_body_when_not_json() {
-        let body = "Failed to deserialize query string";
-
-        assert_eq!(
-            McpServer::extract_error_details_from_response_body(body),
-            Some(body.to_string())
-        );
     }
 
     #[test]

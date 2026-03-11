@@ -184,7 +184,22 @@ async fn list_issues(
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
     let project_id = query.project_id;
     ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
-    let request = SearchIssuesRequest::from(query);
+    let request = SearchIssuesRequest {
+        project_id,
+        status_id: None,
+        status_ids: None,
+        priority: None,
+        parent_issue_id: None,
+        search: None,
+        simple_id: None,
+        assignee_user_id: None,
+        tag_id: None,
+        tag_ids: None,
+        sort_field: None,
+        sort_direction: None,
+        limit: None,
+        offset: None,
+    };
 
     let response = IssueRepository::search(state.pool(), &request)
         .await
