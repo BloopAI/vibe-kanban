@@ -1,6 +1,7 @@
 use api_types::{
     CreateIssueRequest, DeleteResponse, Issue, ListIssuesQuery, ListIssuesResponse,
-    MutationResponse, NotificationPayload, NotificationType, UpdateIssueRequest,
+    MutationResponse, SearchIssuesRequest, UpdateIssueRequest,
+    NotificationPayload, NotificationType,
 };
 use axum::{
     Json,
@@ -43,6 +44,7 @@ pub fn mutation() -> MutationBuilder<Issue, CreateIssueRequest, UpdateIssueReque
 pub fn router() -> axum::Router<AppState> {
     mutation()
         .router()
+        .route("/issues/search", post(search_issues))
         .route("/issues/bulk", post(bulk_update_issues))
 }
 
@@ -180,13 +182,37 @@ async fn list_issues(
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssuesQuery>,
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
+    let project_id = query.project_id;
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+    let request = SearchIssuesRequest::from(query);
 
-    let response = IssueRepository::list(state.pool(), &query)
+    let response = IssueRepository::search(state.pool(), &request)
         .await
         .map_err(|error| {
-            tracing::error!(?error, project_id = %query.project_id, "failed to list issues");
+            tracing::error!(?error, project_id = %project_id, "failed to list issues");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
+        })?;
+
+    Ok(Json(response))
+}
+
+#[instrument(
+    name = "issues.search_issues",
+    skip(state, ctx, payload),
+    fields(project_id = %payload.project_id, user_id = %ctx.user.id)
+)]
+async fn search_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<SearchIssuesRequest>,
+) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
+
+    let response = IssueRepository::search(state.pool(), &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, project_id = %payload.project_id, "failed to search issues");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to search issues")
         })?;
 
     Ok(Json(response))

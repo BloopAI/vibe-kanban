@@ -5,7 +5,7 @@ use sqlx::Type;
 use ts_rs::TS;
 use uuid::Uuid;
 
-use crate::{some_if_present, some_vec_if_present};
+use crate::some_if_present;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
 #[sqlx(type_name = "issue_priority", rename_all = "snake_case")]
@@ -15,17 +15,6 @@ pub enum IssuePriority {
     High,
     Medium,
     Low,
-}
-
-impl IssuePriority {
-    fn as_query_value(self) -> &'static str {
-        match self {
-            Self::Urgent => "urgent",
-            Self::High => "high",
-            Self::Medium => "medium",
-            Self::Low => "low",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, sqlx::FromRow)]
@@ -60,32 +49,11 @@ pub enum IssueSortField {
     Title,
 }
 
-impl IssueSortField {
-    fn as_query_value(self) -> &'static str {
-        match self {
-            Self::SortOrder => "sort_order",
-            Self::Priority => "priority",
-            Self::CreatedAt => "created_at",
-            Self::UpdatedAt => "updated_at",
-            Self::Title => "title",
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 pub enum SortDirection {
     Asc,
     Desc,
-}
-
-impl SortDirection {
-    fn as_query_value(self) -> &'static str {
-        match self {
-            Self::Asc => "asc",
-            Self::Desc => "desc",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -181,15 +149,16 @@ pub struct UpdateIssueRequest {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesQuery {
     pub project_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+pub struct SearchIssuesRequest {
+    pub project_id: Uuid,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status_id: Option<Uuid>,
     #[ts(optional)]
-    #[serde(
-        default,
-        deserialize_with = "some_vec_if_present",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub status_ids: Option<Vec<Uuid>>,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -210,11 +179,7 @@ pub struct ListIssuesQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_id: Option<Uuid>,
     #[ts(optional)]
-    #[serde(
-        default,
-        deserialize_with = "some_vec_if_present",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_ids: Option<Vec<Uuid>>,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -230,86 +195,24 @@ pub struct ListIssuesQuery {
     pub offset: Option<i32>,
 }
 
-impl ListIssuesQuery {
-    pub fn to_query_pairs(&self) -> Vec<(String, String)> {
-        let mut pairs = vec![("project_id".to_string(), self.project_id.to_string())];
-
-        if let Some(status_id) = self.status_id {
-            pairs.push(("status_id".to_string(), status_id.to_string()));
+impl From<ListIssuesQuery> for SearchIssuesRequest {
+    fn from(query: ListIssuesQuery) -> Self {
+        Self {
+            project_id: query.project_id,
+            status_id: None,
+            status_ids: None,
+            priority: None,
+            parent_issue_id: None,
+            search: None,
+            simple_id: None,
+            assignee_user_id: None,
+            tag_id: None,
+            tag_ids: None,
+            sort_field: None,
+            sort_direction: None,
+            limit: None,
+            offset: None,
         }
-
-        if let Some(status_ids) = &self.status_ids {
-            pairs.push((
-                "status_ids".to_string(),
-                status_ids
-                    .iter()
-                    .map(Uuid::to_string)
-                    .collect::<Vec<_>>()
-                    .join(","),
-            ));
-        }
-
-        if let Some(priority) = self.priority {
-            pairs.push((
-                "priority".to_string(),
-                priority.as_query_value().to_string(),
-            ));
-        }
-
-        if let Some(parent_issue_id) = self.parent_issue_id {
-            pairs.push(("parent_issue_id".to_string(), parent_issue_id.to_string()));
-        }
-
-        if let Some(search) = &self.search {
-            pairs.push(("search".to_string(), search.clone()));
-        }
-
-        if let Some(simple_id) = &self.simple_id {
-            pairs.push(("simple_id".to_string(), simple_id.clone()));
-        }
-
-        if let Some(assignee_user_id) = self.assignee_user_id {
-            pairs.push(("assignee_user_id".to_string(), assignee_user_id.to_string()));
-        }
-
-        if let Some(tag_id) = self.tag_id {
-            pairs.push(("tag_id".to_string(), tag_id.to_string()));
-        }
-
-        if let Some(tag_ids) = &self.tag_ids {
-            pairs.push((
-                "tag_ids".to_string(),
-                tag_ids
-                    .iter()
-                    .map(Uuid::to_string)
-                    .collect::<Vec<_>>()
-                    .join(","),
-            ));
-        }
-
-        if let Some(sort_field) = self.sort_field {
-            pairs.push((
-                "sort_field".to_string(),
-                sort_field.as_query_value().to_string(),
-            ));
-        }
-
-        if let Some(sort_direction) = self.sort_direction {
-            pairs.push((
-                "sort_direction".to_string(),
-                sort_direction.as_query_value().to_string(),
-            ));
-        }
-
-        if let Some(limit) = self.limit {
-            pairs.push(("limit".to_string(), limit.to_string()));
-        }
-
-        if let Some(offset) = self.offset {
-            pairs.push(("offset".to_string(), offset.to_string()));
-        }
-
-        pairs
     }
 }
 
@@ -326,70 +229,23 @@ mod tests {
     use super::*;
 
     #[test]
-    fn list_issues_query_serializes_multi_value_filters_as_comma_separated_pairs() {
-        let first_status_id = Uuid::new_v4();
-        let second_status_id = Uuid::new_v4();
-        let tag_id = Uuid::new_v4();
-        let assignee_user_id = Uuid::new_v4();
-
-        let query = ListIssuesQuery {
-            project_id: Uuid::new_v4(),
-            status_id: None,
-            status_ids: Some(vec![first_status_id, second_status_id]),
-            priority: Some(IssuePriority::High),
-            parent_issue_id: None,
-            search: Some("done".to_string()),
-            simple_id: None,
-            assignee_user_id: Some(assignee_user_id),
-            tag_id: None,
-            tag_ids: Some(vec![tag_id]),
-            sort_field: Some(IssueSortField::SortOrder),
-            sort_direction: Some(SortDirection::Asc),
-            limit: Some(200),
-            offset: Some(0),
-        };
-
-        let pairs = query.to_query_pairs();
-
-        assert!(pairs.contains(&(
-            "status_ids".to_string(),
-            format!("{first_status_id},{second_status_id}")
-        )));
-        assert!(pairs.contains(&("tag_ids".to_string(), tag_id.to_string())));
-        assert!(pairs.contains(&("priority".to_string(), "high".to_string())));
-        assert!(pairs.contains(&("assignee_user_id".to_string(), assignee_user_id.to_string())));
-        assert!(pairs.contains(&("sort_field".to_string(), "sort_order".to_string())));
-        assert!(pairs.contains(&("sort_direction".to_string(), "asc".to_string())));
-        assert!(pairs.contains(&("limit".to_string(), "200".to_string())));
-    }
-
-    #[test]
-    fn list_issues_query_deserializes_single_status_or_tag_id_into_one_item_vec() {
+    fn search_issues_request_from_list_issues_query_is_unfiltered() {
         let project_id = Uuid::new_v4();
-        let status_id = Uuid::new_v4();
-        let tag_id = Uuid::new_v4();
-        let query = serde_urlencoded::from_str::<ListIssuesQuery>(&format!(
-            "project_id={project_id}&status_ids={status_id}&tag_ids={tag_id}"
-        ))
-        .expect("query should deserialize");
+        let request = SearchIssuesRequest::from(ListIssuesQuery { project_id });
 
-        assert_eq!(query.status_ids, Some(vec![status_id]));
-        assert_eq!(query.tag_ids, Some(vec![tag_id]));
-    }
-
-    #[test]
-    fn list_issues_query_deserializes_comma_separated_status_ids() {
-        let project_id = Uuid::new_v4();
-        let first_status_id = Uuid::new_v4();
-        let second_status_id = Uuid::new_v4();
-        let query = serde_urlencoded::from_str::<ListIssuesQuery>(&format!(
-            "project_id={project_id}&status_ids={first_status_id},{second_status_id}"
-        ))
-        .expect("query should deserialize");
-
-        assert_eq!(
-            query.status_ids,
-            Some(vec![first_status_id, second_status_id])
-        );
+        assert_eq!(request.project_id, project_id);
+        assert_eq!(request.status_id, None);
+        assert_eq!(request.status_ids, None);
+        assert_eq!(request.priority, None);
+        assert_eq!(request.parent_issue_id, None);
+        assert_eq!(request.search, None);
+        assert_eq!(request.simple_id, None);
+        assert_eq!(request.assignee_user_id, None);
+        assert_eq!(request.tag_id, None);
+        assert_eq!(request.tag_ids, None);
+        assert_eq!(request.sort_field, None);
+        assert_eq!(request.sort_direction, None);
+        assert_eq!(request.limit, None);
+        assert_eq!(request.offset, None);
     }
 }

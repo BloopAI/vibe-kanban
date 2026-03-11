@@ -3,8 +3,9 @@
 use api_types::{
     ListIssueAssigneesResponse, ListIssueCommentReactionsResponse, ListIssueCommentsResponse,
     ListIssueFollowersResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
-    ListIssuesQuery, ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember, User, Workspace,
+    ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
+    ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember,
+    SearchIssuesRequest, User, Workspace,
 };
 use axum::{
     Json,
@@ -305,9 +306,9 @@ async fn fallback_list_issues(
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let response = IssueRepository::list(
+    let response = IssueRepository::search(
         state.pool(),
-        &ListIssuesQuery {
+        &SearchIssuesRequest {
             project_id: query.project_id,
             status_id: None,
             status_ids: None,
