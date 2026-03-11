@@ -5,6 +5,8 @@
 //! - Request types (e.g., `CreateIssueRequest`, `UpdateIssueRequest`) - API input types
 //! - Shared enums (e.g., `IssuePriority`, `PullRequestStatus`)
 
+use std::{fmt::Display, str::FromStr};
+
 use serde::{Deserialize, Deserializer};
 
 pub mod attachment;
@@ -65,4 +67,32 @@ where
     T: Deserialize<'de>,
 {
     T::deserialize(deserializer).map(Some)
+}
+
+pub fn some_vec_if_present<'de, D, T>(deserializer: D) -> Result<Option<Vec<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + FromStr,
+    T::Err: Display,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum OneOrMany<T> {
+        One(T),
+        Many(Vec<T>),
+        Csv(String),
+    }
+
+    OneOrMany::<T>::deserialize(deserializer).and_then(|value| {
+        Ok(Some(match value {
+            OneOrMany::One(item) => vec![item],
+            OneOrMany::Many(items) => items,
+            OneOrMany::Csv(items) => items
+                .split(',')
+                .map(str::trim)
+                .filter(|item| !item.is_empty())
+                .map(|item| item.parse().map_err(serde::de::Error::custom))
+                .collect::<Result<Vec<_>, _>>()?,
+        }))
+    })
 }

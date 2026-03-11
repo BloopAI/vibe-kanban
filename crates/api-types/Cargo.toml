@@ -12,3 +12,6 @@ sqlx = { version = "0.8.6", default-features = false, features = ["postgres", "u
 ts-rs = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 base64 = "0.22"
+
+[dev-dependencies]
+serde_urlencoded = "0.7"

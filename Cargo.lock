@@ -191,6 +191,7 @@ dependencies = [
  "schemars 1.2.1",
  "serde",
  "serde_json",
+ "serde_urlencoded",
  "sqlx",
  "ts-rs 11.0.1",
  "uuid",
