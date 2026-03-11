@@ -1,7 +1,7 @@
 import {
   createContext,
   useContext,
-  useEffect,
+  useLayoutEffect,
   useMemo,
   type ReactNode,
 } from 'react';
@@ -27,7 +27,7 @@ export function HostIdProvider({ children }: { children: ReactNode }) {
     [destination]
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     _hostId = hostId;
     return () => {
       _hostId = null;

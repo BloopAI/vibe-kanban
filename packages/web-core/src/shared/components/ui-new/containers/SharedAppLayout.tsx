@@ -188,8 +188,8 @@ export function SharedAppLayout() {
   }, [activeProjectId, setSelectedProjectId]);
 
   const handleWorkspacesClick = useCallback(() => {
-    appNavigation.goToWorkspaces();
-  }, [appNavigation]);
+    void navigate({ to: '/workspaces' });
+  }, [navigate]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
@@ -384,7 +384,7 @@ export function SharedAppLayout() {
             <button
               type="button"
               onClick={() => {
-                appNavigation.goToWorkspaces();
+                void navigate({ to: '/workspaces' });
                 setIsDrawerOpen(false);
               }}
               className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"
