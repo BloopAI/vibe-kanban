@@ -206,24 +206,10 @@ impl IssueRepository {
                     WHEN $11 = 'sort_order' AND $12 = 'desc' THEN i.sort_order
                 END DESC NULLS LAST,
                 CASE
-                    WHEN $11 = 'priority' AND $12 = 'asc' THEN
-                        CASE i.priority
-                            WHEN 'urgent' THEN 0
-                            WHEN 'high' THEN 1
-                            WHEN 'medium' THEN 2
-                            WHEN 'low' THEN 3
-                            ELSE NULL
-                        END
+                    WHEN $11 = 'priority' AND $12 = 'asc' THEN i.priority
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'priority' AND $12 = 'desc' THEN
-                        CASE i.priority
-                            WHEN 'urgent' THEN 0
-                            WHEN 'high' THEN 1
-                            WHEN 'medium' THEN 2
-                            WHEN 'low' THEN 3
-                            ELSE NULL
-                        END
+                    WHEN $11 = 'priority' AND $12 = 'desc' THEN i.priority
                 END DESC NULLS FIRST,
                 CASE
                     WHEN $11 = 'created_at' AND $12 = 'asc' THEN i.created_at
