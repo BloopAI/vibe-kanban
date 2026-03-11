@@ -212,14 +212,20 @@ export function NavbarContainer({
   const { data: allProjects } = useAllOrganizationProjects({
     enabled: shouldResolveBreadcrumbData,
   });
-  const { data: projectIssues } = useShape(
+  const { data: projectIssues, isLoading: isProjectIssuesLoading } = useShape(
     PROJECT_ISSUES_SHAPE,
     { project_id: linkedProjectId || '' },
     { enabled: shouldResolveIssueBreadcrumb }
   );
+  const isWaitingForIssueBreadcrumb =
+    shouldResolveIssueBreadcrumb && isProjectIssuesLoading;
 
   const breadcrumbs = useMemo((): NavbarBreadcrumbItem[] | undefined => {
-    if (!shouldResolveBreadcrumbData || !linkedProjectId) {
+    if (
+      !shouldResolveBreadcrumbData ||
+      !linkedProjectId ||
+      isWaitingForIssueBreadcrumb
+    ) {
       return undefined;
     }
 
@@ -255,6 +261,7 @@ export function NavbarContainer({
     shouldResolveBreadcrumbData,
     linkedProjectId,
     linkedIssueId,
+    isWaitingForIssueBreadcrumb,
     allProjects,
     projectIssues,
     selectedWorkspace?.name,
@@ -325,7 +332,9 @@ export function NavbarContainer({
       mobileActiveTab={mobileActiveTab as MobileTabId}
       onMobileTabChange={(tab) => setMobileActiveTab(tab)}
       leftSlot={
-        !breadcrumbs && linkedRemoteWorkspace?.issue_id ? (
+        !breadcrumbs &&
+        !isWaitingForIssueBreadcrumb &&
+        linkedRemoteWorkspace?.issue_id ? (
           <RemoteIssueLink
             projectId={linkedRemoteWorkspace.project_id}
             issueId={linkedRemoteWorkspace.issue_id}
