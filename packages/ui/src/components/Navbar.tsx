@@ -430,9 +430,7 @@ export function Navbar({
               const isLast = index === breadcrumbs.length - 1;
               return (
                 <span key={index} className="flex items-center gap-1 min-w-0">
-                  {index > 0 && (
-                    <span className="text-low shrink-0">/</span>
-                  )}
+                  {index > 0 && <span className="text-low shrink-0">/</span>}
                   {crumb.onClick && !isLast ? (
                     <button
                       type="button"
@@ -456,9 +454,7 @@ export function Navbar({
             })}
           </div>
         ) : (
-          <p className="text-base text-low truncate">
-            {workspaceTitle ?? ''}
-          </p>
+          <p className="text-base text-low truncate">{workspaceTitle ?? ''}</p>
         )}
       </div>
 
