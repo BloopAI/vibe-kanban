@@ -136,100 +136,128 @@ impl IssueRepository {
         let issues = sqlx::query_as!(
             Issue,
             r#"
+            WITH filtered AS (
+                SELECT
+                    i.id,
+                    i.project_id,
+                    i.issue_number,
+                    i.simple_id,
+                    i.status_id,
+                    i.title,
+                    i.description,
+                    i.priority,
+                    i.start_date,
+                    i.target_date,
+                    i.completed_at,
+                    i.sort_order,
+                    i.parent_issue_id,
+                    i.parent_issue_sort_order,
+                    i.extension_metadata,
+                    i.creator_user_id,
+                    i.created_at,
+                    i.updated_at,
+                    CASE WHEN $11 = 'sort_order' THEN ps.sort_order END AS manual_status_sort_order,
+                    CASE WHEN $11 = 'sort_order' THEN i.sort_order END AS manual_issue_sort_order,
+                    CASE WHEN $11 = 'priority' THEN i.priority END AS priority_sort_order,
+                    CASE WHEN $11 = 'created_at' THEN i.created_at END AS created_at_sort_order,
+                    CASE WHEN $11 = 'updated_at' THEN i.updated_at END AS updated_at_sort_order,
+                    CASE WHEN $11 = 'title' THEN i.title END AS title_sort_order
+                FROM issues i
+                LEFT JOIN project_statuses ps ON ps.id = i.status_id
+                WHERE i.project_id = $1
+                  AND ($2::uuid IS NULL OR i.status_id = $2)
+                  AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))
+                  AND ($4::issue_priority IS NULL OR i.priority = $4)
+                  AND ($5::uuid IS NULL OR i.parent_issue_id = $5)
+                  AND (
+                      $6::text IS NULL
+                      OR i.title ILIKE $6 ESCAPE '\'
+                      OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\'
+                  )
+                  AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\')
+                  AND (
+                      $8::uuid IS NULL
+                      OR EXISTS (
+                          SELECT 1
+                          FROM issue_assignees ia
+                          WHERE ia.issue_id = i.id AND ia.user_id = $8
+                      )
+                  )
+                  AND (
+                      $9::uuid IS NULL
+                      OR EXISTS (
+                          SELECT 1
+                          FROM issue_tags it
+                          WHERE it.issue_id = i.id AND it.tag_id = $9
+                      )
+                  )
+                  AND (
+                      $10::uuid[] IS NULL
+                      OR EXISTS (
+                          SELECT 1
+                          FROM issue_tags it
+                          WHERE it.issue_id = i.id AND it.tag_id = ANY($10)
+                      )
+                  )
+            )
             SELECT
-                i.id                  AS "id!: Uuid",
-                i.project_id          AS "project_id!: Uuid",
-                i.issue_number        AS "issue_number!",
-                i.simple_id           AS "simple_id!",
-                i.status_id           AS "status_id!: Uuid",
-                i.title               AS "title!",
-                i.description         AS "description?",
-                i.priority            AS "priority: IssuePriority",
-                i.start_date          AS "start_date?: DateTime<Utc>",
-                i.target_date         AS "target_date?: DateTime<Utc>",
-                i.completed_at        AS "completed_at?: DateTime<Utc>",
-                i.sort_order          AS "sort_order!",
-                i.parent_issue_id     AS "parent_issue_id?: Uuid",
-                i.parent_issue_sort_order AS "parent_issue_sort_order?",
-                i.extension_metadata  AS "extension_metadata!: Value",
-                i.creator_user_id     AS "creator_user_id?: Uuid",
-                i.created_at          AS "created_at!: DateTime<Utc>",
-                i.updated_at          AS "updated_at!: DateTime<Utc>"
-            FROM issues i
-            LEFT JOIN project_statuses ps ON ps.id = i.status_id
-            WHERE i.project_id = $1
-              AND ($2::uuid IS NULL OR i.status_id = $2)
-              AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))
-              AND ($4::issue_priority IS NULL OR i.priority = $4)
-              AND ($5::uuid IS NULL OR i.parent_issue_id = $5)
-              AND (
-                  $6::text IS NULL
-                  OR i.title ILIKE $6 ESCAPE '\'
-                  OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\'
-              )
-              AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\')
-              AND (
-                  $8::uuid IS NULL
-                  OR EXISTS (
-                      SELECT 1
-                      FROM issue_assignees ia
-                      WHERE ia.issue_id = i.id AND ia.user_id = $8
-                  )
-              )
-              AND (
-                  $9::uuid IS NULL
-                  OR EXISTS (
-                      SELECT 1
-                      FROM issue_tags it
-                      WHERE it.issue_id = i.id AND it.tag_id = $9
-                  )
-              )
-              AND (
-                  $10::uuid[] IS NULL
-                  OR EXISTS (
-                      SELECT 1
-                      FROM issue_tags it
-                      WHERE it.issue_id = i.id AND it.tag_id = ANY($10)
-                  )
-              )
+                id                  AS "id!: Uuid",
+                project_id          AS "project_id!: Uuid",
+                issue_number        AS "issue_number!",
+                simple_id           AS "simple_id!",
+                status_id           AS "status_id!: Uuid",
+                title               AS "title!",
+                description         AS "description?",
+                priority            AS "priority: IssuePriority",
+                start_date          AS "start_date?: DateTime<Utc>",
+                target_date         AS "target_date?: DateTime<Utc>",
+                completed_at        AS "completed_at?: DateTime<Utc>",
+                sort_order          AS "sort_order!",
+                parent_issue_id     AS "parent_issue_id?: Uuid",
+                parent_issue_sort_order AS "parent_issue_sort_order?",
+                extension_metadata  AS "extension_metadata!: Value",
+                creator_user_id     AS "creator_user_id?: Uuid",
+                created_at          AS "created_at!: DateTime<Utc>",
+                updated_at          AS "updated_at!: DateTime<Utc>"
+            FROM filtered
             ORDER BY
                 CASE
-                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN ps.sort_order
+                    WHEN $12 = 'asc' THEN manual_status_sort_order
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN ps.sort_order
+                    WHEN $12 = 'desc' THEN manual_status_sort_order
                 END DESC NULLS LAST,
                 CASE
-                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN i.sort_order
+                    WHEN $12 = 'asc' THEN manual_issue_sort_order
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN i.sort_order
+                    WHEN $12 = 'desc' THEN manual_issue_sort_order
                 END DESC NULLS LAST,
                 CASE
-                    WHEN $11 = 'priority' AND $12 = 'asc' THEN i.priority
+                    WHEN $12 = 'asc' THEN priority_sort_order
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'priority' AND $12 = 'desc' THEN i.priority
+                    WHEN $12 = 'desc' THEN priority_sort_order
                 END DESC NULLS FIRST,
                 CASE
-                    WHEN $11 = 'created_at' AND $12 = 'asc' THEN i.created_at
+                    WHEN $12 = 'asc' THEN created_at_sort_order
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'created_at' AND $12 = 'desc' THEN i.created_at
+                    WHEN $12 = 'desc' THEN created_at_sort_order
                 END DESC NULLS LAST,
                 CASE
-                    WHEN $11 = 'updated_at' AND $12 = 'asc' THEN i.updated_at
+                    WHEN $12 = 'asc' THEN updated_at_sort_order
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'updated_at' AND $12 = 'desc' THEN i.updated_at
+                    WHEN $12 = 'desc' THEN updated_at_sort_order
                 END DESC NULLS LAST,
                 CASE
-                    WHEN $11 = 'title' AND $12 = 'asc' THEN i.title
+                    WHEN $12 = 'asc' THEN title_sort_order
                 END ASC NULLS LAST,
                 CASE
-                    WHEN $11 = 'title' AND $12 = 'desc' THEN i.title
+                    WHEN $12 = 'desc' THEN title_sort_order
                 END DESC NULLS LAST,
-                i.issue_number ASC
+                issue_number ASC
             LIMIT $13
             OFFSET $14
             "#,
