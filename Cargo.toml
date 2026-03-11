@@ -13,7 +13,7 @@ members = [
     "crates/worktree-manager",
     "crates/workspace-manager",
     "crates/relay-control",
-    "crates/server-info",
+    "crates/client-info",
     "crates/utils",
     "crates/git",
     "crates/git-host",

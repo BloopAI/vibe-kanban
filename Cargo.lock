@@ -881,6 +881,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a822ea5bc7590f9d40f1ba12c0dc3c2760f3482c6984db1573ad11031420831"
 
 [[package]]
+name = "client-info"
+version = "0.1.28"
+dependencies = [
+ "tokio",
+]
+
+[[package]]
 name = "clipboard-win"
 version = "5.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1484,6 +1491,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "axum",
+ "client-info",
  "db",
  "executors",
  "futures",
@@ -1491,7 +1499,6 @@ dependencies = [
  "git2",
  "relay-control",
  "serde_json",
- "server-info",
  "services",
  "sqlx",
  "thiserror 2.0.18",
@@ -3497,6 +3504,7 @@ dependencies = [
  "api-types",
  "async-trait",
  "base64",
+ "client-info",
  "command-group",
  "db",
  "deployment",
@@ -3513,7 +3521,6 @@ dependencies = [
  "russh",
  "serde",
  "serde_json",
- "server-info",
  "services",
  "sqlx",
  "tempfile",
@@ -6114,13 +6121,6 @@ dependencies = [
  "uuid",
  "workspace-manager",
  "worktree-manager",
-]
-
-[[package]]
-name = "server-info"
-version = "0.1.28"
-dependencies = [
- "tokio",
 ]
 
 [[package]]

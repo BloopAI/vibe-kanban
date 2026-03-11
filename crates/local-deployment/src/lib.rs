@@ -2,13 +2,13 @@ use std::{collections::HashMap, sync::Arc};
 
 use api_types::LoginStatus;
 use async_trait::async_trait;
+use client_info::ClientInfo;
 use db::DBService;
 use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
 use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use relay_control::{RelayControl, signing::RelaySigningService};
-use server_info::ServerInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
     approvals::Approvals,
@@ -63,13 +63,12 @@ pub struct LocalDeployment {
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
     remote_client: Result<RemoteClient, RemoteClientNotConfigured>,
-    shared_api_base: Option<String>,
     auth_context: AuthContext,
     oauth_handoffs: Arc<RwLock<HashMap<Uuid, PendingHandoff>>>,
     trusted_key_auth: TrustedKeyAuthRuntime,
     relay_signing: RelaySigningService,
     relay_control: Arc<RelayControl>,
-    server_info: Arc<ServerInfo>,
+    client_info: Arc<ClientInfo>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
     tunnel_manager: Arc<TunnelManager>,
@@ -189,7 +188,7 @@ impl Deployment for LocalDeployment {
         let relay_signing = RelaySigningService::load_or_generate(&server_signing_key_path())
             .expect("Failed to load or generate server signing key");
         let relay_control = Arc::new(RelayControl::new());
-        let server_info = Arc::new(ServerInfo::new());
+        let client_info = Arc::new(ClientInfo::new());
 
         let ssh_host_key = embedded_ssh::host_key::load_or_generate(&ssh_host_key_path())
             .expect("Failed to load or generate SSH host key");
@@ -250,13 +249,12 @@ impl Deployment for LocalDeployment {
             approvals,
             queued_message_service,
             remote_client,
-            shared_api_base: api_base,
             auth_context,
             oauth_handoffs,
             trusted_key_auth,
             relay_signing,
             relay_control,
-            server_info,
+            client_info,
             ssh_config,
             pty,
             tunnel_manager,
@@ -330,16 +328,12 @@ impl Deployment for LocalDeployment {
         &self.relay_signing
     }
 
-    fn server_info(&self) -> &Arc<ServerInfo> {
-        &self.server_info
+    fn client_info(&self) -> &Arc<ClientInfo> {
+        &self.client_info
     }
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {
         &self.trusted_key_auth
-    }
-
-    fn shared_api_base(&self) -> Option<String> {
-        self.shared_api_base.clone()
     }
 }
 

@@ -1,5 +1,5 @@
 [package]
-name = "server-info"
+name = "client-info"
 version = "0.1.28"
 edition = "2024"
 

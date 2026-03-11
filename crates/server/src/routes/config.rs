@@ -208,7 +208,7 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
         relay_registration::effective_relay_host_name(new, deployment.user_id());
 
     deployment
-        .server_info()
+        .client_info()
         .set_hostname(new_relay_host_name.clone())
         .await;
 

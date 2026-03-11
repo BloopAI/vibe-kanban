@@ -1,18 +1,18 @@
 use tokio::sync::RwLock;
 
 /// Runtime information about the local server (port, hostname).
-pub struct ServerInfo {
+pub struct ClientInfo {
     port: RwLock<Option<u16>>,
     hostname: RwLock<Option<String>>,
 }
 
-impl Default for ServerInfo {
+impl Default for ClientInfo {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl ServerInfo {
+impl ClientInfo {
     pub fn new() -> Self {
         Self {
             port: RwLock::new(None),

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::Error as AnyhowError;
 use async_trait::async_trait;
 use axum::response::sse::Event;
+use client_info::ClientInfo;
 use db::{DBService, models::workspace::WorkspaceError};
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
@@ -10,7 +11,6 @@ use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
 use relay_control::{RelayControl, signing::RelaySigningService};
 use serde_json::Value;
-use server_info::ServerInfo;
 use services::services::{
     analytics::AnalyticsService,
     approvals::Approvals,
@@ -107,16 +107,14 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn relay_signing(&self) -> &RelaySigningService;
 
-    fn server_info(&self) -> &Arc<ServerInfo>;
+    fn client_info(&self) -> &Arc<ClientInfo>;
+
+    // fn remote_server_info(&self) -> &Arc<ClientInfo>;
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 
     fn remote_client(&self) -> Result<RemoteClient, RemoteClientNotConfigured> {
         Err(RemoteClientNotConfigured)
-    }
-
-    fn shared_api_base(&self) -> Option<String> {
-        None
     }
 
     async fn update_sentry_scope(&self) -> Result<(), DeploymentError> {

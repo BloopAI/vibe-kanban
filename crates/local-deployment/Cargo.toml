@@ -13,7 +13,7 @@ embedded-ssh = { path = "../embedded-ssh" }
 relay-control = { path = "../relay-control" }
 relay-types = { path = "../relay-types" }
 russh = "0.48"
-server-info = { path = "../server-info" }
+client-info = { path = "../client-info" }
 services = { path = "../services" }
 worktree-manager = { path = "../worktree-manager" }
 workspace-manager = { path = "../workspace-manager" }

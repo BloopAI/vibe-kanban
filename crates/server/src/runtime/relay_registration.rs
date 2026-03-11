@@ -60,12 +60,12 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         return None;
     }
 
-    let local_port = deployment.server_info().get_port().await.or_else(|| {
+    let local_port = deployment.client_info().get_port().await.or_else(|| {
         tracing::warn!("Relay local port not set; cannot spawn relay");
         None
     })?;
 
-    let host_name = deployment.server_info().get_hostname().await.or_else(|| {
+    let host_name = deployment.client_info().get_hostname().await.or_else(|| {
         tracing::warn!("Server hostname not set; cannot spawn relay");
         None
     })?;
