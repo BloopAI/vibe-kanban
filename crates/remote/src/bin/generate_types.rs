@@ -11,8 +11,8 @@ use api_types::{
     OrganizationMember, Project, ProjectStatus, PullRequest, PullRequestStatus, RelayHost,
     RelaySession, RelaySessionAuthCodeResponse, SortDirection, Tag,
     UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest,
-    UpdateTagRequest, User, UserData, Workspace,
+    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
+    User, UserData, Workspace,
 };
 use remote::{
     routes::{
