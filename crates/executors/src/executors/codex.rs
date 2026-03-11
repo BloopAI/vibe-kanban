@@ -24,6 +24,13 @@ pub fn codex_home() -> Option<PathBuf> {
     dirs::home_dir().map(|home| home.join(".codex"))
 }
 
+pub(crate) fn resolve_model(model: Option<&str>) -> (Option<&str>, bool) {
+    match model.and_then(|m| m.strip_suffix("-fast")) {
+        Some(base) => (Some(base), true),
+        None => (model, false),
+    }
+}
+
 pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> ThreadForkParams {
     ThreadForkParams {
         thread_id,
@@ -45,6 +52,7 @@ use codex_app_server_protocol::{
     AskForApproval as V2AskForApproval, ReviewTarget, SandboxMode as V2SandboxMode,
     ThreadForkParams, ThreadStartParams, UserInput,
 };
+use codex_protocol::config_types::ServiceTier;
 use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
@@ -327,8 +335,20 @@ impl StandardCodingAgentExecutor for Codex {
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
                     ModelInfo {
+                        id: "gpt-5.4-fast".to_string(),
+                        name: "GPT-5.4 Fast".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
                         id: "gpt-5.3-codex".to_string(),
                         name: "GPT-5.3 Codex".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
+                        id: "gpt-5.3-codex-fast".to_string(),
+                        name: "GPT-5.3 Codex Fast".to_string(),
                         provider_id: None,
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
@@ -478,8 +498,15 @@ impl Codex {
             );
         }
 
+        let (model, is_fast) = resolve_model(self.model.as_deref());
+        let service_tier = if is_fast {
+            Some(Some(ServiceTier::Fast))
+        } else {
+            None
+        };
+
         ThreadStartParams {
-            model: self.model.clone(),
+            model: model.map(|m| m.to_string()),
             cwd: Some(cwd.to_string_lossy().to_string()),
             approval_policy,
             sandbox,
@@ -487,6 +514,7 @@ impl Codex {
             base_instructions: self.base_instructions.clone(),
             model_provider: self.model_provider.clone(),
             developer_instructions: self.developer_instructions.clone(),
+            service_tier,
             ..Default::default()
         }
     }

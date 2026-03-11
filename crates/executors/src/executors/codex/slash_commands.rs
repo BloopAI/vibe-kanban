@@ -10,7 +10,7 @@ use serde_json::json;
 use super::{
     Codex,
     client::{AppServerClient, LogWriter},
-    codex_home, fork_params_from,
+    codex_home, fork_params_from, resolve_model,
 };
 use crate::{
     env::ExecutionEnv,
@@ -49,8 +49,8 @@ impl CodexSlashCommand {
             "mcp" => Some(Self::Mcp),
             "fast" => Some(Self::Fast {
                 enable: match cmd.arguments.trim() {
-                    "on" => Some(true),
-                    "off" => Some(false),
+                    "on" | "true" | "1" | "yes" | "enable" => Some(true),
+                    "off" | "false" | "0" | "no" | "disable" => Some(false),
                     _ => None,
                 },
             }),
@@ -147,6 +147,7 @@ impl Codex {
     ) -> Result<SpawnedChild, ExecutorError> {
         let command_parts = self.build_command_builder()?.build_initial()?;
         let session_id = session_id.map(|s| s.to_string());
+        let (_, session_fast) = resolve_model(self.model.as_deref());
         let thread_start_params = self.build_thread_start_params(current_dir);
 
         self.spawn_app_server(
@@ -167,7 +168,9 @@ impl Codex {
                         client.thread_compact_start(thread_id).await?;
                     }
                     CodexSlashCommand::Status => {
-                        let message = fetch_status_message(&client, session_id.as_deref()).await?;
+                        let message =
+                            fetch_status_message(&client, session_id.as_deref(), session_fast)
+                                .await?;
                         log_event_raw(client.log_writer(), message).await?;
                         exit_signal_tx
                             .send_exit_signal(ExecutorExitResult::Success)
@@ -324,6 +327,7 @@ pub async fn log_event_raw(log_writer: &LogWriter, message: String) -> Result<()
 async fn fetch_status_message(
     client: &AppServerClient,
     thread_id: Option<&str>,
+    session_fast: bool,
 ) -> Result<String, ExecutorError> {
     let mut lines = vec!["# Session Status\n".to_string()];
 
@@ -378,15 +382,14 @@ async fn fetch_status_message(
         lines.push("_Config unavailable_".to_string());
     }
 
-    // Show service tier from codex config
-    if let Some(ref resp) = config_resp
-        && let Some(ref tier) = resp.config.service_tier
-    {
-        let label = match tier {
-            ServiceTier::Fast => "fast ⚡",
-            _ => "default",
-        };
-        lines.push(format!("- **Service Tier**: `{label}`"));
+    // Show fast mode
+    let global_fast = config_resp
+        .as_ref()
+        .and_then(|r| r.config.service_tier.as_ref())
+        .map(|t| matches!(t, ServiceTier::Fast))
+        .unwrap_or(false);
+    if global_fast || session_fast {
+        lines.push("- **Service Tier**: `fast ⚡`".to_string());
     }
 
     // Thread info
