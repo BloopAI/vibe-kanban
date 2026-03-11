@@ -2,7 +2,7 @@ use axum::{
     Json, Router,
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Json as ResponseJson, Response},
     routing::{delete, get, post},
 };
 use deployment::Deployment;
@@ -14,7 +14,7 @@ use relay_types::{
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::DeploymentImpl;
+use crate::{DeploymentImpl, error::ApiError};
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -30,7 +30,12 @@ pub async fn pair_relay_host(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<PairRelayHostRequest>,
 ) -> Response {
-    match deployment.relay_hosts().pair_host(&req).await {
+    let relay_hosts = match deployment.relay_hosts() {
+        Ok(relay_hosts) => relay_hosts,
+        Err(error) => return ApiError::from(error).into_response(),
+    };
+
+    match relay_hosts.pair_host(&req).await {
         Ok(()) => (
             StatusCode::OK,
             Json(ApiResponse::<PairRelayHostResponse>::success(
@@ -42,23 +47,25 @@ pub async fn pair_relay_host(
     }
 }
 
-pub async fn list_relay_paired_hosts(State(deployment): State<DeploymentImpl>) -> Response {
-    let hosts = deployment.relay_hosts().list_hosts().await;
-
-    (
-        StatusCode::OK,
-        Json(ApiResponse::<ListRelayPairedHostsResponse>::success(
-            ListRelayPairedHostsResponse { hosts },
-        )),
-    )
-        .into_response()
+pub async fn list_relay_paired_hosts(
+    State(deployment): State<DeploymentImpl>,
+) -> Result<ResponseJson<ApiResponse<ListRelayPairedHostsResponse>>, ApiError> {
+    let hosts = deployment.relay_hosts()?.list_hosts().await;
+    Ok(ResponseJson(ApiResponse::success(
+        ListRelayPairedHostsResponse { hosts },
+    )))
 }
 
 pub async fn remove_relay_paired_host(
     State(deployment): State<DeploymentImpl>,
     Path(host_id): Path<Uuid>,
 ) -> Response {
-    match deployment.relay_hosts().remove_host(host_id).await {
+    let relay_hosts = match deployment.relay_hosts() {
+        Ok(relay_hosts) => relay_hosts,
+        Err(error) => return ApiError::from(error).into_response(),
+    };
+
+    match relay_hosts.remove_host(host_id).await {
         Ok(removed) => (
             StatusCode::OK,
             Json(ApiResponse::<RemoveRelayPairedHostResponse>::success(

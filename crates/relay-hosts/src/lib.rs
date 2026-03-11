@@ -11,6 +11,7 @@ use relay_client::{
 };
 use relay_control::signing::RelaySigningService;
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
+use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
 use services::services::remote_client::RemoteClient;
 use tokio::sync::RwLock;
@@ -40,13 +41,13 @@ pub struct RelayHostCredentialSummary {
 }
 
 #[derive(Clone)]
-pub struct RelayHostStore {
+struct RelayHostStore {
     credentials: Arc<RwLock<HashMap<Uuid, RelayHostCredentials>>>,
     auth_state: Arc<RwLock<HashMap<Uuid, RelaySessionCacheEntry>>>,
 }
 
 impl RelayHostStore {
-    pub async fn load() -> Self {
+    async fn load() -> Self {
         Self {
             credentials: Arc::new(RwLock::new(load_relay_host_credentials_map().await)),
             auth_state: Arc::new(RwLock::new(HashMap::new())),
@@ -82,10 +83,6 @@ impl RelayHostStore {
             .entry(host_id)
             .or_default()
             .signing_session_id = Some(session_id);
-    }
-
-    pub async fn clear_auth_state(&self, host_id: Uuid) {
-        self.auth_state.write().await.remove(&host_id);
     }
 
     pub async fn upsert_credentials(
@@ -151,15 +148,14 @@ impl RelayHostStore {
 #[derive(Clone)]
 pub struct RelayHosts {
     store: RelayHostStore,
-    runtime: Option<RelayHostsRuntime>,
+    runtime: RelayHostsRuntime,
 }
 
 #[derive(Clone)]
 struct RelayHostsRuntime {
     remote_client: RemoteClient,
-    relay_base_url: String,
+    remote_info: RemoteInfo,
     relay_signing: RelaySigningService,
-    tunnel_manager: Arc<TunnelManager>,
 }
 
 #[derive(Clone)]
@@ -232,27 +228,19 @@ struct RelayEditorPathResponse {
 }
 
 impl RelayHosts {
-    pub fn new(store: RelayHostStore) -> Self {
-        Self {
-            store,
-            runtime: None,
-        }
-    }
-
-    pub fn with_runtime(
-        mut self,
+    pub async fn load(
         remote_client: RemoteClient,
-        relay_base_url: String,
+        remote_info: RemoteInfo,
         relay_signing: RelaySigningService,
-        tunnel_manager: Arc<TunnelManager>,
     ) -> Self {
-        self.runtime = Some(RelayHostsRuntime {
-            remote_client,
-            relay_base_url,
-            relay_signing,
-            tunnel_manager,
-        });
-        self
+        Self {
+            store: RelayHostStore::load().await,
+            runtime: RelayHostsRuntime {
+                remote_client,
+                remote_info,
+                relay_signing,
+            },
+        }
     }
 
     pub fn host(&self, host_id: Uuid) -> RelayHost {
@@ -266,13 +254,13 @@ impl RelayHosts {
         &self,
         req: &PairRelayHostRequest,
     ) -> Result<(), RelayPairingClientError> {
-        let runtime = self
+        let remote_client = self.runtime.remote_client.clone();
+        let relay_base_url = self
             .runtime
-            .as_ref()
+            .remote_info
+            .get_relay_api_base()
             .ok_or(RelayPairingClientError::NotConfigured)?;
-        let remote_client = runtime.remote_client.clone();
-        let relay_base_url = runtime.relay_base_url.clone();
-        let relay_signing = runtime.relay_signing.clone();
+        let relay_signing = self.runtime.relay_signing.clone();
         let access_token = remote_client
             .access_token()
             .await
@@ -332,14 +320,14 @@ impl RelayHosts {
         &self,
         host_id: Uuid,
     ) -> Result<(RelayHostStore, RelayHostTransport), HostRelayResolveError> {
-        let runtime = self
-            .runtime
-            .as_ref()
-            .ok_or(HostRelayResolveError::RelayNotConfigured)?;
         let store = self.store.clone();
-        let remote_client = runtime.remote_client.clone();
-        let relay_base_url = runtime.relay_base_url.clone();
-        let signing_key = runtime.relay_signing.signing_key().clone();
+        let remote_client = self.runtime.remote_client.clone();
+        let relay_base_url = self
+            .runtime
+            .remote_info
+            .get_relay_api_base()
+            .ok_or(HostRelayResolveError::RelayNotConfigured)?;
+        let signing_key = self.runtime.relay_signing.signing_key().clone();
         let identity = load_paired_relay_host_identity(&store, host_id).await?;
         let access_token = remote_client
             .access_token()
@@ -424,17 +412,11 @@ impl RelayHost {
 
     pub async fn open_workspace_in_editor(
         &self,
+        tunnel_manager: &TunnelManager,
         workspace_id: Uuid,
         editor_type: Option<&str>,
         file_path: Option<&str>,
     ) -> Result<OpenRemoteEditorResponse, OpenRemoteEditorError> {
-        let tunnel_manager = self
-            .relay_hosts
-            .runtime
-            .as_ref()
-            .ok_or(OpenRemoteEditorError::RelayNotConfigured)?
-            .tunnel_manager
-            .clone();
         let (store, mut transport) = self
             .relay_hosts
             .open_transport(self.host_id)

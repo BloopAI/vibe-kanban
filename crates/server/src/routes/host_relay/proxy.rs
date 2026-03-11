@@ -68,6 +68,9 @@ async fn forward_http(
     host_id: Uuid,
     request: Request,
 ) -> Result<Response, RelayProxyError> {
+    let relay_hosts = deployment
+        .relay_hosts()
+        .map_err(|_| RelayProxyError::BadRequest("Remote relay API is not configured"))?;
     let (parts, body) = request.into_parts();
     let method = parts.method;
     let headers = parts.headers;
@@ -82,8 +85,7 @@ async fn forward_http(
         RelayProxyError::BadRequest("Invalid request body")
     })?;
 
-    let response = deployment
-        .relay_hosts()
+    let response = relay_hosts
         .host(host_id)
         .proxy_http(&method, &target_path, &headers, &body_bytes)
         .await
@@ -98,6 +100,9 @@ async fn forward_ws(
     request: Request,
     ws_upgrade: WebSocketUpgrade,
 ) -> Result<Response, RelayProxyError> {
+    let relay_hosts = deployment
+        .relay_hosts()
+        .map_err(|_| RelayProxyError::BadRequest("Remote relay API is not configured"))?;
     let target_path = request
         .uri()
         .path_and_query()
@@ -113,8 +118,7 @@ async fn forward_ws(
     let HostRelayWsConnection {
         upstream_socket,
         selected_protocol,
-    } = deployment
-        .relay_hosts()
+    } = relay_hosts
         .host(host_id)
         .proxy_ws(&target_path, protocols.as_deref())
         .await

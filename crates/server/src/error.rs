@@ -8,7 +8,7 @@ use db::models::{
     execution_process::ExecutionProcessError, repo::RepoError, scratch::ScratchError,
     session::SessionError, workspace::WorkspaceError,
 };
-use deployment::{DeploymentError, RemoteClientNotConfigured};
+use deployment::{DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
 use executors::{command::CommandBuildError, executors::ExecutorError};
 use git::GitServiceError;
 use git_host::GitHostError;
@@ -100,6 +100,12 @@ impl From<Git2Error> for ApiError {
 impl From<RemoteClientNotConfigured> for ApiError {
     fn from(_: RemoteClientNotConfigured) -> Self {
         ApiError::BadRequest("Remote client not configured".to_string())
+    }
+}
+
+impl From<RelayHostsNotConfigured> for ApiError {
+    fn from(_: RelayHostsNotConfigured) -> Self {
+        ApiError::BadRequest("Remote relay API is not configured".to_string())
     }
 }
 

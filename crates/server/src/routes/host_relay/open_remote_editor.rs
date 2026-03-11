@@ -35,10 +35,19 @@ async fn open_remote_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<OpenRemoteWorkspaceInEditorRequest>,
 ) -> Response {
-    match deployment
-        .relay_hosts()
+    let Ok(relay_hosts) = deployment.relay_hosts() else {
+        return map_open_remote_editor_error(
+            req.host_id,
+            req.workspace_id,
+            req.editor_type.as_deref(),
+            OpenRemoteEditorError::RelayNotConfigured,
+        );
+    };
+
+    match relay_hosts
         .host(req.host_id)
         .open_workspace_in_editor(
+            deployment.tunnel_manager().as_ref(),
             req.workspace_id,
             req.editor_type.as_deref(),
             req.file_path.as_deref(),

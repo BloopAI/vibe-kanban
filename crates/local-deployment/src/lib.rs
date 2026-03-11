@@ -4,12 +4,12 @@ use api_types::LoginStatus;
 use async_trait::async_trait;
 use client_info::ClientInfo;
 use db::DBService;
-use deployment::{Deployment, DeploymentError, RemoteClientNotConfigured};
+use deployment::{Deployment, DeploymentError, RelayHostsNotConfigured, RemoteClientNotConfigured};
 use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
 use relay_control::{RelayControl, signing::RelaySigningService};
-use relay_hosts::{RelayHostStore, RelayHosts};
+use relay_hosts::RelayHosts;
 use remote_info::RemoteInfo;
 use services::services::{
     analytics::{AnalyticsConfig, AnalyticsContext, AnalyticsService, generate_user_id},
@@ -70,7 +70,8 @@ pub struct LocalDeployment {
     relay_control: Arc<RelayControl>,
     client_info: ClientInfo,
     remote_info: RemoteInfo,
-    relay_hosts: Arc<RelayHosts>,
+    tunnel_manager: Arc<TunnelManager>,
+    relay_hosts: Option<Arc<RelayHosts>>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
 }
@@ -235,19 +236,12 @@ impl Deployment for LocalDeployment {
 
         let pty = PtyService::new();
         let tunnel_manager = Arc::new(TunnelManager::new());
-        let relay_host_store = RelayHostStore::load().await;
-        let mut relay_hosts = RelayHosts::new(relay_host_store);
-        if let Some(remote_client) = remote_client.clone().ok()
-            && let Some(relay_base_url) = remote_info.get_relay_api_base()
-        {
-            relay_hosts = relay_hosts.with_runtime(
-                remote_client,
-                relay_base_url,
-                relay_signing.clone(),
-                tunnel_manager,
-            );
-        }
-        let relay_hosts = Arc::new(relay_hosts);
+        let relay_hosts = match remote_client.clone().ok() {
+            Some(remote_client) => Some(Arc::new(
+                RelayHosts::load(remote_client, remote_info.clone(), relay_signing.clone()).await,
+            )),
+            None => None,
+        };
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -282,6 +276,7 @@ impl Deployment for LocalDeployment {
             relay_control,
             client_info,
             remote_info,
+            tunnel_manager,
             relay_hosts,
             ssh_config,
             pty,
@@ -362,8 +357,12 @@ impl Deployment for LocalDeployment {
         &self.remote_info
     }
 
-    fn relay_hosts(&self) -> &Arc<RelayHosts> {
-        &self.relay_hosts
+    fn tunnel_manager(&self) -> &Arc<TunnelManager> {
+        &self.tunnel_manager
+    }
+
+    fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
+        self.relay_hosts.as_ref().ok_or(RelayHostsNotConfigured)
     }
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime {

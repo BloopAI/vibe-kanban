@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use axum::response::sse::Event;
 use client_info::ClientInfo;
 use db::{DBService, models::workspace::WorkspaceError};
+use desktop_bridge::tunnel::TunnelManager;
 use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
@@ -38,6 +39,10 @@ use worktree_manager::WorktreeError;
 #[derive(Debug, Clone, Copy, Error)]
 #[error("Remote client not configured")]
 pub struct RemoteClientNotConfigured;
+
+#[derive(Debug, Clone, Copy, Error)]
+#[error("Relay hosts not configured")]
+pub struct RelayHostsNotConfigured;
 
 #[derive(Debug, Error)]
 pub enum DeploymentError {
@@ -113,7 +118,11 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn remote_info(&self) -> &RemoteInfo;
 
-    fn relay_hosts(&self) -> &Arc<RelayHosts>;
+    fn tunnel_manager(&self) -> &Arc<TunnelManager>;
+
+    fn relay_hosts(&self) -> Result<&Arc<RelayHosts>, RelayHostsNotConfigured> {
+        Err(RelayHostsNotConfigured)
+    }
 
     fn trusted_key_auth(&self) -> &TrustedKeyAuthRuntime;
 
