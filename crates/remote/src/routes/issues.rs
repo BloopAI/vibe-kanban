@@ -52,14 +52,14 @@ async fn list_issues(
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let issues = IssueRepository::list_by_project(state.pool(), query.project_id)
+    let response = IssueRepository::list(state.pool(), &query)
         .await
         .map_err(|error| {
             tracing::error!(?error, project_id = %query.project_id, "failed to list issues");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
         })?;
 
-    Ok(Json(ListIssuesResponse { issues }))
+    Ok(Json(response))
 }
 
 #[instrument(

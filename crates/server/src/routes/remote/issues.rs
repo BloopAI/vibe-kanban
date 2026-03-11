@@ -1,5 +1,6 @@
 use api_types::{
-    CreateIssueRequest, Issue, ListIssuesResponse, MutationResponse, UpdateIssueRequest,
+    CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, MutationResponse,
+    UpdateIssueRequest,
 };
 use axum::{
     Router,
@@ -7,16 +8,10 @@ use axum::{
     response::Json as ResponseJson,
     routing::get,
 };
-use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
-
-#[derive(Debug, Deserialize)]
-pub struct ListIssuesQuery {
-    pub project_id: Uuid,
-}
 
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
@@ -32,7 +27,7 @@ async fn list_issues(
     Query(query): Query<ListIssuesQuery>,
 ) -> Result<ResponseJson<ApiResponse<ListIssuesResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    let response = client.list_issues(query.project_id).await?;
+    let response = client.list_issues(&query).await?;
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 

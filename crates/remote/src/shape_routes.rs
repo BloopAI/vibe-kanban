@@ -3,7 +3,7 @@
 use api_types::{
     ListIssueAssigneesResponse, ListIssueCommentReactionsResponse, ListIssueCommentsResponse,
     ListIssueFollowersResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
-    ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
+    ListIssuesQuery, ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember, User, Workspace,
 };
 use axum::{
@@ -307,14 +307,30 @@ async fn fallback_list_issues(
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let issues = IssueRepository::list_by_project(state.pool(), query.project_id)
+    let response = IssueRepository::list(
+        state.pool(),
+        &ListIssuesQuery {
+            project_id: query.project_id,
+            status_id: None,
+            priority: None,
+            parent_issue_id: None,
+            search: None,
+            simple_id: None,
+            assignee_user_id: None,
+            tag_id: None,
+            sort_field: None,
+            sort_direction: None,
+            limit: None,
+            offset: None,
+        },
+    )
         .await
         .map_err(|error| {
             tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
         })?;
 
-    Ok(Json(ListIssuesResponse { issues }))
+    Ok(Json(response))
 }
 
 async fn fallback_list_project_workspaces(

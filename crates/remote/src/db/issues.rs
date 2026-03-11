@@ -1,7 +1,10 @@
-use api_types::{DeleteResponse, Issue, IssuePriority, MutationResponse, PullRequestStatus};
+use api_types::{
+    DeleteResponse, Issue, IssuePriority, IssueSortField, ListIssuesQuery, ListIssuesResponse,
+    MutationResponse, PullRequestStatus, SortDirection,
+};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{Executor, PgPool, Postgres, QueryBuilder};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -33,6 +36,68 @@ enum IssueWorkflowSignal {
 }
 
 impl IssueRepository {
+    pub async fn list(
+        pool: &PgPool,
+        query: &ListIssuesQuery,
+    ) -> Result<ListIssuesResponse, IssueError> {
+        let total_count = {
+            let mut builder = QueryBuilder::<Postgres>::new("SELECT COUNT(*)::BIGINT FROM issues i");
+            Self::push_issue_filters(&mut builder, query);
+            builder
+                .build_query_scalar::<i64>()
+                .fetch_one(pool)
+                .await? as usize
+        };
+
+        let mut builder = QueryBuilder::<Postgres>::new(
+            r#"
+            SELECT
+                i.id,
+                i.project_id,
+                i.issue_number,
+                i.simple_id,
+                i.status_id,
+                i.title,
+                i.description,
+                i.priority,
+                i.start_date,
+                i.target_date,
+                i.completed_at,
+                i.sort_order,
+                i.parent_issue_id,
+                i.parent_issue_sort_order,
+                i.extension_metadata,
+                i.creator_user_id,
+                i.created_at,
+                i.updated_at
+            FROM issues i
+            LEFT JOIN project_statuses ps ON ps.id = i.status_id
+            "#,
+        );
+        Self::push_issue_filters(&mut builder, query);
+        Self::push_issue_order(&mut builder, query);
+
+        let offset = query.offset.unwrap_or(0).max(0) as usize;
+        if let Some(limit) = query.limit {
+            builder.push(" LIMIT ");
+            builder.push_bind(limit.max(0) as i64);
+        }
+        if offset > 0 {
+            builder.push(" OFFSET ");
+            builder.push_bind(offset as i64);
+        }
+
+        let issues = builder.build_query_as::<Issue>().fetch_all(pool).await?;
+        let limit = query.limit.unwrap_or(issues.len() as i32).max(0) as usize;
+
+        Ok(ListIssuesResponse {
+            issues,
+            total_count,
+            limit,
+            offset,
+        })
+    }
+
     pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Issue>, IssueError>
     where
         E: Executor<'e, Database = Postgres>,
@@ -125,6 +190,99 @@ impl IssueRepository {
         .await?;
 
         Ok(records)
+    }
+
+    fn push_issue_filters<'a>(
+        builder: &mut QueryBuilder<'a, Postgres>,
+        query: &'a ListIssuesQuery,
+    ) {
+        builder.push(" WHERE i.project_id = ");
+        builder.push_bind(query.project_id);
+
+        if let Some(status_id) = query.status_id {
+            builder.push(" AND i.status_id = ");
+            builder.push_bind(status_id);
+        }
+
+        if let Some(priority) = query.priority {
+            builder.push(" AND i.priority = ");
+            builder.push_bind(priority);
+        }
+
+        if let Some(parent_issue_id) = query.parent_issue_id {
+            builder.push(" AND i.parent_issue_id = ");
+            builder.push_bind(parent_issue_id);
+        }
+
+        if let Some(search) = query.search.as_deref() {
+            let pattern = format!("%{search}%");
+            builder.push(" AND (i.title ILIKE ");
+            builder.push_bind(pattern.clone());
+            builder.push(" OR COALESCE(i.description, '') ILIKE ");
+            builder.push_bind(pattern);
+            builder.push(")");
+        }
+
+        if let Some(simple_id) = query.simple_id.as_deref() {
+            builder.push(" AND i.simple_id ILIKE ");
+            builder.push_bind(simple_id);
+        }
+
+        if let Some(assignee_user_id) = query.assignee_user_id {
+            builder.push(
+                " AND EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id = ",
+            );
+            builder.push_bind(assignee_user_id);
+            builder.push(")");
+        }
+
+        if let Some(tag_id) = query.tag_id {
+            builder.push(
+                " AND EXISTS (SELECT 1 FROM issue_tags it WHERE it.issue_id = i.id AND it.tag_id = ",
+            );
+            builder.push_bind(tag_id);
+            builder.push(")");
+        }
+    }
+
+    fn push_issue_order(builder: &mut QueryBuilder<'_, Postgres>, query: &ListIssuesQuery) {
+        let sort_field = query.sort_field.unwrap_or(IssueSortField::SortOrder);
+        let sort_direction = query.sort_direction.unwrap_or(SortDirection::Asc);
+        let dir = match sort_direction {
+            SortDirection::Asc => "ASC",
+            SortDirection::Desc => "DESC",
+        };
+
+        builder.push(" ORDER BY ");
+        match sort_field {
+            IssueSortField::SortOrder => {
+                builder.push(format!("ps.sort_order {dir}, i.sort_order {dir}, i.issue_number ASC"));
+            }
+            IssueSortField::Priority => {
+                let nulls = if sort_direction == SortDirection::Asc {
+                    "NULLS LAST"
+                } else {
+                    "NULLS FIRST"
+                };
+                builder.push(format!(
+                    "CASE i.priority \
+                        WHEN 'urgent' THEN 0 \
+                        WHEN 'high' THEN 1 \
+                        WHEN 'medium' THEN 2 \
+                        WHEN 'low' THEN 3 \
+                        ELSE NULL END {dir} {nulls}, i.issue_number ASC"
+                ));
+            }
+            IssueSortField::CreatedAt => {
+                builder.push(format!("i.created_at {dir}, i.issue_number ASC"));
+            }
+            IssueSortField::UpdatedAt => {
+                builder.push(format!("i.updated_at {dir}, i.issue_number ASC"));
+            }
+            IssueSortField::Title => {
+                builder.push(format!("i.title {dir}, i.issue_number ASC"));
+            }
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
