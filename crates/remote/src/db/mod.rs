@@ -1,6 +1,7 @@
 pub mod attachments;
 pub mod auth;
 pub mod blobs;
+pub mod digest;
 pub mod electric_publications;
 pub mod github_app;
 pub mod hosts;
