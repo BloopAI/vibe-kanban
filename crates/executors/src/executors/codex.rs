@@ -554,6 +554,7 @@ impl Codex {
         resume_session: Option<&str>,
         env: &ExecutionEnv,
     ) -> Result<SpawnedChild, ExecutorError> {
+        tracing::debug!("Spawning Codex session with action={:?} and resume_session={:?}", action, resume_session);
         let params = self.build_thread_start_params(current_dir);
         let resume_session = resume_session.map(|s| s.to_string());
 
