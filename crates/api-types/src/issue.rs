@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::Type;
@@ -7,7 +8,7 @@ use uuid::Uuid;
 
 use crate::some_if_present;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type, TS, JsonSchema)]
 #[sqlx(type_name = "issue_priority", rename_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 pub enum IssuePriority {
@@ -17,7 +18,7 @@ pub enum IssuePriority {
     Low,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, sqlx::FromRow)]
 pub struct Issue {
     pub id: Uuid,
     pub project_id: Uuid,
@@ -37,6 +38,23 @@ pub struct Issue {
     pub creator_user_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum IssueSortField {
+    SortOrder,
+    Priority,
+    CreatedAt,
+    UpdatedAt,
+    Title,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SortDirection {
+    Asc,
+    Desc,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -129,12 +147,48 @@ pub struct UpdateIssueRequest {
     pub extension_metadata: Option<Value>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, JsonSchema)]
 pub struct ListIssuesQuery {
     pub project_id: Uuid,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<IssuePriority>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_issue_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub search: Option<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub simple_id: Option<String>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub assignee_user_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_field: Option<IssueSortField>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort_direction: Option<SortDirection>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub limit: Option<i32>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub offset: Option<i32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct ListIssuesResponse {
     pub issues: Vec<Issue>,
+    pub total_count: usize,
+    pub limit: usize,
+    pub offset: usize,
 }

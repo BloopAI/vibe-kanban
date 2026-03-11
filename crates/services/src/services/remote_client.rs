@@ -10,12 +10,12 @@ use api_types::{
     GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
     HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
     ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
-    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
-    ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesQuery, ListIssuesResponse,
+    ListMembersResponse, ListOrganizationsResponse, ListProjectStatusesResponse,
+    ListProjectsResponse, ListPullRequestsResponse, ListTagsResponse, MutationResponse,
+    Organization, ProfileResponse, RevokeInvitationRequest, Tag, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -445,6 +445,67 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
+    async fn get_authed_with_query<T, Q>(
+        &self,
+        path: &str,
+        query: &Q,
+    ) -> Result<T, RemoteClientError>
+    where
+        T: for<'de> Deserialize<'de>,
+        Q: Serialize,
+    {
+        let url = self
+            .base
+            .join(path)
+            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
+
+        let operation = || async {
+            let token = self.require_token().await?;
+            let res = self
+                .http
+                .get(url.clone())
+                .query(query)
+                .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
+                .header("X-Client-Type", "local-backend")
+                .bearer_auth(token)
+                .send()
+                .await
+                .map_err(map_reqwest_error)?;
+
+            match res.status() {
+                s if s.is_success() => Ok(res),
+                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
+                s => {
+                    let status = s.as_u16();
+                    let body = res.text().await.unwrap_or_default();
+                    Err(RemoteClientError::Http { status, body })
+                }
+            }
+        };
+
+        let res = operation
+            .retry(
+                &ExponentialBuilder::default()
+                    .with_min_delay(Duration::from_millis(500))
+                    .with_max_delay(Duration::from_secs(2))
+                    .with_max_times(2)
+                    .with_jitter(),
+            )
+            .when(|e: &RemoteClientError| e.should_retry())
+            .notify(|e, dur| {
+                warn!(
+                    "Remote call failed, retrying after {:.2}s: {}",
+                    dur.as_secs_f64(),
+                    e
+                )
+            })
+            .await?;
+
+        res.json::<T>()
+            .await
+            .map_err(|e| RemoteClientError::Serde(e.to_string()))
+    }
+
     pub async fn post_authed<T, B>(
         &self,
         path: &str,
@@ -735,10 +796,9 @@ impl RemoteClient {
     /// Lists issues for a project.
     pub async fn list_issues(
         &self,
-        project_id: Uuid,
+        query: &ListIssuesQuery,
     ) -> Result<ListIssuesResponse, RemoteClientError> {
-        self.get_authed(&format!("/v1/issues?project_id={project_id}"))
-            .await
+        self.get_authed_with_query("/v1/issues", query).await
     }
 
     /// Gets a single issue by ID.
