@@ -42,7 +42,7 @@ export type IssuePriority = "urgent" | "high" | "medium" | "low";
 
 export type IssueSortField = "sort_order" | "priority" | "created_at" | "updated_at" | "title";
 
-export type ListIssuesQuery = { project_id: string, status_id?: string, priority?: IssuePriority, parent_issue_id?: string, search?: string, simple_id?: string, assignee_user_id?: string, tag_id?: string, sort_field?: IssueSortField, sort_direction?: SortDirection, limit?: number, offset?: number, };
+export type ListIssuesQuery = { project_id: string, status_id?: string, status_ids?: Array<string>, priority?: IssuePriority, parent_issue_id?: string, search?: string, simple_id?: string, assignee_user_id?: string, tag_id?: string, tag_ids?: Array<string>, sort_field?: IssueSortField, sort_direction?: SortDirection, limit?: number, offset?: number, };
 
 export type ListIssuesResponse = { issues: Array<Issue>, total_count: number, limit: number, offset: number, };
 
