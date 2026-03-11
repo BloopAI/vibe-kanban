@@ -24,6 +24,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 
 COPY packages/remote-web/ packages/remote-web/
 COPY packages/local-web/tailwind.new.config.js packages/local-web/tailwind.new.config.js
+COPY packages/public/ packages/public/
 COPY packages/ui/ packages/ui/
 COPY packages/web-core/ packages/web-core/
 COPY shared/ shared/
