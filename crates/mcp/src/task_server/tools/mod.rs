@@ -106,6 +106,25 @@ impl McpServer {
         message
     }
 
+    fn extract_error_details_from_response_body(body: &str) -> Option<String> {
+        let trimmed = body.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+
+        serde_json::from_str::<serde_json::Value>(trimmed)
+            .ok()
+            .and_then(|value| {
+                value
+                    .get("details")
+                    .and_then(|details| details.as_str())
+                    .or_else(|| value.get("error").and_then(|error| error.as_str()))
+                    .or_else(|| value.get("message").and_then(|message| message.as_str()))
+                    .map(ToOwned::to_owned)
+            })
+            .or_else(|| Some(trimmed.to_string()))
+    }
+
     async fn send_json<T: DeserializeOwned>(
         &self,
         rb: reqwest::RequestBuilder,
@@ -120,9 +139,12 @@ impl McpServer {
 
         if !resp.status().is_success() {
             let status = resp.status();
-            return Err(
-                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
-            );
+            let body = resp.text().await.unwrap_or_default();
+            return Err(Self::err(
+                format!("VK API returned error status: {}", status),
+                Self::extract_error_details_from_response_body(&body),
+            )
+            .unwrap());
         }
 
         let api_response = resp.json::<ApiResponseEnvelope<T>>().await.map_err(|e| {
@@ -150,9 +172,12 @@ impl McpServer {
 
         if !resp.status().is_success() {
             let status = resp.status();
-            return Err(
-                Self::err(format!("VK API returned error status: {}", status), None).unwrap(),
-            );
+            let body = resp.text().await.unwrap_or_default();
+            return Err(Self::err(
+                format!("VK API returned error status: {}", status),
+                Self::extract_error_details_from_response_body(&body),
+            )
+            .unwrap());
         }
 
         #[derive(Deserialize)]
@@ -502,6 +527,26 @@ mod tests {
         assert_eq!(
             McpServer::format_error_chain(&error),
             "builder error: unsupported value"
+        );
+    }
+
+    #[test]
+    fn extracts_error_details_from_json_response_body() {
+        let body = r#"{"success":false,"error":"Bad request","details":"invalid type: string, expected sequence"}"#;
+
+        assert_eq!(
+            McpServer::extract_error_details_from_response_body(body),
+            Some("invalid type: string, expected sequence".to_string())
+        );
+    }
+
+    #[test]
+    fn falls_back_to_raw_error_body_when_not_json() {
+        let body = "Failed to deserialize query string";
+
+        assert_eq!(
+            McpServer::extract_error_details_from_response_body(body),
+            Some(body.to_string())
         );
     }
 
