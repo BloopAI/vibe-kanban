@@ -464,26 +464,6 @@ impl RemoteClient {
             .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
-    async fn get_authed_with_query<T, Q>(
-        &self,
-        path: &str,
-        query: &Q,
-    ) -> Result<T, RemoteClientError>
-    where
-        T: for<'de> Deserialize<'de>,
-        Q: Serialize,
-    {
-        let res = self
-            .send_internal_with_request(reqwest::Method::GET, path, true, None, |req| {
-                req.query(query)
-            })
-            .await?;
-
-        res.json::<T>()
-            .await
-            .map_err(|e| RemoteClientError::Serde(e.to_string()))
-    }
-
     pub async fn post_authed<T, B>(
         &self,
         path: &str,
@@ -776,7 +756,14 @@ impl RemoteClient {
         &self,
         query: &ListIssuesQuery,
     ) -> Result<ListIssuesResponse, RemoteClientError> {
-        self.get_authed_with_query("/v1/issues", query).await
+        let query_pairs = query.to_query_pairs();
+        self.send_internal_with_request(reqwest::Method::GET, "/v1/issues", true, None, |req| {
+            req.query(&query_pairs)
+        })
+        .await?
+        .json::<ListIssuesResponse>()
+        .await
+        .map_err(|e| RemoteClientError::Serde(e.to_string()))
     }
 
     /// Gets a single issue by ID.

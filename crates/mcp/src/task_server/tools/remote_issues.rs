@@ -436,7 +436,10 @@ impl McpServer {
                 offset: Some(offset.unwrap_or(0).max(0)),
             };
             let url = self.url("/api/remote/issues");
-            match self.send_json(self.client.get(&url).query(&query)).await {
+            match self
+                .send_json(self.client.get(&url).query(&query.to_query_pairs()))
+                .await
+            {
                 Ok(r) => r,
                 Err(e) => return Ok(e),
             }
