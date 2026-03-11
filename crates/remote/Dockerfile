@@ -38,6 +38,7 @@ ARG POSTHOG_API_ENDPOINT=""
 ARG SENTRY_DSN_REMOTE=""
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
 ENV CARGO_TARGET_DIR=/app/target
 ENV POSTHOG_API_KEY=${POSTHOG_API_KEY}
 ENV POSTHOG_API_ENDPOINT=${POSTHOG_API_ENDPOINT}
@@ -46,6 +47,9 @@ ENV SENTRY_DSN_REMOTE=${SENTRY_DSN_REMOTE}
 # Install build dependencies, plus git and openssh-client for private repo access
 RUN apt-get update \
   && apt-get install -y --no-install-recommends pkg-config libssl-dev ca-certificates git openssh-client \
+  && mkdir -p -m 0700 /root/.ssh \
+  && ssh-keyscan github.com >> /root/.ssh/known_hosts \
+  && chmod 600 /root/.ssh/known_hosts \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
