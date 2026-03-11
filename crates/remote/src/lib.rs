@@ -7,6 +7,7 @@ pub mod azure_blob;
 mod billing;
 pub mod config;
 pub mod db;
+pub mod digest;
 pub mod github_app;
 pub mod mail;
 mod middleware;
