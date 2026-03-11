@@ -1,6 +1,6 @@
 use api_types::{
-    DeleteResponse, Issue, IssuePriority, IssueSortField, ListIssuesResponse,
-    MutationResponse, PullRequestStatus, SearchIssuesRequest, SortDirection,
+    DeleteResponse, Issue, IssuePriority, IssueSortField, ListIssuesResponse, MutationResponse,
+    PullRequestStatus, SearchIssuesRequest, SortDirection,
 };
 use chrono::{DateTime, Utc};
 use serde_json::Value;
