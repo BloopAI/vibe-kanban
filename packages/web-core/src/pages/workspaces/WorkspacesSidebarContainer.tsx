@@ -258,6 +258,7 @@ export function WorkspacesSidebarContainer({
     workspaceId: selectedWorkspaceId,
     activeWorkspaces,
     archivedWorkspaces,
+    isWorkspacesListLoading,
     isCreateMode,
     selectWorkspace,
     navigateToCreate,
@@ -681,6 +682,7 @@ export function WorkspacesSidebarContainer({
       workspaces={paginatedActiveWorkspaces}
       totalWorkspacesCount={activeWorkspaces.length}
       archivedWorkspaces={paginatedArchivedWorkspaces}
+      isLoading={isWorkspacesListLoading}
       selectedWorkspaceId={selectedWorkspaceId ?? null}
       onSelectWorkspace={handleSelectWorkspace}
       searchQuery={searchQuery}

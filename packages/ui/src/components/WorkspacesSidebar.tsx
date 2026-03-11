@@ -5,6 +5,7 @@ import {
   ArrowLeftIcon,
   ArchiveIcon,
   StackIcon,
+  SpinnerIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
@@ -50,6 +51,7 @@ export interface WorkspacesSidebarProps {
   workspaces: WorkspacesSidebarWorkspace[];
   totalWorkspacesCount: number;
   archivedWorkspaces?: WorkspacesSidebarWorkspace[];
+  isLoading?: boolean;
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (id: string) => void;
   onAddWorkspace?: () => void;
@@ -168,6 +170,7 @@ export function WorkspacesSidebar({
   workspaces,
   totalWorkspacesCount,
   archivedWorkspaces = [],
+  isLoading = false,
   selectedWorkspaceId,
   onSelectWorkspace,
   onAddWorkspace,
@@ -251,17 +254,19 @@ export function WorkspacesSidebar({
           actions={headerActions}
           className="border-b"
         />
-        <div className="px-base flex items-stretch gap-half">
-          <div className="flex-1 min-w-0">
-            <InputField
-              variant="search"
-              value={searchQuery}
-              onChange={onSearchChange}
-              placeholder={t('common:workspaces.searchPlaceholder')}
-            />
+        {!isLoading && (
+          <div className="px-base flex items-stretch gap-half">
+            <div className="flex-1 min-w-0">
+              <InputField
+                variant="search"
+                value={searchQuery}
+                onChange={onSearchChange}
+                placeholder={t('common:workspaces.searchPlaceholder')}
+              />
+            </div>
+            {searchControls}
           </div>
-          {searchControls}
-        </div>
+        )}
 
         {activeRemoteHost && (
           <div className="px-base">
@@ -311,7 +316,13 @@ export function WorkspacesSidebar({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto py-base"
       >
-        {showArchive ? (
+        {isLoading ? (
+          <div className="flex h-full min-h-[220px] items-center justify-center px-base">
+            <div className="flex items-center justify-center text-low">
+              <SpinnerIcon className="size-6 animate-spin" weight="bold" />
+            </div>
+          </div>
+        ) : showArchive ? (
           /* Archived workspaces view */
           <div className="flex flex-col gap-base">
             <span className="text-sm font-medium text-low px-base">
