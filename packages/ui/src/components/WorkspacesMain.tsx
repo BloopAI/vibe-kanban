@@ -10,6 +10,7 @@ export interface WorkspacesMainWorkspace {
 interface WorkspacesMainProps {
   workspaceWithSession: WorkspacesMainWorkspace | undefined;
   isLoading: boolean;
+  showLoadingOverlay?: boolean;
   containerRef: RefObject<HTMLElement>;
   conversationContent?: ReactNode;
   chatBoxContent: ReactNode;
@@ -23,6 +24,7 @@ interface WorkspacesMainProps {
 export function WorkspacesMain({
   workspaceWithSession,
   isLoading,
+  showLoadingOverlay = false,
   containerRef,
   conversationContent,
   chatBoxContent,
@@ -50,6 +52,10 @@ export function WorkspacesMain({
       ) : !workspaceWithSession ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-low">{t('common:workspaces.selectToStart')}</p>
+        </div>
+      ) : showLoadingOverlay ? (
+        <div className="flex-1 flex items-center justify-center">
+          <SpinnerIcon className="size-6 animate-spin text-low" />
         </div>
       ) : (
         conversationContent
