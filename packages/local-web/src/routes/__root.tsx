@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect } from 'react';
 import { Outlet, createRootRoute, useLocation } from '@tanstack/react-router';
 import { I18nextProvider } from 'react-i18next';
 import { usePostHog } from 'posthog-js/react';
@@ -9,27 +9,8 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { ThemeProvider } from '@web/app/providers/ThemeProvider';
 import { useUiPreferencesScratch } from '@/shared/hooks/useUiPreferencesScratch';
 import { ReleaseNotesDialog } from '@/shared/dialogs/global/ReleaseNotesDialog';
-import { WorkspaceProvider } from '@/shared/providers/WorkspaceProvider';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
-import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcessesProvider';
-import { LogsPanelProvider } from '@/shared/providers/LogsPanelProvider';
-import { ActionsProvider } from '@/shared/providers/ActionsProvider';
-import { HostIdProvider } from '@/shared/providers/HostIdProvider';
 import { UserProvider } from '@/shared/providers/remote/UserProvider';
 import '@/app/styles/new/index.css';
-
-function ExecutionProcessesProviderWrapper({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const { selectedSessionId } = useWorkspaceContext();
-  return (
-    <ExecutionProcessesProvider sessionId={selectedSessionId}>
-      {children}
-    </ExecutionProcessesProvider>
-  );
-}
 
 function RootRouteComponent() {
   const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
@@ -81,21 +62,11 @@ function RootRouteComponent() {
   return (
     <I18nextProvider i18n={i18n}>
       <ThemeProvider initialTheme={config?.theme || ThemeMode.SYSTEM}>
-        <WorkspaceProvider>
-          <ExecutionProcessesProviderWrapper>
-            <LogsPanelProvider>
-              <UserProvider>
-                <HostIdProvider>
-                  <ActionsProvider>
-                    <NiceModalProvider>
-                      <Outlet />
-                    </NiceModalProvider>
-                  </ActionsProvider>
-                </HostIdProvider>
-              </UserProvider>
-            </LogsPanelProvider>
-          </ExecutionProcessesProviderWrapper>
-        </WorkspaceProvider>
+        <UserProvider>
+          <NiceModalProvider>
+            <Outlet />
+          </NiceModalProvider>
+        </UserProvider>
       </ThemeProvider>
     </I18nextProvider>
   );
