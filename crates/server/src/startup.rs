@@ -18,8 +18,13 @@ pub struct ServerHandle {
 
 impl ServerHandle {
     /// The base URL the main server is listening on.
+    ///
+    /// Uses `localhost` rather than `127.0.0.1` so that macOS ATS
+    /// (App Transport Security) exception domains apply correctly in
+    /// the Tauri desktop app — IP address literals aren't reliably
+    /// matched by ATS, which causes WebSocket connections to fail.
     pub fn url(&self) -> String {
-        format!("http://127.0.0.1:{}", self.port)
+        format!("http://localhost:{}", self.port)
     }
 
     /// Run both the main and proxy servers until the shutdown token is cancelled.
