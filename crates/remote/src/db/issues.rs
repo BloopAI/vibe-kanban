@@ -4,7 +4,7 @@ use api_types::{
 };
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use sqlx::{Executor, PgPool, Postgres, QueryBuilder};
+use sqlx::{Executor, PgPool, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -36,6 +36,23 @@ enum IssueWorkflowSignal {
 }
 
 impl IssueRepository {
+    fn sort_field_key(sort_field: IssueSortField) -> &'static str {
+        match sort_field {
+            IssueSortField::SortOrder => "sort_order",
+            IssueSortField::Priority => "priority",
+            IssueSortField::CreatedAt => "created_at",
+            IssueSortField::UpdatedAt => "updated_at",
+            IssueSortField::Title => "title",
+        }
+    }
+
+    fn sort_direction_key(sort_direction: SortDirection) -> &'static str {
+        match sort_direction {
+            SortDirection::Asc => "asc",
+            SortDirection::Desc => "desc",
+        }
+    }
+
     fn escape_like_pattern(value: &str) -> String {
         value
             .replace('\\', r"\\")
@@ -47,52 +64,207 @@ impl IssueRepository {
         pool: &PgPool,
         query: &ListIssuesQuery,
     ) -> Result<ListIssuesResponse, IssueError> {
-        let total_count = {
-            let mut builder =
-                QueryBuilder::<Postgres>::new("SELECT COUNT(*)::BIGINT FROM issues i");
-            Self::push_issue_filters(&mut builder, query);
-            builder.build_query_scalar::<i64>().fetch_one(pool).await? as usize
-        };
+        let status_ids = query.status_ids.as_deref();
+        let search_pattern = query
+            .search
+            .as_deref()
+            .map(Self::escape_like_pattern)
+            .map(|search| format!("%{search}%"));
+        let simple_id = query.simple_id.as_deref().map(Self::escape_like_pattern);
+        let tag_ids = query.tag_ids.as_deref();
+        let sort_field = Self::sort_field_key(query.sort_field.unwrap_or(IssueSortField::SortOrder));
+        let sort_direction =
+            Self::sort_direction_key(query.sort_direction.unwrap_or(SortDirection::Asc));
+        let offset = query.offset.unwrap_or(0).max(0) as usize;
+        let query_limit = query.limit.map(|value| value.max(0) as i64).unwrap_or(i64::MAX);
 
-        let mut builder = QueryBuilder::<Postgres>::new(
+        let total_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*)::BIGINT
+            FROM issues i
+            WHERE i.project_id = $1
+              AND ($2::uuid IS NULL OR i.status_id = $2)
+              AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))
+              AND ($4::issue_priority IS NULL OR i.priority = $4)
+              AND ($5::uuid IS NULL OR i.parent_issue_id = $5)
+              AND (
+                  $6::text IS NULL
+                  OR i.title ILIKE $6 ESCAPE '\'
+                  OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\'
+              )
+              AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\')
+              AND (
+                  $8::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_assignees ia
+                      WHERE ia.issue_id = i.id AND ia.user_id = $8
+                  )
+              )
+              AND (
+                  $9::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = $9
+                  )
+              )
+              AND (
+                  $10::uuid[] IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = ANY($10)
+                  )
+              )
+            "#,
+            query.project_id,
+            query.status_id,
+            status_ids,
+            query.priority as Option<IssuePriority>,
+            query.parent_issue_id,
+            search_pattern.as_deref(),
+            simple_id.as_deref(),
+            query.assignee_user_id,
+            query.tag_id,
+            tag_ids,
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0) as usize;
+
+        let issues = sqlx::query_as!(
+            Issue,
             r#"
             SELECT
-                i.id,
-                i.project_id,
-                i.issue_number,
-                i.simple_id,
-                i.status_id,
-                i.title,
-                i.description,
-                i.priority,
-                i.start_date,
-                i.target_date,
-                i.completed_at,
-                i.sort_order,
-                i.parent_issue_id,
-                i.parent_issue_sort_order,
-                i.extension_metadata,
-                i.creator_user_id,
-                i.created_at,
-                i.updated_at
+                i.id                  AS "id!: Uuid",
+                i.project_id          AS "project_id!: Uuid",
+                i.issue_number        AS "issue_number!",
+                i.simple_id           AS "simple_id!",
+                i.status_id           AS "status_id!: Uuid",
+                i.title               AS "title!",
+                i.description         AS "description?",
+                i.priority            AS "priority: IssuePriority",
+                i.start_date          AS "start_date?: DateTime<Utc>",
+                i.target_date         AS "target_date?: DateTime<Utc>",
+                i.completed_at        AS "completed_at?: DateTime<Utc>",
+                i.sort_order          AS "sort_order!",
+                i.parent_issue_id     AS "parent_issue_id?: Uuid",
+                i.parent_issue_sort_order AS "parent_issue_sort_order?",
+                i.extension_metadata  AS "extension_metadata!: Value",
+                i.creator_user_id     AS "creator_user_id?: Uuid",
+                i.created_at          AS "created_at!: DateTime<Utc>",
+                i.updated_at          AS "updated_at!: DateTime<Utc>"
             FROM issues i
             LEFT JOIN project_statuses ps ON ps.id = i.status_id
+            WHERE i.project_id = $1
+              AND ($2::uuid IS NULL OR i.status_id = $2)
+              AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))
+              AND ($4::issue_priority IS NULL OR i.priority = $4)
+              AND ($5::uuid IS NULL OR i.parent_issue_id = $5)
+              AND (
+                  $6::text IS NULL
+                  OR i.title ILIKE $6 ESCAPE '\'
+                  OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\'
+              )
+              AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\')
+              AND (
+                  $8::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_assignees ia
+                      WHERE ia.issue_id = i.id AND ia.user_id = $8
+                  )
+              )
+              AND (
+                  $9::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = $9
+                  )
+              )
+              AND (
+                  $10::uuid[] IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = ANY($10)
+                  )
+              )
+            ORDER BY
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN ps.sort_order
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN ps.sort_order
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN i.sort_order
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN i.sort_order
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'priority' AND $12 = 'asc' THEN
+                        CASE i.priority
+                            WHEN 'urgent' THEN 0
+                            WHEN 'high' THEN 1
+                            WHEN 'medium' THEN 2
+                            WHEN 'low' THEN 3
+                            ELSE NULL
+                        END
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'priority' AND $12 = 'desc' THEN
+                        CASE i.priority
+                            WHEN 'urgent' THEN 0
+                            WHEN 'high' THEN 1
+                            WHEN 'medium' THEN 2
+                            WHEN 'low' THEN 3
+                            ELSE NULL
+                        END
+                END DESC NULLS FIRST,
+                CASE
+                    WHEN $11 = 'created_at' AND $12 = 'asc' THEN i.created_at
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'created_at' AND $12 = 'desc' THEN i.created_at
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'updated_at' AND $12 = 'asc' THEN i.updated_at
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'updated_at' AND $12 = 'desc' THEN i.updated_at
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'title' AND $12 = 'asc' THEN i.title
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'title' AND $12 = 'desc' THEN i.title
+                END DESC NULLS LAST,
+                i.issue_number ASC
+            LIMIT $13
+            OFFSET $14
             "#,
-        );
-        Self::push_issue_filters(&mut builder, query);
-        Self::push_issue_order(&mut builder, query);
+            query.project_id,
+            query.status_id,
+            status_ids,
+            query.priority as Option<IssuePriority>,
+            query.parent_issue_id,
+            search_pattern.as_deref(),
+            simple_id.as_deref(),
+            query.assignee_user_id,
+            query.tag_id,
+            tag_ids,
+            sort_field,
+            sort_direction,
+            query_limit,
+            offset as i64,
+        )
+        .fetch_all(pool)
+        .await?;
 
-        let offset = query.offset.unwrap_or(0).max(0) as usize;
-        if let Some(limit) = query.limit {
-            builder.push(" LIMIT ");
-            builder.push_bind(limit.max(0) as i64);
-        }
-        if offset > 0 {
-            builder.push(" OFFSET ");
-            builder.push_bind(offset as i64);
-        }
-
-        let issues = builder.build_query_as::<Issue>().fetch_all(pool).await?;
         let limit = query.limit.unwrap_or(issues.len() as i32).max(0) as usize;
 
         Ok(ListIssuesResponse {
@@ -195,116 +367,6 @@ impl IssueRepository {
         .await?;
 
         Ok(records)
-    }
-
-    fn push_issue_filters<'a>(
-        builder: &mut QueryBuilder<'a, Postgres>,
-        query: &'a ListIssuesQuery,
-    ) {
-        builder.push(" WHERE i.project_id = ");
-        builder.push_bind(query.project_id);
-
-        if let Some(status_id) = query.status_id {
-            builder.push(" AND i.status_id = ");
-            builder.push_bind(status_id);
-        }
-
-        if let Some(status_ids) = query.status_ids.as_deref() {
-            builder.push(" AND i.status_id = ANY(");
-            builder.push_bind(status_ids);
-            builder.push(")");
-        }
-
-        if let Some(priority) = query.priority {
-            builder.push(" AND i.priority = ");
-            builder.push_bind(priority);
-        }
-
-        if let Some(parent_issue_id) = query.parent_issue_id {
-            builder.push(" AND i.parent_issue_id = ");
-            builder.push_bind(parent_issue_id);
-        }
-
-        if let Some(search) = query.search.as_deref() {
-            let pattern = format!("%{}%", Self::escape_like_pattern(search));
-            builder.push(" AND (i.title ILIKE ");
-            builder.push_bind(pattern.clone());
-            builder.push(" ESCAPE '\\' OR COALESCE(i.description, '') ILIKE ");
-            builder.push_bind(pattern);
-            builder.push(" ESCAPE '\\')");
-        }
-
-        if let Some(simple_id) = query.simple_id.as_deref() {
-            builder.push(" AND i.simple_id ILIKE ");
-            builder.push_bind(Self::escape_like_pattern(simple_id));
-            builder.push(" ESCAPE '\\'");
-        }
-
-        if let Some(assignee_user_id) = query.assignee_user_id {
-            builder.push(
-                " AND EXISTS (SELECT 1 FROM issue_assignees ia WHERE ia.issue_id = i.id AND ia.user_id = ",
-            );
-            builder.push_bind(assignee_user_id);
-            builder.push(")");
-        }
-
-        if let Some(tag_id) = query.tag_id {
-            builder.push(
-                " AND EXISTS (SELECT 1 FROM issue_tags it WHERE it.issue_id = i.id AND it.tag_id = ",
-            );
-            builder.push_bind(tag_id);
-            builder.push(")");
-        }
-
-        if let Some(tag_ids) = query.tag_ids.as_deref() {
-            builder.push(
-                " AND EXISTS (SELECT 1 FROM issue_tags it WHERE it.issue_id = i.id AND it.tag_id = ANY(",
-            );
-            builder.push_bind(tag_ids);
-            builder.push("))");
-        }
-    }
-
-    fn push_issue_order(builder: &mut QueryBuilder<'_, Postgres>, query: &ListIssuesQuery) {
-        let sort_field = query.sort_field.unwrap_or(IssueSortField::SortOrder);
-        let sort_direction = query.sort_direction.unwrap_or(SortDirection::Asc);
-        let dir = match sort_direction {
-            SortDirection::Asc => "ASC",
-            SortDirection::Desc => "DESC",
-        };
-
-        builder.push(" ORDER BY ");
-        match sort_field {
-            IssueSortField::SortOrder => {
-                builder.push(format!(
-                    "ps.sort_order {dir}, i.sort_order {dir}, i.issue_number ASC"
-                ));
-            }
-            IssueSortField::Priority => {
-                let nulls = if sort_direction == SortDirection::Asc {
-                    "NULLS LAST"
-                } else {
-                    "NULLS FIRST"
-                };
-                builder.push(format!(
-                    "CASE i.priority \
-                        WHEN 'urgent' THEN 0 \
-                        WHEN 'high' THEN 1 \
-                        WHEN 'medium' THEN 2 \
-                        WHEN 'low' THEN 3 \
-                        ELSE NULL END {dir} {nulls}, i.issue_number ASC"
-                ));
-            }
-            IssueSortField::CreatedAt => {
-                builder.push(format!("i.created_at {dir}, i.issue_number ASC"));
-            }
-            IssueSortField::UpdatedAt => {
-                builder.push(format!("i.updated_at {dir}, i.issue_number ASC"));
-            }
-            IssueSortField::Title => {
-                builder.push(format!("i.title {dir}, i.issue_number ASC"));
-            }
-        }
     }
 
     #[allow(clippy::too_many_arguments)]
