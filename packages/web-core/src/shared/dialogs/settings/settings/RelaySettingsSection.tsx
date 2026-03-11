@@ -250,10 +250,10 @@ function LocalRelaySettingsSectionContent() {
               )}
             >
               <SettingsInput
-                value={draft.relay_host_name ?? ''}
+                value={draft.host_nickname ?? ''}
                 onChange={(value) =>
                   updateDraft({
-                    relay_host_name: value === '' ? null : value,
+                    host_nickname: value === '' ? null : value,
                   })
                 }
                 placeholder={t(
