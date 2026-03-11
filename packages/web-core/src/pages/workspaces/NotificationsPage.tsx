@@ -5,8 +5,7 @@ import type { Notification } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 import { UserAvatar } from '@vibe/ui/components/UserAvatar';
 import { useNotifications } from '@/shared/hooks/useNotifications';
-import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
-import { useOrganizationMembers } from '@/shared/hooks/useOrganizationMembers';
+import { useNotificationMembers } from '@/shared/hooks/useNotificationMembers';
 import {
   getNotificationSegments,
   getDeeplinkPath,
@@ -46,11 +45,8 @@ function NotificationMessage({
 
 export function NotificationsPage() {
   const router = useRouter();
-  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
   const { data, update, updateMany, enabled, unseenCount } = useNotifications();
-  const { data: members = [] } = useOrganizationMembers(
-    selectedOrgId ?? undefined
-  );
+  const { data: members = [] } = useNotificationMembers(data);
   const sorted = useMemo(
     () =>
       [...data].sort(

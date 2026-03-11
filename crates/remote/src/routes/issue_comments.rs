@@ -1,6 +1,6 @@
 use api_types::{
     CreateIssueCommentRequest, DeleteResponse, IssueComment, ListIssueCommentsQuery,
-    ListIssueCommentsResponse, MemberRole, MutationResponse, NotificationType,
+    ListIssueCommentsResponse, MemberRole, MutationResponse, NotificationPayload, NotificationType,
     UpdateIssueCommentRequest,
 };
 use axum::{
@@ -23,7 +23,7 @@ use crate::{
         organization_members::check_user_role,
     },
     mutation_definition::MutationBuilder,
-    services::notifications::notify_issue_subscribers,
+    notifications::notify_issue_subscribers,
 };
 
 /// Mutation definition for IssueComment - provides both router and TypeScript metadata.
@@ -142,7 +142,10 @@ async fn create_issue_comment(
             ctx.user.id,
             &issue,
             NotificationType::IssueCommentAdded,
-            serde_json::json!({ "comment_preview": comment_preview }),
+            NotificationPayload {
+                comment_preview: Some(comment_preview),
+                ..Default::default()
+            },
             Some(response.data.id),
         )
         .await;

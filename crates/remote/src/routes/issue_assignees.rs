@@ -1,6 +1,6 @@
 use api_types::{
     CreateIssueAssigneeRequest, DeleteResponse, IssueAssignee, ListIssueAssigneesQuery,
-    ListIssueAssigneesResponse, MutationResponse, NotificationType,
+    ListIssueAssigneesResponse, MutationResponse, NotificationPayload, NotificationType,
 };
 use axum::{
     Json,
@@ -19,7 +19,7 @@ use crate::{
     auth::RequestContext,
     db::{issue_assignees::IssueAssigneeRepository, issues::IssueRepository},
     mutation_definition::{MutationBuilder, NoUpdate},
-    services::notifications::notify_user,
+    notifications::notify_user,
 };
 
 /// Mutation definition for IssueAssignee - provides both router and TypeScript metadata.
@@ -120,9 +120,10 @@ async fn create_issue_assignee(
             payload.user_id,
             &issue,
             NotificationType::IssueAssigneeChanged,
-            serde_json::json!({
-                "assignee_user_id": payload.user_id.to_string(),
-            }),
+            NotificationPayload {
+                assignee_user_id: Some(payload.user_id),
+                ..Default::default()
+            },
         )
         .await;
     }
@@ -151,7 +152,7 @@ async fn delete_issue_assignee(
         })?
         .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "issue assignee not found"))?;
 
-    ensure_issue_access(state.pool(), ctx.user.id, assignee.issue_id).await?;
+    let organization_id = ensure_issue_access(state.pool(), ctx.user.id, assignee.issue_id).await?;
 
     let response = IssueAssigneeRepository::delete(state.pool(), issue_assignee_id)
         .await
@@ -159,6 +160,24 @@ async fn delete_issue_assignee(
             tracing::error!(?error, "failed to delete issue assignee");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
+
+    if assignee.user_id != ctx.user.id
+        && let Ok(Some(issue)) = IssueRepository::find_by_id(state.pool(), assignee.issue_id).await
+    {
+        notify_user(
+            state.pool(),
+            organization_id,
+            ctx.user.id,
+            assignee.user_id,
+            &issue,
+            NotificationType::IssueUnassigned,
+            NotificationPayload {
+                assignee_user_id: Some(assignee.user_id),
+                ..Default::default()
+            },
+        )
+        .await;
+    }
 
     Ok(Json(response))
 }

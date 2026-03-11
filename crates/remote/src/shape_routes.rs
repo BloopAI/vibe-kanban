@@ -78,7 +78,7 @@ pub fn all_shape_routes() -> Vec<ShapeRoute> {
         ),
         ShapeRoute::new(
             &shapes::NOTIFICATIONS_SHAPE,
-            ShapeScope::OrgWithUser,
+            ShapeScope::User,
             "/fallback/notifications",
             fallback_list_notifications,
         ),
@@ -196,23 +196,21 @@ async fn fallback_list_projects(
 async fn fallback_list_notifications(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Query(query): Query<OrgFallbackQuery>,
+    Query(_query): Query<NoQueryParams>,
 ) -> Result<Json<ListNotificationsResponse>, ErrorResponse> {
-    ensure_member_access(state.pool(), query.organization_id, ctx.user.id).await?;
-
-    let notifications = NotificationRepository::list_by_organization_and_user(
-        state.pool(),
-        query.organization_id,
-        ctx.user.id,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, organization_id = %query.organization_id, "failed to list notifications (fallback)");
-        ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to list notifications",
-        )
-    })?;
+    let notifications = NotificationRepository::list_by_user(state.pool(), ctx.user.id, true)
+        .await
+        .map_err(|error| {
+            tracing::error!(
+                ?error,
+                user_id = %ctx.user.id,
+                "failed to list notifications (fallback)"
+            );
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list notifications",
+            )
+        })?;
 
     Ok(Json(ListNotificationsResponse { notifications }))
 }

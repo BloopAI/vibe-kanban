@@ -5,18 +5,15 @@ import {
   NOTIFICATION_MUTATION,
 } from 'shared/remote-types';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
-import { useOrganizationStore } from '@/shared/stores/useOrganizationStore';
 
 export function useNotifications() {
   const { isSignedIn, userId } = useAuth();
-  const selectedOrgId = useOrganizationStore((s) => s.selectedOrgId);
 
-  const enabled = isSignedIn && !!selectedOrgId;
+  const enabled = isSignedIn && !!userId;
 
   const result = useShape(
     NOTIFICATIONS_SHAPE,
     {
-      organization_id: selectedOrgId || '',
       user_id: userId || '',
     },
     {

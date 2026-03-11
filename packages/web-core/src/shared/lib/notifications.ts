@@ -1,22 +1,8 @@
-import type { Notification } from 'shared/remote-types';
+import type { Notification, NotificationPayload } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 
-interface NotificationPayload {
-  deeplink_path?: string;
-  issue_title?: string;
-  actor_user_id?: string;
-  comment_preview?: string;
-  old_status_id?: string;
-  new_status_id?: string;
-  old_status_name?: string;
-  new_status_name?: string;
-  old_title?: string;
-  new_title?: string;
-  assignee_user_id?: string;
-}
-
 export function getPayload(n: Notification): NotificationPayload {
-  return (n.payload ?? {}) as NotificationPayload;
+  return n.payload ?? {};
 }
 
 export function getDeeplinkPath(n: Notification): string | null {
@@ -41,6 +27,14 @@ function user(userId: string): MessageSegment {
   return { type: 'user', userId };
 }
 
+function formatPriority(priority?: string | null): string | null {
+  if (!priority) return null;
+  return priority
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
 export function getNotificationSegments(n: Notification): MessageSegment[] {
   const payload = getPayload(n);
   const title = payload.issue_title ?? 'an issue';
@@ -50,16 +44,11 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
 
   switch (n.notification_type) {
     case 'issue_title_changed': {
-      if (payload.old_title && payload.new_title) {
-        return [
-          ...actor,
-          text(' changed the title '),
-          bold(payload.old_title),
-          text(' to '),
-          bold(payload.new_title),
-        ];
+      const newTitle = payload.new_title;
+      if (newTitle) {
+        return [...actor, text(' renamed the issue to '), bold(newTitle)];
       }
-      return [...actor, text(' changed the title on '), bold(title)];
+      return [...actor, text(' renamed '), bold(title)];
     }
     case 'issue_assignee_changed': {
       const assigneeId = payload.assignee_user_id;
@@ -72,6 +61,9 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
         ...actor,
       ];
     }
+    case 'issue_unassigned': {
+      return [...actor, text(' unassigned you from '), bold(title)];
+    }
     case 'issue_description_changed': {
       return [
         text('Description updated on '),
@@ -80,19 +72,59 @@ export function getNotificationSegments(n: Notification): MessageSegment[] {
         ...actor,
       ];
     }
+    case 'issue_priority_changed': {
+      const oldPriority = formatPriority(payload.old_priority);
+      const newPriority = formatPriority(payload.new_priority);
+      if (oldPriority && newPriority) {
+        return [
+          ...actor,
+          text(' changed priority on '),
+          bold(title),
+          text(' from '),
+          bold(oldPriority),
+          text(' to '),
+          bold(newPriority),
+        ];
+      }
+      if (newPriority) {
+        return [
+          ...actor,
+          text(' changed priority on '),
+          bold(title),
+          text(' to '),
+          bold(newPriority),
+        ];
+      }
+      return [...actor, text(' cleared priority on '), bold(title)];
+    }
     case 'issue_comment_added': {
       return [...actor, text(' commented on '), bold(title)];
     }
+    case 'issue_comment_reaction': {
+      const emoji = payload.emoji;
+      if (emoji) {
+        return [
+          ...actor,
+          text(' reacted '),
+          bold(emoji),
+          text(' to your comment on '),
+          bold(title),
+        ];
+      }
+      return [...actor, text(' reacted to your comment on '), bold(title)];
+    }
     case 'issue_status_changed': {
-      if (payload.old_status_name && payload.new_status_name) {
+      const oldStatusName = payload.old_status_name;
+      const newStatusName = payload.new_status_name;
+      if (oldStatusName && newStatusName) {
         return [
           ...actor,
           text(' changed status on '),
           bold(title),
           text(' from '),
-          bold(payload.old_status_name),
+          bold(oldStatusName),
           text(' to '),
-          bold(payload.new_status_name),
+          bold(newStatusName),
         ];
       }
       return [...actor, text(' changed status on '), bold(title)];
