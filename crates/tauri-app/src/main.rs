@@ -10,7 +10,8 @@ use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio_util::sync::CancellationToken;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{EnvFilter, prelude::*};
+use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
 use uuid::Uuid;
 
 /// Native push notifier using Tauri's notification plugin.
@@ -55,7 +56,13 @@ fn main() {
         level = log_level
     );
     let env_filter = EnvFilter::try_new(filter_string).expect("Failed to create tracing filter");
-    tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
+    sentry_utils::init_once(SentrySource::Desktop);
+
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer().with_filter(env_filter))
+        .with(sentry_layer())
+        .init();
 
     // Shared token so we can tell the server to shut down when the app quits.
     let shutdown_token = Arc::new(CancellationToken::new());
