@@ -72,11 +72,15 @@ impl IssueRepository {
             .map(|search| format!("%{search}%"));
         let simple_id = query.simple_id.as_deref().map(Self::escape_like_pattern);
         let tag_ids = query.tag_ids.as_deref();
-        let sort_field = Self::sort_field_key(query.sort_field.unwrap_or(IssueSortField::SortOrder));
+        let sort_field =
+            Self::sort_field_key(query.sort_field.unwrap_or(IssueSortField::SortOrder));
         let sort_direction =
             Self::sort_direction_key(query.sort_direction.unwrap_or(SortDirection::Asc));
         let offset = query.offset.unwrap_or(0).max(0) as usize;
-        let query_limit = query.limit.map(|value| value.max(0) as i64).unwrap_or(i64::MAX);
+        let query_limit = query
+            .limit
+            .map(|value| value.max(0) as i64)
+            .unwrap_or(i64::MAX);
 
         let total_count = sqlx::query_scalar!(
             r#"
