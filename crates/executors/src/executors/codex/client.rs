@@ -192,11 +192,11 @@ impl AppServerClient {
         })
     }
 
-    pub fn initial_collaboration_mode(&self) -> Result<Option<CollaborationMode>, ExecutorError> {
+    pub fn initial_collaboration_mode(&self) -> Result<CollaborationMode, ExecutorError> {
         if self.plan_mode {
-            Ok(Some(self.collaboration_mode(ModeKind::Plan)?))
+            self.collaboration_mode(ModeKind::Plan)
         } else {
-            Ok(None)
+            self.collaboration_mode(ModeKind::Default)
         }
     }
 

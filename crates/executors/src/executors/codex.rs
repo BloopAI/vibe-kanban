@@ -197,11 +197,13 @@ impl StandardCodingAgentExecutor for Codex {
             match permission_policy {
                 crate::model_selector::PermissionPolicy::Auto => {
                     self.ask_for_approval = Some(AskForApproval::Never);
+                    self.plan = false;
                 }
                 crate::model_selector::PermissionPolicy::Supervised => {
                     if matches!(self.ask_for_approval, None | Some(AskForApproval::Never)) {
                         self.ask_for_approval = Some(AskForApproval::UnlessTrusted);
                     }
+                    self.plan = false;
                 }
                 crate::model_selector::PermissionPolicy::Plan => {
                     self.plan = true;
@@ -581,7 +583,7 @@ impl Codex {
                     text: combined_prompt,
                     text_elements: vec![],
                 }],
-                collaboration_mode,
+                Some(collaboration_mode),
             )
             .await?;
 
