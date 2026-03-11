@@ -6156,13 +6156,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "server-info"
-version = "0.1.29"
-dependencies = [
- "tokio",
-]
-
-[[package]]
 name = "services"
 version = "0.1.29"
 dependencies = [
