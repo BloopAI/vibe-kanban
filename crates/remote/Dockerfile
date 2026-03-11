@@ -15,11 +15,18 @@ ENV VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=${VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_
 RUN corepack enable
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
-COPY packages/ packages/
-COPY shared/ shared/
+COPY packages/remote-web/package.json packages/remote-web/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/web-core/package.json packages/web-core/package.json
 
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile
+
+COPY packages/remote-web/ packages/remote-web/
+COPY packages/local-web/tailwind.new.config.js packages/local-web/tailwind.new.config.js
+COPY packages/ui/ packages/ui/
+COPY packages/web-core/ packages/web-core/
+COPY shared/ shared/
 
 RUN pnpm -C packages/remote-web build
 
@@ -31,6 +38,7 @@ ARG POSTHOG_API_ENDPOINT=""
 ARG SENTRY_DSN_REMOTE=""
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV CARGO_TARGET_DIR=/app/target
 ENV POSTHOG_API_KEY=${POSTHOG_API_KEY}
 ENV POSTHOG_API_ENDPOINT=${POSTHOG_API_ENDPOINT}
 ENV SENTRY_DSN_REMOTE=${SENTRY_DSN_REMOTE}
@@ -43,9 +51,11 @@ RUN apt-get update \
 WORKDIR /app
 
 COPY rust-toolchain.toml ./
+RUN cargo --version >/dev/null
 COPY Cargo.toml Cargo.lock ./
-COPY crates crates
-COPY shared shared
+COPY crates/api-types crates/api-types
+COPY crates/remote crates/remote
+COPY crates/utils crates/utils
 COPY assets assets
 
 RUN mkdir -p /app/bin
@@ -56,16 +66,16 @@ RUN mkdir -p /app/bin
 RUN if [ -z "${FEATURES}" ]; then \
       sed -i '/^billing = {.*vibe-kanban-private.*/d' crates/remote/Cargo.toml; \
       sed -i '/^# private crate for billing/d' crates/remote/Cargo.toml; \
-      sed -i '/^vk-billing = \["dep:billing"\]/d' crates/remote/Cargo.toml; \
+      sed -i 's/^vk-billing = \["dep:billing"\]/vk-billing = []/' crates/remote/Cargo.toml; \
       rm -f crates/remote/Cargo.lock; \
     fi
 
-RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    --mount=type=cache,target=/usr/local/cargo/git \
-    --mount=type=cache,target=/app/target \
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
+    --mount=type=cache,id=remote-target,target=/app/target \
     --mount=type=ssh \
     cargo build ${FEATURES:+--locked} --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
- && cp crates/remote/target/release/${APP_NAME} /app/bin/${APP_NAME}
+ && cp /app/target/release/${APP_NAME} /app/bin/${APP_NAME}
 
 FROM debian:bookworm-slim AS runtime
 ARG APP_NAME

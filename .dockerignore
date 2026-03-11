@@ -1,5 +1,8 @@
 # Node modules
+node_modules/
 **/node_modules
+.pnpm-store/
+.pnpm/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -32,6 +35,12 @@ Thumbs.db
 # Git
 .git/
 .gitignore
+
+# Repo content not needed for Docker builds
+.github/
+docs/
+dev_assets/
+dev_assets_seed/
 
 # Docker
 Dockerfile*
