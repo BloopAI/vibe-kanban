@@ -48,12 +48,10 @@ impl IssueRepository {
         query: &ListIssuesQuery,
     ) -> Result<ListIssuesResponse, IssueError> {
         let total_count = {
-            let mut builder = QueryBuilder::<Postgres>::new("SELECT COUNT(*)::BIGINT FROM issues i");
+            let mut builder =
+                QueryBuilder::<Postgres>::new("SELECT COUNT(*)::BIGINT FROM issues i");
             Self::push_issue_filters(&mut builder, query);
-            builder
-                .build_query_scalar::<i64>()
-                .fetch_one(pool)
-                .await? as usize
+            builder.build_query_scalar::<i64>().fetch_one(pool).await? as usize
         };
 
         let mut builder = QueryBuilder::<Postgres>::new(
@@ -278,7 +276,9 @@ impl IssueRepository {
         builder.push(" ORDER BY ");
         match sort_field {
             IssueSortField::SortOrder => {
-                builder.push(format!("ps.sort_order {dir}, i.sort_order {dir}, i.issue_number ASC"));
+                builder.push(format!(
+                    "ps.sort_order {dir}, i.sort_order {dir}, i.issue_number ASC"
+                ));
             }
             IssueSortField::Priority => {
                 let nulls = if sort_direction == SortDirection::Asc {

@@ -324,11 +324,11 @@ async fn fallback_list_issues(
             offset: None,
         },
     )
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
-        })?;
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
+    })?;
 
     Ok(Json(response))
 }
