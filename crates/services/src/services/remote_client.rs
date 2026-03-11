@@ -320,6 +320,27 @@ impl RemoteClient {
     where
         B: Serialize,
     {
+        self.send_internal_with_request(method, path, requires_auth, timeout_options, |req| {
+            if let Some(body) = body {
+                req.json(body)
+            } else {
+                req
+            }
+        })
+        .await
+    }
+
+    async fn send_internal_with_request<F>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        requires_auth: bool,
+        timeout_options: Option<RequestTimeoutOptions>,
+        customize_request: F,
+    ) -> Result<reqwest::Response, RemoteClientError>
+    where
+        F: Fn(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
+    {
         let url = self
             .base
             .join(path)
@@ -343,9 +364,7 @@ impl RemoteClient {
                 req = req.bearer_auth(token);
             }
 
-            if let Some(b) = body {
-                req = req.json(b);
-            }
+            req = customize_request(req);
 
             let res = req.send().await.map_err(map_reqwest_error)?;
 
@@ -454,50 +473,9 @@ impl RemoteClient {
         T: for<'de> Deserialize<'de>,
         Q: Serialize,
     {
-        let url = self
-            .base
-            .join(path)
-            .map_err(|e| RemoteClientError::Url(e.to_string()))?;
-
-        let operation = || async {
-            let token = self.require_token().await?;
-            let res = self
-                .http
-                .get(url.clone())
-                .query(query)
-                .header("X-Client-Version", env!("CARGO_PKG_VERSION"))
-                .header("X-Client-Type", "local-backend")
-                .bearer_auth(token)
-                .send()
-                .await
-                .map_err(map_reqwest_error)?;
-
-            match res.status() {
-                s if s.is_success() => Ok(res),
-                StatusCode::UNAUTHORIZED | StatusCode::FORBIDDEN => Err(RemoteClientError::Auth),
-                s => {
-                    let status = s.as_u16();
-                    let body = res.text().await.unwrap_or_default();
-                    Err(RemoteClientError::Http { status, body })
-                }
-            }
-        };
-
-        let res = operation
-            .retry(
-                &ExponentialBuilder::default()
-                    .with_min_delay(Duration::from_millis(500))
-                    .with_max_delay(Duration::from_secs(2))
-                    .with_max_times(2)
-                    .with_jitter(),
-            )
-            .when(|e: &RemoteClientError| e.should_retry())
-            .notify(|e, dur| {
-                warn!(
-                    "Remote call failed, retrying after {:.2}s: {}",
-                    dur.as_secs_f64(),
-                    e
-                )
+        let res = self
+            .send_internal_with_request(reqwest::Method::GET, path, true, None, |req| {
+                req.query(query)
             })
             .await?;
 
