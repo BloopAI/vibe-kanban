@@ -317,44 +317,6 @@ impl IssueRepository {
         Ok(record)
     }
 
-    pub async fn list_by_project(
-        pool: &PgPool,
-        project_id: Uuid,
-    ) -> Result<Vec<Issue>, IssueError> {
-        let records = sqlx::query_as!(
-            Issue,
-            r#"
-            SELECT
-                id                  AS "id!: Uuid",
-                project_id          AS "project_id!: Uuid",
-                issue_number        AS "issue_number!",
-                simple_id           AS "simple_id!",
-                status_id           AS "status_id!: Uuid",
-                title               AS "title!",
-                description         AS "description?",
-                priority            AS "priority: IssuePriority",
-                start_date          AS "start_date?: DateTime<Utc>",
-                target_date         AS "target_date?: DateTime<Utc>",
-                completed_at        AS "completed_at?: DateTime<Utc>",
-                sort_order          AS "sort_order!",
-                parent_issue_id     AS "parent_issue_id?: Uuid",
-                parent_issue_sort_order AS "parent_issue_sort_order?",
-                extension_metadata  AS "extension_metadata!: Value",
-                creator_user_id     AS "creator_user_id?: Uuid",
-                created_at          AS "created_at!: DateTime<Utc>",
-                updated_at          AS "updated_at!: DateTime<Utc>"
-            FROM issues
-            WHERE project_id = $1
-            ORDER BY sort_order ASC, issue_number ASC
-            "#,
-            project_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(records)
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         pool: &PgPool,
