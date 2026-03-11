@@ -92,10 +92,13 @@ fn main() {
                 // externally. Use WebviewUrl::External so that macOS WKWebView
                 // renders with the same content scaling as the production build.
                 tracing::info!("Running in dev mode — using external frontend/backend servers");
-                create_window(
+                let window = create_window(
                     app,
                     tauri::WebviewUrl::External("http://localhost:3000".parse().unwrap()),
                 )?;
+                #[cfg(target_os = "macos")]
+                disable_pinch_zoom(&window);
+                let _ = window;
             } else {
                 // Production: start the Axum server first, then open the window
                 // once it's ready so the user never sees a blank/error page.
@@ -120,7 +123,11 @@ fn main() {
                                 let webview_url =
                                     tauri::WebviewUrl::External(url_clone.parse().unwrap());
                                 match create_window(&create_handle, webview_url) {
-                                    Ok(_) => {}
+                                    Ok(window) => {
+                                        #[cfg(target_os = "macos")]
+                                        disable_pinch_zoom(&window);
+                                        let _ = window;
+                                    }
                                     Err(e) => tracing::error!("Failed to create window: {e}"),
                                 }
                             });
@@ -206,6 +213,17 @@ fn main() {
                 tauri::async_runtime::block_on(install_pending_update(_app, &pending_for_exit));
             }
         });
+}
+
+/// Disable trackpad/touchpad pinch-to-zoom on macOS while keeping Cmd+/- zoom.
+/// WKWebView handles magnification at the native level — JS `preventDefault()`
+/// cannot block it.
+#[cfg(target_os = "macos")]
+fn disable_pinch_zoom(window: &tauri::WebviewWindow) {
+    let _ = window.with_webview(|webview| unsafe {
+        let wk: &objc2_web_kit::WKWebView = &*webview.inner().cast();
+        wk.setAllowsMagnification(false);
+    });
 }
 
 fn show_window(app: &tauri::AppHandle) {
