@@ -11,19 +11,19 @@ use crate::DeploymentImpl;
 const RELAY_RECONNECT_INITIAL_DELAY_SECS: u64 = 1;
 const RELAY_RECONNECT_MAX_DELAY_SECS: u64 = 30;
 
-pub fn default_relay_host_name(user_id: &str) -> String {
+pub fn default_host_nickname(user_id: &str) -> String {
     let os_type = os_info::get().os_type().to_string();
     format!("{os_type} host ({user_id})")
 }
 
-pub fn effective_relay_host_name(config: &Config, user_id: &str) -> String {
+pub fn clean_host_nickname(config: &Config, user_id: &str) -> String {
     config
-        .relay_host_name
+        .host_nickname
         .as_deref()
         .map(str::trim)
         .filter(|name| !name.is_empty())
         .map(str::to_string)
-        .unwrap_or_else(|| default_relay_host_name(user_id))
+        .unwrap_or_else(|| default_host_nickname(user_id))
 }
 
 struct RelayParams {
@@ -44,7 +44,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
     }
     drop(config);
 
-    let relay_base = deployment.shared_relay_api_base().await.or_else(|| {
+    let relay_base = deployment.shared_relay_api_base().or_else(|| {
         tracing::debug!("VK_SHARED_RELAY_API_BASE not set; relay unavailable");
         None
     })?;

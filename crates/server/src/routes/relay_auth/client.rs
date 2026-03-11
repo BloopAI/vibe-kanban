@@ -31,7 +31,7 @@ pub async fn pair_relay_host(
     State(deployment): State<DeploymentImpl>,
     Json(req): Json<PairRelayHostRequest>,
 ) -> Response {
-    let client = build_relay_pairing_client(&deployment).await;
+    let client = build_relay_pairing_client(&deployment);
 
     match client.pair_host(&req).await {
         Ok(()) => (
@@ -46,7 +46,7 @@ pub async fn pair_relay_host(
 }
 
 pub async fn list_relay_paired_hosts(State(deployment): State<DeploymentImpl>) -> Response {
-    let client = build_relay_pairing_client(&deployment).await;
+    let client = build_relay_pairing_client(&deployment);
     let hosts = client.list_hosts().await;
 
     (
@@ -62,7 +62,7 @@ pub async fn remove_relay_paired_host(
     State(deployment): State<DeploymentImpl>,
     Path(host_id): Path<Uuid>,
 ) -> Response {
-    let client = build_relay_pairing_client(&deployment).await;
+    let client = build_relay_pairing_client(&deployment);
 
     match client.remove_host(host_id).await {
         Ok(removed) => (

@@ -129,7 +129,7 @@ async fn get_user_system_info(
             }
             caps
         },
-        shared_api_base: deployment.shared_api_base().await,
+        shared_api_base: deployment.shared_api_base(),
         preview_proxy_port: crate::preview_proxy::get_proxy_port(),
     };
 
@@ -202,21 +202,19 @@ async fn track_config_events(deployment: &DeploymentImpl, old: &Config, new: &Co
 async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &Config) {
     track_config_events(deployment, old, new).await;
 
-    let old_relay_host_name =
-        relay_registration::effective_relay_host_name(old, deployment.user_id());
-    let new_relay_host_name =
-        relay_registration::effective_relay_host_name(new, deployment.user_id());
+    let old_host_nickname = relay_registration::clean_host_nickname(old, deployment.user_id());
+    let new_host_nickname = relay_registration::clean_host_nickname(new, deployment.user_id());
 
     deployment
         .client_info()
-        .set_hostname(new_relay_host_name.clone())
+        .set_hostname(new_host_nickname.clone())
         .await;
 
     match (old.relay_enabled, new.relay_enabled) {
         (false, true) => relay_registration::spawn_relay(deployment).await,
         (true, false) => relay_registration::stop_relay(deployment).await,
         (true, true) => {
-            if old_relay_host_name != new_relay_host_name {
+            if old_host_nickname != new_host_nickname {
                 relay_registration::spawn_relay(deployment).await;
             }
         }

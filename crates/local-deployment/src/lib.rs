@@ -172,13 +172,17 @@ impl Deployment for LocalDeployment {
             .or_else(|| option_env!("VK_SHARED_RELAY_API_BASE").map(|s| s.to_string()));
         let remote_info = Arc::new(RemoteInfo::new());
         if let Some(api_base) = api_base.clone() {
-            remote_info.set_api_base(api_base).await;
+            remote_info
+                .set_api_base(api_base)
+                .expect("api_base already set");
         }
         if let Some(relay_api_base) = relay_api_base {
-            remote_info.set_relay_api_base(relay_api_base).await;
+            remote_info
+                .set_relay_api_base(relay_api_base)
+                .expect("relay_api_base already set");
         }
 
-        let remote_client = match remote_info.get_api_base().await {
+        let remote_client = match remote_info.get_api_base() {
             Some(url) => match RemoteClient::new(&url, auth_context.clone()) {
                 Ok(client) => {
                     tracing::info!("Remote client initialized with URL: {}", url);
