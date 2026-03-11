@@ -11,6 +11,8 @@ pub struct AuthSession {
     pub revoked_at: Option<DateTime<Utc>>,
     pub refresh_token_id: Option<Uuid>,
     pub refresh_token_issued_at: Option<DateTime<Utc>>,
+    pub previous_refresh_token_id: Option<Uuid>,
+    pub previous_refresh_token_grace_expires_at: Option<DateTime<Utc>>,
 }
 
 impl AuthSession {

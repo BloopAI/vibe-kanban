@@ -111,10 +111,23 @@ impl JwtService {
         let now = Utc::now();
         let refresh_token_id = Uuid::new_v4();
 
+        self.generate_tokens_for_refresh_token_id(session, user.id, provider, refresh_token_id, now)
+    }
+
+    pub fn generate_tokens_for_refresh_token_id(
+        &self,
+        session: &AuthSession,
+        user_id: Uuid,
+        provider: &str,
+        refresh_token_id: Uuid,
+        issued_at: DateTime<Utc>,
+    ) -> Result<Tokens, JwtError> {
+        let now = Utc::now();
+
         // Access token, short-lived (~2 minutes)
         let access_exp = now + ChronoDuration::seconds(ACCESS_TOKEN_TTL_SECONDS);
         let access_claims = AccessTokenClaims {
-            sub: user.id,
+            sub: user_id,
             session_id: session.id,
             iat: now.timestamp(),
             exp: access_exp.timestamp(),
@@ -122,12 +135,12 @@ impl JwtService {
         };
 
         // Refresh token, long-lived (~1 year)
-        let refresh_exp = now + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
+        let refresh_exp = issued_at + ChronoDuration::days(REFRESH_TOKEN_TTL_DAYS);
         let refresh_claims = RefreshTokenClaims {
-            sub: user.id,
+            sub: user_id,
             session_id: session.id,
             jti: refresh_token_id,
-            iat: now.timestamp(),
+            iat: issued_at.timestamp(),
             exp: refresh_exp.timestamp(),
             aud: "refresh".to_string(),
             provider: Some(provider.to_string()),

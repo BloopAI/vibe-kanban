@@ -9,6 +9,7 @@ use super::oauth_credentials::{Credentials, OAuthCredentials};
 pub struct AuthContext {
     oauth: Arc<OAuthCredentials>,
     profile: Arc<RwLock<Option<ProfileResponse>>>,
+    remote_auth_degraded_slug: Arc<RwLock<Option<String>>>,
     refresh_lock: Arc<TokioMutex<()>>,
 }
 
@@ -20,6 +21,7 @@ impl AuthContext {
         Self {
             oauth,
             profile,
+            remote_auth_degraded_slug: Arc::new(RwLock::new(None)),
             refresh_lock: Arc::new(TokioMutex::new(())),
         }
     }
@@ -34,6 +36,18 @@ impl AuthContext {
 
     pub async fn clear_credentials(&self) -> std::io::Result<()> {
         self.oauth.clear().await
+    }
+
+    pub async fn remote_auth_degraded_slug(&self) -> Option<String> {
+        self.remote_auth_degraded_slug.read().await.clone()
+    }
+
+    pub async fn set_remote_auth_degraded_slug(&self, slug: impl Into<String>) {
+        *self.remote_auth_degraded_slug.write().await = Some(slug.into());
+    }
+
+    pub async fn clear_remote_auth_degraded_slug(&self) {
+        *self.remote_auth_degraded_slug.write().await = None;
     }
 
     pub async fn cached_profile(&self) -> Option<ProfileResponse> {

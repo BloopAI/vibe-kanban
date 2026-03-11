@@ -34,7 +34,9 @@ impl<'a> AuthSessionRepository<'a> {
                 last_used_at                AS "last_used_at?",
                 revoked_at                  AS "revoked_at?",
                 refresh_token_id           AS "refresh_token_id?",
-                refresh_token_issued_at     AS "refresh_token_issued_at?"
+                refresh_token_issued_at     AS "refresh_token_issued_at?",
+                previous_refresh_token_id   AS "previous_refresh_token_id?",
+                previous_refresh_token_grace_expires_at AS "previous_refresh_token_grace_expires_at?"
             FROM auth_sessions
             WHERE id = $1
             "#,

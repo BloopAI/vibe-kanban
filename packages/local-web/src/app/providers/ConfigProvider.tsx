@@ -14,6 +14,7 @@ import {
   UserSystemContext,
   type UserSystemContextType,
 } from '@/shared/hooks/useUserSystem';
+import { tokenManager } from '@/shared/lib/auth/tokenManager';
 
 interface UserSystemProviderProps {
   children: ReactNode;
@@ -33,6 +34,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
   const environment = userSystemInfo?.environment || null;
   const analyticsUserId = userSystemInfo?.analytics_user_id || null;
   const loginStatus = userSystemInfo?.login_status || null;
+  const remoteAuthDegraded = userSystemInfo?.remote_auth_degraded || null;
   const profiles =
     (userSystemInfo?.executors as Record<string, ExecutorProfile> | null) ||
     null;
@@ -52,6 +54,10 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       updateLanguageFromConfig(config.language);
     }
   }, [config?.language]);
+
+  useEffect(() => {
+    tokenManager.syncRecoveryState();
+  }, [loginStatus?.status, remoteAuthDegraded]);
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
@@ -151,6 +157,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
         capabilities,
         analyticsUserId,
         loginStatus,
+        remoteAuthDegraded,
       },
       appVersion,
       config,
@@ -159,6 +166,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       capabilities,
       analyticsUserId,
       loginStatus,
+      remoteAuthDegraded,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
@@ -176,6 +184,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
       capabilities,
       analyticsUserId,
       loginStatus,
+      remoteAuthDegraded,
       updateConfig,
       saveConfig,
       updateAndSaveConfig,
