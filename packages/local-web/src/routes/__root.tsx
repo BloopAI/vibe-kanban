@@ -15,6 +15,7 @@ import { ExecutionProcessesProvider } from '@/shared/providers/ExecutionProcesse
 import { LogsPanelProvider } from '@/shared/providers/LogsPanelProvider';
 import { ActionsProvider } from '@/shared/providers/ActionsProvider';
 import { HostIdProvider } from '@/shared/providers/HostIdProvider';
+import { UserProvider } from '@/shared/providers/remote/UserProvider';
 import '@/app/styles/new/index.css';
 
 function ExecutionProcessesProviderWrapper({
@@ -83,13 +84,15 @@ function RootRouteComponent() {
         <WorkspaceProvider>
           <ExecutionProcessesProviderWrapper>
             <LogsPanelProvider>
-              <HostIdProvider>
-                <ActionsProvider>
-                  <NiceModalProvider>
-                    <Outlet />
-                  </NiceModalProvider>
-                </ActionsProvider>
-              </HostIdProvider>
+              <UserProvider>
+                <HostIdProvider>
+                  <ActionsProvider>
+                    <NiceModalProvider>
+                      <Outlet />
+                    </NiceModalProvider>
+                  </ActionsProvider>
+                </HostIdProvider>
+              </UserProvider>
             </LogsPanelProvider>
           </ExecutionProcessesProviderWrapper>
         </WorkspaceProvider>
