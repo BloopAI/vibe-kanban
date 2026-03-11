@@ -216,7 +216,7 @@ impl Codex {
                             let mut fork_params =
                                 fork_params_from(old_thread_id, thread_start_params);
                             fork_params.service_tier = service_tier;
-                            let _ = client.thread_fork(fork_params).await?;
+                            let _ = client.thread_fork(fork_params).await;
                         }
                         let message = if want_fast {
                             "**Fast mode enabled.** Inference runs at higher speed (2× plan usage)."
