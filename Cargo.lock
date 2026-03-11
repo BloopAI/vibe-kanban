@@ -220,7 +220,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "base64",
  "chrono",
@@ -912,8 +912,8 @@ checksum = "e9b18233253483ce2f65329a24072ec414db782531bdbb7d0bbc4bd2ce6b7e21"
 
 [[package]]
 name = "codex-app-server-protocol"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "anyhow",
  "clap",
@@ -921,12 +921,13 @@ dependencies = [
  "codex-protocol",
  "codex-utils-absolute-path",
  "inventory",
+ "rmcp 0.15.0",
  "schemars 0.8.22",
  "serde",
  "serde_json",
  "serde_with",
  "shlex",
- "strum_macros",
+ "strum_macros 0.28.0",
  "thiserror 2.0.18",
  "tracing",
  "ts-rs 11.1.0",
@@ -935,8 +936,8 @@ dependencies = [
 
 [[package]]
 name = "codex-execpolicy"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "anyhow",
  "clap",
@@ -951,8 +952,8 @@ dependencies = [
 
 [[package]]
 name = "codex-experimental-api-macros"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -961,8 +962,8 @@ dependencies = [
 
 [[package]]
 name = "codex-git"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "once_cell",
  "regex",
@@ -976,8 +977,8 @@ dependencies = [
 
 [[package]]
 name = "codex-protocol"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "codex-execpolicy",
  "codex-git",
@@ -992,7 +993,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "strum",
- "strum_macros",
+ "strum_macros 0.28.0",
  "sys-locale",
  "tracing",
  "ts-rs 11.1.0",
@@ -1001,8 +1002,8 @@ dependencies = [
 
 [[package]]
 name = "codex-utils-absolute-path"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "dirs 6.0.0",
  "path-absolutize",
@@ -1013,8 +1014,8 @@ dependencies = [
 
 [[package]]
 name = "codex-utils-cache"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "lru 0.16.3",
  "sha1",
@@ -1023,8 +1024,8 @@ dependencies = [
 
 [[package]]
 name = "codex-utils-image"
-version = "0.110.0"
-source = "git+https://github.com/openai/codex.git?tag=rust-v0.110.0#77aabe4218ab7ddaf4b6d471887bda043a4c16e6"
+version = "0.114.0"
+source = "git+https://github.com/openai/codex.git?tag=rust-v0.114.0#b9904c0ae4ecb773549efd6ea3fb05229402fdb9"
 dependencies = [
  "base64",
  "codex-utils-cache",
@@ -1424,7 +1425,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1436,7 +1437,7 @@ dependencies = [
  "serde_with",
  "sqlx",
  "strum",
- "strum_macros",
+ "strum_macros 0.27.2",
  "thiserror 2.0.18",
  "tracing",
  "ts-rs 11.0.1",
@@ -1478,7 +1479,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2044,7 +2045,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -2078,7 +2079,7 @@ dependencies = [
  "sqlx",
  "strip-ansi-escapes",
  "strum",
- "strum_macros",
+ "strum_macros 0.27.2",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
@@ -2498,7 +2499,7 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "git"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2513,7 +2514,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "async-trait",
  "backon",
@@ -3490,7 +3491,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "api-types",
@@ -3636,7 +3637,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "api-types",
@@ -3644,7 +3645,7 @@ dependencies = [
  "executors",
  "regex",
  "reqwest 0.13.2",
- "rmcp",
+ "rmcp 0.5.0",
  "rustls",
  "schemars 1.2.1",
  "sentry",
@@ -4273,7 +4274,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.45.0",
 ]
 
 [[package]]
@@ -4363,6 +4364,12 @@ name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
+
+[[package]]
+name = "pastey"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b867cad97c0791bbd3aaa6472142568c6c9e8f71937e98379f584cfb0cf35bec"
 
 [[package]]
 name = "path-absolutize"
@@ -4931,7 +4938,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-control"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "axum",
@@ -5053,7 +5060,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "clap",
@@ -5110,7 +5117,29 @@ dependencies = [
  "futures",
  "paste",
  "pin-project-lite",
- "rmcp-macros",
+ "rmcp-macros 0.5.0",
+ "schemars 1.2.1",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "rmcp"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bef41ebc9ebed2c1b1d90203e9d1756091e8a00bbc3107676151f39868ca0ee"
+dependencies = [
+ "async-trait",
+ "base64",
+ "chrono",
+ "futures",
+ "pastey",
+ "pin-project-lite",
+ "rmcp-macros 0.15.0",
  "schemars 1.2.1",
  "serde",
  "serde_json",
@@ -5127,6 +5156,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ad9720d9d2a943779f1dc3d47fa9072c7eeffaff4e1a82f67eb9f7ea52696091"
 dependencies = [
  "darling 0.21.3",
+ "proc-macro2",
+ "quote",
+ "serde_json",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "rmcp-macros"
+version = "0.15.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e88ad84b8b6237a934534a62b379a5be6388915663c0cc598ceb9b3292bbbfe"
+dependencies = [
+ "darling 0.23.0",
  "proc-macro2",
  "quote",
  "serde_json",
@@ -5979,7 +6021,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6042,14 +6084,14 @@ dependencies = [
 
 [[package]]
 name = "server-info"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "services"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6082,7 +6124,7 @@ dependencies = [
  "sha2 0.10.9",
  "sqlx",
  "strum",
- "strum_macros",
+ "strum_macros 0.27.2",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -6160,7 +6202,7 @@ version = "3.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32824fab5e16e6c4d86dc1ba84489390419a39f97699852b66480bb87d297ed8"
 dependencies = [
- "dirs 6.0.0",
+ "dirs 5.0.1",
 ]
 
 [[package]]
@@ -6683,6 +6725,18 @@ name = "strum_macros"
 version = "0.27.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7695ce3845ea4b33927c055a39dc438a45b059f7c1b3d91d38d10355fb8cbca7"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "strum_macros"
+version = "0.28.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab85eea0270ee17587ed4156089e10b9e6880ee688791d45a905f5b1ca36f664"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -7270,7 +7324,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "base64",
  "ed25519-dalek",
@@ -7527,7 +7581,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "api-types",
  "axum",
@@ -7855,7 +7909,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
@@ -8481,7 +8535,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-manager"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "db",
  "git",
@@ -8496,7 +8550,7 @@ dependencies = [
 
 [[package]]
 name = "worktree-manager"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "dunce",
  "git",

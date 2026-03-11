@@ -62,7 +62,7 @@ fn base_command(claude_code_router: bool) -> &'static str {
     if claude_code_router {
         "npx -y @musistudio/claude-code-router@1.0.66 code"
     } else {
-        "npx -y @anthropic-ai/claude-code@2.1.45"
+        "npx -y @anthropic-ai/claude-code@2.1.62"
     }
 }
 
@@ -102,6 +102,17 @@ fn normalize_claude_stderr_logs(
 }
 
 use derivative::Derivative;
+use strum_macros::{AsRefStr, EnumString};
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema, AsRefStr, EnumString)]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
+pub enum ClaudeEffort {
+    Low,
+    Medium,
+    High,
+    Max,
+}
 
 #[derive(Derivative, Clone, Serialize, Deserialize, TS, JsonSchema)]
 #[derivative(Debug, PartialEq)]
@@ -116,6 +127,8 @@ pub struct ClaudeCode {
     pub approvals: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<ClaudeEffort>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -164,6 +177,9 @@ impl ClaudeCode {
         }
         if let Some(model) = &self.model {
             builder = builder.extend_params(["--model", model]);
+        }
+        if let Some(effort) = &self.effort {
+            builder = builder.extend_params(["--effort", effort.as_ref()]);
         }
         if let Some(agent) = &self.agent {
             builder = builder.extend_params(["--agent", agent]);
@@ -249,27 +265,36 @@ impl ClaudeCode {
 fn default_discovered_options() -> crate::executor_discovery::ExecutorDiscoveredOptions {
     use crate::{
         executor_discovery::ExecutorDiscoveredOptions,
-        model_selector::{ModelInfo, ModelSelectorConfig},
+        model_selector::{ModelInfo, ModelSelectorConfig, ReasoningOption},
     };
+
+    let effort_options =
+        ReasoningOption::from_names(["low", "medium", "high", "max"].map(String::from));
+
+    let supports_effort = |id: &str| -> bool { id.contains("opus") || id.contains("sonnet") };
 
     ExecutorDiscoveredOptions {
         model_selector: ModelSelectorConfig {
             providers: vec![],
             models: [
-                ("claude-opus-4-6", "Opus"),
-                ("claude-opus-4-6[1m]", "Opus (1M context)"),
-                ("claude-haiku-4-5-20251001", "Haiku"),
-                ("claude-sonnet-4-6", "Sonnet"),
+                ("opus", "Opus"),
+                ("opus[1m]", "Opus (1M context)"),
+                ("sonnet", "Sonnet"),
+                ("haiku", "Haiku"),
             ]
             .into_iter()
             .map(|(id, name)| ModelInfo {
                 id: id.to_string(),
                 name: name.to_string(),
                 provider_id: None,
-                reasoning_options: vec![],
+                reasoning_options: if supports_effort(id) {
+                    effort_options.clone()
+                } else {
+                    vec![]
+                },
             })
             .collect(),
-            default_model: Some("claude-opus-4-6".to_string()),
+            default_model: Some("opus".to_string()),
             agents: vec![],
             permissions: vec![
                 PermissionPolicy::Auto,
@@ -293,6 +318,9 @@ impl StandardCodingAgentExecutor for ClaudeCode {
         }
         if let Some(agent) = &executor_config.agent_id {
             self.agent = Some(agent.clone());
+        }
+        if let Some(reasoning_id) = &executor_config.reasoning_id {
+            self.effort = reasoning_id.parse().ok();
         }
         if let Some(permission_policy) = executor_config.permission_policy.clone() {
             match permission_policy {
@@ -553,7 +581,7 @@ impl StandardCodingAgentExecutor for ClaudeCode {
             variant: None,
             model_id: self.model.clone(),
             agent_id: None,
-            reasoning_id: None,
+            reasoning_id: self.effort.as_ref().map(|e| e.as_ref().to_owned()),
             permission_policy: Some(permission_policy),
         }
     }
@@ -1207,6 +1235,11 @@ impl ClaudeLogProcessor {
                 api_key_source,
                 model,
                 status,
+                tool_use_id,
+                description,
+                task_type,
+                prompt,
+                summary,
                 ..
             } => {
                 // emit billing warning if required
@@ -1235,7 +1268,96 @@ impl ClaudeLogProcessor {
                             patches.push(add_system_message(status.clone(), entry_index_provider));
                         }
                     }
-                    Some("compact_boundary") | Some("task_started") => {}
+                    Some("compact_boundary") => {}
+                    Some("task_started") => {
+                        if let Some(tool_use_id) = tool_use_id
+                            && !self.tool_map.contains_key(tool_use_id)
+                        {
+                            let desc = description.clone().unwrap_or_else(|| "Task".to_string());
+                            let subagent_type = task_type.clone();
+                            let entry = Self::tool_use_entry(
+                                "Task".to_string(),
+                                ActionType::TaskCreate {
+                                    description: desc.clone(),
+                                    subagent_type: subagent_type.clone(),
+                                    result: None,
+                                },
+                                ToolStatus::Created,
+                                desc.clone(),
+                            );
+                            let idx = entry_index_provider.next();
+                            patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                            self.tool_map.insert(
+                                tool_use_id.clone(),
+                                ClaudeToolCallInfo {
+                                    entry_index: idx,
+                                    tool_name: "Task".to_string(),
+                                    tool_data: ClaudeToolData::Task {
+                                        subagent_type,
+                                        description: description.clone(),
+                                        prompt: prompt.clone(),
+                                    },
+                                    content: desc,
+                                },
+                            );
+                        }
+                    }
+                    Some("task_progress") => {
+                        if let (Some(tool_use_id), Some(desc)) = (tool_use_id, description)
+                            && let Some(info) = self.tool_map.get(tool_use_id).cloned()
+                        {
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
+                                };
+                            let entry = Self::tool_use_entry(
+                                info.tool_name.clone(),
+                                ActionType::TaskCreate {
+                                    description: info.content.clone(),
+                                    subagent_type,
+                                    result: None,
+                                },
+                                ToolStatus::Created,
+                                desc.clone(),
+                            );
+                            patches.push(ConversationPatch::replace(info.entry_index, entry));
+                        }
+                    }
+                    Some("task_notification") => {
+                        if let Some(tool_use_id) = tool_use_id
+                            && let Some(info) = self.tool_map.get(tool_use_id).cloned()
+                        {
+                            let task_status = match status.as_deref() {
+                                Some("failed") | Some("error") => ToolStatus::Failed,
+                                _ => ToolStatus::Success,
+                            };
+                            let subagent_type =
+                                if let ClaudeToolData::Task { subagent_type, .. } = &info.tool_data
+                                {
+                                    subagent_type.clone()
+                                } else {
+                                    None
+                                };
+                            let desc = summary
+                                .clone()
+                                .or(description.clone())
+                                .unwrap_or_else(|| info.content.clone());
+                            let entry = Self::tool_use_entry(
+                                info.tool_name.clone(),
+                                ActionType::TaskCreate {
+                                    description: desc.clone(),
+                                    subagent_type,
+                                    result: None,
+                                },
+                                task_status,
+                                desc,
+                            );
+                            patches.push(ConversationPatch::replace(info.entry_index, entry));
+                        }
+                    }
                     Some(subtype) => {
                         let entry = NormalizedEntry {
                             timestamp: None,
@@ -1286,8 +1408,11 @@ impl ClaudeLogProcessor {
                                 worktree_path,
                                 ToolStatus::Created,
                             );
-                            let is_new = entry_index.is_none();
-                            let id_num = entry_index.unwrap_or_else(|| entry_index_provider.next());
+                            let existing_idx = entry_index
+                                .or_else(|| self.tool_map.get(id).map(|info| info.entry_index));
+                            let is_new = existing_idx.is_none();
+                            let id_num =
+                                existing_idx.unwrap_or_else(|| entry_index_provider.next());
                             self.tool_map.insert(
                                 id.clone(),
                                 ClaudeToolCallInfo {
@@ -1558,8 +1683,18 @@ impl ClaudeLogProcessor {
             ClaudeJson::ToolUse { tool_data, id, .. } => {
                 let (entry, tool_name_value, content_text) =
                     Self::build_tool_use_entry(tool_data, worktree_path, ToolStatus::Created);
-                let idx = entry_index_provider.next();
-                patches.push(ConversationPatch::add_normalized_entry(idx, entry));
+                let existing = self.tool_map.get(id);
+                let (idx, is_new) = if let Some(info) = existing {
+                    (info.entry_index, false)
+                } else {
+                    (entry_index_provider.next(), true)
+                };
+                let patch = if is_new {
+                    ConversationPatch::add_normalized_entry(idx, entry)
+                } else {
+                    ConversationPatch::replace(idx, entry)
+                };
+                patches.push(patch);
 
                 self.tool_map.insert(
                     id.clone(),
@@ -2130,6 +2265,20 @@ pub enum ClaudeJson {
         plugins: Vec<ClaudePlugin>,
         #[serde(default)]
         agents: Vec<String>,
+        #[serde(default)]
+        task_id: Option<String>,
+        #[serde(default)]
+        tool_use_id: Option<String>,
+        #[serde(default)]
+        description: Option<String>,
+        #[serde(default)]
+        task_type: Option<String>,
+        #[serde(default)]
+        prompt: Option<String>,
+        #[serde(default)]
+        summary: Option<String>,
+        #[serde(default)]
+        last_tool_name: Option<String>,
     },
     Assistant {
         message: ClaudeMessage,
@@ -2372,7 +2521,7 @@ pub enum ClaudeToolData {
     TodoWrite {
         todos: Vec<ClaudeTodoItem>,
     },
-    #[serde(rename = "Task", alias = "task")]
+    #[serde(rename = "Task", alias = "task", alias = "Agent")]
     Task {
         subagent_type: Option<String>,
         description: Option<String>,
@@ -2788,6 +2937,7 @@ mod tests {
             plan: None,
             approvals: None,
             model: None,
+            effort: None,
             agent: None,
             append_prompt: AppendPrompt::default(),
             dangerously_skip_permissions: None,

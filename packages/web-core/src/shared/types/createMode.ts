@@ -1,3 +1,5 @@
+import type { ExecutorConfig } from 'shared/types';
+
 export interface LinkedIssue {
   issueId: string;
   simpleId?: string;
@@ -13,4 +15,5 @@ export interface CreateModeInitialState {
   }> | null;
   project_id?: string | null;
   linkedIssue?: LinkedIssue | null;
+  executorConfig?: ExecutorConfig | null;
 }

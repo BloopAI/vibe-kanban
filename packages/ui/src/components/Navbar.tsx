@@ -109,8 +109,52 @@ export const MOBILE_TABS: { id: MobileTabId; icon: Icon; label: string }[] = [
   { id: 'git', icon: GitForkIcon, label: 'Git' },
 ];
 
+export interface NavbarBreadcrumbItem {
+  label: string;
+  onClick?: () => void;
+}
+
+interface NavbarBreadcrumbsProps {
+  breadcrumbs: NavbarBreadcrumbItem[];
+  textClassName: string;
+}
+
+function NavbarBreadcrumbs({
+  breadcrumbs,
+  textClassName,
+}: NavbarBreadcrumbsProps) {
+  return (
+    <div className={cn('flex items-center gap-1 min-w-0', textClassName)}>
+      {breadcrumbs.map((crumb, index) => {
+        const isLast = index === breadcrumbs.length - 1;
+        return (
+          <span key={index} className="flex items-center gap-1 min-w-0">
+            {index > 0 && <span className="text-low shrink-0">/</span>}
+            {crumb.onClick && !isLast ? (
+              <button
+                type="button"
+                className="text-low hover:text-normal truncate cursor-pointer"
+                onClick={crumb.onClick}
+              >
+                {crumb.label}
+              </button>
+            ) : (
+              <span
+                className={cn('truncate', isLast ? 'text-normal' : 'text-low')}
+              >
+                {crumb.label}
+              </span>
+            )}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 export interface NavbarProps {
   workspaceTitle?: string;
+  breadcrumbs?: NavbarBreadcrumbItem[];
   // Items for left side of navbar
   leftItems?: NavbarSectionItem[];
   // Items for right side of navbar (with dividers inline)
@@ -140,6 +184,7 @@ export interface NavbarProps {
 
 export function Navbar({
   workspaceTitle,
+  breadcrumbs,
   leftItems = [],
   rightItems = [],
   leftSlot,
@@ -347,12 +392,19 @@ export function Navbar({
           </div>
         </div>
 
-        {/* Row 2: Info bar with leftSlot + workspace title (workspace pages only) */}
-        {!isOnProjectPage && workspaceTitle && (
+        {/* Row 2: Info bar with leftSlot + breadcrumbs/title (workspace pages only) */}
+        {!isOnProjectPage && (workspaceTitle || breadcrumbs) && (
           <div className="flex items-center justify-between px-base py-half border-t border-border">
             <div className="flex items-center gap-base flex-1 min-w-0">
               {leftSlot}
-              <p className="text-sm text-low truncate">{workspaceTitle}</p>
+              {breadcrumbs && breadcrumbs.length > 0 ? (
+                <NavbarBreadcrumbs
+                  breadcrumbs={breadcrumbs}
+                  textClassName="text-sm"
+                />
+              ) : (
+                <p className="text-sm text-low truncate">{workspaceTitle}</p>
+              )}
             </div>
           </div>
         )}
@@ -379,9 +431,16 @@ export function Navbar({
         {leftSlot}
       </div>
 
-      {/* Center - Workspace Title */}
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-base text-low truncate">{workspaceTitle ?? ''}</p>
+      {/* Center - Breadcrumbs or Workspace Title */}
+      <div className="flex-1 flex items-center justify-center min-w-0">
+        {breadcrumbs && breadcrumbs.length > 0 ? (
+          <NavbarBreadcrumbs
+            breadcrumbs={breadcrumbs}
+            textClassName="text-base"
+          />
+        ) : (
+          <p className="text-base text-low truncate">{workspaceTitle ?? ''}</p>
+        )}
       </div>
 
       {/* Right - Sync Error Indicator + Diff Controls + Panel Toggles (dividers inline) */}
