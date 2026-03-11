@@ -204,16 +204,22 @@ export function NavbarContainer({
   // Breadcrumbs: Project / Issue / Workspace (only on workspace pages with linked project)
   const linkedProjectId = linkedRemoteWorkspace?.project_id ?? null;
   const linkedIssueId = linkedRemoteWorkspace?.issue_id ?? null;
+  const shouldResolveBreadcrumbData =
+    !isOnProjectPage && !isCreateMode && !isMigratePage && !!linkedProjectId;
+  const shouldResolveIssueBreadcrumb =
+    shouldResolveBreadcrumbData && !!linkedIssueId;
 
-  const { data: allProjects } = useAllOrganizationProjects();
+  const { data: allProjects } = useAllOrganizationProjects({
+    enabled: shouldResolveBreadcrumbData,
+  });
   const { data: projectIssues } = useShape(
     PROJECT_ISSUES_SHAPE,
     { project_id: linkedProjectId || '' },
-    { enabled: !!linkedProjectId }
+    { enabled: shouldResolveIssueBreadcrumb }
   );
 
   const breadcrumbs = useMemo((): NavbarBreadcrumbItem[] | undefined => {
-    if (isOnProjectPage || isCreateMode || isMigratePage || !linkedProjectId) {
+    if (!shouldResolveBreadcrumbData || !linkedProjectId) {
       return undefined;
     }
 
@@ -246,9 +252,7 @@ export function NavbarContainer({
 
     return items.length > 1 ? items : undefined;
   }, [
-    isOnProjectPage,
-    isCreateMode,
-    isMigratePage,
+    shouldResolveBreadcrumbData,
     linkedProjectId,
     linkedIssueId,
     allProjects,
