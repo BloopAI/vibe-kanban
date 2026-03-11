@@ -358,18 +358,30 @@ impl McpServer {
                 .collect::<HashMap<_, _>>()
         });
 
-        let status_filter_provided = status.is_some();
-        let tag_filter_provided = tag_id.is_some() || tag_name.is_some();
-
-        let status_id = match status {
-            Some(status) => match Uuid::parse_str(&status) {
-                Ok(status_id) => Some(Some(status_id)),
-                Err(_) => match self.find_status_id_by_name(project_id, &status).await {
-                    Ok(status_id) => Some(status_id),
-                    Err(e) => return Ok(e),
-                },
+        let (status_id, status_ids, missing_status_name_match) = match status.as_deref() {
+            Some(status) => match Uuid::parse_str(status) {
+                Ok(status_id) => (Some(status_id), None, false),
+                Err(_) => {
+                    let matching_status_ids = project_statuses
+                        .as_deref()
+                        .map(|statuses| {
+                            Self::matching_ids_by_name(
+                                statuses
+                                    .iter()
+                                    .map(|status| (status.id, status.name.as_str())),
+                                status,
+                            )
+                        })
+                        .unwrap_or_default();
+                    let missing_status_name_match = matching_status_ids.is_empty();
+                    (
+                        None,
+                        (!missing_status_name_match).then_some(matching_status_ids),
+                        missing_status_name_match,
+                    )
+                }
             },
-            None => None,
+            None => (None, None, false),
         };
 
         let priority = match priority {
@@ -389,46 +401,54 @@ impl McpServer {
             Err(e) => return Ok(e),
         };
 
-        let resolved_tag_id = match (tag_id, tag_name) {
+        let (tag_id, tag_ids, missing_tag_name_match) = match (tag_id, tag_name.as_deref()) {
             (Some(tag_id), Some(tag_name)) => {
-                let resolved_tag_id = match self.find_tag_id_by_name(project_id, &tag_name).await {
-                    Ok(tag_id) => tag_id,
+                let matching_tag_ids = match self.find_tag_ids_by_name(project_id, tag_name).await {
+                    Ok(tag_ids) => tag_ids,
                     Err(e) => return Ok(e),
                 };
-                if resolved_tag_id != Some(tag_id) {
-                    None
-                } else {
-                    Some(Some(tag_id))
-                }
+                let missing_tag_name_match = matching_tag_ids.is_empty();
+                (
+                    Some(tag_id),
+                    (!missing_tag_name_match).then_some(matching_tag_ids),
+                    missing_tag_name_match,
+                )
             }
-            (Some(tag_id), None) => Some(Some(tag_id)),
-            (None, Some(tag_name)) => match self.find_tag_id_by_name(project_id, &tag_name).await {
-                Ok(tag_id) => Some(tag_id),
-                Err(e) => return Ok(e),
-            },
-            (None, None) => Some(None),
+            (Some(tag_id), None) => (Some(tag_id), None, false),
+            (None, Some(tag_name)) => {
+                let matching_tag_ids = match self.find_tag_ids_by_name(project_id, tag_name).await {
+                    Ok(tag_ids) => tag_ids,
+                    Err(e) => return Ok(e),
+                };
+                let missing_tag_name_match = matching_tag_ids.is_empty();
+                (
+                    None,
+                    (!missing_tag_name_match).then_some(matching_tag_ids),
+                    missing_tag_name_match,
+                )
+            }
+            (None, None) => (None, None, false),
         };
 
-        let response = if (status_filter_provided && status_id.flatten().is_none())
-            || (tag_filter_provided && resolved_tag_id.flatten().is_none())
-            || resolved_tag_id.is_none()
-        {
+        let response = if missing_status_name_match || missing_tag_name_match {
             ListIssuesResponse {
                 issues: Vec::new(),
                 total_count: 0,
                 limit: limit.unwrap_or(50).max(0) as usize,
                 offset: offset.unwrap_or(0).max(0) as usize,
             }
-        } else if let Some(tag_id) = resolved_tag_id {
+        } else {
             let query = ListIssuesQuery {
                 project_id,
-                status_id: status_id.flatten(),
+                status_id,
+                status_ids,
                 priority,
                 parent_issue_id,
                 search,
                 simple_id,
                 assignee_user_id,
                 tag_id,
+                tag_ids,
                 sort_field,
                 sort_direction,
                 limit: Some(limit.unwrap_or(50).max(0)),
@@ -439,8 +459,6 @@ impl McpServer {
                 Ok(r) => r,
                 Err(e) => return Ok(e),
             }
-        } else {
-            unreachable!()
         };
 
         let mut summaries = Vec::with_capacity(response.issues.len());
@@ -876,30 +894,28 @@ impl McpServer {
         }
     }
 
-    async fn find_status_id_by_name(
-        &self,
-        project_id: Uuid,
-        status_name: &str,
-    ) -> Result<Option<Uuid>, CallToolResult> {
-        let statuses = self.fetch_project_statuses(project_id).await?;
-        Ok(statuses
-            .iter()
-            .find(|status| status.name.eq_ignore_ascii_case(status_name))
-            .map(|status| status.id))
-    }
-
-    async fn find_tag_id_by_name(
+    async fn find_tag_ids_by_name(
         &self,
         project_id: Uuid,
         tag_name: &str,
-    ) -> Result<Option<Uuid>, CallToolResult> {
+    ) -> Result<Vec<Uuid>, CallToolResult> {
         let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));
         let tags: ListTagsResponse = self.send_json(self.client.get(&url)).await?;
-        Ok(tags
-            .tags
+        Ok(Self::matching_ids_by_name(
+            tags.tags.iter().map(|tag| (tag.id, tag.name.as_str())),
+            tag_name,
+        ))
+    }
+
+    fn matching_ids_by_name<'a>(
+        items: impl IntoIterator<Item = (Uuid, &'a str)>,
+        name: &str,
+    ) -> Vec<Uuid> {
+        items
             .into_iter()
-            .find(|tag| tag.name.eq_ignore_ascii_case(tag_name))
-            .map(|tag| tag.id))
+            .filter(|(_, item_name)| item_name.eq_ignore_ascii_case(name))
+            .map(|(id, _)| id)
+            .collect()
     }
 }
 
@@ -918,5 +934,37 @@ mod tests {
     #[test]
     fn rejects_invalid_sort_direction() {
         assert!(McpServer::parse_sort_direction(Some("sideways")).is_err());
+    }
+
+    #[test]
+    fn collects_all_matching_status_ids_case_insensitively() {
+        let first_id = Uuid::new_v4();
+        let second_id = Uuid::new_v4();
+        let statuses = [
+            (first_id, "In Progress"),
+            (second_id, "in progress"),
+            (Uuid::new_v4(), "Todo"),
+        ];
+
+        assert_eq!(
+            McpServer::matching_ids_by_name(statuses, "IN PROGRESS"),
+            vec![first_id, second_id]
+        );
+    }
+
+    #[test]
+    fn collects_all_matching_tag_ids_case_insensitively() {
+        let first_id = Uuid::new_v4();
+        let second_id = Uuid::new_v4();
+        let tags = [
+            (first_id, "bug"),
+            (second_id, "Bug"),
+            (Uuid::new_v4(), "feature"),
+        ];
+
+        assert_eq!(
+            McpServer::matching_ids_by_name(tags, "BUG"),
+            vec![first_id, second_id]
+        );
     }
 }

@@ -36,6 +36,13 @@ enum IssueWorkflowSignal {
 }
 
 impl IssueRepository {
+    fn escape_like_pattern(value: &str) -> String {
+        value
+            .replace('\\', r"\\")
+            .replace('%', r"\%")
+            .replace('_', r"\_")
+    }
+
     pub async fn list(
         pool: &PgPool,
         query: &ListIssuesQuery,
@@ -204,6 +211,12 @@ impl IssueRepository {
             builder.push_bind(status_id);
         }
 
+        if let Some(status_ids) = query.status_ids.as_deref() {
+            builder.push(" AND i.status_id = ANY(");
+            builder.push_bind(status_ids);
+            builder.push(")");
+        }
+
         if let Some(priority) = query.priority {
             builder.push(" AND i.priority = ");
             builder.push_bind(priority);
@@ -215,17 +228,18 @@ impl IssueRepository {
         }
 
         if let Some(search) = query.search.as_deref() {
-            let pattern = format!("%{search}%");
+            let pattern = format!("%{}%", Self::escape_like_pattern(search));
             builder.push(" AND (i.title ILIKE ");
             builder.push_bind(pattern.clone());
-            builder.push(" OR COALESCE(i.description, '') ILIKE ");
+            builder.push(" ESCAPE '\\' OR COALESCE(i.description, '') ILIKE ");
             builder.push_bind(pattern);
-            builder.push(")");
+            builder.push(" ESCAPE '\\')");
         }
 
         if let Some(simple_id) = query.simple_id.as_deref() {
             builder.push(" AND i.simple_id ILIKE ");
-            builder.push_bind(simple_id);
+            builder.push_bind(Self::escape_like_pattern(simple_id));
+            builder.push(" ESCAPE '\\'");
         }
 
         if let Some(assignee_user_id) = query.assignee_user_id {
@@ -242,6 +256,14 @@ impl IssueRepository {
             );
             builder.push_bind(tag_id);
             builder.push(")");
+        }
+
+        if let Some(tag_ids) = query.tag_ids.as_deref() {
+            builder.push(
+                " AND EXISTS (SELECT 1 FROM issue_tags it WHERE it.issue_id = i.id AND it.tag_id = ANY(",
+            );
+            builder.push_bind(tag_ids);
+            builder.push("))");
         }
     }
 
@@ -645,5 +667,18 @@ impl IssueRepository {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::IssueRepository;
+
+    #[test]
+    fn escapes_like_pattern_special_characters() {
+        assert_eq!(
+            IssueRepository::escape_like_pattern(r"100%_done\ish"),
+            r"100\%\_done\\ish"
+        );
     }
 }

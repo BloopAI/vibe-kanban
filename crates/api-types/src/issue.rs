@@ -155,6 +155,9 @@ pub struct ListIssuesQuery {
     pub status_id: Option<Uuid>,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_ids: Option<Vec<Uuid>>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub priority: Option<IssuePriority>,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -171,6 +174,9 @@ pub struct ListIssuesQuery {
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag_id: Option<Uuid>,
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag_ids: Option<Vec<Uuid>>,
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sort_field: Option<IssueSortField>,
