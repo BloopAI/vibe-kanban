@@ -31,7 +31,7 @@ struct RelayParams {
     remote_client: RemoteClient,
     relay_base: String,
     machine_id: String,
-    host_name: String,
+    host_nickname: String,
 }
 
 /// Resolve all preconditions for starting the relay. Returns `None` if any
@@ -42,6 +42,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         tracing::info!("Relay disabled by config");
         return None;
     }
+    let host_nickname = clean_host_nickname(&config, deployment.user_id());
     drop(config);
 
     let relay_base = deployment.shared_relay_api_base().or_else(|| {
@@ -60,13 +61,8 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         return None;
     }
 
-    let local_port = deployment.client_info().get_port().await.or_else(|| {
+    let local_port = deployment.client_info().get_port().or_else(|| {
         tracing::warn!("Relay local port not set; cannot spawn relay");
-        None
-    })?;
-
-    let host_name = deployment.client_info().get_hostname().await.or_else(|| {
-        tracing::warn!("Server hostname not set; cannot spawn relay");
         None
     })?;
 
@@ -75,7 +71,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         remote_client,
         relay_base,
         machine_id: deployment.user_id().to_string(),
-        host_name,
+        host_nickname,
     })
 }
 
@@ -130,7 +126,7 @@ async fn start_relay(
 
     let encoded_name = url::form_urlencoded::Serializer::new(String::new())
         .append_pair("machine_id", &params.machine_id)
-        .append_pair("name", &params.host_name)
+        .append_pair("name", &params.host_nickname)
         .append_pair("agent_version", env!("CARGO_PKG_VERSION"))
         .finish();
 

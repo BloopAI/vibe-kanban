@@ -205,11 +205,6 @@ async fn handle_config_events(deployment: &DeploymentImpl, old: &Config, new: &C
     let old_host_nickname = relay_registration::clean_host_nickname(old, deployment.user_id());
     let new_host_nickname = relay_registration::clean_host_nickname(new, deployment.user_id());
 
-    deployment
-        .client_info()
-        .set_hostname(new_host_nickname.clone())
-        .await;
-
     match (old.relay_enabled, new.relay_enabled) {
         (false, true) => relay_registration::spawn_relay(deployment).await,
         (true, false) => relay_registration::stop_relay(deployment).await,

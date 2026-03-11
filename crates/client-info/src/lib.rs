@@ -1,9 +1,9 @@
-use tokio::sync::RwLock;
+use std::sync::OnceLock;
 
-/// Runtime information about the local server (port, hostname).
+/// Runtime information about the local server.
 pub struct ClientInfo {
-    port: RwLock<Option<u16>>,
-    hostname: RwLock<Option<String>>,
+    port: OnceLock<u16>,
+    hostname: OnceLock<String>,
 }
 
 impl Default for ClientInfo {
@@ -15,24 +15,81 @@ impl Default for ClientInfo {
 impl ClientInfo {
     pub fn new() -> Self {
         Self {
-            port: RwLock::new(None),
-            hostname: RwLock::new(None),
+            port: OnceLock::new(),
+            hostname: OnceLock::new(),
         }
     }
 
-    pub async fn set_port(&self, port: u16) {
-        *self.port.write().await = Some(port);
+    pub fn set_port(&self, port: u16) -> Result<(), String> {
+        self.port
+            .set(port)
+            .map_err(|_| "port already set".to_string())
     }
 
-    pub async fn get_port(&self) -> Option<u16> {
-        *self.port.read().await
+    pub fn get_port(&self) -> Option<u16> {
+        self.port.get().copied()
     }
 
-    pub async fn set_hostname(&self, hostname: String) {
-        *self.hostname.write().await = Some(hostname);
+    pub fn set_hostname(&self, hostname: String) -> Result<(), String> {
+        self.hostname
+            .set(hostname)
+            .map_err(|_| "hostname already set".to_string())
     }
 
-    pub async fn get_hostname(&self) -> Option<String> {
-        self.hostname.read().await.clone()
+    pub fn get_hostname(&self) -> Option<String> {
+        self.hostname.get().cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ClientInfo;
+
+    #[test]
+    fn stores_client_port() {
+        let client_info = ClientInfo::new();
+
+        assert_eq!(client_info.get_port(), None);
+
+        client_info.set_port(3000).unwrap();
+
+        assert_eq!(client_info.get_port(), Some(3000));
+    }
+
+    #[test]
+    fn rejects_resetting_client_port() {
+        let client_info = ClientInfo::new();
+
+        client_info.set_port(3000).unwrap();
+
+        assert_eq!(
+            client_info.set_port(4000),
+            Err("port already set".to_string())
+        );
+        assert_eq!(client_info.get_port(), Some(3000));
+    }
+
+    #[test]
+    fn stores_client_hostname() {
+        let client_info = ClientInfo::new();
+
+        assert_eq!(client_info.get_hostname(), None);
+
+        client_info.set_hostname("127.0.0.1".to_string()).unwrap();
+
+        assert_eq!(client_info.get_hostname().as_deref(), Some("127.0.0.1"));
+    }
+
+    #[test]
+    fn rejects_resetting_client_hostname() {
+        let client_info = ClientInfo::new();
+
+        client_info.set_hostname("127.0.0.1".to_string()).unwrap();
+
+        assert_eq!(
+            client_info.set_hostname("0.0.0.0".to_string()),
+            Err("hostname already set".to_string())
+        );
+        assert_eq!(client_info.get_hostname().as_deref(), Some("127.0.0.1"));
     }
 }

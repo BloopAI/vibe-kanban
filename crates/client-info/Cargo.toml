@@ -2,6 +2,3 @@
 name = "client-info"
 version = "0.1.28"
 edition = "2024"
-
-[dependencies]
-tokio = { workspace = true }

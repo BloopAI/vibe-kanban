@@ -169,12 +169,14 @@ async fn main() -> Result<(), VibeKanbanError> {
         }
     });
 
-    deployment.client_info().set_port(actual_main_port).await;
-    let relay_host_name = {
-        let config = deployment.config().read().await;
-        relay_registration::clean_host_nickname(&config, deployment.user_id())
-    };
-    deployment.client_info().set_hostname(relay_host_name).await;
+    deployment
+        .client_info()
+        .set_port(actual_main_port)
+        .expect("client port already set");
+    deployment
+        .client_info()
+        .set_hostname(host.clone())
+        .expect("client hostname already set");
     relay_registration::spawn_relay(&deployment).await;
 
     tokio::select! {
