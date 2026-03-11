@@ -18,7 +18,6 @@ import { useAuthStatus } from '@/shared/hooks/auth/useAuthStatus';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { organizationKeys } from '@/shared/hooks/organizationKeys';
 import { tokenManager } from '@/shared/lib/auth/tokenManager';
-import type { ProfileResponse } from 'shared/types';
 import { useTranslation } from 'react-i18next';
 import { defineModal } from '@/shared/lib/modals';
 
@@ -28,7 +27,7 @@ type OAuthDialogProps = { initialProvider?: OAuthProvider };
 type OAuthState =
   | { type: 'select' }
   | { type: 'waiting'; provider: OAuthProvider }
-  | { type: 'success'; profile: ProfileResponse }
+  | { type: 'success'; displayName: string | null }
   | { type: 'error'; message: string };
 
 const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
@@ -102,7 +101,7 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
     }
 
     // If logged in, stop polling and trigger success
-    if (statusData.logged_in && statusData.profile) {
+    if (statusData.logged_in) {
       setIsPolling(false);
       if (popupRef.current && !popupRef.current.closed) {
         popupRef.current.close();
@@ -118,9 +117,13 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
       // Invalidate organization caches to force fresh fetch after login
       queryClient.invalidateQueries({ queryKey: organizationKeys.all });
 
-      setState({ type: 'success', profile: statusData.profile });
+      setState({
+        type: 'success',
+        displayName:
+          statusData.profile?.username || statusData.profile?.email || null,
+      });
       setTimeout(() => {
-        modal.resolve(statusData.profile);
+        modal.resolve(true);
         modal.remove();
       }, 1500);
     }
@@ -256,11 +259,13 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
           <>
             <DialogHeader>
               <DialogTitle>{t('oauth.successTitle')}</DialogTitle>
-              <DialogDescription className="text-left pt-2">
-                {t('oauth.welcomeBack', {
-                  name: state.profile.username || state.profile.email,
-                })}
-              </DialogDescription>
+              {state.displayName ? (
+                <DialogDescription className="text-left pt-2">
+                  {t('oauth.welcomeBack', {
+                    name: state.displayName,
+                  })}
+                </DialogDescription>
+              ) : null}
             </DialogHeader>
 
             <div className="py-4 flex items-center justify-center">
@@ -328,7 +333,6 @@ const OAuthDialogImpl = create<OAuthDialogProps>(({ initialProvider }) => {
   );
 });
 
-export const OAuthDialog = defineModal<
-  OAuthDialogProps,
-  ProfileResponse | null
->(OAuthDialogImpl);
+export const OAuthDialog = defineModal<OAuthDialogProps, boolean | null>(
+  OAuthDialogImpl
+);

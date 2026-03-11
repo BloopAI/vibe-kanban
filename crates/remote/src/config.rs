@@ -10,6 +10,7 @@ pub struct RemoteServerConfig {
     pub listen_addr: String,
     pub server_public_base_url: Option<String>,
     pub auth: AuthConfig,
+    pub refresh_token_overlap_secs: i64,
     pub electric_url: String,
     pub electric_secret: Option<SecretString>,
     pub electric_role_password: Option<SecretString>,
@@ -211,6 +212,12 @@ impl RemoteServerConfig {
 
         let auth = AuthConfig::from_env()?;
 
+        let refresh_token_overlap_secs = env::var("REFRESH_TOKEN_OVERLAP_SECS")
+            .ok()
+            .and_then(|value| value.parse::<i64>().ok())
+            .filter(|value| *value >= 0)
+            .unwrap_or(60);
+
         let electric_url =
             env::var("ELECTRIC_URL").map_err(|_| ConfigError::MissingVar("ELECTRIC_URL"))?;
 
@@ -242,6 +249,7 @@ impl RemoteServerConfig {
             listen_addr,
             server_public_base_url,
             auth,
+            refresh_token_overlap_secs,
             electric_url,
             electric_secret,
             electric_role_password,

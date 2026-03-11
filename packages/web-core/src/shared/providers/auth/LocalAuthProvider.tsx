@@ -17,7 +17,9 @@ export function LocalAuthProvider({ children }: LocalAuthProviderProps) {
       isSignedIn: loginStatus?.status === 'loggedin',
       isLoaded: loginStatus !== null,
       userId:
-        loginStatus?.status === 'loggedin' ? loginStatus.profile.user_id : null,
+        loginStatus?.status === 'loggedin'
+          ? (loginStatus.profile?.user_id ?? null)
+          : null,
     }),
     [loginStatus]
   );
