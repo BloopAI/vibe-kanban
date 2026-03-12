@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useCallback, useEffect } from 'react';
 import { configApi } from '@/shared/lib/api';
 import { updateLanguageFromConfig } from '@/i18n/config';
 import { setRemoteApiBase } from '@/shared/lib/remoteApi';
@@ -10,10 +10,17 @@ interface UserSystemProviderProps {
 }
 
 export function UserSystemProvider({ children }: UserSystemProviderProps) {
+  const loadConfig = useCallback(() => configApi.getConfig(), []);
+  const saveConfig = useCallback(
+    (config: Parameters<typeof configApi.saveConfig>[0]) =>
+      configApi.saveConfig(config),
+    []
+  );
+
   const { value, userSystemInfo } = useUserSystemController({
     queryKey: ['user-system', 'local'],
-    load: () => configApi.getConfig(),
-    save: (config) => configApi.saveConfig(config),
+    load: loadConfig,
+    save: saveConfig,
   });
 
   // Set runtime remote API base URL for self-hosting support.

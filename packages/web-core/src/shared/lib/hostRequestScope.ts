@@ -29,8 +29,3 @@ export function getHostRequestScopeQueryKey(hostId?: string | null): string {
       return scope.hostId;
   }
 }
-
-export function getExplicitHostId(hostId?: string | null): string | null {
-  const scope = resolveHostRequestScope(hostId);
-  return scope.kind === 'host' ? scope.hostId : null;
-}

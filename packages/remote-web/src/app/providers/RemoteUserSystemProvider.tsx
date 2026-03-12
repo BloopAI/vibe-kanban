@@ -1,4 +1,4 @@
-import { ReactNode, useMemo } from "react";
+import { ReactNode, useCallback, useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
 import { configApi } from "@/shared/lib/api";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
@@ -14,6 +14,12 @@ export function RemoteUserSystemProvider({
 }: RemoteUserSystemProviderProps) {
   const { isSignedIn, isLoaded } = useAuth();
   const { hostId } = useParams({ strict: false });
+  const loadConfig = useCallback(() => configApi.getConfig(), []);
+  const saveConfig = useCallback(
+    (config: Parameters<typeof configApi.saveConfig>[0]) =>
+      configApi.saveConfig(config),
+    [],
+  );
   const userSystemQueryKey = useMemo(
     () => ["user-system", "remote-route", hostId] as const,
     [hostId],
@@ -21,8 +27,8 @@ export function RemoteUserSystemProvider({
   const { value, isLoading } = useUserSystemController({
     queryKey: userSystemQueryKey,
     enabled: isLoaded && isSignedIn && !!hostId,
-    load: () => configApi.getConfig(),
-    save: (config) => configApi.saveConfig(config),
+    load: loadConfig,
+    save: saveConfig,
   });
 
   const contextValue = useMemo(
