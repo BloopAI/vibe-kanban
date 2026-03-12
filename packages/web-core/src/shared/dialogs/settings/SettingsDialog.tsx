@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { CaretLeftIcon, XIcon } from '@phosphor-icons/react';
+import { CaretLeftIcon, PlusIcon, XIcon } from '@phosphor-icons/react';
 import { create, useModal } from '@ebay/nice-modal-react';
 import { defineModal } from '@/shared/lib/modals';
 
@@ -60,6 +60,9 @@ function SettingsDialogNavigation({
     value: host.id,
     label: host.status != null ? `${host.label} (${host.status})` : host.label,
   }));
+  const handlePairOtherMachines = () => {
+    onSectionSelect('relay');
+  };
 
   const renderSectionButton = (sectionId: SettingsSectionType) => {
     const section = SETTINGS_SECTION_DEFINITIONS.find(
@@ -92,16 +95,22 @@ function SettingsDialogNavigation({
       <div className="space-y-2">
         <div className="px-3 pt-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            Host-specific settings
+            Machine Settings
           </div>
         </div>
         <div className="px-2">
           <SettingsSelect
             value={selectedHostId ?? undefined}
             options={hostOptions}
+            actions={[
+              {
+                label: 'Pair other machines',
+                icon: PlusIcon,
+                onClick: handlePairOtherMachines,
+              },
+            ]}
             onChange={setSelectedHostId}
             placeholder="Select host"
-            disabled={hostOptions.length === 0}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -111,7 +120,7 @@ function SettingsDialogNavigation({
       <div className="space-y-2">
         <div className="px-3 pt-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            Remote / universal settings
+            Account Settings
           </div>
         </div>
         <div className="flex flex-col gap-1">
