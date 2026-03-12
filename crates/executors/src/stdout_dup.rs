@@ -8,13 +8,16 @@ use std::os::unix::io::{FromRawFd, IntoRawFd, OwnedFd};
 #[cfg(windows)]
 use std::os::windows::io::{FromRawHandle, IntoRawHandle, OwnedHandle};
 
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncGroupChild;
 use futures::{StreamExt, stream::BoxStream};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::io::ReaderStream;
 
-use crate::executors::{ExecutorError, SpawnedChild};
+use crate::{
+    executors::{ExecutorError, SpawnedChild},
+    group_spawn_ext::GroupSpawnNoWindow,
+};
 
 /// Duplicate stdout from AsyncGroupChild.
 ///
@@ -219,7 +222,7 @@ pub fn spawn_local_output_process()
 
     cmd.kill_on_drop(true);
 
-    let mut child = cmd.group_spawn()?;
+    let mut child = cmd.group_spawn_no_window()?;
 
     // Replace stdout with our pipe
     child.inner().stdout = Some(wrap_fd_as_child_stdout(pipe_reader)?);

@@ -13,7 +13,6 @@ use std::{
 };
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,6 +40,7 @@ use crate::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor, codex::client::LogWriter, utils::reorder_slash_commands,
     },
+    group_spawn_ext::GroupSpawnNoWindow,
     logs::{
         ActionType, AnsweredQuestion, AskUserQuestionItem, AskUserQuestionOption, FileChange,
         NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, ToolStatus,
@@ -613,7 +613,7 @@ impl ClaudeCode {
             tracing::info!("ANTHROPIC_API_KEY removed from environment");
         }
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
         })?;

@@ -6,7 +6,6 @@ use std::{
     time::Duration,
 };
 
-use command_group::AsyncCommandGroup;
 use convert_case::{Case, Casing};
 use tokio::{
     fs,
@@ -19,6 +18,7 @@ use crate::{
     command::{CommandBuildError, CommandBuilder, apply_overrides},
     env::{ExecutionEnv, RepoContext},
     executors::{ExecutorError, SlashCommandDescription},
+    group_spawn_ext::GroupSpawnNoWindow,
     model_selector::AgentInfo,
 };
 
@@ -237,7 +237,7 @@ impl ClaudeCode {
             command.env_remove("ANTHROPIC_API_KEY");
         }
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
         let stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
         })?;

@@ -44,7 +44,6 @@ use codex_app_server_protocol::{
     AskForApproval as V2AskForApproval, ReviewTarget, SandboxMode as V2SandboxMode,
     ThreadForkParams, ThreadStartParams, UserInput,
 };
-use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -68,6 +67,7 @@ use crate::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, ExecutorExitResult,
         SlashCommandDescription, SpawnedChild, StandardCodingAgentExecutor,
     },
+    group_spawn_ext::GroupSpawnNoWindow,
     logs::utils::patch,
     model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy, ReasoningOption},
     profile::ExecutorConfig,
@@ -621,7 +621,7 @@ impl Codex {
             .with_profile(&self.cmd)
             .apply_to_command(&mut process);
 
-        let mut child = process.group_spawn()?;
+        let mut child = process.group_spawn_no_window()?;
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))

@@ -2,7 +2,7 @@ use std::sync::{Arc, OnceLock};
 
 use async_trait::async_trait;
 use tokio::sync::RwLock;
-use utils;
+use utils::{self, command_ext::NoWindowExt};
 use uuid::Uuid;
 
 use crate::services::config::{Config, SoundFile};
@@ -155,6 +155,7 @@ impl NotificationService {
                 .arg(format!(
                     r#"(New-Object Media.SoundPlayer "{file_path}").PlaySync()"#
                 ))
+                .no_window()
                 .spawn();
         }
     }
@@ -237,6 +238,7 @@ async fn send_windows_notification(title: &str, message: &str) {
         .arg(title)
         .arg("-Message")
         .arg(message)
+        .no_window()
         .spawn();
 }
 
@@ -250,6 +252,7 @@ async fn get_wsl_root_path() -> Option<String> {
         .arg("-c")
         .arg("(Get-Location).Path -replace '^.*::', ''")
         .current_dir("/")
+        .no_window()
         .output()
         .await
     {

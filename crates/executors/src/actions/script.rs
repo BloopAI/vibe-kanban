@@ -1,7 +1,6 @@
 use std::{path::Path, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
@@ -12,6 +11,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{ExecutorError, SpawnedChild},
+    group_spawn_ext::GroupSpawnNoWindow,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
@@ -67,7 +67,7 @@ impl Executable for ScriptRequest {
         // Apply environment variables
         env.apply_to_command(&mut command);
 
-        let child = command.group_spawn()?;
+        let child = command.group_spawn_no_window()?;
 
         Ok(child.into())
     }

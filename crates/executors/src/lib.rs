@@ -4,6 +4,7 @@ pub mod command;
 pub mod env;
 pub mod executor_discovery;
 pub mod executors;
+pub(crate) mod group_spawn_ext;
 pub mod logs;
 pub mod mcp_config;
 pub mod model_selector;

@@ -2,7 +2,6 @@ use core::str;
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -23,6 +22,7 @@ use crate::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
     },
+    group_spawn_ext::GroupSpawnNoWindow,
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,
@@ -211,7 +211,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;
@@ -252,7 +252,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;

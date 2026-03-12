@@ -796,7 +796,9 @@ impl GitCli {
             cmd
         );
 
+        use utils::command_ext::NoWindowExt;
         let mut child = cmd
+            .no_window()
             .spawn()
             .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
 

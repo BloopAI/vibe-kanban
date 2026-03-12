@@ -7,7 +7,7 @@ use std::{
 
 use agent_client_protocol as proto;
 use agent_client_protocol::Agent as _;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncGroupChild;
 use futures::StreamExt;
 use tokio::{io::AsyncWriteExt, process::Command, sync::mpsc};
 use tokio_util::{
@@ -24,6 +24,7 @@ use crate::{
     command::{CmdOverrides, CommandParts},
     env::ExecutionEnv,
     executors::{ExecutorError, ExecutorExitResult, SpawnedChild, acp::AcpEvent},
+    group_spawn_ext::GroupSpawnNoWindow,
 };
 
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)
@@ -104,7 +105,7 @@ impl AcpAgentHarness {
             .with_profile(cmd_overrides)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
         let cancel = CancellationToken::new();
@@ -157,7 +158,7 @@ impl AcpAgentHarness {
             .with_profile(cmd_overrides)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         let (exit_tx, exit_rx) = tokio::sync::oneshot::channel::<ExecutorExitResult>();
         let cancel = CancellationToken::new();

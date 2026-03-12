@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncGroupChild;
 use convert_case::{Case, Casing};
 use derivative::Derivative;
 use futures::StreamExt;
@@ -21,6 +21,7 @@ use crate::{
         SlashCommandDescription, SpawnedChild, StandardCodingAgentExecutor,
         opencode::types::OpencodeExecutorEvent, utils::reorder_slash_commands,
     },
+    group_spawn_ext::GroupSpawnNoWindow,
     logs::utils::patch,
     model_selector::{AgentInfo, ModelInfo, ModelProvider, PermissionPolicy, ReasoningOption},
     profile::ExecutorConfig,
@@ -130,7 +131,7 @@ impl Opencode {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let child = command.group_spawn()?;
+        let child = command.group_spawn_no_window()?;
 
         Ok((child, server_password))
     }

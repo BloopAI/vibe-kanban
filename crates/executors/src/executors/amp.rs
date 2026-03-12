@@ -1,7 +1,6 @@
 use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
@@ -15,6 +14,7 @@ use crate::{
         AppendPrompt, BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         claude::{ClaudeLogProcessor, HistoryStrategy},
     },
+    group_spawn_ext::GroupSpawnNoWindow,
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
     profile::ExecutorConfig,
 };
@@ -71,7 +71,7 @@ impl StandardCodingAgentExecutor for Amp {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         // Feed the prompt in, then close the pipe so amp sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
@@ -114,7 +114,7 @@ impl StandardCodingAgentExecutor for Amp {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         // Feed the prompt in, then close the pipe so amp sees EOF
         if let Some(mut stdin) = child.inner().stdin.take() {
