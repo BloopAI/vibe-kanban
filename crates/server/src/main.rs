@@ -160,7 +160,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = subdomain_router().with_state(deployment.clone()).layer(
+    let proxy_router: Router = subdomain_router(actual_main_port, actual_proxy_port).layer(
         tower_http::validate_request::ValidateRequestHeaderLayer::custom(
             server::middleware::validate_origin,
         ),

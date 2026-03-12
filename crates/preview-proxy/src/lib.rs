@@ -14,7 +14,6 @@ use axum::{
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
@@ -61,6 +60,12 @@ fn env_flag_enabled(name: &str) -> bool {
 struct PreviewTarget {
     port: u16,
     relay_host_id: Option<Uuid>,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PreviewProxyRuntime {
+    backend_port: u16,
+    proxy_port: u16,
 }
 
 /// Headers that should be stripped from the proxied response.
@@ -370,29 +375,11 @@ fn extract_target_from_host(headers: &HeaderMap) -> Option<PreviewTarget> {
     })
 }
 
-async fn subdomain_proxy<D>(
-    State(deployment): State<D>,
+async fn subdomain_proxy(
+    State(runtime): State<PreviewProxyRuntime>,
     Extension(shared): Extension<PreviewProxyShared>,
     request: Request,
-) -> Response
-where
-    D: Deployment,
-{
-    let Some(backend_port) = deployment.client_info().get_port() else {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Local backend port is not available",
-        )
-            .into_response();
-    };
-    let Some(proxy_port) = deployment.client_info().get_preview_proxy_port() else {
-        return (
-            StatusCode::BAD_REQUEST,
-            "Preview proxy port is not available",
-        )
-            .into_response();
-    };
-
+) -> Response {
     let target = match extract_target_from_host(request.headers()) {
         Some(port) => port,
         None => {
@@ -402,7 +389,15 @@ where
 
     let path = normalized_proxy_path(request.uri().path()).to_string();
 
-    proxy_impl(shared, backend_port, proxy_port, target, path, request).await
+    proxy_impl(
+        shared,
+        runtime.backend_port,
+        runtime.proxy_port,
+        target,
+        path,
+        request,
+    )
+    .await
 }
 
 async fn proxy_impl(
@@ -864,12 +859,15 @@ async fn handle_ws_proxy(
     Ok(())
 }
 
-pub fn subdomain_router<D>() -> Router<D>
-where
-    D: Deployment,
-{
+pub fn subdomain_router(backend_port: u16, proxy_port: u16) -> Router {
+    let runtime = PreviewProxyRuntime {
+        backend_port,
+        proxy_port,
+    };
+
     Router::new()
-        .fallback(subdomain_proxy::<D>)
+        .fallback(subdomain_proxy)
+        .with_state(runtime)
         .layer(Extension(PreviewProxyShared::new()))
 }
 
