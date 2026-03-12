@@ -1,6 +1,6 @@
 [package]
 name = "local-deployment"
-version = "0.1.27-pthis.10"
+version = "0.1.27-pthis.11"
 edition = "2024"
 
 [dependencies]
