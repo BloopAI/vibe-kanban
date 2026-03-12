@@ -19,6 +19,17 @@ pub enum IssuePriority {
     Low,
 }
 
+impl IssuePriority {
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Urgent => "Urgent",
+            Self::High => "High",
+            Self::Medium => "Medium",
+            Self::Low => "Low",
+        }
+    }
+}
+
 impl Display for IssuePriority {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let value = match self {

@@ -3,6 +3,7 @@ use std::time::Duration;
 use api_types::MemberRole;
 use async_trait::async_trait;
 use serde_json::json;
+use thiserror::Error;
 
 const LOOPS_INVITE_TEMPLATE_ID: &str = "cmhvy2wgs3s13z70i1pxakij9";
 const LOOPS_REVIEW_READY_TEMPLATE_ID: &str = "cmj47k5ge16990iylued9by17";
@@ -10,6 +11,17 @@ const LOOPS_REVIEW_FAILED_TEMPLATE_ID: &str = "cmj49ougk1c8s0iznavijdqpo";
 const LOOPS_DIGEST_TEMPLATE_ID: &str = "cmmm6lr64016v0i2mvi1m0ras";
 
 use crate::digest::email::DigestEmailItem;
+
+#[derive(Debug, Error)]
+pub enum DigestEmailError {
+    #[error("loops send failed for digest: status={status}, body={body}")]
+    LoopsSendFailed {
+        status: reqwest::StatusCode,
+        body: String,
+    },
+    #[error("loops request error for digest: {0}")]
+    Request(#[from] reqwest::Error),
+}
 
 #[async_trait]
 pub trait Mailer: Send + Sync {
@@ -32,7 +44,8 @@ pub trait Mailer: Send + Sync {
         name: &str,
         notification_count: i32,
         items: &[DigestEmailItem],
-    ) -> anyhow::Result<()>;
+        notifications_url: &str,
+    ) -> Result<(), DigestEmailError>;
 }
 
 /// No-op mailer used when `LOOPS_EMAIL_API_KEY` is not configured.
@@ -77,7 +90,8 @@ impl Mailer for NoopMailer {
         _name: &str,
         notification_count: i32,
         _items: &[DigestEmailItem],
-    ) -> anyhow::Result<()> {
+        _notifications_url: &str,
+    ) -> Result<(), DigestEmailError> {
         tracing::warn!(
             email = %email,
             notification_count,
@@ -251,13 +265,15 @@ impl Mailer for LoopsMailer {
         name: &str,
         notification_count: i32,
         items: &[DigestEmailItem],
-    ) -> anyhow::Result<()> {
+        notifications_url: &str,
+    ) -> Result<(), DigestEmailError> {
         if cfg!(debug_assertions) {
             tracing::info!(
                 "Sending digest email to {email}\n\
                  Name: {name}\n\
                  Total notifications: {notification_count}\n\
-                 Preview items: {}",
+                 Preview items: {}\n\
+                 Notifications URL: {notifications_url}",
                 items.len()
             );
         }
@@ -269,6 +285,7 @@ impl Mailer for LoopsMailer {
                 "name": name,
                 "notificationCount": notification_count,
                 "items": items,
+                "notificationsUrl": notifications_url,
             }
         });
 
@@ -288,11 +305,9 @@ impl Mailer for LoopsMailer {
             Ok(resp) => {
                 let status = resp.status();
                 let body = resp.text().await.unwrap_or_default();
-                anyhow::bail!("Loops send failed for digest: status={status}, body={body}");
+                Err(DigestEmailError::LoopsSendFailed { status, body })
             }
-            Err(err) => {
-                anyhow::bail!("Loops request error for digest: {err}");
-            }
+            Err(err) => Err(DigestEmailError::Request(err)),
         }
     }
 }

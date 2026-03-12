@@ -1,5 +1,5 @@
 use api_types::{NotificationPayload, NotificationType};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -7,8 +7,11 @@ use crate::digest::DigestUser;
 
 #[derive(Debug, Clone)]
 pub struct NotificationDigestRow {
+    pub id: Uuid,
     pub notification_type: NotificationType,
     pub payload: sqlx::types::Json<NotificationPayload>,
+    pub issue_id: Option<Uuid>,
+    pub created_at: DateTime<Utc>,
     pub actor_name: String,
 }
 
@@ -35,6 +38,11 @@ impl DigestRepository {
               AND n.created_at < $2
               AND n.dismissed_at IS NULL
               AND n.seen = FALSE
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM notification_digest_deliveries d
+                  WHERE d.notification_id = n.id
+              )
             ORDER BY u.id
             "#,
             window_start,
@@ -54,8 +62,11 @@ impl DigestRepository {
             NotificationDigestRow,
             r#"
             SELECT
+                n.id AS "id!: Uuid",
                 n.notification_type AS "notification_type!: NotificationType",
                 n.payload AS "payload!: sqlx::types::Json<NotificationPayload>",
+                n.issue_id AS "issue_id?: Uuid",
+                n.created_at AS "created_at!",
                 COALESCE(NULLIF(actor.first_name, ''), NULLIF(actor.username, ''), 'Someone') AS "actor_name!"
             FROM notifications n
             LEFT JOIN users actor
@@ -65,6 +76,11 @@ impl DigestRepository {
               AND n.created_at < $3
               AND n.dismissed_at IS NULL
               AND n.seen = FALSE
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM notification_digest_deliveries d
+                  WHERE d.notification_id = n.id
+              )
             ORDER BY n.created_at DESC
             "#,
             user_id,
@@ -75,41 +91,24 @@ impl DigestRepository {
         .await
     }
 
-    pub async fn try_record_digest_sent(
+    pub async fn record_notifications_delivered(
         pool: &PgPool,
         user_id: Uuid,
-        digest_date: NaiveDate,
-        notification_count: i32,
-    ) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"
-            INSERT INTO notification_digest_log (user_id, digest_date, notification_count)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (user_id, digest_date) DO NOTHING
-            "#,
-            user_id,
-            digest_date,
-            notification_count
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(result.rows_affected() > 0)
-    }
-
-    pub async fn delete_digest_record(
-        pool: &PgPool,
-        user_id: Uuid,
-        digest_date: NaiveDate,
+        notification_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
+        if notification_ids.is_empty() {
+            return Ok(());
+        }
+
         sqlx::query!(
             r#"
-            DELETE FROM notification_digest_log
-            WHERE user_id = $1
-              AND digest_date = $2
+            INSERT INTO notification_digest_deliveries (notification_id, user_id)
+            SELECT notification_id, $2
+            FROM UNNEST($1::uuid[]) AS delivered(notification_id)
+            ON CONFLICT (notification_id) DO NOTHING
             "#,
+            notification_ids,
             user_id,
-            digest_date
         )
         .execute(pool)
         .await?;

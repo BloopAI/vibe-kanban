@@ -1,11 +1,17 @@
 pub mod email;
 pub mod task;
 
-use chrono::{DateTime, Days, NaiveDate, Utc};
+use std::time::Duration;
+
+use chrono::{DateTime, Utc};
 use sqlx::PgPool;
+use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::{db::digest::DigestRepository, mail::Mailer};
+use crate::{
+    db::digest::DigestRepository,
+    mail::{DigestEmailError, Mailer},
+};
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct DigestUser {
@@ -22,13 +28,24 @@ pub struct DigestStats {
     pub errors: u32,
 }
 
-pub async fn run_daily_email_digest(
+#[derive(Debug, Error)]
+pub enum DigestError {
+    #[error("digest database error: {0}")]
+    Database(#[from] sqlx::Error),
+    #[error("digest email error: {0}")]
+    Email(#[from] DigestEmailError),
+    #[error("invalid digest window duration")]
+    InvalidWindowDuration,
+}
+
+pub async fn run_email_digest(
     pool: &PgPool,
     mailer: &dyn Mailer,
     base_url: &str,
     now: DateTime<Utc>,
-) -> anyhow::Result<DigestStats> {
-    let (digest_date, window_start, window_end) = digest_window(now)?;
+    window: Duration,
+) -> Result<DigestStats, DigestError> {
+    let (window_start, window_end) = digest_window(now, window)?;
     let mut stats = DigestStats::default();
 
     let users =
@@ -36,7 +53,8 @@ pub async fn run_daily_email_digest(
             .await?;
 
     info!(
-        digest_date = %digest_date,
+        window_start = %window_start,
+        window_end = %window_end,
         user_count = users.len(),
         "Digest: found users with pending notifications"
     );
@@ -44,17 +62,7 @@ pub async fn run_daily_email_digest(
     for user in &users {
         stats.users_processed += 1;
 
-        match process_user_digest(
-            pool,
-            mailer,
-            base_url,
-            user,
-            digest_date,
-            window_start,
-            window_end,
-        )
-        .await
-        {
+        match process_user_digest(pool, mailer, base_url, user, window_start, window_end).await {
             Ok(sent) => stats.emails_sent += sent,
             Err(e) => {
                 warn!(user_id = %user.id, error = %e, "Digest: failed to process user");
@@ -71,10 +79,9 @@ async fn process_user_digest(
     mailer: &dyn Mailer,
     base_url: &str,
     user: &DigestUser,
-    digest_date: NaiveDate,
     window_start: DateTime<Utc>,
     window_end: DateTime<Utc>,
-) -> anyhow::Result<u32> {
+) -> Result<u32, DigestError> {
     let notification_rows =
         DigestRepository::fetch_notifications_for_user(pool, user.id, window_start, window_end)
             .await?;
@@ -84,35 +91,35 @@ async fn process_user_digest(
     }
 
     let total_count = notification_rows.len() as i32;
-
-    if !DigestRepository::try_record_digest_sent(pool, user.id, digest_date, total_count).await? {
-        return Ok(0);
-    }
+    let notification_ids = notification_rows
+        .iter()
+        .map(|row| row.id)
+        .collect::<Vec<_>>();
 
     let name = email::recipient_name(user);
     let items = email::build_preview_items(&notification_rows, base_url);
+    let notifications_url = email::notifications_url(base_url);
 
     if let Err(error) = mailer
-        .send_notification_digest(&user.email, &name, total_count, &items)
+        .send_notification_digest(&user.email, &name, total_count, &items, &notifications_url)
         .await
     {
-        DigestRepository::delete_digest_record(pool, user.id, digest_date).await?;
-        return Err(error);
+        return Err(error.into());
     }
+
+    DigestRepository::record_notifications_delivered(pool, user.id, &notification_ids).await?;
 
     Ok(1)
 }
 
-fn digest_window(now: DateTime<Utc>) -> anyhow::Result<(NaiveDate, DateTime<Utc>, DateTime<Utc>)> {
-    let digest_date = now
-        .date_naive()
-        .checked_sub_days(Days::new(1))
-        .ok_or_else(|| anyhow::anyhow!("failed to compute digest date"))?;
-    let window_start = digest_date
-        .and_hms_opt(0, 0, 0)
-        .ok_or_else(|| anyhow::anyhow!("failed to compute digest window start"))?
-        .and_utc();
-    let window_end = window_start + chrono::Duration::days(1);
+fn digest_window(
+    now: DateTime<Utc>,
+    window: Duration,
+) -> Result<(DateTime<Utc>, DateTime<Utc>), DigestError> {
+    let lookback =
+        chrono::Duration::from_std(window).map_err(|_| DigestError::InvalidWindowDuration)?;
+    let window_end = now;
+    let window_start = window_end - lookback;
 
-    Ok((digest_date, window_start, window_end))
+    Ok((window_start, window_end))
 }
