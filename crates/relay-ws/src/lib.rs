@@ -9,6 +9,8 @@ mod crypto;
 mod protocol;
 mod signed;
 
+pub use crypto::{RelayWsFrame, RelayWsMessageType};
+pub use protocol::RelayTransportMessage;
 pub use signed::{
     SignedAxumSocket, SignedTungsteniteSocket, signed_axum_websocket, signed_tungstenite_websocket,
 };

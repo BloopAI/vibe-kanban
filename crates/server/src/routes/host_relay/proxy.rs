@@ -10,9 +10,10 @@ use axum::{
     routing::any,
 };
 use deployment::Deployment;
-use relay_hosts::HostRelayWsConnection;
+use relay_hosts::{
+    DirectProxyResponse, ProxiedResponse, ProxiedWsConnection, UpstreamWs,
+};
 use relay_tunnel_core::ws_io::ws_copy_bidirectional;
-use relay_ws::SignedTungsteniteSocket;
 use utils::http_headers::is_hop_by_hop_header;
 use uuid::Uuid;
 
@@ -87,9 +88,9 @@ async fn forward_ws(
         .map(ToOwned::to_owned);
     let relay_host = relay_hosts.host(host_id).await?;
 
-    let HostRelayWsConnection {
-        upstream_socket,
+    let ProxiedWsConnection {
         selected_protocol,
+        upstream,
     } = relay_host
         .proxy_ws(&target_path, protocols.as_deref())
         .await?;
@@ -98,11 +99,10 @@ async fn forward_ws(
     if let Some(protocol) = &selected_protocol {
         ws = ws.protocols([protocol.clone()]);
     }
-
     Ok(ws
         .on_upgrade(|socket| async move {
-            if let Err(error) = bridge_ws(upstream_socket, socket).await {
-                tracing::debug!(?error, "Relay WS bridge closed with error");
+            if let Err(error) = bridge_ws(upstream, socket).await {
+                tracing::debug!(?error, "WS bridge closed with error");
             }
         })
         .into_response())
@@ -121,36 +121,70 @@ fn upstream_api_uri(tail: &str, query: Option<&str>) -> Result<Uri, ApiError> {
         .map_err(|_| ApiError::BadRequest("Invalid rewritten relay path".to_string()))
 }
 
-fn relay_http_response(response: reqwest::Response) -> Response {
-    let status = response.status();
-    let response_headers = response.headers().clone();
-    let body = Body::from_stream(response.bytes_stream());
+fn relay_http_response(response: ProxiedResponse) -> Response {
+    match response {
+        ProxiedResponse::Relay(response) => {
+            let status = response.status();
+            let response_headers = response.headers().clone();
+            let body = Body::from_stream(response.bytes_stream());
 
-    let mut builder = Response::builder().status(status);
-    for (name, value) in &response_headers {
-        if !is_hop_by_hop_header(name.as_str()) {
-            builder = builder.header(name, value);
+            let mut builder = Response::builder().status(status);
+            for (name, value) in &response_headers {
+                if !is_hop_by_hop_header(name.as_str()) {
+                    builder = builder.header(name, value);
+                }
+            }
+
+            builder.body(body).unwrap_or_else(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to build relay proxy response",
+                )
+                    .into_response()
+            })
+        }
+        ProxiedResponse::Direct(DirectProxyResponse {
+            status,
+            headers,
+            body,
+        }) => {
+            let mut builder = Response::builder().status(status);
+            for (name, value) in &headers {
+                if !is_hop_by_hop_header(name) {
+                    builder = builder.header(name.as_str(), value.as_str());
+                }
+            }
+
+            builder.body(Body::from(body)).unwrap_or_else(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to build direct proxy response",
+                )
+                    .into_response()
+            })
         }
     }
-
-    builder.body(body).unwrap_or_else(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to build relay proxy response",
-        )
-            .into_response()
-    })
 }
 
-async fn bridge_ws(
-    upstream: SignedTungsteniteSocket,
-    client_socket: WebSocket,
-) -> anyhow::Result<()> {
-    ws_copy_bidirectional(
-        client_socket,
-        upstream,
-        relay_tunnel_core::ws_io::axum_to_tungstenite,
-        relay_tunnel_core::ws_io::tungstenite_to_axum,
-    )
-    .await
+async fn bridge_ws(upstream: UpstreamWs, client_socket: WebSocket) -> anyhow::Result<()> {
+    match upstream {
+        UpstreamWs::Relay(socket) => {
+            ws_copy_bidirectional(
+                client_socket,
+                socket,
+                relay_tunnel_core::ws_io::axum_to_tungstenite,
+                relay_tunnel_core::ws_io::tungstenite_to_axum,
+            )
+            .await
+        }
+        UpstreamWs::WebRtc(stream) => {
+            ws_copy_bidirectional(
+                client_socket,
+                stream,
+                relay_tunnel_core::ws_io::axum_to_tungstenite,
+                relay_tunnel_core::ws_io::tungstenite_to_axum,
+            )
+            .await
+        }
+    }
 }
