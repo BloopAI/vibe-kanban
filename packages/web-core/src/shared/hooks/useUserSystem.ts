@@ -10,6 +10,7 @@ import type { ExecutorProfile } from 'shared/types';
 
 export interface UserSystemState {
   appVersion: string | null;
+  previewProxyPort: number | null;
   config: Config | null;
   environment: Environment | null;
   profiles: Record<string, ExecutorProfile> | null;
@@ -24,6 +25,7 @@ export interface UserSystemContextType {
 
   // Hot path - config helpers (most frequently used)
   appVersion: string | null;
+  previewProxyPort: number | null;
   config: Config | null;
   updateConfig: (updates: Partial<Config>) => void;
   updateAndSaveConfig: (updates: Partial<Config>) => Promise<boolean>;
