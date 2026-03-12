@@ -39,7 +39,7 @@ import {
   SettingsCheckbox,
   SettingsSaveBar,
 } from './SettingsComponents';
-import { useSettingsHost } from './SettingsHostContext';
+import { useSettingsScopedApiHostId } from './SettingsHostContext';
 
 interface RepoScriptsFormState {
   display_name: string;
@@ -132,8 +132,7 @@ export function ReposSettingsSection({
 }: ReposSettingsSectionProps) {
   const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
-  const { selectedHost } = useSettingsHost();
-  const scopedHostId = selectedHost?.apiHostId ?? null;
+  const scopedHostId = useSettingsScopedApiHostId();
   const reposQueryKey = ['repos', scopedHostId ?? 'local'];
 
   // Fetch all repos

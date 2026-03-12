@@ -186,3 +186,14 @@ export function useSettingsHost() {
   }
   return context;
 }
+
+export function useSettingsScopedApiHostId(): string | null {
+  const runtime = useAppRuntime();
+  const { selectedHost } = useSettingsHost();
+
+  if (runtime === 'remote') {
+    return null;
+  }
+
+  return selectedHost?.apiHostId ?? null;
+}

@@ -30,7 +30,7 @@ import {
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { useSettingsHost } from './SettingsHostContext';
+import { useSettingsScopedApiHostId } from './SettingsHostContext';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { getExecutorVariantKeys } from '@/shared/lib/executor';
 
@@ -39,8 +39,7 @@ type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 export function AgentsSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
-  const { selectedHost } = useSettingsHost();
-  const scopedHostId = selectedHost?.apiHostId ?? null;
+  const scopedHostId = useSettingsScopedApiHostId();
 
   // Profiles hook for server state
   const {

@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useMemo } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   BaseAgentCapability,
@@ -11,7 +11,12 @@ import {
   UserSystemContext,
   type UserSystemContextType,
 } from '@/shared/hooks/useUserSystem';
+import { useAppRuntime } from '@/shared/hooks/useAppRuntime';
 import { configApi } from '@/shared/lib/api';
+import {
+  getRelayActiveHostOverride,
+  setRelayActiveHostOverride,
+} from '@/shared/lib/relayActiveHostOverride';
 
 export function ScopedUserSystemProvider({
   hostId,
@@ -20,15 +25,30 @@ export function ScopedUserSystemProvider({
   hostId: string | null;
   children: ReactNode;
 }) {
+  const runtime = useAppRuntime();
   const queryClient = useQueryClient();
+  const effectiveHostId = runtime === 'local' ? hostId : null;
   const userSystemQueryKey = useMemo(
-    () => ['settings-user-system', hostId ?? 'local'] as const,
-    [hostId]
+    () => ['settings-user-system', runtime, hostId ?? 'local'] as const,
+    [hostId, runtime]
   );
+
+  useEffect(() => {
+    if (runtime !== 'remote') {
+      return;
+    }
+
+    const previousHostId = getRelayActiveHostOverride();
+    setRelayActiveHostOverride(hostId);
+
+    return () => {
+      setRelayActiveHostOverride(previousHostId);
+    };
+  }, [hostId, runtime]);
 
   const { data: userSystemInfo, isLoading } = useQuery({
     queryKey: userSystemQueryKey,
-    queryFn: () => configApi.getConfig(hostId),
+    queryFn: () => configApi.getConfig(effectiveHostId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -62,13 +82,13 @@ export function ScopedUserSystemProvider({
   const saveConfig = useCallback(async (): Promise<boolean> => {
     if (!config) return false;
     try {
-      await configApi.saveConfig(config, hostId);
+      await configApi.saveConfig(config, effectiveHostId);
       return true;
     } catch (err) {
       console.error('Error saving config:', err);
       return false;
     }
-  }, [config, hostId]);
+  }, [config, effectiveHostId]);
 
   const updateAndSaveConfig = useCallback(
     async (updates: Partial<Config>): Promise<boolean> => {
@@ -78,7 +98,7 @@ export function ScopedUserSystemProvider({
       updateConfig(updates);
 
       try {
-        const saved = await configApi.saveConfig(newConfig, hostId);
+        const saved = await configApi.saveConfig(newConfig, effectiveHostId);
         queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
           if (!old) return old;
           return {
@@ -93,7 +113,7 @@ export function ScopedUserSystemProvider({
         return false;
       }
     },
-    [config, hostId, queryClient, updateConfig, userSystemQueryKey]
+    [config, effectiveHostId, queryClient, updateConfig, userSystemQueryKey]
   );
 
   const reloadSystem = useCallback(async () => {

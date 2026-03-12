@@ -22,13 +22,12 @@ import {
   SettingsTextarea,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { useSettingsHost } from './SettingsHostContext';
+import { useSettingsScopedApiHostId } from './SettingsHostContext';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');
   const { setDirty: setContextDirty } = useSettingsDirty();
-  const { selectedHost } = useSettingsHost();
-  const scopedHostId = selectedHost?.apiHostId ?? null;
+  const scopedHostId = useSettingsScopedApiHostId();
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [originalMcpServers, setOriginalMcpServers] = useState('{}');
