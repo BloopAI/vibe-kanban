@@ -9,6 +9,7 @@ import {
   useRemoteCloudHostsState,
   useRemoveRemoteCloudHostMutation,
 } from '@/shared/hooks/useRemoteCloudHosts';
+import type { RelayPairedHost } from 'shared/types';
 import {
   SettingsCard,
   SettingsField,
@@ -17,7 +18,12 @@ import {
 } from './SettingsComponents';
 import { PairingCodeInput } from './PairingCodeInput';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
-import { useRelayRemoteHostsQuery } from './useRelayRemoteHostMutations';
+import {
+  usePairRelayHostMutation,
+  useRelayRemoteHostsQuery,
+  useRelayRemotePairedHostsQuery,
+  useRemovePairedRelayHostMutation,
+} from './useRelayRemoteHostMutations';
 
 export function RemoteCloudHostsSettingsCard() {
   return <RemoteCloudHostsSettingsCardContent />;
@@ -26,9 +32,11 @@ export function RemoteCloudHostsSettingsCard() {
 export function RemoteCloudHostsSettingsCardContent({
   embedded = false,
   initialHostId,
+  mode = 'local',
 }: {
   embedded?: boolean;
   initialHostId?: string;
+  mode?: 'local' | 'remote';
 }) {
   const { t } = useTranslation(['settings', 'common']);
   const navigate = useNavigate();
@@ -45,11 +53,22 @@ export function RemoteCloudHostsSettingsCardContent({
   const { data: relayHosts = [], isLoading: relayHostsLoading } = useQuery({
     ...useRelayRemoteHostsQuery(),
   });
-  const { data, isLoading } = useRemoteCloudHostsState();
-  const { mutateAsync: pairHost, isPending: isPairing } =
+  const isRemoteMode = mode === 'remote';
+  const { data: localData, isLoading: localStateLoading } =
+    useRemoteCloudHostsState();
+  const { data: remotePairedHosts = [], isLoading: remotePairedHostsLoading } =
+    useQuery({
+      ...useRelayRemotePairedHostsQuery(),
+      enabled: isRemoteMode,
+    });
+  const { mutateAsync: pairLocalHost, isPending: isPairingLocal } =
     usePairRemoteCloudHostMutation();
-  const { mutateAsync: removeHost, isPending: isRemoving } =
+  const { mutateAsync: removeLocalHost, isPending: isRemovingLocal } =
     useRemoveRemoteCloudHostMutation();
+  const { mutateAsync: pairRemoteHost, isPending: isPairingRemote } =
+    usePairRelayHostMutation();
+  const { mutateAsync: removeRemoteHost, isPending: isRemovingRemote } =
+    useRemovePairedRelayHostMutation();
 
   useEffect(() => {
     if (relayHosts.length === 0) {
@@ -99,9 +118,30 @@ export function RemoteCloudHostsSettingsCardContent({
   );
 
   const connectedHosts = useMemo(() => {
-    const hosts = data?.hosts ?? [];
+    if (isRemoteMode) {
+      return remotePairedHosts
+        .map((host: RelayPairedHost) => {
+          const liveHost = relayHosts.find(
+            (entry) => entry.id === host.host_id
+          );
+          return {
+            id: host.host_id,
+            name: liveHost?.name ?? host.host_name ?? host.host_id,
+            status: liveHost?.status ?? 'offline',
+            pairedAt: host.paired_at ?? '',
+            lastUsedAt: host.paired_at ?? '',
+          };
+        })
+        .sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
+    }
+
+    const hosts = localData?.hosts ?? [];
     return [...hosts].sort((a, b) => b.lastUsedAt.localeCompare(a.lastUsedAt));
-  }, [data?.hosts]);
+  }, [isRemoteMode, localData?.hosts, relayHosts, remotePairedHosts]);
+
+  const isLoading = isRemoteMode ? remotePairedHostsLoading : localStateLoading;
+  const isPairing = isRemoteMode ? isPairingRemote : isPairingLocal;
+  const isRemoving = isRemoteMode ? isRemovingRemote : isRemovingLocal;
 
   const canSubmitPairing =
     !!selectedHostId &&
@@ -143,11 +183,19 @@ export function RemoteCloudHostsSettingsCardContent({
     const effectiveHostName = hostName.trim() || selectedHost.name;
 
     try {
-      await pairHost({
-        host_id: selectedHost.id,
-        host_name: effectiveHostName,
-        enrollment_code: normalizedCode,
-      });
+      if (isRemoteMode) {
+        await pairRemoteHost({
+          hostId: selectedHost.id,
+          hostName: effectiveHostName,
+          normalizedCode,
+        });
+      } else {
+        await pairLocalHost({
+          host_id: selectedHost.id,
+          host_name: effectiveHostName,
+          enrollment_code: normalizedCode,
+        });
+      }
       setSuccessMessage(
         t(
           'settings.relay.remoteCloudHost.connectSuccess',
@@ -177,7 +225,11 @@ export function RemoteCloudHostsSettingsCardContent({
     setSuccessMessage(null);
 
     try {
-      await removeHost(hostId);
+      if (isRemoteMode) {
+        await removeRemoteHost(hostId);
+      } else {
+        await removeLocalHost(hostId);
+      }
       if (hostId === routeHostId) {
         void navigate({ to: '/' });
       }
@@ -369,7 +421,11 @@ export function RemoteCloudHostsSettingsCardContent({
                     <p className="text-sm font-medium text-high truncate">
                       {host.name}
                     </p>
-                    <p className="text-xs text-low truncate">{host.id}</p>
+                    <p className="text-xs text-low truncate">
+                      {isRemoteMode && host.status
+                        ? `${host.status === 'online' ? 'Online' : 'Offline'}${host.pairedAt ? ` · Paired ${new Date(host.pairedAt).toLocaleDateString()}` : ''}`
+                        : host.id}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">

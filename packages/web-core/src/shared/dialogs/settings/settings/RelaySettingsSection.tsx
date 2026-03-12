@@ -695,7 +695,10 @@ function RemoteRelaySettingsSectionContent({
   }
 
   return (
-    <RemoteCloudHostsSettingsCardContent initialHostId={initialState?.hostId} />
+    <RemoteCloudHostsSettingsCardContent
+      initialHostId={initialState?.hostId}
+      mode="remote"
+    />
   );
 }
 
