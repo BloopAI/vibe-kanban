@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { listRelayHosts } from '@/shared/lib/remoteApi';
 import { useAppRuntime, type AppRuntime } from '@/shared/hooks/useAppRuntime';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
@@ -42,21 +43,22 @@ const SettingsHostContext = createContext<SettingsHostContextValue | null>(
 );
 
 function toLocalRuntimeTargets(
-  remoteHosts: RemoteCloudHost[]
+  remoteHosts: RemoteCloudHost[],
+  getLabel: (key: string, defaultValue: string) => string
 ): SettingsHostTarget[] {
   return [
     {
       id: 'local',
       apiHostId: null,
-      label: 'This machine',
-      description: 'Local host',
+      label: getLabel('settings.hostPicker.thisMachine', 'This machine'),
+      description: getLabel('settings.hostPicker.localHost', 'Local host'),
       kind: 'local',
     },
     ...remoteHosts.map((host) => ({
       id: host.id,
       apiHostId: host.id,
       label: host.name,
-      description: 'Remote host',
+      description: getLabel('settings.hostPicker.remoteHost', 'Remote host'),
       status:
         host.status === 'online' ? ('online' as const) : ('offline' as const),
       kind: 'remote' as const,
@@ -96,6 +98,7 @@ export function SettingsHostProvider({
   initialHostId?: SettingsHostTargetId;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('settings');
   const runtime = useAppRuntime();
   const routeHostId = useHostId();
   const { isSignedIn } = useAuth();
@@ -133,7 +136,7 @@ export function SettingsHostProvider({
 
   const availableHosts = useMemo<SettingsHostTarget[]>(() => {
     if (runtime === 'local') {
-      return toLocalRuntimeTargets(localRemoteHosts?.hosts ?? []);
+      return toLocalRuntimeTargets(localRemoteHosts?.hosts ?? [], t);
     }
 
     const pairedHostIds = new Set(pairedRelayHosts.map((host) => host.host_id));
@@ -143,12 +146,12 @@ export function SettingsHostProvider({
         id: host.id,
         apiHostId: host.id,
         label: host.name,
-        description: 'Remote host',
+        description: t('settings.hostPicker.remoteHost', 'Remote host'),
         status:
           host.status === 'online' ? ('online' as const) : ('offline' as const),
         kind: 'remote',
       }));
-  }, [localRemoteHosts?.hosts, pairedRelayHosts, relayHosts, runtime]);
+  }, [localRemoteHosts?.hosts, pairedRelayHosts, relayHosts, runtime, t]);
 
   const [selectedHostId, setSelectedHostId] =
     useState<SettingsHostTargetId | null>(null);

@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 import { workspacesApi } from '@/shared/lib/api';
+import { getHostRequestScopeQueryKey } from '@/shared/lib/hostRequestScope';
 import { useHostId } from '@/shared/providers/HostIdProvider';
 import type { RepoWithTargetBranch } from 'shared/types';
 
@@ -12,9 +13,18 @@ export const workspaceRepoKeys = {
   byWorkspace: (
     workspaceId: string | undefined,
     hostId: string | null = null
-  ) => ['workspaceRepos', hostId ?? 'local', workspaceId] as const,
+  ) =>
+    [
+      'workspaceRepos',
+      getHostRequestScopeQueryKey(hostId),
+      workspaceId,
+    ] as const,
   selection: (workspaceId: string | undefined, hostId: string | null = null) =>
-    ['workspaceRepoSelection', hostId ?? 'local', workspaceId] as const,
+    [
+      'workspaceRepoSelection',
+      getHostRequestScopeQueryKey(hostId),
+      workspaceId,
+    ] as const,
 };
 
 export function useWorkspaceRepo(

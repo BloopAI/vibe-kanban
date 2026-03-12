@@ -105,6 +105,7 @@ import {
 import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
+import { resolveHostRequestScope } from '@/shared/lib/hostRequestScope';
 import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
 import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
 
@@ -160,11 +161,17 @@ const makeHostAwareRequest = async (
   hostId: string | null | undefined,
   options: RequestInit = {}
 ) => {
-  if (hostId === undefined) {
+  const scope = resolveHostRequestScope(hostId);
+
+  if (scope.kind === 'current') {
     return makeRequest(url, options);
   }
 
-  return makeScopedRequest(url, hostId, options);
+  return makeScopedRequest(
+    url,
+    scope.kind === 'host' ? scope.hostId : null,
+    options
+  );
 };
 
 export type Ok<T> = { success: true; data: T };

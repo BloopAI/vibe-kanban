@@ -1,11 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { workspacesApi } from '@/shared/lib/api';
+import { getHostRequestScopeQueryKey } from '@/shared/lib/hostRequestScope';
 import { useHostId } from '@/shared/providers/HostIdProvider';
 import type { Workspace } from 'shared/types';
 
 export const workspaceRecordKeys = {
   byId: (workspaceId: string | undefined, hostId: string | null = null) =>
-    ['workspaceRecord', hostId ?? 'local', workspaceId] as const,
+    [
+      'workspaceRecord',
+      getHostRequestScopeQueryKey(hostId),
+      workspaceId,
+    ] as const,
 };
 
 type Options = {

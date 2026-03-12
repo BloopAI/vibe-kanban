@@ -130,6 +130,8 @@ function CapabilityBadge({
   description: string;
   active: boolean;
 }) {
+  const { t } = useTranslation(['settings']);
+
   return (
     <div
       className={
@@ -148,7 +150,9 @@ function CapabilityBadge({
               : 'ml-auto rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-low'
           }
         >
-          {active ? 'Available' : 'Unavailable'}
+          {active
+            ? t('settings.relay.overview.available', 'Available')
+            : t('settings.relay.overview.unavailable', 'Unavailable')}
         </span>
       </div>
       <p className="mt-1 text-sm text-low">{description}</p>

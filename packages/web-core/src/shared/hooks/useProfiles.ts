@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { profilesApi } from '@/shared/lib/api';
+import { getHostRequestScopeQueryKey } from '@/shared/lib/hostRequestScope';
 import type { MachineClient } from '@/shared/lib/machineClient';
 import type { JsonValue } from 'shared/types';
 import { presetOptionsKeys } from '@/shared/hooks/usePresetOptions';
@@ -23,17 +24,9 @@ export type UseProfilesReturn = {
   saveParsed: (obj: unknown) => Promise<void>;
 };
 
-function getProfilesScopeKey(hostId: string | null | undefined) {
-  if (hostId === undefined) {
-    return 'current';
-  }
-
-  return hostId ?? 'local';
-}
-
 export function useProfiles(hostId?: string | null): UseProfilesReturn {
   const queryClient = useQueryClient();
-  const queryKey = ['profiles', getProfilesScopeKey(hostId)] as const;
+  const queryKey = ['profiles', getHostRequestScopeQueryKey(hostId)] as const;
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey,

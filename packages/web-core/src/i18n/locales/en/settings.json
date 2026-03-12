@@ -35,6 +35,11 @@
         "relayDesc": "Relay tunnel and enrollment"
       }
     },
+    "hostPicker": {
+      "thisMachine": "This machine",
+      "localHost": "Local host",
+      "remoteHost": "Remote host"
+    },
     "general": {
       "loading": "Loading settings...",
       "loadError": "Failed to load configuration.",
@@ -525,6 +530,10 @@
     "relay": {
       "title": "Remote Access",
       "description": "Allow access to this instance from the web via relay tunnel.",
+      "overview": {
+        "available": "Available",
+        "unavailable": "Unavailable"
+      },
       "enabled": {
         "label": "Enable remote access",
         "helper": "When enabled, this instance can be accessed remotely through a relay tunnel."
