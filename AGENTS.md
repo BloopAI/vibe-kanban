@@ -30,17 +30,17 @@ Do not manually edit shared/remote-types.ts, instead edit crates/remote/src/bin/
 - Run dev (web app + backend with ports auto-assigned): `pnpm run dev`
 - Backend (watch): `pnpm run backend:dev:watch`
 - Web app (dev): `pnpm run local-web:dev`
-- Type checks: `pnpm run check` (workspace) and `pnpm run backend:check` (Rust cargo check)
+- Type checks: `pnpm run check` (frontend + all backend Rust workspaces) and `pnpm run backend:check` (all backend Rust workspaces, including `crates/remote`)
 - Rust tests: `cargo test --workspace`
 - Generate TS types from Rust: `pnpm run generate-types` (or `generate-types:check` in CI)
 - Prepare SQLx (offline): `pnpm run prepare-db`
 - Prepare SQLx (remote package, postgres): `pnpm run remote:prepare-db`
 - Local NPX build: `pnpm run build:npx` then `pnpm pack` in `npx-cli/`
-- Format code: `pnpm run format` (runs `cargo fmt` + web-core/web Prettier)
-- Lint: `pnpm run lint` (runs web/ui ESLint + `cargo clippy`)
+- Format code: `pnpm run format` (runs `cargo fmt` for all backend Rust workspaces + web-core/web Prettier)
+- Lint: `pnpm run lint` (runs web/ui ESLint + `cargo clippy` for all backend Rust workspaces)
 
 ## Before Completing a Task
-- Run `pnpm run format` to format all Rust and web code.
+- Run `pnpm run format` to format all Rust workspaces and web code.
 
 ## Coding Style & Naming Conventions
 - Rust: `rustfmt` enforced (`rustfmt.toml`); group imports by crate; snake_case modules, PascalCase types.
@@ -54,5 +54,4 @@ Do not manually edit shared/remote-types.ts, instead edit crates/remote/src/bin/
 ## Security & Config Tips
 - Use `.env` for local overrides; never commit secrets. Key envs: `FRONTEND_PORT`, `BACKEND_PORT`, `HOST` 
 - Dev ports and assets are managed by `scripts/setup-dev-environment.js`.
-
 
