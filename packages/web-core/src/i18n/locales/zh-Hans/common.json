@@ -536,7 +536,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "看板",
+      "tooltip": "登录以查看项目",
       "title": "看板",
       "description": "登录以使用看板管理您的编码代理。",
       "migrateOldProjects": "迁移旧项目"
