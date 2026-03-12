@@ -184,10 +184,11 @@ function getHostButtonClassName({
     appBarItemBaseClassName,
     isOffline
       ? 'bg-primary text-low opacity-50 cursor-not-allowed'
-      : 'bg-primary text-normal cursor-pointer',
-    isActive && 'bg-brand/20 text-brand hover:bg-brand/20',
-    !isActive && host.status === 'online' && 'hover:bg-brand/10',
-    !isActive && host.status === 'unpaired' && 'text-warning hover:bg-warning/10'
+      : isActive
+        ? 'bg-brand/20 text-brand cursor-pointer hover:bg-brand/20'
+        : host.status === 'unpaired'
+          ? 'bg-primary text-warning cursor-pointer hover:bg-warning/10'
+          : 'bg-primary text-normal cursor-pointer hover:bg-brand/10'
   );
 }
 
