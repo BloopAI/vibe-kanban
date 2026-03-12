@@ -45,7 +45,6 @@ function getProjectInitials(name: string): string {
 interface AppBarProps {
   projects: AppBarProject[];
   hosts?: AppBarHost[];
-  projectsLabel?: string;
   onPairHostClick?: () => void;
   activeHostId?: string | null;
   onCreateProject: () => void;
@@ -195,7 +194,6 @@ function getHostButtonClassName({
 export function AppBar({
   projects,
   hosts = [],
-  projectsLabel = 'Projects',
   onPairHostClick,
   activeHostId = null,
   onCreateProject,
@@ -318,7 +316,7 @@ export function AppBar({
   if (projectSectionItems.length > 0) {
     sections.push({
       key: 'projects',
-      label: projectsLabel,
+      label: 'Projects',
       items: projectSectionItems,
     });
   }

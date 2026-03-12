@@ -356,7 +356,6 @@ export function SharedAppLayout() {
             starCount={starCount}
             onlineCount={onlineCount}
             appVersion={appVersion}
-            projectsLabel="Projects"
             githubIconPath={siGithub.path}
             discordIconPath={siDiscord.path}
           />
