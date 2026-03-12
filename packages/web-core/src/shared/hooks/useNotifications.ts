@@ -5,6 +5,7 @@ import {
   NOTIFICATION_MUTATION,
 } from 'shared/remote-types';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
+import { groupNotifications } from '@/shared/lib/notifications';
 
 export function useNotifications() {
   const { isSignedIn, userId } = useAuth();
@@ -22,10 +23,20 @@ export function useNotifications() {
     }
   );
 
-  const unseenCount = useMemo(
-    () => result.data.filter((n) => !n.seen).length,
+  const groupedNotifications = useMemo(
+    () => groupNotifications(result.data),
     [result.data]
   );
 
-  return { ...result, enabled, unseenCount };
+  const unseenCount = useMemo(
+    () => groupedNotifications.filter((group) => !group.seen).length,
+    [groupedNotifications]
+  );
+
+  return {
+    ...result,
+    enabled,
+    groupedNotifications,
+    unseenCount,
+  };
 }

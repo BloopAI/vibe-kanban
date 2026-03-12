@@ -7,11 +7,11 @@ use api_types::{
     CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee,
     IssueComment, IssueCommentReaction, IssueFollower, IssuePriority, IssueRelationship,
     IssueRelationshipType, IssueTag, ListRelayHostsResponse, MemberRole, Notification,
-    NotificationPayload, NotificationType, OrganizationMember, Project, ProjectStatus, PullRequest,
-    PullRequestStatus, RelayHost, RelaySession, RelaySessionAuthCodeResponse, Tag,
-    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
-    User, UserData, Workspace,
+    NotificationGroupKind, NotificationPayload, NotificationType, OrganizationMember, Project,
+    ProjectStatus, PullRequest, PullRequestStatus, RelayHost, RelaySession,
+    RelaySessionAuthCodeResponse, Tag, UpdateIssueCommentReactionRequest,
+    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
+    UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
 };
 use remote::{
     routes::{
@@ -74,6 +74,7 @@ fn export_shapes() -> String {
         serde_json::Value::decl(),
         Project::decl(),
         Notification::decl(),
+        NotificationGroupKind::decl(),
         NotificationPayload::decl(),
         NotificationType::decl(),
         Workspace::decl(),

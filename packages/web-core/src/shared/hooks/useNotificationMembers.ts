@@ -25,20 +25,20 @@ export function useNotificationMembers(notifications: Notification[]) {
     })),
   });
 
-  const members = useMemo(() => {
-    const membersByUserId = new Map<string, OrganizationMemberWithProfile>();
+  const membersByUserId = useMemo(() => {
+    const map = new Map<string, OrganizationMemberWithProfile>();
 
     for (const query of memberQueries) {
       for (const member of query.data ?? []) {
-        membersByUserId.set(member.user_id, member);
+        map.set(member.user_id, member);
       }
     }
 
-    return Array.from(membersByUserId.values());
+    return map;
   }, [memberQueries]);
 
   return {
-    data: members,
+    membersByUserId,
     isLoading: memberQueries.some((query) => query.isLoading),
     isFetching: memberQueries.some((query) => query.isFetching),
     isError: memberQueries.some((query) => query.isError),

@@ -1,33 +1,46 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from '@tanstack/react-router';
-import { BellIcon, ChecksIcon } from '@phosphor-icons/react';
-import type { Notification } from 'shared/remote-types';
-import type { OrganizationMemberWithProfile } from 'shared/types';
+import { BellIcon, CheckIcon, ChecksIcon } from '@phosphor-icons/react';
 import { UserAvatar } from '@vibe/ui/components/UserAvatar';
 import { useNotifications } from '@/shared/hooks/useNotifications';
 import { useNotificationMembers } from '@/shared/hooks/useNotificationMembers';
+import type { GroupedNotification } from '@/shared/lib/notifications';
 import {
-  getNotificationSegments,
-  getDeeplinkPath,
-  resolveMember,
+  getGroupedNotificationSegments,
   type MessageSegment,
-} from '@/shared/lib/notifications';
+} from '@/shared/lib/notificationMessage';
 import { formatRelativeTime } from '@/shared/lib/date';
 import { cn } from '@/shared/lib/utils';
 
 function NotificationMessage({
   segments,
-  members,
+  membersByUserId,
 }: {
   segments: MessageSegment[];
-  members: OrganizationMemberWithProfile[];
+  membersByUserId: ReturnType<typeof useNotificationMembers>['membersByUserId'];
 }) {
   return (
     <>
       {segments.map((seg, i) => {
         if (seg.type === 'text') return <span key={i}>{seg.value}</span>;
-        if (seg.type === 'bold') return <strong key={i}>{seg.value}</strong>;
-        const member = resolveMember(seg.userId, members);
+        if (seg.type === 'emphasis') {
+          return (
+            <span key={i} className="font-medium text-high">
+              {seg.value}
+            </span>
+          );
+        }
+        if (seg.type === 'issue') {
+          return (
+            <span
+              key={i}
+              className="font-ibm-plex-mono text-high text-[0.95em]"
+            >
+              {seg.value}
+            </span>
+          );
+        }
+        const member = membersByUserId.get(seg.userId);
         if (member) {
           return (
             <UserAvatar
@@ -45,28 +58,35 @@ function NotificationMessage({
 
 export function NotificationsPage() {
   const router = useRouter();
-  const { data, update, updateMany, enabled, unseenCount } = useNotifications();
-  const { data: members = [] } = useNotificationMembers(data);
-  const sorted = useMemo(
-    () =>
-      [...data].sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      ),
-    [data]
+  const { data, updateMany, enabled, unseenCount, groupedNotifications } =
+    useNotifications();
+  const { membersByUserId } = useNotificationMembers(data);
+
+  const markGroupSeen = useCallback(
+    (group: GroupedNotification) => {
+      if (group.unseenNotificationIds.length === 0) {
+        return;
+      }
+
+      updateMany(
+        group.unseenNotificationIds.map((notificationId) => ({
+          id: notificationId,
+          changes: { seen: true },
+        }))
+      );
+    },
+    [updateMany]
   );
 
   const handleClick = useCallback(
-    (n: Notification) => {
-      if (!n.seen) {
-        update(n.id, { seen: true });
-      }
-      const path = getDeeplinkPath(n);
+    (group: GroupedNotification) => {
+      markGroupSeen(group);
+      const path = group.deeplinkPath;
       if (path) {
         router.navigate({ to: path as '/' });
       }
     },
-    [update, router]
+    [markGroupSeen, router]
   );
 
   const handleMarkAllSeen = useCallback(() => {
@@ -100,47 +120,76 @@ export function NotificationsPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {sorted.length === 0 ? (
+        {groupedNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2 text-low">
             <BellIcon size={32} weight="light" />
             <p className="text-base">No notifications yet</p>
           </div>
         ) : (
           <div className="divide-y divide-border">
-            {sorted.map((n) => (
-              <button
-                key={n.id}
-                type="button"
-                onClick={() => handleClick(n)}
+            {groupedNotifications.map((group) => (
+              <div
+                key={group.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleClick(group)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handleClick(group);
+                  }
+                }}
                 className={cn(
-                  'w-full flex items-start gap-base px-double py-base text-left transition-colors cursor-pointer',
+                  'w-full flex items-center gap-base px-double py-base text-left transition-colors cursor-pointer outline-none',
                   'hover:bg-secondary',
-                  !n.seen && 'bg-brand/5'
+                  'focus-visible:bg-secondary',
+                  'focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-brand',
+                  !group.seen && 'bg-brand/5'
                 )}
               >
                 <span
                   className={cn(
-                    'mt-1.5 shrink-0 w-2 h-2 rounded-full',
-                    !n.seen && 'bg-brand'
+                    'shrink-0 w-2 h-2 rounded-full',
+                    !group.seen && 'bg-brand'
                   )}
                 />
                 <div className="flex-1 min-w-0">
                   <p
                     className={cn(
                       'text-base truncate',
-                      n.seen ? 'text-normal' : 'text-high font-medium'
+                      group.seen ? 'text-normal' : 'text-high'
                     )}
                   >
                     <NotificationMessage
-                      segments={getNotificationSegments(n)}
-                      members={members}
+                      segments={getGroupedNotificationSegments(group)}
+                      membersByUserId={membersByUserId}
                     />
                   </p>
                   <p className="text-sm text-low mt-0.5">
-                    {formatRelativeTime(n.created_at)}
+                    {formatRelativeTime(group.latest.created_at)}
                   </p>
                 </div>
-              </button>
+                {!group.seen && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      markGroupSeen(group);
+                    }}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    className={cn(
+                      'shrink-0 inline-flex items-center gap-half rounded-sm px-half py-half text-sm text-low transition-colors cursor-pointer',
+                      'hover:bg-secondary hover:text-normal',
+                      'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-brand'
+                    )}
+                    aria-label="Mark notification as read"
+                    title="Mark as read"
+                  >
+                    <CheckIcon size={14} weight="bold" />
+                    <span className="hidden sm:inline">Mark as read</span>
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}

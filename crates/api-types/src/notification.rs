@@ -21,6 +21,17 @@ pub enum NotificationType {
     IssueDescriptionChanged,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum NotificationGroupKind {
+    Single,
+    IssueChanges,
+    StatusChanges,
+    Comments,
+    Reactions,
+    IssueDeleted,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct Notification {
     pub id: Uuid,
@@ -39,6 +50,10 @@ pub struct Notification {
 pub struct NotificationPayload {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub deeplink_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issue_id: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub issue_simple_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub issue_title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

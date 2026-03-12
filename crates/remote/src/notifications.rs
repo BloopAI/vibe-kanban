@@ -184,6 +184,8 @@ fn build_payload(
 
     NotificationPayload {
         deeplink_path: Some(deeplink_path),
+        issue_id: Some(issue.id),
+        issue_simple_id: Some(issue.simple_id.clone()),
         issue_title: Some(issue.title.clone()),
         actor_user_id: Some(actor_user_id),
         comment_preview: extra_payload.comment_preview,
