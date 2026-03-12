@@ -212,7 +212,7 @@ export function AppBar({
                 );
               })}
               {onPairHostClick && (
-                <Tooltip content="Pair host" side="right">
+                <Tooltip content="Pair a remote device" side="right">
                   <button
                     type="button"
                     onClick={onPairHostClick}
@@ -222,7 +222,7 @@ export function AppBar({
                       'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                       'bg-primary text-muted hover:text-normal hover:bg-tertiary'
                     )}
-                    aria-label="Pair host"
+                    aria-label="Pair a remote device"
                   >
                     <LinkIcon size={20} />
                   </button>
