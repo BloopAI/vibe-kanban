@@ -13,6 +13,10 @@
     "layout": {
       "nav": {
         "title": "Settings",
+        "machineSettings": "Machine Settings",
+        "accountSettings": "Account Settings",
+        "pairOtherMachines": "Pair other machines",
+        "selectHost": "Select host",
         "general": "General",
         "generalDesc": "Theme, notifications, and preferences",
         "projects": "Projects",

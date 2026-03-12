@@ -94,7 +94,7 @@ function SettingsDialogNavigation({
       <div className="space-y-2">
         <div className="px-3 pt-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            Machine Settings
+            {t('settings.layout.nav.machineSettings')}
           </div>
         </div>
         <div className="px-2">
@@ -103,13 +103,13 @@ function SettingsDialogNavigation({
             options={hostOptions}
             actions={[
               {
-                label: 'Pair other machines',
+                label: t('settings.layout.nav.pairOtherMachines'),
                 icon: PlusIcon,
                 onClick: handlePairOtherMachines,
               },
             ]}
             onChange={setSelectedHostId}
-            placeholder="Select host"
+            placeholder={t('settings.layout.nav.selectHost')}
           />
         </div>
         <div className="flex flex-col gap-1">
@@ -119,7 +119,7 @@ function SettingsDialogNavigation({
       <div className="space-y-2">
         <div className="px-3 pt-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            Account Settings
+            {t('settings.layout.nav.accountSettings')}
           </div>
         </div>
         <div className="flex flex-col gap-1">
@@ -149,8 +149,12 @@ function SettingsDialogContent({
       return initialSection;
     }
 
+    if (hostsResolved && availableHosts.length === 0) {
+      return 'organizations';
+    }
+
     return 'general';
-  }, [initialSection]);
+  }, [availableHosts.length, hostsResolved, initialSection]);
 
   const [activeSection, setActiveSection] = useState<SettingsSectionType>(
     resolvedInitialSection
@@ -312,6 +316,10 @@ function SettingsDialogContent({
                       initialState={initialState}
                     />
                   </SettingsMachineUserSystemProvider>
+                ) : !hostsResolved || availableHosts.length > 0 ? (
+                  <div className="px-6 py-8 text-sm text-low">
+                    {t('settings.general.loading')}
+                  </div>
                 ) : (
                   <div className="px-6 py-8 text-sm text-low">
                     No host is available for host-specific settings yet.

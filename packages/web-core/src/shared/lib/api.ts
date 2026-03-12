@@ -155,6 +155,18 @@ const makeScopedRequest = async (
   });
 };
 
+const makeHostAwareRequest = async (
+  url: string,
+  hostId: string | null | undefined,
+  options: RequestInit = {}
+) => {
+  if (hostId === undefined) {
+    return makeRequest(url, options);
+  }
+
+  return makeScopedRequest(url, hostId, options);
+};
+
 export type Ok<T> = { success: true; data: T };
 export type Err<E> = { success: false; error: E | undefined; message?: string };
 
@@ -802,8 +814,8 @@ export const fileSystemApi = {
 
 // Repo APIs
 export const repoApi = {
-  list: async (hostId: string | null = null): Promise<Repo[]> => {
-    const response = await makeScopedRequest('/api/repos', hostId);
+  list: async (hostId?: string | null): Promise<Repo[]> => {
+    const response = await makeHostAwareRequest('/api/repos', hostId);
     return handleApiResponse<Repo[]>(response);
   },
 
@@ -812,33 +824,35 @@ export const repoApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
-  getById: async (
-    repoId: string,
-    hostId: string | null = null
-  ): Promise<Repo> => {
-    const response = await makeScopedRequest(`/api/repos/${repoId}`, hostId);
+  getById: async (repoId: string, hostId?: string | null): Promise<Repo> => {
+    const response = await makeHostAwareRequest(`/api/repos/${repoId}`, hostId);
     return handleApiResponse<Repo>(response);
   },
 
   update: async (
     repoId: string,
     data: UpdateRepo,
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<Repo> => {
-    const response = await makeScopedRequest(`/api/repos/${repoId}`, hostId, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    const response = await makeHostAwareRequest(
+      `/api/repos/${repoId}`,
+      hostId,
+      {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }
+    );
     return handleApiResponse<Repo>(response);
   },
 
-  delete: async (
-    repoId: string,
-    hostId: string | null = null
-  ): Promise<void> => {
-    const response = await makeScopedRequest(`/api/repos/${repoId}`, hostId, {
-      method: 'DELETE',
-    });
+  delete: async (repoId: string, hostId?: string | null): Promise<void> => {
+    const response = await makeHostAwareRequest(
+      `/api/repos/${repoId}`,
+      hostId,
+      {
+        method: 'DELETE',
+      }
+    );
     return handleApiResponse<void>(response);
   },
 
@@ -847,9 +861,9 @@ export const repoApi = {
       path: string;
       display_name?: string;
     },
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<Repo> => {
-    const response = await makeScopedRequest('/api/repos', hostId, {
+    const response = await makeHostAwareRequest('/api/repos', hostId, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -858,9 +872,9 @@ export const repoApi = {
 
   getBranches: async (
     repoId: string,
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<GitBranch[]> => {
-    const response = await makeScopedRequest(
+    const response = await makeHostAwareRequest(
       `/api/repos/${repoId}/branches`,
       hostId
     );
@@ -872,9 +886,9 @@ export const repoApi = {
       parent_path: string;
       folder_name: string;
     },
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<Repo> => {
-    const response = await makeScopedRequest('/api/repos/init', hostId, {
+    const response = await makeHostAwareRequest('/api/repos/init', hostId, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -933,17 +947,17 @@ export const repoApi = {
 
 // Config APIs (backwards compatible)
 export const configApi = {
-  getConfig: async (hostId: string | null = null): Promise<UserSystemInfo> => {
-    const response = await makeScopedRequest('/api/info', hostId, {
+  getConfig: async (hostId?: string | null): Promise<UserSystemInfo> => {
+    const response = await makeHostAwareRequest('/api/info', hostId, {
       cache: 'no-store',
     });
     return handleApiResponse<UserSystemInfo>(response);
   },
   saveConfig: async (
     config: Config,
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<Config> => {
-    const response = await makeScopedRequest('/api/config', hostId, {
+    const response = await makeHostAwareRequest('/api/config', hostId, {
       method: 'PUT',
       body: JSON.stringify(config),
     });
@@ -1005,10 +1019,10 @@ export const tagsApi = {
 export const mcpServersApi = {
   load: async (
     query: McpServerQuery,
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<GetMcpServerResponse> => {
     const params = new URLSearchParams(query);
-    const response = await makeScopedRequest(
+    const response = await makeHostAwareRequest(
       `/api/mcp-config?${params.toString()}`,
       hostId
     );
@@ -1017,11 +1031,11 @@ export const mcpServersApi = {
   save: async (
     query: McpServerQuery,
     data: UpdateMcpServersBody,
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<void> => {
     const params = new URLSearchParams(query);
     // params.set('profile', profile);
-    const response = await makeScopedRequest(
+    const response = await makeHostAwareRequest(
       `/api/mcp-config?${params.toString()}`,
       hostId,
       {
@@ -1049,16 +1063,13 @@ export const mcpServersApi = {
 // Profiles API
 export const profilesApi = {
   load: async (
-    hostId: string | null = null
+    hostId?: string | null
   ): Promise<{ content: string; path: string }> => {
-    const response = await makeScopedRequest('/api/profiles', hostId);
+    const response = await makeHostAwareRequest('/api/profiles', hostId);
     return handleApiResponse<{ content: string; path: string }>(response);
   },
-  save: async (
-    content: string,
-    hostId: string | null = null
-  ): Promise<string> => {
-    const response = await makeScopedRequest('/api/profiles', hostId, {
+  save: async (content: string, hostId?: string | null): Promise<string> => {
+    const response = await makeHostAwareRequest('/api/profiles', hostId, {
       method: 'PUT',
       body: content,
       headers: {
