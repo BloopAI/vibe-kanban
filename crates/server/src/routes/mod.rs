@@ -20,6 +20,7 @@ pub mod images;
 pub mod migration;
 pub mod oauth;
 pub mod organizations;
+pub mod preview;
 pub mod relay_auth;
 pub mod releases;
 pub mod remote;
@@ -48,7 +49,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(search::router(&deployment))
-        .merge(preview_proxy::api_router())
+        .merge(preview::api_router())
         .merge(releases::router())
         .merge(migration::router())
         .merge(sessions::router(&deployment))

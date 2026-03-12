@@ -8,9 +8,8 @@
 //! is forwarded to `localhost:{port}/path`.
 
 use axum::{
-    Router,
     body::Body,
-    extract::{Extension, FromRequestParts, Request, State, ws::WebSocketUpgrade},
+    extract::{FromRequestParts, Request, ws::WebSocketUpgrade},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
@@ -27,15 +26,15 @@ use crate::proxy_common::{
 mod api;
 mod proxy_common;
 
-pub use api::api_router;
+pub use api::proxy_api_request;
 
 #[derive(Clone)]
-pub(crate) struct PreviewProxyShared {
+pub struct PreviewProxyService {
     http_client: Client,
 }
 
-impl PreviewProxyShared {
-    fn new() -> Self {
+impl PreviewProxyService {
+    pub fn new() -> Self {
         let http_client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
@@ -43,7 +42,7 @@ impl PreviewProxyShared {
         Self { http_client }
     }
 
-    pub(crate) fn http_client(&self) -> &Client {
+    pub fn http_client(&self) -> &Client {
         &self.http_client
     }
 }
@@ -60,12 +59,6 @@ fn env_flag_enabled(name: &str) -> bool {
 struct PreviewTarget {
     port: u16,
     relay_host_id: Option<Uuid>,
-}
-
-#[derive(Clone, Copy, Debug)]
-struct PreviewProxyRuntime {
-    backend_port: u16,
-    proxy_port: u16,
 }
 
 /// Headers that should be stripped from the proxied response.
@@ -375,9 +368,10 @@ fn extract_target_from_host(headers: &HeaderMap) -> Option<PreviewTarget> {
     })
 }
 
-async fn subdomain_proxy(
-    State(runtime): State<PreviewProxyRuntime>,
-    Extension(shared): Extension<PreviewProxyShared>,
+pub async fn proxy_subdomain_request(
+    service: &PreviewProxyService,
+    backend_port: u16,
+    proxy_port: u16,
     request: Request,
 ) -> Response {
     let target = match extract_target_from_host(request.headers()) {
@@ -389,19 +383,11 @@ async fn subdomain_proxy(
 
     let path = normalized_proxy_path(request.uri().path()).to_string();
 
-    proxy_impl(
-        shared,
-        runtime.backend_port,
-        runtime.proxy_port,
-        target,
-        path,
-        request,
-    )
-    .await
+    proxy_impl(service, backend_port, proxy_port, target, path, request).await
 }
 
 async fn proxy_impl(
-    shared: PreviewProxyShared,
+    service: &PreviewProxyService,
     backend_port: u16,
     proxy_port: u16,
     target: PreviewTarget,
@@ -450,11 +436,11 @@ async fn proxy_impl(
     }
 
     let request = Request::from_parts(parts, body);
-    http_proxy_handler(shared, backend_port, proxy_port, target, path_str, request).await
+    http_proxy_handler(service, backend_port, proxy_port, target, path_str, request).await
 }
 
 async fn http_proxy_handler(
-    shared: PreviewProxyShared,
+    service: &PreviewProxyService,
     backend_port: u16,
     proxy_port: u16,
     target: PreviewTarget,
@@ -500,7 +486,7 @@ async fn http_proxy_handler(
         build_local_upstream_url("http", target.port, normalized_path, query_string)
     };
 
-    let client = shared.http_client();
+    let client = service.http_client();
 
     let mut req_builder = client.request(
         reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
@@ -857,18 +843,6 @@ async fn handle_ws_proxy(
     }
 
     Ok(())
-}
-
-pub fn subdomain_router(backend_port: u16, proxy_port: u16) -> Router {
-    let runtime = PreviewProxyRuntime {
-        backend_port,
-        proxy_port,
-    };
-
-    Router::new()
-        .fallback(subdomain_proxy)
-        .with_state(runtime)
-        .layer(Extension(PreviewProxyShared::new()))
 }
 
 #[derive(Debug, Clone, PartialEq)]
