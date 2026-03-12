@@ -155,7 +155,7 @@ export function AppBar({
               <AppBarSectionLabel>Local</AppBarSectionLabel>
               <AppBarButton
                 icon={LayoutIcon}
-                label="Workspaces"
+                label="Local workspaces"
                 isActive={isWorkspacesActive}
                 onClick={onWorkspacesClick}
               />
