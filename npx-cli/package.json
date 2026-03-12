@@ -15,7 +15,8 @@
   "license": "",
   "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
   "dependencies": {
-    "adm-zip": "^0.5.16"
+    "adm-zip": "^0.5.16",
+    "https-proxy-agent": "^7.0.6"
   },
   "files": [
     "bin",
