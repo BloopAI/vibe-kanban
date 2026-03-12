@@ -7,12 +7,10 @@
 //! Host header subdomain. A request to `{port}.localhost:{proxy_port}/path`
 //! is forwarded to `localhost:{port}/path`.
 
-use std::sync::OnceLock;
-
 use axum::{
     Router,
     body::Body,
-    extract::{FromRequestParts, Request, ws::WebSocketUpgrade},
+    extract::{Extension, FromRequestParts, Request, ws::WebSocketUpgrade},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
@@ -31,22 +29,44 @@ mod proxy_common;
 
 pub use api::api_router;
 
-/// Global storage for the preview proxy port once assigned.
-/// Set once during server startup, read by the config API.
-static PROXY_PORT: OnceLock<u16> = OnceLock::new();
-static BACKEND_PORT: OnceLock<u16> = OnceLock::new();
+#[derive(Clone)]
+pub struct PreviewProxyRuntime {
+    proxy_port: u16,
+    backend_port: u16,
+    http_client: Client,
+}
 
-/// Shared HTTP client for proxying requests.
-/// Reused across all requests to leverage connection pooling per upstream host:port.
-static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
-/// Get or initialize the shared HTTP client.
-fn http_client() -> &'static Client {
-    HTTP_CLIENT.get_or_init(|| {
-        Client::builder()
+impl PreviewProxyRuntime {
+    pub fn new(proxy_port: u16, backend_port: u16) -> Self {
+        let http_client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
-            .expect("failed to build proxy HTTP client")
-    })
+            .expect("failed to build preview proxy HTTP client");
+        Self {
+            proxy_port,
+            backend_port,
+            http_client,
+        }
+    }
+
+    pub(crate) fn proxy_port(&self) -> u16 {
+        self.proxy_port
+    }
+
+    pub(crate) fn backend_port(&self) -> u16 {
+        self.backend_port
+    }
+
+    pub(crate) fn http_client(&self) -> &Client {
+        &self.http_client
+    }
+}
+
+fn with_runtime_layer<S>(router: Router<S>, runtime: PreviewProxyRuntime) -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
+    router.layer(Extension(runtime))
 }
 
 fn env_flag_enabled(name: &str) -> bool {
@@ -57,28 +77,6 @@ fn env_flag_enabled(name: &str) -> bool {
             || value.eq_ignore_ascii_case("on")
     })
 }
-/// Get the preview proxy port if set.
-pub fn get_proxy_port() -> Option<u16> {
-    PROXY_PORT.get().copied()
-}
-
-/// Set the preview proxy port. Can only be called once.
-/// Returns the port if successfully set, or None if already set.
-pub fn set_proxy_port(port: u16) -> Option<u16> {
-    PROXY_PORT.set(port).ok().map(|()| port)
-}
-
-/// Get the local backend server port if set.
-pub fn get_backend_port() -> Option<u16> {
-    BACKEND_PORT.get().copied()
-}
-
-/// Set the local backend server port. Can only be called once.
-/// Returns the port if successfully set, or None if already set.
-pub fn set_backend_port(port: u16) -> Option<u16> {
-    BACKEND_PORT.set(port).ok().map(|()| port)
-}
-
 #[derive(Clone, Copy, Debug)]
 struct PreviewTarget {
     port: u16,
@@ -227,13 +225,14 @@ fn preview_api_target_path(target_port: u16, path: &str, query: &str) -> String 
 }
 
 fn relay_preview_target_url(
+    runtime: &PreviewProxyRuntime,
     host_id: Uuid,
     target_port: u16,
     normalized_path: &str,
     query_string: &str,
     scheme: &str,
 ) -> Option<String> {
-    let backend_port = get_backend_port()?;
+    let backend_port = runtime.backend_port();
     let relay_path = preview_api_target_path(target_port, normalized_path, query_string);
 
     Some(format!(
@@ -392,7 +391,10 @@ fn extract_target_from_host(headers: &HeaderMap) -> Option<PreviewTarget> {
     })
 }
 
-async fn subdomain_proxy(request: Request) -> Response {
+async fn subdomain_proxy(
+    Extension(runtime): Extension<PreviewProxyRuntime>,
+    request: Request,
+) -> Response {
     let target = match extract_target_from_host(request.headers()) {
         Some(port) => port,
         None => {
@@ -402,10 +404,15 @@ async fn subdomain_proxy(request: Request) -> Response {
 
     let path = normalized_proxy_path(request.uri().path()).to_string();
 
-    proxy_impl(target, path, request).await
+    proxy_impl(runtime, target, path, request).await
 }
 
-async fn proxy_impl(target: PreviewTarget, path_str: String, request: Request) -> Response {
+async fn proxy_impl(
+    runtime: PreviewProxyRuntime,
+    target: PreviewTarget,
+    path_str: String,
+    request: Request,
+) -> Response {
     let (mut parts, body) = request.into_parts();
 
     // Extract query string and subprotocols before WebSocket upgrade.
@@ -431,9 +438,15 @@ async fn proxy_impl(target: PreviewTarget, path_str: String, request: Request) -
 
         return ws
             .on_upgrade(move |client_socket| async move {
-                if let Err(e) =
-                    handle_ws_proxy(client_socket, target, path_str, query_string, ws_protocols)
-                        .await
+                if let Err(e) = handle_ws_proxy(
+                    runtime,
+                    client_socket,
+                    target,
+                    path_str,
+                    query_string,
+                    ws_protocols,
+                )
+                .await
                 {
                     tracing::warn!("WebSocket proxy closed: {}", e);
                 }
@@ -442,10 +455,15 @@ async fn proxy_impl(target: PreviewTarget, path_str: String, request: Request) -
     }
 
     let request = Request::from_parts(parts, body);
-    http_proxy_handler(target, path_str, request).await
+    http_proxy_handler(runtime, target, path_str, request).await
 }
 
-async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Request) -> Response {
+async fn http_proxy_handler(
+    runtime: PreviewProxyRuntime,
+    target: PreviewTarget,
+    path_str: String,
+    request: Request,
+) -> Response {
     let (parts, body) = request.into_parts();
     let method = parts.method;
     let headers = parts.headers;
@@ -465,9 +483,14 @@ async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Re
         }
     };
     let target_url = if let Some(host_id) = target.relay_host_id {
-        let Some(url) =
-            relay_preview_target_url(host_id, target.port, normalized_path, query_string, "http")
-        else {
+        let Some(url) = relay_preview_target_url(
+            &runtime,
+            host_id,
+            target.port,
+            normalized_path,
+            query_string,
+            "http",
+        ) else {
             return (
                 StatusCode::BAD_REQUEST,
                 "Local backend port is not available",
@@ -480,7 +503,7 @@ async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Re
         build_local_upstream_url("http", target.port, normalized_path, query_string)
     };
 
-    let client = http_client();
+    let client = runtime.http_client();
 
     let mut req_builder = client.request(
         reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
@@ -536,7 +559,7 @@ async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Re
     rewrite_redirect_like_headers(
         &mut response_headers,
         target.port,
-        get_proxy_port(),
+        Some(runtime.proxy_port()),
         target.relay_host_id,
     );
 
@@ -642,17 +665,13 @@ async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Re
                     || redirect_info.url.starts_with("https://")
                 {
                     // Absolute URL — rewrite to maintain proxy isolation
-                    if let Some(proxy_port) = get_proxy_port() {
-                        rewrite_redirect_like_header_value(
-                            &redirect_info.url,
-                            target.port,
-                            proxy_port,
-                            target.relay_host_id,
-                        )
-                        .unwrap_or_else(|| redirect_info.url.clone())
-                    } else {
-                        redirect_info.url.clone()
-                    }
+                    rewrite_redirect_like_header_value(
+                        &redirect_info.url,
+                        target.port,
+                        runtime.proxy_port(),
+                        target.relay_host_id,
+                    )
+                    .unwrap_or_else(|| redirect_info.url.clone())
                 } else {
                     // Relative URL — use as-is (browser resolves against proxy origin)
                     redirect_info.url.clone()
@@ -714,6 +733,7 @@ async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Re
 }
 
 async fn handle_ws_proxy(
+    runtime: PreviewProxyRuntime,
     client_socket: axum::extract::ws::WebSocket,
     target: PreviewTarget,
     path: String,
@@ -723,7 +743,7 @@ async fn handle_ws_proxy(
     let normalized_path = normalized_proxy_path(&path);
     let query = query_string.as_deref().unwrap_or_default();
     let ws_url = if let Some(host_id) = target.relay_host_id {
-        relay_preview_target_url(host_id, target.port, normalized_path, query, "ws")
+        relay_preview_target_url(&runtime, host_id, target.port, normalized_path, query, "ws")
             .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
     } else {
         build_local_upstream_url("ws", target.port, normalized_path, query)
@@ -835,8 +855,8 @@ async fn handle_ws_proxy(
     Ok(())
 }
 
-pub fn subdomain_router() -> Router {
-    Router::new().fallback(subdomain_proxy)
+pub fn subdomain_router(runtime: PreviewProxyRuntime) -> Router {
+    with_runtime_layer(Router::new().fallback(subdomain_proxy), runtime)
 }
 
 #[derive(Debug, Clone, PartialEq)]

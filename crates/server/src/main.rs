@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use preview_proxy::subdomain_router;
+use preview_proxy::{PreviewProxyRuntime, subdomain_router};
 use server::{DeploymentImpl, routes, runtime::relay_registration};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
@@ -116,8 +116,6 @@ async fn main() -> Result<(), VibeKanbanError> {
     let proxy_listener = tokio::net::TcpListener::bind(format!("{host}:{proxy_port}")).await?;
     let actual_proxy_port = proxy_listener.local_addr()?.port();
 
-    preview_proxy::set_proxy_port(actual_proxy_port);
-
     if let Err(e) = write_port_file_with_proxy(actual_main_port, Some(actual_proxy_port)).await {
         tracing::warn!("Failed to write port file: {}", e);
     }
@@ -138,10 +136,13 @@ async fn main() -> Result<(), VibeKanbanError> {
         .client_info()
         .set_hostname(host.clone())
         .expect("client hostname already set");
+    deployment
+        .client_info()
+        .set_preview_proxy_port(actual_proxy_port)
+        .expect("client preview proxy port already set");
 
-    preview_proxy::set_backend_port(actual_main_port);
-
-    let app_router = routes::router(deployment.clone());
+    let preview_runtime = PreviewProxyRuntime::new(actual_proxy_port, actual_main_port);
+    let app_router = routes::router(deployment.clone(), preview_runtime.clone());
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
@@ -160,7 +161,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = subdomain_router().layer(
+    let proxy_router: Router = subdomain_router(preview_runtime).layer(
         tower_http::validate_request::ValidateRequestHeaderLayer::custom(
             server::middleware::validate_origin,
         ),

@@ -130,7 +130,7 @@ async fn get_user_system_info(
             caps
         },
         shared_api_base: deployment.remote_info().get_api_base(),
-        preview_proxy_port: preview_proxy::get_proxy_port(),
+        preview_proxy_port: deployment.client_info().get_preview_proxy_port(),
     };
 
     ResponseJson(ApiResponse::success(user_system_info))

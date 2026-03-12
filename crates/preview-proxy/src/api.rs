@@ -1,10 +1,8 @@
-use std::sync::OnceLock;
-
 use axum::{
     Router,
     body::{Body, to_bytes},
     extract::{
-        Path, Request,
+        Extension, Path, Request,
         ws::{Message, WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
     },
     http::StatusCode,
@@ -12,25 +10,15 @@ use axum::{
     routing::any,
 };
 use futures_util::{SinkExt, StreamExt};
-use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 
-use crate::proxy_common::{
-    build_local_upstream_url, extract_ws_protocols, should_forward_request_header,
+use crate::{
+    PreviewProxyRuntime,
+    proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
+    with_runtime_layer,
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
-
-static HTTP_CLIENT: OnceLock<Client> = OnceLock::new();
-
-fn http_client() -> &'static Client {
-    HTTP_CLIENT.get_or_init(|| {
-        Client::builder()
-            .redirect(reqwest::redirect::Policy::none())
-            .build()
-            .expect("failed to build preview route HTTP client")
-    })
-}
 
 fn is_hop_by_hop_header(name: &str) -> bool {
     name.eq_ignore_ascii_case("connection")
@@ -43,32 +31,38 @@ fn is_hop_by_hop_header(name: &str) -> bool {
         || name.eq_ignore_ascii_case("upgrade")
 }
 
-pub fn api_router<S>() -> Router<S>
+pub fn api_router<S>(runtime: PreviewProxyRuntime) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    Router::new()
-        .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
-        .route("/preview/{target_port}/{*tail}", any(proxy_preview_request))
+    with_runtime_layer(
+        Router::new()
+            .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
+            .route("/preview/{target_port}/{*tail}", any(proxy_preview_request)),
+        runtime,
+    )
 }
 
 async fn proxy_preview_request_no_tail(
     Path(target_port): Path<u16>,
+    Extension(runtime): Extension<PreviewProxyRuntime>,
     ws_upgrade: MaybeWsUpgrade,
     request: Request,
 ) -> Response {
-    proxy_preview_request_impl(target_port, String::new(), ws_upgrade, request).await
+    proxy_preview_request_impl(runtime, target_port, String::new(), ws_upgrade, request).await
 }
 
 async fn proxy_preview_request(
     Path((target_port, tail)): Path<(u16, String)>,
+    Extension(runtime): Extension<PreviewProxyRuntime>,
     ws_upgrade: MaybeWsUpgrade,
     request: Request,
 ) -> Response {
-    proxy_preview_request_impl(target_port, tail, ws_upgrade, request).await
+    proxy_preview_request_impl(runtime, target_port, tail, ws_upgrade, request).await
 }
 
 async fn proxy_preview_request_impl(
+    runtime: PreviewProxyRuntime,
     target_port: u16,
     tail: String,
     ws_upgrade: MaybeWsUpgrade,
@@ -76,18 +70,23 @@ async fn proxy_preview_request_impl(
 ) -> Response {
     match ws_upgrade {
         Ok(ws_upgrade) => forward_ws(target_port, tail, request, ws_upgrade).await,
-        Err(_) => forward_http(target_port, tail, request).await,
+        Err(_) => forward_http(runtime, target_port, tail, request).await,
     }
 }
 
-async fn forward_http(target_port: u16, tail: String, request: Request) -> Response {
+async fn forward_http(
+    runtime: PreviewProxyRuntime,
+    target_port: u16,
+    tail: String,
+    request: Request,
+) -> Response {
     let (parts, body) = request.into_parts();
     let method = parts.method;
     let headers = parts.headers;
     let query = parts.uri.query().unwrap_or_default();
     let target_url = build_local_upstream_url("http", target_port, &tail, query);
 
-    let client = http_client();
+    let client = runtime.http_client();
     let mut req_builder = client.request(
         reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
         &target_url,

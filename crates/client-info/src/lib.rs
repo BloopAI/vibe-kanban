@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 pub struct ClientInfo {
     port: OnceLock<u16>,
     hostname: OnceLock<String>,
+    preview_proxy_port: OnceLock<u16>,
 }
 
 impl Default for ClientInfo {
@@ -18,6 +19,7 @@ impl ClientInfo {
         Self {
             port: OnceLock::new(),
             hostname: OnceLock::new(),
+            preview_proxy_port: OnceLock::new(),
         }
     }
 
@@ -39,6 +41,16 @@ impl ClientInfo {
 
     pub fn get_hostname(&self) -> Option<String> {
         self.hostname.get().cloned()
+    }
+
+    pub fn set_preview_proxy_port(&self, port: u16) -> Result<(), String> {
+        self.preview_proxy_port
+            .set(port)
+            .map_err(|_| "preview proxy port already set".to_string())
+    }
+
+    pub fn get_preview_proxy_port(&self) -> Option<u16> {
+        self.preview_proxy_port.get().copied()
     }
 }
 
@@ -92,5 +104,29 @@ mod tests {
             Err("hostname already set".to_string())
         );
         assert_eq!(client_info.get_hostname().as_deref(), Some("127.0.0.1"));
+    }
+
+    #[test]
+    fn stores_preview_proxy_port() {
+        let client_info = ClientInfo::new();
+
+        assert_eq!(client_info.get_preview_proxy_port(), None);
+
+        client_info.set_preview_proxy_port(3009).unwrap();
+
+        assert_eq!(client_info.get_preview_proxy_port(), Some(3009));
+    }
+
+    #[test]
+    fn rejects_resetting_preview_proxy_port() {
+        let client_info = ClientInfo::new();
+
+        client_info.set_preview_proxy_port(3009).unwrap();
+
+        assert_eq!(
+            client_info.set_preview_proxy_port(3010),
+            Err("preview proxy port already set".to_string())
+        );
+        assert_eq!(client_info.get_preview_proxy_port(), Some(3009));
     }
 }

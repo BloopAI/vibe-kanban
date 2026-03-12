@@ -32,7 +32,10 @@ pub mod tags;
 pub mod terminal;
 pub mod workspaces;
 
-pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+pub fn router(
+    deployment: DeploymentImpl,
+    preview_runtime: preview_proxy::PreviewProxyRuntime,
+) -> IntoMakeService<Router> {
     let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
@@ -48,7 +51,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(approvals::router())
         .merge(scratch::router(&deployment))
         .merge(search::router(&deployment))
-        .merge(preview_proxy::api_router())
+        .merge(preview_proxy::api_router(preview_runtime.clone()))
         .merge(releases::router())
         .merge(migration::router())
         .merge(sessions::router(&deployment))
