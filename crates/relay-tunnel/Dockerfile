@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.6
 
-FROM rust:1.93-slim-bookworm AS builder
+FROM rust:1.93-slim-bookworm AS rust-base
 
 ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 ENV CARGO_TARGET_DIR=/app/target
@@ -13,9 +13,11 @@ WORKDIR /app
 
 COPY rust-toolchain.toml ./
 RUN cargo --version >/dev/null
+RUN --mount=type=cache,id=cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,sharing=locked,target=/usr/local/cargo/git \
+    cargo install cargo-chef --locked
 COPY Cargo.toml Cargo.lock ./
-# Copy workspace member manifests so Cargo can resolve workspace-shared deps
-# without invalidating the build on every unrelated source change.
+# Copy workspace member manifests so Cargo can resolve workspace-shared deps.
 COPY crates/server/Cargo.toml crates/server/Cargo.toml
 COPY crates/trusted-key-auth/Cargo.toml crates/trusted-key-auth/Cargo.toml
 COPY crates/mcp/Cargo.toml crates/mcp/Cargo.toml
@@ -35,11 +37,27 @@ COPY crates/review/Cargo.toml crates/review/Cargo.toml
 COPY crates/api-types crates/api-types
 COPY crates/relay-tunnel crates/relay-tunnel
 
+FROM rust-base AS planner
+
+RUN cargo chef prepare --recipe-path recipe.json --bin relay-server --features server
+
+FROM rust-base AS cacher
+
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN --mount=type=cache,id=cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,sharing=locked,target=/usr/local/cargo/git \
+    --mount=type=cache,id=relay-target,sharing=locked,target=/app/target \
+    cargo chef cook --locked --release --recipe-path recipe.json \
+      --bin relay-server --features server
+
+FROM rust-base AS builder
+
 RUN mkdir -p /app/bin
 
-RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
-    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
-    --mount=type=cache,id=relay-target,target=/app/target \
+RUN --mount=type=cache,id=cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,sharing=locked,target=/usr/local/cargo/git \
+    --mount=type=cache,id=relay-target,sharing=locked,target=/app/target \
     cargo build --locked --release --manifest-path crates/relay-tunnel/Cargo.toml --features server \
  && cp /app/target/release/relay-server /app/bin/relay-server
 

@@ -32,7 +32,7 @@ COPY shared/ shared/
 
 RUN pnpm -C packages/remote-web build
 
-FROM rust:1.93-slim-bookworm AS builder
+FROM rust:1.93-slim-bookworm AS rust-base
 ARG APP_NAME
 ARG FEATURES
 ARG POSTHOG_API_KEY=""
@@ -58,9 +58,11 @@ WORKDIR /app
 
 COPY rust-toolchain.toml ./
 RUN cargo --version >/dev/null
+RUN --mount=type=cache,id=cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,sharing=locked,target=/usr/local/cargo/git \
+    cargo install cargo-chef --locked
 COPY Cargo.toml Cargo.lock ./
-# Copy workspace member manifests so Cargo can resolve workspace-shared deps
-# without invalidating the build on every unrelated source change.
+# Copy workspace member manifests so Cargo can resolve workspace-shared deps.
 COPY crates/server/Cargo.toml crates/server/Cargo.toml
 COPY crates/trusted-key-auth/Cargo.toml crates/trusted-key-auth/Cargo.toml
 COPY crates/mcp/Cargo.toml crates/mcp/Cargo.toml
@@ -81,6 +83,31 @@ COPY crates/remote crates/remote
 COPY crates/utils crates/utils
 COPY assets assets
 
+FROM rust-base AS planner
+
+# Match the real build graph before generating the cargo-chef recipe.
+RUN if [ -z "${FEATURES}" ]; then \
+      sed -i '/^billing = {.*vibe-kanban-private.*/d' crates/remote/Cargo.toml; \
+      sed -i '/^# private crate for billing/d' crates/remote/Cargo.toml; \
+      sed -i 's/^vk-billing = \["dep:billing"\]/vk-billing = []/' crates/remote/Cargo.toml; \
+      rm -f crates/remote/Cargo.lock; \
+    fi
+
+RUN cargo chef prepare --recipe-path recipe.json --bin ${APP_NAME} ${FEATURES:+--features ${FEATURES}}
+
+FROM rust-base AS cacher
+
+COPY --from=planner /app/recipe.json recipe.json
+
+RUN --mount=type=cache,id=cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,sharing=locked,target=/usr/local/cargo/git \
+    --mount=type=cache,id=remote-target,sharing=locked,target=/app/target \
+    --mount=type=ssh \
+    cargo chef cook ${FEATURES:+--locked} --release --recipe-path recipe.json \
+      --bin ${APP_NAME} ${FEATURES:+--features ${FEATURES}}
+
+FROM rust-base AS builder
+
 RUN mkdir -p /app/bin
 
 # When building without FEATURES (self-hosted), strip the private billing dependency
@@ -93,9 +120,9 @@ RUN if [ -z "${FEATURES}" ]; then \
       rm -f crates/remote/Cargo.lock; \
     fi
 
-RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
-    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
-    --mount=type=cache,id=remote-target,target=/app/target \
+RUN --mount=type=cache,id=cargo-registry,sharing=locked,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,sharing=locked,target=/usr/local/cargo/git \
+    --mount=type=cache,id=remote-target,sharing=locked,target=/app/target \
     --mount=type=ssh \
     cargo build ${FEATURES:+--locked} --release --manifest-path crates/remote/Cargo.toml ${FEATURES:+--features ${FEATURES}} \
  && cp /app/target/release/${APP_NAME} /app/bin/${APP_NAME}
