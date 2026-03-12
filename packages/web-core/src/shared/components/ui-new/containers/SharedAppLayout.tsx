@@ -326,7 +326,6 @@ export function SharedAppLayout() {
           <AppBar
             projects={orderedProjects}
             hosts={remoteCloudHosts}
-            hostsLabel="HOSTS"
             activeHostId={routeHostId ?? null}
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
@@ -354,6 +353,7 @@ export function SharedAppLayout() {
             starCount={starCount}
             onlineCount={onlineCount}
             appVersion={appVersion}
+            projectsLabel="Projects"
             githubIconPath={siGithub.path}
             discordIconPath={siDiscord.path}
           />

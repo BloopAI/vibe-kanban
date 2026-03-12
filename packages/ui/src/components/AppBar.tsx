@@ -45,7 +45,6 @@ function getProjectInitials(name: string): string {
 interface AppBarProps {
   projects: AppBarProject[];
   hosts?: AppBarHost[];
-  hostsLabel?: string;
   projectsLabel?: string;
   onPairHostClick?: () => void;
   activeHostId?: string | null;
@@ -98,11 +97,18 @@ function getHostStatusIndicatorClass(status: AppBarHostStatus): string {
   return 'bg-white border-warning';
 }
 
+function AppBarSectionLabel({ children }: { children: ReactNode }) {
+  return (
+    <p className="w-10 text-center text-[9px] font-medium leading-none tracking-wide text-low">
+      {children}
+    </p>
+  );
+}
+
 export function AppBar({
   projects,
   hosts = [],
-  hostsLabel,
-  projectsLabel,
+  projectsLabel = 'Projects',
   onPairHostClick,
   activeHostId = null,
   onCreateProject,
@@ -128,8 +134,9 @@ export function AppBar({
   discordIconPath,
 }: AppBarProps) {
   const { t } = useTranslation('common');
-  const showHostsSection =
-    showWorkspacesButton || hosts.length > 0 || !!onPairHostClick;
+  const showLocalSection = showWorkspacesButton;
+  const showRemoteSection = hosts.length > 0 || !!onPairHostClick;
+  const showProjectsLabel = projects.length > 0;
 
   return (
     <div
@@ -140,89 +147,92 @@ export function AppBar({
         'bg-secondary border-r border-border'
       )}
     >
-      {showHostsSection && (
-        <div className="flex flex-col items-center gap-1">
-          {hostsLabel && (
-            <p className="w-10 text-center text-[9px] font-medium uppercase leading-none tracking-wide text-low">
-              {hostsLabel}
-            </p>
+      {(showLocalSection || showRemoteSection) && (
+        <div className="flex flex-col items-center gap-base">
+          {showLocalSection && (
+            <div className="flex flex-col items-center gap-1">
+              <AppBarSectionLabel>Local</AppBarSectionLabel>
+              <AppBarButton
+                icon={LayoutIcon}
+                label="Workspaces"
+                isActive={isWorkspacesActive}
+                onClick={onWorkspacesClick}
+              />
+            </div>
           )}
-          {showWorkspacesButton && (
-            <AppBarButton
-              icon={LayoutIcon}
-              label="Workspaces"
-              isActive={isWorkspacesActive}
-              onClick={onWorkspacesClick}
-            />
-          )}
-          {hosts.map((host) => {
-            const isOffline = host.status === 'offline';
-            const isActiveHost = host.id === activeHostId;
-            return (
-              <Tooltip
-                key={host.id}
-                content={`${host.name} · ${getHostStatusLabel(host.status)}`}
-                side="right"
-              >
-                <div className="relative">
-                  <span
-                    className={cn(
-                      'absolute -top-1 -right-1 z-10',
-                      'w-3.5 h-3.5 rounded-full border border-secondary',
-                      getHostStatusIndicatorClass(host.status)
-                    )}
-                    aria-hidden="true"
-                  />
+          {showRemoteSection && (
+            <div className="flex flex-col items-center gap-1">
+              <AppBarSectionLabel>Remote</AppBarSectionLabel>
+              {hosts.map((host) => {
+                const isOffline = host.status === 'offline';
+                const isActiveHost = host.id === activeHostId;
+                return (
+                  <Tooltip
+                    key={host.id}
+                    content={`${host.name} · ${getHostStatusLabel(host.status)}`}
+                    side="right"
+                  >
+                    <div className="relative">
+                      <span
+                        className={cn(
+                          'absolute -top-1 -right-1 z-10',
+                          'w-3.5 h-3.5 rounded-full border border-secondary',
+                          getHostStatusIndicatorClass(host.status)
+                        )}
+                        aria-hidden="true"
+                      />
+                      <button
+                        type="button"
+                        disabled={isOffline}
+                        onClick={() => {
+                          if (isOffline) {
+                            return;
+                          }
+                          onHostClick?.(host.id, host.status);
+                        }}
+                        className={cn(
+                          'relative flex items-center justify-center w-10 h-10 rounded-lg',
+                          'text-sm font-medium transition-colors',
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                          isOffline
+                            ? 'bg-primary text-low opacity-50 cursor-not-allowed'
+                            : 'bg-primary text-normal cursor-pointer',
+                          isActiveHost && 'ring-2 ring-brand',
+                          host.status === 'online' && 'hover:bg-brand/10',
+                          host.status === 'unpaired' &&
+                            'text-warning hover:bg-warning/10'
+                        )}
+                        aria-label={`${host.name} (${getHostStatusLabel(host.status)})`}
+                      >
+                        {getProjectInitials(host.name)}
+                      </button>
+                    </div>
+                  </Tooltip>
+                );
+              })}
+              {onPairHostClick && (
+                <Tooltip content="Pair host" side="right">
                   <button
                     type="button"
-                    disabled={isOffline}
-                    onClick={() => {
-                      if (isOffline) {
-                        return;
-                      }
-                      onHostClick?.(host.id, host.status);
-                    }}
+                    onClick={onPairHostClick}
                     className={cn(
-                      'relative flex items-center justify-center w-10 h-10 rounded-lg',
-                      'text-sm font-medium transition-colors',
+                      'flex items-center justify-center w-10 h-10 rounded-lg',
+                      'text-sm font-medium transition-colors cursor-pointer',
                       'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                      isOffline
-                        ? 'bg-primary text-low opacity-50 cursor-not-allowed'
-                        : 'bg-primary text-normal cursor-pointer',
-                      isActiveHost && 'ring-2 ring-brand',
-                      host.status === 'online' && 'hover:bg-brand/10',
-                      host.status === 'unpaired' &&
-                        'text-warning hover:bg-warning/10'
+                      'bg-primary text-muted hover:text-normal hover:bg-tertiary'
                     )}
-                    aria-label={`${host.name} (${getHostStatusLabel(host.status)})`}
+                    aria-label="Pair host"
                   >
-                    {getProjectInitials(host.name)}
+                    <LinkIcon size={20} />
                   </button>
-                </div>
-              </Tooltip>
-            );
-          })}
-          {onPairHostClick && (
-            <Tooltip content="Pair host" side="right">
-              <button
-                type="button"
-                onClick={onPairHostClick}
-                className={cn(
-                  'flex items-center justify-center w-10 h-10 rounded-lg',
-                  'text-sm font-medium transition-colors cursor-pointer',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                  'bg-primary text-muted hover:text-normal hover:bg-tertiary'
-                )}
-                aria-label="Pair host"
-              >
-                <LinkIcon size={20} />
-              </button>
-            </Tooltip>
+                </Tooltip>
+              )}
+            </div>
           )}
         </div>
       )}
 
-      {(hosts.length > 0 || onPairHostClick) && (
+      {(showLocalSection || showRemoteSection) && showProjectsLabel && (
         <div className="w-8 h-px bg-border" aria-hidden="true" />
       )}
 
@@ -290,74 +300,74 @@ export function AppBar({
       )}
 
       {/* Middle section: Project buttons */}
-      {projectsLabel && (
-        <p className="w-10 text-center text-[9px] font-medium uppercase leading-none tracking-wide text-low">
-          {projectsLabel}
-        </p>
-      )}
-      <DragDropContext onDragEnd={onProjectsDragEnd}>
-        <Droppable
-          droppableId="app-bar-projects"
-          direction="vertical"
-          isDropDisabled={isSavingProjectOrder}
-        >
-          {(dropProvided) => (
-            <div
-              ref={dropProvided.innerRef}
-              {...dropProvided.droppableProps}
-              className="flex flex-col items-center -mb-base"
+      {showProjectsLabel && (
+        <div className="flex flex-col items-center gap-1">
+          <AppBarSectionLabel>{projectsLabel}</AppBarSectionLabel>
+          <DragDropContext onDragEnd={onProjectsDragEnd}>
+            <Droppable
+              droppableId="app-bar-projects"
+              direction="vertical"
+              isDropDisabled={isSavingProjectOrder}
             >
-              {projects.map((project, index) => (
-                <Draggable
-                  key={project.id}
-                  draggableId={project.id}
-                  index={index}
-                  disableInteractiveElementBlocking
-                  isDragDisabled={isSavingProjectOrder}
+              {(dropProvided) => (
+                <div
+                  ref={dropProvided.innerRef}
+                  {...dropProvided.droppableProps}
+                  className="flex flex-col items-center -mb-base"
                 >
-                  {(dragProvided, snapshot) => (
-                    <div
-                      ref={dragProvided.innerRef}
-                      {...dragProvided.draggableProps}
-                      {...dragProvided.dragHandleProps}
-                      className="mb-base"
-                      style={dragProvided.draggableProps.style}
+                  {projects.map((project, index) => (
+                    <Draggable
+                      key={project.id}
+                      draggableId={project.id}
+                      index={index}
+                      disableInteractiveElementBlocking
+                      isDragDisabled={isSavingProjectOrder}
                     >
-                      <Tooltip content={project.name} side="right">
-                        <button
-                          type="button"
-                          onClick={() => onProjectClick(project.id)}
-                          className={cn(
-                            'flex items-center justify-center w-10 h-10 rounded-lg',
-                            'text-sm font-medium transition-colors cursor-grab',
-                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                            snapshot.isDragging && 'shadow-lg',
-                            activeProjectId === project.id
-                              ? ''
-                              : 'bg-primary text-normal hover:opacity-80'
-                          )}
-                          style={
-                            activeProjectId === project.id
-                              ? {
-                                  color: `hsl(${project.color})`,
-                                  backgroundColor: `hsl(${project.color} / 0.2)`,
-                                }
-                              : undefined
-                          }
-                          aria-label={project.name}
+                      {(dragProvided, snapshot) => (
+                        <div
+                          ref={dragProvided.innerRef}
+                          {...dragProvided.draggableProps}
+                          {...dragProvided.dragHandleProps}
+                          className="mb-base"
+                          style={dragProvided.draggableProps.style}
                         >
-                          {getProjectInitials(project.name)}
-                        </button>
-                      </Tooltip>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {dropProvided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+                          <Tooltip content={project.name} side="right">
+                            <button
+                              type="button"
+                              onClick={() => onProjectClick(project.id)}
+                              className={cn(
+                                'flex items-center justify-center w-10 h-10 rounded-lg',
+                                'text-sm font-medium transition-colors cursor-grab',
+                                'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                snapshot.isDragging && 'shadow-lg',
+                                activeProjectId === project.id
+                                  ? ''
+                                  : 'bg-primary text-normal hover:opacity-80'
+                              )}
+                              style={
+                                activeProjectId === project.id
+                                  ? {
+                                      color: `hsl(${project.color})`,
+                                      backgroundColor: `hsl(${project.color} / 0.2)`,
+                                    }
+                                  : undefined
+                              }
+                              aria-label={project.name}
+                            >
+                              {getProjectInitials(project.name)}
+                            </button>
+                          </Tooltip>
+                        </div>
+                      )}
+                    </Draggable>
+                  ))}
+                  {dropProvided.placeholder}
+                </div>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </div>
+      )}
 
       {/* Create project button */}
       {isSignedIn && (
