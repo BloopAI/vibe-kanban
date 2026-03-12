@@ -53,12 +53,15 @@ export function WorkspacesMain({
         <div className="flex-1 flex items-center justify-center">
           <p className="text-low">{t('common:workspaces.selectToStart')}</p>
         </div>
-      ) : showLoadingOverlay ? (
-        <div className="flex-1 flex items-center justify-center">
-          <SpinnerIcon className="size-6 animate-spin text-low" />
-        </div>
       ) : (
-        conversationContent
+        <>
+          {showLoadingOverlay && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary">
+              <SpinnerIcon className="size-6 animate-spin text-low" />
+            </div>
+          )}
+          {conversationContent}
+        </>
       )}
       {/* Scroll to bottom button */}
       {workspaceWithSession && !isAtBottom && (
