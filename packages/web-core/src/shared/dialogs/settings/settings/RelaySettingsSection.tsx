@@ -1,10 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import {
+  ArrowSquareOutIcon,
+  ArrowsLeftRightIcon,
+  BroadcastIcon,
   CheckIcon,
   CopyIcon,
+  DesktopTowerIcon,
   SignInIcon,
   SpinnerIcon,
 } from '@phosphor-icons/react';
@@ -22,7 +33,6 @@ import {
   useRemovePairedRelayHostMutation,
 } from '@/shared/dialogs/settings/settings/useRelayRemoteHostMutations';
 import {
-  SettingsCard,
   SettingsCheckbox,
   SettingsField,
   SettingsInput,
@@ -31,7 +41,7 @@ import {
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { PairingCodeInput } from './PairingCodeInput';
-import { RemoteCloudHostsSettingsCard } from './RemoteCloudHostsSettingsCard';
+import { RemoteCloudHostsSettingsCardContent } from './RemoteCloudHostsSettingsCard';
 
 interface PairedHostRow {
   id: string;
@@ -60,6 +70,184 @@ export function RelaySettingsSectionContent({
   }
 
   return <RemoteRelaySettingsSectionContent initialState={initialState} />;
+}
+
+function RemoteAccessOverview({ runtime }: { runtime: 'local' | 'remote' }) {
+  const { t } = useTranslation(['settings']);
+
+  return (
+    <div className="rounded-sm border border-border bg-gradient-to-br from-brand/10 via-panel to-secondary/50 p-5">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-2">
+          <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-brand">
+            <ArrowsLeftRightIcon className="size-icon-xs" weight="bold" />
+            <span>{t('settings.relay.title')}</span>
+          </div>
+          <div>
+            <h3 className="text-lg font-semibold text-high">
+              {t(
+                'settings.relay.overview.title',
+                'This device can participate in remote access in two roles'
+              )}
+            </h3>
+            <p className="mt-1 max-w-2xl text-sm text-low">
+              {runtime === 'local'
+                ? t(
+                    'settings.relay.overview.localDescription',
+                    'This device can accept remote access as a host and can also pair to other hosts as a client.'
+                  )
+                : t(
+                    'settings.relay.overview.remoteDescription',
+                    'From the web, this device acts as a client. You can pair to hosts and reconnect to them here.'
+                  )}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-2 md:min-w-[280px]">
+          <CapabilityBadge
+            icon={<DesktopTowerIcon className="size-icon-sm" weight="bold" />}
+            label={t('settings.relay.overview.hostRole', 'Act as host')}
+            description={
+              runtime === 'local'
+                ? t(
+                    'settings.relay.overview.hostRoleEnabled',
+                    'Other devices can pair to this device.'
+                  )
+                : t(
+                    'settings.relay.overview.hostRoleDisabled',
+                    'Host controls are only available on the local device.'
+                  )
+            }
+            active={runtime === 'local'}
+          />
+          <CapabilityBadge
+            icon={<ArrowSquareOutIcon className="size-icon-sm" weight="bold" />}
+            label={t('settings.relay.overview.clientRole', 'Act as client')}
+            description={t(
+              'settings.relay.overview.clientRoleDescription',
+              'This device can pair to other hosts using a one-time code.'
+            )}
+            active
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CapabilityBadge({
+  icon,
+  label,
+  description,
+  active,
+}: {
+  icon: ReactNode;
+  label: string;
+  description: string;
+  active: boolean;
+}) {
+  return (
+    <div
+      className={
+        active
+          ? 'rounded-sm border border-brand/30 bg-panel/90 px-3 py-2'
+          : 'rounded-sm border border-border bg-secondary/40 px-3 py-2'
+      }
+    >
+      <div className="flex items-center gap-2">
+        <div className={active ? 'text-brand' : 'text-low'}>{icon}</div>
+        <span className="text-sm font-medium text-high">{label}</span>
+        <span
+          className={
+            active
+              ? 'ml-auto rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success'
+              : 'ml-auto rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-low'
+          }
+        >
+          {active ? 'Available' : 'Unavailable'}
+        </span>
+      </div>
+      <p className="mt-1 text-sm text-low">{description}</p>
+    </div>
+  );
+}
+
+function RolePanel({
+  eyebrow,
+  title,
+  description,
+  icon,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  description: ReactNode;
+  icon: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-sm border border-border bg-panel/95 shadow-sm">
+      <div className="border-b border-border bg-secondary/35 px-5 py-4">
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5 rounded-sm bg-brand/10 p-2 text-brand">
+            {icon}
+          </div>
+          <div className="space-y-1">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
+              {eyebrow}
+            </div>
+            <h3 className="text-base font-semibold text-high">{title}</h3>
+            <p className="text-sm text-low">{description}</p>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-5 px-5 py-5">{children}</div>
+    </div>
+  );
+}
+
+function InlineNotice({
+  tone = 'info',
+  children,
+}: {
+  tone?: 'info' | 'error' | 'success';
+  children: ReactNode;
+}) {
+  const className =
+    tone === 'error'
+      ? 'bg-error/10 border-error/50 text-error'
+      : tone === 'success'
+        ? 'bg-success/10 border-success/50 text-success'
+        : 'bg-secondary/40 border-border text-low';
+
+  return (
+    <div className={`rounded-sm border p-3 text-sm ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function SignInPrompt() {
+  const { t } = useTranslation(['settings', 'common']);
+
+  return (
+    <div className="space-y-3">
+      <InlineNotice>
+        {t(
+          'settings.relay.signInRequired',
+          'Sign in to pair this device with other hosts and manage remote connections.'
+        )}
+      </InlineNotice>
+      <PrimaryButton
+        variant="secondary"
+        value={t('settings.remoteProjects.loginRequired.action', 'Sign in')}
+        onClick={() => void OAuthDialog.show({})}
+      >
+        <SignInIcon className="size-icon-xs mr-1" weight="bold" />
+      </PrimaryButton>
+    </div>
+  );
 }
 
 function LocalRelaySettingsSectionContent() {
@@ -203,7 +391,9 @@ function LocalRelaySettingsSectionContent() {
   }
 
   return (
-    <>
+    <div className="space-y-6">
+      <RemoteAccessOverview runtime="local" />
+
       {error && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
           {error}
@@ -216,11 +406,18 @@ function LocalRelaySettingsSectionContent() {
         </div>
       )}
 
-      <SettingsCard
-        title={t('settings.relay.title')}
+      <RolePanel
+        eyebrow={t('settings.relay.host.eyebrow', 'Act as host')}
+        title={t(
+          'settings.relay.host.title',
+          'Let other devices pair to this device'
+        )}
         description={
           <>
-            {t('settings.relay.description')}{' '}
+            {t(
+              'settings.relay.host.description',
+              'Use these controls when this device should accept incoming remote access.'
+            )}{' '}
             <a
               href={RELAY_REMOTE_CONTROL_DOCS_URL}
               target="_blank"
@@ -231,11 +428,22 @@ function LocalRelaySettingsSectionContent() {
             </a>
           </>
         }
+        icon={<BroadcastIcon className="size-icon-md" weight="bold" />}
       >
+        <InlineNotice>
+          {t(
+            'settings.relay.host.summary',
+            'Devices that pair here will see this device as a host.'
+          )}
+        </InlineNotice>
+
         <SettingsCheckbox
           id="relay-enabled"
           label={t('settings.relay.enabled.label')}
-          description={t('settings.relay.enabled.helper')}
+          description={t(
+            'settings.relay.host.enabled.helper',
+            'When enabled, this device can be paired to from the web or another device.'
+          )}
           checked={draft?.relay_enabled ?? true}
           onChange={(checked) => updateDraft({ relay_enabled: checked })}
         />
@@ -268,7 +476,10 @@ function LocalRelaySettingsSectionContent() {
                 {!enrollmentCode && (
                   <PrimaryButton
                     variant="secondary"
-                    value={t('settings.relay.enrollmentCode.show')}
+                    value={t(
+                      'settings.relay.host.enrollmentCode.show',
+                      'Show pairing code for this device'
+                    )}
                     onClick={handleShowEnrollmentCode}
                     disabled={enrollmentLoading}
                     actionIcon={enrollmentLoading ? 'spinner' : undefined}
@@ -282,7 +493,10 @@ function LocalRelaySettingsSectionContent() {
                 {enrollmentCode && (
                   <div className="space-y-1">
                     <label className="text-sm font-medium text-normal">
-                      {t('settings.relay.enrollmentCode.label')}
+                      {t(
+                        'settings.relay.host.enrollmentCode.label',
+                        'Pairing code for this device'
+                      )}
                     </label>
                     <div className="relative bg-secondary border border-border rounded-sm px-base py-half font-mono text-lg text-high tracking-widest select-all pr-10">
                       {enrollmentCode}
@@ -312,7 +526,10 @@ function LocalRelaySettingsSectionContent() {
                       </button>
                     </div>
                     <p className="text-sm text-low">
-                      {t('settings.relay.enrollmentCode.helper')}
+                      {t(
+                        'settings.relay.host.enrollmentCode.helper',
+                        'Enter this code on the client device that should connect here.'
+                      )}
                     </p>
                   </div>
                 )}
@@ -321,8 +538,8 @@ function LocalRelaySettingsSectionContent() {
                   <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-medium text-normal">
                       {t(
-                        'settings.relay.pairedClients.title',
-                        'Paired clients'
+                        'settings.relay.host.pairedClients.title',
+                        'Devices paired to this host'
                       )}
                     </h4>
                     <div className="flex items-center gap-2 text-xs text-low">
@@ -332,8 +549,8 @@ function LocalRelaySettingsSectionContent() {
                       />
                       <span>
                         {t(
-                          'settings.relay.pairedClients.checking',
-                          'Checking for new clients'
+                          'settings.relay.host.pairedClients.checking',
+                          'Checking for new client devices'
                         )}
                       </span>
                     </div>
@@ -347,8 +564,8 @@ function LocalRelaySettingsSectionContent() {
                       />
                       <span>
                         {t(
-                          'settings.relay.pairedClients.loading',
-                          'Loading paired clients...'
+                          'settings.relay.host.pairedClients.loading',
+                          'Loading paired client devices...'
                         )}
                       </span>
                     </div>
@@ -369,8 +586,8 @@ function LocalRelaySettingsSectionContent() {
                   {!pairedClientsLoading && pairedClients.length === 0 && (
                     <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
                       {t(
-                        'settings.relay.pairedClients.empty',
-                        'No paired clients found.'
+                        'settings.relay.host.pairedClients.empty',
+                        'No devices have paired to this host yet.'
                       )}
                     </div>
                   )}
@@ -394,7 +611,7 @@ function LocalRelaySettingsSectionContent() {
                           <PrimaryButton
                             variant="tertiary"
                             value={t(
-                              'settings.relay.pairedClients.remove',
+                              'settings.relay.host.pairedClients.remove',
                               'Remove'
                             )}
                             onClick={() =>
@@ -420,7 +637,10 @@ function LocalRelaySettingsSectionContent() {
             ) : (
               <div className="space-y-2">
                 <p className="text-sm text-low">
-                  {t('settings.relay.enrollmentCode.loginRequired')}
+                  {t(
+                    'settings.relay.host.enrollmentCode.loginRequired',
+                    'Sign in to generate a pairing code for this device.'
+                  )}
                 </p>
                 <PrimaryButton
                   variant="secondary"
@@ -436,9 +656,28 @@ function LocalRelaySettingsSectionContent() {
             )}
           </div>
         )}
-      </SettingsCard>
+      </RolePanel>
 
-      <RemoteCloudHostsSettingsCard />
+      <RolePanel
+        eyebrow={t('settings.relay.client.eyebrow', 'Act as client')}
+        title={t(
+          'settings.relay.client.panelTitle',
+          'Pair this device to another host'
+        )}
+        description={t(
+          'settings.relay.client.panelDescription',
+          'Use this when this device should connect outward to another host.'
+        )}
+        icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
+      >
+        <InlineNotice>
+          {t(
+            'settings.relay.client.summary',
+            'Hosts listed below are destinations that this device can connect to as a client.'
+          )}
+        </InlineNotice>
+        <RemoteCloudHostsSettingsCardContent embedded />
+      </RolePanel>
 
       <SettingsSaveBar
         show={hasUnsavedChanges}
@@ -446,7 +685,7 @@ function LocalRelaySettingsSectionContent() {
         onSave={handleSave}
         onDiscard={handleDiscard}
       />
-    </>
+    </div>
   );
 }
 
@@ -629,50 +868,41 @@ function RemoteRelaySettingsSectionContent({
 
   if (!isSignedIn) {
     return (
-      <SettingsCard
-        title={t('settings.relay.title')}
-        description={
-          <>
-            {t('settings.relay.description')}{' '}
-            <a
-              href={RELAY_REMOTE_CONTROL_DOCS_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand hover:underline"
-            >
-              {t('settings.relay.docsLink', 'Read docs')}
-            </a>
-          </>
-        }
-      >
-        <div className="space-y-2">
-          <p className="text-sm text-low">
-            {t(
-              'settings.relay.remote.loginRequired',
-              'Sign in to view and pair relay hosts.'
-            )}
-          </p>
-          <PrimaryButton
-            variant="secondary"
-            value={t('settings.remoteProjects.loginRequired.action', 'Sign in')}
-            onClick={() => void OAuthDialog.show({})}
-          >
-            <SignInIcon className="size-icon-xs mr-1" weight="bold" />
-          </PrimaryButton>
-        </div>
-      </SettingsCard>
+      <div className="space-y-6">
+        <RemoteAccessOverview runtime="remote" />
+        <RolePanel
+          eyebrow={t('settings.relay.client.eyebrow', 'Act as client')}
+          title={t(
+            'settings.relay.client.panelTitle',
+            'Pair this device to another host'
+          )}
+          description={t(
+            'settings.relay.client.remoteOnlyDescription',
+            'In remote web, this device can only pair to hosts. Host controls remain on the local device.'
+          )}
+          icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
+        >
+          <SignInPrompt />
+        </RolePanel>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4 pb-6">
-      <SettingsCard
-        title={t('settings.relay.title')}
+    <div className="space-y-6 pb-6">
+      <RemoteAccessOverview runtime="remote" />
+
+      <RolePanel
+        eyebrow={t('settings.relay.client.eyebrow', 'Act as client')}
+        title={t(
+          'settings.relay.client.panelTitle',
+          'Pair this device to another host'
+        )}
         description={
           <>
             {t(
-              'settings.relay.remote.description',
-              'Pair browser access to your relay hosts using a one-time code.'
+              'settings.relay.client.remoteOnlyDescription',
+              'In remote web, this device can only pair to hosts. Host controls remain on the local device.'
             )}{' '}
             <a
               href={RELAY_REMOTE_CONTROL_DOCS_URL}
@@ -684,19 +914,15 @@ function RemoteRelaySettingsSectionContent({
             </a>
           </>
         }
-        headerAction={
-          <PrimaryButton
-            variant="secondary"
-            value={t('settings.relay.remote.pair.button', 'Pair new host')}
-            onClick={() => {
-              setPairSuccess(null);
-              setPairError(null);
-              setShowPairForm((current) => !current);
-            }}
-            disabled={availableHostsToPair.length === 0 || isPairing}
-          />
-        }
+        icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
       >
+        <InlineNotice>
+          {t(
+            'settings.relay.client.summary',
+            'Hosts listed below are destinations that this device can connect to as a client.'
+          )}
+        </InlineNotice>
+
         {pairSuccess && (
           <div className="bg-success/10 border border-success/50 rounded-sm p-3 text-success text-sm">
             {pairSuccess}
@@ -709,11 +935,27 @@ function RemoteRelaySettingsSectionContent({
           </div>
         )}
 
+        <div className="flex flex-wrap items-center gap-2">
+          <PrimaryButton
+            variant="secondary"
+            value={t(
+              'settings.relay.client.pair.button',
+              'Pair this device to a host'
+            )}
+            onClick={() => {
+              setPairSuccess(null);
+              setPairError(null);
+              setShowPairForm((current) => !current);
+            }}
+            disabled={availableHostsToPair.length === 0 || isPairing}
+          />
+        </div>
+
         {showPairForm && (
           <div className="border border-border rounded-sm bg-secondary/40 p-4 space-y-4">
             <div className="space-y-1">
               <label className="text-sm font-medium text-normal">
-                {t('settings.relay.remote.pair.host.label', 'Host')}
+                {t('settings.relay.client.pair.host.label', 'Host to pair to')}
               </label>
               <SettingsSelect
                 value={selectedHostId}
@@ -738,8 +980,8 @@ function RemoteRelaySettingsSectionContent({
               />
               <p className="text-sm text-low">
                 {t(
-                  'settings.relay.remote.pair.code.helper',
-                  'Enter the 6-character code shown on the host settings page.'
+                  'settings.relay.client.pair.code.helper',
+                  'Enter the 6-character code shown on the host you want to connect to.'
                 )}
               </p>
             </div>
@@ -763,7 +1005,10 @@ function RemoteRelaySettingsSectionContent({
 
             <div className="flex items-center gap-2">
               <PrimaryButton
-                value={t('settings.relay.remote.pair.confirm', 'Pair host')}
+                value={t(
+                  'settings.relay.client.pair.confirm',
+                  'Pair this device'
+                )}
                 onClick={() => void handlePairHost()}
                 disabled={!canSubmitPairing}
                 actionIcon={isPairing ? 'spinner' : undefined}
@@ -779,6 +1024,26 @@ function RemoteRelaySettingsSectionContent({
         )}
 
         <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-normal">
+            <ArrowSquareOutIcon
+              className="size-icon-sm text-brand"
+              weight="bold"
+            />
+            <span>
+              {t(
+                'settings.relay.client.connectedHosts.title',
+                'Hosts this device can access'
+              )}
+            </span>
+          </div>
+
+          <p className="text-sm text-low">
+            {t(
+              'settings.relay.client.connectedHosts.description',
+              'These are hosts that this device is already paired to as a client.'
+            )}
+          </p>
+
           <h4 className="text-sm font-medium text-normal">
             {t('settings.relay.remote.pairedHosts.title', 'Paired hosts')}
           </h4>
@@ -805,8 +1070,8 @@ function RemoteRelaySettingsSectionContent({
             pairedHostRows.length === 0 && (
               <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
                 {t(
-                  'settings.relay.remote.pairedHosts.empty',
-                  'No hosts are paired yet.'
+                  'settings.relay.client.connectedHosts.empty',
+                  'This device is not paired to any hosts yet.'
                 )}
               </div>
             )}
@@ -860,7 +1125,7 @@ function RemoteRelaySettingsSectionContent({
               </div>
             )}
         </div>
-      </SettingsCard>
+      </RolePanel>
     </div>
   );
 }
