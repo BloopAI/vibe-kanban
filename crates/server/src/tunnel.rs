@@ -3,6 +3,8 @@
 //! App-specific concerns (login, host lifecycle) stay here. The transport and
 //! muxing implementation lives in the `relay-tunnel` crate.
 
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+
 use anyhow::Context as _;
 use deployment::Deployment as _;
 use relay_tunnel::client::{RelayClientConfig, start_relay_client};
@@ -36,6 +38,7 @@ fn relay_api_base() -> Option<String> {
 
 struct RelayParams {
     local_port: u16,
+    local_bind_ip: IpAddr,
     remote_client: RemoteClient,
     relay_base: String,
     machine_id: String,
@@ -73,6 +76,11 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
         None
     })?;
 
+    let local_bind_ip = deployment.server_info().get_bind_ip().await.or_else(|| {
+        tracing::warn!("Relay local bind IP not set; cannot spawn relay");
+        None
+    })?;
+
     let host_name = deployment.server_info().get_hostname().await.or_else(|| {
         tracing::warn!("Server hostname not set; cannot spawn relay");
         None
@@ -80,6 +88,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
 
     Some(RelayParams {
         local_port,
+        local_bind_ip,
         remote_client,
         relay_base,
         machine_id: deployment.user_id().to_string(),
@@ -157,12 +166,77 @@ async fn start_relay(
         .context("Failed to get access token for relay")?;
 
     tracing::info!(%ws_url, "Connecting relay control channel");
+    let local_addr = relay_local_addr(params.local_bind_ip, params.local_port);
 
     start_relay_client(RelayClientConfig {
         ws_url,
         bearer_token: access_token,
-        local_addr: format!("127.0.0.1:{}", params.local_port),
+        local_addr: local_addr.to_string(),
         shutdown,
     })
     .await
+}
+
+fn relay_local_addr(bind_ip: IpAddr, port: u16) -> SocketAddr {
+    SocketAddr::new(normalize_relay_bind_ip(bind_ip), port)
+}
+
+fn normalize_relay_bind_ip(bind_ip: IpAddr) -> IpAddr {
+    match bind_ip {
+        IpAddr::V4(ip) if ip.is_unspecified() => IpAddr::V4(Ipv4Addr::LOCALHOST),
+        IpAddr::V6(ip) if ip.is_unspecified() => IpAddr::V6(Ipv6Addr::LOCALHOST),
+        ip => ip,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+
+    use super::{normalize_relay_bind_ip, relay_local_addr};
+
+    #[test]
+    fn relay_local_addr_keeps_ipv4_loopback() {
+        let bind_ip = IpAddr::V4(Ipv4Addr::LOCALHOST);
+        let local_addr = relay_local_addr(bind_ip, 8080);
+
+        assert_eq!(local_addr, SocketAddr::new(bind_ip, 8080));
+    }
+
+    #[test]
+    fn relay_local_addr_keeps_ipv6_loopback() {
+        let bind_ip = IpAddr::V6(Ipv6Addr::LOCALHOST);
+        let local_addr = relay_local_addr(bind_ip, 8080);
+
+        assert_eq!(local_addr, SocketAddr::new(bind_ip, 8080));
+    }
+
+    #[test]
+    fn relay_local_addr_maps_unspecified_ipv4_to_loopback() {
+        let local_addr = relay_local_addr(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080);
+
+        assert_eq!(
+            local_addr,
+            SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 8080)
+        );
+    }
+
+    #[test]
+    fn relay_local_addr_maps_unspecified_ipv6_to_loopback() {
+        let local_addr = relay_local_addr(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 8080);
+
+        assert_eq!(
+            local_addr,
+            SocketAddr::new(IpAddr::V6(Ipv6Addr::LOCALHOST), 8080)
+        );
+    }
+
+    #[test]
+    fn normalize_relay_bind_ip_preserves_non_wildcard_addresses() {
+        let ipv4 = IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10));
+        let ipv6 = IpAddr::V6(Ipv6Addr::new(0xfd00, 0, 0, 0, 0, 0, 0, 1));
+
+        assert_eq!(normalize_relay_bind_ip(ipv4), ipv4);
+        assert_eq!(normalize_relay_bind_ip(ipv6), ipv6);
+    }
 }
