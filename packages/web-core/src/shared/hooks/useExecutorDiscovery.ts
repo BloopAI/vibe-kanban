@@ -50,7 +50,12 @@ function useExecutorDiscovery(
       initialData
     );
 
-  const combinedError = data?.options?.error ?? error;
+  // Prefer the backend-reported error from the data payload. Only fall back
+  // to the WebSocket transport error when no data has been received yet —
+  // transient connection failures (e.g. React StrictMode double-mount or
+  // Safari/macOS 26 WebSocket instability) should not persist once data
+  // has successfully loaded.
+  const combinedError = data?.options?.error ?? (isInitialized ? null : error);
 
   useEffect(() => {
     if (combinedError) {
