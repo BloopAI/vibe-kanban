@@ -163,8 +163,8 @@ function getStandardAppBarButtonClassName({
 }) {
   return cn(
     appBarItemBaseClassName,
-    'cursor-pointer',
-    isActive ? 'bg-brand/20 text-brand' : 'bg-primary text-normal hover:bg-brand/10',
+    'bg-primary text-normal cursor-pointer hover:bg-brand/10',
+    isActive && 'ring-2 ring-brand',
     className
   );
 }

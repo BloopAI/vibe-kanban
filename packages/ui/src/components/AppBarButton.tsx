@@ -26,11 +26,9 @@ export function AppBarButton({
       onClick={onClick}
       className={cn(
         'flex items-center justify-center w-10 h-10 rounded-lg',
-        'transition-colors cursor-pointer',
+        'transition-colors cursor-pointer bg-primary text-normal hover:bg-brand/10',
         'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-        isActive
-          ? 'bg-brand/20 text-brand'
-          : 'bg-primary text-normal hover:bg-brand/10',
+        isActive && 'ring-2 ring-brand',
         className
       )}
       aria-label={label}
