@@ -272,8 +272,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         <AppBar
           projects={projects}
           hosts={relayHosts}
-          hostsLabel="HOSTS"
-          projectsLabel="BOARDS"
           onPairHostClick={isSignedIn ? handlePairHostClick : undefined}
           activeHostId={activeHostId}
           onCreateProject={handleCreateProject}

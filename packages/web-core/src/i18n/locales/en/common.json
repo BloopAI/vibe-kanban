@@ -540,7 +540,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Sign in to view projects",
       "title": "Kanban Boards",
       "description": "Sign in to organise your coding agents with kanban boards.",
       "migrateOldProjects": "Migrate old projects"

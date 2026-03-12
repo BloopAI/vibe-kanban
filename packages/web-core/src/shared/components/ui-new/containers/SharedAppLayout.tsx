@@ -21,8 +21,9 @@ import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import {
+  getDestinationHostId,
   getProjectDestination,
-  isWorkspacesDestination,
+  isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
   CreateOrganizationDialog,
@@ -168,10 +169,12 @@ export function SharedAppLayout() {
     () => getProjectDestination(currentDestination),
     [currentDestination]
   );
-  const isWorkspacesActive = isWorkspacesDestination(currentDestination);
+  const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
+  const activeHostId =
+    getDestinationHostId(currentDestination) ?? routeHostId ?? null;
   const sidebarPreview = useWorkspaceSidebarPreviewController({
     enabled: isWorkspaceSidebarPreviewEnabled,
     isAppBarHovered,
@@ -326,8 +329,7 @@ export function SharedAppLayout() {
           <AppBar
             projects={orderedProjects}
             hosts={remoteCloudHosts}
-            hostsLabel="HOSTS"
-            activeHostId={routeHostId ?? null}
+            activeHostId={activeHostId}
             onCreateProject={handleCreateProject}
             onWorkspacesClick={handleWorkspacesClick}
             onHostClick={handleHostClick}

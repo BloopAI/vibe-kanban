@@ -165,6 +165,24 @@ export function isWorkspacesDestination(
   }
 }
 
+export function isLocalWorkspacesDestination(
+  destination: AppDestination | null
+): destination is WorkspaceDestination {
+  return (
+    isWorkspacesDestination(destination) &&
+    getDestinationHostId(destination) === null
+  );
+}
+
+export function isRemoteWorkspacesDestination(
+  destination: AppDestination | null
+): destination is WorkspaceDestination {
+  return (
+    isWorkspacesDestination(destination) &&
+    getDestinationHostId(destination) !== null
+  );
+}
+
 export function getProjectDestination(
   destination: AppDestination | null
 ): ProjectDestination | null {
