@@ -10,6 +10,7 @@ use executors::executors::ExecutorError;
 use futures::{StreamExt, TryStreamExt};
 use git::{GitService, GitServiceError};
 use git2::Error as Git2Error;
+use preview_proxy::PreviewProxyService;
 use relay_control::{RelayControl, signing::RelaySigningService};
 use relay_hosts::RelayHosts;
 use remote_info::RemoteInfo;
@@ -117,6 +118,8 @@ pub trait Deployment: Clone + Send + Sync + 'static {
     fn client_info(&self) -> &ClientInfo;
 
     fn remote_info(&self) -> &RemoteInfo;
+
+    fn preview_proxy(&self) -> &PreviewProxyService;
 
     fn tunnel_manager(&self) -> &Arc<TunnelManager>;
 

@@ -1765,6 +1765,7 @@ dependencies = [
  "futures",
  "git",
  "git2",
+ "preview-proxy",
  "relay-control",
  "relay-hosts",
  "remote-info",
@@ -4348,6 +4349,7 @@ dependencies = [
  "git",
  "globwalk",
  "portable-pty",
+ "preview-proxy",
  "relay-control",
  "relay-hosts",
  "relay-types",
@@ -5930,6 +5932,21 @@ checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
 dependencies = [
  "proc-macro2",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "preview-proxy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-util",
+ "reqwest 0.13.2",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tower-http 0.5.2",
+ "tracing",
+ "uuid",
 ]
 
 [[package]]
@@ -7601,6 +7618,7 @@ dependencies = [
  "local-deployment",
  "mime_guess",
  "os_info",
+ "preview-proxy",
  "rand 0.8.5",
  "regex",
  "relay-client",
