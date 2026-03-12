@@ -38,7 +38,8 @@
     "hostPicker": {
       "thisMachine": "This machine",
       "localHost": "Local host",
-      "remoteHost": "Remote host"
+      "remoteHost": "Remote host",
+      "noHostAvailable": "No host is available for host-specific settings yet."
     },
     "general": {
       "loading": "Loading settings...",

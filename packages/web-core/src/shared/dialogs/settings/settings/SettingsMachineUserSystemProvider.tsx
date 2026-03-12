@@ -9,15 +9,17 @@ export function SettingsMachineUserSystemProvider({
   children: ReactNode;
 }) {
   const machineClient = useSettingsMachineClient();
-  const queryKey = useMemo(
-    () =>
-      [
-        'user-system',
-        'settings-machine',
-        machineClient?.target.id ?? 'unselected',
-      ] as const,
-    [machineClient]
-  );
+  const queryKey = useMemo(() => {
+    if (machineClient?.target.kind === 'local') {
+      return ['user-system', 'local'] as const;
+    }
+
+    return [
+      'user-system',
+      'settings-machine',
+      machineClient?.target.id ?? 'unselected',
+    ] as const;
+  }, [machineClient]);
   const loadConfig = useCallback(() => {
     if (!machineClient) {
       throw new Error('Machine client is required');

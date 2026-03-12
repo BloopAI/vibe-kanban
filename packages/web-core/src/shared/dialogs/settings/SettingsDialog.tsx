@@ -322,7 +322,7 @@ function SettingsDialogContent({
                   </div>
                 ) : (
                   <div className="px-6 py-8 text-sm text-low">
-                    No host is available for host-specific settings yet.
+                    {t('settings.hostPicker.noHostAvailable')}
                   </div>
                 )
               ) : (
