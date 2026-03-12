@@ -146,7 +146,7 @@ export function RemoteCloudHostsSettingsCard() {
     try {
       await removeHost(hostId);
       if (hostId === routeHostId) {
-        void navigate({ to: '/workspaces' });
+        void navigate({ to: '/' });
       }
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : String(error));
