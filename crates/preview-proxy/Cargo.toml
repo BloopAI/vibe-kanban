@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 axum = { workspace = true }
 anyhow = { workspace = true }
+deployment = { path = "../deployment" }
 futures-util = "0.3"
 reqwest = { workspace = true }
 tokio = { workspace = true }

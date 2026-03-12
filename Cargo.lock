@@ -4657,6 +4657,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "deployment",
  "futures-util",
  "reqwest 0.13.2",
  "tokio",

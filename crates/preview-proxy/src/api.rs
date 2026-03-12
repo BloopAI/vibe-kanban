@@ -13,9 +13,9 @@ use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 
 use crate::{
-    PreviewProxyRuntime,
+    PreviewProxyShared,
     proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
-    with_runtime_layer,
+    with_shared_layer,
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
@@ -31,38 +31,37 @@ fn is_hop_by_hop_header(name: &str) -> bool {
         || name.eq_ignore_ascii_case("upgrade")
 }
 
-pub fn api_router<S>(runtime: PreviewProxyRuntime) -> Router<S>
+pub fn api_router<S>() -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    with_runtime_layer(
+    with_shared_layer(
         Router::new()
             .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
             .route("/preview/{target_port}/{*tail}", any(proxy_preview_request)),
-        runtime,
     )
 }
 
 async fn proxy_preview_request_no_tail(
     Path(target_port): Path<u16>,
-    Extension(runtime): Extension<PreviewProxyRuntime>,
+    Extension(shared): Extension<PreviewProxyShared>,
     ws_upgrade: MaybeWsUpgrade,
     request: Request,
 ) -> Response {
-    proxy_preview_request_impl(runtime, target_port, String::new(), ws_upgrade, request).await
+    proxy_preview_request_impl(shared, target_port, String::new(), ws_upgrade, request).await
 }
 
 async fn proxy_preview_request(
     Path((target_port, tail)): Path<(u16, String)>,
-    Extension(runtime): Extension<PreviewProxyRuntime>,
+    Extension(shared): Extension<PreviewProxyShared>,
     ws_upgrade: MaybeWsUpgrade,
     request: Request,
 ) -> Response {
-    proxy_preview_request_impl(runtime, target_port, tail, ws_upgrade, request).await
+    proxy_preview_request_impl(shared, target_port, tail, ws_upgrade, request).await
 }
 
 async fn proxy_preview_request_impl(
-    runtime: PreviewProxyRuntime,
+    shared: PreviewProxyShared,
     target_port: u16,
     tail: String,
     ws_upgrade: MaybeWsUpgrade,
@@ -70,12 +69,12 @@ async fn proxy_preview_request_impl(
 ) -> Response {
     match ws_upgrade {
         Ok(ws_upgrade) => forward_ws(target_port, tail, request, ws_upgrade).await,
-        Err(_) => forward_http(runtime, target_port, tail, request).await,
+        Err(_) => forward_http(shared, target_port, tail, request).await,
     }
 }
 
 async fn forward_http(
-    runtime: PreviewProxyRuntime,
+    shared: PreviewProxyShared,
     target_port: u16,
     tail: String,
     request: Request,
@@ -86,7 +85,7 @@ async fn forward_http(
     let query = parts.uri.query().unwrap_or_default();
     let target_url = build_local_upstream_url("http", target_port, &tail, query);
 
-    let client = runtime.http_client();
+    let client = shared.http_client();
     let mut req_builder = client.request(
         reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
         &target_url,

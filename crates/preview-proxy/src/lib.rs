@@ -10,10 +10,11 @@
 use axum::{
     Router,
     body::Body,
-    extract::{Extension, FromRequestParts, Request, ws::WebSocketUpgrade},
+    extract::{Extension, FromRequestParts, Request, State, ws::WebSocketUpgrade},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
+use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
@@ -30,31 +31,17 @@ mod proxy_common;
 pub use api::api_router;
 
 #[derive(Clone)]
-pub struct PreviewProxyRuntime {
-    proxy_port: u16,
-    backend_port: u16,
+pub(crate) struct PreviewProxyShared {
     http_client: Client,
 }
 
-impl PreviewProxyRuntime {
-    pub fn new(proxy_port: u16, backend_port: u16) -> Self {
+impl PreviewProxyShared {
+    fn new() -> Self {
         let http_client = Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .build()
             .expect("failed to build preview proxy HTTP client");
-        Self {
-            proxy_port,
-            backend_port,
-            http_client,
-        }
-    }
-
-    pub(crate) fn proxy_port(&self) -> u16 {
-        self.proxy_port
-    }
-
-    pub(crate) fn backend_port(&self) -> u16 {
-        self.backend_port
+        Self { http_client }
     }
 
     pub(crate) fn http_client(&self) -> &Client {
@@ -62,11 +49,11 @@ impl PreviewProxyRuntime {
     }
 }
 
-fn with_runtime_layer<S>(router: Router<S>, runtime: PreviewProxyRuntime) -> Router<S>
+pub(crate) fn with_shared_layer<S>(router: Router<S>) -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    router.layer(Extension(runtime))
+    router.layer(Extension(PreviewProxyShared::new()))
 }
 
 fn env_flag_enabled(name: &str) -> bool {
@@ -225,14 +212,13 @@ fn preview_api_target_path(target_port: u16, path: &str, query: &str) -> String 
 }
 
 fn relay_preview_target_url(
-    runtime: &PreviewProxyRuntime,
+    backend_port: u16,
     host_id: Uuid,
     target_port: u16,
     normalized_path: &str,
     query_string: &str,
     scheme: &str,
 ) -> Option<String> {
-    let backend_port = runtime.backend_port();
     let relay_path = preview_api_target_path(target_port, normalized_path, query_string);
 
     Some(format!(
@@ -391,10 +377,29 @@ fn extract_target_from_host(headers: &HeaderMap) -> Option<PreviewTarget> {
     })
 }
 
-async fn subdomain_proxy(
-    Extension(runtime): Extension<PreviewProxyRuntime>,
+async fn subdomain_proxy<D>(
+    State(deployment): State<D>,
+    Extension(shared): Extension<PreviewProxyShared>,
     request: Request,
-) -> Response {
+) -> Response
+where
+    D: Deployment,
+{
+    let Some(backend_port) = deployment.client_info().get_port() else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Local backend port is not available",
+        )
+            .into_response();
+    };
+    let Some(proxy_port) = deployment.client_info().get_preview_proxy_port() else {
+        return (
+            StatusCode::BAD_REQUEST,
+            "Preview proxy port is not available",
+        )
+            .into_response();
+    };
+
     let target = match extract_target_from_host(request.headers()) {
         Some(port) => port,
         None => {
@@ -404,11 +409,13 @@ async fn subdomain_proxy(
 
     let path = normalized_proxy_path(request.uri().path()).to_string();
 
-    proxy_impl(runtime, target, path, request).await
+    proxy_impl(shared, backend_port, proxy_port, target, path, request).await
 }
 
 async fn proxy_impl(
-    runtime: PreviewProxyRuntime,
+    shared: PreviewProxyShared,
+    backend_port: u16,
+    proxy_port: u16,
     target: PreviewTarget,
     path_str: String,
     request: Request,
@@ -439,7 +446,7 @@ async fn proxy_impl(
         return ws
             .on_upgrade(move |client_socket| async move {
                 if let Err(e) = handle_ws_proxy(
-                    runtime,
+                    backend_port,
                     client_socket,
                     target,
                     path_str,
@@ -455,11 +462,13 @@ async fn proxy_impl(
     }
 
     let request = Request::from_parts(parts, body);
-    http_proxy_handler(runtime, target, path_str, request).await
+    http_proxy_handler(shared, backend_port, proxy_port, target, path_str, request).await
 }
 
 async fn http_proxy_handler(
-    runtime: PreviewProxyRuntime,
+    shared: PreviewProxyShared,
+    backend_port: u16,
+    proxy_port: u16,
     target: PreviewTarget,
     path_str: String,
     request: Request,
@@ -484,7 +493,7 @@ async fn http_proxy_handler(
     };
     let target_url = if let Some(host_id) = target.relay_host_id {
         let Some(url) = relay_preview_target_url(
-            &runtime,
+            backend_port,
             host_id,
             target.port,
             normalized_path,
@@ -503,7 +512,7 @@ async fn http_proxy_handler(
         build_local_upstream_url("http", target.port, normalized_path, query_string)
     };
 
-    let client = runtime.http_client();
+    let client = shared.http_client();
 
     let mut req_builder = client.request(
         reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
@@ -559,7 +568,7 @@ async fn http_proxy_handler(
     rewrite_redirect_like_headers(
         &mut response_headers,
         target.port,
-        Some(runtime.proxy_port()),
+        Some(proxy_port),
         target.relay_host_id,
     );
 
@@ -668,7 +677,7 @@ async fn http_proxy_handler(
                     rewrite_redirect_like_header_value(
                         &redirect_info.url,
                         target.port,
-                        runtime.proxy_port(),
+                        proxy_port,
                         target.relay_host_id,
                     )
                     .unwrap_or_else(|| redirect_info.url.clone())
@@ -733,7 +742,7 @@ async fn http_proxy_handler(
 }
 
 async fn handle_ws_proxy(
-    runtime: PreviewProxyRuntime,
+    backend_port: u16,
     client_socket: axum::extract::ws::WebSocket,
     target: PreviewTarget,
     path: String,
@@ -743,8 +752,15 @@ async fn handle_ws_proxy(
     let normalized_path = normalized_proxy_path(&path);
     let query = query_string.as_deref().unwrap_or_default();
     let ws_url = if let Some(host_id) = target.relay_host_id {
-        relay_preview_target_url(&runtime, host_id, target.port, normalized_path, query, "ws")
-            .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
+        relay_preview_target_url(
+            backend_port,
+            host_id,
+            target.port,
+            normalized_path,
+            query,
+            "ws",
+        )
+        .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
     } else {
         build_local_upstream_url("ws", target.port, normalized_path, query)
     };
@@ -855,8 +871,11 @@ async fn handle_ws_proxy(
     Ok(())
 }
 
-pub fn subdomain_router(runtime: PreviewProxyRuntime) -> Router {
-    with_runtime_layer(Router::new().fallback(subdomain_proxy), runtime)
+pub fn subdomain_router<D>() -> Router<D>
+where
+    D: Deployment,
+{
+    with_shared_layer(Router::new().fallback(subdomain_proxy::<D>))
 }
 
 #[derive(Debug, Clone, PartialEq)]

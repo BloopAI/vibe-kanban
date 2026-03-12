@@ -1,7 +1,7 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use preview_proxy::{PreviewProxyRuntime, subdomain_router};
+use preview_proxy::subdomain_router;
 use server::{DeploymentImpl, routes, runtime::relay_registration};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
@@ -141,8 +141,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         .set_preview_proxy_port(actual_proxy_port)
         .expect("client preview proxy port already set");
 
-    let preview_runtime = PreviewProxyRuntime::new(actual_proxy_port, actual_main_port);
-    let app_router = routes::router(deployment.clone(), preview_runtime.clone());
+    let app_router = routes::router(deployment.clone());
 
     // Production only: open browser
     if !cfg!(debug_assertions) {
@@ -161,7 +160,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = subdomain_router(preview_runtime).layer(
+    let proxy_router: Router = subdomain_router().with_state(deployment.clone()).layer(
         tower_http::validate_request::ValidateRequestHeaderLayer::custom(
             server::middleware::validate_origin,
         ),
