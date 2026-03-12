@@ -1,6 +1,6 @@
 [package]
 name = "workspace-manager"
-version = "0.1.27-pthis.12"
+version = "0.1.27-pthis.13"
 edition = "2024"
 
 [dependencies]
