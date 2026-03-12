@@ -136,7 +136,8 @@ export function AppBar({
   const { t } = useTranslation('common');
   const showLocalSection = showWorkspacesButton;
   const showRemoteSection = hosts.length > 0 || !!onPairHostClick;
-  const showProjectsLabel = projects.length > 0;
+  const showProjectsSection =
+    !isSignedIn || !!isLoadingProjects || projects.length > 0;
 
   return (
     <div
@@ -232,140 +233,142 @@ export function AppBar({
         </div>
       )}
 
-      {(showLocalSection || showRemoteSection) && showProjectsLabel && (
+      {(showLocalSection || showRemoteSection) && showProjectsSection && (
         <div className="w-8 h-px bg-border" aria-hidden="true" />
       )}
 
-      {/* Project management popover for unsigned users */}
-      {!isSignedIn && (
-        <Popover>
-          <Tooltip content={t('appBar.kanban.tooltip')} side="right">
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  'flex items-center justify-center w-10 h-10 rounded-lg',
-                  'transition-colors cursor-pointer',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                  'bg-primary text-normal hover:bg-brand/10'
-                )}
-                aria-label={t('appBar.kanban.tooltip')}
-              >
-                <KanbanIcon className="size-icon-base" weight="bold" />
-              </button>
-            </PopoverTrigger>
-          </Tooltip>
-          <PopoverContent side="right" sideOffset={8}>
-            <p className="text-sm font-medium text-high">
-              {t('appBar.kanban.title')}
-            </p>
-            <p className="text-xs text-low mt-1">
-              {t('appBar.kanban.description')}
-            </p>
-            <div className="mt-base flex items-center gap-half">
-              <PopoverClose asChild>
-                <button
-                  type="button"
-                  onClick={onSignIn}
-                  className={cn(
-                    'px-base py-1 rounded-sm text-xs',
-                    'bg-brand text-on-brand hover:bg-brand-hover cursor-pointer'
-                  )}
-                >
-                  {t('signIn')}
-                </button>
-              </PopoverClose>
-              <PopoverClose asChild>
-                <button
-                  type="button"
-                  onClick={onMigrate}
-                  className={cn(
-                    'px-base py-1 rounded-sm text-xs',
-                    'bg-secondary text-normal hover:bg-panel border border-border cursor-pointer'
-                  )}
-                >
-                  {t('appBar.kanban.migrateOldProjects')}
-                </button>
-              </PopoverClose>
-            </div>
-          </PopoverContent>
-        </Popover>
-      )}
-
-      {/* Loading spinner for projects */}
-      {isLoadingProjects && (
-        <div className="flex items-center justify-center w-10 h-10">
-          <SpinnerIcon className="size-5 animate-spin text-muted" />
-        </div>
-      )}
-
-      {/* Middle section: Project buttons */}
-      {showProjectsLabel && (
+      {showProjectsSection && (
         <div className="flex flex-col items-center gap-1">
           <AppBarSectionLabel>{projectsLabel}</AppBarSectionLabel>
-          <DragDropContext onDragEnd={onProjectsDragEnd}>
-            <Droppable
-              droppableId="app-bar-projects"
-              direction="vertical"
-              isDropDisabled={isSavingProjectOrder}
-            >
-              {(dropProvided) => (
-                <div
-                  ref={dropProvided.innerRef}
-                  {...dropProvided.droppableProps}
-                  className="flex flex-col items-center -mb-base"
-                >
-                  {projects.map((project, index) => (
-                    <Draggable
-                      key={project.id}
-                      draggableId={project.id}
-                      index={index}
-                      disableInteractiveElementBlocking
-                      isDragDisabled={isSavingProjectOrder}
-                    >
-                      {(dragProvided, snapshot) => (
-                        <div
-                          ref={dragProvided.innerRef}
-                          {...dragProvided.draggableProps}
-                          {...dragProvided.dragHandleProps}
-                          className="mb-base"
-                          style={dragProvided.draggableProps.style}
-                        >
-                          <Tooltip content={project.name} side="right">
-                            <button
-                              type="button"
-                              onClick={() => onProjectClick(project.id)}
-                              className={cn(
-                                'flex items-center justify-center w-10 h-10 rounded-lg',
-                                'text-sm font-medium transition-colors cursor-grab',
-                                'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
-                                snapshot.isDragging && 'shadow-lg',
-                                activeProjectId === project.id
-                                  ? ''
-                                  : 'bg-primary text-normal hover:opacity-80'
-                              )}
-                              style={
-                                activeProjectId === project.id
-                                  ? {
-                                      color: `hsl(${project.color})`,
-                                      backgroundColor: `hsl(${project.color} / 0.2)`,
-                                    }
-                                  : undefined
-                              }
-                              aria-label={project.name}
-                            >
-                              {getProjectInitials(project.name)}
-                            </button>
-                          </Tooltip>
-                        </div>
+          {/* Project management popover for unsigned users */}
+          {!isSignedIn && (
+            <Popover>
+              <Tooltip content={t('appBar.kanban.tooltip')} side="right">
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className={cn(
+                      'flex items-center justify-center w-10 h-10 rounded-lg',
+                      'transition-colors cursor-pointer',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                      'bg-primary text-normal hover:bg-brand/10'
+                    )}
+                    aria-label={t('appBar.kanban.tooltip')}
+                  >
+                    <KanbanIcon className="size-icon-base" weight="bold" />
+                  </button>
+                </PopoverTrigger>
+              </Tooltip>
+              <PopoverContent side="right" sideOffset={8}>
+                <p className="text-sm font-medium text-high">
+                  {t('appBar.kanban.title')}
+                </p>
+                <p className="text-xs text-low mt-1">
+                  {t('appBar.kanban.description')}
+                </p>
+                <div className="mt-base flex items-center gap-half">
+                  <PopoverClose asChild>
+                    <button
+                      type="button"
+                      onClick={onSignIn}
+                      className={cn(
+                        'px-base py-1 rounded-sm text-xs',
+                        'bg-brand text-on-brand hover:bg-brand-hover cursor-pointer'
                       )}
-                    </Draggable>
-                  ))}
-                  {dropProvided.placeholder}
+                    >
+                      {t('signIn')}
+                    </button>
+                  </PopoverClose>
+                  <PopoverClose asChild>
+                    <button
+                      type="button"
+                      onClick={onMigrate}
+                      className={cn(
+                        'px-base py-1 rounded-sm text-xs',
+                        'bg-secondary text-normal hover:bg-panel border border-border cursor-pointer'
+                      )}
+                    >
+                      {t('appBar.kanban.migrateOldProjects')}
+                    </button>
+                  </PopoverClose>
                 </div>
-              )}
-            </Droppable>
-          </DragDropContext>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {/* Loading spinner for projects */}
+          {isLoadingProjects && (
+            <div className="flex items-center justify-center w-10 h-10">
+              <SpinnerIcon className="size-5 animate-spin text-muted" />
+            </div>
+          )}
+
+          {/* Middle section: Project buttons */}
+          {projects.length > 0 && (
+            <DragDropContext onDragEnd={onProjectsDragEnd}>
+              <Droppable
+                droppableId="app-bar-projects"
+                direction="vertical"
+                isDropDisabled={isSavingProjectOrder}
+              >
+                {(dropProvided) => (
+                  <div
+                    ref={dropProvided.innerRef}
+                    {...dropProvided.droppableProps}
+                    className="flex flex-col items-center -mb-base"
+                  >
+                    {projects.map((project, index) => (
+                      <Draggable
+                        key={project.id}
+                        draggableId={project.id}
+                        index={index}
+                        disableInteractiveElementBlocking
+                        isDragDisabled={isSavingProjectOrder}
+                      >
+                        {(dragProvided, snapshot) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            {...dragProvided.dragHandleProps}
+                            className="mb-base"
+                            style={dragProvided.draggableProps.style}
+                          >
+                            <Tooltip content={project.name} side="right">
+                              <button
+                                type="button"
+                                onClick={() => onProjectClick(project.id)}
+                                className={cn(
+                                  'flex items-center justify-center w-10 h-10 rounded-lg',
+                                  'text-sm font-medium transition-colors cursor-grab',
+                                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                                  snapshot.isDragging && 'shadow-lg',
+                                  activeProjectId === project.id
+                                    ? ''
+                                    : 'bg-primary text-normal hover:opacity-80'
+                                )}
+                                style={
+                                  activeProjectId === project.id
+                                    ? {
+                                        color: `hsl(${project.color})`,
+                                        backgroundColor: `hsl(${project.color} / 0.2)`,
+                                      }
+                                    : undefined
+                                }
+                                aria-label={project.name}
+                              >
+                                {getProjectInitials(project.name)}
+                              </button>
+                            </Tooltip>
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {dropProvided.placeholder}
+                  </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+          )}
         </div>
       )}
 
