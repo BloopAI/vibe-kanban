@@ -12,6 +12,11 @@ import { useAppRuntime, type AppRuntime } from '@/shared/hooks/useAppRuntime';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useHostId } from '@/shared/providers/HostIdProvider';
 import {
+  createMachineClient,
+  type MachineClient,
+  type MachineTarget,
+} from '@/shared/lib/machineClient';
+import {
   useRemoteCloudHostsState,
   type RemoteCloudHost,
 } from '@/shared/hooks/useRemoteCloudHosts';
@@ -19,14 +24,10 @@ import { listPairedRelayHosts } from '@/shared/lib/relayPairingStorage';
 
 export type SettingsHostTargetId = 'local' | string;
 
-export interface SettingsHostTarget {
-  id: SettingsHostTargetId;
-  apiHostId: string | null;
-  label: string;
+export type SettingsHostTarget = MachineTarget & {
   description?: string;
   status?: 'online' | 'offline';
-  kind: 'local' | 'remote';
-}
+};
 
 interface SettingsHostContextValue {
   availableHosts: SettingsHostTarget[];
@@ -187,13 +188,15 @@ export function useSettingsHost() {
   return context;
 }
 
-export function useSettingsScopedApiHostId(): string | null {
+export function useSettingsMachineClient(): MachineClient | null {
   const runtime = useAppRuntime();
   const { selectedHost } = useSettingsHost();
 
-  if (runtime === 'remote') {
-    return null;
-  }
+  return useMemo(() => {
+    if (!selectedHost) {
+      return null;
+    }
 
-  return selectedHost?.apiHostId ?? null;
+    return createMachineClient(runtime, selectedHost);
+  }, [runtime, selectedHost]);
 }

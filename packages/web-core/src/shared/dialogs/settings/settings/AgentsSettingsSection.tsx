@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@vibe/ui/components/Dropdown';
 import { ExecutorConfigForm } from './ExecutorConfigForm';
-import { useProfiles } from '@/shared/hooks/useProfiles';
+import { useMachineProfiles } from '@/shared/hooks/useProfiles';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import { CreateConfigurationDialog } from '../CreateConfigurationDialog';
 import { DeleteConfigurationDialog } from '../DeleteConfigurationDialog';
@@ -30,7 +30,7 @@ import {
   TwoColumnPickerEmpty,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
-import { useSettingsScopedApiHostId } from './SettingsHostContext';
+import { useSettingsMachineClient } from './SettingsHostContext';
 import { AgentIcon } from '@/shared/components/AgentIcon';
 import { getExecutorVariantKeys } from '@/shared/lib/executor';
 
@@ -39,7 +39,7 @@ type ExecutorsMap = Record<string, Record<string, Record<string, unknown>>>;
 export function AgentsSettingsSection() {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
-  const scopedHostId = useSettingsScopedApiHostId();
+  const machineClient = useSettingsMachineClient();
 
   // Profiles hook for server state
   const {
@@ -48,7 +48,7 @@ export function AgentsSettingsSection() {
     isSaving: profilesSaving,
     error: profilesError,
     save: saveProfiles,
-  } = useProfiles(scopedHostId);
+  } = useMachineProfiles(machineClient);
 
   const { config, updateAndSaveConfig, reloadSystem } = useUserSystem();
 

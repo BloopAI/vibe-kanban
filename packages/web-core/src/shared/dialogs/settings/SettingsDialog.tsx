@@ -305,7 +305,7 @@ function SettingsDialogContent({
             <div className="flex-1 overflow-y-auto">
               {isHostSpecificSettingsSection(activeSection) ? (
                 selectedHost ? (
-                  <ScopedUserSystemProvider hostId={selectedHost.apiHostId}>
+                  <ScopedUserSystemProvider>
                     <SettingsSection
                       type={activeSection}
                       onClose={handleCloseWithConfirmation}
