@@ -26,6 +26,10 @@ import {
   createRelayWsSigningContext,
 } from "@remote/shared/lib/relay/ws";
 import { buildRemoteSessionBaseUrl } from "@/shared/lib/relayBackendApi";
+import type {
+  LocalApiRequestOptions,
+  LocalApiWebSocketOptions,
+} from "@/shared/lib/localApiTransport";
 
 const EMPTY_BYTES = new Uint8Array();
 
@@ -33,26 +37,34 @@ export { isWorkspaceRoutePath };
 
 export async function requestLocalApiViaRelay(
   pathOrUrl: string,
-  requestInit: RequestInit = {},
+  requestInit: LocalApiRequestOptions = {},
 ): Promise<Response> {
   const pathAndQuery = toPathAndQuery(pathOrUrl);
+  const {
+    relayHostId,
+    hostId: _hostId,
+    hostScope: _hostScope,
+    ...relayRequestInit
+  } = requestInit;
 
   if (!shouldRelayApiPath(pathAndQuery)) {
-    return fetch(pathOrUrl, requestInit);
+    return fetch(pathOrUrl, relayRequestInit);
   }
 
-  const hostId = resolveRelayHostIdForCurrentPage() ?? getActiveRelayHostId();
+  const hostId =
+    relayHostId ?? resolveRelayHostIdForCurrentPage() ?? getActiveRelayHostId();
   if (!hostId) {
     throw new Error(
       "Host context is required for local API requests. Navigate under /hosts/{hostId}/...",
     );
   }
 
-  return requestRelayHostApi(hostId, pathAndQuery, requestInit);
+  return requestRelayHostApi(hostId, pathAndQuery, relayRequestInit);
 }
 
 export async function openLocalApiWebSocketViaRelay(
   pathOrUrl: string,
+  options: LocalApiWebSocketOptions = {},
 ): Promise<WebSocket> {
   const pathAndQuery = toPathAndQuery(pathOrUrl);
 
@@ -60,7 +72,10 @@ export async function openLocalApiWebSocketViaRelay(
     return openBrowserWebSocket(pathOrUrl);
   }
 
-  const hostId = resolveRelayHostIdForCurrentPage() ?? getActiveRelayHostId();
+  const hostId =
+    options.relayHostId ??
+    resolveRelayHostIdForCurrentPage() ??
+    getActiveRelayHostId();
   if (!hostId) {
     throw new Error(
       "Host context is required for local API WebSocket requests. Navigate under /hosts/{hostId}/...",

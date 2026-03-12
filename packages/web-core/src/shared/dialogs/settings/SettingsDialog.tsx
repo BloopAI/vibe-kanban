@@ -31,7 +31,6 @@ export interface SettingsDialogProps {
   initialSection?: SettingsSectionType;
   initialState?: SettingsSectionInitialState[SettingsSectionType];
   initialHostId?: string | 'local';
-  sections?: SettingsSectionType[];
 }
 
 interface SettingsDialogContentProps {

@@ -8,7 +8,6 @@ import {
 } from "@vibe/ui/components/Navbar";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import { useMobileActiveTab } from "@/shared/stores/useUiPreferencesStore";
 import { useMobileWorkspaceTitle } from "@remote/shared/stores/useMobileWorkspaceTitle";
 import { useActions } from "@/shared/hooks/useActions";
@@ -208,7 +207,7 @@ export function RemoteNavbarContainer({
   }, [navigate, hostId, isOnProjectPage, projectId, isOnWorkspaceView]);
 
   const handleOpenSettings = useCallback(() => {
-    SettingsDialog.show({ sections: REMOTE_SETTINGS_SECTIONS });
+    SettingsDialog.show();
   }, []);
 
   const handleOpenCommandBar = useCallback(() => {

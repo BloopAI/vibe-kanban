@@ -9,11 +9,11 @@ import type {
   UserSystemInfo,
 } from 'shared/types';
 import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
-import { configApi, mcpServersApi, profilesApi, repoApi } from './api';
+import { handleApiResponse } from './api';
 import {
-  getRelayActiveHostOverride,
-  setRelayActiveHostOverride,
-} from './relayActiveHostOverride';
+  makeLocalApiRequest,
+  type LocalApiRequestOptions,
+} from './localApiTransport';
 
 export type MachineTarget =
   | {
@@ -51,23 +51,45 @@ export interface MachineClient {
   ) => Promise<void>;
 }
 
-async function withMachineRequestScope<T>(
+function getMachineRequestOptions(
+  runtime: AppRuntime,
+  target: MachineTarget
+): LocalApiRequestOptions {
+  if (runtime === 'remote') {
+    return {
+      hostScope: 'none',
+      relayHostId: target.apiHostId,
+    };
+  }
+
+  if (target.apiHostId) {
+    return {
+      hostScope: 'explicit',
+      hostId: target.apiHostId,
+    };
+  }
+
+  return {
+    hostScope: 'none',
+  };
+}
+
+async function makeMachineRequest(
   runtime: AppRuntime,
   target: MachineTarget,
-  request: (hostId: string | null) => Promise<T>
-): Promise<T> {
-  if (runtime === 'local') {
-    return request(target.apiHostId);
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
   }
 
-  const previousHostId = getRelayActiveHostOverride();
-  setRelayActiveHostOverride(target.apiHostId);
-
-  try {
-    return await request(null);
-  } finally {
-    setRelayActiveHostOverride(previousHostId);
-  }
+  return makeLocalApiRequest(path, {
+    ...options,
+    headers,
+    ...getMachineRequestOptions(runtime, target),
+  });
 }
 
 export function createMachineClient(
@@ -79,49 +101,88 @@ export function createMachineClient(
   return {
     target,
     queryScopeKey,
-    getConfig: () =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        configApi.getConfig(hostId)
+    getConfig: async () =>
+      handleApiResponse<UserSystemInfo>(
+        await makeMachineRequest(runtime, target, '/api/info', {
+          cache: 'no-store',
+        })
       ),
-    saveConfig: (config) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        configApi.saveConfig(config, hostId)
+    saveConfig: async (config) =>
+      handleApiResponse<Config>(
+        await makeMachineRequest(runtime, target, '/api/config', {
+          method: 'PUT',
+          body: JSON.stringify(config),
+        })
       ),
-    listRepos: () =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        repoApi.list(hostId)
+    listRepos: async () =>
+      handleApiResponse<Repo[]>(
+        await makeMachineRequest(runtime, target, '/api/repos')
       ),
-    updateRepo: (repoId, data) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        repoApi.update(repoId, data, hostId)
+    updateRepo: async (repoId, data) =>
+      handleApiResponse<Repo>(
+        await makeMachineRequest(runtime, target, `/api/repos/${repoId}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        })
       ),
-    deleteRepo: (repoId) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        repoApi.delete(repoId, hostId)
+    deleteRepo: async (repoId) =>
+      handleApiResponse<void>(
+        await makeMachineRequest(runtime, target, `/api/repos/${repoId}`, {
+          method: 'DELETE',
+        })
       ),
-    registerRepo: (data) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        repoApi.register(data, hostId)
+    registerRepo: async (data) =>
+      handleApiResponse<Repo>(
+        await makeMachineRequest(runtime, target, '/api/repos', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        })
       ),
-    getRepoBranches: (repoId) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        repoApi.getBranches(repoId, hostId)
+    getRepoBranches: async (repoId) =>
+      handleApiResponse<GitBranch[]>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/repos/${repoId}/branches`
+        )
       ),
-    loadProfiles: () =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        profilesApi.load(hostId)
+    loadProfiles: async () =>
+      handleApiResponse<{ content: string; path: string }>(
+        await makeMachineRequest(runtime, target, '/api/profiles')
       ),
-    saveProfiles: (content) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        profilesApi.save(content, hostId)
+    saveProfiles: async (content) =>
+      handleApiResponse<string>(
+        await makeMachineRequest(runtime, target, '/api/profiles', {
+          method: 'PUT',
+          body: content,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
       ),
-    loadMcpServers: (query) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        mcpServersApi.load(query, hostId)
-      ),
-    saveMcpServers: (query, data) =>
-      withMachineRequestScope(runtime, target, (hostId) =>
-        mcpServersApi.save(query, data, hostId)
-      ),
+    loadMcpServers: async (query) => {
+      const params = new URLSearchParams(query);
+      return handleApiResponse<GetMcpServerResponse>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/mcp-config?${params.toString()}`
+        )
+      );
+    },
+    saveMcpServers: async (query, data) => {
+      const params = new URLSearchParams(query);
+      await handleApiResponse<void>(
+        await makeMachineRequest(
+          runtime,
+          target,
+          `/api/mcp-config?${params.toString()}`,
+          {
+            method: 'POST',
+            body: JSON.stringify(data),
+          }
+        )
+      );
+    },
   };
 }

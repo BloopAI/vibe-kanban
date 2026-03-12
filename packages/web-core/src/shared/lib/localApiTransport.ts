@@ -1,8 +1,28 @@
 import { getCurrentHostId } from '@/shared/providers/HostIdProvider';
 
+export type LocalApiHostScope = 'current' | 'explicit' | 'none';
+
+export interface LocalApiRequestOptions extends RequestInit {
+  hostScope?: LocalApiHostScope;
+  hostId?: string | null;
+  relayHostId?: string | null;
+}
+
+export interface LocalApiWebSocketOptions {
+  hostScope?: LocalApiHostScope;
+  hostId?: string | null;
+  relayHostId?: string | null;
+}
+
 export interface LocalApiTransport {
-  request: (pathOrUrl: string, init?: RequestInit) => Promise<Response>;
-  openWebSocket: (pathOrUrl: string) => Promise<WebSocket> | WebSocket;
+  request: (
+    pathOrUrl: string,
+    init?: LocalApiRequestOptions
+  ) => Promise<Response>;
+  openWebSocket: (
+    pathOrUrl: string,
+    options?: LocalApiWebSocketOptions
+  ) => Promise<WebSocket> | WebSocket;
 }
 
 const LOCAL_ONLY_API_PREFIXES = [
@@ -31,10 +51,7 @@ function toAbsoluteWsUrl(pathOrUrl: string): string {
   return `${protocol}//${window.location.host}${path}`;
 }
 
-export function scopeLocalApiPath(
-  pathOrUrl: string,
-  hostId: string | null
-): string {
+function scopeLocalApiPath(pathOrUrl: string, hostId: string | null): string {
   if (!hostId) return pathOrUrl;
   const path = toPathAndQuery(pathOrUrl);
   // These endpoints must always hit the local backend because they rely on
@@ -50,14 +67,38 @@ export function scopeLocalApiPath(
   return `/api/host/${hostId}${suffix}`;
 }
 
-/** Prefix `/api/…` paths with `/api/host/{hostId}` when a host is active. */
-function applyHostScope(pathOrUrl: string): string {
+function resolveScopedPath(
+  pathOrUrl: string,
+  options: {
+    hostScope?: LocalApiHostScope;
+    hostId?: string | null;
+  } = {}
+): string {
+  const hostScope = options.hostScope ?? 'current';
+
+  if (hostScope === 'none') {
+    return pathOrUrl;
+  }
+
+  if (hostScope === 'explicit') {
+    return scopeLocalApiPath(pathOrUrl, options.hostId ?? null);
+  }
+
   return scopeLocalApiPath(pathOrUrl, getCurrentHostId());
 }
 
 const defaultTransport: LocalApiTransport = {
-  request: (pathOrUrl, init = {}) => fetch(pathOrUrl, init),
-  openWebSocket: (pathOrUrl) => new WebSocket(toAbsoluteWsUrl(pathOrUrl)),
+  request: (pathOrUrl, init = {}) => {
+    const {
+      hostScope: _hostScope,
+      hostId: _hostId,
+      relayHostId: _relayHostId,
+      ...requestInit
+    } = init;
+    return fetch(pathOrUrl, requestInit);
+  },
+  openWebSocket: (pathOrUrl, _options = {}) =>
+    new WebSocket(toAbsoluteWsUrl(pathOrUrl)),
 };
 
 let transport: LocalApiTransport = defaultTransport;
@@ -68,13 +109,17 @@ export function setLocalApiTransport(nextTransport: LocalApiTransport | null) {
 
 export async function makeLocalApiRequest(
   pathOrUrl: string,
-  init: RequestInit = {}
+  init: LocalApiRequestOptions = {}
 ): Promise<Response> {
-  return transport.request(applyHostScope(pathOrUrl), init);
+  return transport.request(resolveScopedPath(pathOrUrl, init), init);
 }
 
 export async function openLocalApiWebSocket(
-  pathOrUrl: string
+  pathOrUrl: string,
+  options: LocalApiWebSocketOptions = {}
 ): Promise<WebSocket> {
-  return transport.openWebSocket(applyHostScope(pathOrUrl));
+  return transport.openWebSocket(
+    resolveScopedPath(pathOrUrl, options),
+    options
+  );
 }

@@ -106,10 +106,7 @@ import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
-import {
-  makeLocalApiRequest,
-  scopeLocalApiPath,
-} from '@/shared/lib/localApiTransport';
+import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -150,9 +147,11 @@ const makeScopedRequest = async (
     headers.set('Content-Type', 'application/json');
   }
 
-  return makeLocalApiRequest(scopeLocalApiPath(url, hostId), {
+  return makeLocalApiRequest(url, {
     ...options,
     headers,
+    hostScope: 'explicit',
+    hostId,
   });
 };
 
