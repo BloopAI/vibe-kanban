@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
@@ -25,8 +25,10 @@ export function RemoteCloudHostsSettingsCard() {
 
 export function RemoteCloudHostsSettingsCardContent({
   embedded = false,
+  initialHostId,
 }: {
   embedded?: boolean;
+  initialHostId?: string;
 }) {
   const { t } = useTranslation(['settings', 'common']);
   const navigate = useNavigate();
@@ -38,6 +40,7 @@ export function RemoteCloudHostsSettingsCardContent({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [removingHostId, setRemovingHostId] = useState<string | null>(null);
+  const hasAppliedInitialHostRef = useRef(false);
 
   const { data: relayHosts = [], isLoading: relayHostsLoading } = useQuery({
     ...useRelayRemoteHostsQuery(),
@@ -63,6 +66,28 @@ export function RemoteCloudHostsSettingsCardContent({
       setSelectedHostId(relayHosts[0].id);
     }
   }, [relayHosts, selectedHostId]);
+
+  useEffect(() => {
+    if (!initialHostId || hasAppliedInitialHostRef.current) {
+      return;
+    }
+
+    if (relayHostsLoading) {
+      return;
+    }
+
+    const initialHost = relayHosts.find((host) => host.id === initialHostId);
+    if (!initialHost) {
+      hasAppliedInitialHostRef.current = true;
+      return;
+    }
+
+    setSelectedHostId(initialHost.id);
+    setShowConnectForm(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    hasAppliedInitialHostRef.current = true;
+  }, [initialHostId, relayHosts, relayHostsLoading]);
 
   const relayHostOptions = useMemo(
     () =>
