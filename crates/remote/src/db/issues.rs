@@ -358,6 +358,17 @@ impl IssueRepository {
             return Ok(());
         }
 
+        // Place the issue at the top of the target column by finding the
+        // minimum sort_order in that column and going one below it.
+        let min_sort_order: Option<f64> = sqlx::query_scalar(
+            "SELECT MIN(sort_order) FROM issues WHERE status_id = $1 AND project_id = $2",
+        )
+        .bind(target_status.id)
+        .bind(issue.project_id)
+        .fetch_one(pool)
+        .await?;
+        let top_sort_order = min_sort_order.map(|m| m - 1.0).unwrap_or(0.0);
+
         Self::update(
             pool,
             issue_id,
@@ -368,7 +379,7 @@ impl IssueRepository {
             None,
             None,
             None,
-            None,
+            Some(top_sort_order),
             None,
             None,
             None,
