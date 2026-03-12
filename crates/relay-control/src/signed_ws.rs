@@ -1,5 +1,6 @@
 use std::{
     fmt::Display,
+    future::Future,
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
@@ -172,6 +173,27 @@ pub enum RelayWsMessageType {
 pub struct RelayWsFrame {
     pub msg_type: RelayWsMessageType,
     pub payload: Vec<u8>,
+}
+
+// ---------------------------------------------------------------------------
+// UpstreamWs — abstract send/recv/close over RelayWsFrame
+// ---------------------------------------------------------------------------
+
+/// Sender half of a WS upstream (relay, WebRTC, etc.).
+pub trait UpstreamWsSender: Send + 'static {
+    fn send_frame(
+        &mut self,
+        frame: RelayWsFrame,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>>;
+
+    fn close(&mut self) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>>;
+}
+
+/// Receiver half of a WS upstream (relay, WebRTC, etc.).
+pub trait UpstreamWsReceiver: Send + 'static {
+    fn recv_frame(
+        &mut self,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<RelayWsFrame>>> + Send + '_>>;
 }
 
 pub struct SignedWebSocket<S, M> {
@@ -397,6 +419,37 @@ where
 
     pub async fn close(&mut self) -> anyhow::Result<()> {
         self.sink.close().await.map_err(anyhow::Error::from)
+    }
+}
+
+impl<Si, M> UpstreamWsSender for SignedWsSender<Si, M>
+where
+    Si: Sink<M> + Unpin + Send + 'static,
+    Si::Error: std::error::Error + Send + Sync + 'static,
+    M: RelayTransportMessage + Send + 'static,
+{
+    fn send_frame(
+        &mut self,
+        frame: RelayWsFrame,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>> {
+        Box::pin(self.send(frame))
+    }
+
+    fn close(&mut self) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>> {
+        Box::pin(SignedWsSender::close(self))
+    }
+}
+
+impl<St, M, E> UpstreamWsReceiver for SignedWsReceiver<St, M>
+where
+    St: Stream<Item = Result<M, E>> + Unpin + Send + 'static,
+    E: std::error::Error + Send + Sync + 'static,
+    M: RelayTransportMessage + Send + 'static,
+{
+    fn recv_frame(
+        &mut self,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<RelayWsFrame>>> + Send + '_>> {
+        Box::pin(self.recv())
     }
 }
 

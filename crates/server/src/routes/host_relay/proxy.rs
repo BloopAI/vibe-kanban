@@ -11,9 +11,13 @@ use axum::{
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
-use relay_client::SignedUpstreamSocket;
-use relay_control::signed_ws::{RelayTransportMessage, RelayWsMessageType};
-use relay_hosts::{HostRelayProxyError, HostRelayWsConnection, RelayHostLookupError};
+use relay_control::signed_ws::{
+    RelayTransportMessage, RelayWsMessageType, UpstreamWsReceiver, UpstreamWsSender,
+};
+use relay_hosts::{
+    DirectProxyResponse, HostRelayProxyError, ProxiedResponse, ProxiedWsConnection,
+    RelayHostLookupError,
+};
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -122,9 +126,10 @@ async fn forward_ws(
         .await
         .map_err(|error| map_host_lookup_error(host_id, error))?;
 
-    let HostRelayWsConnection {
-        upstream_socket,
+    let ProxiedWsConnection {
         selected_protocol,
+        sender,
+        receiver,
     } = relay_host
         .proxy_ws(&target_path, protocols.as_deref())
         .await
@@ -134,11 +139,10 @@ async fn forward_ws(
     if let Some(protocol) = &selected_protocol {
         ws = ws.protocols([protocol.clone()]);
     }
-
     Ok(ws
         .on_upgrade(|socket| async move {
-            if let Err(error) = bridge_ws(upstream_socket, socket).await {
-                tracing::debug!(?error, "Relay WS bridge closed with error");
+            if let Err(error) = bridge_ws(sender, receiver, socket).await {
+                tracing::debug!(?error, "WS bridge closed with error");
             }
         })
         .into_response())
@@ -241,37 +245,63 @@ fn is_hop_by_hop_header(name: &str) -> bool {
         || name.eq_ignore_ascii_case("upgrade")
 }
 
-fn relay_http_response(response: reqwest::Response) -> Response {
-    let status = response.status();
-    let response_headers = response.headers().clone();
-    let body = Body::from_stream(response.bytes_stream());
+fn relay_http_response(response: ProxiedResponse) -> Response {
+    match response {
+        ProxiedResponse::Relay(response) => {
+            let status = response.status();
+            let response_headers = response.headers().clone();
+            let body = Body::from_stream(response.bytes_stream());
 
-    let mut builder = Response::builder().status(status);
-    for (name, value) in &response_headers {
-        if !is_hop_by_hop_header(name.as_str()) {
-            builder = builder.header(name, value);
+            let mut builder = Response::builder().status(status);
+            for (name, value) in &response_headers {
+                if !is_hop_by_hop_header(name.as_str()) {
+                    builder = builder.header(name, value);
+                }
+            }
+
+            builder.body(body).unwrap_or_else(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to build relay proxy response",
+                )
+                    .into_response()
+            })
+        }
+        ProxiedResponse::Direct(DirectProxyResponse {
+            status,
+            headers,
+            body,
+        }) => {
+            let mut builder = Response::builder().status(status);
+            for (name, value) in &headers {
+                if !is_hop_by_hop_header(name) {
+                    builder = builder.header(name.as_str(), value.as_str());
+                }
+            }
+
+            builder.body(Body::from(body)).unwrap_or_else(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to build direct proxy response",
+                )
+                    .into_response()
+            })
         }
     }
-
-    builder.body(body).unwrap_or_else(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to build relay proxy response",
-        )
-            .into_response()
-    })
 }
 
-async fn bridge_ws(upstream: SignedUpstreamSocket, client_socket: WebSocket) -> anyhow::Result<()> {
-    let (mut upstream_sender, mut upstream_receiver) = upstream.split();
+async fn bridge_ws(
+    mut upstream_sender: Box<dyn UpstreamWsSender>,
+    mut upstream_receiver: Box<dyn UpstreamWsReceiver>,
+    client_socket: WebSocket,
+) -> anyhow::Result<()> {
     let (mut client_sender, mut client_receiver) = client_socket.split();
 
     let client_to_upstream = tokio::spawn(async move {
         while let Some(msg_result) = client_receiver.next().await {
             let msg = msg_result?;
             let close = matches!(msg, Message::Close(_));
-            let frame = msg.decompose();
-            upstream_sender.send(frame).await?;
+            upstream_sender.send_frame(msg.decompose()).await?;
             if close {
                 break;
             }
@@ -281,7 +311,7 @@ async fn bridge_ws(upstream: SignedUpstreamSocket, client_socket: WebSocket) -> 
     });
 
     let upstream_to_client = tokio::spawn(async move {
-        while let Some(frame) = upstream_receiver.recv().await? {
+        while let Some(frame) = upstream_receiver.recv_frame().await? {
             let close = matches!(frame.msg_type, RelayWsMessageType::Close);
             let msg = Message::reconstruct(frame)?;
             client_sender.send(msg).await?;
