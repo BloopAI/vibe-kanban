@@ -18,9 +18,6 @@ use axum::{
 };
 use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
-use relay_client::SignedUpstreamSocket;
-use relay_control::signed_ws::{RelayTransportMessage, RelayWsMessageType};
-use relay_hosts::{HostRelayProxyError, RelayHostLookupError};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use tower_http::validate_request::ValidateRequestHeaderLayer;
@@ -210,6 +207,38 @@ fn proxy_host_label(target_port: u16, relay_host_id: Option<Uuid>) -> String {
         Some(host_id) => format!("{target_port}--{host_id}"),
         None => target_port.to_string(),
     }
+}
+
+fn preview_api_target_path(target_port: u16, path: &str, query: &str) -> String {
+    let mut target_path = if path.is_empty() {
+        format!("/api/preview/{target_port}")
+    } else {
+        format!("/api/preview/{target_port}/{path}")
+    };
+
+    if !query.is_empty() {
+        target_path.push('?');
+        target_path.push_str(query);
+    }
+
+    target_path
+}
+
+fn relay_preview_target_url(
+    deployment: &DeploymentImpl,
+    host_id: Uuid,
+    target_port: u16,
+    normalized_path: &str,
+    query_string: &str,
+    scheme: &str,
+) -> Option<String> {
+    let backend_port = deployment.client_info().get_port()?;
+    let relay_path = preview_api_target_path(target_port, normalized_path, query_string);
+
+    Some(format!(
+        "{scheme}://127.0.0.1:{backend_port}/api/host/{host_id}/{}",
+        relay_path.trim_start_matches("/api/")
+    ))
 }
 
 fn rewrite_redirect_like_header_value(
@@ -454,91 +483,81 @@ async fn http_proxy_handler(
             return (StatusCode::BAD_REQUEST, "Failed to read request body").into_response();
         }
     };
-    let response = if let Some(host_id) = target.relay_host_id {
-        let relay_hosts = match deployment.relay_hosts() {
-            Ok(relay_hosts) => relay_hosts,
-            Err(_) => {
-                return (
-                    StatusCode::BAD_REQUEST,
-                    "Remote relay API is not configured",
-                )
-                    .into_response();
-            }
-        };
-
-        let relay_host = match relay_hosts.host(host_id).await {
-            Ok(host) => host,
-            Err(error) => return map_relay_host_lookup_error(host_id, error).into_response(),
-        };
-
-        let target_path = relay_preview_target_path(target.port, normalized_path, query_string);
-        match relay_host
-            .proxy_http(&method, &target_path, &headers, &body_bytes)
-            .await
-        {
-            Ok(response) => response,
-            Err(error) => return map_relay_proxy_error(host_id, error).into_response(),
-        }
-    } else {
-        let target_url = if query_string.is_empty() {
-            if normalized_path.is_empty() {
-                format!("http://localhost:{}/", target.port)
-            } else {
-                format!("http://localhost:{}/{}", target.port, normalized_path)
-            }
-        } else if normalized_path.is_empty() {
-            format!("http://localhost:{}/?{}", target.port, query_string)
-        } else {
-            format!(
-                "http://localhost:{}/{}?{}",
-                target.port, normalized_path, query_string
+    let target_url = if let Some(host_id) = target.relay_host_id {
+        let Some(url) = relay_preview_target_url(
+            deployment,
+            host_id,
+            target.port,
+            normalized_path,
+            query_string,
+            "http",
+        ) else {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Local backend port is not available",
             )
+                .into_response();
         };
 
-        let client = http_client();
-
-        let mut req_builder = client.request(
-            reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
-            &target_url,
-        );
-
-        for (name, value) in &headers {
-            let name_lower = name.as_str().to_ascii_lowercase();
-            if !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str())
-                && let Ok(v) = value.to_str()
-            {
-                req_builder = req_builder.header(name.as_str(), v);
-            }
+        url
+    } else if query_string.is_empty() {
+        if normalized_path.is_empty() {
+            format!("http://localhost:{}/", target.port)
+        } else {
+            format!("http://localhost:{}/{}", target.port, normalized_path)
         }
+    } else if normalized_path.is_empty() {
+        format!("http://localhost:{}/?{}", target.port, query_string)
+    } else {
+        format!(
+            "http://localhost:{}/{}?{}",
+            target.port, normalized_path, query_string
+        )
+    };
 
-        if let Some(host) = headers.get(header::HOST)
-            && let Ok(host_str) = host.to_str()
+    let client = http_client();
+
+    let mut req_builder = client.request(
+        reqwest::Method::from_bytes(method.as_str().as_bytes()).unwrap_or(reqwest::Method::GET),
+        &target_url,
+    );
+
+    for (name, value) in &headers {
+        let name_lower = name.as_str().to_ascii_lowercase();
+        if !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str())
+            && let Ok(v) = value.to_str()
         {
-            req_builder = req_builder.header("X-Forwarded-Host", host_str);
+            req_builder = req_builder.header(name.as_str(), v);
         }
-        req_builder = req_builder.header("X-Forwarded-Proto", "http");
-        req_builder = req_builder.header("Accept-Encoding", "identity");
+    }
 
-        let forwarded_for = headers
-            .get("x-forwarded-for")
-            .and_then(|v| v.to_str().ok())
-            .unwrap_or("127.0.0.1");
-        req_builder = req_builder.header("X-Forwarded-For", forwarded_for);
+    if let Some(host) = headers.get(header::HOST)
+        && let Ok(host_str) = host.to_str()
+    {
+        req_builder = req_builder.header("X-Forwarded-Host", host_str);
+    }
+    req_builder = req_builder.header("X-Forwarded-Proto", "http");
+    req_builder = req_builder.header("Accept-Encoding", "identity");
 
-        if !body_bytes.is_empty() {
-            req_builder = req_builder.body(body_bytes.to_vec());
-        }
+    let forwarded_for = headers
+        .get("x-forwarded-for")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("127.0.0.1");
+    req_builder = req_builder.header("X-Forwarded-For", forwarded_for);
 
-        match req_builder.send().await {
-            Ok(response) => response,
-            Err(error) => {
-                tracing::error!("Failed to proxy request to {}: {}", target_url, error);
-                return (
-                    StatusCode::BAD_GATEWAY,
-                    format!("Dev server unreachable: {}", error),
-                )
-                    .into_response();
-            }
+    if !body_bytes.is_empty() {
+        req_builder = req_builder.body(body_bytes.to_vec());
+    }
+
+    let response = match req_builder.send().await {
+        Ok(response) => response,
+        Err(error) => {
+            tracing::error!("Failed to proxy request to {}: {}", target_url, error);
+            return (
+                StatusCode::BAD_GATEWAY,
+                format!("Dev server unreachable: {}", error),
+            )
+                .into_response();
         }
     };
 
@@ -730,115 +749,6 @@ async fn http_proxy_handler(
     }
 }
 
-#[derive(Debug)]
-enum PreviewRelayError {
-    BadRequest(&'static str),
-    Unauthorized(&'static str),
-    BadGateway(&'static str),
-}
-
-impl IntoResponse for PreviewRelayError {
-    fn into_response(self) -> Response {
-        let (status, message) = match self {
-            Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            Self::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
-            Self::BadGateway(msg) => (StatusCode::BAD_GATEWAY, msg),
-        };
-        (status, message).into_response()
-    }
-}
-
-fn map_relay_host_lookup_error(_host_id: Uuid, error: RelayHostLookupError) -> PreviewRelayError {
-    match error {
-        RelayHostLookupError::NotPaired => {
-            PreviewRelayError::BadRequest("No paired relay credentials for this host")
-        }
-        RelayHostLookupError::MissingClientMetadata => PreviewRelayError::BadRequest(
-            "This host pairing is missing required client metadata. Re-pair it.",
-        ),
-        RelayHostLookupError::MissingSigningMetadata => PreviewRelayError::BadRequest(
-            "This host pairing is missing required signing metadata. Re-pair it.",
-        ),
-    }
-}
-
-fn map_relay_proxy_error(_host_id: Uuid, error: HostRelayProxyError) -> PreviewRelayError {
-    match error {
-        HostRelayProxyError::RelayNotConfigured => {
-            PreviewRelayError::BadRequest("Remote relay API is not configured")
-        }
-        HostRelayProxyError::Authentication(_error) => {
-            PreviewRelayError::Unauthorized("Authentication required for relay host preview")
-        }
-        HostRelayProxyError::Upstream(_error) => {
-            PreviewRelayError::BadGateway("Relay host preview request failed")
-        }
-        HostRelayProxyError::SigningSession(_error) => {
-            PreviewRelayError::BadGateway("Failed to initialize relay signing session")
-        }
-        HostRelayProxyError::RemoteSession(_error) => {
-            PreviewRelayError::BadGateway("Failed to create relay remote session")
-        }
-    }
-}
-
-fn relay_preview_target_path(target_port: u16, path: &str, query: &str) -> String {
-    let mut target_path = if path.is_empty() {
-        format!("/api/preview/{target_port}")
-    } else {
-        format!("/api/preview/{target_port}/{path}")
-    };
-
-    if !query.is_empty() {
-        target_path.push('?');
-        target_path.push_str(query);
-    }
-
-    target_path
-}
-
-async fn bridge_relay_ws(
-    upstream: SignedUpstreamSocket,
-    client_socket: axum::extract::ws::WebSocket,
-) -> anyhow::Result<()> {
-    let (mut upstream_sender, mut upstream_receiver) = upstream.split();
-    let (mut client_sender, mut client_receiver) = client_socket.split();
-
-    let client_to_upstream = tokio::spawn(async move {
-        while let Some(msg_result) = client_receiver.next().await {
-            let msg = msg_result?;
-            let close = matches!(msg, axum::extract::ws::Message::Close(_));
-            let frame = msg.decompose();
-            upstream_sender.send(frame).await?;
-            if close {
-                break;
-            }
-        }
-        let _ = upstream_sender.close().await;
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let upstream_to_client = tokio::spawn(async move {
-        while let Some(frame) = upstream_receiver.recv().await? {
-            let close = matches!(frame.msg_type, RelayWsMessageType::Close);
-            let msg = axum::extract::ws::Message::reconstruct(frame)?;
-            client_sender.send(msg).await?;
-            if close {
-                break;
-            }
-        }
-        let _ = client_sender.close().await;
-        Ok::<(), anyhow::Error>(())
-    });
-
-    tokio::select! {
-        result = client_to_upstream => result??,
-        result = upstream_to_client => result??,
-    }
-
-    Ok(())
-}
-
 async fn handle_ws_proxy(
     deployment: &DeploymentImpl,
     client_socket: axum::extract::ws::WebSocket,
@@ -848,45 +758,24 @@ async fn handle_ws_proxy(
     ws_protocols: Option<String>,
 ) -> anyhow::Result<()> {
     let normalized_path = path.trim_start_matches('/');
-    if let Some(host_id) = target.relay_host_id {
-        let relay_hosts = deployment
-            .relay_hosts()
-            .map_err(|_| anyhow::anyhow!("Remote relay API is not configured"))?;
-        let relay_host = relay_hosts.host(host_id).await.map_err(|error| {
-            let mapped = map_relay_host_lookup_error(host_id, error);
-            match mapped {
-                PreviewRelayError::BadRequest(message)
-                | PreviewRelayError::Unauthorized(message)
-                | PreviewRelayError::BadGateway(message) => anyhow::anyhow!(message),
+    let query = query_string.as_deref().unwrap_or_default();
+    let ws_url = if let Some(host_id) = target.relay_host_id {
+        relay_preview_target_url(
+            deployment,
+            host_id,
+            target.port,
+            normalized_path,
+            query,
+            "ws",
+        )
+        .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
+    } else {
+        match &query_string {
+            Some(q) if !q.is_empty() => {
+                format!("ws://localhost:{}/{}?{}", target.port, normalized_path, q)
             }
-        })?;
-        let query = query_string
-            .as_deref()
-            .map(str::to_owned)
-            .unwrap_or_default();
-        let target_path = relay_preview_target_path(target.port, normalized_path, &query);
-        let connection = relay_host
-            .proxy_ws(&target_path, ws_protocols.as_deref())
-            .await
-            .map_err(|error| {
-                let mapped = map_relay_proxy_error(host_id, error);
-                match mapped {
-                    PreviewRelayError::BadRequest(message)
-                    | PreviewRelayError::Unauthorized(message)
-                    | PreviewRelayError::BadGateway(message) => anyhow::anyhow!(message),
-                }
-            })?;
-        let upstream_socket = connection.upstream_socket;
-
-        bridge_relay_ws(upstream_socket, client_socket).await?;
-        return Ok(());
-    }
-
-    let ws_url = match &query_string {
-        Some(q) if !q.is_empty() => {
-            format!("ws://localhost:{}/{}?{}", target.port, normalized_path, q)
+            _ => format!("ws://localhost:{}/{}", target.port, normalized_path),
         }
-        _ => format!("ws://localhost:{}/{}", target.port, normalized_path),
     };
     tracing::debug!("Connecting to dev server WebSocket: {}", ws_url);
 
