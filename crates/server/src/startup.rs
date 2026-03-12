@@ -66,10 +66,15 @@ impl ServerHandle {
     }
 }
 
-/// Initialize the deployment, bind listeners on `127.0.0.1` with OS-assigned
+/// Initialize the deployment, bind listeners on `localhost` with OS-assigned
 /// ports, and return a handle that is ready to serve.
+///
+/// Uses `localhost` rather than `127.0.0.1` so the bind address matches
+/// the hostname the frontend connects to. On modern macOS, `localhost`
+/// resolves to `::1` (IPv6) first — binding to `127.0.0.1` (IPv4) while
+/// the browser connects via `::1` causes "connection refused".
 pub async fn start() -> anyhow::Result<ServerHandle> {
-    start_with_bind("127.0.0.1:0", "127.0.0.1:0").await
+    start_with_bind("localhost:0", "localhost:0").await
 }
 
 /// Like [`start`], but lets the caller specify the bind addresses for the main
