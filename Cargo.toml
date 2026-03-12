@@ -28,6 +28,7 @@ members = [
     "crates/tauri-app",
     "crates/preview-proxy",
     "crates/relay-tunnel-core",
+    "crates/relay-webrtc",
 ]
 exclude = ["crates/remote", "crates/relay-tunnel"]
 
