@@ -24,6 +24,7 @@ pub mod pending_uploads;
 pub mod project_notification_preferences;
 pub mod project_statuses;
 pub mod projects;
+pub mod pull_request_issues;
 pub mod pull_requests;
 pub mod reviews;
 pub mod tags;

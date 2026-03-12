@@ -6,10 +6,7 @@ use axum::{
     response::Json as ResponseJson,
     routing::{delete, post},
 };
-use db::models::{
-    merge::{Merge, MergeStatus},
-    workspace::Workspace,
-};
+use db::models::{merge::MergeStatus, pull_request::PullRequest, workspace::Workspace};
 use deployment::Deployment;
 use serde::Deserialize;
 use services::services::{diff_stream, remote_client::RemoteClientError, remote_sync};
@@ -52,39 +49,37 @@ pub async fn link_workspace(
         let ws_id = workspace.id;
         let client = client.clone();
         tokio::spawn(async move {
-            let merges = match Merge::find_by_workspace_id(&pool, ws_id).await {
-                Ok(m) => m,
+            let pull_requests = match PullRequest::find_by_workspace_id(&pool, ws_id).await {
+                Ok(prs) => prs,
                 Err(e) => {
                     tracing::error!(
-                        "Failed to fetch merges for workspace {} during link: {}",
+                        "Failed to fetch PRs for workspace {} during link: {}",
                         ws_id,
                         e
                     );
                     return;
                 }
             };
-            for merge in merges {
-                if let Merge::Pr(pr_merge) = merge {
-                    let pr_status = match pr_merge.pr_info.status {
-                        MergeStatus::Open => PullRequestStatus::Open,
-                        MergeStatus::Merged => PullRequestStatus::Merged,
-                        MergeStatus::Closed => PullRequestStatus::Closed,
-                        MergeStatus::Unknown => continue,
-                    };
-                    remote_sync::sync_pr_to_remote(
-                        &client,
-                        UpsertPullRequestRequest {
-                            url: pr_merge.pr_info.url,
-                            number: pr_merge.pr_info.number as i32,
-                            status: pr_status,
-                            merged_at: pr_merge.pr_info.merged_at,
-                            merge_commit_sha: pr_merge.pr_info.merge_commit_sha,
-                            target_branch_name: pr_merge.target_branch_name,
-                            local_workspace_id: ws_id,
-                        },
-                    )
-                    .await;
-                }
+            for pr in pull_requests {
+                let pr_status = match pr.pr_status {
+                    MergeStatus::Open => PullRequestStatus::Open,
+                    MergeStatus::Merged => PullRequestStatus::Merged,
+                    MergeStatus::Closed => PullRequestStatus::Closed,
+                    MergeStatus::Unknown => continue,
+                };
+                remote_sync::sync_pr_to_remote(
+                    &client,
+                    UpsertPullRequestRequest {
+                        url: pr.pr_url,
+                        number: pr.pr_number as i32,
+                        status: pr_status,
+                        merged_at: pr.merged_at,
+                        merge_commit_sha: pr.merge_commit_sha,
+                        target_branch_name: pr.target_branch_name,
+                        local_workspace_id: ws_id,
+                    },
+                )
+                .await;
             }
         });
     }

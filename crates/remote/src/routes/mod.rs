@@ -45,6 +45,7 @@ pub(crate) mod organization_members;
 mod organizations;
 pub mod project_statuses;
 pub mod projects;
+pub mod pull_request_issues;
 mod pull_requests;
 mod review;
 pub mod tags;
@@ -127,6 +128,7 @@ pub fn router(state: AppState) -> Router {
         .merge(issue_followers::router())
         .merge(issue_tags::router())
         .merge(issue_relationships::router())
+        .merge(pull_request_issues::router())
         .merge(pull_requests::router())
         .merge(notifications::router())
         .merge(workspaces::router())
@@ -194,5 +196,6 @@ pub fn all_mutation_definitions() -> Vec<crate::mutation_definition::MutationDef
         issue_relationships::mutation().definition(),
         issue_comments::mutation().definition(),
         issue_comment_reactions::mutation().definition(),
+        pull_request_issues::mutation().definition(),
     ]
 }

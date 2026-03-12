@@ -78,9 +78,10 @@ import {
   Workspace,
   StartReviewRequest,
   ReviewError,
-  OpenPrInfo,
   GitRemote,
   ListPrsError,
+  PullRequestDetail,
+  LinkPrToIssueRequest,
   AttachExistingPrRequest,
   AttachPrResponse,
   CreateWorkspaceFromPrBody,
@@ -950,17 +951,39 @@ export const repoApi = {
   listOpenPrs: async (
     repoId: string,
     remoteName?: string
-  ): Promise<Result<OpenPrInfo[], ListPrsError>> => {
+  ): Promise<Result<PullRequestDetail[], ListPrsError>> => {
     const params = remoteName
       ? `?remote=${encodeURIComponent(remoteName)}`
       : '';
     const response = await makeRequest(`/api/repos/${repoId}/prs${params}`);
-    return handleApiResponseAsResult<OpenPrInfo[], ListPrsError>(response);
+    return handleApiResponseAsResult<PullRequestDetail[], ListPrsError>(
+      response
+    );
   },
 
   listRemotes: async (repoId: string): Promise<GitRemote[]> => {
     const response = await makeRequest(`/api/repos/${repoId}/remotes`);
     return handleApiResponse<GitRemote[]>(response);
+  },
+};
+
+// Issue PR linking APIs
+export const issuePrsApi = {
+  getPrInfo: async (
+    url: string
+  ): Promise<Result<PullRequestDetail, ListPrsError>> => {
+    const response = await makeRequest(
+      `/api/repos/pr-info?url=${encodeURIComponent(url)}`
+    );
+    return handleApiResponseAsResult<PullRequestDetail, ListPrsError>(response);
+  },
+
+  linkToIssue: async (data: LinkPrToIssueRequest): Promise<void> => {
+    const response = await makeRequest('/api/remote/pull-requests/link', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    await handleApiResponse<void>(response);
   },
 };
 

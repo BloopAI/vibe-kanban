@@ -1,10 +1,5 @@
-use std::collections::HashSet;
-
-use api_types::{PullRequestStatus, UpsertPullRequestRequest};
-use db::models::{
-    merge::{Merge, MergeStatus},
-    workspace::Workspace,
-};
+use api_types::UpsertPullRequestRequest;
+use db::models::workspace::Workspace;
 use git::GitService;
 use sqlx::SqlitePool;
 use tracing::{debug, error};
@@ -173,15 +168,6 @@ pub async fn sync_pr_to_remote(client: &RemoteClient, request: UpsertPullRequest
     upsert_pr_on_remote(client, request).await;
 }
 
-fn map_pr_status(status: &MergeStatus) -> PullRequestStatus {
-    match status {
-        MergeStatus::Open => PullRequestStatus::Open,
-        MergeStatus::Merged => PullRequestStatus::Merged,
-        MergeStatus::Closed => PullRequestStatus::Closed,
-        MergeStatus::Unknown => PullRequestStatus::Open,
-    }
-}
-
 /// Syncs all linked workspaces and their PRs to the remote server.
 /// Used after login to catch up on any changes made while logged out.
 pub async fn sync_all_linked_workspaces(
@@ -198,13 +184,9 @@ pub async fn sync_all_linked_workspaces(
         }
     };
 
-    let mut linked_workspace_ids = HashSet::new();
-
     for workspace in &workspaces {
         match client.workspace_exists(workspace.id).await {
-            Ok(true) => {
-                linked_workspace_ids.insert(workspace.id);
-            }
+            Ok(true) => {}
             Ok(false) => {
                 debug!(
                     "Workspace {} not found on remote, skipping post-login sync",
@@ -232,40 +214,6 @@ pub async fn sync_all_linked_workspaces(
             workspace.name.clone().map(Some),
             Some(workspace.archived),
             stats.as_ref(),
-        )
-        .await;
-    }
-
-    if linked_workspace_ids.is_empty() {
-        debug!("Post-login workspace sync completed: no linked workspaces found");
-        return;
-    }
-
-    // Sync all PR data
-    let pr_merges = match Merge::find_all_pr(pool).await {
-        Ok(prs) => prs,
-        Err(e) => {
-            error!("Failed to fetch PR merges for post-login sync: {}", e);
-            return;
-        }
-    };
-
-    for pr_merge in pr_merges {
-        if !linked_workspace_ids.contains(&pr_merge.workspace_id) {
-            continue;
-        }
-
-        upsert_pr_on_remote(
-            client,
-            UpsertPullRequestRequest {
-                url: pr_merge.pr_info.url,
-                number: pr_merge.pr_info.number as i32,
-                status: map_pr_status(&pr_merge.pr_info.status),
-                merged_at: pr_merge.pr_info.merged_at,
-                merge_commit_sha: pr_merge.pr_info.merge_commit_sha,
-                target_branch_name: pr_merge.target_branch_name,
-                local_workspace_id: pr_merge.workspace_id,
-            },
         )
         .await;
     }

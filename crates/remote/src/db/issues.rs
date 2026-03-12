@@ -4,7 +4,7 @@ use api_types::{
 };
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use sqlx::{Executor, PgPool, Postgres};
+use sqlx::{Executor, PgConnection, PgPool, Postgres};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -521,18 +521,18 @@ impl IssueRepository {
     /// - `ReviewStarted` → move issue to "In review"
     /// - `WorkMerged` → if all linked PRs are merged, move issue to "Done"
     async fn sync_status_from_workflow_signal(
-        pool: &PgPool,
+        conn: &mut PgConnection,
         issue_id: Uuid,
         signal: IssueWorkflowSignal,
     ) -> Result<(), IssueError> {
-        let Some(issue) = Self::find_by_id(pool, issue_id).await? else {
+        let Some(issue) = Self::find_by_id(&mut *conn, issue_id).await? else {
             return Ok(());
         };
 
         let target_status_name = match signal {
             IssueWorkflowSignal::ReviewStarted => "In review",
             IssueWorkflowSignal::WorkMerged => {
-                let prs = PullRequestRepository::list_by_issue(pool, issue_id).await?;
+                let prs = PullRequestRepository::list_by_issue(&mut *conn, issue_id).await?;
                 let all_merged = prs.iter().all(|pr| pr.status == PullRequestStatus::Merged);
                 if all_merged {
                     "Done"
@@ -543,7 +543,7 @@ impl IssueRepository {
         };
 
         let Some(target_status) =
-            ProjectStatusRepository::find_by_name(pool, issue.project_id, target_status_name)
+            ProjectStatusRepository::find_by_name(&mut *conn, issue.project_id, target_status_name)
                 .await?
         else {
             return Ok(());
@@ -554,7 +554,7 @@ impl IssueRepository {
         }
 
         Self::update(
-            pool,
+            &mut *conn,
             issue_id,
             Some(target_status.id),
             None,
@@ -577,7 +577,7 @@ impl IssueRepository {
     /// - Open PR => move issue to "In review"
     /// - Merged/closed PR => if all linked PRs are merged, move issue to "Done"
     pub async fn sync_status_from_pull_request(
-        pool: &PgPool,
+        conn: &mut PgConnection,
         issue_id: Uuid,
         pr_status: PullRequestStatus,
     ) -> Result<(), IssueError> {
@@ -586,27 +586,27 @@ impl IssueRepository {
         } else {
             IssueWorkflowSignal::WorkMerged
         };
-        Self::sync_status_from_workflow_signal(pool, issue_id, signal).await
+        Self::sync_status_from_workflow_signal(conn, issue_id, signal).await
     }
 
     /// Syncs issue status when a workspace is merged locally without a PR.
     pub async fn sync_status_from_local_workspace_merge(
-        pool: &PgPool,
+        conn: &mut PgConnection,
         issue_id: Uuid,
     ) -> Result<(), IssueError> {
-        Self::sync_status_from_workflow_signal(pool, issue_id, IssueWorkflowSignal::WorkMerged)
+        Self::sync_status_from_workflow_signal(conn, issue_id, IssueWorkflowSignal::WorkMerged)
             .await
     }
 
     /// Moves an issue to the given target status if its current status is "Backlog" or "To do".
     async fn move_to_status_if_pending(
-        pool: &PgPool,
+        conn: &mut PgConnection,
         issue_id: Uuid,
         current_status_id: Uuid,
         target_status_id: Uuid,
     ) -> Result<(), IssueError> {
         let Some(current_status) =
-            ProjectStatusRepository::find_by_id(pool, current_status_id).await?
+            ProjectStatusRepository::find_by_id(&mut *conn, current_status_id).await?
         else {
             return Ok(());
         };
@@ -614,7 +614,7 @@ impl IssueRepository {
         let name = current_status.name.to_lowercase();
         if name == "backlog" || name == "to do" {
             Self::update(
-                pool,
+                &mut *conn,
                 issue_id,
                 Some(target_status_id),
                 None,
@@ -657,15 +657,22 @@ impl IssueRepository {
                 return Ok(());
             };
 
-            Self::move_to_status_if_pending(pool, issue_id, issue.status_id, in_progress_status.id)
-                .await?;
+            let mut conn = pool.acquire().await?;
+
+            Self::move_to_status_if_pending(
+                &mut conn,
+                issue_id,
+                issue.status_id,
+                in_progress_status.id,
+            )
+            .await?;
 
             // If sub-issue, also move parent issue to "In progress"
             if let Some(parent_issue_id) = issue.parent_issue_id
                 && let Some(parent_issue) = Self::find_by_id(pool, parent_issue_id).await?
             {
                 Self::move_to_status_if_pending(
-                    pool,
+                    &mut conn,
                     parent_issue_id,
                     parent_issue.status_id,
                     in_progress_status.id,

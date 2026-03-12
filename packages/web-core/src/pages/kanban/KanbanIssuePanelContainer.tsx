@@ -1009,6 +1009,18 @@ export function KanbanIssuePanelContainer({
     });
   }, [selectedKanbanIssueId, projectId]);
 
+  // Link PR callback - opens link PR dialog
+  const handleLinkPr = useCallback(async () => {
+    if (!selectedKanbanIssueId) return;
+    const { LinkPrToIssueDialog } = await import(
+      '@/shared/dialogs/command-bar/LinkPrToIssueDialog'
+    );
+    await LinkPrToIssueDialog.show({
+      projectId,
+      issueId: selectedKanbanIssueId,
+    });
+  }, [selectedKanbanIssueId, projectId]);
+
   // Loading state
   const isLoading = projectLoading || orgLoading;
   const isResolvingExpectedIssue =
@@ -1041,6 +1053,7 @@ export function KanbanIssuePanelContainer({
       onParentIssueClick={handleParentIssueClick}
       onRemoveParentIssue={handleRemoveParentIssue}
       linkedPrs={linkedPrs}
+      onLinkPr={mode === 'edit' ? handleLinkPr : undefined}
       onClose={closeKanbanIssuePanel}
       onSubmit={handleSubmit}
       onCmdEnterSubmit={handleCmdEnterSubmit}

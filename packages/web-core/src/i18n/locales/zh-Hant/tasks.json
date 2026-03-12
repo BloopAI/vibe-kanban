@@ -514,5 +514,30 @@
       "description": "Sign in to access this feature.",
       "action": "Sign in"
     }
+  },
+  "linkPrToIssue": {
+    "title": "連結拉取請求",
+    "description": "將現有的拉取請求連結到此問題。",
+    "urlTab": "從 URL",
+    "browseTab": "瀏覽",
+    "urlLabel": "拉取請求 URL",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "儲存庫",
+    "remoteLabel": "遠端",
+    "pullRequestLabel": "拉取請求",
+    "loadingPrInfo": "正在載入 PR 資訊...",
+    "invalidUrl": "無法從此 URL 載入 PR 資訊",
+    "baseBranch": "基礎分支：",
+    "linkPr": "連結 PR",
+    "linking": "連結中...",
+    "status": {
+      "open": "開啟",
+      "merged": "已合併",
+      "closed": "已關閉",
+      "unknown": "未知"
+    },
+    "errors": {
+      "failed": "連結 PR 失敗，請重試。"
+    }
   }
 }

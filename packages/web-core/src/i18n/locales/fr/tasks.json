@@ -514,5 +514,30 @@
       "description": "Sign in to access this feature.",
       "action": "Sign in"
     }
+  },
+  "linkPrToIssue": {
+    "title": "Lier une pull request",
+    "description": "Lier une pull request existante à ce ticket.",
+    "urlTab": "Depuis une URL",
+    "browseTab": "Parcourir",
+    "urlLabel": "URL de la pull request",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "Dépôt",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull request",
+    "loadingPrInfo": "Chargement des informations du PR...",
+    "invalidUrl": "Impossible de charger les informations du PR depuis cette URL",
+    "baseBranch": "Base :",
+    "linkPr": "Lier le PR",
+    "linking": "Liaison en cours...",
+    "status": {
+      "open": "Ouvert",
+      "merged": "Fusionné",
+      "closed": "Fermé",
+      "unknown": "Inconnu"
+    },
+    "errors": {
+      "failed": "Échec de la liaison du PR. Veuillez réessayer."
+    }
   }
 }

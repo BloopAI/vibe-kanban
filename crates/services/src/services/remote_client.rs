@@ -13,9 +13,10 @@ use api_types::{
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, SearchIssuesRequest, Tag, TokenRefreshRequest, TokenRefreshResponse,
-    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
-    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    PullRequest, RevokeInvitationRequest, SearchIssuesRequest, Tag, TokenRefreshRequest,
+    TokenRefreshResponse, UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdatePullRequestApiRequest, UpdateWorkspaceRequest,
+    UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -990,6 +991,16 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    /// Updates a pull request status on the remote server.
+    pub async fn update_pull_request(
+        &self,
+        request: UpdatePullRequestApiRequest,
+    ) -> Result<PullRequest, RemoteClientError> {
+        let response: MutationResponse<PullRequest> =
+            self.patch_authed("/v1/pull_requests", &request).await?;
+        Ok(response.data)
     }
 
     /// Lists pull requests linked to an issue.

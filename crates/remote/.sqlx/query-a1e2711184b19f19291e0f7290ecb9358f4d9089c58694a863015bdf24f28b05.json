@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                url                 AS \"url!: String\",\n                number              AS \"number!: i32\",\n                status              AS \"status!: PullRequestStatus\",\n                merged_at           AS \"merged_at: DateTime<Utc>\",\n                merge_commit_sha    AS \"merge_commit_sha: String\",\n                target_branch_name  AS \"target_branch_name!: String\",\n                issue_id            AS \"issue_id!: Uuid\",\n                workspace_id        AS \"workspace_id: Uuid\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM pull_requests\n            WHERE issue_id = $1\n            ",
+  "query": "\n            SELECT\n                p.id                  AS \"id!: Uuid\",\n                p.url                 AS \"url!: String\",\n                p.number              AS \"number!: i32\",\n                p.status              AS \"status!: PullRequestStatus\",\n                p.merged_at           AS \"merged_at: DateTime<Utc>\",\n                p.merge_commit_sha    AS \"merge_commit_sha: String\",\n                p.target_branch_name  AS \"target_branch_name!: String\",\n                p.project_id          AS \"project_id!: Uuid\",\n                p.issue_id            AS \"issue_id!: Uuid\",\n                p.workspace_id        AS \"workspace_id: Uuid\",\n                p.created_at          AS \"created_at!: DateTime<Utc>\",\n                p.updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM pull_requests p\n            INNER JOIN pull_request_issues pri ON p.id = pri.pull_request_id\n            WHERE pri.issue_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -51,21 +51,26 @@
       },
       {
         "ordinal": 7,
-        "name": "issue_id!: Uuid",
+        "name": "project_id!: Uuid",
         "type_info": "Uuid"
       },
       {
         "ordinal": 8,
-        "name": "workspace_id: Uuid",
+        "name": "issue_id!: Uuid",
         "type_info": "Uuid"
       },
       {
         "ordinal": 9,
+        "name": "workspace_id: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 10,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -84,10 +89,11 @@
       true,
       false,
       false,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "7c54f2956d1c6f0912da45e40590e2bfbb1e5c24c374c2d68ca5b692c87cf26f"
+  "hash": "a1e2711184b19f19291e0f7290ecb9358f4d9089c58694a863015bdf24f28b05"
 }

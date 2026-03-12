@@ -130,10 +130,12 @@ impl MigrationRepository {
 
         let ids = sqlx::query_scalar!(
             r#"
-            INSERT INTO pull_requests (id, url, number, status, merged_at, merge_commit_sha, target_branch_name, issue_id)
-            SELECT gen_random_uuid(), url, number, status, merged_at, merge_commit_sha, target_branch_name, issue_id
+            INSERT INTO pull_requests (id, url, number, status, merged_at, merge_commit_sha, target_branch_name, project_id, issue_id)
+            SELECT gen_random_uuid(), t.url, t.number, t.status, t.merged_at, t.merge_commit_sha, t.target_branch_name,
+                   i.project_id, t.issue_id
             FROM UNNEST($1::text[], $2::int[], $3::pull_request_status[], $4::timestamptz[], $5::text[], $6::text[], $7::uuid[])
                 AS t(url, number, status, merged_at, merge_commit_sha, target_branch_name, issue_id)
+            INNER JOIN issues i ON i.id = t.issue_id
             RETURNING id
             "#,
             &urls,
@@ -146,6 +148,16 @@ impl MigrationRepository {
         )
         .fetch_all(pool)
         .await?;
+
+        for (pr_id, issue_id) in ids.iter().zip(issue_ids.iter()) {
+            sqlx::query!(
+                "INSERT INTO pull_request_issues (pull_request_id, issue_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+                pr_id,
+                issue_id
+            )
+            .execute(pool)
+            .await?;
+        }
 
         Ok(ids)
     }

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { PlusIcon, HashIcon } from '@phosphor-icons/react';
+import { PlusIcon, HashIcon, GitPullRequest } from '@phosphor-icons/react';
 import { cn } from '../lib/cn';
 import { PRESET_COLORS } from './ColorPicker';
 import { PrBadge, type PrBadgeStatus } from './PrBadge';
@@ -37,6 +37,7 @@ export interface IssueTagsRowProps<TTag extends IssueTagBase = IssueTagBase> {
   renderAddTagControl?: (
     props: IssueTagsRowAddTagControlProps<TTag>
   ) => ReactNode;
+  onLinkPr?: () => void;
   disabled?: boolean;
   className?: string;
 }
@@ -60,6 +61,7 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
   onTagsChange,
   onCreateTag,
   renderAddTagControl,
+  onLinkPr,
   disabled,
   className,
 }: IssueTagsRowProps<TTag>) {
@@ -128,6 +130,19 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
           status={pr.status}
         />
       ))}
+
+      {/* Link PR button */}
+      {onLinkPr && (
+        <button
+          type="button"
+          onClick={onLinkPr}
+          disabled={disabled}
+          className="flex items-center justify-center h-5 w-5 rounded-sm text-low hover:text-normal hover:bg-panel transition-colors disabled:opacity-50"
+          aria-label="Link pull request"
+        >
+          <GitPullRequest className="size-icon-xs" weight="bold" />
+        </button>
+      )}
 
       {/* Linked Issues */}
       {linkedIssues.map((issue) => (

@@ -6,6 +6,7 @@ pub mod file;
 pub mod merge;
 pub mod migration_state;
 pub mod project;
+pub mod pull_request;
 pub mod repo;
 pub mod requests;
 pub mod scratch;

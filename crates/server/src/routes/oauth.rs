@@ -238,7 +238,7 @@ async fn handoff_complete(
     // Fetch and cache the user's profile
     let _ = deployment.get_login_status().await;
 
-    // Sync all linked workspace states and PRs to remote in the background
+    // Sync all linked workspace states to remote in the background
     if let Ok(client) = deployment.remote_client() {
         let pool = deployment.db().pool.clone();
         let git = deployment.git().clone();
@@ -246,6 +246,9 @@ async fn handoff_complete(
             remote_sync::sync_all_linked_workspaces(&client, &pool, &git).await;
         });
     }
+
+    // Sync PRs
+    deployment.trigger_pr_sync();
 
     if let Some(profile) = deployment.auth_context().cached_profile().await
         && let Some(analytics) = deployment.analytics()

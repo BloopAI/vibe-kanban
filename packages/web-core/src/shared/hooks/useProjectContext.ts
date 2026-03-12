@@ -11,6 +11,7 @@ import type {
   IssueTag,
   IssueRelationship,
   PullRequest,
+  PullRequestIssue,
   Workspace,
   CreateIssueRequest,
   UpdateIssueRequest,
@@ -22,6 +23,7 @@ import type {
   CreateIssueFollowerRequest,
   CreateIssueTagRequest,
   CreateIssueRelationshipRequest,
+  CreatePullRequestIssueRequest,
 } from 'shared/remote-types';
 
 /**
@@ -36,6 +38,7 @@ import type {
  * - IssueTags (data + mutations)
  * - IssueRelationships (data + mutations)
  * - PullRequests (data only)
+ * - PullRequestIssues (data + mutations)
  * - Workspaces (data only)
  */
 export interface ProjectContextValue {
@@ -50,6 +53,7 @@ export interface ProjectContextValue {
   issueTags: IssueTag[];
   issueRelationships: IssueRelationship[];
   pullRequests: PullRequest[];
+  pullRequestIssues: PullRequestIssue[];
   workspaces: Workspace[];
 
   // Loading/error state
@@ -101,6 +105,12 @@ export interface ProjectContextValue {
     data: CreateIssueRelationshipRequest
   ) => InsertResult<IssueRelationship>;
   removeIssueRelationship: (id: string) => MutationResult;
+
+  // PullRequestIssue mutations
+  insertPullRequestIssue: (
+    data: CreatePullRequestIssueRequest
+  ) => InsertResult<PullRequestIssue>;
+  removePullRequestIssue: (id: string) => MutationResult;
 
   // Lookup helpers
   getIssue: (issueId: string) => Issue | undefined;

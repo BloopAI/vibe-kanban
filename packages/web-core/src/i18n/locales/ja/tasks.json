@@ -514,5 +514,30 @@
       "description": "Sign in to access this feature.",
       "action": "Sign in"
     }
+  },
+  "linkPrToIssue": {
+    "title": "プルリクエストをリンク",
+    "description": "既存のプルリクエストをこのイシューにリンクします。",
+    "urlTab": "URLから",
+    "browseTab": "参照",
+    "urlLabel": "プルリクエストURL",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "リポジトリ",
+    "remoteLabel": "リモート",
+    "pullRequestLabel": "プルリクエスト",
+    "loadingPrInfo": "PR情報を読み込み中...",
+    "invalidUrl": "このURLからPR情報を読み込めませんでした",
+    "baseBranch": "ベース:",
+    "linkPr": "PRをリンク",
+    "linking": "リンク中...",
+    "status": {
+      "open": "オープン",
+      "merged": "マージ済み",
+      "closed": "クローズ",
+      "unknown": "不明"
+    },
+    "errors": {
+      "failed": "PRのリンクに失敗しました。もう一度お試しください。"
+    }
   }
 }

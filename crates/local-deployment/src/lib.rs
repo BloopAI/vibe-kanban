@@ -28,7 +28,7 @@ use services::services::{
     remote_client::{RemoteClient, RemoteClientError},
     repo::RepoService,
 };
-use tokio::sync::RwLock;
+use tokio::sync::{Notify, RwLock};
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
     assets::{config_path, credentials_path, server_signing_key_path, trusted_keys_path},
@@ -73,6 +73,7 @@ pub struct LocalDeployment {
     relay_hosts: Option<Arc<RelayHosts>>,
     ssh_config: Arc<russh::server::Config>,
     pty: PtyService,
+    pr_sync_notify: Arc<Notify>,
 }
 
 #[derive(Debug, Clone)]
@@ -240,6 +241,7 @@ impl Deployment for LocalDeployment {
             )),
             None => None,
         };
+        let pr_sync_notify = Arc::new(Notify::new());
         {
             let db = db.clone();
             let analytics = analytics.as_ref().map(|s| AnalyticsContext {
@@ -248,7 +250,7 @@ impl Deployment for LocalDeployment {
             });
             let container = container.clone();
             let rc = remote_client.clone().ok();
-            PrMonitorService::spawn(db, analytics, container, rc).await;
+            PrMonitorService::spawn(db, analytics, container, rc, pr_sync_notify.clone()).await;
         }
 
         let deployment = Self {
@@ -279,6 +281,7 @@ impl Deployment for LocalDeployment {
             relay_hosts,
             ssh_config,
             pty,
+            pr_sync_notify,
         };
 
         Ok(deployment)
@@ -441,5 +444,9 @@ impl LocalDeployment {
 
     pub fn ssh_config(&self) -> &Arc<russh::server::Config> {
         &self.ssh_config
+    }
+
+    pub fn trigger_pr_sync(&self) {
+        self.pr_sync_notify.notify_one();
     }
 }

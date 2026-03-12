@@ -514,5 +514,30 @@
       "description": "Sign in to access this feature.",
       "action": "Sign in"
     }
+  },
+  "linkPrToIssue": {
+    "title": "关联拉取请求",
+    "description": "将现有的拉取请求关联到此问题。",
+    "urlTab": "从 URL",
+    "browseTab": "浏览",
+    "urlLabel": "拉取请求 URL",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "仓库",
+    "remoteLabel": "远程",
+    "pullRequestLabel": "拉取请求",
+    "loadingPrInfo": "正在加载 PR 信息...",
+    "invalidUrl": "无法从此 URL 加载 PR 信息",
+    "baseBranch": "基础分支：",
+    "linkPr": "关联 PR",
+    "linking": "关联中...",
+    "status": {
+      "open": "打开",
+      "merged": "已合并",
+      "closed": "已关闭",
+      "unknown": "未知"
+    },
+    "errors": {
+      "failed": "关联 PR 失败，请重试。"
+    }
   }
 }

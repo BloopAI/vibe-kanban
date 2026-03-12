@@ -10,12 +10,12 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use db::models::merge::{MergeStatus, PullRequestInfo};
+use db::models::merge::MergeStatus;
 use serde::Deserialize;
 use thiserror::Error;
 use utils::{command_ext::NoWindowExt, shell::resolve_executable_path_blocking};
 
-use crate::types::{CreatePrRequest, UnifiedPrComment};
+use crate::types::{CreatePrRequest, PullRequestDetail, UnifiedPrComment};
 
 #[derive(Debug, Clone)]
 pub struct AzureRepoInfo {
@@ -34,6 +34,12 @@ struct AzPrResponse {
     closed_date: Option<String>,
     repository: Option<AzRepository>,
     last_merge_commit: Option<AzCommit>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    target_ref_name: Option<String>,
+    #[serde(default)]
+    source_ref_name: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -277,7 +283,7 @@ impl AzCli {
         organization_url: &str,
         project: &str,
         repo_name: &str,
-    ) -> Result<PullRequestInfo, AzCliError> {
+    ) -> Result<PullRequestDetail, AzCliError> {
         let body = request.body.as_deref().unwrap_or("");
 
         let mut args: Vec<OsString> = Vec::with_capacity(20);
@@ -309,7 +315,7 @@ impl AzCli {
         Self::parse_pr_response(&raw)
     }
 
-    pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestInfo, AzCliError> {
+    pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestDetail, AzCliError> {
         let (organization, pr_id) = Self::parse_pr_url(pr_url).ok_or_else(|| {
             AzCliError::UnexpectedOutput(format!("Could not parse Azure DevOps PR URL: {pr_url}"))
         })?;
@@ -340,7 +346,7 @@ impl AzCli {
         project: &str,
         repo_name: &str,
         branch: &str,
-    ) -> Result<Vec<PullRequestInfo>, AzCliError> {
+    ) -> Result<Vec<PullRequestDetail>, AzCliError> {
         let raw = self.run(
             [
                 "repos",
@@ -437,22 +443,21 @@ impl AzCli {
 impl AzCli {
     /// Parse PR response from Azure CLI.
     /// Works for both `az repos pr create` and `az repos pr show`.
-    fn parse_pr_response(raw: &str) -> Result<PullRequestInfo, AzCliError> {
+    fn parse_pr_response(raw: &str) -> Result<PullRequestDetail, AzCliError> {
         let pr: AzPrResponse = serde_json::from_str(raw.trim()).map_err(|e| {
             AzCliError::UnexpectedOutput(format!("Failed to parse PR response: {e}; raw: {raw}"))
         })?;
         Ok(Self::az_pr_to_info(pr))
     }
 
-    fn parse_pr_list_response(raw: &str) -> Result<Vec<PullRequestInfo>, AzCliError> {
+    fn parse_pr_list_response(raw: &str) -> Result<Vec<PullRequestDetail>, AzCliError> {
         let prs: Vec<AzPrResponse> = serde_json::from_str(raw.trim()).map_err(|e| {
             AzCliError::UnexpectedOutput(format!("Failed to parse PR list: {e}; raw: {raw}"))
         })?;
         Ok(prs.into_iter().map(Self::az_pr_to_info).collect())
     }
 
-    /// Convert Azure PR response to PullRequestInfo.
-    fn az_pr_to_info(pr: AzPrResponse) -> PullRequestInfo {
+    fn az_pr_to_info(pr: AzPrResponse) -> PullRequestDetail {
         let url = pr
             .repository
             .and_then(|r| r.web_url)
@@ -466,12 +471,21 @@ impl AzCli {
             .map(|dt| dt.with_timezone(&Utc));
         let merge_commit_sha = pr.last_merge_commit.and_then(|c| c.commit_id);
 
-        PullRequestInfo {
+        PullRequestDetail {
             number: pr.pull_request_id,
             url,
             status: Self::map_azure_status(status),
             merged_at,
             merge_commit_sha,
+            title: pr.title.unwrap_or_default(),
+            base_branch: pr
+                .target_ref_name
+                .map(|r| r.strip_prefix("refs/heads/").unwrap_or(&r).to_string())
+                .unwrap_or_default(),
+            head_branch: pr
+                .source_ref_name
+                .map(|r| r.strip_prefix("refs/heads/").unwrap_or(&r).to_string())
+                .unwrap_or_default(),
         }
     }
 

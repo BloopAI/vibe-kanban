@@ -4,8 +4,8 @@ use api_types::{
     ListIssueAssigneesResponse, ListIssueCommentReactionsResponse, ListIssueCommentsResponse,
     ListIssueFollowersResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
     ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember,
-    SearchIssuesRequest, User, Workspace,
+    ListPullRequestIssuesResponse, ListPullRequestsResponse, ListTagsResponse, Notification,
+    OrganizationMember, SearchIssuesRequest, User, Workspace,
 };
 use axum::{
     Json,
@@ -24,7 +24,8 @@ use crate::{
         issue_relationships::IssueRelationshipRepository, issue_tags::IssueTagRepository,
         issues::IssueRepository, notifications::NotificationRepository, organization_members,
         project_statuses::ProjectStatusRepository, projects::ProjectRepository,
-        pull_requests::PullRequestRepository, tags::TagRepository, workspaces::WorkspaceRepository,
+        pull_request_issues::PullRequestIssueRepository, pull_requests::PullRequestRepository,
+        tags::TagRepository, workspaces::WorkspaceRepository,
     },
     routes::{
         error::ErrorResponse,
@@ -156,6 +157,12 @@ pub fn all_shape_routes() -> Vec<ShapeRoute> {
             ShapeScope::Project,
             "/fallback/pull_requests",
             fallback_list_pull_requests,
+        ),
+        ShapeRoute::new(
+            &shapes::PROJECT_PULL_REQUEST_ISSUES_SHAPE,
+            ShapeScope::Project,
+            "/fallback/pull_request_issues",
+            fallback_list_pull_request_issues,
         ),
         // Issue-scoped
         ShapeRoute::new(
@@ -454,6 +461,29 @@ async fn fallback_list_pull_requests(
         })?;
 
     Ok(Json(ListPullRequestsResponse { pull_requests }))
+}
+
+async fn fallback_list_pull_request_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Query(query): Query<ProjectFallbackQuery>,
+) -> Result<Json<ListPullRequestIssuesResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
+
+    let pull_request_issues =
+        PullRequestIssueRepository::list_by_project(state.pool(), query.project_id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, project_id = %query.project_id, "failed to list pull request issues (fallback)");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to list pull request issues",
+                )
+            })?;
+
+    Ok(Json(ListPullRequestIssuesResponse {
+        pull_request_issues,
+    }))
 }
 
 // =============================================================================

@@ -11,7 +11,7 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use db::models::merge::{MergeStatus, PullRequestInfo};
+use db::models::merge::MergeStatus;
 use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
@@ -19,7 +19,8 @@ use url::Url;
 use utils::{command_ext::NoWindowExt, shell::resolve_executable_path_blocking};
 
 use crate::types::{
-    CreatePrRequest, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
+    CreatePrRequest, PrComment, PrCommentAuthor, PrReviewComment, PullRequestDetail,
+    ReviewCommentUser,
 };
 
 #[derive(Debug, Clone)]
@@ -108,17 +109,14 @@ struct GhPrResponse {
     state: String,
     merged_at: Option<DateTime<Utc>>,
     merge_commit: Option<GhMergeCommit>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct GhPrListExtendedResponse {
-    number: i64,
-    url: String,
     #[serde(default)]
-    title: String,
-    head_ref_name: String,
-    base_ref_name: String,
+    title: Option<String>,
+    #[serde(default)]
+    base_ref_name: Option<String>,
+    #[serde(default)]
+    head_ref_name: Option<String>,
+    #[serde(default)]
+    updated_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Error)]
@@ -229,7 +227,7 @@ impl GhCli {
         request: &CreatePrRequest,
         repo_info: &GitHubRepoInfo,
         repo_path: &Path,
-    ) -> Result<PullRequestInfo, GhCliError> {
+    ) -> Result<PullRequestDetail, GhCliError> {
         // Write body to temp file to avoid shell escaping and length issues
         let body = request.body.as_deref().unwrap_or("");
         let mut body_file = NamedTempFile::new()
@@ -259,18 +257,18 @@ impl GhCli {
         }
 
         let raw = self.run(args, Some(repo_path))?;
-        Self::parse_pr_create_text(&raw)
+        Self::parse_pr_create_text(&raw, request)
     }
 
     /// Retrieve details for a pull request by URL.
-    pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestInfo, GhCliError> {
+    pub fn view_pr(&self, pr_url: &str) -> Result<PullRequestDetail, GhCliError> {
         let raw = self.run(
             [
                 "pr",
                 "view",
                 pr_url,
                 "--json",
-                "number,url,state,mergedAt,mergeCommit",
+                "number,url,state,mergedAt,mergeCommit,title,baseRefName,headRefName",
             ],
             None,
         )?;
@@ -282,7 +280,7 @@ impl GhCli {
         &self,
         repo_info: &GitHubRepoInfo,
         branch: &str,
-    ) -> Result<Vec<PullRequestInfo>, GhCliError> {
+    ) -> Result<Vec<PullRequestDetail>, GhCliError> {
         let repo_spec = repo_info.repo_spec();
         let raw = self.run(
             [
@@ -295,28 +293,68 @@ impl GhCli {
                 "--head",
                 branch,
                 "--json",
-                "number,url,state,mergedAt,mergeCommit",
+                "number,url,title,headRefName,baseRefName,state,mergedAt,mergeCommit",
             ],
             None,
         )?;
         Self::parse_pr_list(&raw)
     }
 
-    pub fn list_open_prs(&self, owner: &str, repo: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
-        let raw = self.run(
+    pub fn list_prs(&self, owner: &str, repo: &str) -> Result<Vec<PullRequestDetail>, GhCliError> {
+        let repo_spec = format!("{owner}/{repo}");
+        let json_fields =
+            "number,url,title,headRefName,baseRefName,state,mergedAt,mergeCommit,updatedAt";
+
+        let open_raw = self.run(
             [
                 "pr",
                 "list",
                 "--repo",
-                &format!("{owner}/{repo}"),
+                &repo_spec,
                 "--state",
                 "open",
                 "--json",
-                "number,url,title,headRefName,baseRefName",
+                json_fields,
             ],
             None,
         )?;
-        Self::parse_open_pr_list(&raw)
+
+        let closed_raw = self.run(
+            [
+                "pr",
+                "list",
+                "--repo",
+                &repo_spec,
+                "--state",
+                "closed",
+                "--limit",
+                "20",
+                "--json",
+                json_fields,
+            ],
+            None,
+        )?;
+
+        let mut open_prs: Vec<GhPrResponse> =
+            serde_json::from_str(open_raw.trim()).map_err(|err| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to parse gh pr list (open) response: {err}; raw: {open_raw}"
+                ))
+            })?;
+        let closed_prs: Vec<GhPrResponse> =
+            serde_json::from_str(closed_raw.trim()).map_err(|err| {
+                GhCliError::UnexpectedOutput(format!(
+                    "Failed to parse gh pr list (closed) response: {err}; raw: {closed_raw}"
+                ))
+            })?;
+
+        open_prs.extend(closed_prs);
+        open_prs.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+
+        Ok(open_prs
+            .into_iter()
+            .map(Self::pr_response_to_detail)
+            .collect())
     }
 
     /// Fetch comments for a pull request.
@@ -385,7 +423,10 @@ impl GhCli {
 }
 
 impl GhCli {
-    fn parse_pr_create_text(raw: &str) -> Result<PullRequestInfo, GhCliError> {
+    fn parse_pr_create_text(
+        raw: &str,
+        request: &CreatePrRequest,
+    ) -> Result<PullRequestDetail, GhCliError> {
         let pr_url = raw
             .lines()
             .rev()
@@ -416,59 +457,43 @@ impl GhCli {
                 ))
             })?;
 
-        Ok(PullRequestInfo {
+        Ok(PullRequestDetail {
             number,
             url: pr_url,
             status: MergeStatus::Open,
             merged_at: None,
             merge_commit_sha: None,
+            title: request.title.clone(),
+            base_branch: request.base_branch.clone(),
+            head_branch: request.head_branch.clone(),
         })
     }
 
-    fn parse_pr_view(raw: &str) -> Result<PullRequestInfo, GhCliError> {
+    fn parse_pr_view(raw: &str) -> Result<PullRequestDetail, GhCliError> {
         let pr: GhPrResponse = serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
                 "Failed to parse gh pr view response: {err}; raw: {raw}"
             ))
         })?;
-        Ok(Self::pr_response_to_info(pr))
+        Ok(Self::pr_response_to_detail(pr))
     }
 
-    fn parse_pr_list(raw: &str) -> Result<Vec<PullRequestInfo>, GhCliError> {
+    fn parse_pr_list(raw: &str) -> Result<Vec<PullRequestDetail>, GhCliError> {
         let prs: Vec<GhPrResponse> = serde_json::from_str(raw.trim()).map_err(|err| {
             GhCliError::UnexpectedOutput(format!(
                 "Failed to parse gh pr list response: {err}; raw: {raw}"
             ))
         })?;
-        Ok(prs.into_iter().map(Self::pr_response_to_info).collect())
+        Ok(prs.into_iter().map(Self::pr_response_to_detail).collect())
     }
 
-    fn parse_open_pr_list(raw: &str) -> Result<Vec<OpenPrInfo>, GhCliError> {
-        let prs: Vec<GhPrListExtendedResponse> =
-            serde_json::from_str(raw.trim()).map_err(|err| {
-                GhCliError::UnexpectedOutput(format!(
-                    "Failed to parse gh pr list response: {err}; raw: {raw}"
-                ))
-            })?;
-        Ok(prs
-            .into_iter()
-            .map(|pr| OpenPrInfo {
-                number: pr.number,
-                url: pr.url,
-                title: pr.title,
-                head_branch: pr.head_ref_name,
-                base_branch: pr.base_ref_name,
-            })
-            .collect())
-    }
-
-    fn pr_response_to_info(pr: GhPrResponse) -> PullRequestInfo {
+    fn pr_response_to_detail(pr: GhPrResponse) -> PullRequestDetail {
         let state = if pr.state.is_empty() {
             "OPEN"
         } else {
             &pr.state
         };
-        PullRequestInfo {
+        PullRequestDetail {
             number: pr.number,
             url: pr.url,
             status: match state.to_ascii_uppercase().as_str() {
@@ -479,6 +504,9 @@ impl GhCli {
             },
             merged_at: pr.merged_at,
             merge_commit_sha: pr.merge_commit.and_then(|c| c.oid),
+            title: pr.title.unwrap_or_default(),
+            base_branch: pr.base_ref_name.unwrap_or_default(),
+            head_branch: pr.head_ref_name.unwrap_or_default(),
         }
     }
 

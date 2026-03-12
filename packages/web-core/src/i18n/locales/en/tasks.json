@@ -514,5 +514,30 @@
       "prNotFound": "Pull request not found",
       "failedToCreateWorkspace": "Failed to create workspace"
     }
+  },
+  "linkPrToIssue": {
+    "title": "Link Pull Request",
+    "description": "Link an existing pull request to this issue.",
+    "urlTab": "From URL",
+    "browseTab": "Browse",
+    "urlLabel": "Pull Request URL",
+    "urlPlaceholder": "https://github.com/owner/repo/pull/123",
+    "repositoryLabel": "Repository",
+    "remoteLabel": "Remote",
+    "pullRequestLabel": "Pull Request",
+    "loadingPrInfo": "Loading PR info...",
+    "invalidUrl": "Could not load PR info from this URL",
+    "baseBranch": "Base:",
+    "linkPr": "Link PR",
+    "linking": "Linking...",
+    "status": {
+      "open": "Open",
+      "merged": "Merged",
+      "closed": "Closed",
+      "unknown": "Unknown"
+    },
+    "errors": {
+      "failed": "Failed to link PR. Please try again."
+    }
   }
 }

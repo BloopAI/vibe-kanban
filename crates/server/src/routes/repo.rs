@@ -10,7 +10,7 @@ use axum::{
 use db::models::repo::{Repo, SearchResult, UpdateRepo};
 use deployment::Deployment;
 use git::{GitBranch, GitRemote};
-use git_host::{GitHostError, GitHostProvider, GitHostService, OpenPrInfo, ProviderKind};
+use git_host::{GitHostError, GitHostProvider, GitHostService, ProviderKind, PullRequestDetail};
 use serde::{Deserialize, Serialize};
 use services::services::file_search::SearchQuery;
 use ts_rs::TS;
@@ -249,7 +249,7 @@ pub async fn list_open_prs(
     State(deployment): State<DeploymentImpl>,
     Path(repo_id): Path<Uuid>,
     Query(query): Query<ListPrsQuery>,
-) -> Result<ResponseJson<ApiResponse<Vec<OpenPrInfo>, ListPrsError>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<PullRequestDetail>, ListPrsError>>, ApiError> {
     let repo = deployment
         .repo()
         .get_by_id(&deployment.db().pool, repo_id)
@@ -289,6 +289,46 @@ pub async fn list_open_prs(
         ))),
         Err(e) => {
             tracing::error!("Failed to list open PRs for repo {}: {}", repo_id, e);
+            Ok(ResponseJson(ApiResponse::error(&e.to_string())))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PrInfoQuery {
+    pub url: String,
+}
+
+pub async fn get_pr_info(
+    State(_deployment): State<DeploymentImpl>,
+    Query(query): Query<PrInfoQuery>,
+) -> Result<ResponseJson<ApiResponse<PullRequestDetail, ListPrsError>>, ApiError> {
+    let git_host = match GitHostService::from_url(&query.url) {
+        Ok(host) => host,
+        Err(GitHostError::UnsupportedProvider) => {
+            return Ok(ResponseJson(ApiResponse::error_with_data(
+                ListPrsError::UnsupportedProvider,
+            )));
+        }
+        Err(e) => {
+            tracing::error!("Failed to create git host service: {}", e);
+            return Ok(ResponseJson(ApiResponse::error(&e.to_string())));
+        }
+    };
+
+    match git_host.get_pr_status(&query.url).await {
+        Ok(info) => Ok(ResponseJson(ApiResponse::success(info))),
+        Err(GitHostError::CliNotInstalled { provider }) => Ok(ResponseJson(
+            ApiResponse::error_with_data(ListPrsError::CliNotInstalled { provider }),
+        )),
+        Err(GitHostError::AuthFailed(message)) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::AuthFailed { message },
+        ))),
+        Err(GitHostError::UnsupportedProvider) => Ok(ResponseJson(ApiResponse::error_with_data(
+            ListPrsError::UnsupportedProvider,
+        ))),
+        Err(e) => {
+            tracing::error!("Failed to get PR info for {}: {}", query.url, e);
             Ok(ResponseJson(ApiResponse::error(&e.to_string())))
         }
     }
@@ -338,6 +378,7 @@ pub fn router() -> Router<DeploymentImpl> {
         .route("/repos/{repo_id}/branches", get(get_repo_branches))
         .route("/repos/{repo_id}/remotes", get(get_repo_remotes))
         .route("/repos/{repo_id}/prs", get(list_open_prs))
+        .route("/repos/pr-info", get(get_pr_info))
         .route("/repos/{repo_id}/search", get(search_repo))
         .route("/repos/{repo_id}/open-editor", post(open_repo_in_editor))
 }

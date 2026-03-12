@@ -11,6 +11,7 @@ use db::models::{
     coding_agent_turn::CodingAgentTurn,
     execution_process::{ExecutionProcess, ExecutionProcessRunReason},
     merge::{Merge, MergeStatus},
+    pull_request::PullRequest,
     repo::{Repo, RepoError},
     session::{CreateSession, Session},
     workspace::{CreateWorkspace, Workspace, WorkspaceError},
@@ -301,8 +302,8 @@ pub async fn create_pr(
         .await
     {
         Ok(pr_info) => {
-            // Update the workspace with PR information
-            if let Err(e) = Merge::create_pr(
+            // Track the PR locally
+            if let Err(e) = PullRequest::create_for_workspace(
                 pool,
                 workspace.id,
                 workspace_repo.repo_id,
@@ -312,7 +313,7 @@ pub async fn create_pr(
             )
             .await
             {
-                tracing::error!("Failed to update workspace PR status: {}", e);
+                tracing::error!("Failed to create local PR record: {}", e);
             }
 
             if let Ok(client) = deployment.remote_client() {
@@ -454,8 +455,8 @@ pub async fn attach_existing_pr(
 
     // Take the first PR (prefer open, but also accept merged/closed)
     if let Some(pr_info) = prs.into_iter().next() {
-        // Save PR info to database
-        let merge = Merge::create_pr(
+        // Save PR info locally
+        PullRequest::create_for_workspace(
             pool,
             workspace.id,
             workspace_repo.repo_id,
@@ -467,10 +468,16 @@ pub async fn attach_existing_pr(
 
         // Update status if not open
         if !matches!(pr_info.status, MergeStatus::Open) {
-            Merge::update_status(
+            let merged_at = if matches!(&pr_info.status, MergeStatus::Merged) {
+                pr_info.merged_at
+            } else {
+                None
+            };
+            PullRequest::update_status(
                 pool,
-                merge.id,
-                pr_info.status.clone(),
+                &pr_info.url,
+                &pr_info.status,
+                merged_at,
                 pr_info.merge_commit_sha.clone(),
             )
             .await?;
@@ -499,7 +506,7 @@ pub async fn attach_existing_pr(
 
         // If PR is merged, archive workspace
         if matches!(pr_info.status, MergeStatus::Merged) {
-            let open_pr_count = Merge::count_open_prs_for_workspace(pool, workspace.id).await?;
+            let open_pr_count = PullRequest::count_open_for_workspace(pool, workspace.id).await?;
 
             if open_pr_count == 0 {
                 if !workspace.pinned
@@ -771,7 +778,7 @@ pub async fn create_workspace_from_pr(
         }
     }
 
-    Merge::create_pr(
+    PullRequest::create_for_workspace(
         pool,
         workspace.id,
         payload.repo_id,
