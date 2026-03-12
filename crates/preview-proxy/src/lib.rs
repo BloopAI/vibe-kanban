@@ -211,13 +211,13 @@ fn relay_preview_target_url(
     normalized_path: &str,
     query_string: &str,
     scheme: &str,
-) -> Option<String> {
+) -> String {
     let relay_path = preview_api_target_path(target_port, normalized_path, query_string);
 
-    Some(format!(
+    format!(
         "{scheme}://127.0.0.1:{backend_port}/api/host/{host_id}/{}",
         relay_path.trim_start_matches("/api/")
-    ))
+    )
 }
 
 fn rewrite_redirect_like_header_value(
@@ -468,22 +468,14 @@ async fn http_proxy_handler(
         }
     };
     let target_url = if let Some(host_id) = target.relay_host_id {
-        let Some(url) = relay_preview_target_url(
+        relay_preview_target_url(
             backend_port,
             host_id,
             target.port,
             normalized_path,
             query_string,
             "http",
-        ) else {
-            return (
-                StatusCode::BAD_REQUEST,
-                "Local backend port is not available",
-            )
-                .into_response();
-        };
-
-        url
+        )
     } else {
         build_local_upstream_url("http", target.port, normalized_path, query_string)
     };
@@ -736,7 +728,6 @@ async fn handle_ws_proxy(
             query,
             "ws",
         )
-        .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
     } else {
         build_local_upstream_url("ws", target.port, normalized_path, query)
     };
