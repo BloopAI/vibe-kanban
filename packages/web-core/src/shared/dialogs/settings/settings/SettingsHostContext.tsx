@@ -31,6 +31,7 @@ export type SettingsHostTarget = MachineTarget & {
 
 interface SettingsHostContextValue {
   availableHosts: SettingsHostTarget[];
+  hostsResolved: boolean;
   selectedHostId: SettingsHostTargetId | null;
   selectedHost: SettingsHostTarget | null;
   setSelectedHostId: (hostId: SettingsHostTargetId) => void;
@@ -99,24 +100,36 @@ export function SettingsHostProvider({
   const routeHostId = useHostId();
   const { isSignedIn } = useAuth();
   const { data: localRemoteHosts } = useRemoteCloudHostsState();
-  const { data: relayHosts = [] } = useQuery({
+  const { data: relayHosts = [], isLoading: relayHostsLoading } = useQuery({
     queryKey: ['settings-dialog', 'relay-hosts'],
     queryFn: listRelayHosts,
     enabled: runtime === 'remote' && isSignedIn,
     staleTime: 30_000,
   });
-  const { data: pairedRelayHosts = [] } = useQuery({
-    queryKey: ['settings-dialog', 'paired-relay-hosts'],
-    queryFn: async () => {
-      try {
-        return await listPairedRelayHosts();
-      } catch {
-        return [];
-      }
-    },
-    enabled: runtime === 'remote' && isSignedIn,
-    staleTime: 5_000,
-  });
+  const { data: pairedRelayHosts = [], isLoading: pairedRelayHostsLoading } =
+    useQuery({
+      queryKey: ['settings-dialog', 'paired-relay-hosts'],
+      queryFn: async () => {
+        try {
+          return await listPairedRelayHosts();
+        } catch {
+          return [];
+        }
+      },
+      enabled: runtime === 'remote' && isSignedIn,
+      staleTime: 5_000,
+    });
+  const hostsResolved = useMemo(() => {
+    if (runtime === 'local') {
+      return true;
+    }
+
+    if (!isSignedIn) {
+      return true;
+    }
+
+    return !relayHostsLoading && !pairedRelayHostsLoading;
+  }, [isSignedIn, pairedRelayHostsLoading, relayHostsLoading, runtime]);
 
   const availableHosts = useMemo<SettingsHostTarget[]>(() => {
     if (runtime === 'local') {
@@ -164,11 +177,12 @@ export function SettingsHostProvider({
   const value = useMemo<SettingsHostContextValue>(
     () => ({
       availableHosts,
+      hostsResolved,
       selectedHostId,
       selectedHost,
       setSelectedHostId,
     }),
-    [availableHosts, selectedHost, selectedHostId]
+    [availableHosts, hostsResolved, selectedHost, selectedHostId]
   );
 
   return (

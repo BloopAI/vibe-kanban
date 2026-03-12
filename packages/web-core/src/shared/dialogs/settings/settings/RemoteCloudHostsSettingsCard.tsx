@@ -25,10 +25,6 @@ import {
   useRemovePairedRelayHostMutation,
 } from './useRelayRemoteHostMutations';
 
-export function RemoteCloudHostsSettingsCard() {
-  return <RemoteCloudHostsSettingsCardContent />;
-}
-
 export function RemoteCloudHostsSettingsCardContent({
   embedded = false,
   initialHostId,

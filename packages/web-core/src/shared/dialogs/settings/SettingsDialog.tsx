@@ -137,7 +137,7 @@ function SettingsDialogContent({
 }: SettingsDialogContentProps) {
   const { t } = useTranslation('settings');
   const { isDirty } = useSettingsDirty();
-  const { availableHosts, selectedHost } = useSettingsHost();
+  const { availableHosts, hostsResolved, selectedHost } = useSettingsHost();
 
   const resolvedInitialSection = useMemo<SettingsSectionType>(() => {
     if (
@@ -192,12 +192,13 @@ function SettingsDialogContent({
 
   useEffect(() => {
     if (
+      hostsResolved &&
       isHostSpecificSettingsSection(activeSection) &&
       availableHosts.length === 0
     ) {
       setActiveSection('organizations');
     }
-  }, [activeSection, availableHosts.length]);
+  }, [activeSection, availableHosts.length, hostsResolved]);
 
   const handleMobileBack = () => {
     setMobileShowContent(false);
