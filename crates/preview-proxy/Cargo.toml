@@ -9,7 +9,7 @@ anyhow = { workspace = true }
 futures-util = "0.3"
 reqwest = { workspace = true }
 tokio = { workspace = true }
-tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }
+tokio-tungstenite = "0.26"
 tower-http = { workspace = true }
 tracing = { workspace = true }
 uuid = { version = "1.0", features = ["serde", "v4"] }
