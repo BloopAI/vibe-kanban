@@ -1,6 +1,6 @@
 use anyhow::{self, Error as AnyhowError};
-use deployment::{Deployment, DeploymentError};
-use server::{startup, tunnel};
+use deployment::DeploymentError;
+use server::startup;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
@@ -82,19 +82,6 @@ async fn main() -> Result<(), VibeKanbanError> {
             }
         });
     }
-
-    // Set up relay tunnel
-    handle.deployment.server_info().set_port(handle.port).await;
-    let relay_host_name = {
-        let config = handle.deployment.config().read().await;
-        tunnel::effective_relay_host_name(&config, handle.deployment.user_id())
-    };
-    handle
-        .deployment
-        .server_info()
-        .set_hostname(relay_host_name)
-        .await;
-    tunnel::spawn_relay(&handle.deployment).await;
 
     // Cancel the server when a shutdown signal (Ctrl-C / SIGTERM) arrives.
     let shutdown_token = handle.shutdown_token();
