@@ -233,10 +233,6 @@ export function AppBar({
         </div>
       )}
 
-      {(showLocalSection || showRemoteSection) && showProjectsSection && (
-        <div className="w-8 h-px bg-border" aria-hidden="true" />
-      )}
-
       {showProjectsSection && (
         <div className="flex flex-col items-center gap-1">
           <AppBarSectionLabel>{projectsLabel}</AppBarSectionLabel>
