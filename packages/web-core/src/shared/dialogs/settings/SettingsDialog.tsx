@@ -24,7 +24,7 @@ import {
   SettingsHostProvider,
   useSettingsHost,
 } from './settings/SettingsHostContext';
-import { ScopedUserSystemProvider } from './settings/ScopedUserSystemProvider';
+import { SettingsMachineUserSystemProvider } from './settings/SettingsMachineUserSystemProvider';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 
 export interface SettingsDialogProps {
@@ -304,13 +304,13 @@ function SettingsDialogContent({
             <div className="flex-1 overflow-y-auto">
               {isHostSpecificSettingsSection(activeSection) ? (
                 selectedHost ? (
-                  <ScopedUserSystemProvider>
+                  <SettingsMachineUserSystemProvider>
                     <SettingsSection
                       type={activeSection}
                       onClose={handleCloseWithConfirmation}
                       initialState={initialState}
                     />
-                  </ScopedUserSystemProvider>
+                  </SettingsMachineUserSystemProvider>
                 ) : (
                   <div className="px-6 py-8 text-sm text-low">
                     No host is available for host-specific settings yet.

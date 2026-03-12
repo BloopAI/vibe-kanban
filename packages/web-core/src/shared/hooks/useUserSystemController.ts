@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   BaseAgentCapability,
@@ -7,38 +7,33 @@ import type {
   ExecutorProfile,
   UserSystemInfo,
 } from 'shared/types';
-import {
-  UserSystemContext,
-  type UserSystemContextType,
-} from '@/shared/hooks/useUserSystem';
-import { useSettingsMachineClient } from './SettingsHostContext';
+import type { UserSystemContextType } from './useUserSystem';
 
-export function ScopedUserSystemProvider({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const machineClient = useSettingsMachineClient();
+interface UseUserSystemControllerOptions {
+  queryKey: readonly unknown[];
+  enabled?: boolean;
+  load: () => Promise<UserSystemInfo>;
+  save: (config: Config) => Promise<Config>;
+  loading?: boolean;
+}
+
+export function useUserSystemController({
+  queryKey,
+  enabled = true,
+  load,
+  save,
+  loading: loadingOverride,
+}: UseUserSystemControllerOptions): {
+  value: UserSystemContextType;
+  userSystemInfo: UserSystemInfo | undefined;
+  isLoading: boolean;
+} {
   const queryClient = useQueryClient();
-  const userSystemQueryKey = useMemo(
-    () =>
-      [
-        'settings-user-system',
-        ...(machineClient?.queryScopeKey ?? ['machine', 'unselected']),
-      ] as const,
-    [machineClient]
-  );
 
   const { data: userSystemInfo, isLoading } = useQuery({
-    queryKey: userSystemQueryKey,
-    queryFn: () => {
-      if (!machineClient) {
-        throw new Error('Machine client is required');
-      }
-
-      return machineClient.getConfig();
-    },
-    enabled: machineClient != null,
+    queryKey,
+    queryFn: load,
+    enabled,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -55,10 +50,11 @@ export function ScopedUserSystemProvider({
       string,
       BaseAgentCapability[]
     > | null) || null;
+  const loading = loadingOverride ?? isLoading;
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
-      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+      queryClient.setQueryData<UserSystemInfo>(queryKey, (old) => {
         if (!old) return old;
         return {
           ...old,
@@ -66,19 +62,19 @@ export function ScopedUserSystemProvider({
         };
       });
     },
-    [queryClient, userSystemQueryKey]
+    [queryClient, queryKey]
   );
 
   const saveConfig = useCallback(async (): Promise<boolean> => {
-    if (!config || !machineClient) return false;
+    if (!config) return false;
     try {
-      await machineClient.saveConfig(config);
+      await save(config);
       return true;
     } catch (err) {
       console.error('Error saving config:', err);
       return false;
     }
-  }, [config, machineClient]);
+  }, [config, save]);
 
   const updateAndSaveConfig = useCallback(
     async (updates: Partial<Config>): Promise<boolean> => {
@@ -87,13 +83,9 @@ export function ScopedUserSystemProvider({
       const newConfig = { ...config, ...updates };
       updateConfig(updates);
 
-      if (!machineClient) {
-        return false;
-      }
-
       try {
-        const saved = await machineClient.saveConfig(newConfig);
-        queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+        const saved = await save(newConfig);
+        queryClient.setQueryData<UserSystemInfo>(queryKey, (old) => {
           if (!old) return old;
           return {
             ...old,
@@ -103,30 +95,30 @@ export function ScopedUserSystemProvider({
         return true;
       } catch (err) {
         console.error('Error saving config:', err);
-        queryClient.invalidateQueries({ queryKey: userSystemQueryKey });
+        queryClient.invalidateQueries({ queryKey });
         return false;
       }
     },
-    [config, machineClient, queryClient, updateConfig, userSystemQueryKey]
+    [config, queryClient, queryKey, save, updateConfig]
   );
 
   const reloadSystem = useCallback(async () => {
-    await queryClient.invalidateQueries({ queryKey: userSystemQueryKey });
-  }, [queryClient, userSystemQueryKey]);
+    await queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
 
   const setEnvironment = useCallback(
     (env: Environment | null) => {
-      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+      queryClient.setQueryData<UserSystemInfo>(queryKey, (old) => {
         if (!old || !env) return old;
         return { ...old, environment: env };
       });
     },
-    [queryClient, userSystemQueryKey]
+    [queryClient, queryKey]
   );
 
   const setProfiles = useCallback(
     (newProfiles: Record<string, ExecutorProfile> | null) => {
-      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+      queryClient.setQueryData<UserSystemInfo>(queryKey, (old) => {
         if (!old || !newProfiles) return old;
         return {
           ...old,
@@ -134,17 +126,17 @@ export function ScopedUserSystemProvider({
         };
       });
     },
-    [queryClient, userSystemQueryKey]
+    [queryClient, queryKey]
   );
 
   const setCapabilities = useCallback(
     (newCapabilities: Record<string, BaseAgentCapability[]> | null) => {
-      queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
+      queryClient.setQueryData<UserSystemInfo>(queryKey, (old) => {
         if (!old || !newCapabilities) return old;
         return { ...old, capabilities: newCapabilities };
       });
     },
-    [queryClient, userSystemQueryKey]
+    [queryClient, queryKey]
   );
 
   const value = useMemo<UserSystemContextType>(
@@ -172,7 +164,7 @@ export function ScopedUserSystemProvider({
       setProfiles,
       setCapabilities,
       reloadSystem,
-      loading: isLoading,
+      loading,
     }),
     [
       analyticsUserId,
@@ -180,7 +172,7 @@ export function ScopedUserSystemProvider({
       capabilities,
       config,
       environment,
-      isLoading,
+      loading,
       loginStatus,
       profiles,
       reloadSystem,
@@ -193,9 +185,9 @@ export function ScopedUserSystemProvider({
     ]
   );
 
-  return (
-    <UserSystemContext.Provider value={value}>
-      {children}
-    </UserSystemContext.Provider>
-  );
+  return {
+    value,
+    userSystemInfo,
+    isLoading,
+  };
 }
