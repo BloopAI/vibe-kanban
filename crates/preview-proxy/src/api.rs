@@ -15,9 +15,8 @@ use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 
-use crate::{
-    DeploymentImpl,
-    proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
+use crate::proxy_common::{
+    build_local_upstream_url, extract_ws_protocols, should_forward_request_header,
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
@@ -44,7 +43,10 @@ fn is_hop_by_hop_header(name: &str) -> bool {
         || name.eq_ignore_ascii_case("upgrade")
 }
 
-pub fn router() -> Router<DeploymentImpl> {
+pub fn api_router<S>() -> Router<S>
+where
+    S: Clone + Send + Sync + 'static,
+{
     Router::new()
         .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
         .route("/preview/{target_port}/{*tail}", any(proxy_preview_request))

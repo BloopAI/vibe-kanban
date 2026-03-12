@@ -4652,6 +4652,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "preview-proxy"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-util",
+ "reqwest 0.13.2",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+ "tower-http 0.5.2",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "primeorder"
 version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6117,6 +6132,7 @@ dependencies = [
  "local-deployment",
  "mime_guess",
  "os_info",
+ "preview-proxy",
  "rand 0.8.5",
  "regex",
  "relay-client",

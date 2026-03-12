@@ -1,7 +1,7 @@
 /**
  * Build a vendored bippy IIFE bundle for injection into proxied HTML pages.
  *
- * Produces: crates/server/src/preview_proxy/bippy_bundle.js
+ * Produces: crates/preview-proxy/src/bippy_bundle.js
  * Global:   window.VKBippy
  *
  * Usage: node scripts/build-bippy-bundle.mjs
@@ -16,7 +16,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const OUT_FILE = join(
   ROOT,
-  'crates/server/src/preview_proxy/bippy_bundle.js',
+  'crates/preview-proxy/src/bippy_bundle.js',
 );
 
 // Temporary entrypoint that imports bippy + bippy/source, installs the hook,

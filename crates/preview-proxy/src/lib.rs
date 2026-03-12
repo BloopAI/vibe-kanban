@@ -12,28 +12,29 @@ use std::sync::OnceLock;
 use axum::{
     Router,
     body::Body,
-    extract::{FromRequestParts, Request, State, ws::WebSocketUpgrade},
+    extract::{FromRequestParts, Request, ws::WebSocketUpgrade},
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use deployment::Deployment;
 use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
-use tower_http::validate_request::ValidateRequestHeaderLayer;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    proxy_common::{
-        build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
-        should_forward_request_header,
-    },
+use crate::proxy_common::{
+    build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
+    should_forward_request_header,
 };
+
+mod api;
+mod proxy_common;
+
+pub use api::api_router;
 
 /// Global storage for the preview proxy port once assigned.
 /// Set once during server startup, read by the config API.
 static PROXY_PORT: OnceLock<u16> = OnceLock::new();
+static BACKEND_PORT: OnceLock<u16> = OnceLock::new();
 
 /// Shared HTTP client for proxying requests.
 /// Reused across all requests to leverage connection pooling per upstream host:port.
@@ -65,6 +66,17 @@ pub fn get_proxy_port() -> Option<u16> {
 /// Returns the port if successfully set, or None if already set.
 pub fn set_proxy_port(port: u16) -> Option<u16> {
     PROXY_PORT.set(port).ok().map(|()| port)
+}
+
+/// Get the local backend server port if set.
+pub fn get_backend_port() -> Option<u16> {
+    BACKEND_PORT.get().copied()
+}
+
+/// Set the local backend server port. Can only be called once.
+/// Returns the port if successfully set, or None if already set.
+pub fn set_backend_port(port: u16) -> Option<u16> {
+    BACKEND_PORT.set(port).ok().map(|()| port)
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -215,14 +227,13 @@ fn preview_api_target_path(target_port: u16, path: &str, query: &str) -> String 
 }
 
 fn relay_preview_target_url(
-    deployment: &DeploymentImpl,
     host_id: Uuid,
     target_port: u16,
     normalized_path: &str,
     query_string: &str,
     scheme: &str,
 ) -> Option<String> {
-    let backend_port = deployment.client_info().get_port()?;
+    let backend_port = get_backend_port()?;
     let relay_path = preview_api_target_path(target_port, normalized_path, query_string);
 
     Some(format!(
@@ -381,7 +392,7 @@ fn extract_target_from_host(headers: &HeaderMap) -> Option<PreviewTarget> {
     })
 }
 
-async fn subdomain_proxy(State(deployment): State<DeploymentImpl>, request: Request) -> Response {
+async fn subdomain_proxy(request: Request) -> Response {
     let target = match extract_target_from_host(request.headers()) {
         Some(port) => port,
         None => {
@@ -391,15 +402,10 @@ async fn subdomain_proxy(State(deployment): State<DeploymentImpl>, request: Requ
 
     let path = normalized_proxy_path(request.uri().path()).to_string();
 
-    proxy_impl(deployment, target, path, request).await
+    proxy_impl(target, path, request).await
 }
 
-async fn proxy_impl(
-    deployment: DeploymentImpl,
-    target: PreviewTarget,
-    path_str: String,
-    request: Request,
-) -> Response {
+async fn proxy_impl(target: PreviewTarget, path_str: String, request: Request) -> Response {
     let (mut parts, body) = request.into_parts();
 
     // Extract query string and subprotocols before WebSocket upgrade.
@@ -425,15 +431,9 @@ async fn proxy_impl(
 
         return ws
             .on_upgrade(move |client_socket| async move {
-                if let Err(e) = handle_ws_proxy(
-                    &deployment,
-                    client_socket,
-                    target,
-                    path_str,
-                    query_string,
-                    ws_protocols,
-                )
-                .await
+                if let Err(e) =
+                    handle_ws_proxy(client_socket, target, path_str, query_string, ws_protocols)
+                        .await
                 {
                     tracing::warn!("WebSocket proxy closed: {}", e);
                 }
@@ -442,15 +442,10 @@ async fn proxy_impl(
     }
 
     let request = Request::from_parts(parts, body);
-    http_proxy_handler(&deployment, target, path_str, request).await
+    http_proxy_handler(target, path_str, request).await
 }
 
-async fn http_proxy_handler(
-    deployment: &DeploymentImpl,
-    target: PreviewTarget,
-    path_str: String,
-    request: Request,
-) -> Response {
+async fn http_proxy_handler(target: PreviewTarget, path_str: String, request: Request) -> Response {
     let (parts, body) = request.into_parts();
     let method = parts.method;
     let headers = parts.headers;
@@ -470,14 +465,9 @@ async fn http_proxy_handler(
         }
     };
     let target_url = if let Some(host_id) = target.relay_host_id {
-        let Some(url) = relay_preview_target_url(
-            deployment,
-            host_id,
-            target.port,
-            normalized_path,
-            query_string,
-            "http",
-        ) else {
+        let Some(url) =
+            relay_preview_target_url(host_id, target.port, normalized_path, query_string, "http")
+        else {
             return (
                 StatusCode::BAD_REQUEST,
                 "Local backend port is not available",
@@ -724,7 +714,6 @@ async fn http_proxy_handler(
 }
 
 async fn handle_ws_proxy(
-    deployment: &DeploymentImpl,
     client_socket: axum::extract::ws::WebSocket,
     target: PreviewTarget,
     path: String,
@@ -734,15 +723,8 @@ async fn handle_ws_proxy(
     let normalized_path = normalized_proxy_path(&path);
     let query = query_string.as_deref().unwrap_or_default();
     let ws_url = if let Some(host_id) = target.relay_host_id {
-        relay_preview_target_url(
-            deployment,
-            host_id,
-            target.port,
-            normalized_path,
-            query,
-            "ws",
-        )
-        .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
+        relay_preview_target_url(host_id, target.port, normalized_path, query, "ws")
+            .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
     } else {
         build_local_upstream_url("ws", target.port, normalized_path, query)
     };
@@ -853,13 +835,8 @@ async fn handle_ws_proxy(
     Ok(())
 }
 
-pub fn router(deployment: DeploymentImpl) -> Router {
-    Router::new()
-        .fallback(subdomain_proxy)
-        .layer(ValidateRequestHeaderLayer::custom(
-            crate::middleware::validate_origin,
-        ))
-        .with_state(deployment)
+pub fn subdomain_router() -> Router {
+    Router::new().fallback(subdomain_proxy)
 }
 
 #[derive(Debug, Clone, PartialEq)]

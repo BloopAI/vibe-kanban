@@ -1,7 +1,8 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, preview_proxy, routes, runtime::relay_registration};
+use preview_proxy::subdomain_router;
+use server::{DeploymentImpl, routes, runtime::relay_registration};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
@@ -138,6 +139,8 @@ async fn main() -> Result<(), VibeKanbanError> {
         .set_hostname(host.clone())
         .expect("client hostname already set");
 
+    preview_proxy::set_backend_port(actual_main_port);
+
     let app_router = routes::router(deployment.clone());
 
     // Production only: open browser
@@ -157,7 +160,11 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = preview_proxy::router(deployment.clone());
+    let proxy_router: Router = subdomain_router().layer(
+        tower_http::validate_request::ValidateRequestHeaderLayer::custom(
+            server::middleware::validate_origin,
+        ),
+    );
 
     let main_shutdown = shutdown_token.clone();
     let proxy_shutdown = shutdown_token.clone();
