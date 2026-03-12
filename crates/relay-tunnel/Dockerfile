@@ -11,8 +11,9 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY rust-toolchain.toml Cargo.toml Cargo.lock ./
+COPY rust-toolchain.toml ./
 RUN cargo --version >/dev/null
+COPY Cargo.toml Cargo.lock ./
 # Copy workspace member manifests so Cargo can resolve workspace-shared deps
 # without invalidating the build on every unrelated source change.
 COPY crates/server/Cargo.toml crates/server/Cargo.toml
