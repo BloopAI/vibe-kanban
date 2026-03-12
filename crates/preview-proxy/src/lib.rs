@@ -13,18 +13,20 @@ use axum::{
     http::{HeaderMap, HeaderName, HeaderValue, StatusCode, header},
     response::{IntoResponse, Response},
 };
-use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
-use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use uuid::Uuid;
 
-use crate::proxy_common::{
-    build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
-    should_forward_request_header,
+use crate::{
+    proxy_common::{
+        build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
+        should_forward_request_header,
+    },
+    ws_bridge::{bridge_ws, connect_upstream_ws},
 };
 
 mod api;
 mod proxy_common;
+mod ws_bridge;
 
 pub use api::proxy_api_request;
 
@@ -740,109 +742,11 @@ async fn handle_ws_proxy(
     };
     tracing::debug!("Connecting to dev server WebSocket: {}", ws_url);
 
-    let mut ws_request = ws_url.into_client_request()?;
-    if let Some(ref protocols) = ws_protocols {
-        ws_request
-            .headers_mut()
-            .insert("sec-websocket-protocol", protocols.parse()?);
-    }
-    let (dev_server_ws, _response) = tokio_tungstenite::connect_async(ws_request).await?;
+    let (dev_server_ws, _selected_protocol) =
+        connect_upstream_ws(ws_url, ws_protocols.as_deref()).await?;
     tracing::debug!("Connected to dev server WebSocket");
 
-    let (mut client_sender, mut client_receiver) = client_socket.split();
-    let (mut dev_sender, mut dev_receiver) = dev_server_ws.split();
-
-    let client_to_dev = tokio::spawn(async move {
-        while let Some(msg_result) = client_receiver.next().await {
-            match msg_result {
-                Ok(axum_msg) => {
-                    let tungstenite_msg = match axum_msg {
-                        axum::extract::ws::Message::Text(text) => {
-                            tungstenite::Message::Text(text.to_string().into())
-                        }
-                        axum::extract::ws::Message::Binary(data) => {
-                            tungstenite::Message::Binary(data.to_vec().into())
-                        }
-                        axum::extract::ws::Message::Ping(data) => {
-                            tungstenite::Message::Ping(data.to_vec().into())
-                        }
-                        axum::extract::ws::Message::Pong(data) => {
-                            tungstenite::Message::Pong(data.to_vec().into())
-                        }
-                        axum::extract::ws::Message::Close(close_frame) => {
-                            let close = close_frame.map(|cf| tungstenite::protocol::CloseFrame {
-                                code: tungstenite::protocol::frame::coding::CloseCode::from(
-                                    cf.code,
-                                ),
-                                reason: cf.reason.to_string().into(),
-                            });
-                            tungstenite::Message::Close(close)
-                        }
-                    };
-
-                    if dev_sender.send(tungstenite_msg).await.is_err() {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    tracing::debug!("Client WebSocket receive error: {}", e);
-                    break;
-                }
-            }
-        }
-        let _ = dev_sender.close().await;
-    });
-
-    let dev_to_client = tokio::spawn(async move {
-        while let Some(msg_result) = dev_receiver.next().await {
-            match msg_result {
-                Ok(tungstenite_msg) => {
-                    let axum_msg = match tungstenite_msg {
-                        tungstenite::Message::Text(text) => {
-                            axum::extract::ws::Message::Text(text.to_string().into())
-                        }
-                        tungstenite::Message::Binary(data) => {
-                            axum::extract::ws::Message::Binary(data.to_vec().into())
-                        }
-                        tungstenite::Message::Ping(data) => {
-                            axum::extract::ws::Message::Ping(data.to_vec().into())
-                        }
-                        tungstenite::Message::Pong(data) => {
-                            axum::extract::ws::Message::Pong(data.to_vec().into())
-                        }
-                        tungstenite::Message::Close(close_frame) => {
-                            let close = close_frame.map(|cf| axum::extract::ws::CloseFrame {
-                                code: cf.code.into(),
-                                reason: cf.reason.to_string().into(),
-                            });
-                            axum::extract::ws::Message::Close(close)
-                        }
-                        tungstenite::Message::Frame(_) => continue,
-                    };
-
-                    if client_sender.send(axum_msg).await.is_err() {
-                        break;
-                    }
-                }
-                Err(e) => {
-                    tracing::debug!("Dev server WebSocket receive error: {}", e);
-                    break;
-                }
-            }
-        }
-        let _ = client_sender.close().await;
-    });
-
-    tokio::select! {
-        _ = client_to_dev => {
-            tracing::debug!("Client to dev server forwarding completed");
-        }
-        _ = dev_to_client => {
-            tracing::debug!("Dev server to client forwarding completed");
-        }
-    }
-
-    Ok(())
+    bridge_ws(dev_server_ws, client_socket).await
 }
 
 #[derive(Debug, Clone, PartialEq)]

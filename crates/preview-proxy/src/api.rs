@@ -2,31 +2,22 @@ use axum::{
     body::{Body, to_bytes},
     extract::{
         Request,
-        ws::{Message, WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
+        ws::{WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
     },
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use futures_util::{SinkExt, StreamExt};
-use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 
 use crate::{
     PreviewProxyService,
-    proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
+    proxy_common::{
+        build_local_upstream_url, extract_ws_protocols, is_hop_by_hop_header,
+        should_forward_request_header,
+    },
+    ws_bridge::{bridge_ws, connect_upstream_ws},
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
-
-fn is_hop_by_hop_header(name: &str) -> bool {
-    name.eq_ignore_ascii_case("connection")
-        || name.eq_ignore_ascii_case("keep-alive")
-        || name.eq_ignore_ascii_case("proxy-authenticate")
-        || name.eq_ignore_ascii_case("proxy-authorization")
-        || name.eq_ignore_ascii_case("te")
-        || name.eq_ignore_ascii_case("trailer")
-        || name.eq_ignore_ascii_case("transfer-encoding")
-        || name.eq_ignore_ascii_case("upgrade")
-}
 
 pub async fn proxy_api_request(
     service: &PreviewProxyService,
@@ -102,35 +93,14 @@ async fn forward_ws(
     let ws_url = build_local_upstream_url("ws", target_port, &tail, query);
     let protocols = extract_ws_protocols(request.headers());
 
-    let mut ws_request = match ws_url.into_client_request() {
-        Ok(req) => req,
-        Err(error) => {
-            tracing::warn!(?error, "Failed to build preview WS request");
-            return (StatusCode::BAD_REQUEST, "Invalid WebSocket request").into_response();
-        }
-    };
-
-    if let Some(ref protocols) = protocols
-        && let Ok(value) = protocols.parse()
-    {
-        ws_request
-            .headers_mut()
-            .insert("sec-websocket-protocol", value);
-    }
-
-    let (upstream_ws, response) = match tokio_tungstenite::connect_async(ws_request).await {
-        Ok(value) => value,
-        Err(error) => {
-            tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
-            return (StatusCode::BAD_GATEWAY, "Preview WebSocket unavailable").into_response();
-        }
-    };
-
-    let selected_protocol = response
-        .headers()
-        .get("sec-websocket-protocol")
-        .and_then(|value| value.to_str().ok())
-        .map(ToOwned::to_owned);
+    let (upstream_ws, selected_protocol) =
+        match connect_upstream_ws(ws_url, protocols.as_deref()).await {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
+                return (StatusCode::BAD_GATEWAY, "Preview WebSocket unavailable").into_response();
+            }
+        };
 
     let mut ws = ws_upgrade;
     if let Some(protocol) = &selected_protocol {
@@ -164,76 +134,4 @@ fn relay_http_response(response: reqwest::Response) -> Response {
         )
             .into_response()
     })
-}
-
-async fn bridge_ws(
-    upstream: tokio_tungstenite::WebSocketStream<
-        tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>,
-    >,
-    client_socket: axum::extract::ws::WebSocket,
-) -> anyhow::Result<()> {
-    let (mut upstream_sender, mut upstream_receiver) = upstream.split();
-    let (mut client_sender, mut client_receiver) = client_socket.split();
-
-    let client_to_upstream = tokio::spawn(async move {
-        while let Some(msg_result) = client_receiver.next().await {
-            let msg = msg_result?;
-            let close = matches!(msg, Message::Close(_));
-            let tungstenite_msg = match msg {
-                Message::Text(text) => tungstenite::Message::Text(text.to_string().into()),
-                Message::Binary(bytes) => tungstenite::Message::Binary(bytes.to_vec().into()),
-                Message::Ping(bytes) => tungstenite::Message::Ping(bytes.to_vec().into()),
-                Message::Pong(bytes) => tungstenite::Message::Pong(bytes.to_vec().into()),
-                Message::Close(frame) => {
-                    let close_frame = frame.map(|cf| tungstenite::protocol::CloseFrame {
-                        code: tungstenite::protocol::frame::coding::CloseCode::from(cf.code),
-                        reason: cf.reason.to_string().into(),
-                    });
-                    tungstenite::Message::Close(close_frame)
-                }
-            };
-
-            upstream_sender.send(tungstenite_msg).await?;
-            if close {
-                break;
-            }
-        }
-        let _ = upstream_sender.close().await;
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let upstream_to_client = tokio::spawn(async move {
-        while let Some(msg_result) = upstream_receiver.next().await {
-            let msg = msg_result?;
-            let close = matches!(msg, tungstenite::Message::Close(_));
-            let client_msg = match msg {
-                tungstenite::Message::Text(text) => Message::Text(text.to_string().into()),
-                tungstenite::Message::Binary(bytes) => Message::Binary(bytes.to_vec().into()),
-                tungstenite::Message::Ping(bytes) => Message::Ping(bytes.to_vec().into()),
-                tungstenite::Message::Pong(bytes) => Message::Pong(bytes.to_vec().into()),
-                tungstenite::Message::Close(frame) => {
-                    let close_frame = frame.map(|cf| axum::extract::ws::CloseFrame {
-                        code: cf.code.into(),
-                        reason: cf.reason.to_string().into(),
-                    });
-                    Message::Close(close_frame)
-                }
-                tungstenite::Message::Frame(_) => continue,
-            };
-
-            client_sender.send(client_msg).await?;
-            if close {
-                break;
-            }
-        }
-        let _ = client_sender.close().await;
-        Ok::<(), anyhow::Error>(())
-    });
-
-    tokio::select! {
-        result = client_to_upstream => result??,
-        result = upstream_to_client => result??,
-    }
-
-    Ok(())
 }
