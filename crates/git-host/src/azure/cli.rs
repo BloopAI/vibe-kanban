@@ -34,6 +34,10 @@ struct AzPrResponse {
     closed_date: Option<String>,
     repository: Option<AzRepository>,
     last_merge_commit: Option<AzCommit>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    target_ref_name: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -471,6 +475,10 @@ impl AzCli {
             status: Self::map_azure_status(status),
             merged_at,
             merge_commit_sha,
+            title: pr.title,
+            base_branch: pr
+                .target_ref_name
+                .map(|r| r.strip_prefix("refs/heads/").unwrap_or(&r).to_string()),
         }
     }
 

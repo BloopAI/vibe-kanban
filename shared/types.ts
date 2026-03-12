@@ -172,7 +172,7 @@ export type PrMerge = { id: string, workspace_id: string, repo_id: string, creat
 
 export type MergeStatus = "open" | "merged" | "closed" | "unknown";
 
-export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, };
+export type PullRequestInfo = { number: bigint, url: string, status: MergeStatus, merged_at: string | null, merge_commit_sha: string | null, title: string | null, base_branch: string | null, };
 
 export type ApprovalInfo = { approval_id: string, tool_name: string, execution_process_id: string, is_question: boolean, created_at: string, timeout_at: string, };
 
@@ -403,6 +403,10 @@ export type OpenPrInfo = { number: bigint, url: string, title: string, head_bran
 export type GitRemote = { name: string, url: string, };
 
 export type ListPrsError = { "type": "cli_not_installed", provider: ProviderKind, } | { "type": "auth_failed", message: string, } | { "type": "unsupported_provider" };
+
+export type LinkPrToIssueRequest = { issue_id: string, pr_number: bigint, pr_url: string, base_branch: string, };
+
+export type LinkPrError = { "type": "not_authenticated" } | { "type": "remote_error", message: string, } | { "type": "already_linked" };
 
 export type CreateWorkspaceFromPrBody = { repo_id: string, pr_number: bigint, pr_title: string, pr_url: string, head_branch: string, base_branch: string, run_setup: boolean, remote_name: string | null, };
 

@@ -1,10 +1,7 @@
 use std::collections::HashSet;
 
 use api_types::{PullRequestStatus, UpsertPullRequestRequest};
-use db::models::{
-    merge::{Merge, MergeStatus},
-    workspace::Workspace,
-};
+use db::models::{tracked_pr::TrackedPr, workspace::Workspace};
 use git::GitService;
 use sqlx::SqlitePool;
 use tracing::{debug, error};
@@ -173,15 +170,6 @@ pub async fn sync_pr_to_remote(client: &RemoteClient, request: UpsertPullRequest
     upsert_pr_on_remote(client, request).await;
 }
 
-fn map_pr_status(status: &MergeStatus) -> PullRequestStatus {
-    match status {
-        MergeStatus::Open => PullRequestStatus::Open,
-        MergeStatus::Merged => PullRequestStatus::Merged,
-        MergeStatus::Closed => PullRequestStatus::Closed,
-        MergeStatus::Unknown => PullRequestStatus::Open,
-    }
-}
-
 /// Syncs all linked workspaces and their PRs to the remote server.
 /// Used after login to catch up on any changes made while logged out.
 pub async fn sync_all_linked_workspaces(
@@ -241,30 +229,39 @@ pub async fn sync_all_linked_workspaces(
         return;
     }
 
-    // Sync all PR data
-    let pr_merges = match Merge::find_all_pr(pool).await {
+    // Sync all PR data from tracked_prs
+    let tracked_prs = match TrackedPr::find_all_with_workspace(pool).await {
         Ok(prs) => prs,
         Err(e) => {
-            error!("Failed to fetch PR merges for post-login sync: {}", e);
+            error!("Failed to fetch tracked PRs for post-login sync: {}", e);
             return;
         }
     };
 
-    for pr_merge in pr_merges {
-        if !linked_workspace_ids.contains(&pr_merge.workspace_id) {
+    for tracked_pr in tracked_prs {
+        let Some(workspace_id) = tracked_pr.workspace_id else {
+            continue;
+        };
+        if !linked_workspace_ids.contains(&workspace_id) {
             continue;
         }
+
+        let status = match tracked_pr.pr_status {
+            db::models::merge::MergeStatus::Merged => PullRequestStatus::Merged,
+            db::models::merge::MergeStatus::Closed => PullRequestStatus::Closed,
+            _ => PullRequestStatus::Open,
+        };
 
         upsert_pr_on_remote(
             client,
             UpsertPullRequestRequest {
-                url: pr_merge.pr_info.url,
-                number: pr_merge.pr_info.number as i32,
-                status: map_pr_status(&pr_merge.pr_info.status),
-                merged_at: pr_merge.pr_info.merged_at,
-                merge_commit_sha: pr_merge.pr_info.merge_commit_sha,
-                target_branch_name: pr_merge.target_branch_name,
-                local_workspace_id: pr_merge.workspace_id,
+                url: tracked_pr.pr_url,
+                number: tracked_pr.pr_number as i32,
+                status,
+                merged_at: tracked_pr.merged_at,
+                merge_commit_sha: tracked_pr.merge_commit_sha,
+                target_branch_name: tracked_pr.target_branch_name,
+                local_workspace_id: workspace_id,
             },
         )
         .await;

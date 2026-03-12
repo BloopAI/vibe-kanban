@@ -108,6 +108,10 @@ struct GhPrResponse {
     state: String,
     merged_at: Option<DateTime<Utc>>,
     merge_commit: Option<GhMergeCommit>,
+    #[serde(default)]
+    title: Option<String>,
+    #[serde(default)]
+    base_ref_name: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -269,7 +273,7 @@ impl GhCli {
                 "view",
                 pr_url,
                 "--json",
-                "number,url,state,mergedAt,mergeCommit",
+                "number,url,state,mergedAt,mergeCommit,title,baseRefName",
             ],
             None,
         )?;
@@ -421,6 +425,8 @@ impl GhCli {
             status: MergeStatus::Open,
             merged_at: None,
             merge_commit_sha: None,
+            title: None,
+            base_branch: None,
         })
     }
 
@@ -478,6 +484,8 @@ impl GhCli {
             },
             merged_at: pr.merged_at,
             merge_commit_sha: pr.merge_commit.and_then(|c| c.oid),
+            title: pr.title,
+            base_branch: pr.base_ref_name,
         }
     }
 

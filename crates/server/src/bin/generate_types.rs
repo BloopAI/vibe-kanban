@@ -164,6 +164,8 @@ fn generate_types_content() -> String {
         git_host::OpenPrInfo::decl(),
         git::GitRemote::decl(),
         server::routes::repo::ListPrsError::decl(),
+        server::routes::remote::pull_requests::LinkPrToIssueRequest::decl(),
+        server::routes::remote::pull_requests::LinkPrError::decl(),
         server::routes::workspaces::pr::CreateWorkspaceFromPrBody::decl(),
         server::routes::workspaces::pr::CreateWorkspaceFromPrResponse::decl(),
         server::routes::workspaces::pr::CreateFromPrError::decl(),
