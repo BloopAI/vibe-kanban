@@ -24,6 +24,7 @@ import {
 import { useLogStream } from '@/shared/hooks/useLogStream';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import { usePreviewNavigation } from '@/shared/hooks/usePreviewNavigation';
 import { PreviewDevToolsBridge } from '@/shared/lib/previewDevToolsBridge';
@@ -94,7 +95,8 @@ function transformProxyUrlToDevUrl(proxyUrl: string): string | null {
       return null;
     }
 
-    const devPort = hostnameParts[0];
+    const portToken = hostnameParts[0];
+    const devPort = portToken.split('--')[0];
     if (!/^\d+$/.test(devPort)) {
       return null;
     }
@@ -143,6 +145,7 @@ export function PreviewBrowserContainer({
     (s) => s.triggerPreviewRefresh
   );
   const { repos, workspaceId: activeWorkspaceId } = useWorkspaceContext();
+  const hostId = useHostId();
 
   // Get preview proxy port for security isolation
   const { data: systemInfo } = useQuery({
@@ -150,7 +153,21 @@ export function PreviewBrowserContainer({
     queryFn: configApi.getConfig,
     staleTime: 5 * 60 * 1000,
   });
-  const previewProxyPort = systemInfo?.preview_proxy_port;
+  const { data: localPreviewProxyPort } = useQuery({
+    queryKey: ['local-preview-proxy-port'],
+    queryFn: async () => {
+      const response = await fetch('/api/info', { cache: 'no-store' });
+      if (!response.ok) return null;
+      const body = await response.json();
+      return body?.data?.preview_proxy_port ?? null;
+    },
+    enabled: hostId != null,
+    staleTime: 5 * 60 * 1000,
+  });
+  const previewProxyPort =
+    hostId != null
+      ? (localPreviewProxyPort ?? systemInfo?.preview_proxy_port)
+      : systemInfo?.preview_proxy_port;
 
   const {
     start,
@@ -599,7 +616,8 @@ export function PreviewBrowserContainer({
 
         if (currentPort != null && devPort === currentPort) {
           const proxyPath = parsed.pathname + parsed.search + parsed.hash;
-          const proxyUrl = `http://${devPort}.localhost:${previewProxyPort}${proxyPath}`;
+          const hostToken = hostId != null ? `${devPort}--${hostId}` : devPort;
+          const proxyUrl = `http://${hostToken}.localhost:${previewProxyPort}${proxyPath}`;
           bridgeRef.current?.navigateTo(proxyUrl);
           return;
         }
@@ -614,6 +632,7 @@ export function PreviewBrowserContainer({
     urlInputValue,
     urlInfo?.url,
     currentPreviewUrl,
+    hostId,
     hasOverride,
     showIframe,
     previewProxyPort,
@@ -774,8 +793,10 @@ export function PreviewBrowserContainer({
       const path = parsed.pathname + parsed.search;
 
       // Subdomain-based routing: the proxy extracts the port from the Host header
+      const hostToken =
+        hostId != null ? `${devServerPort}--${hostId}` : devServerPort;
       const proxyUrl = new URL(
-        `http://${devServerPort}.localhost:${previewProxyPort}${path}`
+        `http://${hostToken}.localhost:${previewProxyPort}${path}`
       );
       proxyUrl.searchParams.set('_refresh', String(previewRefreshKey));
 
@@ -783,7 +804,7 @@ export function PreviewBrowserContainer({
     } catch {
       return undefined;
     }
-  }, [effectiveUrl, previewProxyPort, previewRefreshKey, urlInfo?.url]);
+  }, [effectiveUrl, hostId, previewProxyPort, previewRefreshKey, urlInfo?.url]);
 
   // ─── Navigation Reset on URL Change ────────────────────────────────────────
   // Resets navigation state when the iframe URL changes (e.g., new dev server

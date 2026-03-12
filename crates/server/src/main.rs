@@ -157,7 +157,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = preview_proxy::router();
+    let proxy_router: Router = preview_proxy::router(deployment.clone());
 
     let main_shutdown = shutdown_token.clone();
     let proxy_shutdown = shutdown_token.clone();
