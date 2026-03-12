@@ -23,7 +23,13 @@ use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use tower_http::validate_request::ValidateRequestHeaderLayer;
 use uuid::Uuid;
 
-use crate::DeploymentImpl;
+use crate::{
+    DeploymentImpl,
+    proxy_common::{
+        build_local_upstream_url, extract_ws_protocols, normalized_proxy_path,
+        should_forward_request_header,
+    },
+};
 
 /// Global storage for the preview proxy port once assigned.
 /// Set once during server startup, read by the config API.
@@ -66,22 +72,6 @@ struct PreviewTarget {
     port: u16,
     relay_host_id: Option<Uuid>,
 }
-
-const SKIP_REQUEST_HEADERS: &[&str] = &[
-    "host",
-    "connection",
-    "transfer-encoding",
-    "upgrade",
-    "proxy-connection",
-    "keep-alive",
-    "te",
-    "trailer",
-    "sec-websocket-key",
-    "sec-websocket-version",
-    "sec-websocket-extensions",
-    "accept-encoding",
-    "origin",
-];
 
 /// Headers that should be stripped from the proxied response.
 const STRIP_RESPONSE_HEADERS: &[&str] = &[
@@ -399,7 +389,7 @@ async fn subdomain_proxy(State(deployment): State<DeploymentImpl>, request: Requ
         }
     };
 
-    let path = request.uri().path().trim_start_matches('/').to_string();
+    let path = normalized_proxy_path(request.uri().path()).to_string();
 
     proxy_impl(deployment, target, path, request).await
 }
@@ -416,11 +406,7 @@ async fn proxy_impl(
     // Both are required: Vite 6+ needs ?token= for auth, and checks
     // Sec-WebSocket-Protocol: vite-hmr before accepting the upgrade.
     let query_string = parts.uri.query().map(|q| q.to_string());
-    let ws_protocols: Option<String> = parts
-        .headers
-        .get("sec-websocket-protocol")
-        .and_then(|v| v.to_str().ok())
-        .map(|s| s.to_string());
+    let ws_protocols: Option<String> = extract_ws_protocols(&parts.headers);
 
     if let Ok(ws) = WebSocketUpgrade::from_request_parts(&mut parts, &()).await {
         tracing::debug!(
@@ -471,7 +457,7 @@ async fn http_proxy_handler(
     let original_uri = parts.uri;
 
     let query_string = original_uri.query().unwrap_or_default();
-    let normalized_path = path_str.trim_start_matches('/');
+    let normalized_path = normalized_proxy_path(&path_str);
 
     let is_rsc_request = headers.contains_key(header::HeaderName::from_static("rsc"));
     let is_get_request = method == axum::http::Method::GET;
@@ -500,19 +486,8 @@ async fn http_proxy_handler(
         };
 
         url
-    } else if query_string.is_empty() {
-        if normalized_path.is_empty() {
-            format!("http://localhost:{}/", target.port)
-        } else {
-            format!("http://localhost:{}/{}", target.port, normalized_path)
-        }
-    } else if normalized_path.is_empty() {
-        format!("http://localhost:{}/?{}", target.port, query_string)
     } else {
-        format!(
-            "http://localhost:{}/{}?{}",
-            target.port, normalized_path, query_string
-        )
+        build_local_upstream_url("http", target.port, normalized_path, query_string)
     };
 
     let client = http_client();
@@ -523,8 +498,7 @@ async fn http_proxy_handler(
     );
 
     for (name, value) in &headers {
-        let name_lower = name.as_str().to_ascii_lowercase();
-        if !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str())
+        if should_forward_request_header(name.as_str())
             && let Ok(v) = value.to_str()
         {
             req_builder = req_builder.header(name.as_str(), v);
@@ -757,7 +731,7 @@ async fn handle_ws_proxy(
     query_string: Option<String>,
     ws_protocols: Option<String>,
 ) -> anyhow::Result<()> {
-    let normalized_path = path.trim_start_matches('/');
+    let normalized_path = normalized_proxy_path(&path);
     let query = query_string.as_deref().unwrap_or_default();
     let ws_url = if let Some(host_id) = target.relay_host_id {
         relay_preview_target_url(
@@ -770,12 +744,7 @@ async fn handle_ws_proxy(
         )
         .ok_or_else(|| anyhow::anyhow!("Local backend port is not available"))?
     } else {
-        match &query_string {
-            Some(q) if !q.is_empty() => {
-                format!("ws://localhost:{}/{}?{}", target.port, normalized_path, q)
-            }
-            _ => format!("ws://localhost:{}/{}", target.port, normalized_path),
-        }
+        build_local_upstream_url("ws", target.port, normalized_path, query)
     };
     tracing::debug!("Connecting to dev server WebSocket: {}", ws_url);
 

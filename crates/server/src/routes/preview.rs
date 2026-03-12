@@ -15,7 +15,10 @@ use futures_util::{SinkExt, StreamExt};
 use reqwest::Client;
 use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 
-use crate::DeploymentImpl;
+use crate::{
+    DeploymentImpl,
+    proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
+};
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
 
@@ -29,22 +32,6 @@ fn http_client() -> &'static Client {
             .expect("failed to build preview route HTTP client")
     })
 }
-
-const SKIP_REQUEST_HEADERS: &[&str] = &[
-    "host",
-    "connection",
-    "transfer-encoding",
-    "upgrade",
-    "proxy-connection",
-    "keep-alive",
-    "te",
-    "trailer",
-    "sec-websocket-key",
-    "sec-websocket-version",
-    "sec-websocket-extensions",
-    "accept-encoding",
-    "origin",
-];
 
 fn is_hop_by_hop_header(name: &str) -> bool {
     name.eq_ignore_ascii_case("connection")
@@ -96,19 +83,7 @@ async fn forward_http(target_port: u16, tail: String, request: Request) -> Respo
     let method = parts.method;
     let headers = parts.headers;
     let query = parts.uri.query().unwrap_or_default();
-    let normalized_tail = tail.trim_start_matches('/');
-
-    let target_url = if normalized_tail.is_empty() {
-        if query.is_empty() {
-            format!("http://localhost:{target_port}/")
-        } else {
-            format!("http://localhost:{target_port}/?{query}")
-        }
-    } else if query.is_empty() {
-        format!("http://localhost:{target_port}/{normalized_tail}")
-    } else {
-        format!("http://localhost:{target_port}/{normalized_tail}?{query}")
-    };
+    let target_url = build_local_upstream_url("http", target_port, &tail, query);
 
     let client = http_client();
     let mut req_builder = client.request(
@@ -117,8 +92,7 @@ async fn forward_http(target_port: u16, tail: String, request: Request) -> Respo
     );
 
     for (name, value) in &headers {
-        let name_lower = name.as_str().to_ascii_lowercase();
-        if !SKIP_REQUEST_HEADERS.contains(&name_lower.as_str())
+        if should_forward_request_header(name.as_str())
             && let Ok(v) = value.to_str()
         {
             req_builder = req_builder.header(name.as_str(), v);
@@ -157,24 +131,8 @@ async fn forward_ws(
     ws_upgrade: WebSocketUpgrade,
 ) -> Response {
     let query = request.uri().query().unwrap_or_default();
-    let path = tail.trim_start_matches('/');
-    let ws_url = if path.is_empty() {
-        if query.is_empty() {
-            format!("ws://localhost:{target_port}/")
-        } else {
-            format!("ws://localhost:{target_port}/?{query}")
-        }
-    } else if query.is_empty() {
-        format!("ws://localhost:{target_port}/{path}")
-    } else {
-        format!("ws://localhost:{target_port}/{path}?{query}")
-    };
-
-    let protocols = request
-        .headers()
-        .get("sec-websocket-protocol")
-        .and_then(|v| v.to_str().ok())
-        .map(ToOwned::to_owned);
+    let ws_url = build_local_upstream_url("ws", target_port, &tail, query);
+    let protocols = extract_ws_protocols(request.headers());
 
     let mut ws_request = match ws_url.into_client_request() {
         Ok(req) => req,
