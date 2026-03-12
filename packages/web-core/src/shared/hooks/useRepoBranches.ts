@@ -14,14 +14,22 @@ type Options = {
   hostId?: string | null;
 };
 
+function getRepoBranchesScopeKey(hostId: string | null | undefined) {
+  if (hostId === undefined) {
+    return 'current';
+  }
+
+  return hostId ?? 'local';
+}
+
 export function useRepoBranches(repoId?: string | null, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!repoId;
-  const hostId = opts?.hostId ?? null;
+  const hostId = opts?.hostId;
 
   return useQuery<GitBranch[]>({
     queryKey: [
       ...repoBranchKeys.byRepo(repoId ?? undefined),
-      hostId ?? 'local',
+      getRepoBranchesScopeKey(hostId),
     ],
     queryFn: () => repoApi.getBranches(repoId!, hostId),
     enabled,

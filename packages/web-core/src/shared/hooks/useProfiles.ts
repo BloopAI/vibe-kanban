@@ -23,9 +23,17 @@ export type UseProfilesReturn = {
   saveParsed: (obj: unknown) => Promise<void>;
 };
 
-export function useProfiles(hostId: string | null = null): UseProfilesReturn {
+function getProfilesScopeKey(hostId: string | null | undefined) {
+  if (hostId === undefined) {
+    return 'current';
+  }
+
+  return hostId ?? 'local';
+}
+
+export function useProfiles(hostId?: string | null): UseProfilesReturn {
   const queryClient = useQueryClient();
-  const queryKey = ['profiles', hostId ?? 'local'] as const;
+  const queryKey = ['profiles', getProfilesScopeKey(hostId)] as const;
 
   const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey,
