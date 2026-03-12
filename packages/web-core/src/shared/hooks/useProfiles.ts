@@ -22,21 +22,22 @@ export type UseProfilesReturn = {
   saveParsed: (obj: unknown) => Promise<void>;
 };
 
-export function useProfiles(): UseProfilesReturn {
+export function useProfiles(hostId: string | null = null): UseProfilesReturn {
   const queryClient = useQueryClient();
+  const queryKey = ['profiles', hostId ?? 'local'] as const;
 
   const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['profiles'],
-    queryFn: () => profilesApi.load(),
+    queryKey,
+    queryFn: () => profilesApi.load(hostId),
     staleTime: 1000 * 60, // 1 minute cache
   });
 
   const { mutateAsync: saveMutation, isPending: isSaving } = useMutation({
-    mutationFn: (content: string) => profilesApi.save(content),
+    mutationFn: (content: string) => profilesApi.save(content, hostId),
     onSuccess: (_, content) => {
       // Optimistically update cache with new content
       queryClient.setQueryData<{ content: string; path: string }>(
-        ['profiles'],
+        queryKey,
         (old) => (old ? { ...old, content } : old)
       );
       void queryClient.invalidateQueries({

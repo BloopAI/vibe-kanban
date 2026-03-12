@@ -39,6 +39,7 @@ import {
   SettingsCheckbox,
   SettingsSaveBar,
 } from './SettingsComponents';
+import { useSettingsHost } from './SettingsHostContext';
 
 interface RepoScriptsFormState {
   display_name: string;
@@ -131,6 +132,9 @@ export function ReposSettingsSection({
 }: ReposSettingsSectionProps) {
   const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
+  const { selectedHost } = useSettingsHost();
+  const scopedHostId = selectedHost?.apiHostId ?? null;
+  const reposQueryKey = ['repos', scopedHostId ?? 'local'];
 
   // Fetch all repos
   const {
@@ -138,8 +142,8 @@ export function ReposSettingsSection({
     isLoading: reposLoading,
     error: reposError,
   } = useQuery({
-    queryKey: ['repos'],
-    queryFn: () => repoApi.list(),
+    queryKey: reposQueryKey,
+    queryFn: () => repoApi.list(scopedHostId),
   });
 
   // Selected repo state - initialize from props if provided
@@ -150,7 +154,7 @@ export function ReposSettingsSection({
   // Fetch branches for the selected repo
   const { data: branches = [], isLoading: branchesLoading } = useRepoBranches(
     selectedRepoId || null,
-    { enabled: !!selectedRepoId }
+    { enabled: !!selectedRepoId, hostId: scopedHostId }
   );
 
   // Add "Use current branch" option at the top of branches list
@@ -251,8 +255,8 @@ export function ReposSettingsSection({
       setRemoving(true);
       setError(null);
 
-      await repoApi.delete(selectedRepo.id);
-      await queryClient.invalidateQueries({ queryKey: ['repos'] });
+      await repoApi.delete(selectedRepo.id, scopedHostId);
+      await queryClient.invalidateQueries({ queryKey: reposQueryKey });
       setSelectedRepoId('');
       setSelectedRepo(null);
       setDraft(null);
@@ -278,8 +282,8 @@ export function ReposSettingsSection({
       });
       if (!selectedPath) return;
 
-      const repo = await repoApi.register({ path: selectedPath });
-      await queryClient.invalidateQueries({ queryKey: ['repos'] });
+      const repo = await repoApi.register({ path: selectedPath }, scopedHostId);
+      await queryClient.invalidateQueries({ queryKey: reposQueryKey });
       setSelectedRepoId(repo.id);
     } catch (err) {
       setError(
@@ -330,7 +334,11 @@ export function ReposSettingsSection({
         dev_server_script: draft.dev_server_script.trim() || null,
       };
 
-      const updatedRepo = await repoApi.update(selectedRepo.id, updateData);
+      const updatedRepo = await repoApi.update(
+        selectedRepo.id,
+        updateData,
+        scopedHostId
+      );
       setSelectedRepo(updatedRepo);
       setDraft(repoToFormState(updatedRepo));
       queryClient.setQueryData(['repos'], (old: Repo[] | undefined) =>

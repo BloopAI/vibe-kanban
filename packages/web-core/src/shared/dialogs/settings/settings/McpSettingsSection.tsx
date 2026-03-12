@@ -22,10 +22,13 @@ import {
   SettingsTextarea,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
+import { useSettingsHost } from './SettingsHostContext';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');
   const { setDirty: setContextDirty } = useSettingsDirty();
+  const { selectedHost } = useSettingsHost();
+  const scopedHostId = selectedHost?.apiHostId ?? null;
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [originalMcpServers, setOriginalMcpServers] = useState('{}');
@@ -73,9 +76,12 @@ export function McpSettingsSection() {
           throw new Error('Profile key not found');
         }
 
-        const result = await mcpServersApi.load({
-          executor: profileKey as BaseCodingAgent,
-        });
+        const result = await mcpServersApi.load(
+          {
+            executor: profileKey as BaseCodingAgent,
+          },
+          scopedHostId
+        );
         setMcpConfig(result.mcp_config);
         const fullConfig = McpConfigStrategyGeneral.createFullConfig(
           result.mcp_config
@@ -101,7 +107,7 @@ export function McpSettingsSection() {
     if (selectedProfile) {
       loadMcpServersForProfile(selectedProfile);
     }
-  }, [selectedProfile, profiles]);
+  }, [profiles, scopedHostId, selectedProfile]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
@@ -155,7 +161,8 @@ export function McpSettingsSection() {
             {
               executor: selectedProfileKey as BaseCodingAgent,
             },
-            { servers: mcpServersConfig }
+            { servers: mcpServersConfig },
+            scopedHostId
           );
 
           setOriginalMcpServers(mcpServers);

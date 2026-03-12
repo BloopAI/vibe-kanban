@@ -31,11 +31,11 @@ function toAbsoluteWsUrl(pathOrUrl: string): string {
   return `${protocol}//${window.location.host}${path}`;
 }
 
-/** Prefix `/api/…` paths with `/api/host/{hostId}` when a host is active. */
-function applyHostScope(pathOrUrl: string): string {
-  const hostId = getCurrentHostId();
+export function scopeLocalApiPath(
+  pathOrUrl: string,
+  hostId: string | null
+): string {
   if (!hostId) return pathOrUrl;
-
   const path = toPathAndQuery(pathOrUrl);
   // These endpoints must always hit the local backend because they rely on
   // local-only credentials/state.
@@ -48,6 +48,11 @@ function applyHostScope(pathOrUrl: string): string {
 
   const suffix = path.slice('/api'.length);
   return `/api/host/${hostId}${suffix}`;
+}
+
+/** Prefix `/api/…` paths with `/api/host/{hostId}` when a host is active. */
+function applyHostScope(pathOrUrl: string): string {
+  return scopeLocalApiPath(pathOrUrl, getCurrentHostId());
 }
 
 const defaultTransport: LocalApiTransport = {

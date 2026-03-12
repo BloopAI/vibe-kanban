@@ -1,39 +1,34 @@
-import { ReactNode, useCallback, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "@tanstack/react-router";
+import { ReactNode, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type {
   BaseAgentCapability,
   Config,
   Environment,
   ExecutorProfile,
   UserSystemInfo,
-} from "shared/types";
-import { configApi } from "@/shared/lib/api";
-import { useAuth } from "@/shared/hooks/auth/useAuth";
+} from 'shared/types';
 import {
   UserSystemContext,
   type UserSystemContextType,
-} from "@/shared/hooks/useUserSystem";
+} from '@/shared/hooks/useUserSystem';
+import { configApi } from '@/shared/lib/api';
 
-interface RemoteUserSystemProviderProps {
-  children: ReactNode;
-}
-
-export function RemoteUserSystemProvider({
+export function ScopedUserSystemProvider({
+  hostId,
   children,
-}: RemoteUserSystemProviderProps) {
+}: {
+  hostId: string | null;
+  children: ReactNode;
+}) {
   const queryClient = useQueryClient();
-  const { isSignedIn, isLoaded } = useAuth();
-  const { hostId } = useParams({ strict: false });
   const userSystemQueryKey = useMemo(
-    () => ["remote-workspace-user-system", hostId] as const,
-    [hostId],
+    () => ['settings-user-system', hostId ?? 'local'] as const,
+    [hostId]
   );
 
   const { data: userSystemInfo, isLoading } = useQuery({
     queryKey: userSystemQueryKey,
-    queryFn: () => configApi.getConfig(),
-    enabled: isLoaded && isSignedIn && !!hostId,
+    queryFn: () => configApi.getConfig(hostId),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -50,7 +45,6 @@ export function RemoteUserSystemProvider({
       string,
       BaseAgentCapability[]
     > | null) || null;
-  const loading = !isLoaded || (isSignedIn && isLoading);
 
   const updateConfig = useCallback(
     (updates: Partial<Config>) => {
@@ -62,20 +56,19 @@ export function RemoteUserSystemProvider({
         };
       });
     },
-    [queryClient, userSystemQueryKey],
+    [queryClient, userSystemQueryKey]
   );
 
   const saveConfig = useCallback(async (): Promise<boolean> => {
     if (!config) return false;
-
     try {
-      await configApi.saveConfig(config);
+      await configApi.saveConfig(config, hostId);
       return true;
     } catch (err) {
-      console.error("Error saving config:", err);
+      console.error('Error saving config:', err);
       return false;
     }
-  }, [config]);
+  }, [config, hostId]);
 
   const updateAndSaveConfig = useCallback(
     async (updates: Partial<Config>): Promise<boolean> => {
@@ -85,7 +78,7 @@ export function RemoteUserSystemProvider({
       updateConfig(updates);
 
       try {
-        const saved = await configApi.saveConfig(newConfig);
+        const saved = await configApi.saveConfig(newConfig, hostId);
         queryClient.setQueryData<UserSystemInfo>(userSystemQueryKey, (old) => {
           if (!old) return old;
           return {
@@ -95,20 +88,16 @@ export function RemoteUserSystemProvider({
         });
         return true;
       } catch (err) {
-        console.error("Error saving config:", err);
-        queryClient.invalidateQueries({
-          queryKey: userSystemQueryKey,
-        });
+        console.error('Error saving config:', err);
+        queryClient.invalidateQueries({ queryKey: userSystemQueryKey });
         return false;
       }
     },
-    [config, queryClient, updateConfig, userSystemQueryKey],
+    [config, hostId, queryClient, updateConfig, userSystemQueryKey]
   );
 
   const reloadSystem = useCallback(async () => {
-    await queryClient.invalidateQueries({
-      queryKey: userSystemQueryKey,
-    });
+    await queryClient.invalidateQueries({ queryKey: userSystemQueryKey });
   }, [queryClient, userSystemQueryKey]);
 
   const setEnvironment = useCallback(
@@ -118,7 +107,7 @@ export function RemoteUserSystemProvider({
         return { ...old, environment: env };
       });
     },
-    [queryClient, userSystemQueryKey],
+    [queryClient, userSystemQueryKey]
   );
 
   const setProfiles = useCallback(
@@ -127,11 +116,11 @@ export function RemoteUserSystemProvider({
         if (!old || !newProfiles) return old;
         return {
           ...old,
-          executors: newProfiles as unknown as UserSystemInfo["executors"],
+          executors: newProfiles as unknown as UserSystemInfo['executors'],
         };
       });
     },
-    [queryClient, userSystemQueryKey],
+    [queryClient, userSystemQueryKey]
   );
 
   const setCapabilities = useCallback(
@@ -141,7 +130,7 @@ export function RemoteUserSystemProvider({
         return { ...old, capabilities: newCapabilities };
       });
     },
-    [queryClient, userSystemQueryKey],
+    [queryClient, userSystemQueryKey]
   );
 
   const value = useMemo<UserSystemContextType>(
@@ -169,25 +158,25 @@ export function RemoteUserSystemProvider({
       setProfiles,
       setCapabilities,
       reloadSystem,
-      loading,
+      loading: isLoading,
     }),
     [
+      analyticsUserId,
       appVersion,
+      capabilities,
       config,
       environment,
-      profiles,
-      capabilities,
-      analyticsUserId,
+      isLoading,
       loginStatus,
-      updateConfig,
+      profiles,
+      reloadSystem,
       saveConfig,
-      updateAndSaveConfig,
+      setCapabilities,
       setEnvironment,
       setProfiles,
-      setCapabilities,
-      reloadSystem,
-      loading,
-    ],
+      updateAndSaveConfig,
+      updateConfig,
+    ]
   );
 
   return (

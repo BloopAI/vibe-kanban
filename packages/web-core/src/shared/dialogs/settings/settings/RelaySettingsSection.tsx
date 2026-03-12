@@ -32,6 +32,7 @@ import {
 import { useSettingsDirty } from './SettingsDirtyContext';
 import { PairingCodeInput } from './PairingCodeInput';
 import { RemoteCloudHostsSettingsCard } from './RemoteCloudHostsSettingsCard';
+import { useSettingsHost } from './SettingsHostContext';
 
 interface PairedHostRow {
   id: string;
@@ -54,8 +55,11 @@ export function RelaySettingsSectionContent({
   initialState?: RelaySettingsSectionInitialState;
 }) {
   const runtime = useAppRuntime();
+  const { selectedHost } = useSettingsHost();
+  const shouldUseLocalRelay =
+    selectedHost?.kind === 'local' || (!selectedHost && runtime === 'local');
 
-  if (runtime === 'local') {
+  if (shouldUseLocalRelay) {
     return <LocalRelaySettingsSectionContent />;
   }
 

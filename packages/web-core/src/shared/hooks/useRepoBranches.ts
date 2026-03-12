@@ -10,14 +10,19 @@ export const repoBranchKeys = {
 
 type Options = {
   enabled?: boolean;
+  hostId?: string | null;
 };
 
 export function useRepoBranches(repoId?: string | null, opts?: Options) {
   const enabled = (opts?.enabled ?? true) && !!repoId;
+  const hostId = opts?.hostId ?? null;
 
   return useQuery<GitBranch[]>({
-    queryKey: repoBranchKeys.byRepo(repoId ?? undefined),
-    queryFn: () => repoApi.getBranches(repoId!),
+    queryKey: [
+      ...repoBranchKeys.byRepo(repoId ?? undefined),
+      hostId ?? 'local',
+    ],
+    queryFn: () => repoApi.getBranches(repoId!, hostId),
     enabled,
     staleTime: 60_000,
     refetchOnWindowFocus: true,

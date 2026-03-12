@@ -24,7 +24,7 @@ export function UserSystemProvider({ children }: UserSystemProviderProps) {
 
   const { data: userSystemInfo, isLoading } = useQuery({
     queryKey: ['user-system'],
-    queryFn: configApi.getConfig,
+    queryFn: () => configApi.getConfig(),
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 

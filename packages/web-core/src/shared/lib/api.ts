@@ -106,7 +106,10 @@ import type { Project as RemoteProject } from 'shared/remote-types';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 import { makeRequest as makeRemoteRequest } from '@/shared/lib/remoteApi';
-import { makeLocalApiRequest } from '@/shared/lib/localApiTransport';
+import {
+  makeLocalApiRequest,
+  scopeLocalApiPath,
+} from '@/shared/lib/localApiTransport';
 
 export class ApiError<E = unknown> extends Error {
   public status?: number;
@@ -132,6 +135,22 @@ const makeRequest = async (url: string, options: RequestInit = {}) => {
   }
 
   return makeLocalApiRequest(url, {
+    ...options,
+    headers,
+  });
+};
+
+const makeScopedRequest = async (
+  url: string,
+  hostId: string | null,
+  options: RequestInit = {}
+) => {
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return makeLocalApiRequest(scopeLocalApiPath(url, hostId), {
     ...options,
     headers,
   });
@@ -784,8 +803,8 @@ export const fileSystemApi = {
 
 // Repo APIs
 export const repoApi = {
-  list: async (): Promise<Repo[]> => {
-    const response = await makeRequest('/api/repos');
+  list: async (hostId: string | null = null): Promise<Repo[]> => {
+    const response = await makeScopedRequest('/api/repos', hostId);
     return handleApiResponse<Repo[]>(response);
   },
 
@@ -794,47 +813,69 @@ export const repoApi = {
     return handleApiResponse<Repo[]>(response);
   },
 
-  getById: async (repoId: string): Promise<Repo> => {
-    const response = await makeRequest(`/api/repos/${repoId}`);
+  getById: async (
+    repoId: string,
+    hostId: string | null = null
+  ): Promise<Repo> => {
+    const response = await makeScopedRequest(`/api/repos/${repoId}`, hostId);
     return handleApiResponse<Repo>(response);
   },
 
-  update: async (repoId: string, data: UpdateRepo): Promise<Repo> => {
-    const response = await makeRequest(`/api/repos/${repoId}`, {
+  update: async (
+    repoId: string,
+    data: UpdateRepo,
+    hostId: string | null = null
+  ): Promise<Repo> => {
+    const response = await makeScopedRequest(`/api/repos/${repoId}`, hostId, {
       method: 'PUT',
       body: JSON.stringify(data),
     });
     return handleApiResponse<Repo>(response);
   },
 
-  delete: async (repoId: string): Promise<void> => {
-    const response = await makeRequest(`/api/repos/${repoId}`, {
+  delete: async (
+    repoId: string,
+    hostId: string | null = null
+  ): Promise<void> => {
+    const response = await makeScopedRequest(`/api/repos/${repoId}`, hostId, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
   },
 
-  register: async (data: {
-    path: string;
-    display_name?: string;
-  }): Promise<Repo> => {
-    const response = await makeRequest('/api/repos', {
+  register: async (
+    data: {
+      path: string;
+      display_name?: string;
+    },
+    hostId: string | null = null
+  ): Promise<Repo> => {
+    const response = await makeScopedRequest('/api/repos', hostId, {
       method: 'POST',
       body: JSON.stringify(data),
     });
     return handleApiResponse<Repo>(response);
   },
 
-  getBranches: async (repoId: string): Promise<GitBranch[]> => {
-    const response = await makeRequest(`/api/repos/${repoId}/branches`);
+  getBranches: async (
+    repoId: string,
+    hostId: string | null = null
+  ): Promise<GitBranch[]> => {
+    const response = await makeScopedRequest(
+      `/api/repos/${repoId}/branches`,
+      hostId
+    );
     return handleApiResponse<GitBranch[]>(response);
   },
 
-  init: async (data: {
-    parent_path: string;
-    folder_name: string;
-  }): Promise<Repo> => {
-    const response = await makeRequest('/api/repos/init', {
+  init: async (
+    data: {
+      parent_path: string;
+      folder_name: string;
+    },
+    hostId: string | null = null
+  ): Promise<Repo> => {
+    const response = await makeScopedRequest('/api/repos/init', hostId, {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -893,12 +934,17 @@ export const repoApi = {
 
 // Config APIs (backwards compatible)
 export const configApi = {
-  getConfig: async (): Promise<UserSystemInfo> => {
-    const response = await makeRequest('/api/info', { cache: 'no-store' });
+  getConfig: async (hostId: string | null = null): Promise<UserSystemInfo> => {
+    const response = await makeScopedRequest('/api/info', hostId, {
+      cache: 'no-store',
+    });
     return handleApiResponse<UserSystemInfo>(response);
   },
-  saveConfig: async (config: Config): Promise<Config> => {
-    const response = await makeRequest('/api/config', {
+  saveConfig: async (
+    config: Config,
+    hostId: string | null = null
+  ): Promise<Config> => {
+    const response = await makeScopedRequest('/api/config', hostId, {
       method: 'PUT',
       body: JSON.stringify(config),
     });
@@ -958,21 +1004,32 @@ export const tagsApi = {
 
 // MCP Servers APIs
 export const mcpServersApi = {
-  load: async (query: McpServerQuery): Promise<GetMcpServerResponse> => {
+  load: async (
+    query: McpServerQuery,
+    hostId: string | null = null
+  ): Promise<GetMcpServerResponse> => {
     const params = new URLSearchParams(query);
-    const response = await makeRequest(`/api/mcp-config?${params.toString()}`);
+    const response = await makeScopedRequest(
+      `/api/mcp-config?${params.toString()}`,
+      hostId
+    );
     return handleApiResponse<GetMcpServerResponse>(response);
   },
   save: async (
     query: McpServerQuery,
-    data: UpdateMcpServersBody
+    data: UpdateMcpServersBody,
+    hostId: string | null = null
   ): Promise<void> => {
     const params = new URLSearchParams(query);
     // params.set('profile', profile);
-    const response = await makeRequest(`/api/mcp-config?${params.toString()}`, {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const response = await makeScopedRequest(
+      `/api/mcp-config?${params.toString()}`,
+      hostId,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }
+    );
     if (!response.ok) {
       const errorData = await response.json();
       console.error('[API Error] Failed to save MCP servers', {
@@ -992,12 +1049,17 @@ export const mcpServersApi = {
 
 // Profiles API
 export const profilesApi = {
-  load: async (): Promise<{ content: string; path: string }> => {
-    const response = await makeRequest('/api/profiles');
+  load: async (
+    hostId: string | null = null
+  ): Promise<{ content: string; path: string }> => {
+    const response = await makeScopedRequest('/api/profiles', hostId);
     return handleApiResponse<{ content: string; path: string }>(response);
   },
-  save: async (content: string): Promise<string> => {
-    const response = await makeRequest('/api/profiles', {
+  save: async (
+    content: string,
+    hostId: string | null = null
+  ): Promise<string> => {
+    const response = await makeScopedRequest('/api/profiles', hostId, {
       method: 'PUT',
       body: content,
       headers: {
