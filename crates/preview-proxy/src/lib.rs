@@ -49,13 +49,6 @@ impl PreviewProxyShared {
     }
 }
 
-pub(crate) fn with_shared_layer<S>(router: Router<S>) -> Router<S>
-where
-    S: Clone + Send + Sync + 'static,
-{
-    router.layer(Extension(PreviewProxyShared::new()))
-}
-
 fn env_flag_enabled(name: &str) -> bool {
     std::env::var(name).is_ok_and(|value| {
         value == "1"
@@ -875,7 +868,9 @@ pub fn subdomain_router<D>() -> Router<D>
 where
     D: Deployment,
 {
-    with_shared_layer(Router::new().fallback(subdomain_proxy::<D>))
+    Router::new()
+        .fallback(subdomain_proxy::<D>)
+        .layer(Extension(PreviewProxyShared::new()))
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -15,7 +15,6 @@ use tokio_tungstenite::tungstenite::{self, client::IntoClientRequest};
 use crate::{
     PreviewProxyShared,
     proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
-    with_shared_layer,
 };
 
 type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
@@ -35,11 +34,10 @@ pub fn api_router<S>() -> Router<S>
 where
     S: Clone + Send + Sync + 'static,
 {
-    with_shared_layer(
-        Router::new()
-            .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
-            .route("/preview/{target_port}/{*tail}", any(proxy_preview_request)),
-    )
+    Router::new()
+        .route("/preview/{target_port}", any(proxy_preview_request_no_tail))
+        .route("/preview/{target_port}/{*tail}", any(proxy_preview_request))
+        .layer(Extension(PreviewProxyShared::new()))
 }
 
 async fn proxy_preview_request_no_tail(
