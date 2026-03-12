@@ -212,7 +212,9 @@ export const useConversationHistory = ({
       // next_action = null, so extractPromptFromActionChain returns null for
       // them; in that case we fall back to emitting from the coding-agent
       // branch as usual.
-      const hasSetupScriptWithPrompt = Object.values(executionProcessState).some(
+      const hasSetupScriptWithPrompt = Object.values(
+        executionProcessState
+      ).some(
         (p) =>
           p.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
           p.executionProcess.executor_action.typ.context === 'SetupScript' &&
