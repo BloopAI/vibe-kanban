@@ -50,9 +50,9 @@ export const SETTINGS_SECTION_DEFINITIONS: SettingsSectionDefinition[] = [
   { id: 'repos', icon: GitBranchIcon, group: 'host' },
   { id: 'agents', icon: CpuIcon, group: 'host' },
   { id: 'mcp', icon: PlugIcon, group: 'host' },
-  { id: 'relay', icon: BroadcastIcon, group: 'host' },
   { id: 'organizations', icon: BuildingsIcon, group: 'universal' },
   { id: 'remote-projects', icon: CloudIcon, group: 'universal' },
+  { id: 'relay', icon: BroadcastIcon, group: 'universal' },
 ];
 
 export function isHostSpecificSettingsSection(

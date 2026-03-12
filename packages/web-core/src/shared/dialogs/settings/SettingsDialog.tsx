@@ -334,14 +334,7 @@ const SettingsDialogImpl = create<SettingsDialogProps>(
 
     return createPortal(
       <SettingsDirtyProvider>
-        <SettingsHostProvider
-          initialHostId={
-            initialHostId ??
-            (initialState && 'hostId' in initialState
-              ? (initialState.hostId as string | undefined)
-              : undefined)
-          }
-        >
+        <SettingsHostProvider initialHostId={initialHostId}>
           <SettingsDialogContent
             initialSection={initialSection}
             initialState={initialState}
