@@ -30,7 +30,6 @@ import {
   openKanbanIssueComposer,
   type ProjectIssueCreateOptions,
 } from "@/shared/stores/useKanbanIssueComposerStore";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteActionsProviderProps {
   children: ReactNode;
@@ -156,7 +155,6 @@ export function RemoteActionsProvider({
       if (action.id === "settings") {
         await SettingsDialog.show({
           initialSection: "organizations",
-          sections: REMOTE_SETTINGS_SECTIONS,
         });
         return;
       }
@@ -168,7 +166,6 @@ export function RemoteActionsProvider({
             organizationId: selectedOrgId ?? undefined,
             projectId: projectId ?? undefined,
           },
-          sections: REMOTE_SETTINGS_SECTIONS,
         });
         return;
       }

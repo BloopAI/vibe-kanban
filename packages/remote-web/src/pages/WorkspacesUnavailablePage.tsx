@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useParams } from "@tanstack/react-router";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface BlockedHostState {
   id: string;
@@ -35,7 +34,6 @@ export default function WorkspacesUnavailablePage({
   const openRelaySettings = () => {
     void SettingsDialog.show({
       initialSection: "relay",
-      sections: REMOTE_SETTINGS_SECTIONS,
     });
   };
 

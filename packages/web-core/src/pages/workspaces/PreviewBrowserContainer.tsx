@@ -146,8 +146,8 @@ export function PreviewBrowserContainer({
 
   // Get preview proxy port for security isolation
   const { data: systemInfo } = useQuery({
-    queryKey: ['user-system'],
-    queryFn: configApi.getConfig,
+    queryKey: ['user-system', 'local'],
+    queryFn: () => configApi.getConfig(),
     staleTime: 5 * 60 * 1000,
   });
   const previewProxyPort = systemInfo?.preview_proxy_port;
