@@ -712,12 +712,13 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest-arm64-l
             platform: linux-aarch64
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
-            platform: windows-x86_64
-          - target: aarch64-pc-windows-msvc
-            os: windows-latest
-            platform: windows-aarch64
+          # Temporarily disable Windows Tauri builds in CI.
+          # - target: x86_64-pc-windows-msvc
+          #   os: windows-latest
+          #   platform: windows-x86_64
+          # - target: aarch64-pc-windows-msvc
+          #   os: windows-latest
+          #   platform: windows-aarch64
     env:
       CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
