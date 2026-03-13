@@ -84,6 +84,7 @@ impl Server {
             registry.clone(),
             jwt.clone(),
             auth_config.public_base_url().to_string(),
+            auth_config.allowed_emails.clone(),
         ));
 
         let oauth_token_validator = Arc::new(OAuthTokenValidator::new(
