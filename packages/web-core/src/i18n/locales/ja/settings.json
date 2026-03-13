@@ -372,7 +372,7 @@
         "addServerFailed": "事前設定サーバーの追加に失敗しました",
         "mcpError": "MCP設定エラー：{{error}}",
         "notSupported": "MCPはサポートされていません",
-        "supportMessage": "MCPサーバーを使用するには、MCP（Claude、Amp、Gemini、Codex、またはOpencode）をサポートする別の実行器を上記で選択してください。"
+        "supportMessage": "MCPサーバーを使用するには、MCP（Claude、Amp、Gemini、Codex、Devin、またはOpencode）をサポートする別の実行器を上記で選択してください。"
       },
       "save": {
         "button": "MCP設定を保存",

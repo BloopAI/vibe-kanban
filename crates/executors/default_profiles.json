@@ -63,6 +63,13 @@
           "autonomy": "skip-permissions-unsafe"
         }
       }
+    },
+    "DEVIN_CLI": {
+      "DEFAULT": {
+        "DEVIN_CLI": {
+          "permission_mode": "dangerous"
+        }
+      }
     }
   }
 }

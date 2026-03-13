@@ -372,7 +372,7 @@
         "addServerFailed": "미리 구성된 서버를 추가하지 못했습니다",
         "mcpError": "MCP 구성 오류: {{error}}",
         "notSupported": "MCP가 지원되지 않습니다",
-        "supportMessage": "MCP 서버를 사용하려면 위에서 MCP를 지원하는 다른 실행자(Claude, Amp, Gemini, Codex 또는 Opencode)를 선택하세요."
+        "supportMessage": "MCP 서버를 사용하려면 위에서 MCP를 지원하는 다른 실행자(Claude, Amp, Gemini, Codex, Devin 또는 Opencode)를 선택하세요."
       },
       "save": {
         "button": "MCP 구성 저장",

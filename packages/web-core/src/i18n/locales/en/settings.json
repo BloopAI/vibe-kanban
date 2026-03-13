@@ -372,7 +372,7 @@
         "addServerFailed": "Failed to add preconfigured server",
         "mcpError": "MCP Configuration Error: {{error}}",
         "notSupported": "MCP Not Supported",
-        "supportMessage": "To use MCP servers, please select a different executor that supports MCP (Claude, Amp, Gemini, Codex, or Opencode) above."
+        "supportMessage": "To use MCP servers, please select a different executor that supports MCP (Claude, Amp, Gemini, Codex, Devin, or Opencode) above."
       },
       "save": {
         "button": "Save MCP Configuration",
