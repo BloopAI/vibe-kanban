@@ -2,6 +2,7 @@ use std::{path::Path, process::Command};
 
 use serde::Deserialize;
 use tracing::debug;
+use utils::command_ext::NoWindowExt;
 
 use crate::error::ReviewError;
 
@@ -90,6 +91,7 @@ pub fn parse_pr_url(url: &str) -> Result<(String, String, i64), ReviewError> {
 fn ensure_gh_available() -> Result<(), ReviewError> {
     let output = Command::new("which")
         .arg("gh")
+        .no_window()
         .output()
         .map_err(|_| ReviewError::GhNotInstalled)?;
 
@@ -108,6 +110,7 @@ fn get_pr_info_via_api(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo
 
     let output = Command::new("gh")
         .args(["api", &format!("repos/{owner}/{repo}/pulls/{pr_number}")])
+        .no_window()
         .output()
         .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
 
@@ -156,6 +159,7 @@ pub fn get_pr_info(owner: &str, repo: &str, pr_number: i64) -> Result<PrInfo, Re
             "--json",
             "title,body,baseRefOid,headRefOid,headRefName",
         ])
+        .no_window()
         .output()
         .map_err(|e| ReviewError::PrInfoFailed(e.to_string()))?;
 
@@ -209,6 +213,7 @@ pub fn clone_repo(owner: &str, repo: &str, target_dir: &Path) -> Result<(), Revi
                 .to_str()
                 .ok_or_else(|| ReviewError::CloneFailed("Invalid target path".to_string()))?,
         ])
+        .no_window()
         .output()
         .map_err(|e| ReviewError::CloneFailed(e.to_string()))?;
 
@@ -231,6 +236,7 @@ pub fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewEr
     let output = Command::new("git")
         .args(["fetch", "origin", commit_sha])
         .current_dir(repo_dir)
+        .no_window()
         .output()
         .map_err(|e| ReviewError::CheckoutFailed(e.to_string()))?;
 
@@ -247,6 +253,7 @@ pub fn checkout_commit(commit_sha: &str, repo_dir: &Path) -> Result<(), ReviewEr
     let output = Command::new("git")
         .args(["checkout", commit_sha])
         .current_dir(repo_dir)
+        .no_window()
         .output()
         .map_err(|e| ReviewError::CheckoutFailed(e.to_string()))?;
 
