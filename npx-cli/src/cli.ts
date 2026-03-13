@@ -1,7 +1,7 @@
-import { execSync, spawn } from 'child_process';
-import AdmZip from 'adm-zip';
-import path from 'path';
-import fs from 'fs';
+import { execSync, spawn } from "child_process";
+import path from "path";
+import fs from "fs";
+import { cac } from "cac";
 import {
   ensureBinary,
   ensureDesktopBundle,
@@ -12,49 +12,52 @@ import {
   LOCAL_DIST_DIR,
   R2_BASE_URL,
   getLatestVersion,
-} from './download';
+} from "./download";
 import {
   getTauriPlatform,
   installAndLaunch,
   cleanOldDesktopVersions,
-} from './desktop';
+} from "./desktop";
 
-const CLI_VERSION: string = require('../package.json').version;
+const CLI_VERSION: string = require("../package.json").version;
+
+type RootOptions = {
+  desktop?: boolean;
+};
 
 // Resolve effective arch for our published 64-bit binaries only.
 // Any ARM → arm64; anything else → x64. On macOS, handle Rosetta.
-function getEffectiveArch(): 'arm64' | 'x64' {
+function getEffectiveArch(): "arm64" | "x64" {
   const platform = process.platform;
   const nodeArch = process.arch;
 
-  if (platform === 'darwin') {
+  if (platform === "darwin") {
     // If Node itself is arm64, we're natively on Apple silicon
-    if (nodeArch === 'arm64') return 'arm64';
+    if (nodeArch === "arm64") return "arm64";
 
     // Otherwise check for Rosetta translation
     try {
-      const translated = execSync(
-        'sysctl -in sysctl.proc_translated',
-        { encoding: 'utf8' }
-      ).trim();
-      if (translated === '1') return 'arm64';
+      const translated = execSync("sysctl -in sysctl.proc_translated", {
+        encoding: "utf8",
+      }).trim();
+      if (translated === "1") return "arm64";
     } catch {
       // sysctl key not present → assume true Intel
     }
-    return 'x64';
+    return "x64";
   }
 
   // Non-macOS: coerce to broad families we support
-  if (/arm/i.test(nodeArch)) return 'arm64';
+  if (/arm/i.test(nodeArch)) return "arm64";
 
   // On Windows with 32-bit Node (ia32), detect OS arch via env
-  if (platform === 'win32') {
-    const pa = process.env.PROCESSOR_ARCHITECTURE || '';
-    const paw = process.env.PROCESSOR_ARCHITEW6432 || '';
-    if (/arm/i.test(pa) || /arm/i.test(paw)) return 'arm64';
+  if (platform === "win32") {
+    const pa = process.env.PROCESSOR_ARCHITECTURE || "";
+    const paw = process.env.PROCESSOR_ARCHITEW6432 || "";
+    if (/arm/i.test(pa) || /arm/i.test(paw)) return "arm64";
   }
 
-  return 'x64';
+  return "x64";
 }
 
 const platform = process.platform;
@@ -62,28 +65,26 @@ const arch = getEffectiveArch();
 
 // Map to our build target names
 function getPlatformDir(): string {
-  if (platform === 'linux' && arch === 'x64') return 'linux-x64';
-  if (platform === 'linux' && arch === 'arm64') return 'linux-arm64';
-  if (platform === 'win32' && arch === 'x64') return 'windows-x64';
-  if (platform === 'win32' && arch === 'arm64')
-    return 'windows-arm64';
-  if (platform === 'darwin' && arch === 'x64') return 'macos-x64';
-  if (platform === 'darwin' && arch === 'arm64')
-    return 'macos-arm64';
+  if (platform === "linux" && arch === "x64") return "linux-x64";
+  if (platform === "linux" && arch === "arm64") return "linux-arm64";
+  if (platform === "win32" && arch === "x64") return "windows-x64";
+  if (platform === "win32" && arch === "arm64") return "windows-arm64";
+  if (platform === "darwin" && arch === "x64") return "macos-x64";
+  if (platform === "darwin" && arch === "arm64") return "macos-arm64";
 
   console.error(`Unsupported platform: ${platform}-${arch}`);
-  console.error('Supported platforms:');
-  console.error('  - Linux x64');
-  console.error('  - Linux ARM64');
-  console.error('  - Windows x64');
-  console.error('  - Windows ARM64');
-  console.error('  - macOS x64 (Intel)');
-  console.error('  - macOS ARM64 (Apple Silicon)');
+  console.error("Supported platforms:");
+  console.error("  - Linux x64");
+  console.error("  - Linux ARM64");
+  console.error("  - Windows x64");
+  console.error("  - Windows ARM64");
+  console.error("  - macOS x64 (Intel)");
+  console.error("  - macOS ARM64 (Apple Silicon)");
   process.exit(1);
 }
 
 function getBinaryName(base: string): string {
-  return platform === 'win32' ? `${base}.exe` : base;
+  return platform === "win32" ? `${base}.exe` : base;
 }
 
 const platformDir = getPlatformDir();
@@ -110,37 +111,21 @@ function cleanOldVersions(): void {
 }
 
 function showProgress(downloaded: number, total: number): void {
-  const percent = total
-    ? Math.round((downloaded / total) * 100)
-    : 0;
+  const percent = total ? Math.round((downloaded / total) * 100) : 0;
   const mb = (downloaded / (1024 * 1024)).toFixed(1);
-  const totalMb = total
-    ? (total / (1024 * 1024)).toFixed(1)
-    : '?';
+  const totalMb = total ? (total / (1024 * 1024)).toFixed(1) : "?";
   process.stderr.write(
-    `\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`
+    `\r   Downloading: ${mb}MB / ${totalMb}MB (${percent}%)`,
   );
 }
 
 function buildMcpArgs(args: string[]): string[] {
-  const mcpFlagIndex = args.indexOf('--mcp');
-  if (mcpFlagIndex === -1) {
-    return ['--mode', 'global'];
-  }
-
-  const forwardedArgs = [
-    ...args.slice(0, mcpFlagIndex),
-    ...args.slice(mcpFlagIndex + 1),
-  ];
-
-  return forwardedArgs.length > 0
-    ? forwardedArgs
-    : ['--mode', 'global'];
+  return args.length > 0 ? args : ["--mode", "global"];
 }
 
 async function extractAndRun(
   baseName: string,
-  launch: (binPath: string) => void
+  launch: (binPath: string) => void,
 ): Promise<void> {
   const binName = getBinaryName(baseName);
   const binPath = path.join(versionCacheDir, binName);
@@ -153,11 +138,8 @@ async function extractAndRun(
     }
   } catch (err: unknown) {
     if (process.env.VIBE_KANBAN_DEBUG) {
-      const msg =
-        err instanceof Error ? err.message : String(err);
-      console.warn(
-        `Warning: Could not delete existing binary: ${msg}`
-      );
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`Warning: Could not delete existing binary: ${msg}`);
     }
   }
 
@@ -166,10 +148,9 @@ async function extractAndRun(
     console.error(`Downloading ${baseName}...`);
     try {
       await ensureBinary(platformDir, baseName, showProgress);
-      console.error(''); // newline after progress
+      console.error(""); // newline after progress
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : String(err);
+      const msg = err instanceof Error ? err.message : String(err);
       console.error(`\nDownload failed: ${msg}`);
       process.exit(1);
     }
@@ -178,12 +159,12 @@ async function extractAndRun(
   // Extract
   if (!fs.existsSync(binPath)) {
     try {
+      const { default: AdmZip } = await import("adm-zip");
       const zip = new AdmZip(zipPath);
       zip.extractAllTo(versionCacheDir, true);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : String(err);
-      console.error('Extraction failed:', msg);
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Extraction failed:", msg);
       try {
         fs.unlinkSync(zipPath);
       } catch {}
@@ -194,7 +175,7 @@ async function extractAndRun(
   if (!fs.existsSync(binPath)) {
     console.error(`Extracted binary not found at: ${binPath}`);
     console.error(
-      'This usually indicates a corrupt download. Please try again.'
+      "This usually indicates a corrupt download. Please try again.",
     );
     process.exit(1);
   }
@@ -205,7 +186,7 @@ async function extractAndRun(
   }
 
   // Set permissions (non-Windows)
-  if (platform !== 'win32') {
+  if (platform !== "win32") {
     try {
       fs.chmodSync(binPath, 0o755);
     } catch {}
@@ -214,106 +195,150 @@ async function extractAndRun(
   return launch(binPath);
 }
 
+function checkForUpdates(): void {
+  const hasValidR2Url = !R2_BASE_URL.startsWith("__");
+  if (LOCAL_DEV_MODE || !hasValidR2Url) {
+    return;
+  }
+
+  getLatestVersion()
+    .then((latest) => {
+      if (latest && latest !== CLI_VERSION) {
+        setTimeout(() => {
+          console.log(`\nUpdate available: ${CLI_VERSION} -> ${latest}`);
+          console.log(`Run: npx vibe-kanban@latest`);
+        }, 2000);
+      }
+    })
+    .catch(() => {});
+}
+
+async function runMcp(args: string[]): Promise<void> {
+  await extractAndRun("vibe-kanban-mcp", (bin) => {
+    const proc = spawn(bin, buildMcpArgs(args), {
+      stdio: "inherit",
+    });
+    proc.on("exit", (c) => process.exit(c || 0));
+    proc.on("error", (e) => {
+      console.error("MCP server error:", e.message);
+      process.exit(1);
+    });
+    process.on("SIGINT", () => {
+      proc.kill("SIGINT");
+    });
+    process.on("SIGTERM", () => proc.kill("SIGTERM"));
+  });
+}
+
+async function runReview(args: string[]): Promise<void> {
+  await extractAndRun("vibe-kanban-review", (bin) => {
+    const proc = spawn(bin, args, { stdio: "inherit" });
+    proc.on("exit", (c) => process.exit(c || 0));
+    proc.on("error", (e) => {
+      console.error("Review CLI error:", e.message);
+      process.exit(1);
+    });
+  });
+}
+
+async function runMain(desktopMode: boolean): Promise<void> {
+  checkForUpdates();
+
+  const modeLabel = LOCAL_DEV_MODE ? " (local dev)" : "";
+  const tauriPlatform = getTauriPlatform(platformDir);
+
+  // Default: browser mode (headless server + opens browser).
+  // Use --desktop to launch the desktop app instead.
+  if (desktopMode && tauriPlatform) {
+    try {
+      console.log(
+        `Starting vibe-kanban desktop v${CLI_VERSION}${modeLabel}...`,
+      );
+      const bundleInfo = await ensureDesktopBundle(tauriPlatform, showProgress);
+      console.error(""); // newline after progress
+
+      // Clean old desktop versions after successful download
+      if (!LOCAL_DEV_MODE) {
+        cleanOldDesktopVersions(DESKTOP_CACHE_DIR, BINARY_TAG);
+      }
+
+      const exitCode = await installAndLaunch(bundleInfo, platform);
+      process.exit(exitCode);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Desktop app not available: ${msg}`);
+      console.error("Falling back to browser mode...");
+    }
+  }
+
+  // Browser mode (default — headless server + opens browser)
+  console.log(`Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`);
+  await extractAndRun("vibe-kanban", (bin) => {
+    execSync(`"${bin}"`, { stdio: "inherit" });
+  });
+}
+
+function normalizeArgv(argv: string[]): string[] {
+  const args = argv.slice(2);
+  const mcpFlagIndex = args.indexOf("--mcp");
+  if (mcpFlagIndex === -1) {
+    return argv;
+  }
+
+  const normalizedArgs = [
+    ...args.slice(0, mcpFlagIndex),
+    "mcp",
+    ...args.slice(mcpFlagIndex + 1),
+  ];
+
+  return [...argv.slice(0, 2), ...normalizedArgs];
+}
+
+function runOrExit(task: Promise<void>): void {
+  void task.catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("Fatal error:", msg);
+    if (process.env.VIBE_KANBAN_DEBUG && err instanceof Error) {
+      console.error(err.stack);
+    }
+    process.exit(1);
+  });
+}
+
 async function main(): Promise<void> {
   fs.mkdirSync(versionCacheDir, { recursive: true });
+  const cli = cac("vibe-kanban");
 
-  const args = process.argv.slice(2);
-  const isMcpMode = args.includes('--mcp');
-  const isReviewMode = args[0] === 'review';
-
-  // Non-blocking update check (skip in MCP mode, local dev mode, and when R2 URL not configured)
-  const hasValidR2Url = !R2_BASE_URL.startsWith('__');
-  if (!isMcpMode && !LOCAL_DEV_MODE && hasValidR2Url) {
-    getLatestVersion()
-      .then((latest) => {
-        if (latest && latest !== CLI_VERSION) {
-          setTimeout(() => {
-            console.log(
-              `\nUpdate available: ${CLI_VERSION} -> ${latest}`
-            );
-            console.log(`Run: npx vibe-kanban@latest`);
-          }, 2000);
-        }
-      })
-      .catch(() => {});
-  }
-
-  if (isMcpMode) {
-    const mcpArgs = buildMcpArgs(args);
-    await extractAndRun('vibe-kanban-mcp', (bin) => {
-      const proc = spawn(bin, mcpArgs, { stdio: 'inherit' });
-      proc.on('exit', (c) => process.exit(c || 0));
-      proc.on('error', (e) => {
-        console.error('MCP server error:', e.message);
-        process.exit(1);
-      });
-      process.on('SIGINT', () => {
-        proc.kill('SIGINT');
-      });
-      process.on('SIGTERM', () => proc.kill('SIGTERM'));
+  cli
+    .command("[...args]", "Launch the local vibe-kanban app")
+    .option("--desktop", "Launch the desktop app instead of browser mode")
+    .allowUnknownOptions()
+    .action((_args: string[], options: RootOptions) => {
+      runOrExit(runMain(Boolean(options.desktop)));
     });
-  } else if (isReviewMode) {
-    await extractAndRun('vibe-kanban-review', (bin) => {
-      const reviewArgs = args.slice(1);
-      const proc = spawn(bin, reviewArgs, { stdio: 'inherit' });
-      proc.on('exit', (c) => process.exit(c || 0));
-      proc.on('error', (e) => {
-        console.error('Review CLI error:', e.message);
-        process.exit(1);
-      });
+
+  cli
+    .command("review [...args]", "Run the review CLI")
+    .allowUnknownOptions()
+    .action((args: string[]) => {
+      runOrExit(runReview(args));
     });
-  } else {
-    const modeLabel = LOCAL_DEV_MODE ? ' (local dev)' : '';
-    const desktopMode = args.includes('--desktop');
-    const tauriPlatform = getTauriPlatform(platformDir);
 
-    // Default: browser mode (headless server + opens browser).
-    // Use --desktop to launch the desktop app instead.
-    if (desktopMode && tauriPlatform) {
-      try {
-        console.log(
-          `Starting vibe-kanban desktop v${CLI_VERSION}${modeLabel}...`
-        );
-        const bundleInfo = await ensureDesktopBundle(
-          tauriPlatform,
-          showProgress
-        );
-        console.error(''); // newline after progress
-
-        // Clean old desktop versions after successful download
-        if (!LOCAL_DEV_MODE) {
-          cleanOldDesktopVersions(
-            DESKTOP_CACHE_DIR,
-            BINARY_TAG
-          );
-        }
-
-        const exitCode = await installAndLaunch(
-          bundleInfo,
-          platform
-        );
-        process.exit(exitCode);
-      } catch (err: unknown) {
-        const msg =
-          err instanceof Error ? err.message : String(err);
-        console.error(`Desktop app not available: ${msg}`);
-        console.error('Falling back to browser mode...');
-      }
-    }
-
-    // Browser mode (default — headless server + opens browser)
-    console.log(
-      `Starting vibe-kanban v${CLI_VERSION}${modeLabel}...`
-    );
-    await extractAndRun('vibe-kanban', (bin) => {
-      execSync(`"${bin}"`, { stdio: 'inherit' });
+  cli
+    .command("mcp [...args]", "Run the MCP server")
+    .allowUnknownOptions()
+    .action((args: string[]) => {
+      runOrExit(runMcp(args));
     });
-  }
+
+  cli.help();
+  cli.version(CLI_VERSION);
+  cli.parse(normalizeArgv(process.argv));
 }
 
 main().catch((err: unknown) => {
   const msg = err instanceof Error ? err.message : String(err);
-  console.error('Fatal error:', msg);
+  console.error("Fatal error:", msg);
   if (process.env.VIBE_KANBAN_DEBUG && err instanceof Error) {
     console.error(err.stack);
   }

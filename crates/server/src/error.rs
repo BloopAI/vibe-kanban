@@ -516,7 +516,12 @@ impl IntoResponse for ApiError {
 
         // Log internal errors so they are visible in server output.
         if info.status.is_server_error() {
-            tracing::error!(error_type = info.error_type, %self, "API error: {self:#}");
+            tracing::error!(
+                error_type = info.error_type,
+                status = %info.status,
+                error = ?self,
+                "API request failed"
+            );
         }
 
         let message = info
