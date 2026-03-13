@@ -58,6 +58,12 @@ pub struct ImportIssueAttachmentsResponse {
     pub file_ids: Vec<Uuid>,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) struct ImportedIssueFile {
+    pub attachment_id: Uuid,
+    pub file: File,
+}
+
 pub async fn get_workspace_files(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -104,8 +110,12 @@ pub async fn import_issue_attachments(
     axum::Json(payload): axum::Json<ImportIssueAttachmentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<ImportIssueAttachmentsResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    let file_ids =
+    let imported_files =
         import_issue_attachment_files(&client, deployment.file(), payload.issue_id).await?;
+    let file_ids = imported_files
+        .iter()
+        .map(|imported| imported.file.id)
+        .collect::<Vec<_>>();
 
     let managed_workspace = deployment
         .workspace_manager()
@@ -286,13 +296,13 @@ pub(crate) async fn import_issue_attachment_files(
     client: &RemoteClient,
     file_service: &FileService,
     issue_id: Uuid,
-) -> Result<Vec<Uuid>, ApiError> {
+) -> Result<Vec<ImportedIssueFile>, ApiError> {
     let response = client
         .list_issue_attachments(issue_id)
         .await
         .map_err(ApiError::from)?;
 
-    let mut imported_file_ids = Vec::new();
+    let mut imported_files = Vec::new();
 
     for entry in response.attachments {
         let Some(file_url) = entry.file_url.as_deref() else {
@@ -330,10 +340,13 @@ pub(crate) async fn import_issue_attachment_files(
             }
         };
 
-        imported_file_ids.push(file.id);
+        imported_files.push(ImportedIssueFile {
+            attachment_id: entry.attachment.id,
+            file,
+        });
     }
 
-    Ok(imported_file_ids)
+    Ok(imported_files)
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
