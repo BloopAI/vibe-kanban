@@ -470,17 +470,17 @@ async fn delete_attachment(
     AttachmentRepository::delete(state.pool(), id).await?;
 
     let remaining = AttachmentRepository::count_by_blob_id(state.pool(), blob_id).await?;
-    if remaining == 0 {
-        if let Some(blob) = BlobRepository::delete(state.pool(), blob_id).await? {
-            let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
-            if let Err(e) = azure.delete_blob(&blob.blob_path).await {
-                tracing::warn!(error = %e, blob_path = %blob.blob_path, "Failed to delete blob");
-            }
-            if let Some(thumb_path) = blob.thumbnail_blob_path {
-                if let Err(e) = azure.delete_blob(&thumb_path).await {
-                    tracing::warn!(error = %e, blob_path = %thumb_path, "Failed to delete thumbnail");
-                }
-            }
+    if remaining == 0
+        && let Some(blob) = BlobRepository::delete(state.pool(), blob_id).await?
+    {
+        let azure = state.azure_blob().ok_or(RouteError::NotConfigured)?;
+        if let Err(e) = azure.delete_blob(&blob.blob_path).await {
+            tracing::warn!(error = %e, blob_path = %blob.blob_path, "Failed to delete blob");
+        }
+        if let Some(thumb_path) = blob.thumbnail_blob_path
+            && let Err(e) = azure.delete_blob(&thumb_path).await
+        {
+            tracing::warn!(error = %e, blob_path = %thumb_path, "Failed to delete thumbnail");
         }
     }
 

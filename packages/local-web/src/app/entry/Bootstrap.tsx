@@ -13,6 +13,7 @@ import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
+import { isTauriApp } from '@/shared/lib/platform';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
@@ -40,6 +41,21 @@ if (
   console.warn(
     'PostHog API key or endpoint not set. Analytics will be disabled.'
   );
+}
+
+// In the Tauri desktop app, block trackpad/touchpad pinch-to-zoom while
+// keeping Cmd+/- keyboard zoom (handled natively by zoom_hotkeys_enabled).
+// Pinch gestures fire as ctrl+wheel events and gesturechange events in WKWebView.
+if (isTauriApp()) {
+  document.addEventListener(
+    'wheel',
+    (e) => {
+      if (e.ctrlKey) e.preventDefault();
+    },
+    { passive: false }
+  );
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
 }
 
 configureAuthRuntime({

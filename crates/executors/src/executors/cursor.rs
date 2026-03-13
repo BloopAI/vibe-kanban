@@ -2,13 +2,13 @@ use core::str;
 use std::{collections::HashMap, path::Path, process::Stdio, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::{
+    command_ext::GroupSpawnNoWindowExt,
     diff::{create_unified_diff, normalize_unified_diff},
     msg_store::MsgStore,
     path::make_path_relative,
@@ -211,7 +211,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;
@@ -252,7 +252,7 @@ impl StandardCodingAgentExecutor for CursorAgent {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
 
         if let Some(mut stdin) = child.inner().stdin.take() {
             stdin.write_all(combined_prompt.as_bytes()).await?;

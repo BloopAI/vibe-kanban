@@ -264,7 +264,9 @@ pub trait ContainerService {
                 return;
             }
         };
-        self.notification_service().notify(&title, &message).await;
+        self.notification_service()
+            .notify(&title, &message, Some(ctx.workspace.id))
+            .await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup

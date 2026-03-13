@@ -202,15 +202,24 @@ export const useConversationHistory = ({
       let setupHelpText: string | undefined;
       let latestTokenUsageInfo: TokenUsageInfo | null = null;
 
-      // Check whether a setup script process exists.  When it does, the
-      // initial user message is emitted from the script branch (after the
-      // script finishes) instead of from the CodingAgentInitialRequest
-      // branch – this avoids a Virtuoso list reorder when the script and
-      // coding agent load at different times.
-      const hasSetupScriptProcess = Object.values(executionProcessState).some(
+      // Check whether a setup script process exists AND can provide the
+      // initial user prompt via its next_action chain.  When it can, the
+      // user message is emitted from the script branch (after the script
+      // finishes) instead of from the CodingAgentInitialRequest branch –
+      // this avoids a Virtuoso list reorder when the script and coding agent
+      // load at different times.
+      // NOTE: parallel setup scripts (parallel_setup_script = true) have
+      // next_action = null, so extractPromptFromActionChain returns null for
+      // them; in that case we fall back to emitting from the coding-agent
+      // branch as usual.
+      const hasSetupScriptWithPrompt = Object.values(
+        executionProcessState
+      ).some(
         (p) =>
           p.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
-          p.executionProcess.executor_action.typ.context === 'SetupScript'
+          p.executionProcess.executor_action.typ.context === 'SetupScript' &&
+          extractPromptFromActionChain(p.executionProcess.executor_action) !==
+            null
       );
 
       // Create user messages + tool calls for setup/cleanup scripts
@@ -233,12 +242,12 @@ export const useConversationHistory = ({
               'CodingAgentFollowUpRequest' ||
             p.executionProcess.executor_action.typ.type === 'ReviewRequest'
           ) {
-            // Suppress the initial user message when a setup script exists –
-            // the script branch emits it instead (after the script finishes)
-            // to avoid a Virtuoso list reorder.
+            // Suppress the initial user message when a setup script exists
+            // AND can provide the prompt – the script branch emits it instead
+            // (after the script finishes) to avoid a Virtuoso list reorder.
             const isInitialWithSetup =
               p.executionProcess.executor_action.typ.type ===
-                'CodingAgentInitialRequest' && hasSetupScriptProcess;
+                'CodingAgentInitialRequest' && hasSetupScriptWithPrompt;
 
             if (!isInitialWithSetup) {
               const actionType = p.executionProcess.executor_action.typ;

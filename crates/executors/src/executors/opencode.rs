@@ -1,7 +1,7 @@
 use std::{cmp::Ordering, path::Path, sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use command_group::{AsyncCommandGroup, AsyncGroupChild};
+use command_group::AsyncGroupChild;
 use convert_case::{Case, Casing};
 use derivative::Derivative;
 use futures::StreamExt;
@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     approvals::ExecutorApprovalService,
@@ -130,7 +130,7 @@ impl Opencode {
             .with_profile(&self.cmd)
             .apply_to_command(&mut command);
 
-        let child = command.group_spawn()?;
+        let child = command.group_spawn_no_window()?;
 
         Ok((child, server_password))
     }

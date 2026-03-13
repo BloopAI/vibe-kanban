@@ -450,7 +450,27 @@ impl IntoResponse for ApiError {
             ),
 
             ApiError::Deployment(_) => ErrorInfo::internal("DeploymentError"),
-            ApiError::Container(_) => ErrorInfo::internal("ContainerError"),
+            ApiError::Container(err) => match err {
+                ContainerError::GitServiceError(_) => ErrorInfo::internal("ContainerError"),
+                ContainerError::Workspace(WorkspaceError::WorkspaceNotFound) => {
+                    ErrorInfo::not_found("ContainerError", "Workspace not found.")
+                }
+                ContainerError::Workspace(WorkspaceError::ValidationError(msg)) => {
+                    ErrorInfo::bad_request("ContainerError", msg.clone())
+                }
+                ContainerError::Workspace(WorkspaceError::BranchNotFound(branch)) => {
+                    ErrorInfo::not_found(
+                        "ContainerError",
+                        format!("Branch '{}' not found.", branch),
+                    )
+                }
+                ContainerError::ExecutorError(e) => ErrorInfo::with_status(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "ContainerError",
+                    format!("Executor error: {e}"),
+                ),
+                _ => ErrorInfo::internal("ContainerError"),
+            },
             ApiError::Executor(_) => ErrorInfo::internal("ExecutorError"),
             ApiError::CommandBuilder(_) => ErrorInfo::internal("CommandBuildError"),
             ApiError::Database(_) => ErrorInfo::internal("DatabaseError"),
@@ -499,6 +519,16 @@ impl IntoResponse for ApiError {
                 format!("Remote error: {}", msg),
             ),
         };
+
+        // Log internal errors so they are visible in server output.
+        if info.status.is_server_error() {
+            tracing::error!(
+                error_type = info.error_type,
+                status = %info.status,
+                error = ?self,
+                "API request failed"
+            );
+        }
 
         let message = info
             .message

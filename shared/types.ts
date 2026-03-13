@@ -388,12 +388,6 @@ export type PrError = { "type": "cli_not_installed", provider: ProviderKind, } |
 
 export type RunScriptError = { "type": "no_script_configured" } | { "type": "process_already_running" };
 
-export type AssociateWorkspaceImagesRequest = { image_ids: Array<string>, };
-
-export type ImportIssueAttachmentsRequest = { issue_id: string, };
-
-export type ImportIssueAttachmentsResponse = { image_ids: Array<string>, };
-
 export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
 
 export type AttachExistingPrRequest = { repo_id: string, };

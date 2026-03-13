@@ -6,12 +6,21 @@ import { localAppNavigation } from '@web/app/navigation/AppNavigation';
 import { LocalAuthProvider } from '@/shared/providers/auth/LocalAuthProvider';
 import { AppRuntimeProvider } from '@/shared/hooks/useAppRuntime';
 import { AppNavigationProvider } from '@/shared/hooks/useAppNavigation';
+import { useTauriNotificationNavigation } from '@web/app/hooks/useTauriNotificationNavigation';
+import { useTauriUpdateReady } from '@web/app/hooks/useTauriUpdateReady';
 import { router } from '@web/app/router';
+
+function TauriListeners() {
+  useTauriNotificationNavigation();
+  useTauriUpdateReady();
+  return null;
+}
 
 function App() {
   return (
     <AppRuntimeProvider runtime="local">
       <AppNavigationProvider value={localAppNavigation}>
+        <TauriListeners />
         <UserSystemProvider>
           <LocalAuthProvider>
             <ClickedElementsProvider>

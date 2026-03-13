@@ -1,7 +1,7 @@
 {
   "name": "@vibe/local-web",
   "private": true,
-  "version": "0.1.29",
+  "version": "0.1.30",
   "type": "module",
   "scripts": {
     "dev": "VITE_OPEN=${VITE_OPEN:-false} vite",
@@ -55,6 +55,7 @@
     "@tanstack/react-query": "^5.85.5",
     "@tanstack/react-router": "^1.161.1",
     "@tanstack/zod-adapter": "^1.161.1",
+    "@tauri-apps/api": "^2.10.1",
     "@uiw/react-codemirror": "^4.25.1",
     "@vibe/web-core": "workspace:*",
     "@vibe/ui": "workspace:*",

@@ -53,7 +53,6 @@ use codex_app_server_protocol::{
     ThreadForkParams, ThreadStartParams, UserInput,
 };
 use codex_protocol::config_types::ServiceTier;
-use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -61,7 +60,7 @@ use serde_json::Value;
 use strum_macros::{AsRefStr, EnumString};
 use tokio::process::Command;
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use self::{
     client::{AppServerClient, LogWriter},
@@ -652,7 +651,7 @@ impl Codex {
             .with_profile(&self.cmd)
             .apply_to_command(&mut process);
 
-        let mut child = process.group_spawn()?;
+        let mut child = process.group_spawn_no_window()?;
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))

@@ -13,7 +13,6 @@ use std::{
 };
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use futures::StreamExt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -22,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use workspace_utils::{
     approvals::{ApprovalStatus, QuestionStatus},
+    command_ext::GroupSpawnNoWindowExt,
     diff::create_unified_diff,
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -641,7 +641,7 @@ impl ClaudeCode {
             tracing::info!("ANTHROPIC_API_KEY removed from environment");
         }
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
         })?;
