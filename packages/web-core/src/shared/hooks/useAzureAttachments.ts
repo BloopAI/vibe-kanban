@@ -6,6 +6,7 @@ import {
   initAttachmentUpload,
   uploadToAzure,
 } from '@/shared/lib/remoteApi';
+import { buildAttachmentMarkdown } from '@/shared/lib/workspaceAttachments';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -166,7 +167,13 @@ export function useAzureAttachments({
 
           setPendingAttachments((prev) => prev.filter((p) => p.file !== file));
 
-          onMarkdownInsert?.(`![${file.name}](attachment://${result.id})`);
+          onMarkdownInsert?.(
+            buildAttachmentMarkdown({
+              name: file.name,
+              src: `attachment://${result.id}`,
+              mimeType: file.type || null,
+            })
+          );
         } catch (error) {
           const message =
             error instanceof Error ? error.message : t('kanban.unknownError');

@@ -29,6 +29,7 @@ import {
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from '@vibe/ui/components/pr-comment-node';
 import { createImageNode } from '@vibe/ui/components/image-node';
+import { createFileNode } from '@vibe/ui/components/file-node';
 import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,
@@ -386,7 +387,15 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         }),
       []
     );
+    const fileNodeDefinition = useMemo(
+      () =>
+        createFileNode({
+          fetchAttachmentUrl: fetchAttachmentSasUrl,
+        }),
+      []
+    );
     const { ImageNode, IMAGE_TRANSFORMER, $isImageNode } = imageNodeDefinition;
+    const { FileNode, FILE_TRANSFORMER } = fileNodeDefinition;
 
     const initialConfig = useMemo(
       () => ({
@@ -438,6 +447,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           CodeHighlightNode,
           LinkNode,
           ImageNode,
+          FileNode,
           PrCommentNode,
           ComponentInfoNode,
           TableNode,
@@ -445,7 +455,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           TableCellNode,
         ],
       }),
-      [ImageNode]
+      [FileNode, ImageNode]
     );
 
     // Edit mode: custom elements + text format transformers (so asterisks
@@ -454,13 +464,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     const editTransformers: Transformer[] = useMemo(
       () => [
         IMAGE_TRANSFORMER,
+        FILE_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
         ...TEXT_FORMAT_TRANSFORMERS,
       ],
-      [IMAGE_TRANSFORMER]
+      [FILE_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Display mode: full markdown rendering
@@ -468,6 +479,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
+        FILE_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
@@ -475,7 +487,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         CODE,
         ...TRANSFORMERS,
       ],
-      [IMAGE_TRANSFORMER]
+      [FILE_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Use display transformers for read-only, edit transformers for editing
