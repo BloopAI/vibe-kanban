@@ -89,21 +89,11 @@ fn escape_markdown_label(label: &str) -> String {
     escaped
 }
 
-fn is_image_attachment(file: &ImportedIssueAttachment) -> bool {
-    if let Some(mime_type) = &file.file.mime_type
-        && mime_type.starts_with("image/")
-    {
-        return true;
-    }
-
-    let lower_name = file.file.original_name.to_ascii_lowercase();
-    matches!(
-        lower_name.rsplit('.').next(),
-        Some("png" | "jpg" | "jpeg" | "gif" | "webp" | "bmp" | "svg" | "avif" | "heic" | "heif")
-    )
-}
-
-fn build_workspace_attachment_markdown(file: &ImportedIssueAttachment, label: &str) -> String {
+fn build_workspace_attachment_markdown(
+    file: &ImportedIssueAttachment,
+    label: &str,
+    uses_image_markdown: bool,
+) -> String {
     let path = format!(".vibe-images/{}", file.file.file_path);
     let normalized_label = if label.trim().is_empty() {
         file.file.original_name.as_str()
@@ -112,7 +102,7 @@ fn build_workspace_attachment_markdown(file: &ImportedIssueAttachment, label: &s
     };
     let escaped_label = escape_markdown_label(normalized_label);
 
-    if is_image_attachment(file) {
+    if uses_image_markdown {
         format!("![{}]({})", escaped_label, path)
     } else {
         format!("[{}]({})", escaped_label, path)
@@ -144,7 +134,8 @@ fn rewrite_imported_issue_attachments_markdown(
                 return captures[0].to_string();
             };
             let label = captures.get(2).map(|m| m.as_str()).unwrap_or_default();
-            build_workspace_attachment_markdown(file, label)
+            let uses_image_markdown = captures.get(1).is_some_and(|marker| marker.as_str() == "!");
+            build_workspace_attachment_markdown(file, label, uses_image_markdown)
         })
         .into_owned()
 }
@@ -305,7 +296,23 @@ mod tests {
     }
 
     #[test]
-    fn rewrites_imported_image_attachments_to_image_markdown() {
+    fn preserves_authored_image_markdown_for_imported_images() {
+        let attachment_id = Uuid::new_v4();
+        let prompt = format!("![diagram.png](attachment://{})", attachment_id);
+        let imported = vec![imported_file(
+            attachment_id,
+            "diagram.png",
+            "xyz_diagram.png",
+            Some("image/png"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, "![diagram.png](.vibe-images/xyz_diagram.png)");
+    }
+
+    #[test]
+    fn preserves_authored_link_markdown_for_imported_images() {
         let attachment_id = Uuid::new_v4();
         let prompt = format!("[diagram.png](attachment://{})", attachment_id);
         let imported = vec![imported_file(
@@ -317,7 +324,23 @@ mod tests {
 
         let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
 
-        assert_eq!(rewritten, "![diagram.png](.vibe-images/xyz_diagram.png)");
+        assert_eq!(rewritten, "[diagram.png](.vibe-images/xyz_diagram.png)");
+    }
+
+    #[test]
+    fn preserves_authored_image_markdown_for_imported_non_images() {
+        let attachment_id = Uuid::new_v4();
+        let prompt = format!("![proposal.pdf](attachment://{})", attachment_id);
+        let imported = vec![imported_file(
+            attachment_id,
+            "proposal.pdf",
+            "abc_proposal.pdf",
+            Some("application/pdf"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, "![proposal.pdf](.vibe-images/abc_proposal.pdf)");
     }
 
     #[test]

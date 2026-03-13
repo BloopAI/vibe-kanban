@@ -233,6 +233,12 @@ export function createImageNode(options: CreateImageNodeOptions) {
       src,
       localAttachments
     );
+    const workspaceDisplayName =
+      metadata?.file_name || localAttachment?.file_name || altText || src;
+    const isWorkspaceImage =
+      isVibeImage &&
+      ((localAttachment?.mime_type?.startsWith('image/') ?? false) ||
+        isImageLikeFileName(workspaceDisplayName));
 
     const handleClick = useCallback(
       (event: React.MouseEvent) => {
@@ -258,13 +264,17 @@ export function createImageNode(options: CreateImageNodeOptions) {
         }
 
         if (metadata?.exists && metadata.proxy_url) {
-          options.openImagePreview({
-            imageUrl: metadata.proxy_url,
-            altText,
-            fileName: metadata.file_name ?? undefined,
-            format: metadata.format ?? undefined,
-            sizeBytes: metadata.size_bytes,
-          });
+          if (isWorkspaceImage) {
+            options.openImagePreview({
+              imageUrl: metadata.proxy_url,
+              altText,
+              fileName: metadata.file_name ?? undefined,
+              format: metadata.format ?? undefined,
+              sizeBytes: metadata.size_bytes,
+            });
+          } else {
+            window.open(metadata.proxy_url, '_blank', 'noopener,noreferrer');
+          }
         }
       },
       [
@@ -274,6 +284,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
         isImageAttachment,
         thumbnailUrl,
         metadata,
+        isWorkspaceImage,
         altText,
       ]
     );
@@ -283,14 +294,17 @@ export function createImageNode(options: CreateImageNodeOptions) {
         event.preventDefault();
         event.stopPropagation();
 
-        const downloadUrl = localAttachment?.proxy_url ?? fullSizeUrl;
+        const downloadUrl =
+          localAttachment?.proxy_url ??
+          fullSizeUrl ??
+          (!isWorkspaceImage ? metadata?.proxy_url ?? null : null);
         if (!downloadUrl) return;
 
         downloadBlobUrl(downloadUrl, altText || 'attachment').catch((error) => {
           console.error('Failed to download attachment:', error);
         });
       },
-      [localAttachment?.proxy_url, fullSizeUrl, altText]
+      [localAttachment?.proxy_url, fullSizeUrl, isWorkspaceImage, metadata, altText]
     );
 
     const handleDelete = useCallback(
@@ -360,7 +374,23 @@ export function createImageNode(options: CreateImageNodeOptions) {
         metadataLine = format ? format.toUpperCase() : null;
       }
     } else if (isVibeImage && (hasLocalImage || hasContext)) {
-      if (loading) {
+      if (!isWorkspaceImage) {
+        thumbnailContent = (
+          <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
+            <File className="w-5 h-5 text-muted-foreground" />
+          </div>
+        );
+        displayName = truncatePath(workspaceDisplayName);
+        const parts: string[] = [];
+        if (metadata?.format) {
+          parts.push(metadata.format.toUpperCase());
+        }
+        const sizeText = formatFileSize(metadata?.size_bytes);
+        if (sizeText) {
+          parts.push(sizeText);
+        }
+        metadataLine = parts.length > 0 ? parts.join(' · ') : null;
+      } else if (loading) {
         thumbnailContent = (
           <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
             <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
@@ -376,7 +406,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
             draggable={false}
           />
         );
-        displayName = truncatePath(metadata.file_name || altText || src);
+        displayName = truncatePath(workspaceDisplayName);
 
         const parts: string[] = [];
         if (metadata.format) {
@@ -442,7 +472,9 @@ export function createImageNode(options: CreateImageNodeOptions) {
             <X className="w-2.5 h-2.5 text-background" />
           </button>
         )}
-        {isAttachment && (localAttachment?.proxy_url || fullSizeUrl) && (
+        {(isAttachment &&
+          (localAttachment?.proxy_url || fullSizeUrl || metadata?.proxy_url)) ||
+        (!isWorkspaceImage && metadata?.proxy_url) ? (
           <button
             onClick={handleDownload}
             className={
@@ -455,7 +487,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
           >
             <Download className="w-2.5 h-2.5 text-background" />
           </button>
-        )}
+        ) : null}
       </span>
     );
   }

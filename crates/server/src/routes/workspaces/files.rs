@@ -56,7 +56,6 @@ pub struct ImportIssueAttachmentsRequest {
 
 #[derive(Debug, Serialize, TS)]
 pub struct ImportIssueAttachmentsResponse {
-    #[serde(alias = "file_ids")]
     pub attachment_ids: Vec<Uuid>,
 }
 

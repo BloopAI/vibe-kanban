@@ -36,10 +36,10 @@ export function useCreateAttachments(
   }, [attachments, onAttachmentsChange]);
 
   const uploadFiles = useCallback(
-    async (files: File[]) => {
+    async (selectedFiles: File[]) => {
       const uploadResults: DraftWorkspaceAttachment[] = [];
 
-      for (const file of files) {
+      for (const file of selectedFiles) {
         try {
           const response = await attachmentsApi.upload(file);
           uploadResults.push({
