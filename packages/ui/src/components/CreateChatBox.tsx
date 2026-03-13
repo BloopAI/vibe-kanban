@@ -5,7 +5,7 @@ import { Checkbox } from './Checkbox';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 import { PrimaryButton } from './PrimaryButton';
-import type { LocalImageMetadata } from './WorkspaceContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 
 export interface EditorProps {
@@ -52,7 +52,7 @@ export interface CreateChatBoxEditorRenderProps<
   repoId?: string;
   executor: TExecutor | null;
   onPasteFiles?: (files: File[]) => void;
-  localImages?: LocalImageMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
 }
 
 interface CreateChatBoxProps<TExecutor extends string = string> {
@@ -71,7 +71,7 @@ interface CreateChatBoxProps<TExecutor extends string = string> {
   repoId?: string;
   modelSelector?: ReactNode;
   onPasteFiles?: (files: File[]) => void;
-  localImages?: LocalImageMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   dropzone?: DropzoneProps;
   onEditRepos: () => void;
   repoSummaryLabel: string;
@@ -106,7 +106,7 @@ export function CreateChatBox<TExecutor extends string = string>({
   repoId,
   modelSelector,
   onPasteFiles,
-  localImages,
+  localAttachments,
   dropzone,
   onEditRepos,
   repoSummaryLabel,
@@ -129,9 +129,7 @@ export function CreateChatBox<TExecutor extends string = string>({
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []).filter((f) =>
-      f.type.startsWith('image/')
-    );
+    const files = Array.from(e.target.files || []);
     if (files.length > 0 && onPasteFiles) {
       onPasteFiles(files);
     }
@@ -153,7 +151,7 @@ export function CreateChatBox<TExecutor extends string = string>({
         repoId,
         executor: executor.selected ?? null,
         onPasteFiles,
-        localImages,
+        localAttachments,
       })}
       error={error}
       visualVariant={VisualVariant.NORMAL}
@@ -193,15 +191,14 @@ export function CreateChatBox<TExecutor extends string = string>({
         <>
           <ToolbarIconButton
             icon={PaperclipIcon}
-            aria-label={t('tasks:taskFormDialog.attachImage')}
-            title={t('tasks:taskFormDialog.attachImage')}
+            aria-label={t('tasks:taskFormDialog.attachFile')}
+            title={t('tasks:taskFormDialog.attachFile')}
             onClick={handleAttachClick}
             disabled={isDisabled}
           />
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
             multiple
             className="hidden"
             onChange={handleFileInputChange}

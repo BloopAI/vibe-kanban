@@ -93,7 +93,7 @@ export function toDraftWorkspaceData(
           remote_project_id: initialState.linkedIssue.remoteProjectId,
         }
       : null,
-    images: [],
+    attachments: [],
   };
 }
 

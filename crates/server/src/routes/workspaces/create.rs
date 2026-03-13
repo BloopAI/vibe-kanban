@@ -1,3 +1,5 @@
+use std::{collections::HashMap, sync::LazyLock};
+
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
     requests::{
@@ -6,13 +8,21 @@ use db::models::{
     workspace::{CreateWorkspace, Workspace},
 };
 use deployment::Deployment;
+use regex::{Captures, Regex};
 use services::services::container::ContainerService;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, routes::workspaces::images::import_issue_attachment_images,
+    DeploymentImpl,
+    error::ApiError,
+    routes::workspaces::files::{ImportedIssueAttachment, import_issue_attachments_from_remote},
 };
+
+static ISSUE_ATTACHMENT_MARKDOWN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r#"(!?)\[([^\]]*)\]\(attachment://([0-9a-fA-F-]+)\)"#)
+        .expect("attachment markdown regex must compile")
+});
 
 pub(crate) async fn create_workspace_record(
     deployment: &DeploymentImpl,
@@ -68,6 +78,68 @@ fn normalize_prompt(prompt: &str) -> Option<String> {
     }
 }
 
+fn escape_markdown_label(label: &str) -> String {
+    let mut escaped = String::with_capacity(label.len());
+    for ch in label.chars() {
+        if matches!(ch, '[' | ']' | '\\') {
+            escaped.push('\\');
+        }
+        escaped.push(ch);
+    }
+    escaped
+}
+
+fn build_workspace_attachment_markdown(
+    file: &ImportedIssueAttachment,
+    label: &str,
+    uses_image_markdown: bool,
+) -> String {
+    let path = format!(".vibe-images/{}", file.file.file_path);
+    let normalized_label = if label.trim().is_empty() {
+        file.file.original_name.as_str()
+    } else {
+        label
+    };
+    let escaped_label = escape_markdown_label(normalized_label);
+
+    if uses_image_markdown {
+        format!("![{}]({})", escaped_label, path)
+    } else {
+        format!("[{}]({})", escaped_label, path)
+    }
+}
+
+fn rewrite_imported_issue_attachments_markdown(
+    prompt: &str,
+    imported_attachments: &[ImportedIssueAttachment],
+) -> String {
+    if imported_attachments.is_empty() {
+        return prompt.to_string();
+    }
+
+    let imported_by_attachment_id = imported_attachments
+        .iter()
+        .map(|file| (file.attachment_id, file))
+        .collect::<HashMap<_, _>>();
+
+    ISSUE_ATTACHMENT_MARKDOWN_REGEX
+        .replace_all(prompt, |captures: &Captures| {
+            let Some(attachment_id_match) = captures.get(3) else {
+                return captures[0].to_string();
+            };
+            let Ok(attachment_id) = Uuid::parse_str(attachment_id_match.as_str()) else {
+                return captures[0].to_string();
+            };
+            let Some(file) = imported_by_attachment_id.get(&attachment_id) else {
+                return captures[0].to_string();
+            };
+            let label = captures.get(2).map(|m| m.as_str()).unwrap_or_default();
+            let uses_image_markdown = captures.get(1).is_some_and(|marker| marker.as_str() == "!");
+            build_workspace_attachment_markdown(file, label, uses_image_markdown)
+        })
+        .into_owned()
+}
+
 pub async fn create_and_start_workspace(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<CreateAndStartWorkspaceRequest>,
@@ -78,10 +150,10 @@ pub async fn create_and_start_workspace(
         linked_issue,
         executor_config,
         prompt,
-        image_ids,
+        attachment_ids,
     } = payload;
 
-    let workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
+    let mut workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
         ApiError::BadRequest(
             "A workspace prompt is required. Provide a non-empty `prompt`.".to_string(),
         )
@@ -105,23 +177,37 @@ pub async fn create_and_start_workspace(
             .map_err(ApiError::from)?;
     }
 
-    if let Some(ids) = &image_ids {
-        managed_workspace.associate_images(ids).await?;
+    if let Some(ids) = &attachment_ids {
+        managed_workspace.associate_files(ids).await?;
     }
 
     if let Some(linked_issue) = &linked_issue
         && let Ok(client) = deployment.remote_client()
     {
-        match import_issue_attachment_images(&client, deployment.image(), linked_issue.issue_id)
-            .await
+        match import_issue_attachments_from_remote(
+            &client,
+            deployment.file(),
+            linked_issue.issue_id,
+        )
+        .await
         {
-            Ok(imported_ids) if !imported_ids.is_empty() => {
-                if let Err(e) = managed_workspace.associate_images(&imported_ids).await {
-                    tracing::warn!("Failed to associate imported images with workspace: {}", e);
+            Ok(imported_attachments) if !imported_attachments.is_empty() => {
+                let imported_ids = imported_attachments
+                    .iter()
+                    .map(|imported| imported.file.id)
+                    .collect::<Vec<_>>();
+
+                if let Err(e) = managed_workspace.associate_files(&imported_ids).await {
+                    tracing::warn!("Failed to associate imported files with workspace: {}", e);
                 }
 
+                workspace_prompt = rewrite_imported_issue_attachments_markdown(
+                    &workspace_prompt,
+                    &imported_attachments,
+                );
+
                 tracing::info!(
-                    "Imported {} images from issue {}",
+                    "Imported {} files from issue {}",
                     imported_ids.len(),
                     linked_issue.issue_id
                 );
@@ -162,4 +248,144 @@ pub async fn create_and_start_workspace(
             execution_process,
         },
     )))
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::Utc;
+    use db::models::file::File;
+    use uuid::Uuid;
+
+    use super::{ImportedIssueAttachment, rewrite_imported_issue_attachments_markdown};
+
+    fn imported_file(
+        attachment_id: Uuid,
+        original_name: &str,
+        file_path: &str,
+        mime_type: Option<&str>,
+    ) -> ImportedIssueAttachment {
+        ImportedIssueAttachment {
+            attachment_id,
+            file: File {
+                id: Uuid::new_v4(),
+                file_path: file_path.to_string(),
+                original_name: original_name.to_string(),
+                mime_type: mime_type.map(str::to_string),
+                size_bytes: 123,
+                hash: "hash".to_string(),
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            },
+        }
+    }
+
+    #[test]
+    fn rewrites_imported_non_image_attachment_links() {
+        let attachment_id = Uuid::new_v4();
+        let prompt = format!("[proposal.pdf](attachment://{})", attachment_id);
+        let imported = vec![imported_file(
+            attachment_id,
+            "proposal.pdf",
+            "abc_proposal.pdf",
+            Some("application/pdf"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, "[proposal.pdf](.vibe-images/abc_proposal.pdf)");
+    }
+
+    #[test]
+    fn preserves_authored_image_markdown_for_imported_images() {
+        let attachment_id = Uuid::new_v4();
+        let prompt = format!("![diagram.png](attachment://{})", attachment_id);
+        let imported = vec![imported_file(
+            attachment_id,
+            "diagram.png",
+            "xyz_diagram.png",
+            Some("image/png"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, "![diagram.png](.vibe-images/xyz_diagram.png)");
+    }
+
+    #[test]
+    fn preserves_authored_link_markdown_for_imported_images() {
+        let attachment_id = Uuid::new_v4();
+        let prompt = format!("[diagram.png](attachment://{})", attachment_id);
+        let imported = vec![imported_file(
+            attachment_id,
+            "diagram.png",
+            "xyz_diagram.png",
+            Some("image/png"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, "[diagram.png](.vibe-images/xyz_diagram.png)");
+    }
+
+    #[test]
+    fn preserves_authored_image_markdown_for_imported_non_images() {
+        let attachment_id = Uuid::new_v4();
+        let prompt = format!("![proposal.pdf](attachment://{})", attachment_id);
+        let imported = vec![imported_file(
+            attachment_id,
+            "proposal.pdf",
+            "abc_proposal.pdf",
+            Some("application/pdf"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, "![proposal.pdf](.vibe-images/abc_proposal.pdf)");
+    }
+
+    #[test]
+    fn leaves_unknown_attachment_references_unchanged() {
+        let prompt = format!("[proposal.pdf](attachment://{})", Uuid::new_v4());
+        let imported = vec![imported_file(
+            Uuid::new_v4(),
+            "proposal.pdf",
+            "abc_proposal.pdf",
+            Some("application/pdf"),
+        )];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(rewritten, prompt);
+    }
+
+    #[test]
+    fn rewrites_multiple_attachments_and_leaves_other_links_alone() {
+        let image_attachment_id = Uuid::new_v4();
+        let file_attachment_id = Uuid::new_v4();
+        let prompt = format!(
+            "See [doc.pdf](attachment://{}) and ![shot.png](attachment://{}). https://example.com",
+            file_attachment_id, image_attachment_id
+        );
+        let imported = vec![
+            imported_file(
+                file_attachment_id,
+                "doc.pdf",
+                "doc_file.pdf",
+                Some("application/pdf"),
+            ),
+            imported_file(
+                image_attachment_id,
+                "shot.png",
+                "shot_file.png",
+                Some("image/png"),
+            ),
+        ];
+
+        let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
+
+        assert_eq!(
+            rewritten,
+            "See [doc.pdf](.vibe-images/doc_file.pdf) and ![shot.png](.vibe-images/shot_file.png). https://example.com"
+        );
+    }
 }

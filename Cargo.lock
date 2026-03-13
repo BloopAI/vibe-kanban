@@ -7083,6 +7083,7 @@ dependencies = [
  "ignore",
  "indicatif",
  "json-patch 2.0.0",
+ "mime_guess",
  "moka",
  "notify",
  "notify-debouncer-full",

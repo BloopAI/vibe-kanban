@@ -1,6 +1,10 @@
 import { useContext } from 'react';
 import { createHmrContext } from '@/shared/lib/hmrContext';
-import type { DraftWorkspaceImage, Repo, ExecutorConfig } from 'shared/types';
+import type {
+  DraftWorkspaceAttachment,
+  Repo,
+  ExecutorConfig,
+} from 'shared/types';
 
 interface LinkedIssue {
   issueId: string;
@@ -31,10 +35,10 @@ export interface CreateModeContextValue {
   executorConfig: ExecutorConfig | null;
   /** Update executor config (triggers debounced scratch save) */
   setExecutorConfig: (config: ExecutorConfig | null) => void;
-  /** Uploaded images persisted in the draft */
-  images: DraftWorkspaceImage[];
-  /** Update draft images (triggers debounced scratch save) */
-  setImages: (images: DraftWorkspaceImage[]) => void;
+  /** Uploaded attachments persisted in the draft */
+  attachments: DraftWorkspaceAttachment[];
+  /** Update draft attachments (triggers debounced scratch save) */
+  setAttachments: (attachments: DraftWorkspaceAttachment[]) => void;
 }
 
 export const CreateModeContext =

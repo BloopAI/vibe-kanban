@@ -45,7 +45,7 @@ use services::services::{
     config::{Config, DEFAULT_COMMIT_REMINDER_PROMPT},
     container::{ContainerError, ContainerRef, ContainerService},
     diff_stream::{self, DiffStreamHandle},
-    image::ImageService,
+    file::FileService,
     notification::NotificationService,
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
@@ -79,7 +79,7 @@ pub struct LocalContainerService {
     workspace_touch_times: Arc<RwLock<HashMap<Uuid, Instant>>>,
     config: Arc<RwLock<Config>>,
     git: GitService,
-    image_service: ImageService,
+    file_service: FileService,
     analytics: Option<AnalyticsContext>,
     approvals: Approvals,
     queued_message_service: QueuedMessageService,
@@ -95,7 +95,7 @@ impl LocalContainerService {
         msg_stores: Arc<RwLock<HashMap<Uuid, Arc<MsgStore>>>>,
         config: Arc<RwLock<Config>>,
         git: GitService,
-        image_service: ImageService,
+        file_service: FileService,
         analytics: Option<AnalyticsContext>,
         approvals: Approvals,
         queued_message_service: QueuedMessageService,
@@ -119,7 +119,7 @@ impl LocalContainerService {
             workspace_touch_times,
             config,
             git,
-            image_service,
+            file_service,
             analytics,
             approvals,
             queued_message_service,
@@ -933,8 +933,8 @@ impl LocalContainerService {
         Ok(())
     }
 
-    /// Copy project files and images to the workspace.
-    /// Skips files/images that already exist (fast no-op if all exist).
+    /// Copy project files and workspace attachments to the workspace.
+    /// Skips files that already exist (fast no-op if all exist).
     async fn copy_files_and_images(
         &self,
         workspace_dir: &Path,
@@ -964,15 +964,15 @@ impl LocalContainerService {
             .and_then(|session| session.agent_working_dir);
 
         if let Err(e) = self
-            .image_service
-            .copy_images_by_workspace_to_worktree(
+            .file_service
+            .copy_files_by_workspace_to_worktree(
                 workspace_dir,
                 workspace.id,
                 agent_working_dir.as_deref(),
             )
             .await
         {
-            tracing::warn!("Failed to copy workspace images to workspace: {}", e);
+            tracing::warn!("Failed to copy workspace files to workspace: {}", e);
         }
 
         Ok(())

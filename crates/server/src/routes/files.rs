@@ -7,11 +7,11 @@ use axum::{
     routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
-use db::models::image::{Image, WorkspaceImage};
+use db::models::file::{File, WorkspaceImage};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
-use services::services::image::ImageError;
-use tokio::fs::File;
+use services::services::file::FileError;
+use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -20,7 +20,7 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct ImageResponse {
+pub struct AttachmentResponse {
     pub id: Uuid,
     pub file_path: String, // relative path to display in markdown
     pub original_name: String,
@@ -31,26 +31,24 @@ pub struct ImageResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-impl ImageResponse {
-    pub fn from_image(image: Image) -> Self {
-        // special relative path for images
-        let markdown_path = format!("{}/{}", utils::path::VIBE_IMAGES_DIR, image.file_path);
+impl AttachmentResponse {
+    pub fn from_file(file: File) -> Self {
+        let markdown_path = format!("{}/{}", utils::path::VIBE_IMAGES_DIR, file.file_path);
         Self {
-            id: image.id,
+            id: file.id,
             file_path: markdown_path,
-            original_name: image.original_name,
-            mime_type: image.mime_type,
-            size_bytes: image.size_bytes,
-            hash: image.hash,
-            created_at: image.created_at,
-            updated_at: image.updated_at,
+            original_name: file.original_name,
+            mime_type: file.mime_type,
+            size_bytes: file.size_bytes,
+            hash: file.hash,
+            created_at: file.created_at,
+            updated_at: file.updated_at,
         }
     }
 }
 
-/// Metadata response for image files, used for rendering in WYSIWYG editor
 #[derive(Debug, Serialize, Deserialize, TS)]
-pub struct ImageMetadata {
+pub struct AttachmentMetadata {
     pub exists: bool,
     pub file_name: Option<String>,
     pub path: Option<String>,
@@ -59,78 +57,77 @@ pub struct ImageMetadata {
     pub proxy_url: Option<String>,
 }
 
-pub async fn upload_image(
+pub async fn upload_file(
     State(deployment): State<DeploymentImpl>,
     multipart: Multipart,
-) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
-    let image_response = process_image_upload(&deployment, multipart, None).await?;
-    Ok(ResponseJson(ApiResponse::success(image_response)))
+) -> Result<ResponseJson<ApiResponse<AttachmentResponse>>, ApiError> {
+    let file_response = process_file_upload(&deployment, multipart, None).await?;
+    Ok(ResponseJson(ApiResponse::success(file_response)))
 }
 
-pub(crate) async fn process_image_upload(
+pub(crate) async fn process_file_upload(
     deployment: &DeploymentImpl,
     mut multipart: Multipart,
     link_workspace_id: Option<Uuid>,
-) -> Result<ImageResponse, ApiError> {
-    let image_service = deployment.image();
+) -> Result<AttachmentResponse, ApiError> {
+    let file_service = deployment.file();
 
     while let Some(field) = multipart.next_field().await? {
         if field.name() == Some("image") {
             let filename = field
                 .file_name()
                 .map(|s| s.to_string())
-                .unwrap_or_else(|| "image.png".to_string());
+                .unwrap_or_else(|| "file.bin".to_string());
 
             let data = field.bytes().await?;
-            let image = image_service.store_image(&data, &filename).await?;
+            let file = file_service.store_file(&data, &filename).await?;
 
             if let Some(workspace_id) = link_workspace_id {
                 WorkspaceImage::associate_many_dedup(
                     &deployment.db().pool,
                     workspace_id,
-                    std::slice::from_ref(&image.id),
+                    std::slice::from_ref(&file.id),
                 )
                 .await?;
             }
 
             deployment
                 .track_if_analytics_allowed(
-                    "image_uploaded",
+                    "file_uploaded",
                     serde_json::json!({
-                        "image_id": image.id.to_string(),
-                        "size_bytes": image.size_bytes,
-                        "mime_type": image.mime_type,
+                        "file_id": file.id.to_string(),
+                        "size_bytes": file.size_bytes,
+                        "mime_type": file.mime_type,
                         "workspace_id": link_workspace_id.map(|id| id.to_string()),
                     }),
                 )
                 .await;
 
-            return Ok(ImageResponse::from_image(image));
+            return Ok(AttachmentResponse::from_file(file));
         }
     }
 
-    Err(ApiError::Image(ImageError::NotFound))
+    Err(ApiError::File(FileError::NotFound))
 }
 
-/// Serve an image file by ID
-pub async fn serve_image(
-    Path(image_id): Path<Uuid>,
+pub async fn serve_file(
+    Path(file_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<Response, ApiError> {
-    let image_service = deployment.image();
-    let image = image_service
-        .get_image(image_id)
+    let file_service = deployment.file();
+    let file_record = file_service
+        .get_file(file_id)
         .await?
-        .ok_or_else(|| ApiError::Image(ImageError::NotFound))?;
-    let file_path = image_service.get_absolute_path(&image);
+        .ok_or_else(|| ApiError::File(FileError::NotFound))?;
+    let file_path = file_service.get_absolute_path(&file_record);
 
-    let file = File::open(&file_path).await?;
+    let file = TokioFile::open(&file_path).await?;
     let metadata = file.metadata().await?;
 
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
-    let content_type = image
+    let content_type = file_record
         .mime_type
         .as_deref()
         .unwrap_or("application/octet-stream");
@@ -139,19 +136,19 @@ pub async fn serve_image(
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CONTENT_LENGTH, metadata.len())
-        .header(header::CACHE_CONTROL, "public, max-age=31536000") // Cache for 1 year
+        .header(header::CACHE_CONTROL, "public, max-age=31536000")
         .body(body)
-        .map_err(|e| ApiError::Image(ImageError::ResponseBuildError(e.to_string())))?;
+        .map_err(|e| ApiError::File(FileError::ResponseBuildError(e.to_string())))?;
 
     Ok(response)
 }
 
-pub async fn delete_image(
-    Path(image_id): Path<Uuid>,
+pub async fn delete_file(
+    Path(file_id): Path<Uuid>,
     State(deployment): State<DeploymentImpl>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
-    let image_service = deployment.image();
-    image_service.delete_image(image_id).await?;
+    let file_service = deployment.file();
+    file_service.delete_file(file_id).await?;
     Ok(ResponseJson(ApiResponse::success(())))
 }
 
@@ -159,8 +156,8 @@ pub fn routes() -> Router<DeploymentImpl> {
     Router::new()
         .route(
             "/upload",
-            post(upload_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)), // 20MB limit
+            post(upload_file).layer(DefaultBodyLimit::max(20 * 1024 * 1024)),
         )
-        .route("/{id}/file", get(serve_image))
-        .route("/{id}", delete(delete_image))
+        .route("/{id}/file", get(serve_file))
+        .route("/{id}", delete(delete_file))
 }

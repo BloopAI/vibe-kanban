@@ -152,9 +152,9 @@ pub struct DraftWorkspaceLinkedIssue {
     pub remote_project_id: String,
 }
 
-/// Uploaded image stored in a draft workspace
+/// Uploaded attachment stored in a draft workspace
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct DraftWorkspaceImage {
+pub struct DraftWorkspaceAttachment {
     pub id: Uuid,
     pub file_path: String,
     pub original_name: String,
@@ -173,8 +173,8 @@ pub struct DraftWorkspaceData {
     pub executor_config: Option<ExecutorConfig>,
     #[serde(default)]
     pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
-    #[serde(default)]
-    pub images: Vec<DraftWorkspaceImage>,
+    #[serde(default, alias = "images", alias = "files")]
+    pub attachments: Vec<DraftWorkspaceAttachment>,
 }
 
 /// Repository entry in a draft workspace
