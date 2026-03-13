@@ -1,6 +1,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -44,7 +45,7 @@ function ChatBoxWithDiffStats({
   onSelectSession: (sessionId: string) => void;
   onStartNewSession: () => void;
   onScrollToPreviousMessage: () => void;
-  onScrollToBottom: () => void;
+  onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
 }) {
   const { diffStats } = useWorkspaceDiffContext();
 
@@ -79,12 +80,13 @@ function ChatBoxWithDiffStats({
 }
 
 export interface WorkspacesMainContainerHandle {
-  scrollToBottom: () => void;
+  scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
 }
 
 interface WorkspacesMainContainerProps {
   selectedWorkspace: Workspace | null;
   selectedSession: Session | undefined;
+  selectedSessionId: string | undefined;
   sessions: Session[];
   repos: RepoWithTargetBranch[];
   onSelectSession: (sessionId: string) => void;
@@ -100,6 +102,7 @@ export const WorkspacesMainContainer = forwardRef<
   {
     selectedWorkspace,
     selectedSession,
+    selectedSessionId,
     sessions,
     repos,
     onSelectSession,
@@ -122,18 +125,62 @@ export const WorkspacesMainContainer = forwardRef<
   }, []);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const isAtBottomRef = useRef(isAtBottom);
   const handleAtBottomChange = useCallback((atBottom: boolean) => {
+    isAtBottomRef.current = atBottom;
     setIsAtBottom(atBottom);
   }, []);
 
-  const handleScrollToBottom = useCallback(() => {
-    conversationListRef.current?.scrollToBottom();
-  }, []);
+  const handleScrollToBottom = useCallback(
+    (behavior: 'auto' | 'smooth' = 'smooth') => {
+      conversationListRef.current?.scrollToBottom(behavior);
+    },
+    []
+  );
 
   const { session } = workspaceWithSession ?? {};
 
+  useEffect(() => {
+    isAtBottomRef.current = isAtBottom;
+  }, [isAtBottom]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') return;
+
+    const chatBoxContainer = container.querySelector<HTMLElement>(
+      '[data-chatbox-container="true"]'
+    );
+    if (!chatBoxContainer) return;
+
+    let previousHeight = chatBoxContainer.getBoundingClientRect().height;
+
+    const observer = new ResizeObserver((entries) => {
+      const nextHeight =
+        entries[0]?.contentRect.height ??
+        chatBoxContainer.getBoundingClientRect().height;
+
+      if (Math.abs(nextHeight - previousHeight) < 0.5) return;
+      const heightDelta = nextHeight - previousHeight;
+      previousHeight = nextHeight;
+
+      if (!isAtBottomRef.current) return;
+
+      requestAnimationFrame(() => {
+        if (!isAtBottomRef.current) return;
+        conversationListRef.current?.adjustScrollBy(heightDelta);
+      });
+    });
+
+    observer.observe(chatBoxContainer);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [workspaceWithSession?.id, session?.id]);
+
   const entriesProviderKey = workspaceWithSession
-    ? `${workspaceWithSession.id}-${session?.id}`
+    ? `${workspaceWithSession.id}-${selectedSessionId ?? 'new'}`
     : 'empty';
 
   const conversationContent = workspaceWithSession ? (
@@ -141,10 +188,12 @@ export const WorkspacesMainContainer = forwardRef<
       <div className="w-chat max-w-full h-full">
         <RetryUiProvider workspaceId={workspaceWithSession.id}>
           <ConversationList
+            key={entriesProviderKey}
             ref={conversationListRef}
             attempt={workspaceWithSession}
             repos={repos}
             onAtBottomChange={handleAtBottomChange}
+            sessionScopeId={selectedSessionId}
           />
         </RetryUiProvider>
       </div>
@@ -171,8 +220,8 @@ export const WorkspacesMainContainer = forwardRef<
   useImperativeHandle(
     ref,
     () => ({
-      scrollToBottom: () => {
-        conversationListRef.current?.scrollToBottom();
+      scrollToBottom: (behavior = 'smooth') => {
+        conversationListRef.current?.scrollToBottom(behavior);
       },
     }),
     []
