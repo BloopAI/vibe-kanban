@@ -6,6 +6,7 @@ import {
 import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 import {
   ChangesViewContext,
+  ChangesViewActionsContext,
   type ScrollToFileCallback,
 } from '@/shared/hooks/useChangesView';
 
@@ -23,6 +24,8 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   const { setRightMainPanelMode } = useUiPreferencesStore();
 
   const scrollToFileCallbackRef = useRef<ScrollToFileCallback | null>(null);
+  const diffPathsRef = useRef(diffPaths);
+  diffPathsRef.current = diffPaths;
 
   const registerScrollToFile = useCallback(
     (callback: ScrollToFileCallback | null) => {
@@ -56,17 +59,24 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
     [setRightMainPanelMode]
   );
 
-  const findMatchingDiffPath = useCallback(
-    (text: string): string | null => {
-      if (diffPaths.has(text)) return text;
-      for (const fullPath of diffPaths) {
-        if (fullPath.endsWith('/' + text)) {
-          return fullPath;
-        }
+  const findMatchingDiffPath = useCallback((text: string): string | null => {
+    const currentDiffPaths = diffPathsRef.current;
+    if (currentDiffPaths.has(text)) return text;
+    for (const fullPath of currentDiffPaths) {
+      if (fullPath.endsWith('/' + text)) {
+        return fullPath;
       }
-      return null;
-    },
-    [diffPaths]
+    }
+    return null;
+  }, []);
+
+  const hasDiffPath = useCallback((path: string): boolean => {
+    return diffPathsRef.current.has(path);
+  }, []);
+
+  const actionsValue = useMemo(
+    () => ({ viewFileInChanges, findMatchingDiffPath, hasDiffPath }),
+    [viewFileInChanges, findMatchingDiffPath, hasDiffPath]
   );
 
   const value = useMemo(
@@ -96,8 +106,10 @@ export function ChangesViewProvider({ children }: ChangesViewProviderProps) {
   );
 
   return (
-    <ChangesViewContext.Provider value={value}>
-      {children}
-    </ChangesViewContext.Provider>
+    <ChangesViewActionsContext.Provider value={actionsValue}>
+      <ChangesViewContext.Provider value={value}>
+        {children}
+      </ChangesViewContext.Provider>
+    </ChangesViewActionsContext.Provider>
   );
 }
