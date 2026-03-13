@@ -21,6 +21,7 @@ use tokio_util::sync::CancellationToken;
 use ts_rs::TS;
 use workspace_utils::{
     approvals::{ApprovalStatus, QuestionStatus},
+    command_ext::GroupSpawnNoWindowExt,
     diff::create_unified_diff,
     log_msg::LogMsg,
     msg_store::MsgStore,
@@ -40,7 +41,6 @@ use crate::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor, codex::client::LogWriter, utils::reorder_slash_commands,
     },
-    group_spawn_ext::GroupSpawnNoWindow,
     logs::{
         ActionType, AnsweredQuestion, AskUserQuestionItem, AskUserQuestionOption, FileChange,
         NormalizedEntry, NormalizedEntryError, NormalizedEntryType, TodoItem, ToolStatus,

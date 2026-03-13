@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
 use workspace_utils::{
+    command_ext::GroupSpawnNoWindowExt,
     diff::{create_unified_diff, normalize_unified_diff},
     msg_store::MsgStore,
     path::make_path_relative,
@@ -22,7 +23,6 @@ use crate::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
     },
-    group_spawn_ext::GroupSpawnNoWindow,
     logs::{
         ActionType, FileChange, NormalizedEntry, NormalizedEntryError, NormalizedEntryType,
         TodoItem, ToolStatus,

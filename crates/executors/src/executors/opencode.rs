@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use tokio::{io::AsyncBufReadExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     approvals::ExecutorApprovalService,
@@ -21,7 +21,6 @@ use crate::{
         SlashCommandDescription, SpawnedChild, StandardCodingAgentExecutor,
         opencode::types::OpencodeExecutorEvent, utils::reorder_slash_commands,
     },
-    group_spawn_ext::GroupSpawnNoWindow,
     logs::utils::patch,
     model_selector::{AgentInfo, ModelInfo, ModelProvider, PermissionPolicy, ReasoningOption},
     profile::ExecutorConfig,

@@ -6,6 +6,8 @@
 //!
 //! On non-Windows platforms the methods are no-ops.
 
+use command_group::{AsyncCommandGroup, AsyncGroupChild};
+
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
 
@@ -38,5 +40,20 @@ impl NoWindowExt for tokio::process::Command {
     #[cfg(not(windows))]
     fn no_window(&mut self) -> &mut Self {
         self
+    }
+}
+
+/// Adds a `.group_spawn_no_window()` helper for command-group spawns that
+/// suppresses the console window on Windows. No-op on other platforms.
+pub trait GroupSpawnNoWindowExt {
+    fn group_spawn_no_window(&mut self) -> std::io::Result<AsyncGroupChild>;
+}
+
+impl GroupSpawnNoWindowExt for tokio::process::Command {
+    fn group_spawn_no_window(&mut self) -> std::io::Result<AsyncGroupChild> {
+        let mut group = self.group();
+        #[cfg(windows)]
+        group.creation_flags(CREATE_NO_WINDOW);
+        group.spawn()
     }
 }

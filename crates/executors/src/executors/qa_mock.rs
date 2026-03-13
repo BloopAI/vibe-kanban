@@ -13,7 +13,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     env::ExecutionEnv,
@@ -23,7 +23,6 @@ use crate::{
             ClaudeContentItem, ClaudeJson, ClaudeMessage, ClaudeMessageContent, ClaudeToolData,
         },
     },
-    group_spawn_ext::GroupSpawnNoWindow,
     logs::utils::EntryIndexProvider,
     profile::ExecutorConfig,
 };

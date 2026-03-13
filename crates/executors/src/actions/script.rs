@@ -4,14 +4,13 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use ts_rs::TS;
-use workspace_utils::shell::get_shell_command;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, shell::get_shell_command};
 
 use crate::{
     actions::Executable,
     approvals::ExecutorApprovalService,
     env::ExecutionEnv,
     executors::{ExecutorError, SpawnedChild},
-    group_spawn_ext::GroupSpawnNoWindow,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
