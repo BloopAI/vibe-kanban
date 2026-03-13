@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useId } from 'react';
+import { useEffect, useState, useId } from 'react';
 
 interface MermaidDiagramProps {
   chart: string;
@@ -6,7 +6,6 @@ interface MermaidDiagramProps {
 }
 
 export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const id = useId().replace(/:/g, 'mm');
@@ -69,7 +68,6 @@ export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
 
   return (
     <div
-      ref={containerRef}
       className="my-3 flex justify-center overflow-auto"
       dangerouslySetInnerHTML={{ __html: svg }}
     />
