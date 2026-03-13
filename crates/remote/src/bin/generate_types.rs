@@ -4,12 +4,12 @@ use api_types::{
     Attachment, AttachmentUrlResponse, AttachmentWithBlob, Blob, CreateIssueAssigneeRequest,
     CreateIssueCommentReactionRequest, CreateIssueCommentRequest, CreateIssueFollowerRequest,
     CreateIssueRelationshipRequest, CreateIssueRequest, CreateIssueTagRequest,
-    CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
-    Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
-    IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification,
-    NotificationGroupKind, NotificationPayload, NotificationType, OrganizationMember, Project,
-    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueCommentReactionRequest,
-    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
+    CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest, Issue, IssueAssignee,
+    IssueComment, IssueCommentReaction, IssueFollower, IssuePriority, IssueRelationship,
+    IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationGroupKind,
+    NotificationPayload, NotificationType, OrganizationMember, Project, ProjectStatus, PullRequest,
+    PullRequestStatus, Tag, UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest,
+    UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
     UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
 };
 use relay_types::{CreateRemoteSessionResponse, ListRelayHostsResponse, RelayHost};
