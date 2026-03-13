@@ -184,5 +184,5 @@ fn read_client_message(message: tungstenite::Message) -> WsIoReadMessage {
 }
 
 fn write_client_message(bytes: Vec<u8>) -> tungstenite::Message {
-    tungstenite::Message::Binary(bytes.into())
+    tungstenite::Message::Binary(bytes)
 }
