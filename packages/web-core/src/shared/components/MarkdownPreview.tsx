@@ -136,14 +136,29 @@ export function MarkdownPreview({
         // eslint-disable-next-line jsx-a11y/alt-text
         <img className="max-w-full rounded-sm" {...props} />
       ),
-      pre: ({ children, ...props }: ComponentPropsWithoutRef<'pre'>) => (
-        <pre
-          className="text-xs p-base rounded-sm bg-panel overflow-auto mb-3 font-ibm-plex-mono"
-          {...props}
-        >
-          {children}
-        </pre>
-      ),
+      pre: ({ children, ...props }: ComponentPropsWithoutRef<'pre'>) => {
+        // When a mermaid code block is rendered, the code component returns
+        // <MermaidDiagram> but react-markdown still wraps it in <pre>.
+        // Detect this and render a plain wrapper instead.
+        const child = Array.isArray(children) ? children[0] : children;
+        if (
+          child &&
+          typeof child === 'object' &&
+          'props' in child &&
+          child.props?.className &&
+          /language-mermaid/.test(child.props.className)
+        ) {
+          return <>{children}</>;
+        }
+        return (
+          <pre
+            className="text-xs p-base rounded-sm bg-panel overflow-auto mb-3 font-ibm-plex-mono"
+            {...props}
+          >
+            {children}
+          </pre>
+        );
+      },
       code: ({
         className: codeClassName,
         children,
