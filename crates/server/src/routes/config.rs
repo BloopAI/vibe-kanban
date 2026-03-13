@@ -22,7 +22,7 @@ use serde_json::Value;
 use services::services::{
     config::{
         Config, ConfigError, SoundFile,
-        editor::{EditorConfig, EditorType},
+        editor::EditorType,
         save_config_to_file,
     },
     container::ContainerService,
@@ -486,17 +486,13 @@ pub struct CheckEditorAvailabilityResponse {
 }
 
 async fn check_editor_availability(
-    State(_deployment): State<DeploymentImpl>,
+    State(deployment): State<DeploymentImpl>,
     Query(query): Query<CheckEditorAvailabilityQuery>,
 ) -> ResponseJson<ApiResponse<CheckEditorAvailabilityResponse>> {
-    // Construct a minimal EditorConfig for checking
-    let editor_config = EditorConfig::new(
-        query.editor_type,
-        None,  // custom_command
-        None,  // remote_ssh_host
-        None,  // remote_ssh_user
-        false, // auto_install_extension
-    );
+    let config = deployment.config().read().await;
+    let editor_config = config
+        .editor
+        .with_override(Some(query.editor_type.as_str()));
 
     let available = editor_config.check_availability().await;
     ResponseJson(ApiResponse::success(CheckEditorAvailabilityResponse {

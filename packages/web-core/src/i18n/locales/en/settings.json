@@ -79,6 +79,11 @@
           "placeholder": "e.g., code, subl, vim",
           "helper": "Enter the command to launch your custom editor. This will be used to open files."
         },
+        "codeServerUrl": {
+          "label": "Code Server URL",
+          "helper": "Required. Browser URL to your code-server instance. Vibe Kanban will open this URL in a new tab and append the workspace folder path.",
+          "placeholder": "https://code-server.example.com"
+        },
         "remoteSsh": {
           "host": {
             "label": "Remote SSH Host (Optional)",
@@ -93,7 +98,7 @@
         },
         "autoInstallExtension": {
           "label": "Auto-install VS Code Extension",
-          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code or Cursor. This runs in the background and has no effect if the extension is already installed."
+          "helper": "Automatically install the Vibe Kanban extension when opening a project in VS Code, Cursor, or Code Server. This runs in the background and has no effect if the extension is already installed."
         },
         "availability": {
           "checking": "Checking availability...",

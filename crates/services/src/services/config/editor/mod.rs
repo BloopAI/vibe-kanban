@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use thiserror::Error;
 use ts_rs::TS;
+use url::Url;
 
 fn default_auto_install_extension() -> bool {
     true
@@ -57,7 +58,25 @@ pub enum EditorType {
     Zed,
     Xcode,
     GoogleAntigravity,
+    CodeServer,
     Custom,
+}
+
+impl EditorType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            EditorType::VsCode => "VS_CODE",
+            EditorType::VsCodeInsiders => "VS_CODE_INSIDERS",
+            EditorType::Cursor => "CURSOR",
+            EditorType::Windsurf => "WINDSURF",
+            EditorType::IntelliJ => "INTELLI_J",
+            EditorType::Zed => "ZED",
+            EditorType::Xcode => "XCODE",
+            EditorType::GoogleAntigravity => "GOOGLE_ANTIGRAVITY",
+            EditorType::CodeServer => "CODE_SERVER",
+            EditorType::Custom => "CUSTOM",
+        }
+    }
 }
 
 impl Default for EditorConfig {
@@ -100,6 +119,7 @@ impl EditorConfig {
             EditorType::Zed => "zed",
             EditorType::Xcode => "xed",
             EditorType::GoogleAntigravity => "antigravity",
+            EditorType::CodeServer => "code-server",
             EditorType::Custom => {
                 // Custom editor - use user-provided command or fallback to VSCode
                 self.custom_command.as_deref().unwrap_or("code")
@@ -137,6 +157,9 @@ impl EditorConfig {
     /// Check if the editor is available on the system.
     /// Uses the same command resolution logic as spawn_local().
     pub async fn check_availability(&self) -> bool {
+        if matches!(self.editor_type, EditorType::CodeServer) {
+            return self.code_server_url_base().is_ok();
+        }
         self.resolve_command().await.is_ok()
     }
 
@@ -144,7 +167,10 @@ impl EditorConfig {
         self.auto_install_extension
             && matches!(
                 self.editor_type,
-                EditorType::VsCode | EditorType::VsCodeInsiders | EditorType::Cursor
+                EditorType::VsCode
+                    | EditorType::VsCodeInsiders
+                    | EditorType::Cursor
+                    | EditorType::CodeServer
             )
     }
 
@@ -164,11 +190,70 @@ impl EditorConfig {
         if let Some(url) = self.remote_url(path) {
             return Ok(Some(url));
         }
+
+        if matches!(self.editor_type, EditorType::CodeServer) {
+            if self.should_auto_install_extension() {
+                self.try_install_extension().await;
+            }
+            let url = self.code_server_url(path)?;
+            return Ok(Some(url));
+        }
         if self.should_auto_install_extension() {
             self.try_install_extension().await;
         }
         self.spawn_local(path).await?;
         Ok(None)
+    }
+
+    fn code_server_url_base(&self) -> Result<Url, EditorOpenError> {
+        if !matches!(self.editor_type, EditorType::CodeServer) {
+            return Err(EditorOpenError::InvalidCommand {
+                details: "Code Server URL is only valid for CODE_SERVER editor type".to_string(),
+                editor_type: self.editor_type.clone(),
+            });
+        }
+
+        let command = self
+            .custom_command
+            .as_deref()
+            .map(str::trim)
+            .ok_or_else(|| EditorOpenError::InvalidCommand {
+                details: "Code Server URL is required".to_string(),
+                editor_type: self.editor_type.clone(),
+            })?;
+
+        if command.is_empty() {
+            return Err(EditorOpenError::InvalidCommand {
+                details: "Code Server URL is required".to_string(),
+                editor_type: self.editor_type.clone(),
+            });
+        }
+
+        let url = Url::parse(command).map_err(|e| EditorOpenError::InvalidCommand {
+            details: format!("Invalid Code Server URL: {e}"),
+            editor_type: self.editor_type.clone(),
+        })?;
+
+        match url.scheme() {
+            "http" | "https" => Ok(url),
+            _ => Err(EditorOpenError::InvalidCommand {
+                details: "Code Server URL must start with http:// or https://".to_string(),
+                editor_type: self.editor_type.clone(),
+            }),
+        }
+    }
+
+    fn code_server_url(&self, path: &Path) -> Result<String, EditorOpenError> {
+        let mut url = self.code_server_url_base()?;
+        let folder_path = if path.is_file() {
+            path.parent().unwrap_or(path)
+        } else {
+            path
+        };
+
+        url.query_pairs_mut()
+            .append_pair("folder", &folder_path.to_string_lossy());
+        Ok(url.to_string())
     }
 
     fn remote_url(&self, path: &Path) -> Option<String> {
@@ -226,5 +311,94 @@ impl EditorConfig {
         } else {
             self.clone()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use tempfile::tempdir;
+    use url::Url;
+
+    use super::{EditorConfig, EditorOpenError, EditorType};
+
+    #[test]
+    fn code_server_url_requires_http_or_https_scheme() {
+        let config = EditorConfig::new(
+            EditorType::CodeServer,
+            Some("code-server://workspace".to_string()),
+            None,
+            None,
+            false,
+        );
+
+        let result = config.code_server_url_base();
+        assert!(matches!(
+            result,
+            Err(EditorOpenError::InvalidCommand { .. })
+        ));
+    }
+
+    #[test]
+    fn code_server_url_is_required() {
+        let config = EditorConfig::new(EditorType::CodeServer, None, None, None, false);
+
+        let result = config.code_server_url_base();
+        assert!(matches!(
+            result,
+            Err(EditorOpenError::InvalidCommand { .. })
+        ));
+    }
+
+    #[test]
+    fn code_server_url_for_directory_sets_folder_query() {
+        let dir = tempdir().expect("tempdir");
+        let repo_path = dir.path().join("repo");
+        fs::create_dir_all(&repo_path).expect("create repo dir");
+
+        let config = EditorConfig::new(
+            EditorType::CodeServer,
+            Some("https://code-server.example.com/".to_string()),
+            None,
+            None,
+            false,
+        );
+
+        let url = config.code_server_url(&repo_path).expect("code server url");
+        let parsed = Url::parse(&url).expect("valid url");
+        let folder = parsed
+            .query_pairs()
+            .find_map(|(k, v)| (k == "folder").then(|| v.to_string()))
+            .expect("folder query exists");
+
+        assert_eq!(folder, repo_path.to_string_lossy());
+    }
+
+    #[test]
+    fn code_server_url_for_file_uses_parent_directory() {
+        let dir = tempdir().expect("tempdir");
+        let repo_path = dir.path().join("repo");
+        fs::create_dir_all(&repo_path).expect("create repo dir");
+        let file_path = repo_path.join("src/main.rs");
+        fs::create_dir_all(file_path.parent().expect("parent path")).expect("create file parent");
+        fs::write(&file_path, "fn main() {}\n").expect("write file");
+
+        let config = EditorConfig::new(
+            EditorType::CodeServer,
+            Some("https://code-server.example.com/?theme=dark".to_string()),
+            None,
+            None,
+            false,
+        );
+
+        let url = config.code_server_url(&file_path).expect("code server url");
+        let parsed = Url::parse(&url).expect("valid url");
+        let folder = parsed
+            .query_pairs()
+            .find_map(|(k, v)| (k == "folder").then(|| v.to_string()))
+            .expect("folder query exists");
+
+        assert_eq!(folder, repo_path.join("src").to_string_lossy());
     }
 }

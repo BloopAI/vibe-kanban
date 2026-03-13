@@ -252,9 +252,18 @@ export function LandingPage() {
     void playSound(value);
   };
 
-  const isCustomEditorValid =
-    editorType !== EditorType.CUSTOM || customCommand.trim() !== '';
-  const canContinue = !saving && isCustomEditorValid;
+  const trimmedEditorCommand = customCommand.trim();
+  const isCustomEditor = editorType === EditorType.CUSTOM;
+  const isCodeServerEditor = editorType === EditorType.CODE_SERVER;
+  const hasEditorCommand = trimmedEditorCommand !== '';
+  const hasValidCodeServerUrl =
+    hasEditorCommand && /^https?:\/\//i.test(trimmedEditorCommand);
+
+  const isEditorCommandValid =
+    (!isCustomEditor && !isCodeServerEditor) ||
+    (isCustomEditor && hasEditorCommand) ||
+    (isCodeServerEditor && hasValidCodeServerUrl);
+  const canContinue = !saving && isEditorCommandValid;
 
   const handleContinue = async () => {
     if (!config || !canContinue) return;
@@ -262,7 +271,7 @@ export function LandingPage() {
     const editorConfig: EditorConfig = {
       editor_type: editorType,
       custom_command:
-        editorType === EditorType.CUSTOM ? customCommand.trim() : null,
+        isCustomEditor || isCodeServerEditor ? trimmedEditorCommand : null,
       remote_ssh_host: null,
       remote_ssh_user: null,
       auto_install_extension: true,
@@ -274,7 +283,8 @@ export function LandingPage() {
       selected_agent: selectedAgent,
       editor_type: editorType,
       custom_editor_command_set:
-        editorType === EditorType.CUSTOM && customCommand.trim() !== '',
+        (isCustomEditor || isCodeServerEditor) && hasEditorCommand,
+      code_server_url_set: isCodeServerEditor && hasEditorCommand,
       sound_enabled: soundEnabled,
       sound_file: soundEnabled ? soundFile : null,
     });
@@ -461,25 +471,35 @@ export function LandingPage() {
               })}
             </div>
 
-            {editorType === EditorType.CUSTOM && (
+            {(isCustomEditor || isCodeServerEditor) && (
               <div className="space-y-half">
                 <label className="text-sm font-medium text-normal">
-                  Custom Command
+                  {isCodeServerEditor ? 'Code Server URL' : 'Custom Command'}
                 </label>
                 <input
                   type="text"
                   value={customCommand}
                   onChange={(e) => setCustomCommand(e.target.value)}
-                  placeholder="e.g. code --wait"
+                  placeholder={
+                    isCodeServerEditor
+                      ? 'https://code-server.example.com'
+                      : 'e.g. code --wait'
+                  }
                   className={cn(
                     'w-full bg-panel border rounded-sm px-base py-half text-sm text-high',
                     'placeholder:text-low placeholder:opacity-80 focus:outline-none',
                     'focus:ring-1 focus:ring-brand',
-                    customCommand.trim() === ''
+                    !hasEditorCommand ||
+                      (isCodeServerEditor && !hasValidCodeServerUrl)
                       ? 'border-warning/60'
                       : 'border-border'
                   )}
                 />
+                {isCodeServerEditor && !hasValidCodeServerUrl && (
+                  <p className="text-xs text-warning">
+                    Enter a valid URL starting with http:// or https://
+                  </p>
+                )}
               </div>
             )}
           </section>

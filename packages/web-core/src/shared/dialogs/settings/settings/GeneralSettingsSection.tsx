@@ -335,10 +335,19 @@ export function GeneralSettingsSection() {
           />
         </SettingsField>
 
-        {draft?.editor.editor_type === EditorType.CUSTOM && (
+        {(draft?.editor.editor_type === EditorType.CUSTOM ||
+          draft?.editor.editor_type === EditorType.CODE_SERVER) && (
           <SettingsField
-            label={t('settings.general.editor.customCommand.label')}
-            description={t('settings.general.editor.customCommand.helper')}
+            label={
+              draft?.editor.editor_type === EditorType.CODE_SERVER
+                ? t('settings.general.editor.codeServerUrl.label')
+                : t('settings.general.editor.customCommand.label')
+            }
+            description={
+              draft?.editor.editor_type === EditorType.CODE_SERVER
+                ? t('settings.general.editor.codeServerUrl.helper')
+                : t('settings.general.editor.customCommand.helper')
+            }
           >
             <SettingsInput
               value={draft?.editor.custom_command || ''}
@@ -351,7 +360,9 @@ export function GeneralSettingsSection() {
                 })
               }
               placeholder={t(
-                'settings.general.editor.customCommand.placeholder'
+                draft?.editor.editor_type === EditorType.CODE_SERVER
+                  ? 'settings.general.editor.codeServerUrl.placeholder'
+                  : 'settings.general.editor.customCommand.placeholder'
               )}
             />
           </SettingsField>
@@ -409,7 +420,8 @@ export function GeneralSettingsSection() {
 
         {(draft?.editor.editor_type === EditorType.VS_CODE ||
           draft?.editor.editor_type === EditorType.VS_CODE_INSIDERS ||
-          draft?.editor.editor_type === EditorType.CURSOR) && (
+          draft?.editor.editor_type === EditorType.CURSOR ||
+          draft?.editor.editor_type === EditorType.CODE_SERVER) && (
           <SettingsCheckbox
             id="auto-install-extension"
             label={t('settings.general.editor.autoInstallExtension.label')}
