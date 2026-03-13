@@ -43,7 +43,6 @@ impl IssueRepository {
             SELECT
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
-                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
@@ -77,9 +76,10 @@ impl IssueRepository {
     ) -> Result<Option<Uuid>, IssueError> {
         let record = sqlx::query_scalar!(
             r#"
-            SELECT organization_id
-            FROM issues
-            WHERE id = $1
+            SELECT p.organization_id
+            FROM issues i
+            INNER JOIN projects p ON p.id = i.project_id
+            WHERE i.id = $1
             "#,
             issue_id
         )
@@ -99,7 +99,6 @@ impl IssueRepository {
             SELECT
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
-                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
@@ -162,7 +161,6 @@ impl IssueRepository {
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
-                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
@@ -268,7 +266,6 @@ impl IssueRepository {
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
-                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
