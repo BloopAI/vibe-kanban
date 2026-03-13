@@ -1,26 +1,30 @@
-import { useEffect, useState, useId } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface MermaidDiagramProps {
   chart: string;
   theme: 'light' | 'dark';
 }
 
+// Serialize all mermaid operations to avoid concurrent render/initialize races
+let mermaidQueue: Promise<void> = Promise.resolve();
 let initializedTheme: string | null = null;
 
 export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
-  const id = useId().replace(/:/g, 'mm');
+  const renderCountRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
+    const renderId = ++renderCountRef.current;
 
-    async function renderDiagram() {
+    mermaidQueue = mermaidQueue.then(async () => {
+      if (cancelled) return;
+
       try {
         const { default: mermaid } = await import('mermaid');
         const mermaidTheme = theme === 'dark' ? 'dark' : 'default';
 
-        // Only re-initialize when theme actually changes
         if (initializedTheme !== mermaidTheme) {
           mermaid.initialize({
             startOnLoad: false,
@@ -30,8 +34,9 @@ export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
           initializedTheme = mermaidTheme;
         }
 
+        // Use renderId to ensure each render call gets a unique DOM element ID
         const { svg: renderedSvg } = await mermaid.render(
-          `mermaid-${id}`,
+          `mermaid-${renderId}-${Date.now()}`,
           chart
         );
 
@@ -47,13 +52,12 @@ export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
           setSvg('');
         }
       }
-    }
+    });
 
-    void renderDiagram();
     return () => {
       cancelled = true;
     };
-  }, [chart, theme, id]);
+  }, [chart, theme]);
 
   if (error) {
     return (
