@@ -4,7 +4,7 @@ use api_types::{
     Attachment, AttachmentUrlResponse, AttachmentWithBlob, Blob, CreateIssueAssigneeRequest,
     CreateIssueCommentReactionRequest, CreateIssueCommentRequest, CreateIssueFollowerRequest,
     CreateIssueRelationshipRequest, CreateIssueRequest, CreateIssueTagRequest,
-    CreateNotificationRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
+    CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
     IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification,
     NotificationGroupKind, NotificationPayload, NotificationType, OrganizationMember, Project,
