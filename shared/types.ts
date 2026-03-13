@@ -381,6 +381,7 @@ export type AssociateWorkspaceAttachmentsRequest = { attachment_ids: Array<strin
 export type ImportIssueAttachmentsRequest = { issue_id: string, };
 
 export type ImportIssueAttachmentsResponse = { attachment_ids: Array<string>, };
+
 export type AttachPrResponse = { pr_attached: boolean, pr_url: string | null, pr_number: bigint | null, pr_status: MergeStatus | null, };
 
 export type AttachExistingPrRequest = { repo_id: string, };

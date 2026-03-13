@@ -206,7 +206,9 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const isPendingAttachment = src.startsWith('pending-attachment://');
     const isAttachment = isPendingAttachment || src.startsWith('attachment://');
     const attachmentId =
-      !isPendingAttachment && isAttachment ? src.replace('attachment://', '') : null;
+      !isPendingAttachment && isAttachment
+        ? src.replace('attachment://', '')
+        : null;
     const localAttachment = useMemo(
       () => localAttachments.find((attachment) => attachment.path === src),
       [localAttachments, src]
@@ -302,14 +304,20 @@ export function createImageNode(options: CreateImageNodeOptions) {
         const downloadUrl =
           localAttachment?.proxy_url ??
           fullSizeUrl ??
-          (!isWorkspaceImage ? metadata?.proxy_url ?? null : null);
+          (!isWorkspaceImage ? (metadata?.proxy_url ?? null) : null);
         if (!downloadUrl) return;
 
         downloadBlobUrl(downloadUrl, altText || 'attachment').catch((error) => {
           console.error('Failed to download attachment:', error);
         });
       },
-      [localAttachment?.proxy_url, fullSizeUrl, isWorkspaceImage, metadata, altText]
+      [
+        localAttachment?.proxy_url,
+        fullSizeUrl,
+        isWorkspaceImage,
+        metadata,
+        altText,
+      ]
     );
 
     const handleDelete = useCallback(
