@@ -403,7 +403,9 @@ export function Navbar({
                   textClassName="text-sm"
                 />
               ) : (
-                <p className="text-sm text-low truncate cursor-default select-none">{workspaceTitle}</p>
+                <p className="text-sm text-low truncate cursor-default select-none">
+                  {workspaceTitle}
+                </p>
               )}
             </div>
           </div>
@@ -445,7 +447,10 @@ export function Navbar({
             textClassName="text-base"
           />
         ) : (
-          <p data-tauri-drag-region className="text-base text-low truncate cursor-default select-none">
+          <p
+            data-tauri-drag-region
+            className="text-base text-low truncate cursor-default select-none"
+          >
             {workspaceTitle ?? ''}
           </p>
         )}
