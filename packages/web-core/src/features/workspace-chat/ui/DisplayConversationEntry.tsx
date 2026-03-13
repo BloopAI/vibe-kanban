@@ -23,8 +23,8 @@ import { useTheme } from '@/shared/hooks/useTheme';
 import WYSIWYGEditor from '@/shared/components/WYSIWYGEditor';
 import { useMessageEditContext } from '../model/contexts/MessageEditContext';
 import type { UseResetProcessResult } from '../model/hooks/useResetProcess';
-import { useChangesView } from '@/shared/hooks/useChangesView';
-import { useLogsPanel } from '@/shared/hooks/useLogsPanel';
+import { useChangesViewActions } from '@/shared/hooks/useChangesView';
+import { useLogsPanelActions } from '@/shared/hooks/useLogsPanel';
 import { cn } from '@/shared/lib/utils';
 import {
   ScriptFixerDialog,
@@ -473,7 +473,7 @@ function AppChatMarkdown({
   className: string | undefined;
   maxWidth: string | undefined;
 }) {
-  const { viewFileInChanges, findMatchingDiffPath } = useChangesView();
+  const { viewFileInChanges, findMatchingDiffPath } = useChangesViewActions();
 
   return (
     <ChatMarkdown
@@ -515,7 +515,7 @@ function FileEditEntry({
   );
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
-  const { viewFileInChanges, diffPaths } = useChangesView();
+  const { viewFileInChanges, hasDiffPath } = useChangesViewActions();
   const FileIcon = useMemo(
     () => getFileIcon(path, actualTheme),
     [path, actualTheme]
@@ -562,13 +562,12 @@ function FileEditEntry({
 
   // Only show "open in changes" button if the file exists in current diffs
   const handleOpenInChanges = useCallback(() => {
+    if (!hasDiffPath(path)) return;
     viewFileInChanges(path);
-  }, [viewFileInChanges, path]);
+  }, [viewFileInChanges, hasDiffPath, path]);
   const handleOpenInVSCode = useCallback((filename: string) => {
     openFileInVSCode(filename, { openAsDiff: false });
   }, []);
-
-  const canOpenInChanges = diffPaths.has(path);
 
   return (
     <ChatFileEntry
@@ -589,7 +588,7 @@ function FileEditEntry({
             )
           : undefined
       }
-      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : undefined}
+      onOpenInChanges={handleOpenInChanges}
     />
   );
 }
@@ -913,7 +912,7 @@ function ToolSummaryEntry({
     `tool:${expansionKey}`,
     false
   );
-  const { viewToolContentInPanel } = useLogsPanel();
+  const { viewToolContentInPanel } = useLogsPanelActions();
   const textRef = useRef<HTMLSpanElement>(null);
   const [isTruncated, setIsTruncated] = useState(false);
 
@@ -1059,7 +1058,7 @@ function ScriptEntryWithFix({
   sessionId: string | undefined;
   repos: RepoWithTargetBranch[];
 }) {
-  const { viewProcessInPanel } = useLogsPanel();
+  const { viewProcessInPanel } = useLogsPanelActions();
 
   const reposRef = useRef(repos);
   reposRef.current = repos;
@@ -1127,8 +1126,11 @@ function ErrorMessageEntry({
  * Aggregated group entry for consecutive file_read, search, or web_fetch entries
  */
 function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
-  const { viewToolContentInPanel } = useLogsPanel();
-  const [expanded, setExpanded] = useState(false);
+  const { viewToolContentInPanel } = useLogsPanelActions();
+  const [expanded, toggle] = usePersistedExpanded(
+    `tool:${group.patchKey}`,
+    false
+  );
   const [isHovered, setIsHovered] = useState(false);
 
   // Extract summary and status from each entry in the group
@@ -1193,8 +1195,8 @@ function AggregatedGroupEntry({ group }: { group: AggregatedPatchGroup }) {
   );
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    toggle();
+  }, [toggle]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -1252,7 +1254,10 @@ function AggregatedThinkingGroupEntry({
   workspaceId: string | undefined;
   sessionId: string | undefined;
 }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, toggle] = usePersistedExpanded(
+    `entry:${group.patchKey}`,
+    false
+  );
   const [isHovered, setIsHovered] = useState(false);
 
   // Extract thinking entries from the group
@@ -1266,8 +1271,8 @@ function AggregatedThinkingGroupEntry({
   }, [group.entries]);
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    toggle();
+  }, [toggle]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
@@ -1297,8 +1302,11 @@ function AggregatedThinkingGroupEntry({
 function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   const { theme } = useTheme();
   const actualTheme = getActualTheme(theme);
-  const { viewFileInChanges, diffPaths } = useChangesView();
-  const [expanded, setExpanded] = useState(false);
+  const { viewFileInChanges, hasDiffPath } = useChangesViewActions();
+  const [expanded, toggle] = usePersistedExpanded(
+    `diff:${group.patchKey}`,
+    false
+  );
   const [isHovered, setIsHovered] = useState(false);
   const FileIcon = useMemo(
     () => getFileIcon(group.filePath, actualTheme),
@@ -1333,21 +1341,20 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
   }, [group.entries]);
 
   const handleToggle = useCallback(() => {
-    setExpanded((prev) => !prev);
-  }, []);
+    toggle();
+  }, [toggle]);
 
   const handleHoverChange = useCallback((hovered: boolean) => {
     setIsHovered(hovered);
   }, []);
 
   const handleOpenInChanges = useCallback(() => {
+    if (!hasDiffPath(group.filePath)) return;
     viewFileInChanges(group.filePath);
-  }, [viewFileInChanges, group.filePath]);
+  }, [viewFileInChanges, hasDiffPath, group.filePath]);
   const handleOpenInVSCode = useCallback((filePath: string) => {
     openFileInVSCode(filePath, { openAsDiff: false });
   }, []);
-
-  const canOpenInChanges = diffPaths.has(group.filePath);
 
   return (
     <ChatAggregatedDiffEntries
@@ -1357,7 +1364,7 @@ function AggregatedDiffGroupEntry({ group }: { group: AggregatedDiffGroup }) {
       isHovered={isHovered}
       onToggle={handleToggle}
       onHoverChange={handleHoverChange}
-      onOpenInChanges={canOpenInChanges ? handleOpenInChanges : null}
+      onOpenInChanges={handleOpenInChanges}
       fileIcon={FileIcon}
       isVSCode={isVSCode}
       onOpenInVSCode={handleOpenInVSCode}

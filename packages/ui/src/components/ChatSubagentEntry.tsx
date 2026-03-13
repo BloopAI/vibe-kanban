@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -110,6 +110,13 @@ export function ChatSubagentEntry({
 
   // Determine if we have content to show
   const hasContent = Boolean(resultContent);
+  const isInteractive = Boolean(onToggle && hasContent);
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!isInteractive || event.target !== event.currentTarget) return;
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    onToggle?.();
+  };
 
   return (
     <div
@@ -127,9 +134,14 @@ export function ChatSubagentEntry({
           'flex items-center px-double py-base gap-base',
           isErrorStatus && 'bg-error/10',
           status?.status === 'success' && 'bg-success/5',
-          onToggle && hasContent && 'cursor-pointer'
+          isInteractive && 'cursor-pointer'
         )}
-        onClick={hasContent ? onToggle : undefined}
+        onClick={isInteractive ? onToggle : undefined}
+        onKeyDown={handleKeyDown}
+        role={isInteractive ? 'button' : undefined}
+        aria-expanded={isInteractive ? expanded : undefined}
+        tabIndex={isInteractive ? 0 : undefined}
+        data-scroll-anchor-target={isInteractive ? '' : undefined}
       >
         <span className="relative shrink-0">
           <CpuIcon className="size-icon-base text-low" />
@@ -145,7 +157,7 @@ export function ChatSubagentEntry({
             {description}
           </span>
         </div>
-        {onToggle && hasContent && (
+        {isInteractive && (
           <CaretDownIcon
             className={cn(
               'size-icon-xs shrink-0 text-low transition-transform',
