@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { LocalFileMetadata } from './WorkspaceContext';
 import { cn } from '../lib/cn';
 import {
   XIcon,
@@ -72,6 +73,7 @@ export interface KanbanIssueDescriptionEditorProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
+  localFiles?: LocalFileMetadata[];
   showStaticToolbar?: boolean;
   saveStatus?: 'idle' | 'saved';
   staticToolbarActions?: ReactNode;
@@ -137,6 +139,7 @@ export interface KanbanIssuePanelProps {
 
   // Image attachment upload
   onPasteFiles?: (files: File[]) => void;
+  localFiles?: LocalFileMetadata[];
   dropzoneProps?: {
     getRootProps: () => Record<string, unknown>;
     getInputProps: () => Record<string, unknown>;
@@ -181,6 +184,7 @@ export function KanbanIssuePanel({
   onCopyLink,
   onMoreActions,
   onPasteFiles,
+  localFiles,
   dropzoneProps,
   onBrowseAttachment,
   isUploading,
@@ -410,6 +414,7 @@ export function KanbanIssuePanel({
                 isDescriptionEditing ? 'min-h-[100px]' : 'min-h-[2rem]',
                 !isDescriptionEditing && !formData.description && 'text-low'
               ),
+              localFiles,
               showStaticToolbar: !isCreateMode || isDescriptionEditing,
               hideActions: true,
               saveStatus: descriptionSaveStatus,
@@ -540,7 +545,7 @@ export function KanbanIssuePanel({
             <PrimaryButton
               value={t('kanban.createIssue')}
               onClick={onSubmit}
-              disabled={isSubmitting || !formData.title.trim()}
+              disabled={isSubmitting || isUploading || !formData.title.trim()}
               actionIcon={isSubmitting ? 'spinner' : undefined}
               variant="default"
             />

@@ -47,7 +47,11 @@ import {
   commitIssueAttachments,
   deleteAttachment,
 } from '@/shared/lib/remoteApi';
-import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
+import {
+  extractAttachmentIds,
+  removeAttachmentMarkdownBySource,
+  replaceAttachmentSource,
+} from '@/shared/lib/attachmentUtils';
 import { ConfirmDialog } from '@vibe/ui/components/ConfirmDialog';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentKanbanRouteState } from '@/shared/hooks/useCurrentKanbanRouteState';
@@ -386,7 +390,7 @@ export function KanbanIssuePanelContainer({
 
   // Callback to insert markdown into the description field
   const handleDescriptionInsert = useCallback(
-    (markdown: string) => {
+    (markdown: string, options?: { persist?: boolean }) => {
       const currentDesc = displayData.description ?? '';
       const separator = currentDesc.length > 0 ? '\n' : '';
       const newDesc = currentDesc + separator + markdown;
@@ -404,8 +408,89 @@ export function KanbanIssuePanelContainer({
           type: 'setEditDescription',
           description: newDesc,
         });
-        debouncedSaveDescription(newDesc);
+        if (options?.persist !== false) {
+          debouncedSaveDescription(newDesc);
+        }
       }
+    },
+    [
+      kanbanCreateMode,
+      selectedKanbanIssueId,
+      displayData.description,
+      createFormFallback,
+      debouncedSaveDescription,
+    ]
+  );
+
+  const handleDescriptionSourceReplace = useCallback(
+    (previousSrc: string, nextSrc: string, options?: { persist?: boolean }) => {
+      const currentDesc = displayData.description ?? '';
+      const { content: nextDesc, replaced } = replaceAttachmentSource(
+        currentDesc,
+        previousSrc,
+        nextSrc
+      );
+
+      if (!replaced) {
+        return false;
+      }
+
+      if (kanbanCreateMode || !selectedKanbanIssueId) {
+        dispatchFormState({
+          type: 'patchCreateFormData',
+          patch: { description: nextDesc },
+          fallback: createFormFallback,
+        });
+      } else {
+        dispatchFormState({
+          type: 'setEditDescription',
+          description: nextDesc,
+        });
+        if (options?.persist !== false) {
+          debouncedSaveDescription(nextDesc);
+        }
+      }
+
+      return true;
+    },
+    [
+      kanbanCreateMode,
+      selectedKanbanIssueId,
+      displayData.description,
+      createFormFallback,
+      debouncedSaveDescription,
+    ]
+  );
+
+  const handleDescriptionSourceRemove = useCallback(
+    (src: string, options?: { persist?: boolean }) => {
+      const currentDesc = displayData.description ?? '';
+      const { content: nextDesc, removed } = removeAttachmentMarkdownBySource(
+        currentDesc,
+        src
+      );
+
+      if (!removed) {
+        return false;
+      }
+
+      if (kanbanCreateMode || !selectedKanbanIssueId) {
+        dispatchFormState({
+          type: 'patchCreateFormData',
+          patch: { description: nextDesc || null },
+          fallback: createFormFallback,
+        });
+      } else {
+        dispatchFormState({
+          type: 'setEditDescription',
+          description: nextDesc || null,
+        });
+        if (options?.persist !== false) {
+          debouncedSaveDescription(nextDesc || null);
+        }
+      }
+
+      return true;
     },
     [
       kanbanCreateMode,
@@ -422,14 +507,18 @@ export function KanbanIssuePanelContainer({
     getAttachmentIds,
     clearAttachments,
     isUploading,
+    hasPendingAttachments,
     uploadError,
     clearUploadError,
+    localFiles,
   } = useAzureAttachments({
     projectId,
     issueId: kanbanCreateMode
       ? undefined
       : (selectedKanbanIssueId ?? undefined),
     onMarkdownInsert: handleDescriptionInsert,
+    onAttachmentSourceReplace: handleDescriptionSourceReplace,
+    onAttachmentSourceRemove: handleDescriptionSourceRemove,
     onError: (msg) => console.error('[attachment]', msg),
   });
 
@@ -443,6 +532,7 @@ export function KanbanIssuePanelContainer({
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
     },
+    multiple: true,
     noClick: true,
     noKeyboard: true,
   });
@@ -522,6 +612,20 @@ export function KanbanIssuePanelContainer({
     cancelDebouncedDescription,
     createModeDefaults,
     issueComposerKey,
+  ]);
+
+  useEffect(() => {
+    if (kanbanCreateMode || !selectedKanbanIssueId || hasPendingAttachments) {
+      return;
+    }
+
+    debouncedSaveDescription(displayData.description ?? null);
+  }, [
+    kanbanCreateMode,
+    selectedKanbanIssueId,
+    hasPendingAttachments,
+    displayData.description,
+    debouncedSaveDescription,
   ]);
 
   // Form change handler - persists changes immediately in edit mode
@@ -687,7 +791,7 @@ export function KanbanIssuePanelContainer({
 
   // Submit handler
   const handleSubmit = useCallback(async () => {
-    if (!displayData.title.trim()) return;
+    if (!displayData.title.trim() || hasPendingAttachments) return;
 
     setIsSubmitting(true);
     try {
@@ -832,6 +936,7 @@ export function KanbanIssuePanelContainer({
     issueComposerKey,
     getAttachmentIds,
     clearAttachments,
+    hasPendingAttachments,
     onExpectIssueOpen,
     t,
   ]);
@@ -933,7 +1038,6 @@ export function KanbanIssuePanelContainer({
           trigger={trigger}
         />
       )}
-      renderDescriptionEditor={(props) => <WYSIWYGEditor {...props} />}
       isSubmitting={isSubmitting}
       descriptionSaveStatus={
         mode === 'edit' ? descriptionSaveStatus : undefined
@@ -945,11 +1049,15 @@ export function KanbanIssuePanelContainer({
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
       onPasteFiles={onPasteFiles}
+      localFiles={localFiles}
       dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
       onBrowseAttachment={openFilePicker}
       isUploading={isUploading}
       attachmentError={uploadError}
       onDismissAttachmentError={clearUploadError}
+      renderDescriptionEditor={(props) => (
+        <WYSIWYGEditor {...props} localFiles={localFiles} />
+      )}
       renderWorkspacesSection={(issueId) => (
         <IssueWorkspacesSectionContainer issueId={issueId} />
       )}

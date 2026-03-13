@@ -20,7 +20,11 @@ import {
   commitCommentAttachments,
   deleteAttachment,
 } from '@/shared/lib/remoteApi';
-import { extractAttachmentIds } from '@/shared/lib/attachmentUtils';
+import {
+  extractAttachmentIds,
+  removeAttachmentMarkdownBySource,
+  replaceAttachmentSource,
+} from '@/shared/lib/attachmentUtils';
 import {
   IssueCommentsSection,
   type IssueCommentsEditorProps,
@@ -129,20 +133,37 @@ function IssueCommentsSectionContent() {
     setCommentInput(nextCommentInput);
   }, [isCommentDraftLoading, commentDraft, commentDraftId, commentInput]);
 
-  useEffect(() => {
-    if (hydratedCommentDraftIdRef.current !== commentDraftId) return;
-    if (skipNextPersistRef.current) {
-      skipNextPersistRef.current = false;
-      return;
-    }
-
-    debouncedPersistCommentDraft(commentInput);
-  }, [commentInput, commentDraftId, debouncedPersistCommentDraft]);
-
   const handleCommentMarkdownInsert = useCallback((markdown: string) => {
     setCommentInput((prev) =>
       prev.trim() ? `${prev}\n\n${markdown}` : markdown
     );
+  }, []);
+
+  const handleCommentSourceReplace = useCallback(
+    (previousSrc: string, nextSrc: string) => {
+      let didReplace = false;
+      setCommentInput((prev) => {
+        const { content, replaced } = replaceAttachmentSource(
+          prev,
+          previousSrc,
+          nextSrc
+        );
+        didReplace = replaced;
+        return content;
+      });
+      return didReplace;
+    },
+    []
+  );
+
+  const handleCommentSourceRemove = useCallback((src: string) => {
+    let didRemove = false;
+    setCommentInput((prev) => {
+      const { content, removed } = removeAttachmentMarkdownBySource(prev, src);
+      didRemove = removed;
+      return content;
+    });
+    return didRemove;
   }, []);
 
   const {
@@ -150,17 +171,38 @@ function IssueCommentsSectionContent() {
     getAttachmentIds,
     clearAttachments,
     isUploading,
+    hasPendingAttachments,
     uploadError,
     clearUploadError,
+    localFiles,
   } = useAzureAttachments({
     projectId,
     onMarkdownInsert: handleCommentMarkdownInsert,
+    onAttachmentSourceReplace: handleCommentSourceReplace,
+    onAttachmentSourceRemove: handleCommentSourceRemove,
   });
+
+  useEffect(() => {
+    if (hydratedCommentDraftIdRef.current !== commentDraftId) return;
+    if (hasPendingAttachments) return;
+    if (skipNextPersistRef.current) {
+      skipNextPersistRef.current = false;
+      return;
+    }
+
+    debouncedPersistCommentDraft(commentInput);
+  }, [
+    commentInput,
+    commentDraftId,
+    debouncedPersistCommentDraft,
+    hasPendingAttachments,
+  ]);
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop: (acceptedFiles) => {
       if (acceptedFiles.length > 0) uploadFiles(acceptedFiles);
     },
+    multiple: true,
     noClick: true,
     noKeyboard: true,
   });
@@ -402,6 +444,7 @@ function IssueCommentsSectionContent() {
       autoFocus,
       onCmdEnter,
       onPasteFiles,
+      localFiles,
       editorRef,
     }: IssueCommentsEditorProps) => (
       <WYSIWYGEditor
@@ -414,6 +457,7 @@ function IssueCommentsSectionContent() {
         autoFocus={autoFocus}
         onCmdEnter={onCmdEnter}
         onPasteFiles={onPasteFiles}
+        localFiles={localFiles}
       />
     ),
     []
@@ -438,6 +482,7 @@ function IssueCommentsSectionContent() {
       isLoading={issueContext.isLoading}
       commentEditorRef={commentEditorRef}
       onPasteFiles={onPasteFiles}
+      localFiles={localFiles}
       dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
       onBrowseAttachment={open}
       isUploading={isUploading}

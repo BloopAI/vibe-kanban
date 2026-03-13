@@ -169,11 +169,13 @@ export function createFileNode(options: CreateFileNodeOptions) {
     const [editor] = useLexicalComposerContext();
 
     const isWorkspaceFile = src.startsWith('.vibe-images/');
-    const isAttachment = src.startsWith('attachment://');
-    const attachmentId = isAttachment ? src.replace('attachment://', '') : null;
+    const isPendingAttachment = src.startsWith('pending-attachment://');
+    const isAttachment = isPendingAttachment || src.startsWith('attachment://');
+    const attachmentId =
+      !isPendingAttachment && isAttachment ? src.replace('attachment://', '') : null;
 
     const { url: attachmentUrl } = useAttachmentFileUrl(
-      attachmentId,
+      isAttachment && !isPendingAttachment ? attachmentId : null,
       options.fetchAttachmentUrl
     );
 
@@ -184,14 +186,21 @@ export function createFileNode(options: CreateFileNodeOptions) {
       localFiles
     );
 
-    const resolvedUrl = isAttachment ? attachmentUrl : metadata?.proxy_url;
+    const resolvedUrl =
+      metadata?.proxy_url ?? (isAttachment ? attachmentUrl : null);
     const displayName = truncatePath(
       metadata?.file_name || label || src || t('kanban.previewFile')
     );
     const format = inferFormat(label || metadata?.file_name || src, metadata?.format);
     const sizeText = formatFileSize(metadata?.size_bytes);
-    const metadataLine =
-      format && sizeText ? `${format} · ${sizeText}` : format || sizeText || null;
+    const localFile = localFiles.find((file) => file.path === src);
+    const metadataLine = localFile?.is_pending
+      ? ['Uploading', sizeText].filter(Boolean).join(' · ')
+      : metadata?.exists
+        ? format && sizeText
+          ? `${format} · ${sizeText}`
+          : format || sizeText || null
+        : null;
 
     const openUrl = useCallback(
       async (event: React.MouseEvent) => {
@@ -299,7 +308,7 @@ export function createFileNode(options: CreateFileNodeOptions) {
     serialization: {
       format: 'inline',
       pattern:
-        /(?<!!)\[([^\]]+)\]\((attachment:\/\/[^)]+|\.vibe-images\/[^)]+)\)/,
+        /(?<!!)\[([^\]]+)\]\((attachment:\/\/[^)]+|pending-attachment:\/\/[^)]+|\.vibe-images\/[^)]+)\)/,
       trigger: ')',
       serialize: (data) => `[${data.label}](${data.src})`,
       deserialize: (match) => ({ src: match[2], label: match[1] }),
