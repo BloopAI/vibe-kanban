@@ -203,17 +203,26 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const [editor] = useLexicalComposerContext();
 
     const isVibeImage = src.startsWith('.vibe-images/');
-    const isAttachment = src.startsWith('attachment://');
-    const attachmentId = isAttachment ? src.replace('attachment://', '') : null;
-    const isImageAttachment = isAttachment && isImageLikeFileName(altText);
+    const isPendingAttachment = src.startsWith('pending-attachment://');
+    const isAttachment = isPendingAttachment || src.startsWith('attachment://');
+    const attachmentId =
+      !isPendingAttachment && isAttachment ? src.replace('attachment://', '') : null;
+    const localAttachment = useMemo(
+      () => localFiles.find((file) => file.path === src),
+      [localFiles, src]
+    );
+    const isImageAttachment =
+      isAttachment &&
+      (localAttachment?.mime_type?.startsWith('image/') ||
+        isImageLikeFileName(altText));
 
     const { url: thumbnailUrl, loading: attachmentLoading } = useAttachmentUrl(
-      isImageAttachment ? attachmentId : null,
+      isImageAttachment && !localAttachment ? attachmentId : null,
       'thumbnail',
       options.fetchAttachmentUrl
     );
     const { url: fullSizeUrl } = useAttachmentUrl(
-      attachmentId,
+      localAttachment ? null : attachmentId,
       'file',
       options.fetchAttachmentUrl
     );
@@ -230,15 +239,20 @@ export function createImageNode(options: CreateImageNodeOptions) {
         event.preventDefault();
         event.stopPropagation();
 
-        if (isAttachment && fullSizeUrl) {
-          if (isImageAttachment && thumbnailUrl) {
+        const localAttachmentUrl = localAttachment?.proxy_url ?? null;
+
+        if (isAttachment && (localAttachmentUrl || fullSizeUrl)) {
+          const resolvedFullSizeUrl = localAttachmentUrl || fullSizeUrl;
+          if (!resolvedFullSizeUrl) return;
+
+          if (isImageAttachment && (localAttachmentUrl || thumbnailUrl)) {
             options.openImagePreview({
-              imageUrl: fullSizeUrl,
+              imageUrl: resolvedFullSizeUrl,
               altText,
               fileName: altText || undefined,
             });
           } else {
-            window.open(fullSizeUrl, '_blank', 'noopener,noreferrer');
+            window.open(resolvedFullSizeUrl, '_blank', 'noopener,noreferrer');
           }
           return;
         }
@@ -253,7 +267,15 @@ export function createImageNode(options: CreateImageNodeOptions) {
           });
         }
       },
-      [isAttachment, fullSizeUrl, isImageAttachment, thumbnailUrl, metadata, altText]
+      [
+        isAttachment,
+        localAttachment?.proxy_url,
+        fullSizeUrl,
+        isImageAttachment,
+        thumbnailUrl,
+        metadata,
+        altText,
+      ]
     );
 
     const handleDownload = useCallback(
@@ -261,13 +283,14 @@ export function createImageNode(options: CreateImageNodeOptions) {
         event.preventDefault();
         event.stopPropagation();
 
-        if (!fullSizeUrl) return;
+        const downloadUrl = localAttachment?.proxy_url ?? fullSizeUrl;
+        if (!downloadUrl) return;
 
-        downloadBlobUrl(fullSizeUrl, altText || 'attachment').catch((error) => {
+        downloadBlobUrl(downloadUrl, altText || 'attachment').catch((error) => {
           console.error('Failed to download attachment:', error);
         });
       },
-      [fullSizeUrl, altText]
+      [localAttachment?.proxy_url, fullSizeUrl, altText]
     );
 
     const handleDelete = useCallback(
@@ -295,16 +318,18 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const hasLocalImage = localFiles.some((file) => file.path === src);
 
     if (isAttachment) {
-      if (isImageAttachment && attachmentLoading) {
+      const previewUrl = localAttachment?.proxy_url ?? thumbnailUrl;
+
+      if (isImageAttachment && !localAttachment && attachmentLoading) {
         thumbnailContent = (
           <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
             <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
           </div>
         );
-      } else if (isImageAttachment && thumbnailUrl) {
+      } else if (isImageAttachment && previewUrl) {
         thumbnailContent = (
           <img
-            src={thumbnailUrl}
+            src={previewUrl}
             alt={altText}
             className="w-10 h-10 object-cover rounded flex-shrink-0"
             draggable={false}
@@ -320,6 +345,14 @@ export function createImageNode(options: CreateImageNodeOptions) {
       displayName = truncatePath(
         altText || t('kanban.imageAttachmentNameFallback')
       );
+      if (localAttachment?.is_pending) {
+        const parts = ['Uploading'];
+        const sizeText = formatFileSize(localAttachment.size_bytes);
+        if (sizeText) {
+          parts.push(sizeText);
+        }
+        metadataLine = parts.join(' · ');
+      }
       if (!isImageAttachment) {
         const format = altText.split('.').pop()?.trim();
         metadataLine = format ? format.toUpperCase() : null;
@@ -407,7 +440,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
             <X className="w-2.5 h-2.5 text-background" />
           </button>
         )}
-        {isAttachment && fullSizeUrl && (
+        {isAttachment && (localAttachment?.proxy_url || fullSizeUrl) && (
           <button
             onClick={handleDownload}
             className={
