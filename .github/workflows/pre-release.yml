@@ -115,14 +115,16 @@ jobs:
           fi
 
           # Update npx-cli package.json to match
-          cd npx-cli
-          npm version $new_version --no-git-tag-version --allow-same-version
-          cd ..
+          (
+            cd npx-cli
+            npm version $new_version --no-git-tag-version --allow-same-version
+          )
 
           # Update web app package.json to match
-          cd packages/local-web
-          npm version $new_version --no-git-tag-version --allow-same-version
-          cd ..
+          (
+            cd packages/local-web
+            npm version $new_version --no-git-tag-version --allow-same-version
+          )
 
           cargo set-version --workspace "$new_version"
 
@@ -153,7 +155,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json crates/tauri-app/tauri.conf.json Cargo.lock
+          git add package.json pnpm-lock.yaml npx-cli/package.json npx-cli/package-lock.json packages/local-web/package.json crates/tauri-app/tauri.conf.json Cargo.lock
           git add $(find . -name Cargo.toml)
           [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
           [ -f crates/relay-tunnel/Cargo.lock ] && git add crates/relay-tunnel/Cargo.lock || true
