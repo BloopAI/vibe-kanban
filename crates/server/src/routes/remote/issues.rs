@@ -1,26 +1,22 @@
 use api_types::{
-    CreateIssueRequest, Issue, ListIssuesResponse, MutationResponse, UpdateIssueRequest,
+    CreateIssueRequest, Issue, ListIssuesQuery, ListIssuesResponse, MutationResponse,
+    SearchIssuesRequest, UpdateIssueRequest,
 };
 use axum::{
     Router,
     extract::{Json, Path, Query, State},
     response::Json as ResponseJson,
-    routing::get,
+    routing::{get, post},
 };
-use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
-#[derive(Debug, Deserialize)]
-pub struct ListIssuesQuery {
-    pub project_id: Uuid,
-}
-
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
         .route("/issues", get(list_issues).post(create_issue))
+        .route("/issues/search", post(search_issues))
         .route(
             "/issues/{issue_id}",
             get(get_issue).patch(update_issue).delete(delete_issue),
@@ -33,6 +29,15 @@ async fn list_issues(
 ) -> Result<ResponseJson<ApiResponse<ListIssuesResponse>>, ApiError> {
     let client = deployment.remote_client()?;
     let response = client.list_issues(query.project_id).await?;
+    Ok(ResponseJson(ApiResponse::success(response)))
+}
+
+async fn search_issues(
+    State(deployment): State<DeploymentImpl>,
+    Json(request): Json<SearchIssuesRequest>,
+) -> Result<ResponseJson<ApiResponse<ListIssuesResponse>>, ApiError> {
+    let client = deployment.remote_client()?;
+    let response = client.search_issues(&request).await?;
     Ok(ResponseJson(ApiResponse::success(response)))
 }
 

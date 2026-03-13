@@ -1,0 +1,161 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                i.id                  AS \"id!: Uuid\",\n                i.project_id          AS \"project_id!: Uuid\",\n                i.issue_number        AS \"issue_number!\",\n                i.simple_id           AS \"simple_id!\",\n                i.status_id           AS \"status_id!: Uuid\",\n                i.title               AS \"title!\",\n                i.description         AS \"description?\",\n                i.priority            AS \"priority: IssuePriority\",\n                i.start_date          AS \"start_date?: DateTime<Utc>\",\n                i.target_date         AS \"target_date?: DateTime<Utc>\",\n                i.completed_at        AS \"completed_at?: DateTime<Utc>\",\n                i.sort_order          AS \"sort_order!\",\n                i.parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                i.parent_issue_sort_order AS \"parent_issue_sort_order?\",\n                i.extension_metadata  AS \"extension_metadata!: Value\",\n                i.creator_user_id     AS \"creator_user_id?: Uuid\",\n                i.created_at          AS \"created_at!: DateTime<Utc>\",\n                i.updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM issues i\n            LEFT JOIN project_statuses ps ON ps.id = i.status_id\n            WHERE i.project_id = $1\n              AND ($2::uuid IS NULL OR i.status_id = $2)\n              AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))\n              AND ($4::issue_priority IS NULL OR i.priority = $4)\n              AND ($5::uuid IS NULL OR i.parent_issue_id = $5)\n              AND (\n                  $6::text IS NULL\n                  OR i.title ILIKE $6 ESCAPE '\\'\n                  OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\\'\n              )\n              AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\\')\n              AND (\n                  $8::uuid IS NULL\n                  OR EXISTS (\n                      SELECT 1\n                      FROM issue_assignees ia\n                      WHERE ia.issue_id = i.id AND ia.user_id = $8\n                  )\n              )\n              AND (\n                  $9::uuid IS NULL\n                  OR EXISTS (\n                      SELECT 1\n                      FROM issue_tags it\n                      WHERE it.issue_id = i.id AND it.tag_id = $9\n                  )\n              )\n              AND (\n                  $10::uuid[] IS NULL\n                  OR EXISTS (\n                      SELECT 1\n                      FROM issue_tags it\n                      WHERE it.issue_id = i.id AND it.tag_id = ANY($10)\n                  )\n              )\n            ORDER BY\n                CASE\n                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN ps.sort_order\n                END ASC NULLS LAST,\n                CASE\n                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN ps.sort_order\n                END DESC NULLS LAST,\n                CASE\n                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN i.sort_order\n                END ASC NULLS LAST,\n                CASE\n                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN i.sort_order\n                END DESC NULLS LAST,\n                CASE\n                    WHEN $11 = 'priority' AND $12 = 'asc' THEN i.priority\n                END ASC NULLS LAST,\n                CASE\n                    WHEN $11 = 'priority' AND $12 = 'desc' THEN i.priority\n                END DESC NULLS FIRST,\n                CASE\n                    WHEN $11 = 'created_at' AND $12 = 'asc' THEN i.created_at\n                END ASC NULLS LAST,\n                CASE\n                    WHEN $11 = 'created_at' AND $12 = 'desc' THEN i.created_at\n                END DESC NULLS LAST,\n                CASE\n                    WHEN $11 = 'updated_at' AND $12 = 'asc' THEN i.updated_at\n                END ASC NULLS LAST,\n                CASE\n                    WHEN $11 = 'updated_at' AND $12 = 'desc' THEN i.updated_at\n                END DESC NULLS LAST,\n                CASE\n                    WHEN $11 = 'title' AND $12 = 'asc' THEN i.title\n                END ASC NULLS LAST,\n                CASE\n                    WHEN $11 = 'title' AND $12 = 'desc' THEN i.title\n                END DESC NULLS LAST,\n                i.issue_number ASC\n            LIMIT $13\n            OFFSET $14\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "project_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "issue_number!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "simple_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "status_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "title!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
+        "name": "description?",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "priority: IssuePriority",
+        "type_info": {
+          "Custom": {
+            "name": "issue_priority",
+            "kind": {
+              "Enum": [
+                "urgent",
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "start_date?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "target_date?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "completed_at?: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "sort_order!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 12,
+        "name": "parent_issue_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 13,
+        "name": "parent_issue_sort_order?",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 14,
+        "name": "extension_metadata!: Value",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 15,
+        "name": "creator_user_id?: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 16,
+        "name": "created_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 17,
+        "name": "updated_at!: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        {
+          "Custom": {
+            "name": "issue_priority",
+            "kind": {
+              "Enum": [
+                "urgent",
+                "high",
+                "medium",
+                "low"
+              ]
+            }
+          }
+        },
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid",
+        "Uuid",
+        "UuidArray",
+        "Text",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a5d1aeb3ce62a3f286a2a4bddc38c3f5caf2eb556236b561b68483b17dc24cfd"
+}

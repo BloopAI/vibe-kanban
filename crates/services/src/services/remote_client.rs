@@ -13,9 +13,9 @@ use api_types::{
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    RevokeInvitationRequest, SearchIssuesRequest, Tag, TokenRefreshRequest, TokenRefreshResponse,
+    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -320,6 +320,27 @@ impl RemoteClient {
     where
         B: Serialize,
     {
+        self.send_internal_with_request(method, path, requires_auth, timeout_options, |req| {
+            if let Some(body) = body {
+                req.json(body)
+            } else {
+                req
+            }
+        })
+        .await
+    }
+
+    async fn send_internal_with_request<F>(
+        &self,
+        method: reqwest::Method,
+        path: &str,
+        requires_auth: bool,
+        timeout_options: Option<RequestTimeoutOptions>,
+        customize_request: F,
+    ) -> Result<reqwest::Response, RemoteClientError>
+    where
+        F: Fn(reqwest::RequestBuilder) -> reqwest::RequestBuilder,
+    {
         let url = self
             .base
             .join(path)
@@ -343,9 +364,7 @@ impl RemoteClient {
                 req = req.bearer_auth(token);
             }
 
-            if let Some(b) = body {
-                req = req.json(b);
-            }
+            req = customize_request(req);
 
             let res = req.send().await.map_err(map_reqwest_error)?;
 
@@ -739,6 +758,14 @@ impl RemoteClient {
     ) -> Result<ListIssuesResponse, RemoteClientError> {
         self.get_authed(&format!("/v1/issues?project_id={project_id}"))
             .await
+    }
+
+    /// Searches issues for a project using the canonical JSON request shape.
+    pub async fn search_issues(
+        &self,
+        request: &SearchIssuesRequest,
+    ) -> Result<ListIssuesResponse, RemoteClientError> {
+        self.post_authed("/v1/issues/search", Some(request)).await
     }
 
     /// Gets a single issue by ID.
