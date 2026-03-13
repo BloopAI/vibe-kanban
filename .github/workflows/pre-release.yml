@@ -1005,12 +1005,15 @@ jobs:
       - name: Setup Node for npm pack
         uses: ./.github/actions/setup-node
 
+      - name: Install npx-cli dependencies
+        run: |
+          cd npx-cli
+          npm ci
+
       - name: Build npx-cli TypeScript, inject secrets, and Pack
         run: |
           cd npx-cli
-          # Build TypeScript source into bin/cli.js
-          mkdir -p bin
-          npx esbuild src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=bin/cli.js --external:adm-zip --banner:js="#!/usr/bin/env node"
+          npm run build
           # Replace placeholders in the bundled output
           sed -i "s|__R2_PUBLIC_URL__|${{ secrets.R2_BINARIES_PUBLIC_URL }}|g" bin/cli.js
           sed -i "s|__BINARY_TAG__|${{ needs.bump-version.outputs.new_tag }}|g" bin/cli.js
