@@ -4,10 +4,8 @@ import type { InsertResult, MutationResult } from '@/shared/lib/electric/types';
 import type { SyncError } from '@/shared/lib/electric/types';
 import type {
   Project,
-  Notification,
   CreateProjectRequest,
   UpdateProjectRequest,
-  UpdateNotificationRequest,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
 
@@ -16,7 +14,6 @@ export interface OrgContextValue {
 
   // Data
   projects: Project[];
-  notifications: Notification[];
 
   // Loading/error state
   isLoading: boolean;
@@ -31,15 +28,8 @@ export interface OrgContextValue {
   ) => MutationResult;
   removeProject: (id: string) => MutationResult;
 
-  // Notification mutations
-  updateNotification: (
-    id: string,
-    changes: Partial<UpdateNotificationRequest>
-  ) => MutationResult;
-
   // Lookup helpers
   getProject: (projectId: string) => Project | undefined;
-  getUnseenNotifications: () => Notification[];
 
   // Computed aggregations
   projectsById: Map<string, Project>;

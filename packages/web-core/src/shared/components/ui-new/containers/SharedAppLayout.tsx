@@ -47,6 +47,7 @@ import {
   PROJECTS_SHAPE,
   type Project as RemoteProject,
 } from 'shared/remote-types';
+import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotificationBellContainer';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
@@ -365,6 +366,9 @@ export function SharedAppLayout() {
               onMigrate={handleMigrate}
               onHoverStart={() => setIsAppBarHovered(true)}
               onHoverEnd={() => setIsAppBarHovered(false)}
+              notificationBell={
+                isSignedIn ? <AppBarNotificationBellContainer /> : undefined
+              }
               userPopover={
                 <AppBarUserPopoverContainer
                   organizations={organizations}

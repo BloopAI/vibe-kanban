@@ -1,21 +1,21 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            UPDATE notifications\n            SET seen = TRUE\n            WHERE id = $1\n            RETURNING\n                id                AS \"id!: Uuid\",\n                organization_id   AS \"organization_id!: Uuid\",\n                user_id           AS \"user_id!: Uuid\",\n                notification_type AS \"notification_type!: NotificationType\",\n                payload           AS \"payload!: Value\",\n                issue_id          AS \"issue_id: Uuid\",\n                comment_id        AS \"comment_id: Uuid\",\n                seen              AS \"seen!\",\n                dismissed_at      AS \"dismissed_at: DateTime<Utc>\",\n                created_at        AS \"created_at!: DateTime<Utc>\"\n            ",
+  "query": "\n                SELECT\n                    id,\n                    organization_id,\n                    user_id,\n                    notification_type as \"notification_type!: NotificationType\",\n                    payload as \"payload!: sqlx::types::Json<NotificationPayload>\",\n                    issue_id,\n                    comment_id,\n                    seen,\n                    dismissed_at,\n                    created_at\n                FROM notifications\n                WHERE user_id = $1\n                ORDER BY created_at DESC\n                ",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id!: Uuid",
+        "name": "id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "organization_id!: Uuid",
+        "name": "organization_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 2,
-        "name": "user_id!: Uuid",
+        "name": "user_id",
         "type_info": "Uuid"
       },
       {
@@ -29,7 +29,12 @@
                 "issue_comment_added",
                 "issue_status_changed",
                 "issue_assignee_changed",
-                "issue_deleted"
+                "issue_deleted",
+                "issue_title_changed",
+                "issue_description_changed",
+                "issue_priority_changed",
+                "issue_unassigned",
+                "issue_comment_reaction"
               ]
             }
           }
@@ -37,32 +42,32 @@
       },
       {
         "ordinal": 4,
-        "name": "payload!: Value",
+        "name": "payload!: sqlx::types::Json<NotificationPayload>",
         "type_info": "Jsonb"
       },
       {
         "ordinal": 5,
-        "name": "issue_id: Uuid",
+        "name": "issue_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 6,
-        "name": "comment_id: Uuid",
+        "name": "comment_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 7,
-        "name": "seen!",
+        "name": "seen",
         "type_info": "Bool"
       },
       {
         "ordinal": 8,
-        "name": "dismissed_at: DateTime<Utc>",
+        "name": "dismissed_at",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 9,
-        "name": "created_at!: DateTime<Utc>",
+        "name": "created_at",
         "type_info": "Timestamptz"
       }
     ],
@@ -84,5 +89,5 @@
       false
     ]
   },
-  "hash": "c38085f0d26c333d52078d5bb2898778fb180ef7d134f640908f741db88e7269"
+  "hash": "8123b99c8d0df1c3a39ae0b2e02b8f95e438dcaa7f85e4ad37a069d962ae2e39"
 }

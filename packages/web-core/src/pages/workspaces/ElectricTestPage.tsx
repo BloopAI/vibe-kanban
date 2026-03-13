@@ -354,15 +354,8 @@ function ProjectsList({
   );
 }
 
-function NotificationsList({
-  organizationId,
-  userId,
-}: {
-  organizationId: string;
-  userId: string;
-}) {
+function NotificationsList({ userId }: { userId: string }) {
   const { data, isLoading, error, retry } = useShape(NOTIFICATIONS_SHAPE, {
-    organization_id: organizationId,
     user_id: userId,
   });
 
@@ -1045,7 +1038,7 @@ export function ElectricTestPage() {
             />
           )}
           {activeOrgCollection === 'notifications' && userId && (
-            <NotificationsList organizationId={selectedOrgId} userId={userId} />
+            <NotificationsList userId={userId} />
           )}
           {activeOrgCollection === 'notifications' && !userId && (
             <LoadingState message="Loading user info..." />

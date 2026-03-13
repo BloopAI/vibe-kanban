@@ -6,7 +6,7 @@ yarn-error.log*
 lerna-debug.log*
 
 # Build artifacts
-target/
+**/target/
 dist/
 build/
 *.tgz

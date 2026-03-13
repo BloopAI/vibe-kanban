@@ -1,9 +1,9 @@
-use api_types::{Notification, UpdateNotificationRequest};
+use api_types::{DeleteResponse, MutationResponse, Notification, UpdateNotificationRequest};
 use axum::{
     Json, Router,
     extract::{Extension, Path, Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::post,
 };
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
@@ -13,7 +13,7 @@ use super::error::ErrorResponse;
 use crate::{
     AppState,
     auth::RequestContext,
-    db::notifications::NotificationRepository,
+    db::{get_txid, notifications::NotificationRepository},
     mutation_definition::{MutationBuilder, NoCreate},
 };
 
@@ -22,20 +22,28 @@ pub struct ListNotificationsResponse {
     pub notifications: Vec<Notification>,
 }
 
-#[derive(Debug, Serialize)]
-pub struct UnreadCountResponse {
-    pub count: i64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct MarkAllSeenResponse {
-    pub updated: u64,
-}
-
 #[derive(Debug, Deserialize)]
 pub struct ListNotificationsQuery {
     #[serde(default)]
     pub include_dismissed: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateNotificationItem {
+    pub id: Uuid,
+    #[serde(flatten)]
+    pub changes: UpdateNotificationRequest,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct BulkUpdateNotificationsRequest {
+    pub updates: Vec<BulkUpdateNotificationItem>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct BulkUpdateNotificationsResponse {
+    pub data: Vec<Notification>,
+    pub txid: i64,
 }
 
 pub fn mutation() -> MutationBuilder<Notification, NoCreate, UpdateNotificationRequest> {
@@ -49,8 +57,7 @@ pub fn mutation() -> MutationBuilder<Notification, NoCreate, UpdateNotificationR
 pub fn router() -> Router<AppState> {
     mutation()
         .router()
-        .route("/notifications/unread-count", get(unread_count))
-        .route("/notifications/mark-all-seen", post(mark_all_seen))
+        .route("/notifications/bulk", post(bulk_update_notifications))
 }
 
 #[instrument(
@@ -118,8 +125,13 @@ async fn update_notification(
     Extension(ctx): Extension<RequestContext>,
     Path(notification_id): Path<Uuid>,
     Json(payload): Json<UpdateNotificationRequest>,
-) -> Result<Json<Notification>, ErrorResponse> {
-    let existing = NotificationRepository::find_by_id(state.pool(), notification_id)
+) -> Result<Json<MutationResponse<Notification>>, ErrorResponse> {
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let existing = NotificationRepository::find_by_id(&mut *tx, notification_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %notification_id, "failed to load notification");
@@ -137,14 +149,24 @@ async fn update_notification(
         ));
     }
 
-    let notification = NotificationRepository::update(state.pool(), notification_id, payload.seen)
+    let data = NotificationRepository::update(&mut *tx, notification_id, payload.seen)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to update notification");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(Json(notification))
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(MutationResponse { data, txid }))
 }
 
 #[instrument(
@@ -156,8 +178,13 @@ async fn delete_notification(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
     Path(notification_id): Path<Uuid>,
-) -> Result<StatusCode, ErrorResponse> {
-    let notification = NotificationRepository::find_by_id(state.pool(), notification_id)
+) -> Result<Json<DeleteResponse>, ErrorResponse> {
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let notification = NotificationRepository::find_by_id(&mut *tx, notification_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, %notification_id, "failed to load notification");
@@ -175,50 +202,110 @@ async fn delete_notification(
         ));
     }
 
-    NotificationRepository::delete(state.pool(), notification_id)
+    NotificationRepository::delete(&mut *tx, notification_id)
         .await
         .map_err(|error| {
             tracing::error!(?error, "failed to delete notification");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
         })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(DeleteResponse { txid }))
 }
 
 #[instrument(
-    name = "notifications.mark_all_seen",
-    skip(state, ctx),
-    fields(user_id = %ctx.user.id)
+    name = "notifications.bulk_update",
+    skip(state, ctx, payload),
+    fields(user_id = %ctx.user.id, count = payload.updates.len())
 )]
-async fn mark_all_seen(
+async fn bulk_update_notifications(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-) -> Result<Json<MarkAllSeenResponse>, ErrorResponse> {
-    let updated = NotificationRepository::mark_all_seen(state.pool(), ctx.user.id)
+    Json(payload): Json<BulkUpdateNotificationsRequest>,
+) -> Result<Json<BulkUpdateNotificationsResponse>, ErrorResponse> {
+    if payload.updates.is_empty() {
+        return Ok(Json(BulkUpdateNotificationsResponse {
+            data: vec![],
+            txid: 0,
+        }));
+    }
+
+    let mut tx = state.pool().begin().await.map_err(|error| {
+        tracing::error!(?error, "failed to begin transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    let first_notification = NotificationRepository::find_by_id(&mut *tx, payload.updates[0].id)
         .await
         .map_err(|error| {
-            tracing::error!(?error, "failed to mark all notifications as seen");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+            tracing::error!(?error, "failed to find first notification");
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to find notification",
+            )
+        })?
+        .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "notification not found"))?;
 
-    Ok(Json(MarkAllSeenResponse { updated }))
-}
+    let user_id = first_notification.user_id;
+    if user_id != ctx.user.id {
+        return Err(ErrorResponse::new(
+            StatusCode::NOT_FOUND,
+            "notification not found",
+        ));
+    }
 
-#[instrument(
-    name = "notifications.unread_count",
-    skip(state, ctx),
-    fields(user_id = %ctx.user.id)
-)]
-async fn unread_count(
-    State(state): State<AppState>,
-    Extension(ctx): Extension<RequestContext>,
-) -> Result<Json<UnreadCountResponse>, ErrorResponse> {
-    let count = NotificationRepository::unread_count(state.pool(), ctx.user.id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, "failed to get unread notification count");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
-        })?;
+    let mut results = Vec::with_capacity(payload.updates.len());
 
-    Ok(Json(UnreadCountResponse { count }))
+    for item in payload.updates {
+        let existing = NotificationRepository::find_by_id(&mut *tx, item.id)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, notification_id = %item.id, "failed to find notification");
+                ErrorResponse::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "failed to find notification",
+                )
+            })?
+            .ok_or_else(|| ErrorResponse::new(StatusCode::NOT_FOUND, "notification not found"))?;
+
+        if existing.user_id != user_id {
+            return Err(ErrorResponse::new(
+                StatusCode::BAD_REQUEST,
+                "all notifications must belong to the same user",
+            ));
+        }
+
+        let updated = NotificationRepository::update(&mut *tx, item.id, item.changes.seen)
+            .await
+            .map_err(|error| {
+                tracing::error!(?error, notification_id = %item.id, "failed to update notification");
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+            })?;
+
+        results.push(updated);
+    }
+
+    let txid = get_txid(&mut *tx).await.map_err(|error| {
+        tracing::error!(?error, "failed to get txid");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    tx.commit().await.map_err(|error| {
+        tracing::error!(?error, "failed to commit transaction");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
+    })?;
+
+    Ok(Json(BulkUpdateNotificationsResponse {
+        data: results,
+        txid,
+    }))
 }

@@ -6,11 +6,11 @@ use api_types::{
     CreateIssueRelationshipRequest, CreateIssueRequest, CreateIssueTagRequest,
     CreateNotificationRequest, CreateProjectRequest, CreateProjectStatusRequest, CreateTagRequest,
     Issue, IssueAssignee, IssueComment, IssueCommentReaction, IssueFollower, IssuePriority,
-    IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification, NotificationType,
-    OrganizationMember, Project, ProjectStatus, PullRequest, PullRequestStatus, Tag,
-    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
-    User, UserData, Workspace,
+    IssueRelationship, IssueRelationshipType, IssueTag, MemberRole, Notification,
+    NotificationGroupKind, NotificationPayload, NotificationType, OrganizationMember, Project,
+    ProjectStatus, PullRequest, PullRequestStatus, Tag, UpdateIssueCommentReactionRequest,
+    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
+    UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
 };
 use relay_types::{CreateRemoteSessionResponse, ListRelayHostsResponse, RelayHost};
 use remote::{
@@ -73,6 +73,8 @@ fn export_shapes() -> String {
         serde_json::Value::decl(),
         Project::decl(),
         Notification::decl(),
+        NotificationGroupKind::decl(),
+        NotificationPayload::decl(),
         NotificationType::decl(),
         Workspace::decl(),
         ProjectStatus::decl(),
@@ -101,7 +103,6 @@ fn export_shapes() -> String {
         // Mutation request types
         CreateProjectRequest::decl(),
         UpdateProjectRequest::decl(),
-        CreateNotificationRequest::decl(),
         UpdateNotificationRequest::decl(),
         CreateTagRequest::decl(),
         UpdateTagRequest::decl(),
