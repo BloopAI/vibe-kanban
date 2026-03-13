@@ -36,6 +36,7 @@ import {
   $isComponentInfoNode,
 } from '@vibe/ui/components/component-info-node';
 import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
+import { URL_AUTO_LINK_TRANSFORMER } from '@vibe/ui/lib/url-auto-link-transformer';
 import {
   WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
@@ -478,6 +479,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         COMPONENT_INFO_TRANSFORMER,
         CODE,
         ...TRANSFORMERS,
+        URL_AUTO_LINK_TRANSFORMER,
       ],
       [IMAGE_TRANSFORMER]
     );
