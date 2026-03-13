@@ -1,3 +1,5 @@
+use std::fmt::{self, Display};
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -15,6 +17,30 @@ pub enum IssuePriority {
     High,
     Medium,
     Low,
+}
+
+impl IssuePriority {
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::Urgent => "Urgent",
+            Self::High => "High",
+            Self::Medium => "Medium",
+            Self::Low => "Low",
+        }
+    }
+}
+
+impl Display for IssuePriority {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let value = match self {
+            Self::Urgent => "urgent",
+            Self::High => "high",
+            Self::Medium => "medium",
+            Self::Low => "low",
+        };
+
+        f.write_str(value)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
