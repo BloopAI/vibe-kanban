@@ -199,7 +199,7 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 
 [[package]]
 name = "api-types"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "base64 0.22.1",
  "chrono",
@@ -1569,7 +1569,7 @@ checksum = "d7a1e2f27636f116493b8b860f5546edb47c8d8f8ea73e1d2a20be88e28d1fea"
 
 [[package]]
 name = "db"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1612,7 +1612,7 @@ dependencies = [
 
 [[package]]
 name = "deployment"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2246,7 +2246,7 @@ dependencies = [
 
 [[package]]
 name = "executors"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "agent-client-protocol",
  "async-stream",
@@ -2867,7 +2867,7 @@ dependencies = [
 
 [[package]]
 name = "git"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2882,7 +2882,7 @@ dependencies = [
 
 [[package]]
 name = "git-host"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "async-trait",
  "backon",
@@ -4102,7 +4102,7 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "local-deployment"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -4291,7 +4291,7 @@ checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "mcp"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -6007,7 +6007,7 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "relay-control"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -6121,7 +6121,7 @@ dependencies = [
 
 [[package]]
 name = "review"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "clap",
@@ -6997,7 +6997,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -7056,14 +7056,14 @@ dependencies = [
 
 [[package]]
 name = "server-info"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "tokio",
 ]
 
 [[package]]
 name = "services"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "api-types",
@@ -8874,7 +8874,7 @@ dependencies = [
 
 [[package]]
 name = "trusted-key-auth"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "base64 0.22.1",
  "ed25519-dalek",
@@ -9200,7 +9200,7 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 
 [[package]]
 name = "utils"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "api-types",
  "axum",
@@ -9276,7 +9276,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "vibe-kanban-tauri"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -10263,7 +10263,7 @@ dependencies = [
 
 [[package]]
 name = "workspace-manager"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "db",
  "git",
@@ -10278,7 +10278,7 @@ dependencies = [
 
 [[package]]
 name = "worktree-manager"
-version = "0.1.30-pthis.0"
+version = "0.1.29"
 dependencies = [
  "dunce",
  "git",

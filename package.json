@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.1.30-pthis.0",
+  "version": "0.1.29",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
