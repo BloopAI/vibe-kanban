@@ -4,6 +4,10 @@ import { PROJECTS_SHAPE, type Project } from 'shared/remote-types';
 import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
 
+interface UseAllOrganizationProjectsOptions {
+  enabled?: boolean;
+}
+
 /**
  * Hook that fetches remote projects across ALL user organizations.
  * Uses the raw collection API (createShapeCollection + subscribeChanges)
@@ -12,7 +16,10 @@ import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
  * Collections are cached by createShapeCollection (5-min GC),
  * so no duplicate syncs if the same org's projects are subscribed elsewhere.
  */
-export function useAllOrganizationProjects() {
+export function useAllOrganizationProjects(
+  options: UseAllOrganizationProjectsOptions = {}
+) {
+  const { enabled = true } = options;
   const { isSignedIn } = useAuth();
   const { data: orgsData } = useUserOrganizations();
 
@@ -26,11 +33,13 @@ export function useAllOrganizationProjects() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!isSignedIn || orgIds.length === 0) {
+    if (!enabled || !isSignedIn || orgIds.length === 0) {
       setProjects([]);
       setIsLoading(false);
       return;
     }
+
+    setIsLoading(true);
 
     const subscriptions: { unsubscribe: () => void }[] = [];
     const projectsByOrg = new Map<string, Project[]>();
@@ -78,7 +87,7 @@ export function useAllOrganizationProjects() {
     return () => {
       subscriptions.forEach((s) => s.unsubscribe());
     };
-  }, [isSignedIn, orgIds]);
+  }, [enabled, isSignedIn, orgIds]);
 
   return { data: projects, isLoading };
 }
