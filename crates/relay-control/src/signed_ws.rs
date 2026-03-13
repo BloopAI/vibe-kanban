@@ -1,5 +1,6 @@
 use std::{
     fmt::Display,
+    future::Future,
     marker::PhantomData,
     pin::Pin,
     task::{Context, Poll},
@@ -174,6 +175,27 @@ pub struct RelayWsFrame {
     pub payload: Vec<u8>,
 }
 
+// ---------------------------------------------------------------------------
+// UpstreamWs — abstract send/recv/close over RelayWsFrame
+// ---------------------------------------------------------------------------
+
+/// Sender half of a WS upstream (relay, WebRTC, etc.).
+pub trait UpstreamWsSender: Send + 'static {
+    fn send(
+        &mut self,
+        frame: RelayWsFrame,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>>;
+
+    fn close(&mut self) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>>;
+}
+
+/// Receiver half of a WS upstream (relay, WebRTC, etc.).
+pub trait UpstreamWsReceiver: Send + 'static {
+    fn recv(
+        &mut self,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<RelayWsFrame>>> + Send + '_>>;
+}
+
 pub struct SignedWebSocket<S, M> {
     sender: SignedWsSender<SplitSink<S, M>, M>,
     receiver: SignedWsReceiver<SplitStream<S>, M>,
@@ -215,12 +237,10 @@ where
     SignedWebSocket { sender, receiver }
 }
 
-impl<S, M, E> SignedWebSocket<S, M>
+impl<S, M> SignedWebSocket<S, M>
 where
-    SplitSink<S, M>: Sink<M> + Unpin,
-    <SplitSink<S, M> as Sink<M>>::Error: std::error::Error + Send + Sync + 'static,
-    SplitStream<S>: Stream<Item = Result<M, E>> + Unpin,
-    E: std::error::Error + Send + Sync + 'static,
+    SignedWsSender<SplitSink<S, M>, M>: UpstreamWsSender,
+    SignedWsReceiver<SplitStream<S>, M>: UpstreamWsReceiver,
     M: RelayTransportMessage,
 {
     pub async fn send(&mut self, message: M) -> anyhow::Result<()> {
@@ -377,26 +397,59 @@ impl<Si, M> SignedWsSender<Si, M> {
     }
 }
 
-impl<Si, M> SignedWsSender<Si, M>
+impl<Si, M> UpstreamWsSender for SignedWsSender<Si, M>
 where
-    Si: Sink<M> + Unpin,
+    Si: Sink<M> + Unpin + Send + 'static,
     Si::Error: std::error::Error + Send + Sync + 'static,
-    M: RelayTransportMessage,
+    M: RelayTransportMessage + Send + 'static,
 {
-    pub async fn send(&mut self, frame: RelayWsFrame) -> anyhow::Result<()> {
-        let bytes = self.encode(frame)?;
-        let envelope_msg = M::reconstruct(RelayWsFrame {
-            msg_type: RelayWsMessageType::Binary,
-            payload: bytes,
-        })?;
-        self.sink
-            .send(envelope_msg)
-            .await
-            .map_err(anyhow::Error::from)
+    fn send(
+        &mut self,
+        frame: RelayWsFrame,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>> {
+        Box::pin(async move {
+            let bytes = self.encode(frame)?;
+            let envelope_msg = M::reconstruct(RelayWsFrame {
+                msg_type: RelayWsMessageType::Binary,
+                payload: bytes,
+            })?;
+            self.sink
+                .send(envelope_msg)
+                .await
+                .map_err(anyhow::Error::from)
+        })
     }
 
-    pub async fn close(&mut self) -> anyhow::Result<()> {
-        self.sink.close().await.map_err(anyhow::Error::from)
+    fn close(&mut self) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>> {
+        Box::pin(async move { self.sink.close().await.map_err(anyhow::Error::from) })
+    }
+}
+
+impl<St, M, E> UpstreamWsReceiver for SignedWsReceiver<St, M>
+where
+    St: Stream<Item = Result<M, E>> + Unpin + Send + 'static,
+    E: std::error::Error + Send + Sync + 'static,
+    M: RelayTransportMessage + Send + 'static,
+{
+    fn recv(
+        &mut self,
+    ) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<RelayWsFrame>>> + Send + '_>> {
+        Box::pin(async move {
+            loop {
+                let Some(result) = self.stream.next().await else {
+                    return Ok(None);
+                };
+                let msg = result.map_err(anyhow::Error::from)?;
+                let frame = msg.decompose();
+                match frame.msg_type {
+                    RelayWsMessageType::Ping | RelayWsMessageType::Pong => continue,
+                    RelayWsMessageType::Close => return Ok(None),
+                    RelayWsMessageType::Text | RelayWsMessageType::Binary => {
+                        return Ok(Some(self.decode(&frame.payload)?));
+                    }
+                }
+            }
+        })
     }
 }
 
@@ -458,30 +511,6 @@ impl<St, M> SignedWsReceiver<St, M> {
             msg_type: envelope.msg_type,
             payload,
         })
-    }
-}
-
-impl<St, M, E> SignedWsReceiver<St, M>
-where
-    St: Stream<Item = Result<M, E>> + Unpin,
-    E: std::error::Error + Send + Sync + 'static,
-    M: RelayTransportMessage,
-{
-    pub async fn recv(&mut self) -> anyhow::Result<Option<RelayWsFrame>> {
-        loop {
-            let Some(result) = self.stream.next().await else {
-                return Ok(None);
-            };
-            let msg = result.map_err(anyhow::Error::from)?;
-            let frame = msg.decompose();
-            match frame.msg_type {
-                RelayWsMessageType::Ping | RelayWsMessageType::Pong => continue,
-                RelayWsMessageType::Close => return Ok(None),
-                RelayWsMessageType::Text | RelayWsMessageType::Binary => {
-                    return Ok(Some(self.decode(&frame.payload)?));
-                }
-            }
-        }
     }
 }
 

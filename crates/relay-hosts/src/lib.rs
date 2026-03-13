@@ -7,17 +7,25 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use http::{HeaderMap, Method};
 use relay_client::{
     RelayApiClient, RelayHostIdentity, RelayHostTransport, RelayTransportBootstrapError,
-    RelayTransportError, SignedUpstreamSocket,
+    RelayTransportError,
 };
-use relay_control::signing::RelaySigningService;
+use relay_control::{
+    signed_ws::{UpstreamWsReceiver, UpstreamWsSender},
+    signing::RelaySigningService,
+};
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
+use relay_webrtc::WebRtcClient;
 use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
 use services::services::remote_client::RemoteClient;
 use tokio::sync::RwLock;
+use tokio_util::sync::CancellationToken;
 use trusted_key_auth::trusted_keys::parse_public_key_base64;
 use utils::assets::relay_host_credentials_path;
 use uuid::Uuid;
+
+mod webrtc_cache;
+use webrtc_cache::WebRtcConnectionCache;
 
 #[derive(Debug, Clone, Default)]
 struct RelaySessionCacheEntry {
@@ -179,11 +187,28 @@ impl RelaySessionCache {
     }
 }
 
+/// Response from [`RelayHost::proxy_http`], which may come from the relay
+/// or from a direct WebRTC data channel.
+pub enum ProxiedResponse {
+    /// Response received through the relay proxy.
+    Relay(reqwest::Response),
+    /// Response received directly via WebRTC data channel.
+    Direct(DirectProxyResponse),
+}
+
+/// An HTTP response received over a WebRTC data channel.
+pub struct DirectProxyResponse {
+    pub status: u16,
+    pub headers: HashMap<String, String>,
+    pub body: Vec<u8>,
+}
+
 #[derive(Clone)]
 pub struct RelayHosts {
     repository: RelayHostRepository,
     sessions: RelaySessionCache,
     runtime: RelayRuntime,
+    webrtc: WebRtcConnectionCache,
 }
 
 #[derive(Clone)]
@@ -198,11 +223,14 @@ pub struct RelayHost {
     identity: RelayHostIdentity,
     sessions: RelaySessionCache,
     runtime: RelayRuntime,
+    webrtc: WebRtcConnectionCache,
 }
 
-pub struct HostRelayWsConnection {
-    pub upstream_socket: SignedUpstreamSocket,
+/// A WebSocket connection proxied upstream (via relay, WebRTC, etc.).
+pub struct ProxiedWsConnection {
     pub selected_protocol: Option<String>,
+    pub sender: Box<dyn UpstreamWsSender>,
+    pub receiver: Box<dyn UpstreamWsReceiver>,
 }
 
 #[derive(Debug)]
@@ -268,6 +296,7 @@ impl RelayHosts {
                 remote_info,
                 relay_signing,
             },
+            webrtc: WebRtcConnectionCache::default(),
         }
     }
 
@@ -277,6 +306,7 @@ impl RelayHosts {
             identity,
             sessions: self.sessions.clone(),
             runtime: self.runtime.clone(),
+            webrtc: self.webrtc.clone(),
         })
     }
 
@@ -383,7 +413,16 @@ impl RelayHost {
         target_path: &str,
         headers: &HeaderMap,
         body: &[u8],
-    ) -> Result<reqwest::Response, HostRelayProxyError> {
+    ) -> Result<ProxiedResponse, HostRelayProxyError> {
+        // Try direct WebRTC data channel first.
+        if let Some(response) = self
+            .try_webrtc_proxy(method, target_path, headers, body)
+            .await
+        {
+            return Ok(ProxiedResponse::Direct(response));
+        }
+
+        // Fall back to relay.
         let mut transport = self
             .open_transport()
             .await
@@ -393,14 +432,106 @@ impl RelayHost {
             .await
             .map_err(HostRelayProxyError::from);
         self.persist_auth_state(&transport).await;
-        response
+
+        // Kick off background WebRTC handshake for future requests,
+        // reusing the already-authenticated transport.
+        self.maybe_start_webrtc(transport).await;
+
+        response.map(ProxiedResponse::Relay)
+    }
+
+    /// Try to proxy through an active WebRTC data channel. Returns `None`
+    /// if there's no active connection or the request fails.
+    async fn try_webrtc_proxy(
+        &self,
+        method: &Method,
+        target_path: &str,
+        headers: &HeaderMap,
+        body: &[u8],
+    ) -> Option<DirectProxyResponse> {
+        let client = self.webrtc.get(self.identity.host_id).await?;
+        if !client.is_connected() {
+            return None;
+        }
+
+        let mut header_map = HashMap::new();
+        for (key, value) in headers {
+            if let Ok(v) = value.to_str() {
+                header_map.insert(key.to_string(), v.to_string());
+            }
+        }
+
+        let body_vec = if body.is_empty() {
+            None
+        } else {
+            Some(body.to_vec())
+        };
+
+        match client
+            .send_request(method.as_ref(), target_path, header_map, body_vec)
+            .await
+        {
+            Ok(response) => {
+                let body = if let Some(body_b64) = &response.body_b64 {
+                    use base64::Engine as _;
+                    base64::engine::general_purpose::STANDARD
+                        .decode(body_b64)
+                        .unwrap_or_default()
+                } else {
+                    Vec::new()
+                };
+
+                Some(DirectProxyResponse {
+                    status: response.status,
+                    headers: response.headers,
+                    body,
+                })
+            }
+            Err(e) => {
+                tracing::debug!(?e, host_id = %self.identity.host_id, "WebRTC request failed, falling back to relay");
+                self.webrtc.remove(self.identity.host_id).await;
+                None
+            }
+        }
+    }
+
+    /// Kick off a background WebRTC handshake if we don't already have a
+    /// direct connection to this host. Reuses the provided transport so
+    /// no extra relay sessions are created.
+    async fn maybe_start_webrtc(&self, transport: RelayHostTransport) {
+        let host_id = self.identity.host_id;
+
+        if !self.webrtc.start_connecting(host_id).await {
+            return;
+        }
+
+        let webrtc = self.webrtc.clone();
+
+        tokio::spawn(async move {
+            match negotiate_webrtc(transport).await {
+                Ok(client) => {
+                    webrtc.insert(host_id, Arc::new(client)).await;
+                    tracing::debug!(%host_id, "WebRTC direct connection established");
+                }
+                Err(e) => {
+                    tracing::debug!(?e, %host_id, "WebRTC handshake failed (relay fallback active)");
+                    webrtc.mark_failed(host_id).await;
+                }
+            }
+        });
     }
 
     pub async fn proxy_ws(
         &self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<HostRelayWsConnection, HostRelayProxyError> {
+    ) -> Result<ProxiedWsConnection, HostRelayProxyError> {
+        // Try direct WebRTC data channel first.
+        if let Some(conn) = self.try_webrtc_ws(target_path, protocols).await {
+            return Ok(conn);
+        }
+
+        // Fall back to relay.
         let mut transport = self
             .open_transport()
             .await
@@ -412,10 +543,47 @@ impl RelayHost {
         self.persist_auth_state(&transport).await;
         let (upstream_socket, selected_protocol) = connection?;
 
-        Ok(HostRelayWsConnection {
-            upstream_socket,
+        // Kick off WebRTC handshake for future requests.
+        self.maybe_start_webrtc(transport).await;
+
+        let (sender, receiver) = upstream_socket.split();
+        Ok(ProxiedWsConnection {
             selected_protocol,
+            sender: Box::new(sender),
+            receiver: Box::new(receiver),
         })
+    }
+
+    /// Try to open a WebSocket through an active WebRTC data channel.
+    async fn try_webrtc_ws(
+        &self,
+        target_path: &str,
+        protocols: Option<&str>,
+    ) -> Option<ProxiedWsConnection> {
+        let client = self.webrtc.get(self.identity.host_id).await?;
+        if !client.is_connected() {
+            return None;
+        }
+
+        match client.open_ws(target_path, protocols).await {
+            Ok(ws_connection) => {
+                let selected_protocol = ws_connection.selected_protocol.clone();
+                let (sender, receiver) = ws_connection.into_upstream();
+                Some(ProxiedWsConnection {
+                    selected_protocol,
+                    sender: Box::new(sender),
+                    receiver: Box::new(receiver),
+                })
+            }
+            Err(e) => {
+                tracing::debug!(
+                    ?e,
+                    host_id = %self.identity.host_id,
+                    "WebRTC WS open failed, falling back to relay"
+                );
+                None
+            }
+        }
     }
 
     pub async fn open_workspace_in_editor(
@@ -499,6 +667,42 @@ impl From<RelayTransportError> for OpenRemoteEditorError {
             RelayTransportError::RemoteSession(error) => Self::RemoteSession(error),
         }
     }
+}
+
+/// Negotiate a WebRTC data channel with the remote host via the relay.
+///
+/// Reuses an already-authenticated transport from the caller so no extra
+/// relay sessions are created and no shared session cache is touched.
+async fn negotiate_webrtc(mut transport: RelayHostTransport) -> anyhow::Result<WebRtcClient> {
+    let session_id = Uuid::new_v4().to_string();
+    let webrtc_offer = WebRtcClient::create_offer(session_id)?;
+
+    let offer_json = serde_json::to_vec(&webrtc_offer.offer)?;
+    let mut headers = HeaderMap::new();
+    headers.insert("content-type", "application/json".parse().unwrap());
+
+    let response = transport
+        .send_http(&Method::POST, "/api/webrtc/offer", &headers, &offer_json)
+        .await
+        .map_err(|e| anyhow::anyhow!("WebRTC offer request failed: {e:?}"))?;
+
+    if !response.status().is_success() {
+        anyhow::bail!("WebRTC offer rejected with status {}", response.status());
+    }
+
+    let answer: relay_webrtc::SdpAnswer = response
+        .json()
+        .await
+        .map_err(|e| anyhow::anyhow!("Invalid WebRTC answer response: {e}"))?;
+
+    let shutdown = CancellationToken::new();
+    WebRtcClient::connect(
+        webrtc_offer.rtc,
+        webrtc_offer.pending,
+        &answer.sdp,
+        shutdown,
+    )
+    .await
 }
 
 fn relay_tunnel_access(transport: &RelayHostTransport) -> RelayTunnelAccess {
