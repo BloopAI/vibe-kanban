@@ -53,7 +53,6 @@ use codex_app_server_protocol::{
     ThreadForkParams, ThreadStartParams, UserInput,
 };
 use codex_protocol::config_types::ServiceTier;
-use command_group::AsyncCommandGroup;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
