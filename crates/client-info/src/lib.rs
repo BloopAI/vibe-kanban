@@ -5,6 +5,7 @@ use std::sync::OnceLock;
 pub struct ClientInfo {
     port: OnceLock<u16>,
     hostname: OnceLock<String>,
+    preview_proxy_port: OnceLock<u16>,
 }
 
 impl Default for ClientInfo {
@@ -18,6 +19,7 @@ impl ClientInfo {
         Self {
             port: OnceLock::new(),
             hostname: OnceLock::new(),
+            preview_proxy_port: OnceLock::new(),
         }
     }
 
@@ -39,6 +41,16 @@ impl ClientInfo {
 
     pub fn get_hostname(&self) -> Option<String> {
         self.hostname.get().cloned()
+    }
+
+    pub fn set_preview_proxy_port(&self, port: u16) -> Result<(), String> {
+        self.preview_proxy_port
+            .set(port)
+            .map_err(|_| "preview proxy port already set".to_string())
+    }
+
+    pub fn get_preview_proxy_port(&self) -> Option<u16> {
+        self.preview_proxy_port.get().copied()
     }
 }
 
