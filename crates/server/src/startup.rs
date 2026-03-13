@@ -36,11 +36,7 @@ impl ServerHandle {
             .client_info()
             .set_port(self.port)
             .expect("client port already set");
-        let host = self
-            .main_listener
-            .local_addr()?
-            .ip()
-            .to_string();
+        let host = self.main_listener.local_addr()?.ip().to_string();
         self.deployment
             .client_info()
             .set_hostname(host)
