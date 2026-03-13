@@ -525,6 +525,25 @@ export function AppBar({
         </div>
       ))}
 
+      {/* Create project button */}
+      {isSignedIn && (
+        <Tooltip content="Create project" side="right">
+          <button
+            type="button"
+            onClick={onCreateProject}
+            className={cn(
+              'flex items-center justify-center w-10 h-10 rounded-lg',
+              'text-sm font-medium transition-colors cursor-pointer',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+              'bg-primary text-muted hover:text-normal hover:bg-tertiary'
+            )}
+            aria-label="Create project"
+          >
+            <PlusIcon size={20} />
+          </button>
+        </Tooltip>
+      )}
+
       {/* Bottom section: Notifications + User popover + GitHub + Discord */}
       <div className="mt-auto pt-base flex flex-col items-center gap-4">
         {notificationBell}

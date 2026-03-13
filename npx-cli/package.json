@@ -21,6 +21,9 @@
   },
   "license": "",
   "description": "NPX wrapper around vibe-kanban and vibe-kanban-mcp",
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  },
   "dependencies": {
     "adm-zip": "^0.5.16",
     "cac": "^7.0.0"
