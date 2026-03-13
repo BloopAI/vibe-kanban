@@ -310,10 +310,9 @@ impl IssueRepository {
     ) -> Result<Option<Uuid>, IssueError> {
         let record = sqlx::query_scalar!(
             r#"
-            SELECT p.organization_id
-            FROM issues i
-            INNER JOIN projects p ON p.id = i.project_id
-            WHERE i.id = $1
+            SELECT organization_id
+            FROM issues
+            WHERE id = $1
             "#,
             issue_id
         )
