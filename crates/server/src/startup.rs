@@ -33,6 +33,10 @@ impl ServerHandle {
         // This must happen after the port is known (it's needed for local
         // proxying) and is shared between the standalone binary and Tauri.
         self.deployment.server_info().set_port(self.port).await;
+        self.deployment
+            .server_info()
+            .set_bind_ip(self.main_listener.local_addr()?.ip())
+            .await;
         let relay_host_name = {
             let config = self.deployment.config().read().await;
             tunnel::effective_relay_host_name(&config, self.deployment.user_id())
