@@ -3,23 +3,26 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type MouseEvent,
 } from 'react';
 import { SpinnerIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 
 import {
   buildConversationRowsIncremental,
+  findPreviousUserMessageIndex,
   type ConversationRow,
 } from '../model/conversation-row-model';
 import { useConversationVirtualizer } from '../model/useConversationVirtualizer';
 import { useScrollCommandExecutor } from '../model/useScrollCommandExecutor';
 
-import { cn } from '@/shared/lib/utils';
 import DisplayConversationEntry from './DisplayConversationEntry';
 import { ApprovalFormProvider } from '@/shared/hooks/ApprovalForm';
-import { useEntries } from '../model/contexts/EntriesContext';
+import { useEntriesActions } from '../model/contexts/EntriesContext';
 import {
   useResetProcess,
   type UseResetProcessResult,
@@ -38,6 +41,7 @@ import { useConversationHistory } from '../model/hooks/useConversationHistory';
 import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
+import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 
@@ -45,12 +49,16 @@ interface ConversationListProps {
   attempt: WorkspaceWithSession;
   repos?: RepoWithTargetBranch[];
   onAtBottomChange?: (atBottom: boolean) => void;
+  sessionScopeId?: string;
 }
 
 export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
-  scrollToBottom: () => void;
+  scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  adjustScrollBy: (delta: number) => void;
 }
+
+const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
 
 function renderRowContent(
   entry: DisplayEntry,
@@ -136,18 +144,26 @@ export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
 >(function ConversationList(
-  { attempt, repos: reposProp = [], onAtBottomChange },
+  { attempt, repos: reposProp = [], onAtBottomChange, sessionScopeId },
   ref
 ) {
+  const { t } = useTranslation('common');
   const repos = reposProp;
   const resetAction = useResetProcess(attempt.id, attempt.session?.id);
+  const conversationScopeKey = `${attempt.id}:${sessionScopeId ?? attempt.session?.id ?? 'new'}`;
   const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
+  const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { setEntries, reset } = useEntries();
+  const lastSettledTailStartIndexRef = useRef<number | null>(null);
+  const { setEntries, reset } = useEntriesActions();
+  const scrollOnEntriesChangedRef = useRef<
+    ((addType: AddEntryType, isInitialLoad: boolean) => void) | null
+  >(null);
   const pendingUpdateRef = useRef<{
     entries: PatchTypeWithKey[];
     addType: AddEntryType;
     loading: boolean;
+    isInitialLoad: boolean;
   } | null>(null);
   // rAF throttle: at most one state update per animation frame.
   // Replaces the previous 100ms trailing debounce which never fired during
@@ -157,6 +173,11 @@ export const ConversationList = forwardRef<
   // rAF naturally limits updates to the display refresh rate (~60fps) while
   // ensuring every frame reflects the latest data.
   const rafIdRef = useRef<number | null>(null);
+  const pendingInteractionAnchorRef = useRef<{
+    element: HTMLElement;
+    top: number;
+  } | null>(null);
+  const pendingInteractionAnchorFrameRef = useRef<number | null>(null);
 
   // Use ref to access current repos without causing callback recreation
   const reposRef = useRef(repos);
@@ -195,10 +216,17 @@ export const ConversationList = forwardRef<
   const canConfigure = repos.length > 0;
 
   useEffect(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+    pendingUpdateRef.current = null;
     setLoading(true);
     setFilteredEntries([]);
+    setDataVersion(0);
+    lastSettledTailStartIndexRef.current = null;
     reset();
-  }, [attempt.id, reset]);
+  }, [conversationScopeKey, reset]);
 
   useEffect(() => {
     return () => {
@@ -210,29 +238,53 @@ export const ConversationList = forwardRef<
 
   // ---- TanStack Virtual plumbing ----
   const tanstackScrollRef = useRef<HTMLDivElement | null>(null);
-  const prevEntriesRef = useRef<DisplayEntry[]>([]);
-  const prevRowsRef = useRef<ConversationRow[]>([]);
-  const conversationRows = useMemo(() => {
-    const rows = buildConversationRowsIncremental(
-      filteredEntries,
-      prevEntriesRef.current,
-      prevRowsRef.current
-    );
-    prevEntriesRef.current = filteredEntries;
-    prevRowsRef.current = rows;
-    return rows;
-  }, [filteredEntries]);
-  const conversationVirtualizer = useConversationVirtualizer({
-    rows: conversationRows,
-    scrollContainerRef: tanstackScrollRef,
-    onAtBottomChange,
-  });
 
-  const scrollExecutor = useScrollCommandExecutor({
-    virtualizer: conversationVirtualizer.virtualizer,
-    itemCount: conversationRows.length,
-    isAtBottom: conversationVirtualizer.isAtBottom,
-  });
+  const clearPendingInteractionAnchor = useCallback(() => {
+    if (pendingInteractionAnchorFrameRef.current !== null) {
+      cancelAnimationFrame(pendingInteractionAnchorFrameRef.current);
+      pendingInteractionAnchorFrameRef.current = null;
+    }
+    pendingInteractionAnchorRef.current = null;
+  }, []);
+
+  const handleConversationClickCapture = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+
+      const trigger = target.closest<HTMLElement>(
+        'button, summary, [role="button"], [data-scroll-anchor-target]'
+      );
+      if (!trigger || trigger.closest('[data-scroll-anchor-ignore]')) return;
+
+      const scrollContainer = tanstackScrollRef.current;
+      if (!scrollContainer || !scrollContainer.contains(trigger)) return;
+
+      clearPendingInteractionAnchor();
+      pendingInteractionAnchorRef.current = {
+        element: trigger,
+        top: trigger.getBoundingClientRect().top,
+      };
+
+      pendingInteractionAnchorFrameRef.current = requestAnimationFrame(() => {
+        pendingInteractionAnchorFrameRef.current = null;
+
+        const anchor = pendingInteractionAnchorRef.current;
+        pendingInteractionAnchorRef.current = null;
+
+        const activeScrollContainer = tanstackScrollRef.current;
+        if (!anchor || !activeScrollContainer || !anchor.element.isConnected) {
+          return;
+        }
+
+        const delta = anchor.element.getBoundingClientRect().top - anchor.top;
+        if (Math.abs(delta) < 0.5) return;
+
+        activeScrollContainer.scrollTop += delta;
+      });
+    },
+    [clearPendingInteractionAnchor]
+  );
 
   const flushPendingUpdate = () => {
     rafIdRef.current = null;
@@ -241,8 +293,6 @@ export const ConversationList = forwardRef<
 
     const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
 
-    // Filter out entries that render as null –
-    // leaving them in creates empty items that add spacing.
     const newFilteredEntries = aggregatedEntries.filter((entry) => {
       if (
         'type' in entry &&
@@ -253,13 +303,22 @@ export const ConversationList = forwardRef<
         const t = entry.content.entry_type.type;
         return t !== 'next_action' && t !== 'token_usage_info';
       }
-      return true;
+
+      return (
+        entry.type === 'NORMALIZED_ENTRY' ||
+        entry.type === 'STDOUT' ||
+        entry.type === 'STDERR' ||
+        entry.type === 'AGGREGATED_GROUP' ||
+        entry.type === 'AGGREGATED_DIFF_GROUP' ||
+        entry.type === 'AGGREGATED_THINKING_GROUP'
+      );
     });
 
     setFilteredEntries(newFilteredEntries);
+    setDataVersion((current) => current + 1);
     setEntries(pending.entries);
 
-    scrollExecutor.onEntriesChanged(pending.addType, loading);
+    scrollOnEntriesChangedRef.current?.(pending.addType, pending.isInitialLoad);
 
     if (loading) {
       setLoading(pending.loading);
@@ -275,6 +334,7 @@ export const ConversationList = forwardRef<
       entries: newEntries,
       addType,
       loading: newLoading,
+      isInitialLoad: loading,
     };
 
     if (rafIdRef.current === null) {
@@ -287,10 +347,150 @@ export const ConversationList = forwardRef<
     hasCleanupScriptRun,
     hasRunningProcess,
     isFirstTurn,
-  } = useConversationHistory({ attempt, onEntriesUpdated });
+  } = useConversationHistory({
+    attempt,
+    onEntriesUpdated,
+    scopeKey: conversationScopeKey,
+  });
+
+  const prevEntriesRef = useRef<DisplayEntry[]>([]);
+  const prevRowsRef = useRef<ConversationRow[]>([]);
+  const conversationRows = useMemo(() => {
+    const rows = buildConversationRowsIncremental(
+      filteredEntries,
+      prevEntriesRef.current,
+      prevRowsRef.current
+    );
+    prevEntriesRef.current = filteredEntries;
+    prevRowsRef.current = rows;
+    return rows;
+  }, [filteredEntries]);
+
+  const hasActiveStreamingTurn = useMemo(
+    () =>
+      hasRunningProcess ||
+      conversationRows.some((row) => row.rowFamily === 'loading'),
+    [conversationRows, hasRunningProcess]
+  );
+
+  const candidateFirstUnvirtualizedRowIndex = useMemo(() => {
+    const firstTailRowIndex = Math.max(
+      conversationRows.length - ALWAYS_UNVIRTUALIZED_TAIL_ROWS,
+      0
+    );
+
+    if (!hasActiveStreamingTurn) {
+      return firstTailRowIndex;
+    }
+
+    for (let index = conversationRows.length - 1; index >= 0; index -= 1) {
+      if (conversationRows[index]?.isUserMessage) {
+        return Math.min(index, firstTailRowIndex);
+      }
+    }
+
+    return firstTailRowIndex;
+  }, [conversationRows, hasActiveStreamingTurn]);
+
+  const streamingFirstUnvirtualizedRowIndex = useMemo(() => {
+    const lastSettledTailStartIndex = lastSettledTailStartIndexRef.current;
+    if (lastSettledTailStartIndex == null) {
+      return candidateFirstUnvirtualizedRowIndex;
+    }
+
+    return Math.min(
+      lastSettledTailStartIndex,
+      candidateFirstUnvirtualizedRowIndex
+    );
+  }, [candidateFirstUnvirtualizedRowIndex]);
+
+  useEffect(() => {
+    if (!hasActiveStreamingTurn) {
+      lastSettledTailStartIndexRef.current =
+        candidateFirstUnvirtualizedRowIndex;
+    }
+  }, [candidateFirstUnvirtualizedRowIndex, hasActiveStreamingTurn]);
+
+  const firstUnvirtualizedRowIndex = hasActiveStreamingTurn
+    ? streamingFirstUnvirtualizedRowIndex
+    : candidateFirstUnvirtualizedRowIndex;
+
+  const virtualizedRows = useMemo(
+    () => conversationRows.slice(0, firstUnvirtualizedRowIndex),
+    [conversationRows, firstUnvirtualizedRowIndex]
+  );
+
+  const unvirtualizedTailRows = useMemo(
+    () => conversationRows.slice(firstUnvirtualizedRowIndex),
+    [conversationRows, firstUnvirtualizedRowIndex]
+  );
+
+  const conversationVirtualizer = useConversationVirtualizer({
+    rows: virtualizedRows,
+    scrollContainerRef: tanstackScrollRef,
+    onAtBottomChange,
+  });
+
+  useLayoutEffect(() => {
+    conversationVirtualizer.virtualizer.measure();
+  }, [conversationVirtualizer.virtualizer, firstUnvirtualizedRowIndex]);
+
+  const scrollToAbsoluteIndex = useCallback(
+    (
+      index: number,
+      align: 'start' | 'center' | 'end' = 'start',
+      behavior: 'auto' | 'smooth' = 'smooth'
+    ): boolean => {
+      if (index < 0 || index >= conversationRows.length) return false;
+
+      const scrollEl = tanstackScrollRef.current;
+      if (!scrollEl) return false;
+
+      const targetNode = scrollEl.querySelector<HTMLElement>(
+        `[data-row-index="${index}"]`
+      );
+
+      if (targetNode) {
+        let top = targetNode.offsetTop;
+
+        if (align === 'center') {
+          top =
+            targetNode.offsetTop -
+            scrollEl.clientHeight / 2 +
+            targetNode.offsetHeight / 2;
+        } else if (align === 'end') {
+          top =
+            targetNode.offsetTop -
+            scrollEl.clientHeight +
+            targetNode.offsetHeight;
+        }
+
+        scrollEl.scrollTo({ top: Math.max(0, top), behavior });
+        return true;
+      }
+
+      if (index < virtualizedRows.length) {
+        conversationVirtualizer.scrollToIndex(index, { align, behavior });
+        return true;
+      }
+
+      return false;
+    },
+    [conversationRows.length, conversationVirtualizer, virtualizedRows.length]
+  );
+
+  const scrollExecutor = useScrollCommandExecutor({
+    virtualizer: conversationVirtualizer.virtualizer,
+    itemCount: conversationRows.length,
+    dataVersion,
+    isAtBottom: conversationVirtualizer.isAtBottom,
+    scrollToBottom: conversationVirtualizer.scrollToBottom,
+    scrollToAbsoluteIndex,
+  });
+  scrollOnEntriesChangedRef.current = scrollExecutor.onEntriesChanged;
 
   // Determine if there are entries to show placeholders
-  const hasEntries = filteredEntries.length > 0;
+  const hasEntries = conversationRows.length > 0;
 
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
@@ -303,33 +503,87 @@ export const ConversationList = forwardRef<
     isFirstTurn;
 
   // Expose scroll functionality via ref — delegates to TanStack Virtual
+  const scrollToPreviousUserMessage = useCallback(() => {
+    const scrollEl = tanstackScrollRef.current;
+    if (!scrollEl || conversationRows.length === 0) return;
+
+    const containerTop = scrollEl.getBoundingClientRect().top;
+    const rowNodes = Array.from(
+      scrollEl.querySelectorAll<HTMLElement>('[data-row-index]')
+    );
+
+    let firstVisibleIndex = conversationRows.length - 1;
+
+    for (const node of rowNodes) {
+      const rect = node.getBoundingClientRect();
+      if (rect.bottom <= containerTop + 1) continue;
+      const indexAttr = node.dataset.rowIndex;
+      if (!indexAttr) continue;
+      const parsedIndex = Number.parseInt(indexAttr, 10);
+      if (!Number.isFinite(parsedIndex)) continue;
+      firstVisibleIndex = parsedIndex;
+      break;
+    }
+
+    const targetIndex = findPreviousUserMessageIndex(
+      conversationRows,
+      firstVisibleIndex
+    );
+
+    if (targetIndex < 0) return;
+
+    if (scrollToAbsoluteIndex(targetIndex, 'start', 'smooth')) return;
+
+    if (targetIndex >= firstUnvirtualizedRowIndex) {
+      conversationVirtualizer.scrollToBottom();
+      return;
+    }
+
+    conversationVirtualizer.scrollToIndex(targetIndex, {
+      align: 'start',
+      behavior: 'smooth',
+    });
+  }, [
+    conversationRows,
+    firstUnvirtualizedRowIndex,
+    conversationVirtualizer,
+    scrollToAbsoluteIndex,
+  ]);
+
   useImperativeHandle(
     ref,
     () => ({
       scrollToPreviousUserMessage: () => {
-        conversationVirtualizer.scrollToPreviousUserMessage();
+        scrollToPreviousUserMessage();
       },
-      scrollToBottom: () => {
-        scrollExecutor.requestJumpToBottom();
+      scrollToBottom: (behavior = 'smooth') => {
+        conversationVirtualizer.scrollToBottom(behavior);
+      },
+      adjustScrollBy: (delta) => {
+        if (Math.abs(delta) < 0.5) return;
+        const scrollElement = tanstackScrollRef.current;
+        if (!scrollElement) return;
+        scrollElement.scrollTop += delta;
       },
     }),
-    [conversationVirtualizer, scrollExecutor]
+    [conversationVirtualizer, scrollToPreviousUserMessage]
   );
 
-  // Determine if content is ready to show (has data or finished loading)
-  const hasContent = !loading || filteredEntries.length > 0;
+  const showLoader = loading && conversationRows.length === 0;
+  const showEmptyState = !loading && conversationRows.length === 0;
 
   const { virtualItems, totalSize, measureElement } = conversationVirtualizer;
 
+  useEffect(() => {
+    return () => {
+      clearPendingInteractionAnchor();
+    };
+  }, [clearPendingInteractionAnchor]);
+
   return (
     <ApprovalFormProvider>
-      <div
-        className={cn(
-          'relative h-full overflow-hidden transition-opacity duration-300',
-          hasContent ? 'opacity-100' : 'opacity-0'
-        )}
-      >
-        {!hasContent && (
+      <div className="relative h-full overflow-hidden">
+        {showLoader && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <SpinnerIcon className="size-6 animate-spin text-low" />
           </div>
@@ -337,8 +591,8 @@ export const ConversationList = forwardRef<
         <div
           ref={tanstackScrollRef}
           className="h-full overflow-y-auto scrollbar-none"
+          onClickCapture={handleConversationClickCapture}
         >
-          {/* Header placeholder */}
           <div className="pt-2">
             {showSetupPlaceholder && (
               <div className="my-base px-double">
@@ -350,35 +604,60 @@ export const ConversationList = forwardRef<
             )}
           </div>
 
-          {/* Virtualized conversation rows */}
-          <div
-            style={{
-              height: `${totalSize}px`,
-              width: '100%',
-              position: 'relative',
-            }}
-          >
-            {virtualItems.map((virtualItem) => {
-              const row = conversationRows[virtualItem.index];
-              if (!row) return null;
-              return (
-                <div
-                  key={row.semanticKey}
-                  data-index={virtualItem.index}
-                  ref={measureElement}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                >
-                  {renderRowContent(row.entry, attempt, resetAction, repos)}
-                </div>
-              );
-            })}
-          </div>
+          {showEmptyState && (
+            <div className="flex min-h-full items-center justify-center px-double py-12">
+              <ChatEmptyState
+                title={t('conversation.emptyTitle', {
+                  defaultValue: 'Send a message to start the conversation.',
+                })}
+                description={t('conversation.emptyDescription', {
+                  defaultValue:
+                    'Your workspace conversation will appear here once a new turn starts.',
+                })}
+              />
+            </div>
+          )}
+
+          {virtualizedRows.length > 0 && (
+            <div
+              style={{
+                height: `${totalSize}px`,
+                width: '100%',
+                position: 'relative',
+              }}
+            >
+              {virtualItems.map((virtualItem) => {
+                const row = virtualizedRows[virtualItem.index];
+                if (!row) return null;
+                return (
+                  <div
+                    key={row.semanticKey}
+                    data-index={virtualItem.index}
+                    data-row-index={virtualItem.index}
+                    ref={measureElement}
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualItem.start}px)`,
+                    }}
+                  >
+                    {renderRowContent(row.entry, attempt, resetAction, repos)}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {unvirtualizedTailRows.map((row, tailIndex) => {
+            const rowIndex = firstUnvirtualizedRowIndex + tailIndex;
+            return (
+              <div key={row.semanticKey} data-row-index={rowIndex}>
+                {renderRowContent(row.entry, attempt, resetAction, repos)}
+              </div>
+            );
+          })}
 
           {/* Footer placeholder */}
           <div className="pb-2">

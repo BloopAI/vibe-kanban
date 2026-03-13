@@ -58,8 +58,8 @@ function extractPromptFromActionChain(
 }
 
 export const useConversationHistory = ({
-  attempt,
   onEntriesUpdated,
+  scopeKey,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
   const {
     executionProcessesVisible: executionProcessesRaw,
@@ -70,6 +70,7 @@ export const useConversationHistory = ({
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
+  const emittedEmptyInitialRef = useRef(false);
   const streamingProcessIdsRef = useRef<Set<string>>(new Set());
   const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
   const previousStatusMapRef = useRef<Map<string, ExecutionProcessStatus>>(
@@ -586,8 +587,8 @@ export const useConversationHistory = ({
     [loadRunningAndEmit]
   );
 
-  const loadInitialEntries =
-    useCallback(async (): Promise<ExecutionProcessStateStore> => {
+  const loadHistoricEntries = useCallback(
+    async (maxEntries?: number): Promise<ExecutionProcessStateStore> => {
       const localDisplayedExecutionProcesses: ExecutionProcessStateStore = {};
 
       if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
@@ -610,15 +611,17 @@ export const useConversationHistory = ({
         };
 
         if (
-          flattenEntries(localDisplayedExecutionProcesses).length >
-          MIN_INITIAL_ENTRIES
+          maxEntries != null &&
+          flattenEntries(localDisplayedExecutionProcesses).length > maxEntries
         ) {
           break;
         }
       }
 
       return localDisplayedExecutionProcesses;
-    }, [executionProcesses]);
+    },
+    [executionProcesses]
+  );
 
   const loadRemainingEntriesInBatches = useCallback(
     async (batchSize: number): Promise<boolean> => {
@@ -706,27 +709,54 @@ export const useConversationHistory = ({
     }
   }, [idListKey, executionProcessesRaw, emitEntries, isLoading, isConnected]);
 
-  // Initial load when attempt changes
+  useEffect(() => {
+    displayedExecutionProcesses.current = {};
+    loadedInitialEntries.current = false;
+    emittedEmptyInitialRef.current = false;
+    streamingProcessIdsRef.current.clear();
+    previousStatusMapRef.current.clear();
+    scriptOutputCacheRef.current.clear();
+    setHasSetupScriptRun(false);
+    setHasCleanupScriptRun(false);
+    setHasRunningProcess(false);
+    emitEntries(displayedExecutionProcesses.current, 'initial', true);
+  }, [scopeKey, emitEntries]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Waiting for execution processes to load
-      if (
-        executionProcesses?.current.length === 0 ||
-        loadedInitialEntries.current
-      )
-        return;
+      if (loadedInitialEntries.current) return;
 
-      // Initial entries
-      const allInitialEntries = await loadInitialEntries();
+      if (isLoading) return;
+
+      if (executionProcesses.current.length === 0) {
+        if (emittedEmptyInitialRef.current) return;
+        emittedEmptyInitialRef.current = true;
+        loadedInitialEntries.current = true;
+        emitEntries(displayedExecutionProcesses.current, 'initial', false);
+        return;
+      }
+
+      emittedEmptyInitialRef.current = false;
+      loadedInitialEntries.current = true;
+
+      const hasActiveProcess = executionProcesses.current.some(
+        (process) => process.status === ExecutionProcessStatus.running
+      );
+
+      const allInitialEntries = await loadHistoricEntries(
+        hasActiveProcess ? MIN_INITIAL_ENTRIES : undefined
+      );
       if (cancelled) return;
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
-      loadedInitialEntries.current = true;
 
-      // Then load the remaining in batches
+      if (!hasActiveProcess) {
+        return;
+      }
+
       while (
         !cancelled &&
         (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
@@ -740,9 +770,10 @@ export const useConversationHistory = ({
       cancelled = true;
     };
   }, [
-    attempt.id,
+    scopeKey,
     idListKey,
-    loadInitialEntries,
+    isLoading,
+    loadHistoricEntries,
     loadRemainingEntriesInBatches,
     emitEntries,
   ]); // include idListKey so new processes trigger reload
@@ -776,7 +807,7 @@ export const useConversationHistory = ({
       }
     }
   }, [
-    attempt.id,
+    scopeKey,
     idStatusKey,
     emitEntries,
     ensureProcessVisible,
@@ -846,20 +877,7 @@ export const useConversationHistory = ({
         });
       });
     }
-  }, [attempt.id, idListKey, executionProcessesRaw]);
-
-  useEffect(() => {
-    displayedExecutionProcesses.current = {};
-    loadedInitialEntries.current = false;
-    streamingProcessIdsRef.current.clear();
-    previousStatusMapRef.current.clear();
-    scriptOutputCacheRef.current.clear();
-    // Reset script run status when attempt changes
-    setHasSetupScriptRun(false);
-    setHasCleanupScriptRun(false);
-    setHasRunningProcess(false);
-    emitEntries(displayedExecutionProcesses.current, 'initial', true);
-  }, [attempt.id, emitEntries]);
+  }, [scopeKey, idListKey, executionProcessesRaw]);
 
   return {
     hasSetupScriptRun,

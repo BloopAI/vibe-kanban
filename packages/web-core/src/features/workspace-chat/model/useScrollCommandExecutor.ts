@@ -22,6 +22,7 @@ import type { AddEntryType } from '@/shared/hooks/useConversationHistory/types';
 
 // TanStack Virtual only accepts 'auto' | 'smooth', not DOM's full ScrollBehavior
 type TanStackScrollBehavior = 'auto' | 'smooth';
+type TanStackScrollAlign = 'start' | 'center' | 'end';
 
 function toTanStackBehavior(behavior: ScrollBehavior): TanStackScrollBehavior {
   return behavior === 'instant' ? 'auto' : behavior;
@@ -48,8 +49,18 @@ export interface ScrollCommandExecutorOptions {
   /** Current number of items in the list. */
   itemCount: number;
 
+  dataVersion: number;
+
   /** Reactive isAtBottom from the virtualizer hook. */
   isAtBottom: boolean;
+
+  scrollToBottom: (behavior?: TanStackScrollBehavior) => void;
+
+  scrollToAbsoluteIndex?: (
+    index: number,
+    align?: TanStackScrollAlign,
+    behavior?: TanStackScrollBehavior
+  ) => boolean;
 }
 
 export interface ScrollCommandExecutorResult {
@@ -86,7 +97,10 @@ export interface ScrollCommandExecutorResult {
 export function useScrollCommandExecutor({
   virtualizer,
   itemCount,
+  dataVersion,
   isAtBottom,
+  scrollToBottom,
+  scrollToAbsoluteIndex,
 }: ScrollCommandExecutorOptions): ScrollCommandExecutorResult {
   // -------------------------------------------------------------------------
   // Scroll state lives in a ref to avoid re-render cascades.
@@ -103,8 +117,7 @@ export function useScrollCommandExecutor({
     stateRef.current = updateIsAtBottom(stateRef.current, isAtBottom);
   }
 
-  // Track item count to detect when to execute intents
-  const prevItemCountRef = useRef(itemCount);
+  const prevDataVersionRef = useRef(dataVersion);
 
   // -------------------------------------------------------------------------
   // Intent resolution (called by the container when entries update)
@@ -133,8 +146,16 @@ export function useScrollCommandExecutor({
         behavior,
       };
       stateRef.current = setPendingIntent(stateRef.current, intent);
+      executeIntent(
+        virtualizer,
+        intent,
+        itemCount,
+        scrollToBottom,
+        scrollToAbsoluteIndex
+      );
+      stateRef.current = markIntentApplied(stateRef.current);
     },
-    []
+    [itemCount, scrollToAbsoluteIndex, scrollToBottom, virtualizer]
   );
 
   const requestJumpToIndex = useCallback(
@@ -150,8 +171,16 @@ export function useScrollCommandExecutor({
         behavior,
       };
       stateRef.current = setPendingIntent(stateRef.current, intent);
+      executeIntent(
+        virtualizer,
+        intent,
+        itemCount,
+        scrollToBottom,
+        scrollToAbsoluteIndex
+      );
+      stateRef.current = markIntentApplied(stateRef.current);
     },
-    []
+    [itemCount, scrollToAbsoluteIndex, scrollToBottom, virtualizer]
   );
 
   // -------------------------------------------------------------------------
@@ -166,19 +195,28 @@ export function useScrollCommandExecutor({
     const intent = state.pendingIntent;
     if (!intent) return;
 
-    // For data-driven intents (not imperative jumps), only execute when
-    // the item count has actually changed — this prevents re-executing
-    // stale intents on unrelated re-renders.
     const isImperativeIntent =
       intent.type === 'jump-to-bottom' || intent.type === 'jump-to-index';
-    if (!isImperativeIntent && itemCount === prevItemCountRef.current) {
+    if (!isImperativeIntent && dataVersion === prevDataVersionRef.current) {
       return;
     }
 
-    executeIntent(virtualizer, intent, itemCount);
+    executeIntent(
+      virtualizer,
+      intent,
+      itemCount,
+      scrollToBottom,
+      scrollToAbsoluteIndex
+    );
     stateRef.current = markIntentApplied(stateRef.current);
-    prevItemCountRef.current = itemCount;
-  });
+    prevDataVersionRef.current = dataVersion;
+  }, [
+    dataVersion,
+    itemCount,
+    scrollToAbsoluteIndex,
+    scrollToBottom,
+    virtualizer,
+  ]);
 
   // -------------------------------------------------------------------------
   // Return
@@ -213,29 +251,28 @@ export function useScrollCommandExecutor({
 function executeIntent(
   virtualizer: Virtualizer<HTMLDivElement, Element>,
   intent: ScrollIntent,
-  itemCount: number
+  itemCount: number,
+  scrollToBottom: (behavior?: TanStackScrollBehavior) => void,
+  scrollToAbsoluteIndex?: (
+    index: number,
+    align?: TanStackScrollAlign,
+    behavior?: TanStackScrollBehavior
+  ) => boolean
 ): void {
   if (itemCount === 0) return;
+
   const lastIndex = itemCount - 1;
+  const virtualizedCount = virtualizer.options.count;
 
   switch (intent.type) {
     case 'initial-bottom': {
-      // Purge estimated sizes so the virtualizer re-measures everything.
-      // This prevents the "flash at top" on initial load where heuristic
-      // estimates cause the scroll position to be wrong.
       virtualizer.measure();
-      virtualizer.scrollToIndex(lastIndex, {
-        align: 'end',
-        behavior: 'auto',
-      });
+      scrollToBottom('auto');
       break;
     }
 
     case 'follow-bottom': {
-      virtualizer.scrollToIndex(lastIndex, {
-        align: 'end',
-        behavior: toTanStackBehavior(intent.behavior),
-      });
+      scrollToBottom(toTanStackBehavior(intent.behavior));
       break;
     }
 
@@ -244,6 +281,14 @@ function executeIntent(
     }
 
     case 'plan-reveal': {
+      if (virtualizedCount === 0 || lastIndex >= virtualizedCount) {
+        if (scrollToAbsoluteIndex?.(lastIndex, 'start', 'auto')) {
+          break;
+        }
+        scrollToBottom('auto');
+        break;
+      }
+
       virtualizer.scrollToIndex(lastIndex, {
         align: 'start',
         behavior: 'auto',
@@ -252,14 +297,39 @@ function executeIntent(
     }
 
     case 'jump-to-bottom': {
-      virtualizer.scrollToIndex(lastIndex, {
-        align: 'end',
-        behavior: toTanStackBehavior(intent.behavior),
-      });
+      scrollToBottom(toTanStackBehavior(intent.behavior));
       break;
     }
 
     case 'jump-to-index': {
+      if (virtualizedCount === 0) {
+        if (
+          scrollToAbsoluteIndex?.(
+            intent.index,
+            intent.align,
+            toTanStackBehavior(intent.behavior)
+          )
+        ) {
+          break;
+        }
+        scrollToBottom(toTanStackBehavior(intent.behavior));
+        break;
+      }
+
+      if (intent.index >= virtualizedCount) {
+        if (
+          scrollToAbsoluteIndex?.(
+            intent.index,
+            intent.align,
+            toTanStackBehavior(intent.behavior)
+          )
+        ) {
+          break;
+        }
+        scrollToBottom(toTanStackBehavior(intent.behavior));
+        break;
+      }
+
       virtualizer.scrollToIndex(intent.index, {
         align: intent.align,
         behavior: toTanStackBehavior(intent.behavior),
