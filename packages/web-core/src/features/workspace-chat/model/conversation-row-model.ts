@@ -322,12 +322,14 @@ export function estimationHintForFamily(family: RowFamily): SizeEstimationHint {
 
     // Medium: multi-line but bounded rows
     case 'user_message':
-    case 'system_message':
     case 'error_message':
     case 'user_feedback':
     case 'user_answered_questions':
     case 'script':
       return 'medium';
+
+    case 'system_message':
+      return 'compact';
 
     // Tall: potentially large content
     case 'assistant_message':

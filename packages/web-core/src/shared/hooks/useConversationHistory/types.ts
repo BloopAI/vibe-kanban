@@ -109,6 +109,7 @@ export type ExecutionProcessStateStore = Record<string, ExecutionProcessState>;
 export interface UseConversationHistoryParams {
   attempt: Workspace;
   onEntriesUpdated: OnEntriesUpdated;
+  scopeKey: string;
 }
 
 export interface UseConversationHistoryResult {}

@@ -19,6 +19,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type RefObject,
@@ -143,6 +144,77 @@ export function useConversationVirtualizer({
   scrollContainerRef,
   onAtBottomChange,
 }: ConversationVirtualizerOptions): ConversationVirtualizerResult {
+  const bottomScrollFrameRef = useRef<number | null>(null);
+  const bottomScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
+  const bottomScrollCorrectionDeadlineRef = useRef(0);
+
+  const clearPendingBottomScrollCorrection = useCallback(() => {
+    if (bottomScrollFrameRef.current !== null) {
+      cancelAnimationFrame(bottomScrollFrameRef.current);
+      bottomScrollFrameRef.current = null;
+    }
+    if (bottomScrollTimeoutRef.current !== null) {
+      clearTimeout(bottomScrollTimeoutRef.current);
+      bottomScrollTimeoutRef.current = null;
+    }
+    bottomScrollCorrectionDeadlineRef.current = 0;
+  }, []);
+
+  const runBottomScrollCorrection = useCallback(() => {
+    bottomScrollFrameRef.current = null;
+
+    const activeElement = scrollContainerRef.current;
+    if (!activeElement) {
+      bottomScrollCorrectionDeadlineRef.current = 0;
+      return;
+    }
+
+    const targetTop = Math.max(
+      0,
+      activeElement.scrollHeight - activeElement.clientHeight
+    );
+    if (Math.abs(targetTop - activeElement.scrollTop) > 1) {
+      activeElement.scrollTo({
+        top: activeElement.scrollHeight,
+        behavior: 'auto',
+      });
+    }
+
+    if (performance.now() < bottomScrollCorrectionDeadlineRef.current) {
+      bottomScrollFrameRef.current = requestAnimationFrame(
+        runBottomScrollCorrection
+      );
+      return;
+    }
+
+    bottomScrollCorrectionDeadlineRef.current = 0;
+  }, [scrollContainerRef]);
+
+  const startBottomScrollCorrection = useCallback(
+    (durationMs: number, delayMs = 0) => {
+      clearPendingBottomScrollCorrection();
+      bottomScrollCorrectionDeadlineRef.current =
+        performance.now() + durationMs;
+
+      if (delayMs > 0) {
+        bottomScrollTimeoutRef.current = setTimeout(() => {
+          bottomScrollTimeoutRef.current = null;
+          bottomScrollFrameRef.current = requestAnimationFrame(
+            runBottomScrollCorrection
+          );
+        }, delayMs);
+        return;
+      }
+
+      bottomScrollFrameRef.current = requestAnimationFrame(
+        runBottomScrollCorrection
+      );
+    },
+    [clearPendingBottomScrollCorrection, runBottomScrollCorrection]
+  );
+
   // -------------------------------------------------------------------------
   // Virtualizer instance
   // -------------------------------------------------------------------------
@@ -228,34 +300,41 @@ export function useConversationVirtualizer({
   const [isAtBottomState, setIsAtBottomState] = useState(true);
   const onAtBottomChangeRef = useRef(onAtBottomChange);
   onAtBottomChangeRef.current = onAtBottomChange;
+  const lastAtBottomRef = useRef(true);
+
+  const syncIsAtBottom = useCallback(() => {
+    const el = scrollContainerRef.current;
+    const nextValue = el
+      ? isNearBottom(el.scrollTop, el.clientHeight, el.scrollHeight)
+      : true;
+
+    if (nextValue !== lastAtBottomRef.current) {
+      lastAtBottomRef.current = nextValue;
+      setIsAtBottomState(nextValue);
+      onAtBottomChangeRef.current?.(nextValue);
+      return;
+    }
+
+    setIsAtBottomState((current) =>
+      current === nextValue ? current : nextValue
+    );
+  }, [scrollContainerRef]);
 
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
-    let lastValue = true;
-
     const handleScroll = () => {
-      const atBottom = isNearBottom(
-        el.scrollTop,
-        el.clientHeight,
-        el.scrollHeight
-      );
-      if (atBottom !== lastValue) {
-        lastValue = atBottom;
-        setIsAtBottomState(atBottom);
-        onAtBottomChangeRef.current?.(atBottom);
-      }
+      syncIsAtBottom();
     };
 
     el.addEventListener('scroll', handleScroll, { passive: true });
-    // Check initial state
     handleScroll();
 
     return () => {
       el.removeEventListener('scroll', handleScroll);
     };
-  }, [scrollContainerRef]);
+  }, [scrollContainerRef, syncIsAtBottom]);
 
   // -------------------------------------------------------------------------
   // Derived state
@@ -264,19 +343,35 @@ export function useConversationVirtualizer({
   const virtualItems = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
 
+  useLayoutEffect(() => {
+    syncIsAtBottom();
+  }, [rows.length, totalSize, syncIsAtBottom]);
+
   // -------------------------------------------------------------------------
   // Imperative helpers
   // -------------------------------------------------------------------------
 
   const scrollToBottom = useCallback(
     (behavior: ScrollToOptionsBehavior = 'smooth') => {
-      if (rows.length === 0) return;
-      virtualizer.scrollToIndex(rows.length - 1, {
-        align: 'end',
-        behavior,
-      });
+      const el = scrollContainerRef.current;
+      if (!el) return;
+
+      virtualizer.measure();
+      el.scrollTo({ top: el.scrollHeight, behavior });
+
+      if (behavior === 'auto') {
+        startBottomScrollCorrection(1000);
+        return;
+      }
+
+      startBottomScrollCorrection(500, 250);
     },
-    [virtualizer, rows.length]
+    [scrollContainerRef, startBottomScrollCorrection, virtualizer]
+  );
+
+  useEffect(
+    () => clearPendingBottomScrollCorrection,
+    [clearPendingBottomScrollCorrection]
   );
 
   const scrollToIndex = useCallback(
@@ -296,11 +391,13 @@ export function useConversationVirtualizer({
   );
 
   const scrollToPreviousUserMessage = useCallback((): boolean => {
+    const scrollEl = scrollContainerRef.current;
     const items = virtualizer.getVirtualItems();
-    if (items.length === 0 || rows.length === 0) return false;
+    if (items.length === 0 || rows.length === 0 || !scrollEl) return false;
 
-    // The first visible virtual item's index is the scan start point
-    const firstVisibleIndex = items[0].index;
+    const firstVisibleIndex =
+      virtualizer.getVirtualItemForOffset(scrollEl.scrollTop)?.index ??
+      items[0].index;
     const targetIndex = findPreviousUserMessageIndex(rows, firstVisibleIndex);
 
     if (targetIndex < 0) return false;
@@ -310,7 +407,7 @@ export function useConversationVirtualizer({
       behavior: 'smooth',
     });
     return true;
-  }, [virtualizer, rows]);
+  }, [scrollContainerRef, virtualizer, rows]);
 
   const checkIsAtBottom = useCallback((): boolean => {
     const el = scrollContainerRef.current;
