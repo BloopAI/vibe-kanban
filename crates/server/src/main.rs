@@ -1,12 +1,15 @@
 use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
-use server::{DeploymentImpl, routes, runtime::relay_registration};
+use server::{
+    DeploymentImpl, middleware::origin::validate_origin, routes, runtime::relay_registration,
+};
 use services::services::container::ContainerService;
 use sqlx::Error as SqlxError;
 use strip_ansi_escapes::strip;
 use thiserror::Error;
 use tokio_util::sync::CancellationToken;
+use tower_http::validate_request::ValidateRequestHeaderLayer;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::{
     assets::asset_dir,
@@ -159,11 +162,8 @@ async fn main() -> Result<(), VibeKanbanError> {
         });
     }
 
-    let proxy_router: Router = routes::preview::subdomain_router(deployment.clone()).layer(
-        tower_http::validate_request::ValidateRequestHeaderLayer::custom(
-            server::middleware::validate_origin,
-        ),
-    );
+    let proxy_router: Router = routes::preview::subdomain_router(deployment.clone())
+        .layer(ValidateRequestHeaderLayer::custom(validate_origin));
 
     let main_shutdown = shutdown_token.clone();
     let proxy_shutdown = shutdown_token.clone();
