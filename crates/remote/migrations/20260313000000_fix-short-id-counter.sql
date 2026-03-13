@@ -2,6 +2,7 @@
 -- Moves issue_counter from projects -> organizations so that issues
 -- across all projects in an org share a single incrementing counter.
 -- e.g., Project A issue 1 gets ORG-1, Project B issue 1 gets ORG-2.
+-- Uniqueness is enforced by the trigger (atomic counter increment), not a constraint.
 
 -- 1. Add org-level counter
 ALTER TABLE organizations
@@ -20,62 +21,14 @@ SET issue_counter = COALESCE(
     0
 );
 
--- 3. Add denormalized organization_id to issues (required for the org-scoped unique constraint)
-ALTER TABLE issues
-    ADD COLUMN IF NOT EXISTS organization_id UUID REFERENCES organizations(id) ON DELETE CASCADE;
-
--- 4. Backfill organization_id for all existing issues
-UPDATE issues i
-SET organization_id = p.organization_id
-FROM projects p
-WHERE i.project_id = p.id;
-
--- 5. Make it NOT NULL now that the column is fully populated
-ALTER TABLE issues
-    ALTER COLUMN organization_id SET NOT NULL;
-
--- 6. Drop the old per-project uniqueness constraint
+-- 3. Drop the old per-project uniqueness constraint
 ALTER TABLE issues
     DROP CONSTRAINT IF EXISTS issues_project_issue_number_uniq;
 
--- 6b. Renumber all existing issues org-wide so (organization_id, issue_number) is unique.
---     Under the old schema, issue_number was per-project (1, 2, 3... per project), so
---     multiple projects in the same org have overlapping numbers. Assign new sequential
---     numbers ordered by created_at (id as tiebreaker) and update simple_id to match.
-WITH renumbered AS (
-    SELECT
-        i.id,
-        ROW_NUMBER() OVER (
-            PARTITION BY i.organization_id
-            ORDER BY i.created_at, i.id
-        ) AS new_issue_number,
-        o.issue_prefix
-    FROM issues i
-    JOIN organizations o ON o.id = i.organization_id
-)
-UPDATE issues i
-SET
-    issue_number = r.new_issue_number,
-    simple_id    = r.issue_prefix || '-' || r.new_issue_number
-FROM renumbered r
-WHERE i.id = r.id;
-
--- 6c. Reset org counters to the new maximums after renumbering.
-UPDATE organizations o
-SET issue_counter = COALESCE(
-    (SELECT MAX(issue_number) FROM issues WHERE organization_id = o.id),
-    0
-);
-
--- 7. Add new org-scoped uniqueness constraint
-ALTER TABLE issues
-    ADD CONSTRAINT issues_org_issue_number_uniq UNIQUE (organization_id, issue_number);
-
--- 8. Index to support org-scoped issue queries efficiently
-CREATE INDEX IF NOT EXISTS idx_issues_organization_id ON issues(organization_id);
-
--- 9. Update the trigger function to increment the org counter instead of project counter.
+-- 4. Update the trigger function to increment the org counter instead of project counter.
 --    The trigger trg_issues_simple_id itself does not need to be recreated.
+--    Uniqueness is guaranteed by the atomic UPDATE ... RETURNING on the org row,
+--    which serializes concurrent inserts via row-level locking.
 CREATE OR REPLACE FUNCTION set_issue_simple_id()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -96,15 +49,14 @@ BEGIN
     WHERE id = v_organization_id
     RETURNING issue_counter INTO v_issue_number;
 
-    -- Assign all auto-generated fields
-    NEW.issue_number    := v_issue_number;
-    NEW.simple_id       := v_issue_prefix || '-' || v_issue_number;
-    NEW.organization_id := v_organization_id;
+    -- Assign auto-generated fields
+    NEW.issue_number := v_issue_number;
+    NEW.simple_id    := v_issue_prefix || '-' || v_issue_number;
 
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- 10. Remove the now-unused per-project issue counter
+-- 5. Remove the now-unused per-project issue counter
 ALTER TABLE projects
     DROP COLUMN IF EXISTS issue_counter;
