@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                parent_issue_sort_order AS \"parent_issue_sort_order?\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                creator_user_id     AS \"creator_user_id?: Uuid\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM issues\n            WHERE project_id = $1\n            ",
+  "query": "\n            SELECT\n                id                  AS \"id!: Uuid\",\n                project_id          AS \"project_id!: Uuid\",\n                organization_id     AS \"organization_id!: Uuid\",\n                issue_number        AS \"issue_number!\",\n                simple_id           AS \"simple_id!\",\n                status_id           AS \"status_id!: Uuid\",\n                title               AS \"title!\",\n                description         AS \"description?\",\n                priority            AS \"priority: IssuePriority\",\n                start_date          AS \"start_date?: DateTime<Utc>\",\n                target_date         AS \"target_date?: DateTime<Utc>\",\n                completed_at        AS \"completed_at?: DateTime<Utc>\",\n                sort_order          AS \"sort_order!\",\n                parent_issue_id     AS \"parent_issue_id?: Uuid\",\n                parent_issue_sort_order AS \"parent_issue_sort_order?\",\n                extension_metadata  AS \"extension_metadata!: Value\",\n                creator_user_id     AS \"creator_user_id?: Uuid\",\n                created_at          AS \"created_at!: DateTime<Utc>\",\n                updated_at          AS \"updated_at!: DateTime<Utc>\"\n            FROM issues\n            WHERE id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -15,31 +15,36 @@
       },
       {
         "ordinal": 2,
+        "name": "organization_id!: Uuid",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
         "name": "issue_number!",
         "type_info": "Int4"
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "simple_id!",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "status_id!: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "title!",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "description?",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "priority: IssuePriority",
         "type_info": {
           "Custom": {
@@ -56,52 +61,52 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "start_date?: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "target_date?: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "completed_at?: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "sort_order!",
         "type_info": "Float8"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "parent_issue_id?: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "parent_issue_sort_order?",
         "type_info": "Float8"
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "extension_metadata!: Value",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "creator_user_id?: Uuid",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "created_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "updated_at!: DateTime<Utc>",
         "type_info": "Timestamptz"
       }
@@ -112,6 +117,7 @@
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -132,5 +138,5 @@
       false
     ]
   },
-  "hash": "c795af01dadc747b50260e60ddd529ae39b80a49d49402ee49a884030bd8adbc"
+  "hash": "4940bd27c4d87e37292b22d179687b9dcb67e652cf502e1e99fa7f6236be1899"
 }

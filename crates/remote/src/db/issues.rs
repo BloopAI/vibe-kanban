@@ -43,6 +43,7 @@ impl IssueRepository {
             SELECT
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
+                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
@@ -99,6 +100,7 @@ impl IssueRepository {
             SELECT
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
+                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
@@ -161,6 +163,7 @@ impl IssueRepository {
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
+                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
@@ -266,6 +269,7 @@ impl IssueRepository {
             RETURNING
                 id                  AS "id!: Uuid",
                 project_id          AS "project_id!: Uuid",
+                organization_id     AS "organization_id!: Uuid",
                 issue_number        AS "issue_number!",
                 simple_id           AS "simple_id!",
                 status_id           AS "status_id!: Uuid",
