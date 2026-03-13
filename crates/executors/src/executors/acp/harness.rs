@@ -16,7 +16,9 @@ use tokio_util::{
     sync::CancellationToken,
 };
 use tracing::error;
-use workspace_utils::{approvals::ApprovalStatus, stream_lines::LinesStreamExt};
+use workspace_utils::{
+    approvals::ApprovalStatus, command_ext::GroupSpawnNoWindowExt, stream_lines::LinesStreamExt,
+};
 
 use super::{AcpClient, SessionManager};
 use crate::{
@@ -24,7 +26,6 @@ use crate::{
     command::{CmdOverrides, CommandParts},
     env::ExecutionEnv,
     executors::{ExecutorError, ExecutorExitResult, SpawnedChild, acp::AcpEvent},
-    group_spawn_ext::GroupSpawnNoWindow,
 };
 
 /// Reusable harness for ACP-based conns (Gemini, Qwen, etc.)

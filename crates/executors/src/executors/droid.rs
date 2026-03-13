@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     command::{CommandBuildError, CommandBuilder, CommandParts},
@@ -16,7 +16,6 @@ use crate::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
     },
-    group_spawn_ext::GroupSpawnNoWindow,
     logs::utils::{EntryIndexProvider, patch},
     model_selector::{ModelInfo, ModelSelectorConfig},
     profile::ExecutorConfig,

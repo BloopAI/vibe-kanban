@@ -13,11 +13,9 @@ use futures::{StreamExt, stream::BoxStream};
 use tokio::io::{AsyncWrite, AsyncWriteExt};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tokio_util::io::ReaderStream;
+use workspace_utils::command_ext::GroupSpawnNoWindowExt;
 
-use crate::{
-    executors::{ExecutorError, SpawnedChild},
-    group_spawn_ext::GroupSpawnNoWindow,
-};
+use crate::executors::{ExecutorError, SpawnedChild};
 
 /// Duplicate stdout from AsyncGroupChild.
 ///

@@ -12,13 +12,13 @@ use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
+use workspace_utils::command_ext::GroupSpawnNoWindowExt;
 
 use super::{ClaudeCode, ClaudeJson, ClaudePlugin, base_command};
 use crate::{
     command::{CommandBuildError, CommandBuilder, apply_overrides},
     env::{ExecutionEnv, RepoContext},
     executors::{ExecutorError, SlashCommandDescription},
-    group_spawn_ext::GroupSpawnNoWindow,
     model_selector::AgentInfo,
 };
 

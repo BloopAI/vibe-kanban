@@ -5,7 +5,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     command::{CmdOverrides, CommandBuildError, CommandBuilder, apply_overrides},
@@ -14,7 +14,6 @@ use crate::{
         AppendPrompt, BaseCodingAgent, ExecutorError, SpawnedChild, StandardCodingAgentExecutor,
         claude::{ClaudeLogProcessor, HistoryStrategy},
     },
-    group_spawn_ext::GroupSpawnNoWindow,
     logs::{stderr_processor::normalize_stderr_logs, utils::EntryIndexProvider},
     profile::ExecutorConfig,
 };
