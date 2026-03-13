@@ -16,7 +16,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::workspaces::files::{ImportedIssueFile, import_issue_attachment_files},
+    routes::workspaces::files::{ImportedIssueAttachment, import_issue_attachments_from_remote},
 };
 
 static ISSUE_ATTACHMENT_MARKDOWN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
@@ -89,7 +89,7 @@ fn escape_markdown_label(label: &str) -> String {
     escaped
 }
 
-fn is_image_attachment(file: &ImportedIssueFile) -> bool {
+fn is_image_attachment(file: &ImportedIssueAttachment) -> bool {
     if let Some(mime_type) = &file.file.mime_type
         && mime_type.starts_with("image/")
     {
@@ -103,7 +103,7 @@ fn is_image_attachment(file: &ImportedIssueFile) -> bool {
     )
 }
 
-fn build_workspace_attachment_markdown(file: &ImportedIssueFile, label: &str) -> String {
+fn build_workspace_attachment_markdown(file: &ImportedIssueAttachment, label: &str) -> String {
     let path = format!(".vibe-images/{}", file.file.file_path);
     let normalized_label = if label.trim().is_empty() {
         file.file.original_name.as_str()
@@ -121,13 +121,13 @@ fn build_workspace_attachment_markdown(file: &ImportedIssueFile, label: &str) ->
 
 fn rewrite_imported_issue_attachments_markdown(
     prompt: &str,
-    imported_files: &[ImportedIssueFile],
+    imported_attachments: &[ImportedIssueAttachment],
 ) -> String {
-    if imported_files.is_empty() {
+    if imported_attachments.is_empty() {
         return prompt.to_string();
     }
 
-    let imported_by_attachment_id = imported_files
+    let imported_by_attachment_id = imported_attachments
         .iter()
         .map(|file| (file.attachment_id, file))
         .collect::<HashMap<_, _>>();
@@ -159,7 +159,7 @@ pub async fn create_and_start_workspace(
         linked_issue,
         executor_config,
         prompt,
-        file_ids,
+        attachment_ids,
     } = payload;
 
     let mut workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
@@ -186,17 +186,22 @@ pub async fn create_and_start_workspace(
             .map_err(ApiError::from)?;
     }
 
-    if let Some(ids) = &file_ids {
+    if let Some(ids) = &attachment_ids {
         managed_workspace.associate_files(ids).await?;
     }
 
     if let Some(linked_issue) = &linked_issue
         && let Ok(client) = deployment.remote_client()
     {
-        match import_issue_attachment_files(&client, deployment.file(), linked_issue.issue_id).await
+        match import_issue_attachments_from_remote(
+            &client,
+            deployment.file(),
+            linked_issue.issue_id,
+        )
+        .await
         {
-            Ok(imported_files) if !imported_files.is_empty() => {
-                let imported_ids = imported_files
+            Ok(imported_attachments) if !imported_attachments.is_empty() => {
+                let imported_ids = imported_attachments
                     .iter()
                     .map(|imported| imported.file.id)
                     .collect::<Vec<_>>();
@@ -205,8 +210,10 @@ pub async fn create_and_start_workspace(
                     tracing::warn!("Failed to associate imported files with workspace: {}", e);
                 }
 
-                workspace_prompt =
-                    rewrite_imported_issue_attachments_markdown(&workspace_prompt, &imported_files);
+                workspace_prompt = rewrite_imported_issue_attachments_markdown(
+                    &workspace_prompt,
+                    &imported_attachments,
+                );
 
                 tracing::info!(
                     "Imported {} files from issue {}",
@@ -258,15 +265,15 @@ mod tests {
     use db::models::file::File;
     use uuid::Uuid;
 
-    use super::{ImportedIssueFile, rewrite_imported_issue_attachments_markdown};
+    use super::{ImportedIssueAttachment, rewrite_imported_issue_attachments_markdown};
 
     fn imported_file(
         attachment_id: Uuid,
         original_name: &str,
         file_path: &str,
         mime_type: Option<&str>,
-    ) -> ImportedIssueFile {
-        ImportedIssueFile {
+    ) -> ImportedIssueAttachment {
+        ImportedIssueAttachment {
             attachment_id,
             file: File {
                 id: Uuid::new_v4(),

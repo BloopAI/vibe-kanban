@@ -7,8 +7,8 @@ import { Download, File, HelpCircle, X } from 'lucide-react';
 import {
   useWorkspaceId,
   useSessionId,
-  useLocalFiles,
-  type LocalFileMetadata,
+  useLocalAttachments,
+  type LocalAttachmentMetadata,
 } from './WorkspaceContext';
 import {
   createDecoratorNode,
@@ -23,7 +23,7 @@ interface AttachmentUrlResult {
   url: string | null;
 }
 
-interface FileMetadataLike {
+interface AttachmentMetadataLike {
   exists: boolean;
   file_name?: string | null;
   size_bytes?: bigint | null;
@@ -31,19 +31,19 @@ interface FileMetadataLike {
   proxy_url?: string | null;
 }
 
-export interface CreateFileNodeOptions {
+export interface CreateAttachmentNodeOptions {
   fetchAttachmentUrl: (
     attachmentId: string,
     type: AttachmentType
   ) => Promise<string>;
 }
 
-export interface FileData {
+export interface AttachmentData {
   src: string;
   label: string;
 }
 
-export type SerializedFileNode = Spread<
+export type SerializedAttachmentNode = Spread<
   {
     src: string;
     label: string;
@@ -81,63 +81,64 @@ function inferFormat(
   return extension.toUpperCase();
 }
 
-function toMetadataFromLocalFile(
-  localFile: LocalFileMetadata | undefined
-): FileMetadataLike | null {
-  if (!localFile) return null;
+function toMetadataFromLocalAttachment(
+  localAttachment: LocalAttachmentMetadata | undefined
+): AttachmentMetadataLike | null {
+  if (!localAttachment) return null;
 
   return {
     exists: true,
-    file_name: localFile.file_name,
-    size_bytes: BigInt(localFile.size_bytes),
-    format: localFile.format,
-    proxy_url: localFile.proxy_url,
+    file_name: localAttachment.file_name,
+    size_bytes: BigInt(localAttachment.size_bytes),
+    format: localAttachment.format,
+    proxy_url: localAttachment.proxy_url,
   };
 }
 
-function useFileMetadata(
+function useAttachmentMetadata(
   workspaceId: string | undefined,
   sessionId: string | undefined,
   src: string,
-  localFiles: LocalFileMetadata[]
+  localAttachments: LocalAttachmentMetadata[]
 ) {
-  const isWorkspaceFile = src.startsWith('.vibe-images/');
+  const isWorkspaceAttachment = src.startsWith('.vibe-images/');
 
-  const localFile = useMemo(
-    () => localFiles.find((file) => file.path === src),
-    [localFiles, src]
+  const localAttachment = useMemo(
+    () => localAttachments.find((attachment) => attachment.path === src),
+    [localAttachments, src]
   );
 
-  const localFileMetadata = useMemo(
-    () => toMetadataFromLocalFile(localFile),
-    [localFile]
+  const localAttachmentMetadata = useMemo(
+    () => toMetadataFromLocalAttachment(localAttachment),
+    [localAttachment]
   );
 
-  const shouldFetch = isWorkspaceFile && !!workspaceId && !localFile;
+  const shouldFetch =
+    isWorkspaceAttachment && !!workspaceId && !localAttachment;
 
   const query = useQuery({
     queryKey: ['file-metadata', workspaceId, sessionId, src],
-    queryFn: async (): Promise<FileMetadataLike | null> => {
+    queryFn: async (): Promise<AttachmentMetadataLike | null> => {
       if (!workspaceId || !sessionId) return null;
 
       const response = await fetch(
         `/api/workspaces/${workspaceId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
       );
       const payload = await response.json();
-      return payload.data as FileMetadataLike | null;
+      return payload.data as AttachmentMetadataLike | null;
     },
     enabled: shouldFetch && !!sessionId,
     staleTime: Infinity,
   });
 
   return {
-    data: localFileMetadata ?? query.data,
+    data: localAttachmentMetadata ?? query.data,
   };
 }
 
 function useAttachmentFileUrl(
   attachmentId: string | null,
-  fetchAttachmentUrl: CreateFileNodeOptions['fetchAttachmentUrl']
+  fetchAttachmentUrl: CreateAttachmentNodeOptions['fetchAttachmentUrl']
 ): AttachmentUrlResult {
   const query = useQuery({
     queryKey: ['attachment-file-url', attachmentId],
@@ -151,13 +152,13 @@ function useAttachmentFileUrl(
   };
 }
 
-export function createFileNode(options: CreateFileNodeOptions) {
-  function FileComponent({
+export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
+  function AttachmentComponent({
     data,
     nodeKey,
     onDoubleClickEdit,
   }: {
-    data: FileData;
+    data: AttachmentData;
     nodeKey: NodeKey;
     onDoubleClickEdit: (event: React.MouseEvent) => void;
   }): JSX.Element {
@@ -165,10 +166,10 @@ export function createFileNode(options: CreateFileNodeOptions) {
     const { src, label } = data;
     const workspaceId = useWorkspaceId();
     const sessionId = useSessionId();
-    const localFiles = useLocalFiles();
+    const localAttachments = useLocalAttachments();
     const [editor] = useLexicalComposerContext();
 
-    const isWorkspaceFile = src.startsWith('.vibe-images/');
+    const isWorkspaceAttachment = src.startsWith('.vibe-images/');
     const isPendingAttachment = src.startsWith('pending-attachment://');
     const isAttachment = isPendingAttachment || src.startsWith('attachment://');
     const attachmentId =
@@ -179,11 +180,11 @@ export function createFileNode(options: CreateFileNodeOptions) {
       options.fetchAttachmentUrl
     );
 
-    const { data: metadata } = useFileMetadata(
+    const { data: metadata } = useAttachmentMetadata(
       workspaceId,
       sessionId,
       src,
-      localFiles
+      localAttachments
     );
 
     const resolvedUrl =
@@ -193,8 +194,10 @@ export function createFileNode(options: CreateFileNodeOptions) {
     );
     const format = inferFormat(label || metadata?.file_name || src, metadata?.format);
     const sizeText = formatFileSize(metadata?.size_bytes);
-    const localFile = localFiles.find((file) => file.path === src);
-    const metadataLine = localFile?.is_pending
+    const localAttachment = localAttachments.find(
+      (attachment) => attachment.path === src
+    );
+    const metadataLine = localAttachment?.is_pending
       ? ['Uploading', sizeText].filter(Boolean).join(' · ')
       : metadata?.exists
         ? format && sizeText
@@ -244,7 +247,7 @@ export function createFileNode(options: CreateFileNodeOptions) {
       [openUrl]
     );
 
-    const icon = isWorkspaceFile || isAttachment ? (
+    const icon = isWorkspaceAttachment || isAttachment ? (
       <File className="w-5 h-5 text-muted-foreground" />
     ) : (
       <HelpCircle className="w-5 h-5 text-muted-foreground" />
@@ -303,8 +306,8 @@ export function createFileNode(options: CreateFileNodeOptions) {
     );
   }
 
-  const config: DecoratorNodeConfig<FileData> = {
-    type: 'file',
+  const config: DecoratorNodeConfig<AttachmentData> = {
+    type: 'attachment',
     serialization: {
       format: 'inline',
       pattern:
@@ -313,7 +316,7 @@ export function createFileNode(options: CreateFileNodeOptions) {
       serialize: (data) => `[${data.label}](${data.src})`,
       deserialize: (match) => ({ src: match[2], label: match[1] }),
     },
-    component: FileComponent,
+    component: AttachmentComponent,
     domStyle: {
       display: 'inline-block',
       paddingLeft: '2px',
@@ -332,10 +335,10 @@ export function createFileNode(options: CreateFileNodeOptions) {
   const result = createDecoratorNode(config);
 
   return {
-    FileNode: result.Node,
-    $createFileNode: (src: string, label: string) =>
+    AttachmentNode: result.Node,
+    $createAttachmentNode: (src: string, label: string) =>
       result.createNode({ src, label }),
-    $isFileNode: result.isNode,
-    FILE_TRANSFORMER: result.transformers[0],
+    $isAttachmentNode: result.isNode,
+    ATTACHMENT_TRANSFORMER: result.transformers[0],
   };
 }

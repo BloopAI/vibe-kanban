@@ -29,7 +29,7 @@ import {
   PR_COMMENT_EXPORT_TRANSFORMER,
 } from '@vibe/ui/components/pr-comment-node';
 import { createImageNode } from '@vibe/ui/components/image-node';
-import { createFileNode } from '@vibe/ui/components/file-node';
+import { createAttachmentNode } from '@vibe/ui/components/attachment-node';
 import {
   ComponentInfoNode,
   COMPONENT_INFO_TRANSFORMER,
@@ -40,8 +40,8 @@ import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
-  LocalFilesContext,
-  type LocalFileMetadata,
+  LocalAttachmentsContext,
+  type LocalAttachmentMetadata,
 } from '@vibe/ui/components/WorkspaceContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import {
@@ -121,8 +121,8 @@ type WysiwygProps = {
   sessionId?: string;
   /** Repo ID for slash commands when no workspace yet */
   repoId?: string;
-  /** Local files for immediate rendering (before saved to server) */
-  localFiles?: LocalFileMetadata[];
+  /** Local attachments for immediate rendering (before saved to server) */
+  localAttachments?: LocalAttachmentMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
   onEdit?: () => void;
   /** Optional delete callback - shows delete button in read-only mode when provided */
@@ -270,7 +270,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       workspaceId,
       sessionId,
       repoId,
-      localFiles,
+      localAttachments,
       onEdit,
       onDelete,
       autoFocus = false,
@@ -387,15 +387,15 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         }),
       []
     );
-    const fileNodeDefinition = useMemo(
+    const attachmentNodeDefinition = useMemo(
       () =>
-        createFileNode({
+        createAttachmentNode({
           fetchAttachmentUrl: fetchAttachmentSasUrl,
         }),
       []
     );
     const { ImageNode, IMAGE_TRANSFORMER, $isImageNode } = imageNodeDefinition;
-    const { FileNode, FILE_TRANSFORMER } = fileNodeDefinition;
+    const { AttachmentNode, ATTACHMENT_TRANSFORMER } = attachmentNodeDefinition;
 
     const initialConfig = useMemo(
       () => ({
@@ -447,7 +447,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           CodeHighlightNode,
           LinkNode,
           ImageNode,
-          FileNode,
+          AttachmentNode,
           PrCommentNode,
           ComponentInfoNode,
           TableNode,
@@ -455,7 +455,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
           TableCellNode,
         ],
       }),
-      [FileNode, ImageNode]
+      [AttachmentNode, ImageNode]
     );
 
     // Edit mode: custom elements + text format transformers (so asterisks
@@ -464,14 +464,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
     const editTransformers: Transformer[] = useMemo(
       () => [
         IMAGE_TRANSFORMER,
-        FILE_TRANSFORMER,
+        ATTACHMENT_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
         COMPONENT_INFO_TRANSFORMER,
         ...TEXT_FORMAT_TRANSFORMERS,
       ],
-      [FILE_TRANSFORMER, IMAGE_TRANSFORMER]
+      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Display mode: full markdown rendering
@@ -479,7 +479,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       () => [
         TABLE_TRANSFORMER,
         IMAGE_TRANSFORMER,
-        FILE_TRANSFORMER,
+        ATTACHMENT_TRANSFORMER,
         PR_COMMENT_EXPORT_TRANSFORMER,
         PR_COMMENT_TRANSFORMER,
         COMPONENT_INFO_EXPORT_TRANSFORMER,
@@ -487,7 +487,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
         CODE,
         ...TRANSFORMERS,
       ],
-      [FILE_TRANSFORMER, IMAGE_TRANSFORMER]
+      [ATTACHMENT_TRANSFORMER, IMAGE_TRANSFORMER]
     );
 
     // Use display transformers for read-only, edit transformers for editing
@@ -554,14 +554,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
               className={className}
               workspaceId={workspaceId}
               sessionId={sessionId}
-              localFiles={localFiles}
+              localAttachments={localAttachments}
             />
           </div>
         )}
 
         <EditorWorkspaceContext.Provider value={workspaceId}>
           <SessionContext.Provider value={sessionId}>
-            <LocalFilesContext.Provider value={localFiles ?? []}>
+            <LocalAttachmentsContext.Provider value={localAttachments ?? []}>
               <LexicalComposer initialConfig={initialConfig}>
                 <EditorRefPlugin editorRef={editorInstanceRef} />
                 <MarkdownSyncPlugin
@@ -673,7 +673,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   />
                 )}
               </LexicalComposer>
-            </LocalFilesContext.Provider>
+            </LocalAttachmentsContext.Provider>
           </SessionContext.Provider>
         </EditorWorkspaceContext.Provider>
       </div>

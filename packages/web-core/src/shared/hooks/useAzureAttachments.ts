@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LocalFileMetadata } from '@vibe/ui/components/WorkspaceContext';
+import type { LocalAttachmentMetadata } from '@vibe/ui/components/WorkspaceContext';
 import {
   computeFileHash,
   confirmAttachmentUpload,
@@ -56,7 +56,7 @@ interface UseAzureAttachmentsReturn {
   hasPendingAttachments: boolean;
   uploadError: string | null;
   clearUploadError: () => void;
-  localFiles: LocalFileMetadata[];
+  localAttachments: LocalAttachmentMetadata[];
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,9 @@ export function useAzureAttachments({
   const [pendingAttachments, setPendingAttachments] = useState<
     PendingAttachment[]
   >([]);
-  const [localFiles, setLocalFiles] = useState<LocalFileMetadata[]>([]);
+  const [localAttachments, setLocalAttachments] = useState<
+    LocalAttachmentMetadata[]
+  >([]);
   const [completedAttachments, setCompletedAttachments] = useState<
     CompletedAttachment[]
   >([]);
@@ -204,7 +206,7 @@ export function useAzureAttachments({
           status: 'hashing' as const,
         })),
       ]);
-      setLocalFiles((prev) => [
+      setLocalAttachments((prev) => [
         ...prev,
         ...pendingLocals.map(({ tempSrc, objectUrl, file }) => ({
           path: tempSrc,
@@ -234,7 +236,7 @@ export function useAzureAttachments({
               p.file === file ? { ...p, status: 'uploading', progress: 0 } : p
             )
           );
-          setLocalFiles((prev) =>
+          setLocalAttachments((prev) =>
             prev.map((localFile) =>
               localFile.path === tempSrc
                 ? {
@@ -258,7 +260,7 @@ export function useAzureAttachments({
               setPendingAttachments((prev) =>
                 prev.map((p) => (p.file === file ? { ...p, progress: pct } : p))
               );
-              setLocalFiles((prev) =>
+              setLocalAttachments((prev) =>
                 prev.map((localFile) =>
                   localFile.path === tempSrc
                     ? { ...localFile, upload_progress: pct }
@@ -275,7 +277,7 @@ export function useAzureAttachments({
                 : p
             )
           );
-          setLocalFiles((prev) =>
+          setLocalAttachments((prev) =>
             prev.map((localFile) =>
               localFile.path === tempSrc
                 ? {
@@ -305,7 +307,7 @@ export function useAzureAttachments({
 
           setPendingAttachments((prev) => prev.filter((p) => p.file !== file));
           const finalSrc = `attachment://${result.id}`;
-          setLocalFiles((prev) =>
+          setLocalAttachments((prev) =>
             prev.map((localFile) =>
               localFile.path === tempSrc
                 ? {
@@ -332,7 +334,7 @@ export function useAzureAttachments({
             setCompletedAttachments((prev) =>
               prev.filter((attachment) => attachment.id !== result.id)
             );
-            setLocalFiles((prev) =>
+            setLocalAttachments((prev) =>
               prev.filter((localFile) => localFile.path !== finalSrc)
             );
             const objectUrl = localObjectsRef.current.get(finalSrc);
@@ -354,7 +356,7 @@ export function useAzureAttachments({
             })
           );
           setPendingAttachments((prev) => prev.filter((p) => p.file !== file));
-          setLocalFiles((prev) =>
+          setLocalAttachments((prev) =>
             prev.filter((localFile) => localFile.path !== tempSrc)
           );
           const objectUrl = localObjectsRef.current.get(tempSrc);
@@ -381,7 +383,7 @@ export function useAzureAttachments({
   const clearAttachments = useCallback(() => {
     setPendingAttachments([]);
     setCompletedAttachments([]);
-    setLocalFiles([]);
+    setLocalAttachments([]);
     for (const objectUrl of localObjectsRef.current.values()) {
       URL.revokeObjectURL(objectUrl);
     }
@@ -402,6 +404,6 @@ export function useAzureAttachments({
     hasPendingAttachments: pendingAttachments.length > 0,
     uploadError,
     clearUploadError,
-    localFiles,
+    localAttachments,
   };
 }

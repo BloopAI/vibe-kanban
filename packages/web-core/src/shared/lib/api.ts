@@ -26,7 +26,7 @@ import {
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
-  FileResponse,
+  AttachmentResponse,
   GitOperationError,
   ApprovalResponse,
   RebaseWorkspaceRequest,
@@ -1005,8 +1005,8 @@ export const profilesApi = {
 };
 
 // Files API
-export const filesApi = {
-  upload: async (file: File): Promise<FileResponse> => {
+export const attachmentsApi = {
+  upload: async (file: File): Promise<AttachmentResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -1025,10 +1025,13 @@ export const filesApi = {
       );
     }
 
-    return handleApiResponse<FileResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  uploadForTask: async (taskId: string, file: File): Promise<FileResponse> => {
+  uploadForTask: async (
+    taskId: string,
+    file: File
+  ): Promise<AttachmentResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -1050,14 +1053,14 @@ export const filesApi = {
       );
     }
 
-    return handleApiResponse<FileResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
   uploadForAttempt: async (
     workspaceId: string,
     sessionId: string,
     file: File
-  ): Promise<FileResponse> => {
+  ): Promise<AttachmentResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -1079,7 +1082,7 @@ export const filesApi = {
       );
     }
 
-    return handleApiResponse<FileResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
   delete: async (fileId: string): Promise<void> => {
@@ -1089,9 +1092,9 @@ export const filesApi = {
     return handleApiResponse<void>(response);
   },
 
-  getTaskFiles: async (taskId: string): Promise<FileResponse[]> => {
+  getTaskAttachments: async (taskId: string): Promise<AttachmentResponse[]> => {
     const response = await makeRequest(`/api/images/task/${taskId}`);
-    return handleApiResponse<FileResponse[]>(response);
+    return handleApiResponse<AttachmentResponse[]>(response);
   },
 
   getFileUrl: (fileId: string): string => {

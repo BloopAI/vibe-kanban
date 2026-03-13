@@ -1,5 +1,5 @@
-import type { FileResponse } from 'shared/types';
-import type { LocalFileMetadata } from '@vibe/ui/components/WorkspaceContext';
+import type { AttachmentResponse } from 'shared/types';
+import type { LocalAttachmentMetadata } from '@vibe/ui/components/WorkspaceContext';
 
 function escapeMarkdownLabel(value: string): string {
   return value.replace(/[[\]\\]/g, '\\$&');
@@ -33,13 +33,15 @@ export function buildWorkspaceAttachmentMarkdown(file: {
   });
 }
 
-export function toLocalFileMetadata(file: FileResponse): LocalFileMetadata {
+export function toLocalAttachmentMetadata(
+  attachment: AttachmentResponse
+): LocalAttachmentMetadata {
   return {
-    path: file.file_path,
-    proxy_url: `/api/images/${file.id}/file`,
-    file_name: file.original_name,
-    size_bytes: Number(file.size_bytes),
-    format: file.mime_type?.split('/')[1] ?? 'bin',
-    mime_type: file.mime_type ?? 'application/octet-stream',
+    path: attachment.file_path,
+    proxy_url: `/api/images/${attachment.id}/file`,
+    file_name: attachment.original_name,
+    size_bytes: Number(attachment.size_bytes),
+    format: attachment.mime_type?.split('/')[1] ?? 'bin',
+    mime_type: attachment.mime_type ?? 'application/octet-stream',
   };
 }

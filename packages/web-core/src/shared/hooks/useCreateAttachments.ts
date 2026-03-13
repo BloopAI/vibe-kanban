@@ -1,45 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { filesApi } from '@/shared/lib/api';
-import type { LocalFileMetadata } from '@vibe/ui/components/WorkspaceContext';
+import { attachmentsApi } from '@/shared/lib/api';
+import type { LocalAttachmentMetadata } from '@vibe/ui/components/WorkspaceContext';
 import {
   buildWorkspaceAttachmentMarkdown,
-  toLocalFileMetadata,
+  toLocalAttachmentMetadata,
 } from '@/shared/lib/workspaceAttachments';
-import type { DraftWorkspaceFile } from 'shared/types';
+import type { DraftWorkspaceAttachment } from 'shared/types';
 
 /**
- * Hook for handling file attachments during workspace creation.
- * Uploads files and tracks their IDs for association with the workspace.
- * Also tracks uploaded files for immediate preview in the editor.
- * Supports restoring previously uploaded files from a persisted draft.
+ * Hook for handling attachments during workspace creation.
+ * Uploads attachments and tracks their IDs for association with the workspace.
+ * Also tracks uploaded attachments for immediate preview in the editor.
+ * Supports restoring previously uploaded attachments from a persisted draft.
  */
 export function useCreateAttachments(
   onInsertMarkdown: (markdown: string) => void,
-  initialFiles?: DraftWorkspaceFile[],
-  onFilesChange?: (files: DraftWorkspaceFile[]) => void
+  initialAttachments?: DraftWorkspaceAttachment[],
+  onAttachmentsChange?: (attachments: DraftWorkspaceAttachment[]) => void
 ) {
-  const [files, setFiles] = useState<DraftWorkspaceFile[]>(initialFiles ?? []);
+  const [attachments, setAttachments] = useState<DraftWorkspaceAttachment[]>(
+    initialAttachments ?? []
+  );
   const hasInitialized = useRef(false);
 
   useEffect(() => {
     if (hasInitialized.current) return;
-    if (initialFiles && initialFiles.length > 0) {
+    if (initialAttachments && initialAttachments.length > 0) {
       hasInitialized.current = true;
-      setFiles(initialFiles);
+      setAttachments(initialAttachments);
     }
-  }, [initialFiles]);
+  }, [initialAttachments]);
 
   useEffect(() => {
-    onFilesChange?.(files);
-  }, [files, onFilesChange]);
+    onAttachmentsChange?.(attachments);
+  }, [attachments, onAttachmentsChange]);
 
   const uploadFiles = useCallback(
     async (files: File[]) => {
-      const uploadResults: DraftWorkspaceFile[] = [];
+      const uploadResults: DraftWorkspaceAttachment[] = [];
 
       for (const file of files) {
         try {
-          const response = await filesApi.upload(file);
+          const response = await attachmentsApi.upload(file);
           uploadResults.push({
             id: response.id,
             file_path: response.file_path,
@@ -53,7 +55,7 @@ export function useCreateAttachments(
       }
 
       if (uploadResults.length > 0) {
-        setFiles((prev) => [...prev, ...uploadResults]);
+        setAttachments((prev) => [...prev, ...uploadResults]);
         const allMarkdown = uploadResults
           .map(buildWorkspaceAttachmentMarkdown)
           .join('\n\n');
@@ -63,21 +65,27 @@ export function useCreateAttachments(
     [onInsertMarkdown]
   );
 
-  const getFileIds = useCallback(() => {
-    const ids = files.map((file) => file.id);
+  const getAttachmentIds = useCallback(() => {
+    const ids = attachments.map((attachment) => attachment.id);
     return ids.length > 0 ? ids : null;
-  }, [files]);
+  }, [attachments]);
 
-  const clearAttachments = useCallback(() => setFiles([]), []);
+  const clearAttachments = useCallback(() => setAttachments([]), []);
 
-  const localFiles: LocalFileMetadata[] = files.map((file) =>
-    toLocalFileMetadata({
-      ...file,
-      hash: '',
-      created_at: '',
-      updated_at: '',
-    })
+  const localAttachments: LocalAttachmentMetadata[] = attachments.map(
+    (attachment) =>
+      toLocalAttachmentMetadata({
+        ...attachment,
+        hash: '',
+        created_at: '',
+        updated_at: '',
+      })
   );
 
-  return { uploadFiles, getFileIds, clearAttachments, localFiles };
+  return {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    localAttachments,
+  };
 }

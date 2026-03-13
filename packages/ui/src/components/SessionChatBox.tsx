@@ -25,7 +25,7 @@ import {
   DropdownMenuSeparator,
 } from './Dropdown';
 import { PrimaryButton } from './PrimaryButton';
-import type { LocalFileMetadata } from './WorkspaceContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 import { ContextUsageGauge, type ContextUsageInfo } from './ContextUsageGauge';
 import { TodoProgressPopup, type TodoProgressItem } from './TodoProgressPopup';
@@ -146,7 +146,7 @@ export interface SessionChatBoxEditorRenderProps<
   repoIds?: string[];
   executor: TExecutor | null;
   onPasteFiles: (files: File[]) => void;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
 }
 
 interface SessionChatBoxProps<TExecutor extends string = string> {
@@ -178,7 +178,7 @@ interface SessionChatBoxProps<TExecutor extends string = string> {
   formatSessionDate?: (createdAt: string | Date) => string;
   todos?: TodoProgressItem[];
   inProgressTodo?: TodoProgressItem | null;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   onPrCommentClick?: () => void;
   onViewCode?: () => void;
   onOpenWorkspace?: () => void;
@@ -237,7 +237,7 @@ export function SessionChatBox<TExecutor extends string = string>({
   formatSessionDate = defaultFormatSessionDate,
   todos,
   inProgressTodo,
-  localFiles,
+  localAttachments,
   onPrCommentClick,
   onViewCode,
   onOpenWorkspace,
@@ -654,7 +654,7 @@ export function SessionChatBox<TExecutor extends string = string>({
         repoIds,
         executor: agent || executor?.selected || null,
         onPasteFiles: actions.onPasteFiles,
-        localFiles,
+        localAttachments,
       })}
       error={displayError}
       banner={renderBanner()}

@@ -7,7 +7,7 @@ import {
   type RefObject,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LocalFileMetadata } from './WorkspaceContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { cn } from '../lib/cn';
 import {
   XIcon,
@@ -73,7 +73,7 @@ export interface KanbanIssueDescriptionEditorProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   showStaticToolbar?: boolean;
   saveStatus?: 'idle' | 'saved';
   staticToolbarActions?: ReactNode;
@@ -139,7 +139,7 @@ export interface KanbanIssuePanelProps {
 
   // Image attachment upload
   onPasteFiles?: (files: File[]) => void;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   dropzoneProps?: {
     getRootProps: () => Record<string, unknown>;
     getInputProps: () => Record<string, unknown>;
@@ -184,7 +184,7 @@ export function KanbanIssuePanel({
   onCopyLink,
   onMoreActions,
   onPasteFiles,
-  localFiles,
+  localAttachments,
   dropzoneProps,
   onBrowseAttachment,
   isUploading,
@@ -414,7 +414,7 @@ export function KanbanIssuePanel({
                 isDescriptionEditing ? 'min-h-[100px]' : 'min-h-[2rem]',
                 !isDescriptionEditing && !formData.description && 'text-low'
               ),
-              localFiles,
+              localAttachments,
               showStaticToolbar: !isCreateMode || isDescriptionEditing,
               hideActions: true,
               saveStatus: descriptionSaveStatus,

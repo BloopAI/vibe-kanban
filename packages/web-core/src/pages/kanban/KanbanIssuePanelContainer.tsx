@@ -512,7 +512,7 @@ export function KanbanIssuePanelContainer({
     hasPendingAttachments,
     uploadError,
     clearUploadError,
-    localFiles,
+    localAttachments,
   } = useAzureAttachments({
     projectId,
     issueId: kanbanCreateMode
@@ -1070,14 +1070,14 @@ export function KanbanIssuePanelContainer({
       onCopyLink={mode === 'edit' ? handleCopyLink : undefined}
       onMoreActions={mode === 'edit' ? handleMoreActions : undefined}
       onPasteFiles={onPasteFiles}
-      localFiles={localFiles}
+      localAttachments={localAttachments}
       dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
       onBrowseAttachment={openFilePicker}
       isUploading={isUploading}
       attachmentError={uploadError}
       onDismissAttachmentError={clearUploadError}
       renderDescriptionEditor={(props) => (
-        <WYSIWYGEditor {...props} localFiles={localFiles} />
+        <WYSIWYGEditor {...props} localAttachments={localAttachments} />
       )}
       renderWorkspacesSection={(issueId) => (
         <IssueWorkspacesSectionContainer issueId={issueId} />
