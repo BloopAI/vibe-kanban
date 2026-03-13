@@ -63,6 +63,8 @@ impl Server {
             registry.register(GitHubOAuthProvider::new(
                 github.client_id().to_string(),
                 github.client_secret().clone(),
+                auth_config.github_base_url().to_string(),
+                auth_config.github_api_url().to_string(),
             )?);
         }
 
