@@ -393,11 +393,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     clearPendingComponentMarkdown,
   ]);
 
-  const { uploadFiles, localFiles, clearUploadedFiles } = useSessionAttachments(
-    workspaceId,
-    sessionId,
-    handleInsertMarkdown
-  );
+  const { uploadFiles, localAttachments, clearUploadedAttachments } =
+    useSessionAttachments(workspaceId, sessionId, handleInsertMarkdown);
 
   // Unified executor + variant + model selector options resolution
   const {
@@ -463,7 +460,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     if (success) {
       cancelDebouncedSave();
       setLocalMessage('');
-      clearUploadedFiles();
+      clearUploadedAttachments();
       if (isNewSessionMode) await clearDraft();
       if (!isSlashCommand) {
         reviewContext?.clearComments();
@@ -475,7 +472,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     reviewMarkdown,
     cancelDebouncedSave,
     setLocalMessage,
-    clearUploadedFiles,
+    clearUploadedAttachments,
     isNewSessionMode,
     clearDraft,
     reviewContext,
@@ -514,7 +511,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
 
     // Clear local state after queueing (same as handleSend)
     setLocalMessage('');
-    clearUploadedFiles();
+    clearUploadedAttachments();
     reviewContext?.clearComments();
   }, [
     localMessage,
@@ -524,7 +521,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     cancelDebouncedSave,
     saveToScratch,
     setLocalMessage,
-    clearUploadedFiles,
+    clearUploadedAttachments,
     reviewContext,
   ]);
 
@@ -860,7 +857,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       repoIds,
       executor,
       onPasteFiles,
-      localFiles,
+      localAttachments,
     }: SessionChatBoxEditorRenderProps<BaseCodingAgent>) => (
       <WYSIWYGEditor
         key={focusKey}
@@ -875,7 +872,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
         sessionId={sessionId}
         autoFocus
         onPasteFiles={onPasteFiles}
-        localFiles={localFiles}
+        localAttachments={localAttachments}
         sendShortcut={config?.send_message_shortcut}
       />
     ),
@@ -1066,7 +1063,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
             }
           : undefined
       }
-      localFiles={localFiles}
+      localAttachments={localAttachments}
       dropzone={{ getRootProps, getInputProps, isDragActive }}
       modelSelector={modelSelectorNode}
     />

@@ -5,7 +5,7 @@ import { Checkbox } from './Checkbox';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
 import { DropdownMenuItem, DropdownMenuLabel } from './Dropdown';
 import { PrimaryButton } from './PrimaryButton';
-import type { LocalFileMetadata } from './WorkspaceContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { ToolbarDropdown, ToolbarIconButton } from './Toolbar';
 
 export interface EditorProps {
@@ -52,7 +52,7 @@ export interface CreateChatBoxEditorRenderProps<
   repoId?: string;
   executor: TExecutor | null;
   onPasteFiles?: (files: File[]) => void;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
 }
 
 interface CreateChatBoxProps<TExecutor extends string = string> {
@@ -71,7 +71,7 @@ interface CreateChatBoxProps<TExecutor extends string = string> {
   repoId?: string;
   modelSelector?: ReactNode;
   onPasteFiles?: (files: File[]) => void;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   dropzone?: DropzoneProps;
   onEditRepos: () => void;
   repoSummaryLabel: string;
@@ -106,7 +106,7 @@ export function CreateChatBox<TExecutor extends string = string>({
   repoId,
   modelSelector,
   onPasteFiles,
-  localFiles,
+  localAttachments,
   dropzone,
   onEditRepos,
   repoSummaryLabel,
@@ -151,7 +151,7 @@ export function CreateChatBox<TExecutor extends string = string>({
         repoId,
         executor: executor.selected ?? null,
         onPasteFiles,
-        localFiles,
+        localAttachments,
       })}
       error={error}
       visualVariant={VisualVariant.NORMAL}

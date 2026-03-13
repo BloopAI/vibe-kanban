@@ -174,7 +174,7 @@ function IssueCommentsSectionContent() {
     hasPendingAttachments,
     uploadError,
     clearUploadError,
-    localFiles,
+    localAttachments,
   } = useAzureAttachments({
     projectId,
     onMarkdownInsert: handleCommentMarkdownInsert,
@@ -444,7 +444,7 @@ function IssueCommentsSectionContent() {
       autoFocus,
       onCmdEnter,
       onPasteFiles,
-      localFiles,
+      localAttachments,
       editorRef,
     }: IssueCommentsEditorProps) => (
       <WYSIWYGEditor
@@ -457,7 +457,7 @@ function IssueCommentsSectionContent() {
         autoFocus={autoFocus}
         onCmdEnter={onCmdEnter}
         onPasteFiles={onPasteFiles}
-        localFiles={localFiles}
+        localAttachments={localAttachments}
       />
     ),
     []
@@ -482,7 +482,7 @@ function IssueCommentsSectionContent() {
       isLoading={issueContext.isLoading}
       commentEditorRef={commentEditorRef}
       onPasteFiles={onPasteFiles}
-      localFiles={localFiles}
+      localAttachments={localAttachments}
       dropzoneProps={{ getRootProps, getInputProps, isDragActive }}
       onBrowseAttachment={open}
       isUploading={isUploading}

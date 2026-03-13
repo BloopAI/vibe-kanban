@@ -6,7 +6,7 @@ import { VariantSelector } from '@/shared/components/VariantSelector';
 import { Button } from '@vibe/ui/components/Button';
 import { Alert, AlertDescription } from '@vibe/ui/components/Alert';
 import { AlertCircle, Loader2, Paperclip, Send, X } from 'lucide-react';
-import { filesApi } from '@/shared/lib/api';
+import { attachmentsApi } from '@/shared/lib/api';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import { useWorkspaceExecution } from '@/shared/hooks/useWorkspaceExecution';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
@@ -108,7 +108,7 @@ export function RetryEditorInline({
 
       for (const file of files) {
         try {
-          const response = await filesApi.uploadForAttempt(
+          const response = await attachmentsApi.uploadForAttempt(
             workspaceId,
             sessionId,
             file

@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type {
   DraftWorkspaceData,
-  DraftWorkspaceFile,
+  DraftWorkspaceAttachment,
   ExecutorConfig,
   Repo,
 } from 'shared/types';
@@ -49,7 +49,7 @@ interface DraftState {
   message: string;
   linkedIssue: LinkedIssue | null;
   executorConfig: ExecutorConfig | null;
-  files: DraftWorkspaceFile[];
+  attachments: DraftWorkspaceAttachment[];
 }
 
 type DraftAction =
@@ -72,7 +72,7 @@ type DraftAction =
       type: 'SET_EXECUTOR_CONFIG';
       config: ExecutorConfig | null;
     }
-  | { type: 'SET_FILES'; files: DraftWorkspaceFile[] };
+  | { type: 'SET_ATTACHMENTS'; attachments: DraftWorkspaceAttachment[] };
 
 // ============================================================================
 // Reducer
@@ -85,7 +85,7 @@ const draftInitialState: DraftState = {
   message: '',
   linkedIssue: null,
   executorConfig: null,
-  files: [],
+  attachments: [],
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -167,8 +167,8 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
     case 'SET_EXECUTOR_CONFIG':
       return { ...state, executorConfig: action.config };
 
-    case 'SET_FILES':
-      return { ...state, files: action.files };
+    case 'SET_ATTACHMENTS':
+      return { ...state, attachments: action.attachments };
 
     default:
       return state;
@@ -241,8 +241,8 @@ interface UseCreateModeStateResult {
   clearDraft: () => Promise<void>;
   clearLinkedIssue: () => void;
   setExecutorConfig: (config: ExecutorConfig | null) => void;
-  files: DraftWorkspaceFile[];
-  setFiles: (files: DraftWorkspaceFile[]) => void;
+  attachments: DraftWorkspaceAttachment[];
+  setAttachments: (attachments: DraftWorkspaceAttachment[]) => void;
 }
 
 export function useCreateModeState({
@@ -501,7 +501,7 @@ export function useCreateModeState({
         !data.message.trim() &&
         data.repos.length === 0 &&
         !data.executor_config &&
-        data.files.length === 0;
+        data.attachments.length === 0;
 
       if (isEmpty && !scratch) return;
 
@@ -534,7 +534,7 @@ export function useCreateModeState({
             remote_project_id: state.linkedIssue.remoteProjectId,
           }
         : null,
-      files: state.files,
+      attachments: state.attachments,
     });
   }, [
     state.phase,
@@ -542,7 +542,7 @@ export function useCreateModeState({
     state.repos,
     state.linkedIssue,
     state.executorConfig,
-    state.files,
+    state.attachments,
     debouncedSave,
   ]);
 
@@ -631,9 +631,12 @@ export function useCreateModeState({
     dispatch({ type: 'SET_EXECUTOR_CONFIG', config });
   }, []);
 
-  const setFiles = useCallback((files: DraftWorkspaceFile[]) => {
-    dispatch({ type: 'SET_FILES', files });
-  }, []);
+  const setAttachments = useCallback(
+    (attachments: DraftWorkspaceAttachment[]) => {
+      dispatch({ type: 'SET_ATTACHMENTS', attachments });
+    },
+    []
+  );
 
   return {
     repos,
@@ -653,7 +656,7 @@ export function useCreateModeState({
     clearDraft,
     clearLinkedIssue,
     setExecutorConfig,
-    files: state.files,
-    setFiles,
+    attachments: state.attachments,
+    setAttachments,
   };
 }

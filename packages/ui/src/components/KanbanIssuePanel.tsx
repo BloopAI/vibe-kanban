@@ -1,6 +1,6 @@
 import type { ReactNode, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LocalFileMetadata } from './WorkspaceContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { cn } from '../lib/cn';
 import {
   XIcon,
@@ -64,7 +64,7 @@ export interface KanbanIssueDescriptionEditorProps {
   disabled?: boolean;
   autoFocus?: boolean;
   className?: string;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   showStaticToolbar?: boolean;
   saveStatus?: 'idle' | 'saved';
   staticToolbarActions?: ReactNode;
@@ -128,7 +128,7 @@ export interface KanbanIssuePanelProps {
 
   // Image attachment upload
   onPasteFiles?: (files: File[]) => void;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   dropzoneProps?: {
     getRootProps: () => Record<string, unknown>;
     getInputProps: () => Record<string, unknown>;
@@ -173,7 +173,7 @@ export function KanbanIssuePanel({
   onCopyLink,
   onMoreActions,
   onPasteFiles,
-  localFiles,
+  localAttachments,
   dropzoneProps,
   onBrowseAttachment,
   isUploading,
@@ -342,7 +342,7 @@ export function KanbanIssuePanel({
               disabled: isSubmitting,
               autoFocus: false,
               className: 'min-h-[100px] px-base',
-              localFiles,
+              localAttachments,
               showStaticToolbar: true,
               saveStatus: descriptionSaveStatus,
               staticToolbarActions: onBrowseAttachment ? (

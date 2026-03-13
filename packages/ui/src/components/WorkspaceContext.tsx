@@ -11,8 +11,8 @@ export function useSessionId() {
   return useContext(SessionContext);
 }
 
-// Local file metadata for rendering uploaded files before they're saved
-export type LocalFileMetadata = {
+// Local attachment metadata for rendering uploaded attachments before they're saved
+export type LocalAttachmentMetadata = {
   path: string; // ".vibe-images/uuid.png"
   proxy_url: string; // "/api/images/{id}/file"
   file_name: string;
@@ -24,8 +24,10 @@ export type LocalFileMetadata = {
   upload_progress?: number;
 };
 
-export const LocalFilesContext = createContext<LocalFileMetadata[]>([]);
+export const LocalAttachmentsContext = createContext<LocalAttachmentMetadata[]>(
+  []
+);
 
-export function useLocalFiles() {
-  return useContext(LocalFilesContext);
+export function useLocalAttachments() {
+  return useContext(LocalAttachmentsContext);
 }

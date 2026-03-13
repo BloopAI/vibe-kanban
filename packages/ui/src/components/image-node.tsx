@@ -7,8 +7,8 @@ import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useWorkspaceId,
   useSessionId,
-  useLocalFiles,
-  type LocalFileMetadata,
+  useLocalAttachments,
+  type LocalAttachmentMetadata,
 } from './WorkspaceContext';
 import {
   createDecoratorNode,
@@ -113,7 +113,7 @@ async function downloadBlobUrl(url: string, filename: string): Promise<void> {
 }
 
 function toMetadataFromLocalImage(
-  localImage: LocalFileMetadata | undefined
+  localImage: LocalAttachmentMetadata | undefined
 ): ImageMetadataLike | null {
   if (!localImage) return null;
 
@@ -130,13 +130,13 @@ function useImageMetadata(
   workspaceId: string | undefined,
   sessionId: string | undefined,
   src: string,
-  localFiles: LocalFileMetadata[]
+  localAttachments: LocalAttachmentMetadata[]
 ) {
   const isVibeImage = src.startsWith('.vibe-images/');
 
   const localImage = useMemo(
-    () => localFiles.find((file) => file.path === src),
-    [localFiles, src]
+    () => localAttachments.find((attachment) => attachment.path === src),
+    [localAttachments, src]
   );
 
   const localImageMetadata = useMemo(
@@ -199,7 +199,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const { src, altText } = data;
     const workspaceId = useWorkspaceId();
     const sessionId = useSessionId();
-    const localFiles = useLocalFiles();
+    const localAttachments = useLocalAttachments();
     const [editor] = useLexicalComposerContext();
 
     const isVibeImage = src.startsWith('.vibe-images/');
@@ -208,8 +208,8 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const attachmentId =
       !isPendingAttachment && isAttachment ? src.replace('attachment://', '') : null;
     const localAttachment = useMemo(
-      () => localFiles.find((file) => file.path === src),
-      [localFiles, src]
+      () => localAttachments.find((attachment) => attachment.path === src),
+      [localAttachments, src]
     );
     const isImageAttachment =
       isAttachment &&
@@ -231,7 +231,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
       workspaceId,
       sessionId,
       src,
-      localFiles
+      localAttachments
     );
 
     const handleClick = useCallback(
@@ -315,7 +315,9 @@ export function createImageNode(options: CreateImageNodeOptions) {
     let metadataLine: string | null = null;
 
     const hasContext = !!workspaceId;
-    const hasLocalImage = localFiles.some((file) => file.path === src);
+    const hasLocalImage = localAttachments.some(
+      (attachment) => attachment.path === src
+    );
 
     if (isAttachment) {
       const previewUrl = localAttachment?.proxy_url ?? thumbnailUrl;

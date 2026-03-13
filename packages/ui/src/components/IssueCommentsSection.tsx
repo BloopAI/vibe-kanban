@@ -1,6 +1,6 @@
 import type { Ref, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LocalFileMetadata } from './WorkspaceContext';
+import type { LocalAttachmentMetadata } from './WorkspaceContext';
 import { cn } from '../lib/cn';
 import {
   DotsThreeIcon,
@@ -73,7 +73,7 @@ export interface IssueCommentsEditorProps {
   className?: string;
   disabled?: boolean;
   autoFocus?: boolean;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   onCmdEnter?: () => void;
   onPasteFiles?: (files: File[]) => void;
   editorRef?: Ref<unknown>;
@@ -97,7 +97,7 @@ interface IssueCommentsSectionProps {
   isLoading?: boolean;
   commentEditorRef?: Ref<unknown>;
   onPasteFiles?: (files: File[]) => void;
-  localFiles?: LocalFileMetadata[];
+  localAttachments?: LocalAttachmentMetadata[];
   dropzoneProps?: DropzoneProps;
   onBrowseAttachment?: () => void;
   isUploading?: boolean;
@@ -124,7 +124,7 @@ export function IssueCommentsSection({
   isLoading,
   commentEditorRef,
   onPasteFiles,
-  localFiles,
+  localAttachments,
   dropzoneProps,
   onBrowseAttachment,
   isUploading,
@@ -181,7 +181,7 @@ export function IssueCommentsSection({
             onChange: onCommentInputChange,
             placeholder: t('kanban.enterCommentPlaceholder'),
             className: 'min-h-[20px]',
-            localFiles,
+            localAttachments,
             onCmdEnter: onSubmitComment,
             onPasteFiles,
             autoFocus: false,

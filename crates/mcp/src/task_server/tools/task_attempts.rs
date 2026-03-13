@@ -189,7 +189,7 @@ impl McpServer {
                 permission_policy: None,
             },
             prompt: workspace_prompt,
-            file_ids: None,
+            attachment_ids: None,
         };
 
         let create_and_start_url = self.url("/api/workspaces/start");

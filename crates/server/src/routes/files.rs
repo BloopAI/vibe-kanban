@@ -20,7 +20,7 @@ use uuid::Uuid;
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-pub struct FileResponse {
+pub struct AttachmentResponse {
     pub id: Uuid,
     pub file_path: String, // relative path to display in markdown
     pub original_name: String,
@@ -31,7 +31,7 @@ pub struct FileResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-impl FileResponse {
+impl AttachmentResponse {
     pub fn from_file(file: File) -> Self {
         let markdown_path = format!("{}/{}", utils::path::VIBE_IMAGES_DIR, file.file_path);
         Self {
@@ -48,7 +48,7 @@ impl FileResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-pub struct FileMetadata {
+pub struct AttachmentMetadata {
     pub exists: bool,
     pub file_name: Option<String>,
     pub path: Option<String>,
@@ -60,7 +60,7 @@ pub struct FileMetadata {
 pub async fn upload_file(
     State(deployment): State<DeploymentImpl>,
     multipart: Multipart,
-) -> Result<ResponseJson<ApiResponse<FileResponse>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<AttachmentResponse>>, ApiError> {
     let file_response = process_file_upload(&deployment, multipart, None).await?;
     Ok(ResponseJson(ApiResponse::success(file_response)))
 }
@@ -69,7 +69,7 @@ pub(crate) async fn process_file_upload(
     deployment: &DeploymentImpl,
     mut multipart: Multipart,
     link_workspace_id: Option<Uuid>,
-) -> Result<FileResponse, ApiError> {
+) -> Result<AttachmentResponse, ApiError> {
     let file_service = deployment.file();
 
     while let Some(field) = multipart.next_field().await? {
@@ -103,7 +103,7 @@ pub(crate) async fn process_file_upload(
                 )
                 .await;
 
-            return Ok(FileResponse::from_file(file));
+            return Ok(AttachmentResponse::from_file(file));
         }
     }
 

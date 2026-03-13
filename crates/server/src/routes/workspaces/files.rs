@@ -28,11 +28,11 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_workspace_middleware,
-    routes::files::{FileMetadata, FileResponse, process_file_upload},
+    routes::files::{AttachmentMetadata, AttachmentResponse, process_file_upload},
 };
 
 #[derive(Debug, Deserialize)]
-pub struct FileMetadataQuery {
+pub struct AttachmentMetadataQuery {
     /// Path relative to worktree root, e.g., ".vibe-images/screenshot.png"
     pub path: String,
     pub session_id: Uuid,
@@ -44,8 +44,9 @@ pub struct SessionScopedQuery {
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct AssociateWorkspaceFilesRequest {
-    pub file_ids: Vec<Uuid>,
+pub struct AssociateWorkspaceAttachmentsRequest {
+    #[serde(alias = "file_ids")]
+    pub attachment_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -55,11 +56,12 @@ pub struct ImportIssueAttachmentsRequest {
 
 #[derive(Debug, Serialize, TS)]
 pub struct ImportIssueAttachmentsResponse {
-    pub file_ids: Vec<Uuid>,
+    #[serde(alias = "file_ids")]
+    pub attachment_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ImportedIssueFile {
+pub(crate) struct ImportedIssueAttachment {
     pub attachment_id: Uuid,
     pub file: File,
 }
@@ -67,10 +69,13 @@ pub(crate) struct ImportedIssueFile {
 pub async fn get_workspace_files(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<FileResponse>>>, ApiError> {
+) -> Result<ResponseJson<ApiResponse<Vec<AttachmentResponse>>>, ApiError> {
     let files = File::find_by_workspace_id(&deployment.db().pool, workspace.id).await?;
-    let file_responses = files.into_iter().map(FileResponse::from_file).collect();
-    Ok(ResponseJson(ApiResponse::success(file_responses)))
+    let attachment_responses = files
+        .into_iter()
+        .map(AttachmentResponse::from_file)
+        .collect();
+    Ok(ResponseJson(ApiResponse::success(attachment_responses)))
 }
 
 pub async fn upload_file(
@@ -78,28 +83,31 @@ pub async fn upload_file(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionScopedQuery>,
     multipart: Multipart,
-) -> Result<ResponseJson<ApiResponse<FileResponse>>, ApiError> {
-    let file_response = process_file_upload(&deployment, multipart, Some(workspace.id)).await?;
+) -> Result<ResponseJson<ApiResponse<AttachmentResponse>>, ApiError> {
+    let attachment_response =
+        process_file_upload(&deployment, multipart, Some(workspace.id)).await?;
 
     let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
     deployment
         .file()
-        .copy_files_by_ids_to_worktree(&base_path, &[file_response.id])
+        .copy_files_by_ids_to_worktree(&base_path, &[attachment_response.id])
         .await?;
 
-    Ok(ResponseJson(ApiResponse::success(file_response)))
+    Ok(ResponseJson(ApiResponse::success(attachment_response)))
 }
 
-pub async fn associate_workspace_files(
+pub async fn associate_workspace_attachments(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    axum::Json(payload): axum::Json<AssociateWorkspaceFilesRequest>,
+    axum::Json(payload): axum::Json<AssociateWorkspaceAttachmentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let managed_workspace = deployment
         .workspace_manager()
         .load_managed_workspace(workspace)
         .await?;
-    managed_workspace.associate_files(&payload.file_ids).await?;
+    managed_workspace
+        .associate_files(&payload.attachment_ids)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(())))
 }
@@ -110,9 +118,9 @@ pub async fn import_issue_attachments(
     axum::Json(payload): axum::Json<ImportIssueAttachmentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<ImportIssueAttachmentsResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    let imported_files =
-        import_issue_attachment_files(&client, deployment.file(), payload.issue_id).await?;
-    let file_ids = imported_files
+    let imported_attachments =
+        import_issue_attachments_from_remote(&client, deployment.file(), payload.issue_id).await?;
+    let attachment_ids = imported_attachments
         .iter()
         .map(|imported| imported.file.id)
         .collect::<Vec<_>>();
@@ -121,21 +129,21 @@ pub async fn import_issue_attachments(
         .workspace_manager()
         .load_managed_workspace(workspace)
         .await?;
-    managed_workspace.associate_files(&file_ids).await?;
+    managed_workspace.associate_files(&attachment_ids).await?;
 
     Ok(ResponseJson(ApiResponse::success(
-        ImportIssueAttachmentsResponse { file_ids },
+        ImportIssueAttachmentsResponse { attachment_ids },
     )))
 }
 
-pub async fn get_file_metadata(
+pub async fn get_attachment_metadata(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Query(query): Query<FileMetadataQuery>,
-) -> Result<ResponseJson<ApiResponse<FileMetadata>>, ApiError> {
+    Query(query): Query<AttachmentMetadataQuery>,
+) -> Result<ResponseJson<ApiResponse<AttachmentMetadata>>, ApiError> {
     let vibe_images_prefix = format!("{}/", utils::path::VIBE_IMAGES_DIR);
     if !query.path.starts_with(&vibe_images_prefix) {
-        return Ok(ResponseJson(ApiResponse::success(FileMetadata {
+        return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
             exists: false,
             file_name: None,
             path: Some(query.path),
@@ -146,7 +154,7 @@ pub async fn get_file_metadata(
     }
 
     if query.path.contains("..") {
-        return Ok(ResponseJson(ApiResponse::success(FileMetadata {
+        return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
             exists: false,
             file_name: None,
             path: Some(query.path),
@@ -162,7 +170,7 @@ pub async fn get_file_metadata(
     let metadata = match tokio::fs::metadata(&full_path).await {
         Ok(m) if m.is_file() => m,
         _ => {
-            return Ok(ResponseJson(ApiResponse::success(FileMetadata {
+            return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
                 exists: false,
                 file_name: None,
                 path: Some(query.path),
@@ -187,7 +195,7 @@ pub async fn get_file_metadata(
         workspace.id, file_path, query.session_id
     );
 
-    Ok(ResponseJson(ApiResponse::success(FileMetadata {
+    Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
         exists: true,
         file_name,
         path: Some(query.path),
@@ -292,17 +300,17 @@ async fn load_workspace_with_wildcard(
     Ok(next.run(request).await)
 }
 
-pub(crate) async fn import_issue_attachment_files(
+pub(crate) async fn import_issue_attachments_from_remote(
     client: &RemoteClient,
     file_service: &FileService,
     issue_id: Uuid,
-) -> Result<Vec<ImportedIssueFile>, ApiError> {
+) -> Result<Vec<ImportedIssueAttachment>, ApiError> {
     let response = client
         .list_issue_attachments(issue_id)
         .await
         .map_err(ApiError::from)?;
 
-    let mut imported_files = Vec::new();
+    let mut imported_attachments = Vec::new();
 
     for entry in response.attachments {
         let Some(file_url) = entry.file_url.as_deref() else {
@@ -340,21 +348,21 @@ pub(crate) async fn import_issue_attachment_files(
             }
         };
 
-        imported_files.push(ImportedIssueFile {
+        imported_attachments.push(ImportedIssueAttachment {
             attachment_id: entry.attachment.id,
             file,
         });
     }
 
-    Ok(imported_files)
+    Ok(imported_attachments)
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let metadata_router = Router::new()
         .route("/", get(get_workspace_files))
-        .route("/associate", post(associate_workspace_files))
+        .route("/associate", post(associate_workspace_attachments))
         .route("/import-issue-attachments", post(import_issue_attachments))
-        .route("/metadata", get(get_file_metadata))
+        .route("/metadata", get(get_attachment_metadata))
         .route(
             "/upload",
             post(upload_file).layer(DefaultBodyLimit::max(20 * 1024 * 1024)),
