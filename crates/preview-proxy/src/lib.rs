@@ -431,7 +431,7 @@ async fn proxy_impl(
                 )
                 .await
                 {
-                    tracing::warn!("WebSocket proxy closed: {}", e);
+                    tracing::debug!("WebSocket proxy closed: {}", e);
                 }
             })
             .into_response();

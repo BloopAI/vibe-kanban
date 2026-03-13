@@ -228,17 +228,18 @@ export function PreviewBrowserContainer({
     [effectiveUrl, urlInfo?.url]
   );
   const devServerPort = useMemo(() => {
-    if (urlInfo?.port != null) {
-      return String(urlInfo.port);
-    }
     if (!effectiveParsedUrl) {
       return null;
+    }
+    // When user has overridden the URL, derive port from their URL, not auto-detected.
+    if (!hasOverride && urlInfo?.port != null) {
+      return String(urlInfo.port);
     }
     return (
       effectiveParsedUrl.port ||
       (effectiveParsedUrl.protocol === 'https:' ? '443' : '80')
     );
-  }, [urlInfo?.port, effectiveParsedUrl]);
+  }, [hasOverride, urlInfo?.port, effectiveParsedUrl]);
 
   // Builds the subdomain-based proxy URL loaded by the iframe.
   //   Dev server at localhost:4000 → iframe loads http://4000.localhost:{proxyPort}/path
@@ -683,7 +684,10 @@ export function PreviewBrowserContainer({
     const normalizedCurrentUrl = displayedPreviewUrl
       ? normalizePreviewUrl(displayedPreviewUrl, baseUrl)
       : null;
-    if (normalizedCurrentUrl && normalizedInput === normalizedCurrentUrl) {
+    if (
+      normalizedCurrentUrl &&
+      normalizedInputDevUrl === normalizedCurrentUrl
+    ) {
       if (hasOverride) {
         clearOverride();
       }
