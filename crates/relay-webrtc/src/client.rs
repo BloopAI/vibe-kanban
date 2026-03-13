@@ -98,7 +98,7 @@ pub struct WsSender {
 
 impl WsSender {
     /// Send a WebSocket frame to the remote.
-    pub async fn send_frame(&self, frame: WsFrame) -> anyhow::Result<()> {
+    pub async fn send(&self, frame: WsFrame) -> anyhow::Result<()> {
         let msg = DataChannelMessage::WsFrame(frame);
         let data = serde_json::to_vec(&msg)?;
         self.cmd_tx
@@ -125,13 +125,13 @@ impl WsSender {
 }
 
 impl UpstreamWsSender for WsSender {
-    fn send_frame(
+    fn send(
         &mut self,
         frame: RelayWsFrame,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<()>> + Send + '_>> {
         Box::pin(async move {
             let ws_frame = WsFrame::from_relay_frame(self.conn_id.clone(), frame);
-            WsSender::send_frame(self, ws_frame).await
+            WsSender::send(self, ws_frame).await
         })
     }
 
@@ -146,7 +146,7 @@ pub struct WebRtcWsReceiver {
 }
 
 impl UpstreamWsReceiver for WebRtcWsReceiver {
-    fn recv_frame(
+    fn recv(
         &mut self,
     ) -> Pin<Box<dyn Future<Output = anyhow::Result<Option<RelayWsFrame>>> + Send + '_>> {
         Box::pin(async move {
@@ -566,7 +566,7 @@ async fn run_client_peer(
                 );
             }
 
-            // Commands from WsConnection handles (send_frame / close).
+            // Commands from WsConnection handles (send / close).
             Some(cmd) = ws_cmd_rx.recv() => {
                 handle_client_command(
                     cmd,

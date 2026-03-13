@@ -301,7 +301,7 @@ async fn bridge_ws(
         while let Some(msg_result) = client_receiver.next().await {
             let msg = msg_result?;
             let close = matches!(msg, Message::Close(_));
-            upstream_sender.send_frame(msg.decompose()).await?;
+            upstream_sender.send(msg.decompose()).await?;
             if close {
                 break;
             }
@@ -311,7 +311,7 @@ async fn bridge_ws(
     });
 
     let upstream_to_client = tokio::spawn(async move {
-        while let Some(frame) = upstream_receiver.recv_frame().await? {
+        while let Some(frame) = upstream_receiver.recv().await? {
             let close = matches!(frame.msg_type, RelayWsMessageType::Close);
             let msg = Message::reconstruct(frame)?;
             client_sender.send(msg).await?;
