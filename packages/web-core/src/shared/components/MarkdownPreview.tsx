@@ -163,7 +163,7 @@ export function MarkdownPreview({
         className: codeClassName,
         children,
         ...props
-      }: ComponentPropsWithoutRef<'code'> & { inline?: boolean }) => {
+      }: ComponentPropsWithoutRef<'code'>) => {
         const match = /language-(\w+)/.exec(codeClassName || '');
         const language = match?.[1];
         const codeString = String(children).replace(/\n$/, '');
@@ -173,20 +173,8 @@ export function MarkdownPreview({
           return <MermaidDiagram chart={codeString} theme={theme} />;
         }
 
-        // Inline code (no language class, typically wrapped in <p>)
-        const isInline = !codeClassName;
-        if (isInline) {
-          return (
-            <code
-              className="text-xs px-1.5 py-0.5 rounded-sm bg-panel text-high font-ibm-plex-mono"
-              {...props}
-            >
-              {children}
-            </code>
-          );
-        }
-
-        // Fenced code blocks (handled by <pre> wrapper)
+        // All code elements: fenced blocks get styling from the <pre> wrapper,
+        // inline code gets styling via the wrapper div's CSS selector.
         return (
           <code className={cn(codeClassName, 'font-ibm-plex-mono')} {...props}>
             {children}
@@ -216,7 +204,12 @@ export function MarkdownPreview({
   );
 
   return (
-    <div className={cn('markdown-preview', className)}>
+    <div className={cn(
+      'markdown-preview',
+      // Inline code styling: targets <code> not inside <pre> (i.e. not fenced blocks)
+      '[&_:not(pre)>code]:text-xs [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:rounded-sm [&_:not(pre)>code]:bg-panel [&_:not(pre)>code]:text-high',
+      className,
+    )}>
       <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components}>
         {content}
       </ReactMarkdown>

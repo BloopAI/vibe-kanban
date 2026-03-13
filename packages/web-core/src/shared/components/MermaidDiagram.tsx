@@ -5,6 +5,8 @@ interface MermaidDiagramProps {
   theme: 'light' | 'dark';
 }
 
+let initializedTheme: string | null = null;
+
 export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
   const [svg, setSvg] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
@@ -16,11 +18,17 @@ export function MermaidDiagram({ chart, theme }: MermaidDiagramProps) {
     async function renderDiagram() {
       try {
         const { default: mermaid } = await import('mermaid');
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: theme === 'dark' ? 'dark' : 'default',
-          securityLevel: 'strict',
-        });
+        const mermaidTheme = theme === 'dark' ? 'dark' : 'default';
+
+        // Only re-initialize when theme actually changes
+        if (initializedTheme !== mermaidTheme) {
+          mermaid.initialize({
+            startOnLoad: false,
+            theme: mermaidTheme,
+            securityLevel: 'strict',
+          });
+          initializedTheme = mermaidTheme;
+        }
 
         const { svg: renderedSvg } = await mermaid.render(
           `mermaid-${id}`,
