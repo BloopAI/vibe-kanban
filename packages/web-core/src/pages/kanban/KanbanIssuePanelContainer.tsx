@@ -326,6 +326,10 @@ export function KanbanIssuePanelContainer({
     currentAssigneeIds,
     currentTagIds,
   ]);
+  const latestDescriptionRef = useRef<string | null>(
+    displayData.description ?? null
+  );
+  latestDescriptionRef.current = displayData.description ?? null;
 
   const isCreateDraftDirty = useMemo(() => {
     return selectIsCreateDraftDirty({
@@ -384,9 +388,10 @@ export function KanbanIssuePanelContainer({
   // Callback to insert markdown into the description field
   const handleDescriptionInsert = useCallback(
     (markdown: string, options?: { persist?: boolean }) => {
-      const currentDesc = displayData.description ?? '';
+      const currentDesc = latestDescriptionRef.current ?? '';
       const separator = currentDesc.length > 0 ? '\n' : '';
       const newDesc = currentDesc + separator + markdown;
+      latestDescriptionRef.current = newDesc;
 
       if (kanbanCreateMode || !selectedKanbanIssueId) {
         // Create mode: update form data
@@ -409,7 +414,6 @@ export function KanbanIssuePanelContainer({
     [
       kanbanCreateMode,
       selectedKanbanIssueId,
-      displayData.description,
       createFormFallback,
       debouncedSaveDescription,
     ]
@@ -417,7 +421,7 @@ export function KanbanIssuePanelContainer({
 
   const handleDescriptionSourceReplace = useCallback(
     (previousSrc: string, nextSrc: string, options?: { persist?: boolean }) => {
-      const currentDesc = displayData.description ?? '';
+      const currentDesc = latestDescriptionRef.current ?? '';
       const { content: nextDesc, replaced } = replaceAttachmentSource(
         currentDesc,
         previousSrc,
@@ -427,6 +431,7 @@ export function KanbanIssuePanelContainer({
       if (!replaced) {
         return false;
       }
+      latestDescriptionRef.current = nextDesc;
 
       if (kanbanCreateMode || !selectedKanbanIssueId) {
         dispatchFormState({
@@ -449,7 +454,6 @@ export function KanbanIssuePanelContainer({
     [
       kanbanCreateMode,
       selectedKanbanIssueId,
-      displayData.description,
       createFormFallback,
       debouncedSaveDescription,
     ]
@@ -457,7 +461,7 @@ export function KanbanIssuePanelContainer({
 
   const handleDescriptionSourceRemove = useCallback(
     (src: string, options?: { persist?: boolean }) => {
-      const currentDesc = displayData.description ?? '';
+      const currentDesc = latestDescriptionRef.current ?? '';
       const { content: nextDesc, removed } = removeAttachmentMarkdownBySource(
         currentDesc,
         src
@@ -466,6 +470,7 @@ export function KanbanIssuePanelContainer({
       if (!removed) {
         return false;
       }
+      latestDescriptionRef.current = nextDesc || null;
 
       if (kanbanCreateMode || !selectedKanbanIssueId) {
         dispatchFormState({
@@ -488,7 +493,6 @@ export function KanbanIssuePanelContainer({
     [
       kanbanCreateMode,
       selectedKanbanIssueId,
-      displayData.description,
       createFormFallback,
       debouncedSaveDescription,
     ]

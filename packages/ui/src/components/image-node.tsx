@@ -239,6 +239,11 @@ export function createImageNode(options: CreateImageNodeOptions) {
       isVibeImage &&
       ((localAttachment?.mime_type?.startsWith('image/') ?? false) ||
         isImageLikeFileName(workspaceDisplayName));
+    const showDownloadButton = Boolean(
+      (isAttachment &&
+        (localAttachment?.proxy_url || fullSizeUrl || metadata?.proxy_url)) ||
+        (!isWorkspaceImage && metadata?.proxy_url)
+    );
 
     const handleClick = useCallback(
       (event: React.MouseEvent) => {
@@ -472,9 +477,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
             <X className="w-2.5 h-2.5 text-background" />
           </button>
         )}
-        {(isAttachment &&
-          (localAttachment?.proxy_url || fullSizeUrl || metadata?.proxy_url)) ||
-        (!isWorkspaceImage && metadata?.proxy_url) ? (
+        {showDownloadButton ? (
           <button
             onClick={handleDownload}
             className={
