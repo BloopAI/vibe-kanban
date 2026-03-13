@@ -38,6 +38,35 @@ ALTER TABLE issues
 ALTER TABLE issues
     DROP CONSTRAINT IF EXISTS issues_project_issue_number_uniq;
 
+-- 6b. Renumber all existing issues org-wide so (organization_id, issue_number) is unique.
+--     Under the old schema, issue_number was per-project (1, 2, 3... per project), so
+--     multiple projects in the same org have overlapping numbers. Assign new sequential
+--     numbers ordered by created_at (id as tiebreaker) and update simple_id to match.
+WITH renumbered AS (
+    SELECT
+        i.id,
+        ROW_NUMBER() OVER (
+            PARTITION BY i.organization_id
+            ORDER BY i.created_at, i.id
+        ) AS new_issue_number,
+        o.issue_prefix
+    FROM issues i
+    JOIN organizations o ON o.id = i.organization_id
+)
+UPDATE issues i
+SET
+    issue_number = r.new_issue_number,
+    simple_id    = r.issue_prefix || '-' || r.new_issue_number
+FROM renumbered r
+WHERE i.id = r.id;
+
+-- 6c. Reset org counters to the new maximums after renumbering.
+UPDATE organizations o
+SET issue_counter = COALESCE(
+    (SELECT MAX(issue_number) FROM issues WHERE organization_id = o.id),
+    0
+);
+
 -- 7. Add new org-scoped uniqueness constraint
 ALTER TABLE issues
     ADD CONSTRAINT issues_org_issue_number_uniq UNIQUE (organization_id, issue_number);
