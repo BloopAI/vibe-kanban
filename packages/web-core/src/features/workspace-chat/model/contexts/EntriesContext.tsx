@@ -13,10 +13,21 @@ interface EntriesContextType {
   reset: () => void;
 }
 
+interface EntriesActionsContextType {
+  setEntries: (entries: PatchTypeWithKey[]) => void;
+  reset: () => void;
+}
+
 const EntriesContext = createHmrContext<EntriesContextType | null>(
   'EntriesContext',
   null
 );
+
+const EntriesActionsContext =
+  createHmrContext<EntriesActionsContextType | null>(
+    'EntriesActionsContext',
+    null
+  );
 
 // ---------------------------------------------------------------------------
 // Token-usage context — changes only when token stats update (much rarer)
@@ -63,17 +74,24 @@ export const EntriesProvider = ({ children }: EntriesProviderProps) => {
     [entries, setEntries, reset]
   );
 
+  const entriesActionsValue = useMemo(
+    () => ({ setEntries, reset }),
+    [setEntries, reset]
+  );
+
   const tokenUsageValue = useMemo(
     () => ({ tokenUsageInfo, setTokenUsageInfo }),
     [tokenUsageInfo, setTokenUsageInfo]
   );
 
   return (
-    <EntriesContext.Provider value={entriesValue}>
-      <TokenUsageContext.Provider value={tokenUsageValue}>
-        {children}
-      </TokenUsageContext.Provider>
-    </EntriesContext.Provider>
+    <EntriesActionsContext.Provider value={entriesActionsValue}>
+      <EntriesContext.Provider value={entriesValue}>
+        <TokenUsageContext.Provider value={tokenUsageValue}>
+          {children}
+        </TokenUsageContext.Provider>
+      </EntriesContext.Provider>
+    </EntriesActionsContext.Provider>
   );
 };
 
@@ -85,6 +103,14 @@ export const useEntries = (): EntriesContextType => {
   const context = useContext(EntriesContext);
   if (!context) {
     throw new Error('useEntries must be used within an EntriesProvider');
+  }
+  return context;
+};
+
+export const useEntriesActions = (): EntriesActionsContextType => {
+  const context = useContext(EntriesActionsContext);
+  if (!context) {
+    throw new Error('useEntriesActions must be used within an EntriesProvider');
   }
   return context;
 };

@@ -27,6 +27,12 @@ interface ChangesViewContextValue {
   registerScrollToFile: (callback: ScrollToFileCallback | null) => void;
 }
 
+interface ChangesViewActionsContextValue {
+  viewFileInChanges: (filePath: string) => void;
+  findMatchingDiffPath: (text: string) => string | null;
+  hasDiffPath: (path: string) => boolean;
+}
+
 const EMPTY_SET = new Set<string>();
 
 const defaultValue: ChangesViewContextValue = {
@@ -42,11 +48,27 @@ const defaultValue: ChangesViewContextValue = {
   registerScrollToFile: () => {},
 };
 
+const defaultActionsValue: ChangesViewActionsContextValue = {
+  viewFileInChanges: () => {},
+  findMatchingDiffPath: () => null,
+  hasDiffPath: () => false,
+};
+
 export const ChangesViewContext = createHmrContext<ChangesViewContextValue>(
   'ChangesViewContext',
   defaultValue
 );
 
+export const ChangesViewActionsContext =
+  createHmrContext<ChangesViewActionsContextValue>(
+    'ChangesViewActionsContext',
+    defaultActionsValue
+  );
+
 export function useChangesView(): ChangesViewContextValue {
   return useContext(ChangesViewContext);
+}
+
+export function useChangesViewActions(): ChangesViewActionsContextValue {
+  return useContext(ChangesViewActionsContext);
 }
