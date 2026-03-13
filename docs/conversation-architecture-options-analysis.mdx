@@ -1,0 +1,510 @@
+---
+title: "Архитектурные варианты для conversation"
+description: "Черновой архитектурный анализ вариантов развития conversation: требования, ограничения, текущие pressure points и пространство решений без преждевременного выбора финального плана."
+---
+
+# Архитектурные варианты для conversation
+
+Этот документ нужен не для того, чтобы сразу принять решение, а для того, чтобы аккуратно разложить problem space.
+
+Сейчас conversation находится в экспериментальной фазе. В рамках этой ветки уже были сделаны существенные изменения, но это не означает, что текущее TanStack-решение обязательно должно стать финальным. Цель этого документа - собрать требования, ограничения, pressure points и варианты архитектуры в одном месте, прежде чем переходить к окончательному плану.
+
+## Что именно должна уметь conversation-система
+
+Conversation в нашем приложении - это не просто список сообщений.
+
+Она должна поддерживать одновременно:
+
+- потоковое появление новых entries во время active turn;
+- большой исторический conversation с возможностью быстро открыть любой workspace;
+- synthetic blocks вроде `setup_script` и `clean_up_script`;
+- `edit_message` и retry-потоки;
+- остановку running conversation;
+- fork / new session flows;
+- approvals / ask-user-question flows;
+- custom embedded blocks (diff, tool summaries, script rows, todo rows, subagent rows);
+- корректный scroll model, в котором нет ни fake-top, ни layout jank, ни внезапных прыжков;
+- maintainable layering между data pipeline, semantic model и render engine.
+
+С архитектурной точки зрения это означает, что мы проектируем не просто renderer, а **timeline system with stateful semantics**.
+
+## Главный вопрос
+
+Речь идет не только о том, какую библиотеку виртуализации выбрать.
+
+Главный вопрос звучит так:
+
+> Где именно должна жить сложность conversation?
+
+Возможные ответы:
+
+1. в готовом list engine (Virtuoso-подход);
+2. в нашем собственном virtualization + scroll orchestration (TanStack-подход);
+3. в более сильной semantic timeline model до рендера;
+4. частично на backend, если conversation должен приходить не как реконструкция из execution processes, а как более готовая timeline abstraction.
+
+## Архитектурные критерии оценки
+
+Чтобы не спорить на уровне ощущений, ниже фиксируются критерии, по которым дальше нужно оценивать варианты.
+
+### 1. Stability
+
+Система должна корректно переживать:
+
+- prepend / historic growth;
+- active stream growth;
+- textarea growth;
+- image / markdown / diff dynamic height changes;
+- workspace/session switching;
+- stop / retry / edit transitions.
+
+### 2. Performance
+
+Система должна быть дешевой по:
+
+- числу rerender-ов;
+- числу full-list transforms;
+- количеству measurement invalidation;
+- количеству scroll correction loops;
+- стоимости opening long conversations.
+
+### 3. Maintainability
+
+Система должна позволять изолированно менять:
+
+- scroll policy;
+- row grouping / semantic model;
+- virtualization strategy;
+- timeline semantics;
+- embedded block rendering.
+
+### 4. Product fit
+
+Conversation должна адекватно поддерживать наши реальные use case, а не только generic chat:
+
+- setup/cleanup placeholders;
+- approvals;
+- message editing;
+- retry UI;
+- branch / fork semantics;
+- process-derived custom entries.
+
+## Уже зафиксированные факты по текущей архитектуре
+
+На текущей ветке уже установлено следующее.
+
+### Текущий pipeline
+
+Текущий conversation pipeline выглядит так:
+
+```text
+ExecutionProcesses WS stream
+-> ExecutionProcessesProvider
+-> useConversationHistory
+-> PatchTypeWithKey[]
+-> aggregateConsecutiveEntries(...)
+-> DisplayEntry[]
+-> ConversationRow[]
+-> hybrid split (virtualized head + DOM tail)
+-> TanStack Virtual + explicit scroll executor
+```
+
+### Где сегодня сосредоточена сложность
+
+Сложность сейчас живет сразу в нескольких слоях:
+
+- `useConversationHistory` отвечает за reconstruction semantics;
+- `aggregateConsecutiveEntries` отвечает за grouping semantics;
+- `conversation-row-model.ts` отвечает за semantic row model и size hints;
+- `ConversationListContainer.tsx` отвечает за orchestration, split и integration glue;
+- `useConversationVirtualizer.ts` отвечает за measurement / bottoming / anchor logic;
+- `useScrollCommandExecutor.ts` отвечает за scroll intent lifecycle.
+
+Именно это делает текущее решение гибким, но именно это же делает его более хрупким, чем старый black-box message-list.
+
+### Уже выявленные pressure points
+
+На основании текущего аудита уже видны основные pressure points:
+
+1. `flattenEntriesForEmit(...)` вызывается часто и проходит по всему execution-process state.
+2. `aggregateConsecutiveEntries(...)` работает на весь список на каждом flush.
+3. staged historic loading создает UX-риск, если conversation показывается до того, как история действительно доступна.
+4. hybrid seam между head и tail требует очень аккуратного lifecycle.
+5. bottom-follow и bottom-correction стали нашей ответственностью.
+6. часть shell-логики дублируется между local web и VSCode shell.
+
+## Пространство вариантов
+
+Ниже перечислены реальные архитектурные направления, которые имеет смысл рассматривать.
+
+## Вариант A — Оставить Virtuoso и улучшать текущее старое направление
+
+Идея:
+
+- вернуть renderer на Virtuoso message-list-подход;
+- сохранить / улучшить semantic pipeline;
+- использовать built-in scroll anchoring и follow output semantics Virtuoso.
+
+Что в этом варианте сильное:
+
+- Virtuoso уже содержит chat-oriented heuristics;
+- динамические высоты и prepend historically handled более opinionated образом;
+- меньше собственного кода в scroll/measurement слое;
+- ниже риск снова изобрести тонкую message-list механику вручную.
+
+Что в этом варианте слабое:
+
+- меньше контроля;
+- тяжелее эволюционировать нестандартное поведение;
+- сильнее зависимость от black-box поведения библиотеки;
+- коммерческая / product dependency risk, если речь идет именно о message-list варианте;
+- часть проблем может быть не в renderer, а выше - в `useConversationHistory` и semantic model.
+
+## Вариант B — Продолжать TanStack Virtual и доводить текущую архитектуру
+
+Идея:
+
+- сохраняем current branch direction;
+- воспринимаем TanStack не как drop-in chat solution, а как низкоуровневый engine;
+- продолжаем стабилизировать row model, scroll state machine и hybrid strategy.
+
+Сильные стороны:
+
+- максимальный контроль;
+- можно проектировать conversation вокруг наших exact use case;
+- отсутствует library lock-in на chat-specific abstraction;
+- проще эволюционировать отдельные части независимо.
+
+Слабые стороны:
+
+- мы берем на себя всю сложность prepend / anchor / follow output / dynamic height management;
+- любая ошибка в seam или scroll lifecycle быстро превращается в nasty UI bugs;
+- больше кода и больше мест, где может возникнуть regression;
+- без дополнительной декомпозиции `useConversationHistory` и aggregation layer renderer alone не решит главные complexity costs.
+
+## Вариант C — Оставить renderer вопрос открытым, но сначала переразобрать semantic timeline model
+
+Идея:
+
+- считать, что основной источник сложности не renderer, а reconstruction logic;
+- сначала переразделить responsibilities между:
+  - execution process transport,
+  - timeline derivation,
+  - aggregation/grouping,
+  - render rows.
+
+Это может означать, что:
+
+- `useConversationHistory` перестанет быть одновременно и loader, и reconciler, и semantic flattener;
+- появится более явная `ConversationTimelineModel` или `ConversationDeriver`, которая отдает уже semantic rows / turns;
+- virtualization layer станет тоньше и менее связанной с process internals.
+
+Сильные стороны:
+
+- уменьшает coupling между backend-shaped data и UI renderer;
+- может упростить и Virtuoso-вариант, и TanStack-вариант;
+- повышает maintainability независимо от library choice.
+
+Слабые стороны:
+
+- это уже более глубокая архитектурная работа;
+- возможно потребует больше migration effort, чем просто стабилизировать renderer;
+- без анализа backend contract можно легко сделать полурешение.
+
+## Вариант D — Подвинуть часть semantic timeline на backend
+
+Идея:
+
+- не восстанавливать conversation timeline полностью из execution processes на клиенте;
+- отдать клиенту более готовую timeline abstraction.
+
+Это может быть разная глубина:
+
+- backend отдает готовые timeline rows;
+- backend отдает turns/messages + typed events;
+- backend отдает conversation snapshot + deltas отдельно от raw process stream.
+
+Плюсы:
+
+- меньше reconstruction complexity на frontend;
+- проще открывать длинные conversations без staged угадываний;
+- проще гарантировать deterministic ordering.
+
+Минусы:
+
+- цена migration выше;
+- появляется новый backend contract, который тоже надо поддерживать;
+- если продуктовый semantics продолжает быстро меняться, можно зацементировать неправильную abstraction слишком рано.
+
+## Вариант E — Гибридный путь: стабилизировать semantic layer, затем выбрать renderer
+
+Это на данный момент выглядит как наиболее зрелый meta-вариант:
+
+1. сначала разделить semantic conversation model и renderer concerns;
+2. затем сравнить Virtuoso и TanStack уже поверх более чистого timeline model;
+3. принять решение по renderer на основе меньшего количества moving parts.
+
+Это не значит “сделать всё сразу”. Это значит не переоценивать роль virtualizer в задаче, где значительная доля сложности может жить выше.
+
+## Что видно уже сейчас по текущему sketch с созвона
+
+По предоставленной схеме на скриншоте видно две конкурирующие интуиции.
+
+Верхняя схема выглядит как довольно прямолинейная цепочка:
+
+```text
+WebSocket to get execution processes
+-> list of execution processes
+-> split: running process / previous execution process
+-> fetch each
+-> update conversation
+```
+
+Нижняя схема уже более честно признает существование промежуточного orchestration layer:
+
+```text
+WebSocket to get execution processes for a session
+-> handler
+-> load historic execution process logs / load live execution process logs
+-> given all available execution processes, render them
+```
+
+Мое промежуточное мнение по этой схеме такое:
+
+- верхняя схема слишком наивна и слишком близка к imperative fetch graph;
+- нижняя схема ближе к реальности, потому что вводит handler / orchestrator слой;
+- но обе схемы пока недостаточно явно показывают разницу между:
+  - transport layer,
+  - semantic derivation,
+  - UI row model,
+  - virtualization / scroll layer.
+
+То есть sketch полезен как стартовая точка, но не как финальная архитектурная модель.
+
+## Промежуточная гипотеза
+
+На текущем этапе наиболее вероятно следующее:
+
+- проблема conversation не сводится только к выбору Virtuoso vs TanStack;
+- renderer действительно важен, но не является единственным источником нестабильности;
+- основная долгосрочная maintainability-проблема, вероятно, лежит в том, что `useConversationHistory` и соседние слои одновременно решают слишком много разных задач.
+
+Эта гипотеза еще должна быть проверена сравнением с:
+
+- latest T3;
+- upstream `virtual` source;
+- upstream `react-virtuoso` behaviour;
+- old Virtuoso implementation в этом repo.
+
+## Что еще нужно зафиксировать перед рекомендацией
+
+До финального вывода еще нужно собрать и зафиксировать:
+
+1. latest T3 architectural moves и что они реально значат для нас;
+2. какие части Virtuoso-поведения были реально полезны именно для нашего workload;
+3. какие failure modes TanStack intrinsic, а какие вызваны нашим layering;
+4. где проходит разумная граница между frontend timeline derivation и backend semantics.
+
+## Текущее состояние документа
+
+Это промежуточный analysis document.
+
+Он фиксирует:
+
+- problem space;
+- evaluation criteria;
+- architecture option space;
+- текущие pressure points;
+- предварительную гипотезу.
+
+Следующий документ должен уже дать более строгую comparison matrix и recommendation surface.
+
+---
+
+## Что видно по T3 и по upstream библиотекам
+
+После повторного аудита latest T3 и исходников `virtual` / `react-virtuoso` можно зафиксировать несколько важных наблюдений.
+
+## Наблюдение 1 — T3 не использует TanStack как drop-in chat component
+
+Их текущая архитектура подтверждает ровно ту же реальность, с которой мы столкнулись:
+
+- TanStack Virtual дает хороший низкоуровневый engine;
+- но chat/timeline semantics приходится достраивать сверху вручную.
+
+У них уже есть:
+
+- width-aware estimator;
+- hybrid head/tail split;
+- `shouldAdjustScrollPositionOnItemSizeChange`;
+- click-anchor correction;
+- imperative scroll heuristics вокруг `scrollContainer.scrollTo(...)`.
+
+То есть latest T3 **не** показывает, что TanStack magically упрощает chat. Он показывает, что при сильной продуктовой специализации над ним почти всегда выстраивается большой custom orchestration layer.
+
+## Наблюдение 2 — Virtuoso действительно дает больше встроенных chat heuristics
+
+По исходникам `react-virtuoso` видно, что там уже существуют встроенные паттерны, которых нам сейчас приходится добирать вручную:
+
+- `followOutputSystem`;
+- trap на `SIZE_INCREASED`;
+- trap на `VIEWPORT_HEIGHT_DECREASING`;
+- internal header/footer sizing;
+- встроенная coordination между `followOutput`, `scrollToIndex`, `atBottomState`.
+
+Это настоящие преимущества Virtuoso, а не маркетинг.
+
+Но важно другое:
+
+- Virtuoso решает в основном message-list mechanics;
+- он не решает нашу перегруженность semantic pipeline.
+
+## Наблюдение 3 — renderer не является единственным источником сложности
+
+На текущей ветке уже видно, что значительная часть трудности живет выше virtualizer:
+
+- `useConversationHistory` одновременно loader, reconciler и semantic flattener;
+- `aggregateConsecutiveEntries` и `ConversationListContainer` вместе продолжают менять semantic shape данных после hook-а;
+- row model строится уже после aggregation и filtering в UI layer, а не как отдельная stable conversation model.
+
+Это означает, что выбор renderer важен, но не является достаточным объяснением всей нестабильности.
+
+---
+
+## Сравнение вариантов
+
+Ниже уже не просто brainstorming, а более строгая comparison surface.
+
+| Option | Краткая суть                                                       |              Stability |    Performance | Maintainability | Product fit |
+| ------ | ------------------------------------------------------------------ | ---------------------: | -------------: | --------------: | ----------: |
+| A      | Вернуться к Virtuoso и улучшать его                                | Medium-High short-term |         Medium |             Low |      Medium |
+| B      | Продолжать текущий TanStack renderer путь                          |                 Medium |         Medium |          Medium |        High |
+| C      | Сначала переразделить semantic timeline / `useConversationHistory` |               Med-High |           High |            High |        High |
+| D      | Двинуть timeline semantics на backend                              |             Medium now | High potential |          Medium |  Medium now |
+| E      | Гибридный путь: оставить TanStack, но сначала сделать C            |                   High |           High |            High |        High |
+
+### Вариант A — почему он не выглядит лучшим финальным направлением
+
+Да, Virtuoso дает built-in chat mechanics. Но исторический опыт на этой же кодовой базе показал несколько recurring классов проблем:
+
+- opaque interaction между identity, measurement и scroll modifiers;
+- зависимость от black-box message-list behaviour;
+- дополнительные operational concerns из-за commercial message-list path;
+- старые проблемы решались на уровне list engine, но semantic complexity оставалась прежней.
+
+Именно поэтому A может быть хорошим short-term stabilisation вариантом, но выглядит слабым long-term architecture answer.
+
+### Вариант B — почему он хорош, но недостаточен сам по себе
+
+Продолжать текущий TanStack путь логично, потому что:
+
+- мы уже проделали большую migration work;
+- scroll intent model и row model уже существуют;
+- library-level dependence и opacity стали меньше.
+
+Но если идти только по пути B, есть риск просто бесконечно шлифовать renderer-слой, в то время как semantic pipeline останется перегруженной.
+
+### Вариант C — почему он выглядит сильнее, чем просто "починить рендер"
+
+Если убрать library emotion и смотреть сухо на architecture, то главный вопрос сейчас выглядит так:
+
+> Должен ли `useConversationHistory` продолжать быть одновременно transport-aware loader, process reconciler и semantic timeline builder?
+
+Скорее всего, нет.
+
+Именно поэтому C выглядит очень сильным направлением независимо от того, останемся ли мы на TanStack или в какой-то момент еще раз посмотрим в сторону Virtuoso.
+
+### Вариант D — почему это пока не следующий шаг
+
+Backend timeline abstraction потенциально очень сильная идея.
+
+Но сейчас это выглядит не как immediate next step, а как следующий уровень зрелости, когда:
+
+- frontend semantics уже прояснена;
+- мы точно понимаем, какая timeline abstraction нам нужна;
+- есть уверенность, что мы не цементируем слишком рано неправильный контракт.
+
+### Вариант E — почему он сейчас выглядит сильнейшим
+
+Это не "сделать всё сразу".
+
+Это значит:
+
+1. не делать новый renderer swap сейчас;
+2. не возвращаться к Virtuoso в качестве reflex fix;
+3. сохранить текущий TanStack path как render engine;
+4. но следующей архитектурной целью сделать semantic extraction и boundary cleanup.
+
+Именно такой путь лучше всего бьет в root-cause complexity, а не только в surface symptoms.
+
+---
+
+## Промежуточная рекомендация
+
+На текущем объеме данных strongest direction выглядит так:
+
+<Check>
+  Основное направление: **E — hybrid path, реализованный как C-first поверх
+  текущего TanStack пути**.
+</Check>
+
+То есть:
+
+- **не** возвращаться сейчас к Virtuoso как к основному решению;
+- **не** делать сейчас backend-first migration timeline semantics;
+- **не** ограничиваться endless bug-fixing в renderer слое;
+- а сначала отделить semantic timeline derivation от render / scroll orchestration, оставаясь на текущем renderer path.
+
+### Почему это выглядит наиболее зрелым ответом
+
+Потому что он одновременно:
+
+- сохраняет уже сделанную migration work;
+- не теряет TanStack-level control, который нам нужен;
+- не игнорирует тот факт, что главный долг может быть выше renderer;
+- оставляет open future path как к более чистому TanStack renderer, так и к возможному backend contract evolution.
+
+---
+
+## Что именно кажется главным архитектурным долгом сейчас
+
+На текущем этапе наиболее вероятно, что главный долг выглядит так:
+
+1. execution-process transport и conversation semantics слишком тесно связаны;
+2. post-hook aggregation и row-derivation в UI layer продолжают менять shape timeline уже после того, как данные вышли из hook-а;
+3. scroll layer вынуждена знать слишком много о lifecycle и нестабильности upstream data shape.
+
+Другими словами:
+
+<Info>
+  Главная долгосрочная проблема сейчас выглядит не как "не та библиотека
+  виртуализации", а как "слишком много semantic responsibility размазано между
+  несколькими слоями".
+</Info>
+
+---
+
+## Что бы я не рекомендовал делать прямо сейчас
+
+### Не рекомендовал бы сейчас
+
+1. откатываться обратно на Virtuoso как reflex move;
+2. делать backend rewrite до того, как frontend timeline model станет чище;
+3. продолжать бесконечно чинить только scroll/virtualizer symptoms без выделения semantic boundary.
+
+### Что выглядит разумным как следующий аналитический шаг
+
+1. явно описать target architecture для semantic timeline model;
+2. выделить, какие обязанности должны остаться в `useConversationHistory`, а какие уйти в отдельный derivation layer;
+3. после этого уже сравнить, насколько renderer-слой сам по себе становится проще.
+
+---
+
+## Итог
+
+На данный момент самый зрелый вывод выглядит так:
+
+> **Финальный выбор не должен звучать как "Virtuoso или TanStack".**
+> Он должен звучать как: **"какой должен быть semantic boundary conversation, и какой renderer лучше поддерживает уже очищенную модель"**.
+
+На текущем материале наиболее сильный путь — сохранить TanStack renderer как рабочий engine, но следующую архитектурную работу направить не в очередной renderer swap, а в extraction / cleanup semantic timeline layer.
