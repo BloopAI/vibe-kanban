@@ -26,7 +26,7 @@ import {
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
-  ImageResponse,
+  FileResponse,
   GitOperationError,
   ApprovalResponse,
   RebaseWorkspaceRequest,
@@ -1004,9 +1004,9 @@ export const profilesApi = {
   },
 };
 
-// Images API
-export const imagesApi = {
-  upload: async (file: File): Promise<ImageResponse> => {
+// Files API
+export const filesApi = {
+  upload: async (file: File): Promise<FileResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -1019,16 +1019,16 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload file: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<FileResponse>(response);
   },
 
-  uploadForTask: async (taskId: string, file: File): Promise<ImageResponse> => {
+  uploadForTask: async (taskId: string, file: File): Promise<FileResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -1044,24 +1044,20 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload file: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<FileResponse>(response);
   },
 
-  /**
-   * Upload an image for a workspace and immediately copy it to the container.
-   * Returns the image with a file_path that can be used in markdown.
-   */
   uploadForAttempt: async (
     workspaceId: string,
     sessionId: string,
     file: File
-  ): Promise<ImageResponse> => {
+  ): Promise<FileResponse> => {
     const formData = new FormData();
     formData.append('image', file);
 
@@ -1077,29 +1073,29 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload file: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<FileResponse>(response);
   },
 
-  delete: async (imageId: string): Promise<void> => {
-    const response = await makeRequest(`/api/images/${imageId}`, {
+  delete: async (fileId: string): Promise<void> => {
+    const response = await makeRequest(`/api/images/${fileId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
   },
 
-  getTaskImages: async (taskId: string): Promise<ImageResponse[]> => {
+  getTaskFiles: async (taskId: string): Promise<FileResponse[]> => {
     const response = await makeRequest(`/api/images/task/${taskId}`);
-    return handleApiResponse<ImageResponse[]>(response);
+    return handleApiResponse<FileResponse[]>(response);
   },
 
-  getImageUrl: (imageId: string): string => {
-    return `/api/images/${imageId}/file`;
+  getFileUrl: (fileId: string): string => {
+    return `/api/images/${fileId}/file`;
   },
 };
 

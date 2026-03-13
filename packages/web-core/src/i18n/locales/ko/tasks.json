@@ -320,7 +320,7 @@
       "cancelled": "취소됨"
     },
     "startLabel": "시작",
-    "attachImage": "이미지 첨부",
+    "attachFile": "파일 첨부",
     "dropImagesHere": "여기에 이미지를 드롭하세요",
     "updating": "업데이트 중...",
     "updateTask": "작업 업데이트",

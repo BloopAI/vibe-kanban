@@ -320,7 +320,7 @@
       "cancelled": "Cancelado"
     },
     "startLabel": "Iniciar",
-    "attachImage": "Adjuntar imagen",
+    "attachFile": "Adjuntar archivo",
     "dropImagesHere": "Suelta las imágenes aquí",
     "updating": "Actualizando...",
     "updateTask": "Actualizar Tarea",

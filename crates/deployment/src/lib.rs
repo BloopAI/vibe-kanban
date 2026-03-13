@@ -18,10 +18,10 @@ use services::services::{
     config::{Config, ConfigError},
     container::{ContainerError, ContainerService},
     events::{EventError, EventService},
+    file::{FileError, FileService},
     file_search::FileSearchCache,
     filesystem::{FilesystemError, FilesystemService},
     filesystem_watcher::FilesystemWatcherError,
-    image::{ImageError, ImageService},
     queued_message::QueuedMessageService,
     remote_client::RemoteClient,
     repo::RepoService,
@@ -56,7 +56,7 @@ pub enum DeploymentError {
     #[error(transparent)]
     Executor(#[from] ExecutorError),
     #[error(transparent)]
-    Image(#[from] ImageError),
+    File(#[from] FileError),
     #[error(transparent)]
     Filesystem(#[from] FilesystemError),
     #[error(transparent)]
@@ -89,7 +89,7 @@ pub trait Deployment: Clone + Send + Sync + 'static {
 
     fn repo(&self) -> &RepoService;
 
-    fn image(&self) -> &ImageService;
+    fn file(&self) -> &FileService;
 
     fn filesystem(&self) -> &FilesystemService;
 

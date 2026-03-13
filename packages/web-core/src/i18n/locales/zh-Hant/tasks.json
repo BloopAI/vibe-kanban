@@ -320,7 +320,7 @@
       "cancelled": "已取消"
     },
     "startLabel": "開始",
-    "attachImage": "附加圖片",
+    "attachFile": "附加檔案",
     "dropImagesHere": "將圖片放在這裡",
     "updating": "更新中...",
     "updateTask": "更新任務",

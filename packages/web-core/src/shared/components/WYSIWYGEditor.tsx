@@ -39,8 +39,8 @@ import { TABLE_TRANSFORMER } from '@vibe/ui/lib/table-transformer';
 import {
   WorkspaceContext as EditorWorkspaceContext,
   SessionContext,
-  LocalImagesContext,
-  type LocalImageMetadata,
+  LocalFilesContext,
+  type LocalFileMetadata,
 } from '@vibe/ui/components/WorkspaceContext';
 import { TypeaheadOpenProvider } from '@vibe/ui/components/TypeaheadOpenContext';
 import {
@@ -120,8 +120,8 @@ type WysiwygProps = {
   sessionId?: string;
   /** Repo ID for slash commands when no workspace yet */
   repoId?: string;
-  /** Local images for immediate rendering (before saved to server) */
-  localImages?: LocalImageMetadata[];
+  /** Local files for immediate rendering (before saved to server) */
+  localFiles?: LocalFileMetadata[];
   /** Optional edit callback - shows edit button in read-only mode when provided */
   onEdit?: () => void;
   /** Optional delete callback - shows delete button in read-only mode when provided */
@@ -269,7 +269,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
       workspaceId,
       sessionId,
       repoId,
-      localImages,
+      localFiles,
       onEdit,
       onDelete,
       autoFocus = false,
@@ -542,14 +542,14 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
               className={className}
               workspaceId={workspaceId}
               sessionId={sessionId}
-              localImages={localImages}
+              localFiles={localFiles}
             />
           </div>
         )}
 
         <EditorWorkspaceContext.Provider value={workspaceId}>
           <SessionContext.Provider value={sessionId}>
-            <LocalImagesContext.Provider value={localImages ?? []}>
+            <LocalFilesContext.Provider value={localFiles ?? []}>
               <LexicalComposer initialConfig={initialConfig}>
                 <EditorRefPlugin editorRef={editorInstanceRef} />
                 <MarkdownSyncPlugin
@@ -661,7 +661,7 @@ const WYSIWYGEditor = forwardRef<WYSIWYGEditorRef, WysiwygProps>(
                   />
                 )}
               </LexicalComposer>
-            </LocalImagesContext.Provider>
+            </LocalFilesContext.Provider>
           </SessionContext.Provider>
         </EditorWorkspaceContext.Provider>
       </div>

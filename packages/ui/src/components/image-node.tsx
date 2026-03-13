@@ -7,8 +7,8 @@ import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
 import {
   useWorkspaceId,
   useSessionId,
-  useLocalImages,
-  type LocalImageMetadata,
+  useLocalFiles,
+  type LocalFileMetadata,
 } from './WorkspaceContext';
 import {
   createDecoratorNode,
@@ -102,7 +102,7 @@ async function downloadBlobUrl(url: string, filename: string): Promise<void> {
 }
 
 function toMetadataFromLocalImage(
-  localImage: LocalImageMetadata | undefined
+  localImage: LocalFileMetadata | undefined
 ): ImageMetadataLike | null {
   if (!localImage) return null;
 
@@ -119,13 +119,13 @@ function useImageMetadata(
   workspaceId: string | undefined,
   sessionId: string | undefined,
   src: string,
-  localImages: LocalImageMetadata[]
+  localFiles: LocalFileMetadata[]
 ) {
   const isVibeImage = src.startsWith('.vibe-images/');
 
   const localImage = useMemo(
-    () => localImages.find((img) => img.path === src),
-    [localImages, src]
+    () => localFiles.find((file) => file.path === src),
+    [localFiles, src]
   );
 
   const localImageMetadata = useMemo(
@@ -188,7 +188,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const { src, altText } = data;
     const workspaceId = useWorkspaceId();
     const sessionId = useSessionId();
-    const localImages = useLocalImages();
+    const localFiles = useLocalFiles();
     const [editor] = useLexicalComposerContext();
 
     const isVibeImage = src.startsWith('.vibe-images/');
@@ -210,7 +210,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
       workspaceId,
       sessionId,
       src,
-      localImages
+      localFiles
     );
 
     const handleClick = useCallback(
@@ -280,7 +280,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     let metadataLine: string | null = null;
 
     const hasContext = !!workspaceId;
-    const hasLocalImage = localImages.some((img) => img.path === src);
+    const hasLocalImage = localFiles.some((file) => file.path === src);
 
     if (isAttachment) {
       if (attachmentLoading) {

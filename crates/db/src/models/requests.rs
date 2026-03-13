@@ -35,7 +35,8 @@ pub struct CreateAndStartWorkspaceRequest {
     pub linked_issue: Option<LinkedIssueInfo>,
     pub executor_config: ExecutorConfig,
     pub prompt: String,
-    pub image_ids: Option<Vec<Uuid>>,
+    #[serde(alias = "image_ids")]
+    pub file_ids: Option<Vec<Uuid>>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
