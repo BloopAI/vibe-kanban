@@ -226,6 +226,7 @@ fn disable_pinch_zoom(window: &tauri::WebviewWindow) {
     });
 }
 
+#[cfg(target_os = "macos")]
 fn show_window(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.show();

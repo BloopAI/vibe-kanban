@@ -466,16 +466,16 @@ impl IssueRepository {
                 .await?;
 
             // If sub-issue, also move parent issue to "In progress"
-            if let Some(parent_issue_id) = issue.parent_issue_id {
-                if let Some(parent_issue) = Self::find_by_id(pool, parent_issue_id).await? {
-                    Self::move_to_status_if_pending(
-                        pool,
-                        parent_issue_id,
-                        parent_issue.status_id,
-                        in_progress_status.id,
-                    )
-                    .await?;
-                }
+            if let Some(parent_issue_id) = issue.parent_issue_id
+                && let Some(parent_issue) = Self::find_by_id(pool, parent_issue_id).await?
+            {
+                Self::move_to_status_if_pending(
+                    pool,
+                    parent_issue_id,
+                    parent_issue.status_id,
+                    in_progress_status.id,
+                )
+                .await?;
             }
         }
 
