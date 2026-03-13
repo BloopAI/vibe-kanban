@@ -94,7 +94,7 @@ interface SharedProps {
   /** Callback to scroll to previous user message */
   onScrollToPreviousMessage: () => void;
   /** Callback to scroll to bottom of conversation */
-  onScrollToBottom: () => void;
+  onScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   /** Disable the "view code" click handler (for VS Code extension) */
   disableViewCode: boolean;
   /** Replace diff stats with an "Open Workspace" button in header */
@@ -476,6 +476,8 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       reviewMarkdown,
     ]);
 
+    onScrollToBottom('auto');
+
     const success = await send(prompt);
     if (success) {
       cancelDebouncedSave();
@@ -485,8 +487,14 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
       if (!isSlashCommand) {
         reviewContext?.clearComments();
       }
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          onScrollToBottom('auto');
+        });
+      });
     }
   }, [
+    onScrollToBottom,
     send,
     localMessage,
     reviewMarkdown,
