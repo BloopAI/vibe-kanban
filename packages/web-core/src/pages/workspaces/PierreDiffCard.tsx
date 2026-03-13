@@ -4,6 +4,7 @@ import {
   CaretDownIcon,
   ChatCircleIcon,
   CopyIcon,
+  EyeIcon,
   GithubLogoIcon,
   PlusIcon,
 } from '@phosphor-icons/react';
@@ -35,11 +36,13 @@ import { OpenInIdeButton } from '@/shared/components/OpenInIdeButton';
 import { CopyButton } from '@/shared/components/CopyButton';
 import { useOpenInEditor } from '@/shared/hooks/useOpenInEditor';
 import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
+import { Tooltip } from '@vibe/ui/components/Tooltip';
 import { ReviewCommentRenderer } from './ReviewCommentRenderer';
 import { GitHubCommentRenderer } from './GitHubCommentRenderer';
 import { CommentWidgetLine } from './CommentWidgetLine';
 import { DisplayTruncatedPath } from '@/shared/lib/TruncatePath';
 import { stripLineEnding, splitLines } from '@/shared/lib/string';
+import { MarkdownPreview } from '@/shared/components/MarkdownPreview';
 import type { Diff } from 'shared/types';
 
 /**
@@ -232,6 +235,18 @@ export function PierreDiffCard({
   const filePath = diff.newPath || diff.oldPath || 'unknown';
   const oldPath = diff.oldPath;
   const changeKind = diff.change;
+
+  // Markdown preview support
+  const isMarkdownFile = useMemo(() => {
+    if (diff.contentOmitted) return false;
+    return filePath.endsWith('.md') || filePath.endsWith('.mdx');
+  }, [filePath, diff.contentOmitted]);
+  const [viewMode, setViewMode] = useState<'diff' | 'preview'>('diff');
+  const markdownContent = useMemo(() => {
+    if (!isMarkdownFile) return '';
+    if (diff.change === 'deleted') return diff.oldContent ?? '';
+    return diff.newContent ?? '';
+  }, [isMarkdownFile, diff]);
 
   const openInEditor = useOpenInEditor(workspaceId);
   const handleOpenInIde = useCallback(() => {
@@ -541,6 +556,39 @@ export function PierreDiffCard({
           </span>
         )}
         <div className="flex items-center gap-half shrink-0">
+          {isMarkdownFile && (
+            <span onClick={(e) => e.stopPropagation()}>
+              <Tooltip
+                content={
+                  viewMode === 'diff'
+                    ? t('diff.markdownPreview.showPreview')
+                    : t('diff.markdownPreview.showDiff')
+                }
+                side="top"
+              >
+                <button
+                  className={cn(
+                    'flex items-center justify-center transition-colors',
+                    'text-low hover:text-normal',
+                    viewMode === 'preview' && 'text-brand hover:text-brand-hover'
+                  )}
+                  aria-label={
+                    viewMode === 'diff'
+                      ? t('diff.markdownPreview.showPreview')
+                      : t('diff.markdownPreview.showDiff')
+                  }
+                  onClick={() =>
+                    setViewMode((v) => (v === 'diff' ? 'preview' : 'diff'))
+                  }
+                >
+                  <EyeIcon
+                    className="size-icon-xs"
+                    weight={viewMode === 'preview' ? 'fill' : 'regular'}
+                  />
+                </button>
+              </Tooltip>
+            </span>
+          )}
           {!isRealMobileDevice() && (
             <span onClick={(e) => e.stopPropagation()}>
               <OpenInIdeButton
@@ -560,7 +608,11 @@ export function PierreDiffCard({
 
       {expanded && (
         <div className="bg-primary rounded-b-sm overflow-hidden">
-          {shouldShowPlaceholder ? (
+          {viewMode === 'preview' && isMarkdownFile ? (
+            <div className="p-base overflow-auto max-h-[80vh]">
+              <MarkdownPreview content={markdownContent} theme={actualTheme} />
+            </div>
+          ) : shouldShowPlaceholder ? (
             <div className="p-base bg-warning/5 border-t border-warning/20">
               <div className="flex items-center justify-between gap-base">
                 <div className="text-sm text-low">
