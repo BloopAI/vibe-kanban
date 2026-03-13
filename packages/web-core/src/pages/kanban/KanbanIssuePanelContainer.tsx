@@ -269,6 +269,8 @@ export function KanbanIssuePanelContainer({
 
   // Track previous issue ID to detect actual issue switches (not just data updates)
   const prevIssueIdRef = useRef<string | null>(null);
+  const prevHasPendingAttachmentsRef = useRef(false);
+  const hasPendingAttachmentsRef = useRef(false);
   const titleInputRef = useRef<HTMLTextAreaElement>(null);
 
   const [formState, dispatchFormState] = useReducer(
@@ -399,7 +401,7 @@ export function KanbanIssuePanelContainer({
           type: 'setEditDescription',
           description: newDesc,
         });
-        if (options?.persist !== false) {
+        if (options?.persist !== false && !hasPendingAttachmentsRef.current) {
           debouncedSaveDescription(newDesc);
         }
       }
@@ -437,7 +439,7 @@ export function KanbanIssuePanelContainer({
           type: 'setEditDescription',
           description: nextDesc,
         });
-        if (options?.persist !== false) {
+        if (options?.persist !== false && !hasPendingAttachmentsRef.current) {
           debouncedSaveDescription(nextDesc);
         }
       }
@@ -476,7 +478,7 @@ export function KanbanIssuePanelContainer({
           type: 'setEditDescription',
           description: nextDesc || null,
         });
-        if (options?.persist !== false) {
+        if (options?.persist !== false && !hasPendingAttachmentsRef.current) {
           debouncedSaveDescription(nextDesc || null);
         }
       }
@@ -512,6 +514,7 @@ export function KanbanIssuePanelContainer({
     onAttachmentSourceRemove: handleDescriptionSourceRemove,
     onError: (msg) => console.error('[attachment]', msg),
   });
+  hasPendingAttachmentsRef.current = hasPendingAttachments;
 
   // Dropzone for drag-drop image upload on description area
   const {
@@ -606,16 +609,31 @@ export function KanbanIssuePanelContainer({
   ]);
 
   useEffect(() => {
-    if (kanbanCreateMode || !selectedKanbanIssueId || hasPendingAttachments) {
+    const wasPending = prevHasPendingAttachmentsRef.current;
+    prevHasPendingAttachmentsRef.current = hasPendingAttachments;
+
+    if (kanbanCreateMode || !selectedKanbanIssueId) {
       return;
     }
 
-    debouncedSaveDescription(displayData.description ?? null);
+    if (!wasPending || hasPendingAttachments) {
+      return;
+    }
+
+    const currentDescription = displayData.description ?? null;
+    const persistedDescription = selectedIssue?.description ?? null;
+
+    if (currentDescription === persistedDescription) {
+      return;
+    }
+
+    debouncedSaveDescription(currentDescription);
   }, [
     kanbanCreateMode,
     selectedKanbanIssueId,
     hasPendingAttachments,
     displayData.description,
+    selectedIssue?.description,
     debouncedSaveDescription,
   ]);
 
@@ -719,7 +737,9 @@ export function KanbanIssuePanelContainer({
           type: 'setEditDescription',
           description: value as string | null,
         });
-        debouncedSaveDescription(value as string | null);
+        if (!hasPendingAttachments) {
+          debouncedSaveDescription(value as string | null);
+        }
       } else if (field === 'statusId') {
         // Status changes go through the command bar status selection
         openStatusSelection(projectId, [selectedKanbanIssueId]);
@@ -764,6 +784,7 @@ export function KanbanIssuePanelContainer({
       projectId,
       createFormFallback,
       createFormData,
+      hasPendingAttachments,
       debouncedSaveTitle,
       debouncedSaveDescription,
       openStatusSelection,

@@ -370,10 +370,7 @@ export function useAzureAttachments({
 
       setIsUploading(false);
     },
-    [
-      projectId,
-      t,
-    ]
+    [projectId, t]
   );
 
   const getAttachmentIds = useCallback(
