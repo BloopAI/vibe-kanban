@@ -1,0 +1,1825 @@
+---
+title: "Глубокий разбор conversation: Virtuoso -> TanStack Virtual"
+description: "Максимально подробный архитектурный разбор workspace conversation: старое решение на Virtuoso, текущее решение на TanStack Virtual, useConversationHistory, scroll, hybrid virtualization, причины миграции и file-by-file ответственность."
+---
+
+# Глубокий разбор conversation: Virtuoso -> TanStack Virtual
+
+Этот документ - большой технический разбор того, как устроен conversation в workspace.
+
+Его задача - не просто перечислить файлы, а восстановить полную архитектуру:
+
+1. как работало старое решение на Virtuoso;
+2. что именно там виртуализировалось;
+3. как работал и работает `useConversationHistory`;
+4. как устроено текущее решение на TanStack Virtual;
+5. почему произошла миграция;
+6. какие файлы были добавлены и зачем;
+7. что сейчас делает hybrid virtualization;
+8. что старый компонент давал нам "из коробки", а что теперь мы контролируем сами.
+
+<Info>
+В этом документе используются два вида источников:
+
+- текущие файлы из working tree;
+- исторические версии файлов из git history.
+
+Самый важный исторический reference для старого активного Virtuoso-рендера:
+
+`git show b828635b3^:packages/web-core/src/features/workspace-chat/ui/ConversationListContainer.tsx`
+
+Это последняя версия container-а до того, как active renderer был окончательно переключен на TanStack Virtual.
+
+</Info>
+
+## Что именно мы разбираем
+
+Документ касается только conversation list в workspace.
+
+Он **не** покрывает:
+
+- отдельную виртуализацию в File Diff;
+- отдельные process logs viewers вне main conversation;
+- другие списки в приложении.
+
+Главный pipeline, который здесь разбирается:
+
+```text
+execution processes
+-> useConversationHistory
+-> PatchTypeWithKey[]
+-> aggregation / filtering
+-> render model / virtualization
+-> scroll behaviour
+```
+
+---
+
+## Словарь терминов
+
+### `ExecutionProcess`
+
+Backend-сущность, которая представляет единицу выполнения. Это может быть:
+
+- coding agent turn;
+- follow-up turn;
+- review turn;
+- setup script;
+- cleanup script;
+- archive script;
+- tool install script.
+
+### `PatchTypeWithKey`
+
+Плоская entry-модель, которую эмитит `useConversationHistory`.
+
+Исторически это был основной тип conversation item до слоя aggregation.
+
+### `DisplayEntry`
+
+UI-уровень conversation item после aggregation.
+
+Это может быть:
+
+- обычная patch entry;
+- aggregated tool group;
+- aggregated diff group;
+- aggregated thinking group.
+
+### `ConversationRow`
+
+Новая semantic row model, которая была добавлена в TanStack-архитектуре поверх `DisplayEntry`.
+
+### `head`
+
+Виртуализированная часть текущего conversation списка.
+
+### `tail`
+
+Невиртуализированная часть текущего conversation списка, которая рендерится обычным DOM.
+
+---
+
+## Короткий итог в двух абзацах
+
+Старое решение использовало `@virtuoso.dev/message-list` как специализированный chat/message-list компонент. Оно получало не просто массив данных, а объект `data + scrollModifier`, само мерило элементы, само управляло message-list semantics и само выполняло большую часть scroll logic.
+
+Текущее решение оставило `useConversationHistory` как источник conversation semantics, но заменило list engine на явную композицию:
+
+- semantic row model;
+- TanStack Virtual hook;
+- explicit scroll intent model;
+- separate scroll executor;
+- hybrid virtualization (`virtualized head + unvirtualized tail`);
+- явный empty state и anchor-preservation.
+
+То есть миграция была не просто заменой библиотеки, а сменой архитектурной философии: от black-box message-list к app-owned virtualization architecture.
+
+---
+
+## Схема старой и новой архитектуры
+
+### Старое решение на Virtuoso
+
+```text
+useExecutionProcessesContext()
+        |
+        v
+useConversationHistory()
+        |
+        | emits: PatchTypeWithKey[] + AddEntryType + loading
+        v
+ConversationListContainer
+        |
+        | aggregateConsecutiveEntries(...)
+        | filter next_action / token_usage_info
+        | choose ScrollModifier
+        v
+setChannelData({ data, scrollModifier })
+        |
+        v
+VirtuosoMessageList<DisplayEntry>
+        |
+        v
+ItemContent(...)
+        |
+        v
+DisplayConversationEntry / NewDisplayConversationEntry
+```
+
+### Текущее решение на TanStack Virtual
+
+```text
+useExecutionProcessesContext()
+        |
+        v
+useConversationHistory()
+        |
+        | emits: PatchTypeWithKey[] + AddEntryType + loading
+        v
+ConversationListContainer
+        |
+        | aggregateConsecutiveEntries(...)
+        | filter non-renderable entries
+        | buildConversationRowsIncremental(...)
+        | split into virtualized head + DOM tail
+        | resolve scroll intent
+        v
+useConversationVirtualizer(rows=head)
+        + useScrollCommandExecutor(...)
+        |
+        v
+renderRowContent(...)
+        |
+        v
+DisplayConversationEntry
+```
+
+Главное отличие:
+
+- раньше list engine был message-list abstraction;
+- теперь list engine - это набор наших собственных слоев поверх generic virtualizer.
+
+---
+
+## Старое решение на Virtuoso
+
+## Какая библиотека использовалась
+
+Старый conversation использовал:
+
+- `@virtuoso.dev/message-list`
+
+Это важно подчеркнуть отдельно:
+
+- это не обычный `react-virtuoso` list;
+- это коммерческий message-list API, специально заточенный под chat-like use case.
+
+Ключевая особенность этого API:
+
+- список принимал `DataWithScrollModifier<T>`, а не просто `T[]`.
+
+То есть data update и scroll instruction шли в список одним пакетом.
+
+## Главные исторические файлы
+
+### Старый active path
+
+- container: `git show b828635b3^:packages/web-core/src/features/workspace-chat/ui/ConversationListContainer.tsx`
+- scroll modifiers: `git show b828635b3^:packages/web-core/src/shared/lib/virtuoso-modifiers.ts`
+- data source: `git show 5ad3b8474:packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+- пример старого row renderer: `git show 5ad3b8474:packages/web-core/src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`
+
+### Важное уточнение про историю
+
+Последний pre-swap container (`b828635b3^`) уже был transitional:
+
+- Virtuoso все еще был активным renderer-ом;
+- часть TanStack plumbing уже существовала рядом;
+- active conversation UI при этом все еще рисовался через Virtuoso.
+
+Это полезно, потому что можно увидеть:
+
+1. старую рабочую модель;
+2. момент, когда новая архитектура уже начала простраиваться рядом.
+
+## Что именно виртуализировалось в старом решении
+
+Старый Virtuoso list виртуализировал **всю** conversation timeline как один flat list `DisplayEntry[]`.
+
+В этот список входили:
+
+- user messages;
+- assistant messages;
+- system messages;
+- thinking messages;
+- error messages;
+- tool summary rows;
+- plans;
+- todo rows;
+- subagent/task rows;
+- script rows;
+- file-edit rows;
+- aggregated tool groups;
+- aggregated diff groups;
+- aggregated thinking groups.
+
+Не являлись обычными items списка:
+
+- setup placeholder;
+- cleanup placeholder.
+
+Они жили в `Header` и `Footer` самого Virtuoso message-list.
+
+То есть old layout model был такой:
+
+```text
+Header
+  + setup placeholder if needed
+
+Virtuoso items
+  + every conversation row as a flat DisplayEntry
+
+Footer
+  + cleanup placeholder if needed
+```
+
+## Старый `ConversationListContainer`: центральная идея
+
+Самое важное состояние старого container-а:
+
+```tsx
+const [channelData, setChannelData] =
+  useState<DataWithScrollModifier<DisplayEntry> | null>(null);
+```
+
+Это главный архитектурный ключ старой системы.
+
+Старый container не делал так:
+
+```tsx
+setEntries(newEntries);
+```
+
+Он делал так:
+
+```tsx
+setChannelData({
+  data: filteredEntries,
+  scrollModifier,
+});
+```
+
+То есть при каждом update он одновременно решал:
+
+1. какие items показать;
+2. как после этого должен вести себя scroll.
+
+## Старый Virtuoso container: основной код
+
+Ниже - главный старый render block из pre-swap container-а:
+
+```tsx
+<VirtuosoMessageList<DisplayEntry, MessageListContext>
+  ref={messageListRef}
+  className="h-full scrollbar-none"
+  data={channelData}
+  initialLocation={INITIAL_TOP_ITEM}
+  context={messageListContext}
+  computeItemKey={computeItemKey}
+  itemIdentity={itemIdentity}
+  ItemContent={ItemContent}
+  onScroll={handleScroll}
+  Header={({ context }) => (
+    <div className="pt-2">
+      {context?.showSetupPlaceholder && (
+        <div className="my-base px-double">
+          <ChatScriptPlaceholder
+            type="setup"
+            onConfigure={context.onConfigureSetup}
+          />
+        </div>
+      )}
+    </div>
+  )}
+  Footer={({ context }) => (
+    <div className="pb-2">
+      {context?.showCleanupPlaceholder && (
+        <div className="my-base px-double">
+          <ChatScriptPlaceholder
+            type="cleanup"
+            onConfigure={context.onConfigureCleanup}
+          />
+        </div>
+      )}
+    </div>
+  )}
+/>
+```
+
+### Что означал каждый важный prop
+
+- `data={channelData}`
+  - объект вида `items + scroll instruction`.
+- `initialLocation={INITIAL_TOP_ITEM}`
+  - старт у нижнего края списка.
+- `context={messageListContext}`
+  - контекст, который попадал в `ItemContent`, `Header`, `Footer`.
+- `computeItemKey`
+  - React key.
+- `itemIdentity`
+  - identity для самого Virtuoso.
+- `ItemContent`
+  - единый renderer каждого item.
+- `onScroll={handleScroll}`
+  - механизм old at-bottom detection.
+
+## Старые scroll modifiers
+
+Из `packages/web-core/src/shared/lib/virtuoso-modifiers.ts` и старого container-а:
+
+```ts
+export const INITIAL_TOP_ITEM = {
+  index: "LAST" as const,
+  align: "end" as const,
+};
+
+export const InitialDataScrollModifier: ScrollModifier = {
+  type: "item-location",
+  location: INITIAL_TOP_ITEM,
+  purgeItemSizes: true,
+};
+
+export const ScrollToBottomModifier: ScrollModifier = {
+  type: "item-location",
+  location: INITIAL_TOP_ITEM,
+};
+
+const AutoScrollToBottom: ScrollModifier = {
+  type: "auto-scroll-to-bottom",
+  autoScroll: "smooth",
+};
+
+const ScrollToTopOfLastItem: ScrollModifier = {
+  type: "item-location",
+  location: {
+    index: "LAST",
+    align: "start",
+  },
+};
+```
+
+### Что это значило по смыслу
+
+- `InitialDataScrollModifier`
+  - initial data load;
+  - jump to bottom;
+  - плюс `purgeItemSizes`, то есть сбросить cached item sizes Virtuoso.
+- `ScrollToBottomModifier`
+  - обычный jump to bottom без purge.
+- `AutoScrollToBottom`
+  - режим live follow для streaming.
+- `ScrollToTopOfLastItem`
+  - special case для plan presentation.
+
+## Старый `ItemContent`: как рендерился каждый элемент
+
+Старый render path был централизован в `ItemContent`:
+
+```tsx
+const ItemContent: VirtuosoMessageListProps<
+  DisplayEntry,
+  MessageListContext
+>["ItemContent"] = ({ data, context }) => {
+  const attempt = context?.attempt;
+  const resetAction = context?.resetAction;
+
+  if (isAggregatedGroup(data)) {
+    return (
+      <DisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={data}
+        aggregatedDiffGroup={null}
+        aggregatedThinkingGroup={null}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        workspaceWithSession={attempt}
+        resetAction={resetAction}
+      />
+    );
+  }
+
+  if (isAggregatedDiffGroup(data)) {
+    return (
+      <DisplayConversationEntry
+        expansionKey={data.patchKey}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={data}
+        aggregatedThinkingGroup={null}
+        entry={null}
+        executionProcessId={data.executionProcessId}
+        workspaceWithSession={attempt}
+        resetAction={resetAction}
+      />
+    );
+  }
+
+  if (data.type === "NORMALIZED_ENTRY" && attempt) {
+    return (
+      <DisplayConversationEntry
+        expansionKey={data.patchKey}
+        entry={data.content}
+        aggregatedGroup={null}
+        aggregatedDiffGroup={null}
+        aggregatedThinkingGroup={null}
+        executionProcessId={data.executionProcessId}
+        workspaceWithSession={attempt}
+        resetAction={resetAction}
+      />
+    );
+  }
+
+  return null;
+};
+```
+
+### Ключевая идея
+
+Virtuoso сам по себе ничего не знал о user message, plan, diff group или approval.
+
+Он знал только flat list of `DisplayEntry`.
+
+Вся semantic dispatch logic жила в `DisplayConversationEntry` / `NewDisplayConversationEntry`.
+
+То есть old division of responsibility был таким:
+
+- Virtuoso отвечает за virtualization + scroll;
+- renderer отвечает за semantic render конкретного item;
+- `useConversationHistory` отвечает за то, какие items вообще существуют.
+
+## Старый identity model
+
+Ключи были такими:
+
+```tsx
+const computeItemKey = ({ data }) => `conv-${data.patchKey}`;
+const itemIdentity = (item) => item.patchKey;
+```
+
+Это означает:
+
+- React key = `conv-${patchKey}`;
+- identity для Virtuoso = `patchKey`.
+
+`patchKey` был центральной осью identity всего старого conversation pipeline.
+
+## Старый `useConversationHistory`: его роль
+
+Даже в старой архитектуре источник данных был не Virtuoso, а именно `useConversationHistory`.
+
+Хук делал четыре главные вещи:
+
+1. читал execution processes из `useExecutionProcessesContext()`;
+2. подгружал historic entries для completed processes;
+3. стримил live entries для running process;
+4. превращал все это в единый плоский conversation stream.
+
+То есть старая архитектура уже была логически разделена на:
+
+- data semantics -> `useConversationHistory`;
+- render/scroll engine -> `ConversationListContainer` + Virtuoso.
+
+## Старый `flattenEntriesForEmit(...)`: главное semantic ядро
+
+Самый важный старый semantic слой был в `flattenEntriesForEmit(...)`.
+
+Он делал следующее:
+
+- создавал synthetic `user_message` для coding/review processes;
+- вырезал raw `user_message` из process log, чтобы не было дублей;
+- вырезал `token_usage_info` из видимого conversation;
+- определял pending approval;
+- определял running process;
+- добавлял synthetic `loading` patch;
+- превращал script processes в synthetic `tool_use` row;
+- добавлял `next_action`, когда ничего больше не running.
+
+Representative old code:
+
+```ts
+if (
+  p.executionProcess.executor_action.typ.type === "CodingAgentInitialRequest" ||
+  p.executionProcess.executor_action.typ.type ===
+    "CodingAgentFollowUpRequest" ||
+  p.executionProcess.executor_action.typ.type === "ReviewRequest"
+) {
+  const userNormalizedEntry: NormalizedEntry = {
+    entry_type: {
+      type: "user_message",
+    },
+    content: actionType.prompt,
+    timestamp: null,
+  };
+
+  const userPatch: PatchType = {
+    type: "NORMALIZED_ENTRY",
+    content: userNormalizedEntry,
+  };
+
+  entries.push(userPatchTypeWithKey);
+
+  const entriesExcludingUser = p.entries.filter(
+    (e) =>
+      e.type !== "NORMALIZED_ENTRY" ||
+      (e.content.entry_type.type !== "user_message" &&
+        e.content.entry_type.type !== "token_usage_info"),
+  );
+
+  entries.push(...entriesExcludingUser);
+
+  if (isProcessRunning && !hasPendingApprovalEntry) {
+    entries.push(makeLoadingPatch(p.executionProcess.id));
+  }
+}
+```
+
+Это один из самых важных фактов во всей системе:
+
+**conversation list рендерил не сырые process logs, а намеренно построенный semantic stream.**
+
+## Старый initial load
+
+Старый initial load работал так:
+
+1. completed processes проходились в reverse order;
+2. из них загружались historical entries;
+3. загрузка останавливалась, как только accumulated entries превышали `MIN_INITIAL_ENTRIES`;
+4. дальше conversation эмитился как `'initial'`;
+5. container выбирал `InitialDataScrollModifier`;
+6. Virtuoso прыгал в низ и purge-ил cached sizes.
+
+Representative old code из hook:
+
+```ts
+for (const executionProcess of [...executionProcesses.current].reverse()) {
+  if (executionProcess.status === ExecutionProcessStatus.running) continue;
+
+  const entries =
+    await loadEntriesForHistoricExecutionProcess(executionProcess);
+  const entriesWithKey = entries.map((e, idx) =>
+    patchWithKey(e, executionProcess.id, idx),
+  );
+
+  localDisplayedExecutionProcesses[executionProcess.id] = {
+    executionProcess,
+    entries: entriesWithKey,
+  };
+
+  if (
+    flattenEntries(localDisplayedExecutionProcesses).length >
+    MIN_INITIAL_ENTRIES
+  ) {
+    break;
+  }
+}
+```
+
+И затем old container выбирал scroll modifier:
+
+```ts
+if (loading) {
+  scrollModifier = InitialDataScrollModifier;
+} else if (pending.addType === "plan") {
+  scrollModifier = ScrollToTopOfLastItem;
+} else if (pending.addType === "running") {
+  scrollModifier = AutoScrollToBottom;
+} else {
+  scrollModifier = ScrollToBottomModifier;
+}
+```
+
+## Старый use case: добавление нового prompt
+
+Это один из самых важных сценариев для понимания старой архитектуры.
+
+### Сценарий
+
+Пользователь пишет второй prompt в уже существующем conversation.
+
+### Что происходило по шагам
+
+1. Backend создает новый `ExecutionProcess` c `CodingAgentFollowUpRequest`.
+2. `useExecutionProcessesContext()` получает новый process.
+3. `useConversationHistory` видит новый running process.
+4. `ensureProcessVisible(activeProcess)` создает пустую оболочку process state.
+5. `emitEntries(..., 'running', false)` немедленно перестраивает conversation.
+6. Уже на этом шаге conversation может содержать:
+   - synthetic user row;
+   - synthetic loading row.
+7. Container получает новый `entries + addType`.
+8. Через debounce формируется `setChannelData({ data, scrollModifier })`.
+9. Если `addType === 'running'`, выбирается `AutoScrollToBottom`.
+10. Virtuoso сам выполняет bottom-follow.
+
+Representative old code:
+
+```ts
+for (const activeProcess of activeProcesses) {
+  if (!displayedExecutionProcesses.current[activeProcess.id]) {
+    const runningOrInitial =
+      Object.keys(displayedExecutionProcesses.current).length > 1
+        ? "running"
+        : "initial";
+
+    ensureProcessVisible(activeProcess);
+    emitEntries(displayedExecutionProcesses.current, runningOrInitial, false);
+  }
+
+  if (
+    activeProcess.status === ExecutionProcessStatus.running &&
+    !streamingProcessIdsRef.current.has(activeProcess.id)
+  ) {
+    streamingProcessIdsRef.current.add(activeProcess.id);
+    loadRunningAndEmitWithBackoff(activeProcess).finally(() => {
+      streamingProcessIdsRef.current.delete(activeProcess.id);
+    });
+  }
+}
+```
+
+### Что видел пользователь
+
+Еще до прихода полноценного assistant output пользователь мог увидеть:
+
+```text
+...предыдущий conversation...
+You: <новый prompt>
+Loading...
+```
+
+Это происходило потому, что хук сам синтезировал эти rows.
+
+## Старый streaming flow
+
+Когда live stream стартовал, хук обновлял entries процесса на каждом streamed patch batch:
+
+```ts
+const controller = streamJsonPatchEntries<PatchType>(url, {
+  onEntries(entries) {
+    const patchesWithKey = entries.map((entry, index) =>
+      patchWithKey(entry, executionProcess.id, index),
+    );
+    mergeIntoDisplayed((state) => {
+      state[executionProcess.id] = {
+        executionProcess,
+        entries: patchesWithKey,
+      };
+    });
+    emitEntries(displayedExecutionProcesses.current, "running", false);
+  },
+  onFinished: () => {
+    emitEntries(displayedExecutionProcesses.current, "running", false);
+    controller.close();
+    resolve();
+  },
+});
+```
+
+Дальше container eventually делал:
+
+```ts
+setChannelData({ data: filteredEntries, scrollModifier: AutoScrollToBottom });
+```
+
+И Virtuoso сам продолжал follow output.
+
+## Важный недостаток старого debounce
+
+В старом container-е обновления шли через trailing debounce:
+
+```ts
+debounceTimeoutRef.current = setTimeout(() => {
+  ...
+}, 100);
+```
+
+Но сам upstream stream уже приходил достаточно часто.
+
+Поэтому при непрерывном streaming этот timeout мог постоянно сбрасываться. То есть старый update model был менее детерминированным, чем казался на первый взгляд.
+
+## Старый flow при завершении процесса
+
+Когда running process заканчивался, old hook не считал streamed snapshot окончательной truth.
+
+Он перезагружал canonical historical entries этого process:
+
+```ts
+if (
+  previousStatus === ExecutionProcessStatus.running &&
+  currentStatus !== ExecutionProcessStatus.running &&
+  displayedExecutionProcesses.current[process.id]
+) {
+  processesToReload.push(process);
+}
+```
+
+Дальше:
+
+```ts
+const entries = await loadEntriesForHistoricExecutionProcess(process);
+mergeIntoDisplayed((state) => {
+  state[process.id] = {
+    executionProcess: process,
+    entries: entriesWithKey,
+  };
+});
+emitEntries(displayedExecutionProcesses.current, "running", false);
+```
+
+То есть lifecycle был такой:
+
+- пока процесс running -> render from live stream;
+- когда процесс finished -> replace with canonical history.
+
+## Что Virtuoso давал нам "из коробки"
+
+Это важный список, потому что именно его теперь пришлось декомпозировать на отдельные файлы.
+
+### 1. Measurement и height management
+
+- автоматическое измерение variable-height rows;
+- внутренний size cache;
+- встроенную re-measure logic;
+- `purgeItemSizes` для cold-start reset.
+
+### 2. Message-list semantics
+
+- специализированный chat component;
+- `scrollToItem({ index: 'LAST' })` semantics;
+- `getCurrentlyRendered()`;
+- built-in scroll behaviour через message-list API.
+
+### 3. Follow output
+
+- режим `auto-scroll-to-bottom` был частью компонента;
+- explicit app-owned scroll state machine не требовалась.
+
+### 4. Whole-list virtualization
+
+- весь conversation был одним виртуализированным списком;
+- не было отдельного head/tail split.
+
+## Почему старое решение стало проблемой
+
+Старый компонент был удобен, но стратегически имел несколько серьезных ограничений.
+
+### 1. Коммерческая зависимость
+
+Система зависела от `VirtuosoMessageListLicense` и `VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY`.
+
+### 2. Scroll и data были слишком сцеплены
+
+Старый основной update выглядел так:
+
+```ts
+setChannelData({ data, scrollModifier });
+```
+
+Это делало трудным разделение двух вопросов:
+
+- какие данные надо показать;
+- как после этого надо скроллить.
+
+### 3. Слишком много black-box поведения
+
+Virtuoso сам скрыто контролировал:
+
+- sizing;
+- height cache;
+- follow-bottom behaviour;
+- часть item identity semantics;
+- message-list scrolling lifecycle.
+
+Это было удобно, но не очень удобно для эволюции продукта.
+
+### 4. Сложно строить специальное поведение под conversation
+
+Conversation у нас не обычный список.
+
+Здесь есть:
+
+- setup / cleanup scripts;
+- synthetic user messages;
+- synthetic loading rows;
+- aggregation transitions;
+- diff-heavy rows;
+- approval cards;
+- dynamic scrolling semantics;
+- особые требования к newest turn.
+
+Для такого списка app-owned architecture дает больше контроля, чем готовый black-box message-list.
+
+---
+
+## Текущее решение на TanStack Virtual
+
+## Главные текущие файлы
+
+### Core conversation files
+
+- `packages/web-core/src/features/workspace-chat/ui/ConversationListContainer.tsx`
+- `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+- `packages/web-core/src/features/workspace-chat/model/conversation-row-model.ts`
+- `packages/web-core/src/features/workspace-chat/model/conversation-scroll-commands.ts`
+- `packages/web-core/src/features/workspace-chat/model/useConversationVirtualizer.ts`
+- `packages/web-core/src/features/workspace-chat/model/useScrollCommandExecutor.ts`
+- `packages/web-core/src/features/workspace-chat/ui/DisplayConversationEntry.tsx`
+
+### Supporting hardening files
+
+- `packages/ui/src/components/ChatEmptyState.tsx`
+- `packages/ui/src/components/ChatEntryContainer.tsx`
+- `packages/ui/src/components/ChatFileEntry.tsx`
+- `packages/ui/src/components/ChatSubagentEntry.tsx`
+
+## Какие файлы были добавлены и зачем
+
+| File                                                                                  | Introduced by            | Зачем нужен                                                                                                                                        |
+| ------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/web-core/src/features/workspace-chat/model/conversation-row-model.ts`       | `a2d8ec7e0`              | Добавляет явную semantic row model поверх `DisplayEntry[]`. Нужен, чтобы virtualization опиралась на стабильную identity, row family и size hints. |
+| `packages/web-core/src/features/workspace-chat/model/conversation-scroll-commands.ts` | `2eee4daa1`              | Выносит scroll behaviour в explicit intent model вместо library-specific `ScrollModifier`.                                                         |
+| `packages/web-core/src/features/workspace-chat/model/useConversationVirtualizer.ts`   | `0d48d604e`              | Централизует TanStack Virtual configuration, measurement и at-bottom logic.                                                                        |
+| `packages/web-core/src/features/workspace-chat/model/useScrollCommandExecutor.ts`     | `59f64c08a`              | Выполняет scroll intent только после commit + measurement. Разделяет policy и execution.                                                           |
+| `packages/ui/src/components/ChatEmptyState.tsx`                                       | current branch hardening | Добавляет явный empty state, чтобы пустой conversation не выглядел как сломанная пустая панель.                                                    |
+
+### Почему этот split важен
+
+В старой архитектуре значительная часть этих обязанностей была спрятана внутри Virtuoso message-list.
+
+В текущей архитектуре они вынесены в явные слои, которыми владеем мы сами.
+
+## Текущий top-level pipeline
+
+Representative current code из `ConversationListContainer.tsx`:
+
+```tsx
+const flushPendingUpdate = () => {
+  rafIdRef.current = null;
+  const pending = pendingUpdateRef.current;
+  if (!pending) return;
+
+  const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
+
+  const newFilteredEntries = aggregatedEntries.filter((entry) => {
+    if (
+      "type" in entry &&
+      entry.type === "NORMALIZED_ENTRY" &&
+      typeof entry.content !== "string" &&
+      "entry_type" in entry.content
+    ) {
+      const t = entry.content.entry_type.type;
+      return t !== "next_action" && t !== "token_usage_info";
+    }
+
+    return (
+      entry.type === "NORMALIZED_ENTRY" ||
+      entry.type === "STDOUT" ||
+      entry.type === "STDERR" ||
+      entry.type === "AGGREGATED_GROUP" ||
+      entry.type === "AGGREGATED_DIFF_GROUP" ||
+      entry.type === "AGGREGATED_THINKING_GROUP"
+    );
+  });
+
+  setFilteredEntries(newFilteredEntries);
+  setDataVersion((current) => current + 1);
+  setEntries(pending.entries);
+
+  scrollOnEntriesChangedRef.current?.(pending.addType, loading);
+
+  if (loading) {
+    setLoading(pending.loading);
+  }
+};
+```
+
+### Что поменялось концептуально
+
+Старый container делал:
+
+```text
+entries -> setChannelData({ data, scrollModifier }) -> Virtuoso
+```
+
+Текущий container делает:
+
+```text
+entries
+-> aggregate
+-> filter
+-> build semantic rows
+-> resolve scroll intent
+-> split head/tail
+-> virtualize head
+-> render tail directly
+-> execute scroll after measurement
+```
+
+То есть архитектура стала гораздо более явной.
+
+## Текущая semantic row model
+
+`packages/web-core/src/features/workspace-chat/model/conversation-row-model.ts` вводит новый тип:
+
+```ts
+export interface ConversationRow {
+  readonly semanticKey: string;
+  readonly rowFamily: RowFamily;
+  readonly processId: string | null;
+  readonly estimationHint: SizeEstimationHint;
+  readonly isUserMessage: boolean;
+  readonly entry: DisplayEntry;
+}
+```
+
+И builder:
+
+```ts
+export function buildConversationRow(entry: DisplayEntry): ConversationRow {
+  const rowFamily = classifyRowFamily(entry);
+  const hint = estimationHintForFamily(rowFamily);
+
+  return {
+    semanticKey: semanticKeyForEntry(entry),
+    rowFamily,
+    processId: entry.executionProcessId || null,
+    estimationHint: hint,
+    isUserMessage: rowFamily === "user_message",
+    entry,
+  };
+}
+```
+
+### Зачем понадобился этот файл
+
+Без него virtualizer должен был бы напрямую интерпретировать `DisplayEntry` каждый раз заново.
+
+`ConversationRow` дает:
+
+- явную stable identity;
+- row family classification;
+- size hints для cold-start estimates;
+- быстрый поиск user messages;
+- слой между semantic conversation model и rendering / virtualization.
+
+## Текущая модель size estimation
+
+Сейчас size estimation больше не скрыта внутри готового message-list.
+
+Она задается явно:
+
+```ts
+export const SIZE_ESTIMATE_PX: Record<SizeEstimationHint, number> = {
+  compact: 40,
+  medium: 80,
+  tall: 280,
+  dynamic: 150,
+  hidden: 0,
+};
+```
+
+И дополняется width-aware estimate:
+
+```ts
+export function estimateSizeForRow(
+  row: ConversationRow,
+  containerWidthPx?: number | null,
+): number {
+  const base = SIZE_ESTIMATE_PX[row.estimationHint];
+
+  if (
+    containerWidthPx != null &&
+    containerWidthPx > 0 &&
+    containerWidthPx < NARROW_WIDTH_PX &&
+    TEXT_HEAVY_FAMILIES.has(row.rowFamily)
+  ) {
+    return Math.round(base * NARROW_WIDTH_MULTIPLIER);
+  }
+
+  return base;
+}
+```
+
+То есть current philosophy такая:
+
+- coarse estimate принадлежит приложению;
+- точная высота приходит из DOM measurement.
+
+## Текущая scroll state machine
+
+Сейчас scroll behaviour живет в `packages/web-core/src/features/workspace-chat/model/conversation-scroll-commands.ts`.
+
+Representative code:
+
+```ts
+export function resolveScrollIntent(
+  addType: AddEntryType,
+  isInitialLoad: boolean,
+  isAtBottom: boolean,
+): ScrollIntent {
+  if (isInitialLoad) {
+    return { type: "initial-bottom", purgeEstimatedSizes: true };
+  }
+
+  if (addType === "plan") {
+    return { type: "plan-reveal", align: "start" };
+  }
+
+  if (addType === "running") {
+    return isAtBottom
+      ? { type: "follow-bottom", behavior: "smooth" }
+      : { type: "preserve-anchor" };
+  }
+
+  return isAtBottom
+    ? { type: "follow-bottom", behavior: "auto" }
+    : { type: "preserve-anchor" };
+}
+```
+
+### Это одна из самых больших архитектурных разниц
+
+Раньше scroll policy была зашита в выбор `ScrollModifier`, который уходил прямо в Virtuoso data API.
+
+Теперь scroll policy - это явный app-owned state machine.
+
+## Текущий scroll executor
+
+Файл `packages/web-core/src/features/workspace-chat/model/useScrollCommandExecutor.ts` отвечает за разделение двух обязанностей:
+
+- **решить**, какой scroll intent нужен;
+- **выполнить** этот intent после measurement.
+
+Representative code:
+
+```ts
+const onEntriesChanged = useCallback(
+  (addType: AddEntryType, isInitialLoad: boolean) => {
+    const intent = resolveScrollIntent(
+      addType,
+      isInitialLoad,
+      stateRef.current.isAtBottom,
+    );
+    stateRef.current = setPendingIntent(stateRef.current, intent);
+  },
+  [],
+);
+
+useLayoutEffect(() => {
+  const state = stateRef.current;
+  const intent = state.pendingIntent;
+  if (!intent) return;
+
+  executeIntent(
+    virtualizer,
+    intent,
+    itemCount,
+    scrollToBottom,
+    scrollToAbsoluteIndex,
+  );
+  stateRef.current = markIntentApplied(stateRef.current);
+  prevDataVersionRef.current = dataVersion;
+}, [
+  dataVersion,
+  itemCount,
+  scrollToAbsoluteIndex,
+  scrollToBottom,
+  virtualizer,
+]);
+```
+
+### Зачем понадобился этот файл
+
+Старое решение делало data update и scroll side-effect почти одним движением.
+
+Новый executor нужен, чтобы scroll происходил:
+
+- не раньше React commit;
+- не раньше нового measurement;
+- не через `setTimeout` chains;
+- а в предсказуемой lifecycle точке.
+
+## Текущий `useConversationVirtualizer`
+
+`packages/web-core/src/features/workspace-chat/model/useConversationVirtualizer.ts` - это общий слой TanStack configuration.
+
+Representative code:
+
+```ts
+const virtualizer = useVirtualizer({
+  count: rows.length,
+  getScrollElement: () => scrollContainerRef.current,
+  estimateSize: (index) => {
+    const row = rows[index];
+    if (!row) return SIZE_ESTIMATE_PX.medium;
+    const containerWidth = scrollContainerRef.current?.clientWidth ?? null;
+    return estimateSizeForRow(row, containerWidth);
+  },
+  getItemKey: (index) => {
+    const row = rows[index];
+    return row ? row.semanticKey : index;
+  },
+  overscan: OVERSCAN,
+  measureElement: defaultMeasureElement,
+  useAnimationFrameWithResizeObserver: true,
+});
+```
+
+### Этот hook отвечает за:
+
+- создание virtualizer instance;
+- DOM measurement через `measureElement`;
+- reactive `isAtBottom`;
+- `scrollToBottom` / `scrollToIndex`;
+- width-change invalidation;
+- anchor preservation на size change.
+
+Representative anchor-correction code:
+
+```ts
+virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (
+  _item,
+  _delta,
+  instance,
+) => {
+  const viewportHeight = instance.scrollRect?.height ?? 0;
+  const scrollOffset = instance.scrollOffset ?? 0;
+  const remainingDistance =
+    instance.getTotalSize() - (scrollOffset + viewportHeight);
+  return remainingDistance > NEAR_BOTTOM_THRESHOLD_PX;
+};
+```
+
+Это означает:
+
+- если пользователь читает историю, а item above changes size, viewport удерживается;
+- если пользователь около bottom, correction не мешает follow-bottom semantics.
+
+## Current hybrid virtualization
+
+Это главный structural difference по сравнению со старой архитектурой.
+
+### Старое решение
+
+- одна virtualization engine на весь список.
+
+### Текущее решение
+
+- head виртуализируется;
+- tail рендерится как обычный DOM.
+
+Базовая константа:
+
+```ts
+const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
+```
+
+Но реальный tail boundary определяется не только этой константой.
+
+Representative code:
+
+```tsx
+const candidateFirstUnvirtualizedRowIndex = useMemo(() => {
+  const firstTailRowIndex = Math.max(
+    conversationRows.length - ALWAYS_UNVIRTUALIZED_TAIL_ROWS,
+    0,
+  );
+
+  if (!hasActiveStreamingTurn) {
+    return firstTailRowIndex;
+  }
+
+  for (let index = conversationRows.length - 1; index >= 0; index -= 1) {
+    if (conversationRows[index]?.isUserMessage) {
+      return Math.min(index, firstTailRowIndex);
+    }
+  }
+
+  return firstTailRowIndex;
+}, [conversationRows, hasActiveStreamingTurn]);
+```
+
+### Что это значит
+
+Базовое правило:
+
+- последние 8 rows всегда остаются в DOM tail.
+
+Дополнительное правило для active turn:
+
+- если идет streaming turn, tail расширяется назад до последнего `user_message`.
+
+То есть весь current turn старается остаться в обычном DOM потоке.
+
+## Tail pinning во время стрима
+
+После отладки overlap/gap багов был добавлен pinning boundary.
+
+Representative code:
+
+```tsx
+const streamingFirstUnvirtualizedRowIndex = useMemo(() => {
+  const lastSettledTailStartIndex = lastSettledTailStartIndexRef.current;
+  const fallbackPinnedTailStartIndex =
+    lastSettledTailStartIndex == null
+      ? candidateFirstUnvirtualizedRowIndex
+      : Math.min(
+          lastSettledTailStartIndex,
+          candidateFirstUnvirtualizedRowIndex,
+        );
+
+  return pinnedTailStartIndex ?? fallbackPinnedTailStartIndex;
+}, [candidateFirstUnvirtualizedRowIndex, pinnedTailStartIndex]);
+```
+
+И:
+
+```tsx
+useEffect(() => {
+  if (!hasActiveStreamingTurn) {
+    lastSettledTailStartIndexRef.current = candidateFirstUnvirtualizedRowIndex;
+    setPinnedTailStartIndex(null);
+    return;
+  }
+
+  setPinnedTailStartIndex((current) => {
+    const base = current ?? lastSettledTailStartIndexRef.current;
+    if (base == null) return candidateFirstUnvirtualizedRowIndex;
+    return Math.min(base, candidateFirstUnvirtualizedRowIndex);
+  });
+}, [candidateFirstUnvirtualizedRowIndex, hasActiveStreamingTurn]);
+```
+
+### Зачем это понадобилось
+
+Без pinning seam между virtualized head и unvirtualized tail мог двигаться во время active stream.
+
+Это приводило к тому, что rows мигрировали из обычного DOM в virtualizer посреди turn-а. А virtualizer в этот момент еще мог иметь только cold estimates этих rows.
+
+Это порождало:
+
+- overlaps;
+- вертикальные дыры;
+- нестабильный autoscroll.
+
+Pinning устраняет именно этот класс ошибок.
+
+## Текущий actual render split
+
+Representative code из `ConversationListContainer.tsx`:
+
+```tsx
+{
+  virtualizedRows.length > 0 && (
+    <div
+      style={{
+        height: `${totalSize}px`,
+        width: "100%",
+        position: "relative",
+      }}
+    >
+      {virtualItems.map((virtualItem) => {
+        const row = virtualizedRows[virtualItem.index];
+        if (!row) return null;
+        return (
+          <div
+            key={row.semanticKey}
+            data-index={virtualItem.index}
+            data-row-index={virtualItem.index}
+            ref={measureElement}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              transform: `translateY(${virtualItem.start}px)`,
+            }}
+          >
+            {renderRowContent(row.entry, attempt, resetAction, repos)}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+{
+  unvirtualizedTailRows.map((row, tailIndex) => {
+    const rowIndex = firstUnvirtualizedRowIndex + tailIndex;
+    return (
+      <div key={row.semanticKey} data-row-index={rowIndex}>
+        {renderRowContent(row.entry, attempt, resetAction, repos)}
+      </div>
+    );
+  });
+}
+```
+
+Это и есть материальное ядро hybrid approach.
+
+## Текущий `useConversationHistory`: что изменилось, а что нет
+
+Это очень важный раздел.
+
+### Что **не** изменилось концептуально
+
+Хук все так же отвечает за:
+
+- discover execution processes;
+- load historic entries;
+- stream running entries;
+- synthetic user/script/loading/next_action rows;
+- flatten conversation state в единый поток entries.
+
+То есть semantic heart системы по-прежнему живет в этом hook.
+
+### Что изменилось по-настоящему
+
+Самые важные изменения касаются lifecycle correctness:
+
+- explicit `scopeKey`;
+- reset-before-load порядок;
+- distinction between "stream not initialised yet" and "conversation is really empty";
+- session-scoped reset/load semantics.
+
+Representative current code:
+
+```ts
+useEffect(() => {
+  displayedExecutionProcesses.current = {};
+  loadedInitialEntries.current = false;
+  emittedEmptyInitialRef.current = false;
+  streamingProcessIdsRef.current.clear();
+  previousStatusMapRef.current.clear();
+  scriptOutputCacheRef.current.clear();
+  setHasSetupScriptRun(false);
+  setHasCleanupScriptRun(false);
+  setHasRunningProcess(false);
+  emitEntries(displayedExecutionProcesses.current, "initial", true);
+}, [scopeKey, emitEntries]);
+
+useEffect(() => {
+  let cancelled = false;
+  (async () => {
+    if (loadedInitialEntries.current) return;
+
+    if (isLoading) return;
+
+    if (executionProcesses.current.length === 0) {
+      if (emittedEmptyInitialRef.current) return;
+      emittedEmptyInitialRef.current = true;
+      loadedInitialEntries.current = true;
+      emitEntries(displayedExecutionProcesses.current, "initial", false);
+      return;
+    }
+
+    emittedEmptyInitialRef.current = false;
+    loadedInitialEntries.current = true;
+
+    const allInitialEntries = await loadInitialEntries();
+    if (cancelled) return;
+    mergeIntoDisplayed((state) => {
+      Object.assign(state, allInitialEntries);
+    });
+    emitEntries(displayedExecutionProcesses.current, "initial", false);
+
+    while (
+      !cancelled &&
+      (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
+    ) {
+      if (cancelled) return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    emitEntries(displayedExecutionProcesses.current, "historic", false);
+  })();
+  return () => {
+    cancelled = true;
+  };
+}, [
+  scopeKey,
+  idListKey,
+  isLoading,
+  loadInitialEntries,
+  loadRemainingEntriesInBatches,
+  emitEntries,
+]);
+```
+
+### Главный смысл этих изменений
+
+Старый hook был хорош в semantic transformation, но хрупок в lifecycle.
+
+Текущий hook сохраняет semantic ядро, но делает lifecycle детерминированным.
+
+## Current hardening: empty state и anchor preservation
+
+После основной миграции были добавлены ещё важные улучшения.
+
+### 1. Explicit empty state
+
+Representative code:
+
+```tsx
+const showLoader = loading && conversationRows.length === 0;
+const showEmptyState = !loading && conversationRows.length === 0;
+
+{
+  showEmptyState && (
+    <div className="flex min-h-full items-center justify-center px-double py-12">
+      <ChatEmptyState
+        title={t("conversation.emptyTitle", {
+          defaultValue: "Send a message to start the conversation.",
+        })}
+        description={t("conversation.emptyDescription", {
+          defaultValue:
+            "Your workspace conversation will appear here once a new turn starts.",
+        })}
+      />
+    </div>
+  );
+}
+```
+
+### 2. Click-anchor preservation
+
+Representative code:
+
+```tsx
+const handleConversationClickCapture = useCallback(
+  (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const trigger = target.closest<HTMLElement>(
+      'button, summary, [role="button"], [data-scroll-anchor-target]'
+    );
+    if (!trigger || trigger.closest('[data-scroll-anchor-ignore]')) return;
+
+    const scrollContainer = tanstackScrollRef.current;
+    if (!scrollContainer || !scrollContainer.contains(trigger)) return;
+
+    clearPendingInteractionAnchor();
+    pendingInteractionAnchorRef.current = {
+      element: trigger,
+      top: trigger.getBoundingClientRect().top,
+    };
+
+    pendingInteractionAnchorFrameRef.current = requestAnimationFrame(() => {
+      ...
+      const delta = anchor.element.getBoundingClientRect().top - anchor.top;
+      ...
+      activeScrollContainer.scrollTop += delta;
+    });
+  },
+  [clearPendingInteractionAnchor]
+);
+```
+
+Это уже не core virtualization, но это часть current stability story.
+
+---
+
+## Сравнение по основным use case
+
+## Use case 1: открытие существующего conversation
+
+### Старый Virtuoso
+
+1. hook подгружает enough completed processes;
+2. эмитит `'initial'`;
+3. container выбирает `InitialDataScrollModifier`;
+4. Virtuoso скроллит в низ и purge-ит cached sizes.
+
+### Текущий TanStack
+
+1. hook reset-ится по `scopeKey`;
+2. ждет readiness process stream;
+3. эмитит initial entries;
+4. container строит rows;
+5. scroll intent становится `initial-bottom`;
+6. scroll выполняется после measurement.
+
+### Главное различие
+
+Раньше:
+
+- data и scroll были склеены.
+
+Сейчас:
+
+- data и scroll separate, но coordinated.
+
+## Use case 2: первый prompt с setup script
+
+Это важный кейс, потому что conversation order здесь нетривиален.
+
+### Смысл поведения
+
+Когда setup script существует, initial prompt не должен прыгать по списку из-за разных таймингов между script branch и coding-agent branch.
+
+Representative current logic:
+
+```ts
+const hasSetupScriptProcess = Object.values(executionProcessState).some(
+  (p) =>
+    p.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
+    p.executionProcess.executor_action.typ.context === 'SetupScript'
+);
+
+const isInitialWithSetup =
+  p.executionProcess.executor_action.typ.type ===
+    'CodingAgentInitialRequest' && hasSetupScriptProcess;
+
+if (!isInitialWithSetup) {
+  ... emit synthetic user_message ...
+}
+```
+
+И потом:
+
+```ts
+if (
+  scriptContext === 'SetupScript' &&
+  index === 0 &&
+  executionProcess?.status !== ExecutionProcessStatus.running
+) {
+  ... emit initial prompt from script branch ...
+}
+```
+
+То есть и старая, и новая архитектура стараются сохранить conversation order deterministic.
+
+## Use case 3: второй prompt / follow-up prompt
+
+### Старый Virtuoso
+
+1. новый running process появляется;
+2. `ensureProcessVisible(...)` добавляет process shell;
+3. `flattenEntriesForEmit(...)` уже может показать:
+   - new user message;
+   - loading row;
+4. container eventually выбирает `AutoScrollToBottom`;
+5. Virtuoso продолжает follow output.
+
+### Текущий TanStack
+
+1. новый running process появляется;
+2. hook так же синтезирует new user row и loading row;
+3. container превращает entries в `ConversationRow[]`;
+4. current-turn-aware tail расширяется назад до последнего user message;
+5. tail boundary pin-ится во время streaming;
+6. scroll intent решается явно:
+   - `follow-bottom`, если пользователь у низа;
+   - `preserve-anchor`, если пользователь читает историю.
+
+### Главное улучшение
+
+Теперь логика "следовать за стримом или нет" - это не побочный эффект library API, а explicit product decision.
+
+## Use case 4: пользователь скроллит вверх, пока стрим продолжается
+
+### Старый Virtuoso
+
+Это в основном зависело от внутренней message-list semantics. Приложение только слушало `location.isAtBottom` через `onScroll`.
+
+### Текущий TanStack
+
+Это явно описано в `resolveScrollIntent(...)`:
+
+```ts
+if (addType === "running") {
+  return isAtBottom
+    ? { type: "follow-bottom", behavior: "smooth" }
+    : { type: "preserve-anchor" };
+}
+```
+
+То есть продуктовая политика теперь читается прямо из кода.
+
+## Use case 5: процесс завершился
+
+### Старое решение
+
+- reload historical entries;
+- replace process state;
+- снова пройти через Virtuoso modifiers.
+
+### Текущее решение
+
+- reload historical entries;
+- rebuild filtered entries;
+- rebuild semantic rows;
+- remeasure, если нужно;
+- потом либо follow, либо preserve-anchor в зависимости от current scroll state.
+
+## Use case 6: truly empty conversation
+
+### Старое решение
+
+Старое решение не имело такого четкого explicit empty-state surface.
+
+### Текущее решение
+
+Сейчас явно различаются:
+
+- loading;
+- empty conversation;
+- non-empty conversation.
+
+Это вышло из последующих hardening fixes.
+
+---
+
+## Что раньше давала нам "железка", а что теперь принадлежит приложению
+
+| Возможность                       | Старое решение                  | Текущее решение                                                   |
+| --------------------------------- | ------------------------------- | ----------------------------------------------------------------- |
+| Whole conversation virtualization | built-in inside Virtuoso        | app-owned hybrid strategy                                         |
+| Chat-specific scroll API          | built-in                        | `conversation-scroll-commands.ts` + `useScrollCommandExecutor.ts` |
+| Follow-bottom                     | built-in message-list semantics | explicit app intent                                               |
+| Dynamic-height measurement        | mostly library-owned            | TanStack `measureElement` + ResizeObserver                        |
+| Size-cache reset                  | `purgeItemSizes`                | `virtualizer.measure()` + explicit invalidation timing            |
+| Visible-range helper              | `getCurrentlyRendered()`        | DOM row-index lookup + virtualizer helpers                        |
+| Chat abstraction                  | да                              | нет, теперь это композиция нескольких слоев                       |
+| License dependency                | да                              | нет                                                               |
+
+---
+
+## Главная мысль про `useConversationHistory`
+
+Если свести весь документ к одному архитектурному тезису, то он такой:
+
+`useConversationHistory` был и остается semantic heart conversation.
+
+Поменялся list engine, но не изменился главный semantic смысл hook-а:
+
+- какой execution process должен быть виден;
+- какие entries надо построить synthetic образом;
+- когда conversation считается running;
+- когда надо показывать next action;
+- как setup/cleanup scripts влияют на timeline.
+
+### Общие обязанности hook-а в обеих архитектурах
+
+- process discovery;
+- historical loading;
+- live streaming;
+- flattening into visible conversation entries;
+- synthetic user messages;
+- synthetic loading rows;
+- next-action semantics;
+- token-usage extraction.
+
+### Что поменялось внутри hook-а сильнее всего
+
+Не semantic rules, а lifecycle correctness:
+
+- explicit scope identity;
+- reset-before-load;
+- empty-state correctness;
+- session-aware reset semantics.
+
+---
+
+## Сводная comparison table
+
+| Concern                          | Старое решение на Virtuoso             | Текущее решение на TanStack                     |
+| -------------------------------- | -------------------------------------- | ----------------------------------------------- |
+| Главный list engine              | `VirtuosoMessageList`                  | TanStack Virtual + app-owned DOM tail           |
+| Основной вход списка             | `DataWithScrollModifier<DisplayEntry>` | `DisplayEntry[]` -> `ConversationRow[]`         |
+| Scroll instruction               | bundled with data                      | separate scroll state machine                   |
+| Initial load scroll              | `InitialDataScrollModifier`            | `initial-bottom` intent                         |
+| Streaming scroll                 | `AutoScrollToBottom`                   | `follow-bottom` intent                          |
+| Reading-history behaviour        | в основном library-owned               | explicit `preserve-anchor`                      |
+| Virtualization scope             | whole list                             | head only                                       |
+| Latest rows                      | тоже виртуализировались                | обычный DOM tail                                |
+| Tail strategy                    | none                                   | last 8 rows + active-turn extension + pinning   |
+| Height estimation                | mostly hidden in library               | explicit row-family estimates + DOM measurement |
+| Identity model                   | `patchKey`                             | `semanticKey`                                   |
+| Empty state                      | implicit / weak                        | explicit `ChatEmptyState`                       |
+| Expand/collapse anchor stability | incidental                             | explicit anchor-preservation                    |
+| Licensing                        | commercial                             | OSS                                             |
+
+---
+
+## Файлы и ответственность сегодня
+
+### `packages/web-core/src/features/workspace-chat/ui/ConversationListContainer.tsx`
+
+Отвечает за:
+
+- orchestration всего conversation list;
+- aggregation и filtering;
+- row building;
+- hybrid head/tail split;
+- explicit loader / empty state;
+- imperative scroll affordances.
+
+### `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+
+Отвечает за conversation semantics и lifecycle загрузки.
+
+### `packages/web-core/src/features/workspace-chat/model/conversation-row-model.ts`
+
+Отвечает за semantic row identity, row family, estimation hints.
+
+### `packages/web-core/src/features/workspace-chat/model/conversation-scroll-commands.ts`
+
+Отвечает за vocabulary и политику scroll intent-ов.
+
+### `packages/web-core/src/features/workspace-chat/model/useConversationVirtualizer.ts`
+
+Отвечает за TanStack configuration, DOM measurement и at-bottom state.
+
+### `packages/web-core/src/features/workspace-chat/model/useScrollCommandExecutor.ts`
+
+Отвечает за выполнение scroll intent после measurement.
+
+### `packages/web-core/src/features/workspace-chat/ui/DisplayConversationEntry.tsx`
+
+Отвечает за semantic render каждого conversation row.
+
+### `packages/ui/src/components/ChatEmptyState.tsx`
+
+Отвечает за явный empty-state surface.
+
+---
+
+## В каком порядке читать код, если хочется восстановить всю модель из исходников
+
+### Текущая архитектура
+
+1. `packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+2. `packages/web-core/src/features/workspace-chat/model/conversation-row-model.ts`
+3. `packages/web-core/src/features/workspace-chat/model/conversation-scroll-commands.ts`
+4. `packages/web-core/src/features/workspace-chat/model/useConversationVirtualizer.ts`
+5. `packages/web-core/src/features/workspace-chat/model/useScrollCommandExecutor.ts`
+6. `packages/web-core/src/features/workspace-chat/ui/ConversationListContainer.tsx`
+7. `packages/web-core/src/features/workspace-chat/ui/DisplayConversationEntry.tsx`
+
+### Историческая архитектура
+
+1. `git show b828635b3^:packages/web-core/src/features/workspace-chat/ui/ConversationListContainer.tsx`
+2. `git show b828635b3^:packages/web-core/src/shared/lib/virtuoso-modifiers.ts`
+3. `git show 5ad3b8474:packages/web-core/src/features/workspace-chat/model/hooks/useConversationHistory.ts`
+4. `git show 5ad3b8474:packages/web-core/src/features/workspace-chat/ui/NewDisplayConversationEntry.tsx`
+
+---
+
+## Итог
+
+Миграция с Virtuoso на TanStack Virtual не была простой заменой библиотеки.
+
+Это была архитектурная инверсия.
+
+Старый подход говорил:
+
+```text
+дай message-list-движку данные и scroll instruction,
+и он сделает основную работу сам
+```
+
+Текущий подход говорит:
+
+```text
+semantic conversation model принадлежит приложению,
+scroll policy принадлежит приложению,
+newest-turn strategy принадлежит приложению,
+а virtualizer - это более низкоуровневый engine
+```
+
+Это больше кода.
+
+Это больше ответственности.
+
+Но именно поэтому текущую систему можно анализировать, развивать и чинить гораздо более осознанно, чем старую black-box message-list архитектуру.
