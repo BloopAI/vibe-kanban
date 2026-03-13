@@ -173,7 +173,9 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
     const isPendingAttachment = src.startsWith('pending-attachment://');
     const isAttachment = isPendingAttachment || src.startsWith('attachment://');
     const attachmentId =
-      !isPendingAttachment && isAttachment ? src.replace('attachment://', '') : null;
+      !isPendingAttachment && isAttachment
+        ? src.replace('attachment://', '')
+        : null;
 
     const { url: attachmentUrl } = useAttachmentFileUrl(
       isAttachment && !isPendingAttachment ? attachmentId : null,
@@ -192,7 +194,10 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
     const displayName = truncatePath(
       metadata?.file_name || label || src || t('kanban.previewFile')
     );
-    const format = inferFormat(label || metadata?.file_name || src, metadata?.format);
+    const format = inferFormat(
+      label || metadata?.file_name || src,
+      metadata?.format
+    );
     const sizeText = formatFileSize(metadata?.size_bytes);
     const localAttachment = localAttachments.find(
       (attachment) => attachment.path === src
@@ -247,11 +252,12 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
       [openUrl]
     );
 
-    const icon = isWorkspaceAttachment || isAttachment ? (
-      <File className="w-5 h-5 text-muted-foreground" />
-    ) : (
-      <HelpCircle className="w-5 h-5 text-muted-foreground" />
-    );
+    const icon =
+      isWorkspaceAttachment || isAttachment ? (
+        <File className="w-5 h-5 text-muted-foreground" />
+      ) : (
+        <HelpCircle className="w-5 h-5 text-muted-foreground" />
+      );
 
     return (
       <span
