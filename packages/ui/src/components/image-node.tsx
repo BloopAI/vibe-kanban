@@ -16,6 +16,8 @@ import {
 } from './create-decorator-node';
 
 const ATTACHMENT_URL_STALE_TIME = 4 * 60 * 1000;
+const IMAGE_FILE_EXTENSION_REGEX =
+  /\.(png|jpe?g|gif|webp|bmp|svg|avif|heic|heif)$/i;
 
 type AttachmentType = 'file' | 'thumbnail';
 
@@ -60,6 +62,15 @@ export type SerializedImageNode = Spread<
   },
   SerializedLexicalNode
 >;
+
+function isImageLikeFileName(name: string): boolean {
+  const normalized = name.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  return IMAGE_FILE_EXTENSION_REGEX.test(normalized);
+}
 
 function truncatePath(path: string, maxLength = 24): string {
   const filename = path.split('/').pop() || path;
@@ -194,9 +205,10 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const isVibeImage = src.startsWith('.vibe-images/');
     const isAttachment = src.startsWith('attachment://');
     const attachmentId = isAttachment ? src.replace('attachment://', '') : null;
+    const isImageAttachment = isAttachment && isImageLikeFileName(altText);
 
     const { url: thumbnailUrl, loading: attachmentLoading } = useAttachmentUrl(
-      attachmentId,
+      isImageAttachment ? attachmentId : null,
       'thumbnail',
       options.fetchAttachmentUrl
     );
@@ -219,7 +231,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
         event.stopPropagation();
 
         if (isAttachment && fullSizeUrl) {
-          if (thumbnailUrl) {
+          if (isImageAttachment && thumbnailUrl) {
             options.openImagePreview({
               imageUrl: fullSizeUrl,
               altText,
@@ -241,7 +253,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
           });
         }
       },
-      [isAttachment, fullSizeUrl, thumbnailUrl, metadata, altText]
+      [isAttachment, fullSizeUrl, isImageAttachment, thumbnailUrl, metadata, altText]
     );
 
     const handleDownload = useCallback(
@@ -283,13 +295,13 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const hasLocalImage = localFiles.some((file) => file.path === src);
 
     if (isAttachment) {
-      if (attachmentLoading) {
+      if (isImageAttachment && attachmentLoading) {
         thumbnailContent = (
           <div className="w-10 h-10 flex items-center justify-center bg-muted rounded flex-shrink-0">
             <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />
           </div>
         );
-      } else if (thumbnailUrl) {
+      } else if (isImageAttachment && thumbnailUrl) {
         thumbnailContent = (
           <img
             src={thumbnailUrl}
@@ -308,6 +320,10 @@ export function createImageNode(options: CreateImageNodeOptions) {
       displayName = truncatePath(
         altText || t('kanban.imageAttachmentNameFallback')
       );
+      if (!isImageAttachment) {
+        const format = altText.split('.').pop()?.trim();
+        metadataLine = format ? format.toUpperCase() : null;
+      }
     } else if (isVibeImage && (hasLocalImage || hasContext)) {
       if (loading) {
         thumbnailContent = (
