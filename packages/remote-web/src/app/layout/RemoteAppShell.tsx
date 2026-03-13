@@ -19,6 +19,7 @@ import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useDiscordOnlineCount } from "@/shared/hooks/useDiscordOnlineCount";
 import { useGitHubStars } from "@/shared/hooks/useGitHubStars";
+import { AppBarNotificationBellContainer } from "@/pages/workspaces/AppBarNotificationBellContainer";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { CommandBarDialog } from "@/shared/dialogs/command-bar/CommandBarDialog";
 import { useCommandBarShortcut } from "@/shared/hooks/useCommandBarShortcut";
@@ -290,6 +291,9 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
           onSignIn={() => {
             navigate({ to: "/account" });
           }}
+          notificationBell={
+            isSignedIn ? <AppBarNotificationBellContainer /> : undefined
+          }
           userPopover={
             <RemoteAppBarUserPopoverContainer
               organizations={organizations}

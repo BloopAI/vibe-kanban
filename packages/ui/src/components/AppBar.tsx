@@ -64,6 +64,7 @@ interface AppBarProps {
   onMigrate?: () => void;
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
+  notificationBell?: ReactNode;
   userPopover?: ReactNode;
   starCount?: number | null;
   onlineCount?: number | null;
@@ -122,6 +123,7 @@ export function AppBar({
   onMigrate,
   onHoverStart,
   onHoverEnd,
+  notificationBell,
   userPopover,
   starCount,
   onlineCount,
@@ -382,8 +384,9 @@ export function AppBar({
         </Tooltip>
       )}
 
-      {/* Bottom section: User popover + GitHub + Discord */}
+      {/* Bottom section: Notifications + User popover + GitHub + Discord */}
       <div className="mt-auto pt-base flex flex-col items-center gap-4">
+        {notificationBell}
         {userPopover}
         <AppBarSocialLink
           href="https://github.com/BloopAI/vibe-kanban"

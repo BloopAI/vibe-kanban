@@ -23,9 +23,9 @@ pub const PROJECTS_SHAPE: ShapeDefinition<Project> = crate::define_shape!(
 pub const NOTIFICATIONS_SHAPE: ShapeDefinition<Notification> = crate::define_shape!(
     name: "NOTIFICATIONS_SHAPE",
     table: "notifications",
-    where_clause: r#""organization_id" = $1 AND "user_id" = $2"#,
+    where_clause: r#""user_id" = $1"#,
     url: "/shape/notifications",
-    params: ["organization_id", "user_id"],
+    params: ["user_id"],
 );
 
 pub const ORGANIZATION_MEMBERS_SHAPE: ShapeDefinition<OrganizationMember> = crate::define_shape!(
