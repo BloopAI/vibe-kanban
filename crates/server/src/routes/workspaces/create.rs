@@ -11,7 +11,7 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl, error::ApiError, routes::workspaces::images::import_issue_attachment_images,
+    DeploymentImpl, error::ApiError, routes::workspaces::files::import_issue_attachment_files,
 };
 
 pub(crate) async fn create_workspace_record(
@@ -78,7 +78,7 @@ pub async fn create_and_start_workspace(
         linked_issue,
         executor_config,
         prompt,
-        image_ids,
+        file_ids,
     } = payload;
 
     let workspace_prompt = normalize_prompt(&prompt).ok_or_else(|| {
@@ -105,23 +105,22 @@ pub async fn create_and_start_workspace(
             .map_err(ApiError::from)?;
     }
 
-    if let Some(ids) = &image_ids {
-        managed_workspace.associate_images(ids).await?;
+    if let Some(ids) = &file_ids {
+        managed_workspace.associate_files(ids).await?;
     }
 
     if let Some(linked_issue) = &linked_issue
         && let Ok(client) = deployment.remote_client()
     {
-        match import_issue_attachment_images(&client, deployment.image(), linked_issue.issue_id)
-            .await
+        match import_issue_attachment_files(&client, deployment.file(), linked_issue.issue_id).await
         {
             Ok(imported_ids) if !imported_ids.is_empty() => {
-                if let Err(e) = managed_workspace.associate_images(&imported_ids).await {
-                    tracing::warn!("Failed to associate imported images with workspace: {}", e);
+                if let Err(e) = managed_workspace.associate_files(&imported_ids).await {
+                    tracing::warn!("Failed to associate imported files with workspace: {}", e);
                 }
 
                 tracing::info!(
-                    "Imported {} images from issue {}",
+                    "Imported {} files from issue {}",
                     imported_ids.len(),
                     linked_issue.issue_id
                 );

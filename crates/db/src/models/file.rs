@@ -5,7 +5,7 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-pub struct Image {
+pub struct File {
     pub id: Uuid,
     pub file_path: String, // relative path within cache/images/
     pub original_name: String,
@@ -17,7 +17,7 @@ pub struct Image {
 }
 
 #[derive(Debug, Deserialize, TS)]
-pub struct CreateImage {
+pub struct CreateFile {
     pub file_path: String,
     pub original_name: String,
     pub mime_type: Option<String>,
@@ -25,11 +25,11 @@ pub struct CreateImage {
     pub hash: String,
 }
 
-impl Image {
-    pub async fn create(pool: &SqlitePool, data: &CreateImage) -> Result<Self, sqlx::Error> {
+impl File {
+    pub async fn create(pool: &SqlitePool, data: &CreateFile) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query_as!(
-            Image,
+            File,
             r#"INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id as "id!: Uuid", 
@@ -53,7 +53,7 @@ impl Image {
 
     pub async fn find_by_hash(pool: &SqlitePool, hash: &str) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT id as "id!: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
@@ -72,7 +72,7 @@ impl Image {
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT id as "id!: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
@@ -94,7 +94,7 @@ impl Image {
         file_path: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT id as "id!: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
@@ -116,7 +116,7 @@ impl Image {
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT i.id as "id!: Uuid",
                       i.file_path as "file_path!",
                       i.original_name as "original_name!",
@@ -142,9 +142,9 @@ impl Image {
         Ok(())
     }
 
-    pub async fn find_orphaned_images(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_orphaned_files(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT i.id as "id!: Uuid",
                       i.file_path as "file_path!",
                       i.original_name as "original_name!",
@@ -171,13 +171,13 @@ pub struct WorkspaceImage {
 }
 
 impl WorkspaceImage {
-    /// Associate multiple images with a workspace, skipping duplicates.
+    /// Associate multiple files with a workspace, skipping duplicates.
     pub async fn associate_many_dedup(
         pool: &SqlitePool,
         workspace_id: Uuid,
-        image_ids: &[Uuid],
+        file_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
-        for &image_id in image_ids {
+        for &image_id in file_ids {
             let id = Uuid::new_v4();
             sqlx::query!(
                 r#"INSERT INTO workspace_images (id, workspace_id, image_id)

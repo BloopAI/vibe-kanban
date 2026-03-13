@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use db::{
     DBService,
     models::{
-        image::WorkspaceImage,
+        file::WorkspaceImage,
         repo::{Repo, RepoError},
         requests::WorkspaceRepoInput,
         session::Session,
@@ -157,12 +157,12 @@ impl ManagedWorkspace {
         Ok(())
     }
 
-    pub async fn associate_images(&self, image_ids: &[Uuid]) -> Result<(), sqlx::Error> {
-        if image_ids.is_empty() {
+    pub async fn associate_files(&self, file_ids: &[Uuid]) -> Result<(), sqlx::Error> {
+        if file_ids.is_empty() {
             return Ok(());
         }
 
-        WorkspaceImage::associate_many_dedup(&self.db.pool, self.workspace.id, image_ids).await
+        WorkspaceImage::associate_many_dedup(&self.db.pool, self.workspace.id, file_ids).await
     }
 
     pub async fn prepare_deletion_context(&self) -> Result<WorkspaceDeletionContext, sqlx::Error> {

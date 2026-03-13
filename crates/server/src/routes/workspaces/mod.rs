@@ -3,9 +3,9 @@ pub mod core;
 pub mod create;
 pub mod cursor_setup;
 pub mod execution;
+pub mod files;
 pub mod gh_cli_setup;
 pub mod git;
-pub mod images;
 pub mod integration;
 pub mod links;
 pub mod pr;
@@ -54,7 +54,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             post(workspace_summary::get_workspace_summaries),
         )
         .nest("/{id}", workspace_id_router)
-        .nest("/{id}/images", images::router(deployment))
+        .nest("/{id}/images", files::router(deployment))
         .nest("/{id}/links", links::router(deployment));
 
     Router::new().nest("/workspaces", workspaces_router)

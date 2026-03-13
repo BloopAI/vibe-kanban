@@ -8,7 +8,7 @@ import {
 } from 'react';
 import type {
   DraftWorkspaceData,
-  DraftWorkspaceImage,
+  DraftWorkspaceFile,
   ExecutorConfig,
   Repo,
 } from 'shared/types';
@@ -49,7 +49,7 @@ interface DraftState {
   message: string;
   linkedIssue: LinkedIssue | null;
   executorConfig: ExecutorConfig | null;
-  images: DraftWorkspaceImage[];
+  files: DraftWorkspaceFile[];
 }
 
 type DraftAction =
@@ -72,7 +72,7 @@ type DraftAction =
       type: 'SET_EXECUTOR_CONFIG';
       config: ExecutorConfig | null;
     }
-  | { type: 'SET_IMAGES'; images: DraftWorkspaceImage[] };
+  | { type: 'SET_FILES'; files: DraftWorkspaceFile[] };
 
 // ============================================================================
 // Reducer
@@ -85,7 +85,7 @@ const draftInitialState: DraftState = {
   message: '',
   linkedIssue: null,
   executorConfig: null,
-  images: [],
+  files: [],
 };
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
@@ -167,8 +167,8 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
     case 'SET_EXECUTOR_CONFIG':
       return { ...state, executorConfig: action.config };
 
-    case 'SET_IMAGES':
-      return { ...state, images: action.images };
+    case 'SET_FILES':
+      return { ...state, files: action.files };
 
     default:
       return state;
@@ -241,8 +241,8 @@ interface UseCreateModeStateResult {
   clearDraft: () => Promise<void>;
   clearLinkedIssue: () => void;
   setExecutorConfig: (config: ExecutorConfig | null) => void;
-  images: DraftWorkspaceImage[];
-  setImages: (images: DraftWorkspaceImage[]) => void;
+  files: DraftWorkspaceFile[];
+  setFiles: (files: DraftWorkspaceFile[]) => void;
 }
 
 export function useCreateModeState({
@@ -501,7 +501,7 @@ export function useCreateModeState({
         !data.message.trim() &&
         data.repos.length === 0 &&
         !data.executor_config &&
-        data.images.length === 0;
+        data.files.length === 0;
 
       if (isEmpty && !scratch) return;
 
@@ -534,7 +534,7 @@ export function useCreateModeState({
             remote_project_id: state.linkedIssue.remoteProjectId,
           }
         : null,
-      images: state.images,
+      files: state.files,
     });
   }, [
     state.phase,
@@ -542,7 +542,7 @@ export function useCreateModeState({
     state.repos,
     state.linkedIssue,
     state.executorConfig,
-    state.images,
+    state.files,
     debouncedSave,
   ]);
 
@@ -631,8 +631,8 @@ export function useCreateModeState({
     dispatch({ type: 'SET_EXECUTOR_CONFIG', config });
   }, []);
 
-  const setImages = useCallback((images: DraftWorkspaceImage[]) => {
-    dispatch({ type: 'SET_IMAGES', images });
+  const setFiles = useCallback((files: DraftWorkspaceFile[]) => {
+    dispatch({ type: 'SET_FILES', files });
   }, []);
 
   return {
@@ -653,7 +653,7 @@ export function useCreateModeState({
     clearDraft,
     clearLinkedIssue,
     setExecutorConfig,
-    images: state.images,
-    setImages,
+    files: state.files,
+    setFiles,
   };
 }

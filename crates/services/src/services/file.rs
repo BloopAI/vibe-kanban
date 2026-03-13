@@ -3,26 +3,24 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use db::models::image::{CreateImage, Image};
+use db::models::file::{CreateFile, File};
+use mime_guess::MimeGuess;
 use sha2::{Digest, Sha256};
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
 #[derive(Debug, thiserror::Error)]
-pub enum ImageError {
+pub enum FileError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
     #[error("Database error: {0}")]
     Database(#[from] sqlx::Error),
 
-    #[error("Invalid image format")]
-    InvalidFormat,
-
-    #[error("Image too large: {0} bytes (max: {1} bytes)")]
+    #[error("File too large: {0} bytes (max: {1} bytes)")]
     TooLarge(u64, u64),
 
-    #[error("Image not found")]
+    #[error("File not found")]
     NotFound,
 
     #[error("Failed to build response: {0}")]
@@ -38,7 +36,7 @@ fn sanitize_filename(name: &str) -> String {
     let stem = Path::new(name)
         .file_stem()
         .and_then(|s| s.to_str())
-        .unwrap_or("image");
+        .unwrap_or("file");
 
     let clean: String = stem
         .to_lowercase()
@@ -52,21 +50,21 @@ fn sanitize_filename(name: &str) -> String {
     if clean.len() > max_len {
         clean[..max_len].to_string()
     } else if clean.is_empty() {
-        "image".to_string()
+        "file".to_string()
     } else {
         clean
     }
 }
 
 #[derive(Clone)]
-pub struct ImageService {
+pub struct FileService {
     cache_dir: PathBuf,
     pool: SqlitePool,
     max_size_bytes: u64,
 }
 
-impl ImageService {
-    pub fn new(pool: SqlitePool) -> Result<Self, ImageError> {
+impl FileService {
+    pub fn new(pool: SqlitePool) -> Result<Self, FileError> {
         let cache_dir = utils::cache_dir().join("images");
         fs::create_dir_all(&cache_dir)?;
         Ok(Self {
@@ -76,43 +74,37 @@ impl ImageService {
         })
     }
 
-    pub async fn store_image(
+    pub async fn store_file(
         &self,
         data: &[u8],
         original_filename: &str,
-    ) -> Result<Image, ImageError> {
+    ) -> Result<File, FileError> {
         let file_size = data.len() as u64;
 
         if file_size > self.max_size_bytes {
-            return Err(ImageError::TooLarge(file_size, self.max_size_bytes));
+            return Err(FileError::TooLarge(file_size, self.max_size_bytes));
         }
 
         let hash = format!("{:x}", Sha256::digest(data));
 
-        // Extract extension from original filename
         let extension = Path::new(original_filename)
             .extension()
             .and_then(|e| e.to_str())
-            .unwrap_or("png");
+            .unwrap_or("bin");
 
-        let mime_type = match extension.to_lowercase().as_str() {
-            "png" => Some("image/png".to_string()),
-            "jpg" | "jpeg" => Some("image/jpeg".to_string()),
-            "gif" => Some("image/gif".to_string()),
-            "webp" => Some("image/webp".to_string()),
-            "bmp" => Some("image/bmp".to_string()),
-            "svg" => Some("image/svg+xml".to_string()),
-            _ => None,
-        };
+        let mime_type = MimeGuess::from_path(original_filename)
+            .first_raw()
+            .map(str::to_string)
+            .or_else(|| {
+                MimeGuess::from_ext(extension)
+                    .first_raw()
+                    .map(str::to_string)
+            });
 
-        if mime_type.is_none() {
-            return Err(ImageError::InvalidFormat);
-        }
+        let existing_file = File::find_by_hash(&self.pool, &hash).await?;
 
-        let existing_image = Image::find_by_hash(&self.pool, &hash).await?;
-
-        if let Some(existing) = existing_image {
-            tracing::debug!("Reusing existing image record with hash {}", hash);
+        if let Some(existing) = existing_file {
+            tracing::debug!("Reusing existing file record with hash {}", hash);
             return Ok(existing);
         }
 
@@ -121,9 +113,9 @@ impl ImageService {
         let cached_path = self.cache_dir.join(&new_filename);
         fs::write(&cached_path, data)?;
 
-        let image = Image::create(
+        let file = File::create(
             &self.pool,
-            &CreateImage {
+            &CreateFile {
                 file_path: new_filename,
                 original_name: original_filename.to_string(),
                 mime_type,
@@ -132,38 +124,35 @@ impl ImageService {
             },
         )
         .await?;
-        Ok(image)
+        Ok(file)
     }
 
-    pub async fn delete_orphaned_images(&self) -> Result<(), ImageError> {
-        let orphaned_images = Image::find_orphaned_images(&self.pool).await?;
-        if orphaned_images.is_empty() {
-            tracing::debug!("No orphaned images found during cleanup");
+    pub async fn delete_orphaned_files(&self) -> Result<(), FileError> {
+        let orphaned_files = File::find_orphaned_files(&self.pool).await?;
+        if orphaned_files.is_empty() {
+            tracing::debug!("No orphaned files found during cleanup");
             return Ok(());
         }
 
-        tracing::debug!(
-            "Found {} orphaned images to clean up",
-            orphaned_images.len()
-        );
+        tracing::debug!("Found {} orphaned files to clean up", orphaned_files.len());
         let mut deleted_count = 0;
         let mut failed_count = 0;
 
-        for image in orphaned_images {
-            match self.delete_image(image.id).await {
+        for file in orphaned_files {
+            match self.delete_file(file.id).await {
                 Ok(_) => {
                     deleted_count += 1;
-                    tracing::debug!("Deleted orphaned image: {}", image.id);
+                    tracing::debug!("Deleted orphaned file: {}", file.id);
                 }
                 Err(e) => {
                     failed_count += 1;
-                    tracing::error!("Failed to delete orphaned image {}: {}", image.id, e);
+                    tracing::error!("Failed to delete orphaned file {}: {}", file.id, e);
                 }
             }
         }
 
         tracing::info!(
-            "Image cleanup completed: {} deleted, {} failed",
+            "File cleanup completed: {} deleted, {} failed",
             deleted_count,
             failed_count
         );
@@ -171,67 +160,67 @@ impl ImageService {
         Ok(())
     }
 
-    pub fn get_absolute_path(&self, image: &Image) -> PathBuf {
-        self.cache_dir.join(&image.file_path)
+    pub fn get_absolute_path(&self, file: &File) -> PathBuf {
+        self.cache_dir.join(&file.file_path)
     }
 
-    pub async fn get_image(&self, id: Uuid) -> Result<Option<Image>, ImageError> {
-        Ok(Image::find_by_id(&self.pool, id).await?)
+    pub async fn get_file(&self, id: Uuid) -> Result<Option<File>, FileError> {
+        Ok(File::find_by_id(&self.pool, id).await?)
     }
 
-    pub async fn delete_image(&self, id: Uuid) -> Result<(), ImageError> {
-        if let Some(image) = Image::find_by_id(&self.pool, id).await? {
-            let file_path = self.cache_dir.join(&image.file_path);
+    pub async fn delete_file(&self, id: Uuid) -> Result<(), FileError> {
+        if let Some(file) = File::find_by_id(&self.pool, id).await? {
+            let file_path = self.cache_dir.join(&file.file_path);
             if file_path.exists() {
                 fs::remove_file(file_path)?;
             }
 
-            Image::delete(&self.pool, id).await?;
+            File::delete(&self.pool, id).await?;
         }
 
         Ok(())
     }
 
-    pub async fn copy_images_by_workspace_to_worktree(
+    pub async fn copy_files_by_workspace_to_worktree(
         &self,
         worktree_path: &Path,
         workspace_id: Uuid,
         agent_working_dir: Option<&str>,
-    ) -> Result<(), ImageError> {
-        let images = Image::find_by_workspace_id(&self.pool, workspace_id).await?;
+    ) -> Result<(), FileError> {
+        let files = File::find_by_workspace_id(&self.pool, workspace_id).await?;
         let target_path = match agent_working_dir {
             Some(dir) if !dir.is_empty() => worktree_path.join(dir),
             _ => worktree_path.to_path_buf(),
         };
-        self.copy_images(&target_path, images)
+        self.copy_files(&target_path, files)
     }
 
-    pub async fn copy_images_by_ids_to_worktree(
+    pub async fn copy_files_by_ids_to_worktree(
         &self,
         worktree_path: &Path,
-        image_ids: &[Uuid],
-    ) -> Result<(), ImageError> {
-        let mut images = Vec::new();
-        for id in image_ids {
-            if let Some(image) = Image::find_by_id(&self.pool, *id).await? {
-                images.push(image);
+        file_ids: &[Uuid],
+    ) -> Result<(), FileError> {
+        let mut files = Vec::new();
+        for id in file_ids {
+            if let Some(file) = File::find_by_id(&self.pool, *id).await? {
+                files.push(file);
             }
         }
-        self.copy_images(worktree_path, images)
+        self.copy_files(worktree_path, files)
     }
 
-    /// Copy images to the worktree. Skips images that already exist at target.
-    fn copy_images(&self, worktree_path: &Path, images: Vec<Image>) -> Result<(), ImageError> {
-        if images.is_empty() {
+    /// Copy files to the worktree. Skips files that already exist at target.
+    fn copy_files(&self, worktree_path: &Path, files: Vec<File>) -> Result<(), FileError> {
+        if files.is_empty() {
             return Ok(());
         }
 
         let images_dir = worktree_path.join(utils::path::VIBE_IMAGES_DIR);
 
-        // Fast path: check if all images exist before doing anything
-        let all_exist = images
+        // Fast path: check if all files exist before doing anything
+        let all_exist = files
             .iter()
-            .all(|image| images_dir.join(&image.file_path).exists());
+            .all(|file| images_dir.join(&file.file_path).exists());
         if all_exist {
             return Ok(());
         }
@@ -244,9 +233,9 @@ impl ImageService {
             std::fs::write(&gitignore_path, "*\n")?;
         }
 
-        for image in images {
-            let src = self.cache_dir.join(&image.file_path);
-            let dst = images_dir.join(&image.file_path);
+        for file in files {
+            let src = self.cache_dir.join(&file.file_path);
+            let dst = images_dir.join(&file.file_path);
 
             if dst.exists() {
                 continue;
@@ -254,9 +243,9 @@ impl ImageService {
 
             if src.exists() {
                 if let Err(e) = std::fs::copy(&src, &dst) {
-                    tracing::error!("Failed to copy {}: {}", image.file_path, e);
+                    tracing::error!("Failed to copy {}: {}", file.file_path, e);
                 } else {
-                    tracing::debug!("Copied {}", image.file_path);
+                    tracing::debug!("Copied {}", file.file_path);
                 }
             } else {
                 tracing::warn!("Missing cache file: {}", src.display());

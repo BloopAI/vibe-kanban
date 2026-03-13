@@ -17,7 +17,7 @@ use local_deployment::pty::PtyError;
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
-    image::ImageError,
+    file::FileError,
     migration::MigrationError,
     remote_client::RemoteClientError,
     repo::RepoError as RepoServiceError,
@@ -58,7 +58,7 @@ pub enum ApiError {
     #[error(transparent)]
     Config(#[from] ConfigError),
     #[error(transparent)]
-    Image(#[from] ImageError),
+    File(#[from] FileError),
     #[error("Multipart error: {0}")]
     Multipart(#[from] MultipartError),
     #[error("IO error: {0}")]
@@ -384,26 +384,22 @@ impl IntoResponse for ApiError {
             ),
             ApiError::GitHost(_) => ErrorInfo::internal("GitHostError"),
 
-            ApiError::Image(ImageError::InvalidFormat) => ErrorInfo::bad_request(
-                "InvalidImageFormat",
-                "This file type is not supported. Please upload an image file (PNG, JPG, GIF, WebP, or BMP).",
-            ),
-            ApiError::Image(ImageError::TooLarge(size, max)) => ErrorInfo::with_status(
+            ApiError::File(FileError::TooLarge(size, max)) => ErrorInfo::with_status(
                 StatusCode::PAYLOAD_TOO_LARGE,
-                "ImageTooLarge",
+                "FileTooLarge",
                 format!(
-                    "This image is too large ({:.1} MB). Maximum file size is {:.1} MB.",
+                    "This file is too large ({:.1} MB). Maximum file size is {:.1} MB.",
                     *size as f64 / 1_048_576.0,
                     *max as f64 / 1_048_576.0
                 ),
             ),
-            ApiError::Image(ImageError::NotFound) => {
-                ErrorInfo::not_found("ImageNotFound", "Image not found.")
+            ApiError::File(FileError::NotFound) => {
+                ErrorInfo::not_found("FileNotFound", "File not found.")
             }
-            ApiError::Image(_) => ErrorInfo {
+            ApiError::File(_) => ErrorInfo {
                 status: StatusCode::INTERNAL_SERVER_ERROR,
-                error_type: "ImageError",
-                message: Some("Failed to process image. Please try again.".into()),
+                error_type: "FileError",
+                message: Some("Failed to process file. Please try again.".into()),
             },
 
             ApiError::EditorOpen(EditorOpenError::LaunchFailed { .. }) => {

@@ -54,8 +54,8 @@ export function CreateChatBoxContainer({
     preferredExecutorConfig,
     executorConfig: draftConfig,
     setExecutorConfig: setDraftConfig,
-    images: draftImages,
-    setImages: setDraftImages,
+    files: draftFiles,
+    setFiles: setDraftFiles,
   } = useCreateMode();
 
   const { createWorkspace } = useCreateWorkspace();
@@ -80,7 +80,7 @@ export function CreateChatBoxContainer({
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;
 
-  // Attachment handling - insert markdown and track image IDs
+  // Attachment handling - insert markdown and track file IDs
   const handleInsertMarkdown = useCallback(
     (markdown: string) => {
       const newMessage = message.trim()
@@ -91,16 +91,13 @@ export function CreateChatBoxContainer({
     [message, setMessage]
   );
 
-  const { uploadFiles, getImageIds, clearAttachments, localImages } =
-    useCreateAttachments(handleInsertMarkdown, draftImages, setDraftImages);
+  const { uploadFiles, getFileIds, clearAttachments, localFiles } =
+    useCreateAttachments(handleInsertMarkdown, draftFiles, setDraftFiles);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const imageFiles = acceptedFiles.filter((f) =>
-        f.type.startsWith('image/')
-      );
-      if (imageFiles.length > 0) {
-        uploadFiles(imageFiles);
+      if (acceptedFiles.length > 0) {
+        uploadFiles(acceptedFiles);
       }
     },
     [uploadFiles]
@@ -108,7 +105,6 @@ export function CreateChatBoxContainer({
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: { 'image/*': [] },
     disabled: createWorkspace.isPending || !hasSelectedRepos,
     noClick: true,
     noKeyboard: true,
@@ -240,7 +236,7 @@ export function CreateChatBoxContainer({
             issue_id: linkedIssue.issueId,
           }
         : null,
-      image_ids: getImageIds(),
+      file_ids: getFileIds(),
     };
     const linkToIssue = linkedIssue
       ? {
@@ -274,7 +270,7 @@ export function CreateChatBoxContainer({
     targetBranches,
     createWorkspace,
     onWorkspaceCreated,
-    getImageIds,
+    getFileIds,
     clearAttachments,
     clearDraft,
     linkedIssue,
@@ -334,7 +330,7 @@ export function CreateChatBoxContainer({
                     repoId,
                     executor,
                     onPasteFiles,
-                    localImages,
+                    localFiles,
                   }) => (
                     <WYSIWYGEditor
                       placeholder="Describe the task..."
@@ -348,7 +344,7 @@ export function CreateChatBoxContainer({
                       executor={executor}
                       autoFocus
                       onPasteFiles={onPasteFiles}
-                      localImages={localImages}
+                      localFiles={localFiles}
                       sendShortcut={config?.send_message_shortcut}
                     />
                   )}
@@ -386,7 +382,7 @@ export function CreateChatBoxContainer({
                     ) : undefined
                   }
                   onPasteFiles={uploadFiles}
-                  localImages={localImages}
+                  localFiles={localFiles}
                   dropzone={{ getRootProps, getInputProps, isDragActive }}
                   onEditRepos={() => setIsSelectingRepos(true)}
                   repoSummaryLabel={repoSummaryLabel}
