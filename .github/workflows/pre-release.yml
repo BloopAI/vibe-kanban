@@ -126,6 +126,14 @@ jobs:
 
           cargo set-version --workspace "$new_version"
 
+          node -e "
+            const fs = require('fs');
+            const path = 'crates/tauri-app/tauri.conf.json';
+            const conf = JSON.parse(fs.readFileSync(path, 'utf8'));
+            conf.version = '$new_version';
+            fs.writeFileSync(path, JSON.stringify(conf, null, 2) + '\n');
+          "
+
           echo "New version: $new_version"
           echo "new_version=$new_version" >> $GITHUB_OUTPUT
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
@@ -145,7 +153,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json Cargo.lock
+          git add package.json pnpm-lock.yaml npx-cli/package.json packages/local-web/package.json crates/tauri-app/tauri.conf.json Cargo.lock
           git add $(find . -name Cargo.toml)
           [ -f crates/remote/Cargo.lock ] && git add crates/remote/Cargo.lock || true
           [ -f crates/relay-tunnel/Cargo.lock ] && git add crates/relay-tunnel/Cargo.lock || true
