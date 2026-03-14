@@ -1,6 +1,6 @@
-import { MessageSquare, Code, ExternalLink } from "lucide-react";
-import { useTranslation } from "react-i18next";
-import { cn } from "../lib/cn";
+import { MessageSquare, Code, ExternalLink } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/cn';
 
 export interface PrCommentCardProps {
   author: string;
@@ -8,12 +8,12 @@ export interface PrCommentCardProps {
   createdAt: string;
   url?: string | null;
   // Optional review-specific fields
-  commentType?: "general" | "review";
+  commentType?: 'general' | 'review';
   path?: string;
   line?: number | null;
   diffHunk?: string | null;
   /** Display variant: 'compact' for inline chip, 'full' for inline card, 'list' for block card */
-  variant: "compact" | "full" | "list";
+  variant: 'compact' | 'full' | 'list';
   onClick?: (e: React.MouseEvent) => void;
   onDoubleClick?: (e: React.MouseEvent) => void;
   className?: string;
@@ -29,26 +29,26 @@ function formatDate(dateStr: string): string {
 
 function truncateBody(body: string, maxLength: number): string {
   if (body.length <= maxLength) return body;
-  return body.slice(0, maxLength - 3) + "...";
+  return body.slice(0, maxLength - 3) + '...';
 }
 
 /**
  * Renders a diff hunk with syntax highlighting for added/removed lines
  */
 function DiffHunk({ diffHunk }: { diffHunk: string }) {
-  const lines = diffHunk.split("\n");
+  const lines = diffHunk.split('\n');
 
   return (
     <pre className="mt-2 p-2 bg-secondary rounded text-xs font-mono overflow-x-auto max-h-32 overflow-y-auto">
       {lines.map((line, i) => {
-        let lineClass = "block";
-        if (line.startsWith("+") && !line.startsWith("+++")) {
+        let lineClass = 'block';
+        if (line.startsWith('+') && !line.startsWith('+++')) {
           lineClass =
-            "block bg-green-500/20 text-green-700 dark:text-green-400";
-        } else if (line.startsWith("-") && !line.startsWith("---")) {
-          lineClass = "block bg-red-500/20 text-red-700 dark:text-red-400";
-        } else if (line.startsWith("@@")) {
-          lineClass = "block text-muted-foreground";
+            'block bg-green-500/20 text-green-700 dark:text-green-400';
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
+          lineClass = 'block bg-red-500/20 text-red-700 dark:text-red-400';
+        } else if (line.startsWith('@@')) {
+          lineClass = 'block text-muted-foreground';
         }
         return (
           <code key={i} className={lineClass}>
@@ -72,22 +72,22 @@ function CompactCard({
   onDoubleClick,
   className,
 }: PrCommentCardProps) {
-  const { t } = useTranslation("tasks");
-  const isReview = commentType === "review";
+  const { t } = useTranslation('tasks');
+  const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
   const displayText = isReview && path ? `${path}: ${body}` : body;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 py-0.5 bg-muted rounded border align-middle cursor-pointer border-border hover:border-muted-foreground max-w-[300px]",
-        className,
+        'inline-flex items-center gap-1.5 py-0.5 bg-muted rounded border align-middle cursor-pointer border-border hover:border-muted-foreground max-w-[300px]',
+        className
       )}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
       role="button"
       tabIndex={0}
-      title={`@${author}: ${body}\n\n${t("prComments.card.tooltip")}`}
+      title={`@${author}: ${body}\n\n${t('prComments.card.tooltip')}`}
     >
       <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
       <span className="text-xs font-medium flex-shrink-0">@{author}</span>
@@ -114,16 +114,16 @@ function FullCard({
   variant,
   className,
 }: PrCommentCardProps) {
-  const { t } = useTranslation("tasks");
-  const isReview = commentType === "review";
+  const { t } = useTranslation('tasks');
+  const isReview = commentType === 'review';
   const Icon = isReview ? Code : MessageSquare;
 
   return (
     <div
       className={cn(
-        "p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors overflow-hidden",
-        variant === "full" && "inline-block align-bottom max-w-md",
-        className,
+        'p-3 bg-muted/50 rounded-md border border-border cursor-pointer hover:border-muted-foreground transition-colors overflow-hidden',
+        variant === 'full' && 'inline-block align-bottom max-w-md',
+        className
       )}
       onClick={onClick}
       role="button"
@@ -136,7 +136,7 @@ function FullCard({
           <span className="font-medium text-sm">@{author}</span>
           {isReview && (
             <span className="text-xs text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
-              {t("prComments.card.review")}
+              {t('prComments.card.review')}
             </span>
           )}
         </div>
@@ -147,7 +147,7 @@ function FullCard({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                window.open(url, "_blank", "noopener,noreferrer");
+                window.open(url, '_blank', 'noopener,noreferrer');
               }}
               className="hover:text-foreground transition-colors"
               aria-label="Open in browser"
@@ -162,7 +162,7 @@ function FullCard({
       {isReview && path && (
         <div className="text-xs font-mono text-primary/70 mb-1">
           {path}
-          {line ? `:${line}` : ""}
+          {line ? `:${line}` : ''}
         </div>
       )}
 
@@ -183,7 +183,7 @@ function FullCard({
  * @param variant - 'compact' for inline chip, 'full' for inline card, 'list' for block card
  */
 export function PrCommentCard(props: PrCommentCardProps) {
-  if (props.variant === "compact") {
+  if (props.variant === 'compact') {
     return <CompactCard {...props} />;
   }
   // Both 'full' and 'list' use FullCard, just with different styling

@@ -1,5 +1,5 @@
-import { XIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import { XIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 const splitLines = (value: string): string[] => value.split(/\r\n|\r|\n/);
 
@@ -20,11 +20,11 @@ export function ErrorAlert({
     <div
       role="alert"
       className={cn(
-        "relative w-full rounded-sm border border-error bg-error/10 px-base py-half text-sm text-error",
-        className,
+        'relative w-full rounded-sm border border-error bg-error/10 px-base py-half text-sm text-error',
+        className
       )}
     >
-      <div className={cn("leading-relaxed", onDismiss && "pr-double")}>
+      <div className={cn('leading-relaxed', onDismiss && 'pr-double')}>
         {splitLines(message).map((line, i, lines) => (
           <span key={i}>
             {line}
@@ -36,7 +36,7 @@ export function ErrorAlert({
         <button
           type="button"
           onClick={onDismiss}
-          aria-label={dismissLabel ?? "Dismiss error"}
+          aria-label={dismissLabel ?? 'Dismiss error'}
           className="absolute right-half top-half rounded-sm p-[2px] text-error/90 hover:bg-error/15 hover:text-error transition-colors"
         >
           <XIcon className="size-icon-xs" weight="bold" />

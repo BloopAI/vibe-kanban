@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useCallback, useEffect, useState, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   $getSelection,
   $isRangeSelection,
   FORMAT_TEXT_COMMAND,
   SELECTION_CHANGE_COMMAND,
   COMMAND_PRIORITY_CRITICAL,
-} from "lexical";
-import { Bold, Italic, Strikethrough, Code } from "lucide-react";
-import { cn } from "../lib/cn";
+} from 'lexical';
+import { Bold, Italic, Strikethrough, Code } from 'lucide-react';
+import { cn } from '../lib/cn';
 
 const TOOLBAR_HEIGHT = 36;
 const GAP = 8;
@@ -35,7 +35,7 @@ function ToolbarButton({
       title={title}
       aria-label={title}
       className={cn(
-        "p-1.5 rounded hover:bg-accent transition-colors bg-secondary/40",
+        'p-1.5 rounded hover:bg-accent transition-colors bg-secondary/40'
       )}
     >
       {children}
@@ -106,7 +106,7 @@ export function ToolbarPlugin() {
     // Keep within viewport horizontally
     left = Math.max(
       VIEWPORT_PADDING,
-      Math.min(left, window.innerWidth - toolbarWidth - VIEWPORT_PADDING),
+      Math.min(left, window.innerWidth - toolbarWidth - VIEWPORT_PADDING)
     );
 
     setPosition({ top, left });
@@ -120,7 +120,7 @@ export function ToolbarPlugin() {
         updateToolbar();
         return false;
       },
-      COMMAND_PRIORITY_CRITICAL,
+      COMMAND_PRIORITY_CRITICAL
     );
   }, [editor, updateToolbar]);
 
@@ -144,12 +144,12 @@ export function ToolbarPlugin() {
       requestAnimationFrame(updatePosition);
     };
 
-    window.addEventListener("scroll", handleUpdate, true);
-    window.addEventListener("resize", handleUpdate);
+    window.addEventListener('scroll', handleUpdate, true);
+    window.addEventListener('resize', handleUpdate);
 
     return () => {
-      window.removeEventListener("scroll", handleUpdate, true);
-      window.removeEventListener("resize", handleUpdate);
+      window.removeEventListener('scroll', handleUpdate, true);
+      window.removeEventListener('resize', handleUpdate);
     };
   }, [isVisible, updatePosition]);
 
@@ -161,16 +161,16 @@ export function ToolbarPlugin() {
     const handleFocusOut = (e: FocusEvent) => {
       // Don't hide if focus is moving to the toolbar itself
       const relatedTarget = e.relatedTarget as HTMLElement | null;
-      if (relatedTarget?.closest("[data-floating-toolbar]")) {
+      if (relatedTarget?.closest('[data-floating-toolbar]')) {
         return;
       }
       setIsVisible(false);
       setPosition(null);
     };
 
-    rootElement.addEventListener("focusout", handleFocusOut);
+    rootElement.addEventListener('focusout', handleFocusOut);
     return () => {
-      rootElement.removeEventListener("focusout", handleFocusOut);
+      rootElement.removeEventListener('focusout', handleFocusOut);
     };
   }, [editor]);
 
@@ -191,32 +191,32 @@ export function ToolbarPlugin() {
       }}
     >
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold')}
         title="Bold (Cmd+B)"
       >
         <Bold size={iconSize} />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic')}
         title="Italic (Cmd+I)"
       >
         <Italic size={iconSize} />
       </ToolbarButton>
       <ToolbarButton
         onClick={() =>
-          editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough")
+          editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
         }
         title="Strikethrough"
       >
         <Strikethrough size={iconSize} />
       </ToolbarButton>
       <ToolbarButton
-        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code")}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code')}
         title="Inline Code (Cmd+E)"
       >
         <Code size={iconSize} />
       </ToolbarButton>
     </div>,
-    document.body,
+    document.body
   );
 }

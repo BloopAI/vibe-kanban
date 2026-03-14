@@ -1,7 +1,7 @@
-import { type ReactNode } from "react";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { FORMAT_TEXT_COMMAND, UNDO_COMMAND } from "lexical";
-import { INSERT_MARKDOWN_LIST_COMMAND } from "./MarkdownInsertPlugin";
+import { type ReactNode } from 'react';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { FORMAT_TEXT_COMMAND, UNDO_COMMAND } from 'lexical';
+import { INSERT_MARKDOWN_LIST_COMMAND } from './MarkdownInsertPlugin';
 import {
   TextB,
   TextItalic,
@@ -14,8 +14,8 @@ import {
   PencilSimple,
   type Icon,
   CheckIcon,
-} from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 interface ToolbarButtonProps {
   onClick: () => void;
@@ -41,10 +41,10 @@ function ToolbarButton({
       aria-label={label}
       title={label}
       className={cn(
-        "p-half rounded-sm transition-colors",
+        'p-half rounded-sm transition-colors',
         active
-          ? "text-normal bg-panel"
-          : "text-low hover:text-normal hover:bg-panel/50",
+          ? 'text-normal bg-panel'
+          : 'text-low hover:text-normal hover:bg-panel/50'
       )}
     >
       <Icon className="size-icon-sm" weight="bold" />
@@ -53,7 +53,7 @@ function ToolbarButton({
 }
 
 interface StaticToolbarPluginProps {
-  saveStatus?: "idle" | "saved";
+  saveStatus?: 'idle' | 'saved';
   extraActions?: ReactNode;
   isPreviewMode?: boolean;
   onTogglePreview?: () => void;
@@ -105,14 +105,14 @@ export function StaticToolbarPlugin({
       {/* Text formatting buttons — insert markdown syntax */}
       <ToolbarButton
         onClick={() =>
-          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold"))
+          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold'))
         }
         icon={TextB}
         label="Bold"
       />
       <ToolbarButton
         onClick={() =>
-          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic"))
+          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic'))
         }
         icon={TextItalic}
         label="Italic"
@@ -120,7 +120,7 @@ export function StaticToolbarPlugin({
       <ToolbarButton
         onClick={() =>
           dispatch(() =>
-            editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough"),
+            editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'strikethrough')
           )
         }
         icon={TextStrikethrough}
@@ -128,7 +128,7 @@ export function StaticToolbarPlugin({
       />
       <ToolbarButton
         onClick={() =>
-          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code"))
+          dispatch(() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code'))
         }
         icon={Code}
         label="Inline Code"
@@ -141,7 +141,7 @@ export function StaticToolbarPlugin({
       <ToolbarButton
         onClick={() =>
           dispatch(() =>
-            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, "bullet"),
+            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'bullet')
           )
         }
         icon={ListBullets}
@@ -150,7 +150,7 @@ export function StaticToolbarPlugin({
       <ToolbarButton
         onClick={() =>
           dispatch(() =>
-            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, "number"),
+            editor.dispatchCommand(INSERT_MARKDOWN_LIST_COMMAND, 'number')
           )
         }
         icon={ListNumbers}
@@ -164,7 +164,7 @@ export function StaticToolbarPlugin({
           <ToolbarButton
             onClick={onTogglePreview}
             icon={isPreviewMode ? PencilSimple : Eye}
-            label={isPreviewMode ? "Edit" : "Preview"}
+            label={isPreviewMode ? 'Edit' : 'Preview'}
             active={isPreviewMode}
           />
         </>
@@ -181,8 +181,8 @@ export function StaticToolbarPlugin({
       {saveStatus && (
         <div
           className={cn(
-            "ml-auto mr-base flex items-center transition-opacity duration-300",
-            saveStatus === "idle" ? "opacity-0" : "opacity-100",
+            'ml-auto mr-base flex items-center transition-opacity duration-300',
+            saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'
           )}
         >
           <CheckIcon className="size-icon-sm text-success" weight="bold" />

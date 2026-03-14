@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { cn } from "../lib/cn";
-import { Tooltip } from "./Tooltip";
+import type { ReactNode } from 'react';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
 
 interface AppBarSocialLinkProps {
   href: string;
@@ -22,10 +22,10 @@ export function AppBarSocialLink({
         target="_blank"
         rel="noopener noreferrer"
         className={cn(
-          "relative flex items-center justify-center w-10 h-10 rounded-lg",
-          "text-sm font-medium transition-colors cursor-pointer",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-          "bg-panel text-normal hover:opacity-80",
+          'relative flex items-center justify-center w-10 h-10 rounded-lg',
+          'text-sm font-medium transition-colors cursor-pointer',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+          'bg-panel text-normal hover:opacity-80'
         )}
         aria-label={label}
       >

@@ -7,8 +7,8 @@ import {
   GitPullRequestIcon,
   CloudIcon,
   SignInIcon,
-} from "@phosphor-icons/react";
-import { PrimaryButton } from "./PrimaryButton";
+} from '@phosphor-icons/react';
+import { PrimaryButton } from './PrimaryButton';
 
 interface MigrateIntroductionProps {
   isSignedIn: boolean;
@@ -18,10 +18,10 @@ interface MigrateIntroductionProps {
 const features = [
   {
     icon: CloudIcon,
-    title: "Cloud Storage",
+    title: 'Cloud Storage',
     description: (
       <>
-        Access your projects from anywhere.{" "}
+        Access your projects from anywhere.{' '}
         <a
           href="https://www.vibekanban.com/docs/self-hosting/local-development"
           target="_blank"
@@ -29,35 +29,35 @@ const features = [
           className="text-brand hover:underline"
         >
           Self-host
-        </a>{" "}
+        </a>{' '}
         if you prefer.
       </>
     ),
   },
   {
     icon: UsersIcon,
-    title: "Team Collaboration",
-    description: "Invite teammates and assign work",
+    title: 'Team Collaboration',
+    description: 'Invite teammates and assign work',
   },
   {
     icon: ChatCircleIcon,
-    title: "Comments",
-    description: "Comment on issues to keep discussions in context",
+    title: 'Comments',
+    description: 'Comment on issues to keep discussions in context',
   },
   {
     icon: TreeStructureIcon,
-    title: "Sub-issues",
-    description: "Break down complex work into smaller pieces",
+    title: 'Sub-issues',
+    description: 'Break down complex work into smaller pieces',
   },
   {
     icon: GitPullRequestIcon,
-    title: "GitHub Integration",
-    description: "Link pull requests directly to issues",
+    title: 'GitHub Integration',
+    description: 'Link pull requests directly to issues',
   },
   {
     icon: TagIcon,
-    title: "Tags & Priorities",
-    description: "Add tags and priorities to organize work",
+    title: 'Tags & Priorities',
+    description: 'Add tags and priorities to organize work',
   },
 ];
 
@@ -115,14 +115,14 @@ export function MigrateIntroduction({
       <div className="pt-base border-t">
         <p className="text-sm text-normal mb-base">
           {isSignedIn
-            ? "Continue to select projects to migrate."
-            : "Sign in to migrate your local projects."}
+            ? 'Continue to select projects to migrate.'
+            : 'Sign in to migrate your local projects.'}
         </p>
         <PrimaryButton
           onClick={onAction}
           actionIcon={isSignedIn ? ArrowRightIcon : SignInIcon}
         >
-          {isSignedIn ? "Continue" : "Sign In"}
+          {isSignedIn ? 'Continue' : 'Sign In'}
         </PrimaryButton>
       </div>
     </div>

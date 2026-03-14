@@ -1,6 +1,6 @@
-import type { KeyboardEvent, ReactNode, RefObject } from "react";
-import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
-import { cn } from "../lib/cn";
+import type { KeyboardEvent, ReactNode, RefObject } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,7 +8,7 @@ import {
   DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./Dropdown";
+} from './Dropdown';
 
 interface SearchableDropdownProps<T> {
   /** Array of filtered items to display */
@@ -75,8 +75,8 @@ export function SearchableDropdown<T>({
   onKeyDown,
   virtuosoRef,
   contentClassName,
-  placeholder = "Search",
-  emptyMessage = "No items found",
+  placeholder = 'Search',
+  emptyMessage = 'No items found',
   getItemBadge,
   getItemIcon,
 }: SearchableDropdownProps<T>) {
@@ -98,7 +98,7 @@ export function SearchableDropdown<T>({
         ) : (
           <Virtuoso
             ref={virtuosoRef as RefObject<VirtuosoHandle>}
-            style={{ height: "16rem" }}
+            style={{ height: '16rem' }}
             totalCount={filteredItems.length}
             computeItemKey={(idx: number) =>
               getItemKey(filteredItems[idx]) ?? String(idx)
@@ -115,8 +115,8 @@ export function SearchableDropdown<T>({
                   preventFocusOnHover
                   badge={getItemBadge?.(item)}
                   className={cn(
-                    isSelected && "bg-secondary",
-                    isHighlighted && "bg-secondary",
+                    isSelected && 'bg-secondary',
+                    isHighlighted && 'bg-secondary'
                   )}
                 >
                   {getItemIcon?.(item)}

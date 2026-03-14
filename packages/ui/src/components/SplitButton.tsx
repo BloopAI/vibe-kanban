@@ -1,11 +1,11 @@
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { CaretDownIcon, CheckIcon, type Icon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { CaretDownIcon, CheckIcon, type Icon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-} from "./Dropdown";
+} from './Dropdown';
 
 export interface SplitButtonOption<T extends string> {
   value: T;
@@ -29,20 +29,20 @@ export function SplitButton<T extends string>({
   className,
 }: SplitButtonProps<T>) {
   const selectedOption = options.find((opt) => opt.value === selectedValue);
-  const label = selectedOption?.label ?? "";
+  const label = selectedOption?.label ?? '';
 
   return (
-    <div className={cn("flex", className)}>
+    <div className={cn('flex', className)}>
       <div className="flex items-stretch gap-[2px]">
         {/* Primary CTA button */}
         <button
           type="button"
           onClick={() => onAction(selectedValue)}
           className={cn(
-            "flex-1 bg-panel px-base py-half",
-            "text-sm text-normal",
-            "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:ring-inset",
-            "rounded-l-sm",
+            'flex-1 bg-panel px-base py-half',
+            'text-sm text-normal',
+            'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:ring-inset',
+            'rounded-l-sm'
           )}
         >
           {label}
@@ -52,9 +52,9 @@ export function SplitButton<T extends string>({
         <DropdownMenu>
           <DropdownMenuPrimitive.Trigger
             className={cn(
-              "flex items-center justify-center bg-panel px-base py-half",
-              "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:ring-inset",
-              "rounded-r-sm",
+              'flex items-center justify-center bg-panel px-base py-half',
+              'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand focus-visible:ring-inset',
+              'rounded-r-sm'
             )}
           >
             <CaretDownIcon className="size-icon-xs text-low" weight="bold" />

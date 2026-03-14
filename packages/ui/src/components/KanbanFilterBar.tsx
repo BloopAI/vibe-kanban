@@ -1,17 +1,17 @@
-import { useState, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
+import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowLeftIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
   PlusIcon,
   XIcon,
-} from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
-import type { PriorityLevel } from "./PriorityIcon";
-import { InputField } from "./InputField";
-import { PrimaryButton } from "./PrimaryButton";
-import { ButtonGroup, ButtonGroupItem } from "./IconButtonGroup";
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+import type { PriorityLevel } from './PriorityIcon';
+import { InputField } from './InputField';
+import { PrimaryButton } from './PrimaryButton';
+import { ButtonGroup, ButtonGroupItem } from './IconButtonGroup';
 
 export interface KanbanFilterTag {
   id: string;
@@ -33,7 +33,7 @@ export interface KanbanFilterState<TSortField extends string = string> {
   assigneeIds: string[];
   tagIds: string[];
   sortField: TSortField;
-  sortDirection: "asc" | "desc";
+  sortDirection: 'asc' | 'desc';
 }
 
 export interface KanbanProjectViewIds {
@@ -42,8 +42,8 @@ export interface KanbanProjectViewIds {
 }
 
 const DEFAULT_KANBAN_PROJECT_VIEW_IDS: KanbanProjectViewIds = {
-  TEAM: "team",
-  PERSONAL: "personal",
+  TEAM: 'team',
+  PERSONAL: 'personal',
 };
 
 export interface RenderKanbanFiltersDialogProps<
@@ -63,7 +63,7 @@ export interface RenderKanbanFiltersDialogProps<
   onPrioritiesChange: (priorities: PriorityLevel[]) => void;
   onAssigneesChange: (assigneeIds: string[]) => void;
   onTagsChange: (tagIds: string[]) => void;
-  onSortChange: (sortField: TSortField, sortDirection: "asc" | "desc") => void;
+  onSortChange: (sortField: TSortField, sortDirection: 'asc' | 'desc') => void;
   onShowSubIssuesChange: (show: boolean) => void;
   onShowWorkspacesChange: (show: boolean) => void;
 }
@@ -90,7 +90,7 @@ interface KanbanFilterBarProps<
   onPrioritiesChange: (priorities: PriorityLevel[]) => void;
   onAssigneesChange: (assigneeIds: string[]) => void;
   onTagsChange: (tagIds: string[]) => void;
-  onSortChange: (sortField: TSortField, sortDirection: "asc" | "desc") => void;
+  onSortChange: (sortField: TSortField, sortDirection: 'asc' | 'desc') => void;
   onShowSubIssuesChange: (show: boolean) => void;
   onShowWorkspacesChange: (show: boolean) => void;
   onClearFilters: () => void;
@@ -98,7 +98,7 @@ interface KanbanFilterBarProps<
   shouldAnimateCreateButton: boolean;
   isMobile?: boolean;
   renderFiltersDialog?: (
-    props: RenderKanbanFiltersDialogProps<TTag, TUser, TSortField>,
+    props: RenderKanbanFiltersDialogProps<TTag, TUser, TSortField>
   ) => ReactNode;
 }
 
@@ -133,11 +133,11 @@ export function KanbanFilterBar<
   isMobile,
   renderFiltersDialog,
 }: KanbanFilterBarProps<TTag, TUser, TSortField>) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const [mobileSearchExpanded, setMobileSearchExpanded] = useState(false);
 
   const handleClearSearch = () => {
-    onSearchQueryChange("");
+    onSearchQueryChange('');
   };
 
   return (
@@ -147,18 +147,18 @@ export function KanbanFilterBar<
           <button
             type="button"
             onClick={() => {
-              onSearchQueryChange("");
+              onSearchQueryChange('');
               setMobileSearchExpanded(false);
             }}
             className="p-half rounded-sm text-low hover:text-normal hover:bg-secondary transition-colors shrink-0"
-            aria-label={t("kanban.closeSearch", "Close search")}
+            aria-label={t('kanban.closeSearch', 'Close search')}
           >
             <ArrowLeftIcon className="size-icon-sm" weight="bold" />
           </button>
           <InputField
             value={filters.searchQuery}
             onChange={onSearchQueryChange}
-            placeholder={t("kanban.searchPlaceholder", "Search issues...")}
+            placeholder={t('kanban.searchPlaceholder', 'Search issues...')}
             variant="search"
             className="min-w-0 flex-1"
           />
@@ -166,8 +166,8 @@ export function KanbanFilterBar<
       ) : (
         <div
           className={cn(
-            "flex min-w-0 flex-wrap items-center",
-            isMobile ? "gap-half" : "gap-base",
+            'flex min-w-0 flex-wrap items-center',
+            isMobile ? 'gap-half' : 'gap-base'
           )}
         >
           <ButtonGroup className="flex-wrap">
@@ -175,13 +175,13 @@ export function KanbanFilterBar<
               active={activeViewId === viewIds.TEAM}
               onClick={() => onViewChange(viewIds.TEAM)}
             >
-              {t("kanban.team", "Team")}
+              {t('kanban.team', 'Team')}
             </ButtonGroupItem>
             <ButtonGroupItem
               active={activeViewId === viewIds.PERSONAL}
               onClick={() => onViewChange(viewIds.PERSONAL)}
             >
-              {t("kanban.personal", "Personal")}
+              {t('kanban.personal', 'Personal')}
             </ButtonGroupItem>
           </ButtonGroup>
 
@@ -190,12 +190,12 @@ export function KanbanFilterBar<
               type="button"
               onClick={() => setMobileSearchExpanded(true)}
               className={cn(
-                "p-half rounded-sm transition-colors",
+                'p-half rounded-sm transition-colors',
                 filters.searchQuery
-                  ? "text-brand hover:text-brand"
-                  : "text-low hover:text-normal hover:bg-secondary",
+                  ? 'text-brand hover:text-brand'
+                  : 'text-low hover:text-normal hover:bg-secondary'
               )}
-              aria-label={t("kanban.searchPlaceholder", "Search issues...")}
+              aria-label={t('kanban.searchPlaceholder', 'Search issues...')}
             >
               <MagnifyingGlassIcon className="size-icon-sm" weight="bold" />
             </button>
@@ -203,7 +203,7 @@ export function KanbanFilterBar<
             <InputField
               value={filters.searchQuery}
               onChange={onSearchQueryChange}
-              placeholder={t("kanban.searchPlaceholder", "Search issues...")}
+              placeholder={t('kanban.searchPlaceholder', 'Search issues...')}
               variant="search"
               actionIcon={filters.searchQuery ? XIcon : undefined}
               onAction={handleClearSearch}
@@ -215,13 +215,13 @@ export function KanbanFilterBar<
             type="button"
             onClick={() => onFiltersDialogOpenChange(true)}
             className={cn(
-              "flex items-center justify-center p-half rounded-sm transition-colors",
+              'flex items-center justify-center p-half rounded-sm transition-colors',
               hasActiveFilters
-                ? "text-brand hover:text-brand"
-                : "text-low hover:text-normal hover:bg-secondary",
+                ? 'text-brand hover:text-brand'
+                : 'text-low hover:text-normal hover:bg-secondary'
             )}
-            aria-label={t("kanban.filters", "Open filters")}
-            title={t("kanban.filters", "Open filters")}
+            aria-label={t('kanban.filters', 'Open filters')}
+            title={t('kanban.filters', 'Open filters')}
           >
             <FunnelIcon className="size-icon-sm" weight="bold" />
           </button>
@@ -229,7 +229,7 @@ export function KanbanFilterBar<
           {hasActiveFilters && (
             <PrimaryButton
               variant="tertiary"
-              value={t("kanban.clearFilters", "Clear filters")}
+              value={t('kanban.clearFilters', 'Clear filters')}
               actionIcon={XIcon}
               onClick={onClearFilters}
             />
@@ -240,21 +240,21 @@ export function KanbanFilterBar<
               type="button"
               onClick={() => onCreateIssue()}
               className={cn(
-                "rounded-sm p-half bg-brand hover:bg-brand-hover text-on-brand transition-colors",
-                shouldAnimateCreateButton && "create-issue-attention",
+                'rounded-sm p-half bg-brand hover:bg-brand-hover text-on-brand transition-colors',
+                shouldAnimateCreateButton && 'create-issue-attention'
               )}
-              aria-label={t("kanban.newIssue", "New issue")}
+              aria-label={t('kanban.newIssue', 'New issue')}
             >
               <PlusIcon className="size-icon-sm" weight="bold" />
             </button>
           ) : (
             <PrimaryButton
               variant="secondary"
-              value={t("kanban.newIssue", "New issue")}
+              value={t('kanban.newIssue', 'New issue')}
               actionIcon={PlusIcon}
               onClick={() => onCreateIssue()}
               className={cn(
-                shouldAnimateCreateButton && "create-issue-attention",
+                shouldAnimateCreateButton && 'create-issue-attention'
               )}
             />
           )}

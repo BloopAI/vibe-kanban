@@ -1,18 +1,18 @@
-import * as React from "react";
+import * as React from 'react';
 import {
   ArrowCounterClockwiseIcon,
   CheckIcon,
   type Icon,
   PencilSimpleLineIcon,
-} from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 interface InputFieldProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
-  variant?: "editable" | "search";
+  variant?: 'editable' | 'search';
   actionIcon?: Icon;
   onAction?: () => void;
   disabled?: boolean;
@@ -24,7 +24,7 @@ export function InputField({
   onChange,
   placeholder,
   className,
-  variant = "editable",
+  variant = 'editable',
   actionIcon: ActionIcon,
   onAction,
   disabled,
@@ -45,7 +45,7 @@ export function InputField({
 
   // Focus input when entering edit mode (editable variant only)
   React.useEffect(() => {
-    if (variant === "editable" && isEditing && inputRef.current) {
+    if (variant === 'editable' && isEditing && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
@@ -75,10 +75,10 @@ export function InputField({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (variant === "editable") {
-      if (e.key === "Enter") {
+    if (variant === 'editable') {
+      if (e.key === 'Enter') {
         handleSave();
-      } else if (e.key === "Escape") {
+      } else if (e.key === 'Escape') {
         handleCancel();
       }
     }
@@ -86,33 +86,33 @@ export function InputField({
 
   // Determine border color based on state
   const getBorderClass = () => {
-    if (variant === "editable") {
-      if (justSaved) return "border-success";
-      if (isEditing) return "border-brand";
+    if (variant === 'editable') {
+      if (justSaved) return 'border-success';
+      if (isEditing) return 'border-brand';
     }
-    if (variant === "search" && isFocused) return "border-brand";
-    return "border-border";
+    if (variant === 'search' && isFocused) return 'border-brand';
+    return 'border-border';
   };
 
   // For search variant: always show input
   // For editable variant: show input only when editing
-  const showInput = variant === "search" || isEditing;
+  const showInput = variant === 'search' || isEditing;
 
   return (
     <div
       className={cn(
-        "bg-secondary border rounded-sm px-base py-half flex items-center gap-base transition-colors",
+        'bg-secondary border rounded-sm px-base py-half flex items-center gap-base transition-colors',
         getBorderClass(),
-        className,
+        className
       )}
     >
       {showInput ? (
         <input
           ref={inputRef}
           type="text"
-          value={variant === "editable" ? editValue : value}
+          value={variant === 'editable' ? editValue : value}
           onChange={(e) =>
-            variant === "editable"
+            variant === 'editable'
               ? setEditValue(e.target.value)
               : onChange(e.target.value)
           }
@@ -136,13 +136,13 @@ export function InputField({
       )}
 
       {/* Editable variant icons */}
-      {variant === "editable" && justSaved && (
+      {variant === 'editable' && justSaved && (
         <CheckIcon
           className="size-icon-sm text-success shrink-0"
           weight="bold"
         />
       )}
-      {variant === "editable" && isEditing && !justSaved && (
+      {variant === 'editable' && isEditing && !justSaved && (
         <>
           <ArrowCounterClockwiseIcon
             className="size-icon-sm text-low shrink-0 cursor-pointer hover:text-normal"
@@ -162,7 +162,7 @@ export function InputField({
           />
         </>
       )}
-      {variant === "editable" && !isEditing && !justSaved && (
+      {variant === 'editable' && !isEditing && !justSaved && (
         <PencilSimpleLineIcon
           className="size-icon-sm text-low shrink-0 cursor-pointer hover:text-normal"
           weight="regular"
@@ -171,7 +171,7 @@ export function InputField({
       )}
 
       {/* Search variant action button */}
-      {variant === "search" && ActionIcon && (
+      {variant === 'search' && ActionIcon && (
         <button
           type="button"
           onClick={onAction}

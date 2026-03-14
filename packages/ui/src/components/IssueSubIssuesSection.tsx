@@ -1,12 +1,12 @@
-import { useTranslation } from "react-i18next";
-import { Droppable } from "@hello-pangea/dnd";
+import { useTranslation } from 'react-i18next';
+import { Droppable } from '@hello-pangea/dnd';
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from "./CollapsibleSectionHeader";
-import { SubIssueRow } from "./SubIssueRow";
-import type { PriorityLevel } from "./PriorityIcon";
-import type { KanbanAssigneeUser } from "./KanbanAssignee";
+} from './CollapsibleSectionHeader';
+import { SubIssueRow } from './SubIssueRow';
+import type { PriorityLevel } from './PriorityIcon';
+import type { KanbanAssigneeUser } from './KanbanAssignee';
 
 export interface SubIssueData {
   id: string;
@@ -44,11 +44,11 @@ export function IssueSubIssuesSection({
   isReordering,
   actions,
 }: IssueSubIssuesSectionProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
 
   return (
     <CollapsibleSectionHeader
-      title={t("kanban.subIssues", "Sub-issues")}
+      title={t('kanban.subIssues', 'Sub-issues')}
       persistKey="kanban-issue-sub-issues"
       defaultExpanded={true}
       actions={actions}
@@ -62,16 +62,16 @@ export function IssueSubIssuesSection({
           >
             {isReordering && (
               <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-10">
-                <p className="text-low">{t("common.loading", "Loading...")}</p>
+                <p className="text-low">{t('common.loading', 'Loading...')}</p>
               </div>
             )}
             {isLoading ? (
               <p className="text-low py-half">
-                {t("common.loading", "Loading...")}
+                {t('common.loading', 'Loading...')}
               </p>
             ) : subIssues.length === 0 ? (
               <p className="text-low py-half">
-                {t("kanban.noSubIssues", "No sub-issues")}
+                {t('kanban.noSubIssues', 'No sub-issues')}
               </p>
             ) : (
               subIssues.map((subIssue, index) => (
@@ -127,7 +127,7 @@ export function IssueSubIssuesSection({
             {isReordering && (
               <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
                 <span className="text-low text-sm">
-                  {t("common.saving", "Saving...")}
+                  {t('common.saving', 'Saving...')}
                 </span>
               </div>
             )}

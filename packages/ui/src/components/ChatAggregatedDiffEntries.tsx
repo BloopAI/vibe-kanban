@@ -1,16 +1,16 @@
-import { useMemo } from "react";
+import { useMemo } from 'react';
 import {
   CaretDownIcon,
   ArrowSquareUpRightIcon,
   FileIcon as DefaultFileIcon,
-} from "@phosphor-icons/react";
-import { useTranslation } from "react-i18next";
-import { cn } from "../lib/cn";
-import { ToolStatusDot, type ToolStatusLike } from "./ToolStatusDot";
-import type { ChatFileEntryDiffInput } from "./ChatFileEntry";
+} from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
+import type { ChatFileEntryDiffInput } from './ChatFileEntry';
 
 export type ChatAggregatedDiffChange = {
-  action: "edit" | "write" | "delete" | "rename";
+  action: 'edit' | 'write' | 'delete' | 'rename';
   unified_diff?: string;
   has_line_numbers?: boolean;
   content?: string;
@@ -56,13 +56,13 @@ function parseUnifiedDiffStats(unifiedDiff: string) {
   let additions = 0;
   let deletions = 0;
 
-  for (const line of unifiedDiff.split("\n")) {
-    if (line.startsWith("+++") || line.startsWith("---")) {
+  for (const line of unifiedDiff.split('\n')) {
+    if (line.startsWith('+++') || line.startsWith('---')) {
       continue;
     }
-    if (line.startsWith("+")) {
+    if (line.startsWith('+')) {
       additions += 1;
-    } else if (line.startsWith("-")) {
+    } else if (line.startsWith('-')) {
       deletions += 1;
     }
   }
@@ -72,20 +72,20 @@ function parseUnifiedDiffStats(unifiedDiff: string) {
 
 function buildDiffContent(
   change: ChatAggregatedDiffChange,
-  filePath: string,
+  filePath: string
 ): ChatFileEntryDiffInput | undefined {
-  if (change.action === "edit" && change.unified_diff) {
+  if (change.action === 'edit' && change.unified_diff) {
     return {
-      type: "unified",
+      type: 'unified',
       path: filePath,
       unifiedDiff: change.unified_diff,
       hasLineNumbers: change.has_line_numbers ?? true,
     };
   }
-  if (change.action === "write" && change.content) {
+  if (change.action === 'write' && change.content) {
     return {
-      type: "content",
-      oldContent: "",
+      type: 'content',
+      oldContent: '',
       newContent: change.content,
       newPath: filePath,
     };
@@ -95,16 +95,16 @@ function buildDiffContent(
 
 function getActionLabel(change: ChatAggregatedDiffChange) {
   switch (change.action) {
-    case "edit":
-      return "Edit";
-    case "write":
-      return "Write";
-    case "delete":
-      return "Delete";
-    case "rename":
-      return change.new_path ? `Rename → ${change.new_path}` : "Rename";
+    case 'edit':
+      return 'Edit';
+    case 'write':
+      return 'Write';
+    case 'delete':
+      return 'Delete';
+    case 'rename':
+      return change.new_path ? `Rename → ${change.new_path}` : 'Rename';
     default:
-      return "Change";
+      return 'Change';
   }
 }
 
@@ -124,19 +124,19 @@ function DiffEntry({
   }) => React.ReactNode;
 }) {
   const { additions, deletions } = useMemo(() => {
-    if (change.action === "edit" && change.unified_diff) {
+    if (change.action === 'edit' && change.unified_diff) {
       return parseUnifiedDiffStats(change.unified_diff);
     }
     return { additions: undefined, deletions: undefined };
   }, [change]);
 
   const writeAdditions =
-    change.action === "write" && change.content
-      ? change.content.split("\n").length
+    change.action === 'write' && change.content
+      ? change.content.split('\n').length
       : undefined;
   const diffContent = useMemo(
     () => buildDiffContent(change, filePath),
-    [change, filePath],
+    [change, filePath]
   );
   const hasStats =
     (additions !== undefined && additions > 0) ||
@@ -162,7 +162,7 @@ function DiffEntry({
               {(additions ?? writeAdditions) !== undefined &&
                 deletions !== undefined &&
                 deletions > 0 &&
-                " "}
+                ' '}
               {deletions !== undefined && deletions > 0 && (
                 <span className="text-error">-{deletions}</span>
               )}
@@ -195,7 +195,7 @@ export function ChatAggregatedDiffEntries({
   onOpenInVSCode,
   renderDiffBody,
 }: ChatAggregatedDiffEntriesProps) {
-  const { t } = useTranslation("tasks");
+  const { t } = useTranslation('tasks');
   const FileIcon = fileIcon ?? DefaultFileIcon;
 
   const handleClick = () => {
@@ -212,12 +212,12 @@ export function ChatAggregatedDiffEntries({
 
     for (const entry of entries) {
       const { change } = entry;
-      if (change.action === "edit" && change.unified_diff) {
+      if (change.action === 'edit' && change.unified_diff) {
         const stats = parseUnifiedDiffStats(change.unified_diff);
         additions += stats.additions ?? 0;
         deletions += stats.deletions ?? 0;
-      } else if (change.action === "write" && change.content) {
-        additions += change.content.split("\n").length;
+      } else if (change.action === 'write' && change.content) {
+        additions += change.content.split('\n').length;
       }
     }
 
@@ -245,22 +245,22 @@ export function ChatAggregatedDiffEntries({
     }, null);
   }, [entries]);
 
-  const isDenied = aggregateStatus?.status === "denied";
+  const isDenied = aggregateStatus?.status === 'denied';
   const hasStats = totalStats.additions > 0 || totalStats.deletions > 0;
 
   return (
     <div
       className={cn(
-        "rounded-sm border overflow-hidden",
-        isDenied && "border-error bg-error/10",
-        className,
+        'rounded-sm border overflow-hidden',
+        isDenied && 'border-error bg-error/10',
+        className
       )}
     >
       <div
         className={cn(
-          "flex items-center p-base w-full",
-          isDenied ? "bg-error/20" : "bg-panel",
-          "cursor-pointer",
+          'flex items-center p-base w-full',
+          isDenied ? 'bg-error/20' : 'bg-panel',
+          'cursor-pointer'
         )}
         onClick={handleClick}
         onMouseEnter={() => onHoverChange(true)}
@@ -273,8 +273,8 @@ export function ChatAggregatedDiffEntries({
             {!isVSCode && isHovered ? (
               <CaretDownIcon
                 className={cn(
-                  "size-icon-base transition-transform duration-150",
-                  !expanded && "-rotate-90",
+                  'size-icon-base transition-transform duration-150',
+                  !expanded && '-rotate-90'
                 )}
               />
             ) : (
@@ -289,7 +289,7 @@ export function ChatAggregatedDiffEntries({
           </span>
           <span className="text-sm text-normal truncate">{filePath}</span>
           <span className="text-xs text-low shrink-0">
-            · {entries.length} {entries.length === 1 ? "edit" : "edits"}
+            · {entries.length} {entries.length === 1 ? 'edit' : 'edits'}
           </span>
           {!isVSCode && onOpenInChanges && (
             <button
@@ -299,7 +299,7 @@ export function ChatAggregatedDiffEntries({
                 onOpenInChanges();
               }}
               className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
-              title={t("conversation.viewInChangesPanel")}
+              title={t('conversation.viewInChangesPanel')}
             >
               <ArrowSquareUpRightIcon className="size-icon-xs" />
             </button>
@@ -309,7 +309,7 @@ export function ChatAggregatedDiffEntries({
               {totalStats.additions > 0 && (
                 <span className="text-success">+{totalStats.additions}</span>
               )}
-              {totalStats.additions > 0 && totalStats.deletions > 0 && " "}
+              {totalStats.additions > 0 && totalStats.deletions > 0 && ' '}
               {totalStats.deletions > 0 && (
                 <span className="text-error">-{totalStats.deletions}</span>
               )}
@@ -319,8 +319,8 @@ export function ChatAggregatedDiffEntries({
         {!isVSCode && (
           <CaretDownIcon
             className={cn(
-              "size-icon-xs shrink-0 text-low transition-transform",
-              !expanded && "-rotate-90",
+              'size-icon-xs shrink-0 text-low transition-transform',
+              !expanded && '-rotate-90'
             )}
           />
         )}

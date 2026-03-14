@@ -1,5 +1,5 @@
-import { Switch } from "./Switch";
-import { cn } from "../lib/cn";
+import { Switch } from './Switch';
+import { cn } from '../lib/cn';
 
 interface ToggleProps {
   checked: boolean;
@@ -19,7 +19,7 @@ export function Toggle({
   className,
 }: ToggleProps) {
   return (
-    <div className={cn("flex items-start gap-base", className)}>
+    <div className={cn('flex items-start gap-base', className)}>
       <Switch
         checked={checked}
         onCheckedChange={onCheckedChange}

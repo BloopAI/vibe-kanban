@@ -1,9 +1,9 @@
-import { SpinnerIcon, type Icon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import { SpinnerIcon, type Icon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 interface PrimaryButtonProps {
-  variant?: "default" | "secondary" | "tertiary";
-  actionIcon?: Icon | "spinner";
+  variant?: 'default' | 'secondary' | 'tertiary';
+  actionIcon?: Icon | 'spinner';
   value?: string;
   onClick?: () => void;
   disabled?: boolean;
@@ -12,7 +12,7 @@ interface PrimaryButtonProps {
 }
 
 export function PrimaryButton({
-  variant = "default",
+  variant = 'default',
   actionIcon: ActionIcon,
   value,
   onClick,
@@ -21,19 +21,19 @@ export function PrimaryButton({
   className,
 }: PrimaryButtonProps) {
   const variantStyles = disabled
-    ? "cursor-not-allowed bg-panel"
-    : variant === "default"
-      ? "bg-brand hover:bg-brand-hover text-on-brand"
-      : variant === "secondary"
-        ? "bg-brand-secondary hover:bg-brand-hover text-on-brand"
-        : "bg-panel hover:bg-secondary text-normal";
+    ? 'cursor-not-allowed bg-panel'
+    : variant === 'default'
+      ? 'bg-brand hover:bg-brand-hover text-on-brand'
+      : variant === 'secondary'
+        ? 'bg-brand-secondary hover:bg-brand-hover text-on-brand'
+        : 'bg-panel hover:bg-secondary text-normal';
 
   return (
     <button
       className={cn(
-        "rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center",
+        'rounded-sm px-base py-half text-cta min-h-cta flex gap-half items-center',
         variantStyles,
-        className,
+        className
       )}
       onClick={onClick}
       disabled={disabled}
@@ -41,10 +41,10 @@ export function PrimaryButton({
       {value}
       {children}
       {ActionIcon ? (
-        ActionIcon === "spinner" ? (
-          <SpinnerIcon className={"size-icon-sm animate-spin"} weight="bold" />
+        ActionIcon === 'spinner' ? (
+          <SpinnerIcon className={'size-icon-sm animate-spin'} weight="bold" />
         ) : (
-          <ActionIcon className={"size-icon-xs"} weight="bold" />
+          <ActionIcon className={'size-icon-xs'} weight="bold" />
         )
       ) : null}
     </button>

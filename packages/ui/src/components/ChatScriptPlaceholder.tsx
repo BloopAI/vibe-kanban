@@ -1,8 +1,8 @@
-import { useTranslation } from "react-i18next";
-import { TerminalIcon, GearSixIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import { useTranslation } from 'react-i18next';
+import { TerminalIcon, GearSixIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
-export type ScriptPlaceholderType = "setup" | "cleanup";
+export type ScriptPlaceholderType = 'setup' | 'cleanup';
 
 interface ChatScriptPlaceholderProps {
   type: ScriptPlaceholderType;
@@ -15,23 +15,23 @@ export function ChatScriptPlaceholder({
   className,
   onConfigure,
 }: ChatScriptPlaceholderProps) {
-  const { t } = useTranslation("tasks");
+  const { t } = useTranslation('tasks');
 
   const title =
-    type === "setup"
-      ? t("conversation.scriptPlaceholder.setupTitle")
-      : t("conversation.scriptPlaceholder.cleanupTitle");
+    type === 'setup'
+      ? t('conversation.scriptPlaceholder.setupTitle')
+      : t('conversation.scriptPlaceholder.cleanupTitle');
 
   const description =
-    type === "setup"
-      ? t("conversation.scriptPlaceholder.setupDescription")
-      : t("conversation.scriptPlaceholder.cleanupDescription");
+    type === 'setup'
+      ? t('conversation.scriptPlaceholder.setupDescription')
+      : t('conversation.scriptPlaceholder.cleanupDescription');
 
   return (
     <div
       className={cn(
-        "flex items-start gap-base text-sm rounded-md -mx-half px-half py-half",
-        className,
+        'flex items-start gap-base text-sm rounded-md -mx-half px-half py-half',
+        className
       )}
     >
       <span className="relative shrink-0 pt-0.5">
@@ -48,7 +48,7 @@ export function ChatScriptPlaceholder({
           className="shrink-0 flex items-center gap-1 px-2 py-1 text-xs text-brand hover:text-brand-hover hover:bg-secondary rounded transition-colors"
         >
           <GearSixIcon className="size-icon-xs" />
-          <span>{t("conversation.scriptPlaceholder.configure")}</span>
+          <span>{t('conversation.scriptPlaceholder.configure')}</span>
         </button>
       )}
     </div>

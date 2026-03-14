@@ -1,4 +1,4 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext } from 'react';
 
 export const WorkspaceContext = createContext<string | undefined>(undefined);
 export const SessionContext = createContext<string | undefined>(undefined);

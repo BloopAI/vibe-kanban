@@ -1,16 +1,16 @@
-import type { RefObject } from "react";
-import { Virtuoso, VirtuosoHandle } from "react-virtuoso";
-import { cn } from "../lib/cn";
-import { useTranslation } from "react-i18next";
-import { PlusIcon, CheckIcon } from "@phosphor-icons/react";
+import type { RefObject } from 'react';
+import { Virtuoso, VirtuosoHandle } from 'react-virtuoso';
+import { cn } from '../lib/cn';
+import { useTranslation } from 'react-i18next';
+import { PlusIcon, CheckIcon } from '@phosphor-icons/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuSearchInput,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./Dropdown";
-import { InlineColorPicker, PRESET_COLORS } from "./ColorPicker";
+} from './Dropdown';
+import { InlineColorPicker, PRESET_COLORS } from './ColorPicker';
 
 // Re-export for backwards compatibility
 export const TAG_COLORS = PRESET_COLORS;
@@ -87,7 +87,7 @@ export function SearchableTagDropdown({
   contentClassName,
   disabled,
 }: SearchableTagDropdownProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
 
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
@@ -96,7 +96,7 @@ export function SearchableTagDropdown({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="start"
-        className={cn("min-w-[220px]", contentClassName)}
+        className={cn('min-w-[220px]', contentClassName)}
       >
         {isCreating ? (
           // Color picker step
@@ -107,7 +107,7 @@ export function SearchableTagDropdown({
             onKeyDown={onKeyDown}
           >
             <div className="text-sm text-normal">
-              {t("kanban.selectColorFor")}{" "}
+              {t('kanban.selectColorFor')}{' '}
               <span className="font-medium">{searchTerm}</span>
             </div>
             <InlineColorPicker
@@ -124,14 +124,14 @@ export function SearchableTagDropdown({
                 onClick={onCancelCreate}
                 className="px-base py-half text-sm text-low hover:text-normal hover:bg-panel rounded-sm transition-colors"
               >
-                {t("buttons.cancel")}
+                {t('buttons.cancel')}
               </button>
               <button
                 type="button"
                 onClick={onConfirmCreate}
                 className="px-base py-half text-sm text-high bg-brand hover:bg-brand/90 rounded-sm transition-colors"
               >
-                {t("buttons.create")}
+                {t('buttons.create')}
               </button>
             </div>
           </div>
@@ -139,7 +139,7 @@ export function SearchableTagDropdown({
           // Search and tag list
           <>
             <DropdownMenuSearchInput
-              placeholder={t("kanban.searchTags")}
+              placeholder={t('kanban.searchTags')}
               value={searchTerm}
               onValueChange={onSearchTermChange}
               onKeyDown={onKeyDown}
@@ -147,7 +147,7 @@ export function SearchableTagDropdown({
             <DropdownMenuSeparator />
             {filteredTags.length === 0 && !showCreateOption ? (
               <div className="px-base py-half text-sm text-low text-center">
-                {t("kanban.noTagsAvailable")}
+                {t('kanban.noTagsAvailable')}
               </div>
             ) : (
               <>
@@ -169,9 +169,9 @@ export function SearchableTagDropdown({
                           onClick={() => onTagToggle(tag.id)}
                           onMouseEnter={() => onHighlightedIndexChange(idx)}
                           className={cn(
-                            "flex items-center gap-base w-full px-base py-half text-sm text-left transition-colors",
-                            isHighlighted && "bg-secondary",
-                            isSelected && "text-normal",
+                            'flex items-center gap-base w-full px-base py-half text-sm text-left transition-colors',
+                            isHighlighted && 'bg-secondary',
+                            isSelected && 'text-normal'
                           )}
                         >
                           <span
@@ -197,13 +197,13 @@ export function SearchableTagDropdown({
                       type="button"
                       onClick={onStartCreate}
                       className={cn(
-                        "flex items-center gap-base w-full px-base py-half text-sm text-brand hover:bg-secondary transition-colors",
-                        createOptionHighlighted && "bg-secondary",
+                        'flex items-center gap-base w-full px-base py-half text-sm text-brand hover:bg-secondary transition-colors',
+                        createOptionHighlighted && 'bg-secondary'
                       )}
                     >
                       <PlusIcon className="size-icon-sm" weight="bold" />
                       <span>
-                        {t("kanban.createTag")} &quot;{searchTerm}&quot;
+                        {t('kanban.createTag')} &quot;{searchTerm}&quot;
                       </span>
                     </button>
                   </>

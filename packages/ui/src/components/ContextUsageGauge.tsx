@@ -1,7 +1,7 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
-import { cn } from "../lib/cn";
-import { Tooltip } from "./Tooltip";
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/cn';
+import { Tooltip } from './Tooltip';
 
 export interface ContextUsageInfo {
   total_tokens: number;
@@ -21,20 +21,20 @@ export function ContextUsageGauge({
   tokenUsageInfo,
   className,
 }: ContextUsageGaugeProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const { percentage, formattedUsed, formattedTotal, status } = useMemo(() => {
     if (!tokenUsageInfo || tokenUsageInfo.model_context_window === 0) {
       return {
         percentage: 0,
-        formattedUsed: "0",
-        formattedTotal: "0",
-        status: "empty" as const,
+        formattedUsed: '0',
+        formattedTotal: '0',
+        status: 'empty' as const,
       };
     }
 
     const pct = Math.min(
       100,
-      (tokenUsageInfo.total_tokens / tokenUsageInfo.model_context_window) * 100,
+      (tokenUsageInfo.total_tokens / tokenUsageInfo.model_context_window) * 100
     );
 
     const formatTokens = (n: number) => {
@@ -46,11 +46,11 @@ export function ContextUsageGauge({
       return n.toString();
     };
 
-    let statusValue: "low" | "medium" | "high" | "critical" | "empty";
-    if (pct < 50) statusValue = "low";
-    else if (pct < 75) statusValue = "medium";
-    else if (pct < 90) statusValue = "high";
-    else statusValue = "critical";
+    let statusValue: 'low' | 'medium' | 'high' | 'critical' | 'empty';
+    if (pct < 50) statusValue = 'low';
+    else if (pct < 75) statusValue = 'medium';
+    else if (pct < 90) statusValue = 'high';
+    else statusValue = 'critical';
 
     return {
       percentage: pct,
@@ -63,24 +63,24 @@ export function ContextUsageGauge({
   const progress = clamp(percentage / 100, 0, 1);
 
   const tooltip =
-    status === "empty"
-      ? t("contextUsage.emptyTooltip")
-      : t("contextUsage.tooltip", {
+    status === 'empty'
+      ? t('contextUsage.emptyTooltip')
+      : t('contextUsage.tooltip', {
           percentage: Math.round(percentage),
           used: formattedUsed,
           total: formattedTotal,
         });
 
   const progressColor =
-    status === "empty"
-      ? "text-low/40"
-      : status === "critical"
-        ? "text-error"
-        : status === "high"
-          ? "text-brand-secondary"
-          : status === "medium"
-            ? "text-normal"
-            : "text-low";
+    status === 'empty'
+      ? 'text-low/40'
+      : status === 'critical'
+        ? 'text-error'
+        : status === 'high'
+          ? 'text-brand-secondary'
+          : status === 'medium'
+            ? 'text-normal'
+            : 'text-low';
 
   const radius = 8;
   const strokeWidth = 2;
@@ -91,14 +91,14 @@ export function ContextUsageGauge({
     <Tooltip content={tooltip} side="bottom">
       <div
         className={cn(
-          "flex items-center justify-center rounded-sm p-half",
-          "hover:bg-panel transition-colors cursor-help",
-          className,
+          'flex items-center justify-center rounded-sm p-half',
+          'hover:bg-panel transition-colors cursor-help',
+          className
         )}
         aria-label={
-          status === "empty"
-            ? t("contextUsage.label")
-            : t("contextUsage.ariaLabel", {
+          status === 'empty'
+            ? t('contextUsage.label')
+            : t('contextUsage.ariaLabel', {
                 percentage: Math.round(percentage),
               })
         }
@@ -130,7 +130,7 @@ export function ContextUsageGauge({
             strokeDashoffset={dashOffset}
             className={cn(
               progressColor,
-              "transition-all duration-500 ease-out",
+              'transition-all duration-500 ease-out'
             )}
           />
         </svg>

@@ -6,9 +6,9 @@ import {
   SignInIcon,
   SignOutIcon,
   UserIcon,
-} from "@phosphor-icons/react";
-import { useTranslation } from "react-i18next";
-import { cn } from "../lib/cn";
+} from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from "./Dropdown";
+} from './Dropdown';
 
 export interface AppBarUserOrganization {
   id: string;
@@ -57,8 +57,8 @@ export function AppBarUserPopover({
   onAvatarError,
 }: AppBarUserPopoverProps) {
   const { t } = useTranslation();
-  const settingsLabel = t("settings:settings.layout.nav.title", {
-    defaultValue: "Settings",
+  const settingsLabel = t('settings:settings.layout.nav.title', {
+    defaultValue: 'Settings',
   });
 
   if (!isSignedIn) {
@@ -68,11 +68,11 @@ export function AppBarUserPopover({
           <button
             type="button"
             className={cn(
-              "flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg",
-              "bg-panel text-normal font-medium text-sm",
-              "transition-colors cursor-pointer",
-              "hover:bg-panel/70",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+              'flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg',
+              'bg-panel text-normal font-medium text-sm',
+              'transition-colors cursor-pointer',
+              'hover:bg-panel/70',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand'
             )}
             aria-label="Sign in"
           >
@@ -81,7 +81,7 @@ export function AppBarUserPopover({
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="end" className="min-w-[200px]">
           <DropdownMenuItem icon={SignInIcon} onClick={onSignIn}>
-            {t("signIn")}
+            {t('signIn')}
           </DropdownMenuItem>
           {onSettings && (
             <>
@@ -102,12 +102,12 @@ export function AppBarUserPopover({
         <button
           type="button"
           className={cn(
-            "flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg",
-            "transition-colors cursor-pointer overflow-hidden",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+            'flex items-center justify-center w-7 h-7 sm:w-10 sm:h-10 rounded-md sm:rounded-lg',
+            'transition-colors cursor-pointer overflow-hidden',
+            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
             (!avatarUrl || avatarError) &&
-              "bg-panel text-normal font-medium text-sm",
-            (!avatarUrl || avatarError) && "hover:bg-panel/70",
+              'bg-panel text-normal font-medium text-sm',
+            (!avatarUrl || avatarError) && 'hover:bg-panel/70'
           )}
           aria-label="Account"
         >
@@ -124,14 +124,14 @@ export function AppBarUserPopover({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent side="right" align="end" className="min-w-[200px]">
-        <DropdownMenuLabel>{t("orgSwitcher.organizations")}</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('orgSwitcher.organizations')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {organizations.map((org) => (
           <DropdownMenuItem
             key={org.id}
             icon={org.id === selectedOrgId ? CheckIcon : BuildingsIcon}
             onClick={() => onOrgSelect(org.id)}
-            className={cn(org.id === selectedOrgId && "bg-brand/10", "group")}
+            className={cn(org.id === selectedOrgId && 'bg-brand/10', 'group')}
           >
             <span className="flex items-center gap-2 w-full">
               <span className="flex-1 truncate">{org.name}</span>
@@ -144,7 +144,7 @@ export function AppBarUserPopover({
                     onOrgSettings(org.id);
                   }}
                   className="sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded hover:bg-secondary transition-opacity shrink-0"
-                  aria-label={t("orgSwitcher.orgSettings")}
+                  aria-label={t('orgSwitcher.orgSettings')}
                 >
                   <GearIcon className="size-icon-xs" weight="bold" />
                 </button>
@@ -154,7 +154,7 @@ export function AppBarUserPopover({
         ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={PlusIcon} onClick={onCreateOrg}>
-          {t("orgSwitcher.createOrganization")}
+          {t('orgSwitcher.createOrganization')}
         </DropdownMenuItem>
         {onSettings && (
           <>
@@ -166,7 +166,7 @@ export function AppBarUserPopover({
         )}
         <DropdownMenuSeparator />
         <DropdownMenuItem icon={SignOutIcon} onClick={onLogout}>
-          {t("signOut")}
+          {t('signOut')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,8 +1,8 @@
-import * as React from "react";
-import { Command as CommandPrimitive } from "cmdk";
-import { MagnifyingGlassIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
-import { Dialog, DialogContent, DialogTitle } from "./Dialog";
+import * as React from 'react';
+import { Command as CommandPrimitive } from 'cmdk';
+import { MagnifyingGlassIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+import { Dialog, DialogContent, DialogTitle } from './Dialog';
 
 const Command = React.forwardRef<
   React.ElementRef<typeof CommandPrimitive>,
@@ -11,8 +11,8 @@ const Command = React.forwardRef<
   <CommandPrimitive
     ref={ref}
     className={cn(
-      "flex h-full w-full flex-col overflow-hidden bg-panel text-high",
-      className,
+      'flex h-full w-full flex-col overflow-hidden bg-panel text-high',
+      className
     )}
     {...props}
   />
@@ -61,9 +61,9 @@ const CommandInput = React.forwardRef<
     <CommandPrimitive.Input
       ref={ref}
       className={cn(
-        "flex h-10 w-full rounded-sm bg-transparent py-half text-base text-high outline-none",
-        "placeholder:text-low disabled:cursor-not-allowed disabled:opacity-50",
-        className,
+        'flex h-10 w-full rounded-sm bg-transparent py-half text-base text-high outline-none',
+        'placeholder:text-low disabled:cursor-not-allowed disabled:opacity-50',
+        className
       )}
       {...props}
     />
@@ -77,7 +77,7 @@ const CommandList = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.List
     ref={ref}
-    className={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", className)}
+    className={cn('max-h-[300px] overflow-y-auto overflow-x-hidden', className)}
     {...props}
   />
 ));
@@ -102,10 +102,10 @@ const CommandGroup = React.forwardRef<
   <CommandPrimitive.Group
     ref={ref}
     className={cn(
-      "overflow-hidden p-half text-high",
-      "[&_[cmdk-group-heading]]:px-base [&_[cmdk-group-heading]]:py-half",
-      "[&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-low",
-      className,
+      'overflow-hidden p-half text-high',
+      '[&_[cmdk-group-heading]]:px-base [&_[cmdk-group-heading]]:py-half',
+      '[&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-low',
+      className
     )}
     {...props}
   />
@@ -118,7 +118,7 @@ const CommandSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <CommandPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 h-px bg-border", className)}
+    className={cn('-mx-1 h-px bg-border', className)}
     {...props}
   />
 ));
@@ -131,10 +131,10 @@ const CommandItem = React.forwardRef<
   <CommandPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center gap-base rounded-sm px-base py-half text-sm outline-none",
-      "data-[selected=true]:bg-secondary data-[selected=true]:text-high",
-      "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
-      className,
+      'relative flex cursor-pointer select-none items-center gap-base rounded-sm px-base py-half text-sm outline-none',
+      'data-[selected=true]:bg-secondary data-[selected=true]:text-high',
+      'data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50',
+      className
     )}
     {...props}
   />
@@ -147,12 +147,12 @@ function CommandShortcut({
 }: React.HTMLAttributes<HTMLSpanElement>) {
   return (
     <span
-      className={cn("ml-auto text-xs tracking-widest text-low", className)}
+      className={cn('ml-auto text-xs tracking-widest text-low', className)}
       {...props}
     />
   );
 }
-CommandShortcut.displayName = "CommandShortcut";
+CommandShortcut.displayName = 'CommandShortcut';
 
 export {
   Command,

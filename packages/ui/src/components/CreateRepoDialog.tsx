@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -7,11 +7,11 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./KeyboardDialog";
-import { Button } from "./Button";
-import NiceModal, { useModal } from "@ebay/nice-modal-react";
-import { FolderSimpleIcon, SpinnerIcon } from "@phosphor-icons/react";
-import { defineModal } from "../lib/modals";
+} from './KeyboardDialog';
+import { Button } from './Button';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { FolderSimpleIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { defineModal } from '../lib/modals';
 
 export interface CreateRepoDialogProps {
   onBrowseForPath?: (currentPath: string) => Promise<string | null | undefined>;
@@ -22,16 +22,16 @@ export interface CreateRepoDialogProps {
 }
 
 export type CreateRepoDialogResult = {
-  action: "created" | "canceled";
+  action: 'created' | 'canceled';
 };
 
 const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
   ({ onBrowseForPath, onCreateRepo }) => {
-    const { t } = useTranslation(["tasks", "common"]);
+    const { t } = useTranslation(['tasks', 'common']);
     const modal = useModal();
 
-    const [name, setName] = useState("");
-    const [parentPath, setParentPath] = useState("");
+    const [name, setName] = useState('');
+    const [parentPath, setParentPath] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -47,7 +47,7 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
     const handleCreate = useCallback(async () => {
       const trimmedName = name.trim();
       if (!trimmedName) {
-        setError(t("git.createRepo.errors.nameRequired"));
+        setError(t('git.createRepo.errors.nameRequired'));
         return;
       }
 
@@ -55,16 +55,16 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
       setError(null);
       try {
         await onCreateRepo({
-          parentPath: parentPath.trim() || ".",
+          parentPath: parentPath.trim() || '.',
           folderName: trimmedName,
         });
-        modal.resolve({ action: "created" } as CreateRepoDialogResult);
+        modal.resolve({ action: 'created' } as CreateRepoDialogResult);
         modal.hide();
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
-            : t("git.createRepo.errors.createFailed"),
+            : t('git.createRepo.errors.createFailed')
         );
       } finally {
         setIsSubmitting(false);
@@ -72,7 +72,7 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
     }, [name, onCreateRepo, parentPath, modal, t]);
 
     const handleCancel = useCallback(() => {
-      modal.resolve({ action: "canceled" } as CreateRepoDialogResult);
+      modal.resolve({ action: 'canceled' } as CreateRepoDialogResult);
       modal.hide();
     }, [modal]);
 
@@ -82,9 +82,9 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleCancel}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{t("git.createRepo.dialog.title")}</DialogTitle>
+            <DialogTitle>{t('git.createRepo.dialog.title')}</DialogTitle>
             <DialogDescription>
-              {t("git.createRepo.dialog.description")}
+              {t('git.createRepo.dialog.description')}
             </DialogDescription>
           </DialogHeader>
 
@@ -92,13 +92,13 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
             {/* Name input */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">
-                {t("git.createRepo.form.nameLabel")}
+                {t('git.createRepo.form.nameLabel')}
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder={t("git.createRepo.form.namePlaceholder")}
+                placeholder={t('git.createRepo.form.namePlaceholder')}
                 disabled={isSubmitting}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
               />
@@ -107,14 +107,14 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
             {/* Location input */}
             <div className="flex flex-col gap-2">
               <label className="text-sm font-medium">
-                {t("git.createRepo.form.locationLabel")}
+                {t('git.createRepo.form.locationLabel')}
               </label>
               <div className="flex gap-2">
                 <input
                   type="text"
                   value={parentPath}
                   onChange={(e) => setParentPath(e.target.value)}
-                  placeholder={t("git.createRepo.form.locationPlaceholder")}
+                  placeholder={t('git.createRepo.form.locationPlaceholder')}
                   disabled={isSubmitting}
                   className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 />
@@ -140,7 +140,7 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
               onClick={handleCancel}
               disabled={isSubmitting}
             >
-              {t("common:buttons.cancel")}
+              {t('common:buttons.cancel')}
             </Button>
             <Button
               onClick={handleCreate}
@@ -149,17 +149,17 @@ const CreateRepoDialogImpl = NiceModal.create<CreateRepoDialogProps>(
               {isSubmitting ? (
                 <>
                   <SpinnerIcon className="h-4 w-4 animate-spin mr-2" />
-                  {t("git.createRepo.states.creating")}
+                  {t('git.createRepo.states.creating')}
                 </>
               ) : (
-                t("git.createRepo.buttons.createRepository")
+                t('git.createRepo.buttons.createRepository')
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
-  },
+  }
 );
 
 export const CreateRepoDialog = defineModal<

@@ -1,15 +1,15 @@
-import NiceModal, { useModal } from "@ebay/nice-modal-react";
-import { WarningIcon } from "@phosphor-icons/react";
-import { useTranslation } from "react-i18next";
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { WarningIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "./Dialog";
-import { Button } from "./Button";
-import { defineModal } from "../lib/modals";
+} from './Dialog';
+import { Button } from './Button';
+import { defineModal } from '../lib/modals';
 
 export interface ErrorDialogProps {
   title: string;
@@ -18,9 +18,9 @@ export interface ErrorDialogProps {
 }
 
 const ErrorDialogImpl = NiceModal.create<ErrorDialogProps>((props) => {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const modal = useModal();
-  const { title, message, buttonText = t("ok") } = props;
+  const { title, message, buttonText = t('ok') } = props;
 
   const handleDismiss = () => {
     modal.resolve();

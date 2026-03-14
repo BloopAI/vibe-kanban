@@ -1,7 +1,7 @@
-import * as React from "react";
-import { cn } from "../lib/cn";
+import * as React from 'react';
+import { cn } from '../lib/cn';
 
-interface AutoExpandingTextareaProps extends React.ComponentProps<"textarea"> {
+interface AutoExpandingTextareaProps extends React.ComponentProps<'textarea'> {
   maxRows?: number;
   disableInternalScroll?: boolean;
 }
@@ -12,7 +12,7 @@ const AutoExpandingTextarea = React.forwardRef<
 >(
   (
     { className, maxRows = 10, disableInternalScroll = false, ...props },
-    ref,
+    ref
   ) => {
     const internalRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -25,7 +25,7 @@ const AutoExpandingTextarea = React.forwardRef<
       if (!textarea) return;
 
       // Reset height to auto to get the natural height
-      textarea.style.height = "auto";
+      textarea.style.height = 'auto';
 
       if (disableInternalScroll) {
         // When parent handles scroll, expand to full content height
@@ -60,24 +60,24 @@ const AutoExpandingTextarea = React.forwardRef<
           onInput(e);
         }
       },
-      [adjustHeight, onInput],
+      [adjustHeight, onInput]
     );
 
     return (
       <textarea
         className={cn(
-          "bg-muted p-0 min-h-[80px] w-full text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-x-hidden whitespace-pre-wrap break-words",
-          disableInternalScroll ? "overflow-hidden" : "overflow-y-auto",
-          className,
+          'bg-muted p-0 min-h-[80px] w-full text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 resize-none overflow-x-hidden whitespace-pre-wrap break-words',
+          disableInternalScroll ? 'overflow-hidden' : 'overflow-y-auto',
+          className
         )}
         ref={textareaRef}
         onInput={handleInput}
         {...props}
       />
     );
-  },
+  }
 );
 
-AutoExpandingTextarea.displayName = "AutoExpandingTextarea";
+AutoExpandingTextarea.displayName = 'AutoExpandingTextarea';
 
 export { AutoExpandingTextarea };

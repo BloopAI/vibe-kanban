@@ -1,6 +1,6 @@
-import { ListMagnifyingGlassIcon, CaretRightIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
-import { ToolStatusDot, type ToolStatusLike } from "./ToolStatusDot";
+import { ListMagnifyingGlassIcon, CaretRightIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
 
 export interface AggregatedEntry {
   summary: string;
@@ -45,12 +45,12 @@ export function ChatAggregatedToolEntries({
     return (
       <div
         className={cn(
-          "flex items-center gap-base text-sm text-low",
-          onViewContent && "cursor-pointer",
-          className,
+          'flex items-center gap-base text-sm text-low',
+          onViewContent && 'cursor-pointer',
+          className
         )}
         onClick={onViewContent ? () => onViewContent(0) : undefined}
-        role={onViewContent ? "button" : undefined}
+        role={onViewContent ? 'button' : undefined}
       >
         <span className="relative shrink-0 pt-0.5">
           <Icon className="size-icon-base" />
@@ -87,11 +87,11 @@ export function ChatAggregatedToolEntries({
 
       return currentPriority > worstPriority ? entry.status : worst;
     },
-    undefined,
+    undefined
   );
 
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn('flex flex-col', className)}>
       {/* Header row - clickable to expand/collapse */}
       <div
         className="flex items-center gap-base text-sm text-low cursor-pointer group"
@@ -105,8 +105,8 @@ export function ChatAggregatedToolEntries({
           {isHovered ? (
             <CaretRightIcon
               className={cn(
-                "size-icon-base transition-transform duration-150",
-                expanded && "rotate-90",
+                'size-icon-base transition-transform duration-150',
+                expanded && 'rotate-90'
               )}
             />
           ) : (
@@ -131,11 +131,11 @@ export function ChatAggregatedToolEntries({
             <div
               key={entry.expansionKey}
               className={cn(
-                "flex items-center gap-base text-sm text-low pl-base",
-                onViewContent && "cursor-pointer hover:text-normal",
+                'flex items-center gap-base text-sm text-low pl-base',
+                onViewContent && 'cursor-pointer hover:text-normal'
               )}
               onClick={onViewContent ? () => onViewContent(index) : undefined}
-              role={onViewContent ? "button" : undefined}
+              role={onViewContent ? 'button' : undefined}
             >
               <span className="relative shrink-0 pt-0.5">
                 <Icon className="size-icon-base" />

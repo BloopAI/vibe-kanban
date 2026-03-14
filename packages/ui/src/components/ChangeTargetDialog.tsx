@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dialog,
   DialogContent,
@@ -7,17 +7,17 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "./KeyboardDialog";
-import { Button } from "./Button";
+} from './KeyboardDialog';
+import { Button } from './Button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "./Select";
-import NiceModal, { useModal } from "@ebay/nice-modal-react";
-import { defineModal } from "../lib/modals";
+} from './Select';
+import NiceModal, { useModal } from '@ebay/nice-modal-react';
+import { defineModal } from '../lib/modals';
 
 export interface ChangeTargetBranchOption {
   name: string;
@@ -32,14 +32,14 @@ export interface ChangeTargetDialogProps {
 const ChangeTargetDialogImpl = NiceModal.create<ChangeTargetDialogProps>(
   ({ branches, onChangeTargetBranch }) => {
     const modal = useModal();
-    const { t } = useTranslation(["tasks", "common"]);
-    const [selectedBranch, setSelectedBranch] = useState<string>("");
+    const { t } = useTranslation(['tasks', 'common']);
+    const [selectedBranch, setSelectedBranch] = useState<string>('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
       if (!modal.visible) return;
-      setSelectedBranch(branches[0]?.name ?? "");
+      setSelectedBranch(branches[0]?.name ?? '');
       setError(null);
       setIsSubmitting(false);
     }, [branches, modal.visible]);
@@ -54,9 +54,9 @@ const ChangeTargetDialogImpl = NiceModal.create<ChangeTargetDialogProps>(
         modal.hide();
       } catch (err) {
         const message =
-          err && typeof err === "object" && "message" in err
+          err && typeof err === 'object' && 'message' in err
             ? String(err.message)
-            : "Failed to change target branch";
+            : 'Failed to change target branch';
         setError(message);
       } finally {
         setIsSubmitting(false);
@@ -77,21 +77,21 @@ const ChangeTargetDialogImpl = NiceModal.create<ChangeTargetDialogProps>(
       <Dialog open={modal.visible} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("branches.changeTarget.dialog.title")}</DialogTitle>
+            <DialogTitle>{t('branches.changeTarget.dialog.title')}</DialogTitle>
             <DialogDescription>
-              {t("branches.changeTarget.dialog.description")}
+              {t('branches.changeTarget.dialog.description')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="base-branch" className="text-sm font-medium">
-                {t("rebase.dialog.targetLabel")}
+                {t('rebase.dialog.targetLabel')}
               </label>
               <Select value={selectedBranch} onValueChange={setSelectedBranch}>
                 <SelectTrigger id="base-branch">
                   <SelectValue
-                    placeholder={t("branches.changeTarget.dialog.placeholder")}
+                    placeholder={t('branches.changeTarget.dialog.placeholder')}
                   />
                 </SelectTrigger>
                 <SelectContent>
@@ -99,8 +99,8 @@ const ChangeTargetDialogImpl = NiceModal.create<ChangeTargetDialogProps>(
                     <SelectItem key={branch.name} value={branch.name}>
                       {branch.name}
                       {branch.isCurrent
-                        ? ` (${t("branchSelector.badges.current")})`
-                        : ""}
+                        ? ` (${t('branchSelector.badges.current')})`
+                        : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -115,23 +115,23 @@ const ChangeTargetDialogImpl = NiceModal.create<ChangeTargetDialogProps>(
               onClick={handleCancel}
               disabled={isSubmitting}
             >
-              {t("common:buttons.cancel")}
+              {t('common:buttons.cancel')}
             </Button>
             <Button
               onClick={handleConfirm}
               disabled={isSubmitting || !selectedBranch}
             >
               {isSubmitting
-                ? t("branches.changeTarget.dialog.inProgress")
-                : t("branches.changeTarget.dialog.action")}
+                ? t('branches.changeTarget.dialog.inProgress')
+                : t('branches.changeTarget.dialog.action')}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     );
-  },
+  }
 );
 
 export const ChangeTargetDialog = defineModal<ChangeTargetDialogProps, void>(
-  ChangeTargetDialogImpl,
+  ChangeTargetDialogImpl
 );

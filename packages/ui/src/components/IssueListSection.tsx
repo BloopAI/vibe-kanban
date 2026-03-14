@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import { cn } from "../lib/cn";
-import { Droppable } from "@hello-pangea/dnd";
-import { CaretDownIcon } from "@phosphor-icons/react";
-import { StatusDot } from "./StatusDot";
-import { KanbanBadge } from "./KanbanBadge";
+import { useCallback, useState } from 'react';
+import { cn } from '../lib/cn';
+import { Droppable } from '@hello-pangea/dnd';
+import { CaretDownIcon } from '@phosphor-icons/react';
+import { StatusDot } from './StatusDot';
+import { KanbanBadge } from './KanbanBadge';
 import {
   IssueListRow,
   type IssueListRowIssue,
   type IssueListRowTag,
   type IssueListRowRelationship,
-} from "./IssueListRow";
-import type { KanbanAssigneeUser } from "./KanbanAssignee";
+} from './IssueListRow';
+import type { KanbanAssigneeUser } from './KanbanAssignee';
 
 export interface IssueListSectionStatus {
   id: string;
@@ -27,7 +27,7 @@ export interface IssueListSectionProps {
   issueAssigneesMap: Record<string, KanbanAssigneeUser[]>;
   getTagObjectsForIssue: (issueId: string) => IssueListRowTag[];
   getResolvedRelationshipsForIssue?: (
-    issueId: string,
+    issueId: string
   ) => IssueListRowRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
@@ -47,14 +47,14 @@ export function IssueListSection({
 }: IssueListSectionProps) {
   const storageKey = `ui.issue-list-section.${status.id}`;
   const [isExpanded, setExpanded] = useState(() => {
-    if (typeof window === "undefined") return true;
+    if (typeof window === 'undefined') return true;
     const stored = window.localStorage.getItem(storageKey);
-    return stored == null ? true : stored === "true";
+    return stored == null ? true : stored === 'true';
   });
   const handleToggleExpanded = useCallback(() => {
     setExpanded((prevExpanded) => {
       const nextExpanded = !prevExpanded;
-      if (typeof window !== "undefined") {
+      if (typeof window !== 'undefined') {
         window.localStorage.setItem(storageKey, String(nextExpanded));
       }
       return nextExpanded;
@@ -62,24 +62,24 @@ export function IssueListSection({
   }, [storageKey]);
 
   return (
-    <div className={cn("flex flex-col", className)}>
+    <div className={cn('flex flex-col', className)}>
       {/* Section Header */}
       <button
         type="button"
         onClick={handleToggleExpanded}
         className={cn(
-          "flex items-center justify-between",
-          "h-8 px-double py-base",
-          "bg-panel border-y border-border",
-          "cursor-pointer transition-colors",
-          "hover:bg-secondary",
+          'flex items-center justify-between',
+          'h-8 px-double py-base',
+          'bg-panel border-y border-border',
+          'cursor-pointer transition-colors',
+          'hover:bg-secondary'
         )}
       >
         <div className="flex items-center gap-base">
           <CaretDownIcon
             className={cn(
-              "size-icon-xs text-low transition-transform",
-              !isExpanded && "-rotate-90",
+              'size-icon-xs text-low transition-transform',
+              !isExpanded && '-rotate-90'
             )}
             weight="bold"
           />

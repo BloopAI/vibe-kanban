@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useEffect } from 'react';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   FORMAT_TEXT_COMMAND,
   COMMAND_PRIORITY_HIGH,
@@ -10,18 +10,18 @@ import {
   $setSelection,
   createCommand,
   type LexicalCommand,
-} from "lexical";
+} from 'lexical';
 
-export type MarkdownListType = "bullet" | "number";
+export type MarkdownListType = 'bullet' | 'number';
 
 export const INSERT_MARKDOWN_LIST_COMMAND: LexicalCommand<MarkdownListType> =
-  createCommand("INSERT_MARKDOWN_LIST");
+  createCommand('INSERT_MARKDOWN_LIST');
 
 const FORMAT_MARKERS: Record<string, string> = {
-  bold: "**",
-  italic: "*",
-  strikethrough: "~~",
-  code: "`",
+  bold: '**',
+  italic: '*',
+  strikethrough: '~~',
+  code: '`',
 };
 
 /**
@@ -66,8 +66,8 @@ export function MarkdownInsertPlugin() {
             const newOffset = anchorOffset + marker.length;
             const nodeKey = anchorNode.getKey();
             const moved = $createRangeSelection();
-            moved.anchor.set(nodeKey, newOffset, "text");
-            moved.focus.set(nodeKey, newOffset, "text");
+            moved.anchor.set(nodeKey, newOffset, 'text');
+            moved.focus.set(nodeKey, newOffset, 'text');
             $setSelection(moved);
           } else {
             // Fallback: just insert both markers (cursor ends up after them)
@@ -77,7 +77,7 @@ export function MarkdownInsertPlugin() {
 
         return true;
       },
-      COMMAND_PRIORITY_HIGH,
+      COMMAND_PRIORITY_HIGH
     );
 
     const unregisterList = editor.registerCommand(
@@ -86,20 +86,20 @@ export function MarkdownInsertPlugin() {
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return false;
 
-        const prefix = listType === "bullet" ? "- " : "1. ";
+        const prefix = listType === 'bullet' ? '- ' : '1. ';
         const selectedText = selection.getTextContent();
 
         if (selectedText.length > 0) {
           // Prefix each line
-          const lines = selectedText.split("\n");
+          const lines = selectedText.split('\n');
           const prefixed = lines
             .map((line, i) => {
-              if (listType === "number") {
+              if (listType === 'number') {
                 return `${i + 1}. ${line}`;
               }
               return `- ${line}`;
             })
-            .join("\n");
+            .join('\n');
           selection.insertRawText(prefixed);
         } else {
           selection.insertRawText(prefix);
@@ -107,7 +107,7 @@ export function MarkdownInsertPlugin() {
 
         return true;
       },
-      COMMAND_PRIORITY_HIGH,
+      COMMAND_PRIORITY_HIGH
     );
 
     return () => {

@@ -405,6 +405,7 @@ mod tests {
             "get_execution".to_string(),
             "list_sessions".to_string(),
             "run_session_prompt".to_string(),
+            "update_session".to_string(),
             "update_workspace".to_string(),
         ]);
 

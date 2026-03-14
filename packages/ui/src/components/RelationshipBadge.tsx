@@ -1,19 +1,19 @@
-"use client";
+'use client';
 
-import { cn } from "../lib/cn";
+import { cn } from '../lib/cn';
 import {
   ArrowBendUpRightIcon,
   ProhibitIcon,
   ArrowsLeftRightIcon,
   CopyIcon,
-} from "@phosphor-icons/react";
+} from '@phosphor-icons/react';
 
 export type RelationshipDisplayType =
-  | "blocks"
-  | "blocked_by"
-  | "related"
-  | "duplicate_of"
-  | "duplicated_by";
+  | 'blocks'
+  | 'blocked_by'
+  | 'related'
+  | 'duplicate_of'
+  | 'duplicated_by';
 
 export interface RelationshipBadgeProps {
   displayType: RelationshipDisplayType;
@@ -33,16 +33,16 @@ const RELATIONSHIP_ICONS = {
 
 function getRelationshipLabel(displayType: RelationshipDisplayType): string {
   switch (displayType) {
-    case "blocks":
-      return "blocks";
-    case "blocked_by":
-      return "blocked by";
-    case "related":
-      return "related";
-    case "duplicate_of":
-      return "dup of";
-    case "duplicated_by":
-      return "dup";
+    case 'blocks':
+      return 'blocks';
+    case 'blocked_by':
+      return 'blocked by';
+    case 'related':
+      return 'related';
+    case 'duplicate_of':
+      return 'dup of';
+    case 'duplicated_by':
+      return 'dup';
   }
 }
 
@@ -55,17 +55,17 @@ export function RelationshipBadge({
 }: RelationshipBadgeProps) {
   const Icon = RELATIONSHIP_ICONS[displayType];
   const label = getRelationshipLabel(displayType);
-  const isBlocking = displayType === "blocks" || displayType === "blocked_by";
+  const isBlocking = displayType === 'blocks' || displayType === 'blocked_by';
 
   return (
     <span
-      role={onClick ? "button" : undefined}
+      role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onClick={onClick}
       onKeyDown={
         onClick
           ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
+              if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 onClick(e as unknown as React.MouseEvent);
               }
@@ -73,14 +73,14 @@ export function RelationshipBadge({
           : undefined
       }
       className={cn(
-        "inline-flex items-center gap-half",
-        "h-5 px-half",
-        "rounded-sm",
-        "text-sm font-medium",
-        "whitespace-nowrap",
-        isBlocking ? "bg-error/10 text-error" : "bg-panel text-low",
-        onClick && "cursor-pointer hover:opacity-80",
-        className,
+        'inline-flex items-center gap-half',
+        'h-5 px-half',
+        'rounded-sm',
+        'text-sm font-medium',
+        'whitespace-nowrap',
+        isBlocking ? 'bg-error/10 text-error' : 'bg-panel text-low',
+        onClick && 'cursor-pointer hover:opacity-80',
+        className
       )}
     >
       <Icon className="size-icon-xs" weight="bold" />

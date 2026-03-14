@@ -1,13 +1,13 @@
-import type { ForwardedRef, ReactNode, RefAttributes } from "react";
-import { forwardRef, useImperativeHandle, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { Virtuoso, VirtuosoHandle, ListRange } from "react-virtuoso";
-import { cn } from "../lib/cn";
+import type { ForwardedRef, ReactNode, RefAttributes } from 'react';
+import { forwardRef, useImperativeHandle, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Virtuoso, VirtuosoHandle, ListRange } from 'react-virtuoso';
+import { cn } from '../lib/cn';
 
 export interface ChangesPanelHandle {
   scrollToIndex: (
     index: number,
-    options?: { align?: "start" | "center" | "end" },
+    options?: { align?: 'start' | 'center' | 'end' }
   ) => void;
 }
 
@@ -54,12 +54,12 @@ const PADDING = 16;
 const SPACING = 8;
 
 function getDiffPath(diff: ChangesPanelDiff): string {
-  return diff.newPath || diff.oldPath || "";
+  return diff.newPath || diff.oldPath || '';
 }
 
 function estimateDiffHeight(
   diff: ChangesPanelDiff,
-  isExpanded: boolean,
+  isExpanded: boolean
 ): number {
   if (!isExpanded) {
     return HEADER_HEIGHT + SPACING;
@@ -93,20 +93,20 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
     onRangeChanged,
     workspaceId,
   }: ChangesPanelProps<TDiff>,
-  ref: ForwardedRef<ChangesPanelHandle>,
+  ref: ForwardedRef<ChangesPanelHandle>
 ) => {
-  const { t } = useTranslation(["tasks", "common"]);
+  const { t } = useTranslation(['tasks', 'common']);
   const virtuosoRef = useRef<VirtuosoHandle>(null);
 
   useImperativeHandle(ref, () => ({
     scrollToIndex: (
       index: number,
-      options?: { align?: "start" | "center" | "end" },
+      options?: { align?: 'start' | 'center' | 'end' }
     ) => {
       virtuosoRef.current?.scrollToIndex({
         index,
-        align: options?.align ?? "start",
-        behavior: "auto",
+        align: options?.align ?? 'start',
+        behavior: 'auto',
       });
     },
   }));
@@ -120,19 +120,19 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
 
   const defaultItemHeight = useMemo(
     () => calculateDefaultHeight(diffItems.map((item) => item.diff)),
-    [diffItems],
+    [diffItems]
   );
 
   if (diffItems.length === 0) {
     return (
       <div
         className={cn(
-          "w-full h-full bg-secondary flex flex-col px-base",
-          className,
+          'w-full h-full bg-secondary flex flex-col px-base',
+          className
         )}
       >
         <div className="flex-1 flex items-center justify-center text-low">
-          <p className="text-sm">{t("common:empty.noChanges")}</p>
+          <p className="text-sm">{t('common:empty.noChanges')}</p>
         </div>
       </div>
     );
@@ -141,8 +141,8 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
   return (
     <div
       className={cn(
-        "w-full h-full bg-secondary flex flex-col px-base",
-        className,
+        'w-full h-full bg-secondary flex flex-col px-base',
+        className
       )}
     >
       <Virtuoso
@@ -172,9 +172,9 @@ const ChangesPanelInner = <TDiff extends ChangesPanelDiff>(
 type ChangesPanelComponent = <
   TDiff extends ChangesPanelDiff = ChangesPanelDiff,
 >(
-  props: ChangesPanelProps<TDiff> & RefAttributes<ChangesPanelHandle>,
+  props: ChangesPanelProps<TDiff> & RefAttributes<ChangesPanelHandle>
 ) => JSX.Element;
 
 export const ChangesPanel = forwardRef(
-  ChangesPanelInner,
+  ChangesPanelInner
 ) as ChangesPanelComponent;

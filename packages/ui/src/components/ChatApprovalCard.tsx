@@ -1,8 +1,8 @@
-import type { ReactNode } from "react";
+import type { ReactNode } from 'react';
 import {
   ChatEntryContainer,
   type ChatEntryStatusLike,
-} from "./ChatEntryContainer";
+} from './ChatEntryContainer';
 
 export interface ChatApprovalCardRenderProps {
   content: string;

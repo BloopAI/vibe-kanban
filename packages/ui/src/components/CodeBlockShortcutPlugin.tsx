@@ -1,6 +1,6 @@
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
-import { useEffect } from "react";
-import { $createCodeNode } from "@lexical/code";
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useEffect } from 'react';
+import { $createCodeNode } from '@lexical/code';
 import {
   $getSelection,
   $isRangeSelection,
@@ -8,7 +8,7 @@ import {
   $isParagraphNode,
   $createTextNode,
   ElementNode,
-} from "lexical";
+} from 'lexical';
 
 const CODE_START_REGEX = /^```([\w-]*)$/;
 const CODE_END_REGEX = /^```$/;
@@ -66,7 +66,7 @@ export function CodeBlockShortcutPlugin() {
 
         // Collect content from paragraphs between opening and closing
         const codeLines = contentParagraphs.map((p) => p.getTextContent());
-        const code = codeLines.join("\n");
+        const code = codeLines.join('\n');
 
         // Create code node
         const codeNode = $createCodeNode(language);

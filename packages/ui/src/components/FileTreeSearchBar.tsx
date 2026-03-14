@@ -1,6 +1,6 @@
-import { ArrowsInSimpleIcon, ArrowsOutSimpleIcon } from "@phosphor-icons/react";
-import { useTranslation } from "react-i18next";
-import { InputField } from "./InputField";
+import { ArrowsInSimpleIcon, ArrowsOutSimpleIcon } from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
+import { InputField } from './InputField';
 
 interface FileTreeSearchBarProps {
   searchQuery: string;
@@ -17,14 +17,14 @@ export function FileTreeSearchBar({
   onToggleExpandAll,
   className,
 }: FileTreeSearchBarProps) {
-  const { t } = useTranslation(["tasks", "common"]);
+  const { t } = useTranslation(['tasks', 'common']);
   const ExpandIcon = isAllExpanded ? ArrowsInSimpleIcon : ArrowsOutSimpleIcon;
 
   return (
     <InputField
       value={searchQuery}
       onChange={onSearchChange}
-      placeholder={t("common:fileTree.searchPlaceholder")}
+      placeholder={t('common:fileTree.searchPlaceholder')}
       variant="search"
       actionIcon={ExpandIcon}
       onAction={onToggleExpandAll}

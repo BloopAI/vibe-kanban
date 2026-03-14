@@ -3,8 +3,8 @@ import {
   Draggable,
   Droppable,
   type DropResult,
-} from "@hello-pangea/dnd";
-import type { ReactNode } from "react";
+} from '@hello-pangea/dnd';
+import type { ReactNode } from 'react';
 import {
   LayoutIcon,
   LinkIcon,
@@ -12,18 +12,18 @@ import {
   KanbanIcon,
   SpinnerIcon,
   StarIcon,
-} from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
-import { AppBarButton } from "./AppBarButton";
-import { AppBarSocialLink } from "./AppBarSocialLink";
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+import { AppBarButton } from './AppBarButton';
+import { AppBarSocialLink } from './AppBarSocialLink';
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
   PopoverClose,
-} from "./Popover";
-import { Tooltip } from "./Tooltip";
-import { useTranslation } from "react-i18next";
+} from './Popover';
+import { Tooltip } from './Tooltip';
+import { useTranslation } from 'react-i18next';
 
 function formatStarCount(count: number): string {
   if (count < 1000) return String(count);
@@ -33,7 +33,7 @@ function formatStarCount(count: number): string {
 
 function getProjectInitials(name: string): string {
   const trimmed = name.trim();
-  if (!trimmed) return "??";
+  if (!trimmed) return '??';
 
   const words = trimmed.split(/\s+/);
   if (words.length >= 2) {
@@ -81,7 +81,7 @@ export interface AppBarProject {
   color: string;
 }
 
-export type AppBarHostStatus = "online" | "offline" | "unpaired";
+export type AppBarHostStatus = 'online' | 'offline' | 'unpaired';
 
 export interface AppBarHost {
   id: string;
@@ -90,15 +90,15 @@ export interface AppBarHost {
 }
 
 function getHostStatusLabel(status: AppBarHostStatus): string {
-  if (status === "online") return "Online";
-  if (status === "offline") return "Offline";
-  return "Unpaired";
+  if (status === 'online') return 'Online';
+  if (status === 'offline') return 'Offline';
+  return 'Unpaired';
 }
 
 function getHostStatusIndicatorClass(status: AppBarHostStatus): string {
-  if (status === "online") return "bg-success";
-  if (status === "offline") return "bg-low";
-  return "bg-white border-warning";
+  if (status === 'online') return 'bg-success';
+  if (status === 'offline') return 'bg-low';
+  return 'bg-white border-warning';
 }
 
 export function AppBar({
@@ -133,7 +133,7 @@ export function AppBar({
   githubIconPath,
   discordIconPath,
 }: AppBarProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const showHostsSection =
     showWorkspacesButton || hosts.length > 0 || !!onPairHostClick;
 
@@ -142,8 +142,8 @@ export function AppBar({
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       className={cn(
-        "flex flex-col items-center h-full min-h-0 overflow-y-auto p-base gap-base",
-        "bg-secondary border-r border-border",
+        'flex flex-col items-center h-full min-h-0 overflow-y-auto p-base gap-base',
+        'bg-secondary border-r border-border'
       )}
     >
       {showHostsSection && (
@@ -162,7 +162,7 @@ export function AppBar({
             />
           )}
           {hosts.map((host) => {
-            const isOffline = host.status === "offline";
+            const isOffline = host.status === 'offline';
             const isActiveHost = host.id === activeHostId;
             return (
               <Tooltip
@@ -173,9 +173,9 @@ export function AppBar({
                 <div className="relative">
                   <span
                     className={cn(
-                      "absolute -top-1 -right-1 z-10",
-                      "w-3.5 h-3.5 rounded-full border border-secondary",
-                      getHostStatusIndicatorClass(host.status),
+                      'absolute -top-1 -right-1 z-10',
+                      'w-3.5 h-3.5 rounded-full border border-secondary',
+                      getHostStatusIndicatorClass(host.status)
                     )}
                     aria-hidden="true"
                   />
@@ -189,16 +189,16 @@ export function AppBar({
                       onHostClick?.(host.id, host.status);
                     }}
                     className={cn(
-                      "relative flex items-center justify-center w-10 h-10 rounded-lg",
-                      "text-sm font-medium transition-colors",
-                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
+                      'relative flex items-center justify-center w-10 h-10 rounded-lg',
+                      'text-sm font-medium transition-colors',
+                      'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
                       isOffline
-                        ? "bg-primary text-low opacity-50 cursor-not-allowed"
-                        : "bg-primary text-normal cursor-pointer",
-                      isActiveHost && "ring-2 ring-brand",
-                      host.status === "online" && "hover:bg-brand/10",
-                      host.status === "unpaired" &&
-                        "text-warning hover:bg-warning/10",
+                        ? 'bg-primary text-low opacity-50 cursor-not-allowed'
+                        : 'bg-primary text-normal cursor-pointer',
+                      isActiveHost && 'ring-2 ring-brand',
+                      host.status === 'online' && 'hover:bg-brand/10',
+                      host.status === 'unpaired' &&
+                        'text-warning hover:bg-warning/10'
                     )}
                     aria-label={`${host.name} (${getHostStatusLabel(host.status)})`}
                   >
@@ -214,10 +214,10 @@ export function AppBar({
                 type="button"
                 onClick={onPairHostClick}
                 className={cn(
-                  "flex items-center justify-center w-10 h-10 rounded-lg",
-                  "text-sm font-medium transition-colors cursor-pointer",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  "bg-primary text-muted hover:text-normal hover:bg-tertiary",
+                  'flex items-center justify-center w-10 h-10 rounded-lg',
+                  'text-sm font-medium transition-colors cursor-pointer',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                  'bg-primary text-muted hover:text-normal hover:bg-tertiary'
                 )}
                 aria-label="Pair host"
               >
@@ -235,17 +235,17 @@ export function AppBar({
       {/* Project management popover for unsigned users */}
       {!isSignedIn && (
         <Popover>
-          <Tooltip content={t("appBar.kanban.tooltip")} side="right">
+          <Tooltip content={t('appBar.kanban.tooltip')} side="right">
             <PopoverTrigger asChild>
               <button
                 type="button"
                 className={cn(
-                  "flex items-center justify-center w-10 h-10 rounded-lg",
-                  "transition-colors cursor-pointer",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                  "bg-primary text-normal hover:bg-brand/10",
+                  'flex items-center justify-center w-10 h-10 rounded-lg',
+                  'transition-colors cursor-pointer',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                  'bg-primary text-normal hover:bg-brand/10'
                 )}
-                aria-label={t("appBar.kanban.tooltip")}
+                aria-label={t('appBar.kanban.tooltip')}
               >
                 <KanbanIcon className="size-icon-base" weight="bold" />
               </button>
@@ -253,10 +253,10 @@ export function AppBar({
           </Tooltip>
           <PopoverContent side="right" sideOffset={8}>
             <p className="text-sm font-medium text-high">
-              {t("appBar.kanban.title")}
+              {t('appBar.kanban.title')}
             </p>
             <p className="text-xs text-low mt-1">
-              {t("appBar.kanban.description")}
+              {t('appBar.kanban.description')}
             </p>
             <div className="mt-base flex items-center gap-half">
               <PopoverClose asChild>
@@ -264,11 +264,11 @@ export function AppBar({
                   type="button"
                   onClick={onSignIn}
                   className={cn(
-                    "px-base py-1 rounded-sm text-xs",
-                    "bg-brand text-on-brand hover:bg-brand-hover cursor-pointer",
+                    'px-base py-1 rounded-sm text-xs',
+                    'bg-brand text-on-brand hover:bg-brand-hover cursor-pointer'
                   )}
                 >
-                  {t("signIn")}
+                  {t('signIn')}
                 </button>
               </PopoverClose>
               <PopoverClose asChild>
@@ -276,11 +276,11 @@ export function AppBar({
                   type="button"
                   onClick={onMigrate}
                   className={cn(
-                    "px-base py-1 rounded-sm text-xs",
-                    "bg-secondary text-normal hover:bg-panel border border-border cursor-pointer",
+                    'px-base py-1 rounded-sm text-xs',
+                    'bg-secondary text-normal hover:bg-panel border border-border cursor-pointer'
                   )}
                 >
-                  {t("appBar.kanban.migrateOldProjects")}
+                  {t('appBar.kanban.migrateOldProjects')}
                 </button>
               </PopoverClose>
             </div>
@@ -334,13 +334,13 @@ export function AppBar({
                           type="button"
                           onClick={() => onProjectClick(project.id)}
                           className={cn(
-                            "flex items-center justify-center w-10 h-10 rounded-lg",
-                            "text-sm font-medium transition-colors cursor-grab",
-                            "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-                            snapshot.isDragging && "shadow-lg",
+                            'flex items-center justify-center w-10 h-10 rounded-lg',
+                            'text-sm font-medium transition-colors cursor-grab',
+                            'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+                            snapshot.isDragging && 'shadow-lg',
                             activeProjectId === project.id
-                              ? ""
-                              : "bg-primary text-normal hover:opacity-80",
+                              ? ''
+                              : 'bg-primary text-normal hover:opacity-80'
                           )}
                           style={
                             activeProjectId === project.id
@@ -372,10 +372,10 @@ export function AppBar({
             type="button"
             onClick={onCreateProject}
             className={cn(
-              "flex items-center justify-center w-10 h-10 rounded-lg",
-              "text-sm font-medium transition-colors cursor-pointer",
-              "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand",
-              "bg-primary text-muted hover:text-normal hover:bg-tertiary",
+              'flex items-center justify-center w-10 h-10 rounded-lg',
+              'text-sm font-medium transition-colors cursor-pointer',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-brand',
+              'bg-primary text-muted hover:text-normal hover:bg-tertiary'
             )}
             aria-label="Create project"
           >
@@ -406,7 +406,7 @@ export function AppBar({
           label="Join our Discord"
           iconPath={discordIconPath}
           badge={
-            onlineCount != null && (onlineCount > 999 ? "999+" : onlineCount)
+            onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
           }
         />
         {updateVersion ? (
@@ -415,10 +415,10 @@ export function AppBar({
               type="button"
               onClick={onUpdateClick}
               className={cn(
-                "flex items-center justify-center py-1 rounded-md w-10",
-                "text-[9px] font-ibm-plex-mono font-medium leading-none",
-                "bg-brand text-on-brand hover:bg-brand-hover",
-                "transition-colors cursor-pointer",
+                'flex items-center justify-center py-1 rounded-md w-10',
+                'text-[9px] font-ibm-plex-mono font-medium leading-none',
+                'bg-brand text-on-brand hover:bg-brand-hover',
+                'transition-colors cursor-pointer'
               )}
             >
               Update

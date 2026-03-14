@@ -2,7 +2,7 @@ import {
   ElementTransformer,
   $convertFromMarkdownString,
   TRANSFORMERS,
-} from "@lexical/markdown";
+} from '@lexical/markdown';
 import {
   TableNode,
   TableRowNode,
@@ -14,13 +14,13 @@ import {
   $isTableRowNode,
   $isTableCellNode,
   TableCellHeaderStates,
-} from "@lexical/table";
+} from '@lexical/table';
 
 const TABLE_ROW_REG_EXP = /^(?:\|)(.+)(?:\|)\s?$/;
 const TABLE_ROW_DIVIDER_REG_EXP = /^(\| ?:?-+:? ?)+\|\s?$/;
 
 function $createTableCell(textContent: string): TableCellNode {
-  textContent = textContent.replace(/\\n/g, "\n");
+  textContent = textContent.replace(/\\n/g, '\n');
   const cell = $createTableCellNode(TableCellHeaderStates.NO_STATUS);
   $convertFromMarkdownString(textContent, TRANSFORMERS, cell);
   return cell;
@@ -28,7 +28,7 @@ function $createTableCell(textContent: string): TableCellNode {
 
 function mapToTableCells(textContent: string): Array<TableCellNode> | null {
   const cells = textContent
-    .split("|")
+    .split('|')
     .map((c) => c.trim())
     .filter((c) => c.length > 0);
 
@@ -38,7 +38,7 @@ function mapToTableCells(textContent: string): Array<TableCellNode> | null {
 
 export const TABLE_TRANSFORMER: ElementTransformer = {
   dependencies: [TableNode, TableRowNode, TableCellNode],
-  type: "element",
+  type: 'element',
   regExp: TABLE_ROW_REG_EXP,
 
   export: (node, traverseChildren) => {
@@ -53,26 +53,26 @@ export const TABLE_TRANSFORMER: ElementTransformer = {
 
       const cells = row.getChildren();
       const cellTexts = cells.map((cell) => {
-        if (!$isTableCellNode(cell)) return "";
-        return traverseChildren(cell).replace(/\n/g, "\\n");
+        if (!$isTableCellNode(cell)) return '';
+        return traverseChildren(cell).replace(/\n/g, '\\n');
       });
 
-      output.push("| " + cellTexts.join(" | ") + " |");
+      output.push('| ' + cellTexts.join(' | ') + ' |');
 
       // Add header divider after first row if it contains header cells
       if (i === 0) {
         const isHeader = cells.some(
           (cell) =>
             $isTableCellNode(cell) &&
-            cell.getHeaderStyles() !== TableCellHeaderStates.NO_STATUS,
+            cell.getHeaderStyles() !== TableCellHeaderStates.NO_STATUS
         );
         if (isHeader || children.length > 1) {
-          output.push("| " + cellTexts.map(() => "---").join(" | ") + " |");
+          output.push('| ' + cellTexts.map(() => '---').join(' | ') + ' |');
         }
       }
     }
 
-    return output.join("\n");
+    return output.join('\n');
   },
 
   replace: (parentNode, _children, match) => {

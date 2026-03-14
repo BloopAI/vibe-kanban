@@ -1,24 +1,24 @@
-import type { ReactElement, Ref } from "react";
-import { useTranslation } from "react-i18next";
-import { CaretDownIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import type { ReactElement, Ref } from 'react';
+import { useTranslation } from 'react-i18next';
+import { CaretDownIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuSearchInput,
   DropdownMenuTrigger,
-} from "./Dropdown";
+} from './Dropdown';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "./Accordion";
-import { ModelProviderIcon } from "./ModelProviderIcon";
-import { ModelList, type ModelListModel } from "./ModelList";
+} from './Accordion';
+import { ModelProviderIcon } from './ModelProviderIcon';
+import { ModelList, type ModelListModel } from './ModelList';
 
-type RecentAlignment = "top" | "bottom";
+type RecentAlignment = 'top' | 'bottom';
 
 interface ModelSelectorProvider {
   id: string;
@@ -49,7 +49,7 @@ export interface ModelSelectorPopoverProps {
   scrollRef?: Ref<HTMLDivElement>;
   expandedProviderId?: string;
   onExpandedProviderIdChange?: (id: string) => void;
-  resolvedTheme?: "light" | "dark";
+  resolvedTheme?: 'light' | 'dark';
 }
 
 const MODEL_LIST_PAGE_SIZE = 8;
@@ -60,7 +60,7 @@ function getModelKey(model: ModelListModel): string {
 
 function getRecentIndex(
   recentEntries: string[],
-  model: ModelListModel,
+  model: ModelListModel
 ): number {
   const key = getModelKey(model).toLowerCase();
   return recentEntries.findIndex((entry) => entry.toLowerCase() === key);
@@ -69,14 +69,14 @@ function getRecentIndex(
 function sortByRecency(
   models: ModelListModel[],
   recentEntries: string[],
-  align: RecentAlignment = "bottom",
+  align: RecentAlignment = 'bottom'
 ): ModelListModel[] {
   if (recentEntries.length === 0) {
-    return align === "bottom" ? [...models].reverse() : [...models];
+    return align === 'bottom' ? [...models].reverse() : [...models];
   }
 
   const recentMap = new Map(
-    recentEntries.map((entry, idx) => [entry.toLowerCase(), idx]),
+    recentEntries.map((entry, idx) => [entry.toLowerCase(), idx])
   );
   const nonRecent: ModelListModel[] = [];
   const recent: { model: ModelListModel; idx: number }[] = [];
@@ -91,13 +91,13 @@ function sortByRecency(
     }
   }
 
-  if (align === "bottom") {
+  if (align === 'bottom') {
     nonRecent.reverse();
   }
 
-  recent.sort((a, b) => (align === "bottom" ? a.idx - b.idx : b.idx - a.idx));
+  recent.sort((a, b) => (align === 'bottom' ? a.idx - b.idx : b.idx - a.idx));
 
-  if (align === "top") {
+  if (align === 'top') {
     return [...recent.map((entry) => entry.model), ...nonRecent];
   }
 
@@ -107,7 +107,7 @@ function sortByRecency(
 function sortProvidersByRecency(
   providers: ModelSelectorProvider[],
   models: ModelListModel[],
-  recentEntries: string[],
+  recentEntries: string[]
 ): ModelSelectorProvider[] {
   const baseProviders = [...providers].reverse();
   if (recentEntries.length === 0) return baseProviders;
@@ -124,7 +124,7 @@ function sortProvidersByRecency(
   }
 
   const order = new Map(
-    baseProviders.map((provider, idx) => [provider.id, idx]),
+    baseProviders.map((provider, idx) => [provider.id, idx])
   );
 
   return [...baseProviders].sort((a, b) => {
@@ -145,7 +145,7 @@ function sortProvidersByRecency(
 function getSelectedModel(
   models: ModelListModel[],
   selectedProviderId: string | null,
-  selectedModelId: string | null,
+  selectedModelId: string | null
 ): ModelListModel | null {
   if (!selectedModelId) return null;
   const selectedId = selectedModelId.toLowerCase();
@@ -155,7 +155,7 @@ function getSelectedModel(
       models.find(
         (model) =>
           model.id.toLowerCase() === selectedId &&
-          model.provider_id?.toLowerCase() === providerId,
+          model.provider_id?.toLowerCase() === providerId
       ) ?? null
     );
   }
@@ -163,14 +163,14 @@ function getSelectedModel(
 }
 
 function getPopoverWidth(hasProviders: boolean, hasReasoning: boolean): string {
-  if (hasProviders) return "w-[280px]";
-  if (hasReasoning) return "w-[230px]";
-  return "w-[200px]";
+  if (hasProviders) return 'w-[280px]';
+  if (hasReasoning) return 'w-[230px]';
+  return 'w-[200px]';
 }
 
 function matchesSearch(model: ModelListModel, query: string): boolean {
-  const name = model.name?.toLowerCase() ?? "";
-  const id = model.id?.toLowerCase() ?? "";
+  const name = model.name?.toLowerCase() ?? '';
+  const id = model.id?.toLowerCase() ?? '';
   return name.includes(query) || id.includes(query);
 }
 
@@ -188,7 +188,7 @@ interface ProviderAccordionProps {
   scrollRef?: Ref<HTMLDivElement>;
   expandedProviderId: string;
   onExpandedProviderIdChange: (id: string) => void;
-  resolvedTheme: "light" | "dark";
+  resolvedTheme: 'light' | 'dark';
 }
 
 function ProviderAccordion({
@@ -207,12 +207,12 @@ function ProviderAccordion({
   onExpandedProviderIdChange,
   resolvedTheme,
 }: ProviderAccordionProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const selectedModel = getSelectedModel(
     config.models,
     selectedProviderId,
-    selectedModelId,
+    selectedModelId
   );
 
   const modelsByProvider = new Map<string, ModelListModel[]>();
@@ -227,7 +227,7 @@ function ProviderAccordion({
   const providers = sortProvidersByRecency(
     config.providers,
     config.models,
-    recentModelEntries,
+    recentModelEntries
   );
 
   return (
@@ -246,7 +246,7 @@ function ProviderAccordion({
             const providerModels = sortByRecency(
               modelsByProvider.get(provider.id) ?? [],
               recentModelEntries,
-              "top",
+              'top'
             );
             const isSelectedProvider =
               Boolean(selectedModelId) &&
@@ -256,7 +256,7 @@ function ProviderAccordion({
             if (
               normalizedSearch &&
               !providerModels.some((model) =>
-                matchesSearch(model, normalizedSearch),
+                matchesSearch(model, normalizedSearch)
               )
             ) {
               return null;
@@ -267,10 +267,10 @@ function ProviderAccordion({
                 <AccordionTrigger
                   sticky={provider.id === expandedProviderId}
                   className={cn(
-                    "group gap-2 px-base py-half rounded-sm",
-                    "text-sm font-medium text-low",
-                    "hover:bg-secondary/60 transition-colors",
-                    "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand",
+                    'group gap-2 px-base py-half rounded-sm',
+                    'text-sm font-medium text-low',
+                    'hover:bg-secondary/60 transition-colors',
+                    'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand'
                   )}
                 >
                   <ModelProviderIcon
@@ -282,8 +282,8 @@ function ProviderAccordion({
                   </span>
                   <CaretDownIcon
                     className={cn(
-                      "size-icon-2xs text-low transition-transform",
-                      "group-data-[state=open]:rotate-180",
+                      'size-icon-2xs text-low transition-transform',
+                      'group-data-[state=open]:rotate-180'
                     )}
                     weight="bold"
                   />
@@ -317,29 +317,29 @@ function ProviderAccordion({
         {showDefaultOption && (
           <div
             className={cn(
-              "group flex items-center rounded-sm mx-half",
-              "transition-colors duration-100",
-              "focus-within:bg-secondary",
+              'group flex items-center rounded-sm mx-half',
+              'transition-colors duration-100',
+              'focus-within:bg-secondary',
               isDefaultSelected
-                ? "bg-secondary text-high"
-                : cn("text-normal", "hover:bg-secondary/60"),
+                ? 'bg-secondary text-high'
+                : cn('text-normal', 'hover:bg-secondary/60')
             )}
           >
             <button
               type="button"
               onClick={() => onSelectDefault?.()}
               className={cn(
-                "flex-1 min-w-0 py-half pl-base pr-half text-left",
-                "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand",
+                'flex-1 min-w-0 py-half pl-base pr-half text-left',
+                'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand'
               )}
             >
               <span
                 className={cn(
-                  "block text-sm truncate",
-                  isDefaultSelected && "font-semibold",
+                  'block text-sm truncate',
+                  isDefaultSelected && 'font-semibold'
                 )}
               >
-                {t("modelSelector.default")}
+                {t('modelSelector.default')}
               </span>
             </button>
           </div>
@@ -366,18 +366,18 @@ export function ModelSelectorPopover({
   showDefaultOption = false,
   onSelectDefault,
   scrollRef,
-  expandedProviderId = "",
+  expandedProviderId = '',
   onExpandedProviderIdChange,
-  resolvedTheme = "light",
+  resolvedTheme = 'light',
 }: ModelSelectorPopoverProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const models = config.models;
   const hasProviders = config.providers.length > 1;
   const hasReasoning = models.some(
-    (model) => model.reasoning_options.length > 0,
+    (model) => model.reasoning_options.length > 0
   );
   const popoverWidth = getPopoverWidth(hasProviders, hasReasoning);
-  const popoverHeightClass = hasProviders ? "h-[280px]" : "";
+  const popoverHeightClass = hasProviders ? 'h-[280px]' : '';
 
   let showSearch = true;
   let content: ReactElement;
@@ -406,7 +406,7 @@ export function ModelSelectorPopover({
     const selectedModel = getSelectedModel(
       models,
       selectedProviderId,
-      selectedModelId,
+      selectedModelId
     );
     showSearch = models.length > MODEL_LIST_PAGE_SIZE;
 
@@ -436,13 +436,13 @@ export function ModelSelectorPopover({
         sideOffset={8}
         data-model-selector-popover
         className={cn(
-          "p-0 overflow-hidden flex flex-col",
+          'p-0 overflow-hidden flex flex-col',
           popoverWidth,
-          popoverHeightClass,
+          popoverHeightClass
         )}
         onInteractOutside={(event) => {
           const target = event.target as HTMLElement | null;
-          if (target?.closest("[data-model-selector-dropdown]")) {
+          if (target?.closest('[data-model-selector-dropdown]')) {
             event.preventDefault();
           }
         }}
@@ -453,7 +453,7 @@ export function ModelSelectorPopover({
               <span className="text-sm text-red-600">{error}</span>
             </div>
           )}
-          <DropdownMenuLabel>{t("modelSelector.model")}</DropdownMenuLabel>
+          <DropdownMenuLabel>{t('modelSelector.model')}</DropdownMenuLabel>
           <div className="flex flex-col flex-1 min-h-0 min-w-0">
             {content}
             {showSearch && (

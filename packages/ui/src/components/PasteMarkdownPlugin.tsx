@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useEffect, useRef } from 'react';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   PASTE_COMMAND,
   COMMAND_PRIORITY_LOW,
@@ -7,11 +7,11 @@ import {
   $isRangeSelection,
   $createParagraphNode,
   $setSelection,
-} from "lexical";
+} from 'lexical';
 import {
   $convertFromMarkdownString,
   type Transformer,
-} from "@lexical/markdown";
+} from '@lexical/markdown';
 
 type Props = {
   transformers: Transformer[];
@@ -35,7 +35,7 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "v") {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
         shiftHeldRef.current = e.shiftKey;
       }
     };
@@ -44,8 +44,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
       shiftHeldRef.current = false;
     };
 
-    rootElement.addEventListener("keydown", handleKeyDown);
-    rootElement.addEventListener("keyup", handleKeyUp);
+    rootElement.addEventListener('keydown', handleKeyDown);
+    rootElement.addEventListener('keyup', handleKeyUp);
 
     const unregisterPaste = editor.registerCommand(
       PASTE_COMMAND,
@@ -56,9 +56,9 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         if (!clipboardData) return false;
 
         // If HTML exists, let default Lexical handling work
-        if (clipboardData.getData("text/html")) return false;
+        if (clipboardData.getData('text/html')) return false;
 
-        const plainText = clipboardData.getData("text/plain");
+        const plainText = clipboardData.getData('text/plain');
         if (!plainText) return false;
 
         event.preventDefault();
@@ -103,12 +103,12 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
         return true;
       },
-      COMMAND_PRIORITY_LOW,
+      COMMAND_PRIORITY_LOW
     );
 
     return () => {
-      rootElement.removeEventListener("keydown", handleKeyDown);
-      rootElement.removeEventListener("keyup", handleKeyUp);
+      rootElement.removeEventListener('keydown', handleKeyDown);
+      rootElement.removeEventListener('keyup', handleKeyUp);
       unregisterPaste();
     };
   }, [editor, transformers]);

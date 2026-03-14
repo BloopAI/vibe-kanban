@@ -1,10 +1,10 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
-import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
-} from "@lexical/react/LexicalTypeaheadMenuPlugin";
+} from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import {
   $createTextNode,
   $getRoot,
@@ -12,16 +12,16 @@ import {
   $isParagraphNode,
   KEY_ESCAPE_COMMAND,
   COMMAND_PRIORITY_NORMAL,
-} from "lexical";
+} from 'lexical';
 import {
   TagIcon,
   FileTextIcon,
   GearIcon,
   PlusIcon,
-} from "@phosphor-icons/react";
-import { useTranslation } from "react-i18next";
-import { useTypeaheadOpen } from "./TypeaheadOpenContext";
-import { TypeaheadMenu } from "./TypeaheadMenu";
+} from '@phosphor-icons/react';
+import { useTranslation } from 'react-i18next';
+import { useTypeaheadOpen } from './TypeaheadOpenContext';
+import { TypeaheadMenu } from './TypeaheadMenu';
 
 const MAX_FILE_RESULTS = 10;
 
@@ -29,7 +29,7 @@ type DiffFileResult = {
   path: string;
   name: string;
   is_file: boolean;
-  match_type: "FileName" | "DirectoryName" | "FullPath";
+  match_type: 'FileName' | 'DirectoryName' | 'FullPath';
   score: bigint;
 };
 
@@ -43,17 +43,17 @@ export type FileResultLike = {
   path: string;
   name: string;
   is_file: boolean;
-  match_type: "FileName" | "DirectoryName" | "FullPath";
+  match_type: 'FileName' | 'DirectoryName' | 'FullPath';
   score: bigint | number;
 };
 
 export type SearchResultItemLike =
   | {
-      type: "tag";
+      type: 'tag';
       tag: FileTagLike;
     }
   | {
-      type: "file";
+      type: 'file';
       file: FileResultLike;
     };
 
@@ -82,7 +82,7 @@ type FileTagTypeaheadPluginProps = {
   onCreateTag?: () => Promise<boolean>;
   searchTagsAndFiles?: (
     query: string,
-    args: SearchArgs,
+    args: SearchArgs
   ) => Promise<SearchResultItemLike[]>;
 };
 
@@ -91,7 +91,7 @@ class FileTagOption extends MenuOption {
 
   constructor(item: SearchResultItemLike) {
     const key =
-      item.type === "tag" ? `tag-${item.tag.id}` : `file-${item.file.path}`;
+      item.type === 'tag' ? `tag-${item.tag.id}` : `file-${item.file.path}`;
     super(key);
     this.item = item;
   }
@@ -99,26 +99,26 @@ class FileTagOption extends MenuOption {
 
 function getMatchingDiffFiles(
   query: string,
-  diffPaths: Set<string>,
+  diffPaths: Set<string>
 ): DiffFileResult[] {
   if (!query) return [];
   const lowerQuery = query.toLowerCase();
   return Array.from(diffPaths)
     .filter((path) => {
-      const name = path.split("/").pop() || path;
+      const name = path.split('/').pop() || path;
       return (
         name.toLowerCase().includes(lowerQuery) ||
         path.toLowerCase().includes(lowerQuery)
       );
     })
     .map((path) => {
-      const name = path.split("/").pop() || path;
+      const name = path.split('/').pop() || path;
       const nameMatches = name.toLowerCase().includes(lowerQuery);
       return {
         path,
         name,
         is_file: true,
-        match_type: nameMatches ? ("FileName" as const) : ("FullPath" as const),
+        match_type: nameMatches ? ('FileName' as const) : ('FullPath' as const),
         // High score to rank diff files above server results.
         score: BigInt(Number.MAX_SAFE_INTEGER),
       };
@@ -143,21 +143,21 @@ export function FileTagTypeaheadPlugin({
   const [editor] = useLexicalComposerContext();
   const [options, setOptions] = useState<FileTagOption[]>([]);
   const [recentRepoCatalog, setRecentRepoCatalog] = useState<RepoLike[] | null>(
-    null,
+    null
   );
   const [preferredRepoName, setPreferredRepoName] = useState<string | null>(
-    null,
+    null
   );
   const [showMissingRepoState, setShowMissingRepoState] = useState(false);
   const [isChoosingRepo, setIsChoosingRepo] = useState(false);
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
   const { setIsOpen } = useTypeaheadOpen();
   const searchRequestRef = useRef(0);
   const lastQueryRef = useRef<string | null>(null);
 
   const effectiveDiffPaths = useMemo(
     () => diffPaths ?? new Set<string>(),
-    [diffPaths],
+    [diffPaths]
   );
   const usePreferenceRepoSelection = repoIds === undefined;
   const canManageRepoPreference =
@@ -188,7 +188,7 @@ export function FileTagTypeaheadPlugin({
       setRecentRepoCatalog(repos);
       return repos;
     },
-    [listRecentRepos, recentRepoCatalog],
+    [listRecentRepos, recentRepoCatalog]
   );
 
   const runSearch = useCallback(
@@ -196,7 +196,7 @@ export function FileTagTypeaheadPlugin({
       const requestId = ++searchRequestRef.current;
       const scopedRepoIds = overrideRepoIds ?? effectiveRepoIds;
       const fileSearchEnabled = Boolean(
-        scopedRepoIds && scopedRepoIds.length > 0,
+        scopedRepoIds && scopedRepoIds.length > 0
       );
 
       const localFiles = fileSearchEnabled
@@ -213,9 +213,9 @@ export function FileTagTypeaheadPlugin({
           return;
         }
 
-        const tagResults = serverResults.filter((r) => r.type === "tag");
+        const tagResults = serverResults.filter((r) => r.type === 'tag');
         const serverFileResults = serverResults
-          .filter((r) => r.type === "file")
+          .filter((r) => r.type === 'file')
           .filter((r) => !localFilePaths.has(r.file.path));
 
         const limitedLocalFiles = localFiles.slice(0, MAX_FILE_RESULTS);
@@ -225,7 +225,7 @@ export function FileTagTypeaheadPlugin({
         const mergedResults: SearchResultItemLike[] = [
           ...tagResults,
           ...limitedLocalFiles.map((file) => ({
-            type: "file" as const,
+            type: 'file' as const,
             file,
           })),
           ...limitedServerFiles,
@@ -236,14 +236,14 @@ export function FileTagTypeaheadPlugin({
         if (requestId === searchRequestRef.current) {
           setOptions([]);
         }
-        console.error("Failed to search tags/files", {
+        console.error('Failed to search tags/files', {
           requestId,
           query,
           err,
         });
       }
     },
-    [effectiveDiffPaths, effectiveRepoIds, searchTagsAndFiles],
+    [effectiveDiffPaths, effectiveRepoIds, searchTagsAndFiles]
   );
 
   useEffect(() => {
@@ -260,7 +260,7 @@ export function FileTagTypeaheadPlugin({
         if (canceled) return;
 
         const matchingRecentRepo = recentRepos.find(
-          (repo) => repo.id === preferredRepoId,
+          (repo) => repo.id === preferredRepoId
         );
         if (matchingRecentRepo) {
           setPreferredRepoName(getRepoDisplayName(matchingRecentRepo));
@@ -289,7 +289,7 @@ export function FileTagTypeaheadPlugin({
         }
       })
       .catch((err) => {
-        console.error("Failed to load repos for file-search preference", err);
+        console.error('Failed to load repos for file-search preference', err);
       });
 
     return () => {
@@ -333,14 +333,14 @@ export function FileTagTypeaheadPlugin({
         void runSearch(queryToRefresh, [selectedRepo.id]);
       }
     } catch (err) {
-      console.error("Failed to choose repo for file search", err);
+      console.error('Failed to choose repo for file search', err);
     } finally {
       setIsChoosingRepo(false);
     }
   }, [chooseRepo, loadRecentRepos, runSearch, setPreferredRepoId]);
 
   const closeTypeahead = useCallback(() => {
-    editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent("keydown"));
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown'));
   }, [editor]);
 
   const handleCreateTag = useCallback(async () => {
@@ -372,7 +372,7 @@ export function FileTagTypeaheadPlugin({
       lastQueryRef.current = query;
       void runSearch(query);
     },
-    [runSearch],
+    [runSearch]
   );
 
   return (
@@ -381,11 +381,11 @@ export function FileTagTypeaheadPlugin({
       triggerFn={(text) => {
         const match = /(?:^|\s)@([^\s@]*)$/.exec(text);
         if (!match) return null;
-        const offset = match.index + match[0].indexOf("@");
+        const offset = match.index + match[0].indexOf('@');
         return {
           leadOffset: offset,
           matchingString: match[1],
-          replaceableString: match[0].slice(match[0].indexOf("@")),
+          replaceableString: match[0].slice(match[0].indexOf('@')),
         };
       }}
       options={options}
@@ -396,20 +396,20 @@ export function FileTagTypeaheadPlugin({
         editor.update(() => {
           if (!nodeToReplace) return;
 
-          if (option.item.type === "tag") {
-            const textToInsert = option.item.tag.content ?? "";
+          if (option.item.type === 'tag') {
+            const textToInsert = option.item.tag.content ?? '';
             const textNode = $createTextNode(textToInsert);
             nodeToReplace.replace(textNode);
             textNode.select(textToInsert.length, textToInsert.length);
           } else {
-            const fileName = option.item.file.name ?? "";
-            const fullPath = option.item.file.path ?? "";
+            const fileName = option.item.file.name ?? '';
+            const fullPath = option.item.file.path ?? '';
 
             const fileNameNode = $createTextNode(fileName);
-            fileNameNode.toggleFormat("code");
+            fileNameNode.toggleFormat('code');
             nodeToReplace.replace(fileNameNode);
 
-            const spaceNode = $createTextNode(" ");
+            const spaceNode = $createTextNode(' ');
             fileNameNode.insertAfter(spaceNode);
             spaceNode.setFormat(0);
             spaceNode.select(1, 1);
@@ -424,7 +424,7 @@ export function FileTagTypeaheadPlugin({
               const textNodes = child.getAllTextNodes();
               for (const textNode of textNodes) {
                 if (
-                  textNode.hasFormat("code") &&
+                  textNode.hasFormat('code') &&
                   textNode.getTextContent() === fullPath
                 ) {
                   pathAlreadyExists = true;
@@ -437,10 +437,10 @@ export function FileTagTypeaheadPlugin({
             if (!pathAlreadyExists && fullPath) {
               const pathParagraph = $createParagraphNode();
               const pathNode = $createTextNode(fullPath);
-              pathNode.toggleFormat("code");
+              pathNode.toggleFormat('code');
               pathParagraph.append(pathNode);
 
-              const trailingSpace = $createTextNode(" ");
+              const trailingSpace = $createTextNode(' ');
               pathParagraph.append(trailingSpace);
               trailingSpace.setFormat(0);
 
@@ -453,12 +453,12 @@ export function FileTagTypeaheadPlugin({
       }}
       menuRenderFn={(
         anchorRef,
-        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
       ) => {
         if (!anchorRef.current) return null;
 
-        const tagResults = options.filter((r) => r.item.type === "tag");
-        const fileResults = options.filter((r) => r.item.type === "file");
+        const tagResults = options.filter((r) => r.item.type === 'tag');
+        const fileResults = options.filter((r) => r.item.type === 'file');
         const showChooseRepoControl =
           canManageRepoPreference && !canSearchFiles;
         const showSelectedRepoState = canManageRepoPreference && canSearchFiles;
@@ -472,10 +472,10 @@ export function FileTagTypeaheadPlugin({
         const showGlobalEmptyState = !hasSearchResults && !showFilesSection;
         const selectedRepoLabel = preferredRepoName ?? preferredRepoId;
         const repoCtaLabel = showSelectedRepoState
-          ? t("typeahead.selectedRepo", {
+          ? t('typeahead.selectedRepo', {
               repoName: selectedRepoLabel,
             })
-          : t("typeahead.chooseRepo");
+          : t('typeahead.chooseRepo');
 
         return createPortal(
           <TypeaheadMenu
@@ -485,24 +485,24 @@ export function FileTagTypeaheadPlugin({
           >
             <TypeaheadMenu.Header>
               <TagIcon className="size-icon-xs" weight="bold" />
-              {t("typeahead.tags")}
+              {t('typeahead.tags')}
             </TypeaheadMenu.Header>
 
             {showGlobalEmptyState ? (
               <TypeaheadMenu.Empty>
-                {t("typeahead.noTagsOrFiles")}
+                {t('typeahead.noTagsOrFiles')}
               </TypeaheadMenu.Empty>
             ) : (
               <TypeaheadMenu.ScrollArea>
                 <TypeaheadMenu.Action onClick={() => void handleCreateTag()}>
                   <span className="flex items-center gap-half">
                     <PlusIcon className="size-icon-xs" weight="bold" />
-                    <span>{t("typeahead.createTag")}</span>
+                    <span>{t('typeahead.createTag')}</span>
                   </span>
                 </TypeaheadMenu.Action>
 
                 {tagResults.map((option, index) => {
-                  if (option.item.type !== "tag") return null;
+                  if (option.item.type !== 'tag') return null;
                   const tag = option.item.tag;
                   return (
                     <TypeaheadMenu.Item
@@ -522,7 +522,7 @@ export function FileTagTypeaheadPlugin({
                       {tag.content && (
                         <div className="text-xs text-low truncate">
                           {tag.content.slice(0, 60)}
-                          {tag.content.length > 60 ? "..." : ""}
+                          {tag.content.length > 60 ? '...' : ''}
                         </div>
                       )}
                     </TypeaheadMenu.Item>
@@ -533,11 +533,11 @@ export function FileTagTypeaheadPlugin({
                   <>
                     {tagResults.length > 0 && <TypeaheadMenu.Divider />}
                     <TypeaheadMenu.SectionHeader>
-                      {t("typeahead.files")}
+                      {t('typeahead.files')}
                     </TypeaheadMenu.SectionHeader>
                     {showMissingRepoState && (
                       <TypeaheadMenu.Empty>
-                        {t("typeahead.missingRepo")}
+                        {t('typeahead.missingRepo')}
                       </TypeaheadMenu.Empty>
                     )}
                     {(showChooseRepoControl || showSelectedRepoState) && (
@@ -554,7 +554,7 @@ export function FileTagTypeaheadPlugin({
                       </TypeaheadMenu.Action>
                     )}
                     {fileResults.map((option) => {
-                      if (option.item.type !== "file") return null;
+                      if (option.item.type !== 'file') return null;
                       const index = options.indexOf(option);
                       const file = option.item.file;
                       return (
@@ -583,7 +583,7 @@ export function FileTagTypeaheadPlugin({
               </TypeaheadMenu.ScrollArea>
             )}
           </TypeaheadMenu>,
-          document.body,
+          document.body
         );
       }}
     />

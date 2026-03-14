@@ -1,22 +1,22 @@
-import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
-import { useEffect, useState } from "react";
-import type { Icon } from "@phosphor-icons/react";
-import { CaretDownIcon } from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
+import type { Icon } from '@phosphor-icons/react';
+import { CaretDownIcon } from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
-const STORAGE_KEY_PREFIX = "vibe.ui.collapsible.";
+const STORAGE_KEY_PREFIX = 'vibe.ui.collapsible.';
 
 function getInitialExpanded(
   persistKey: string | undefined,
-  defaultExpanded: boolean,
+  defaultExpanded: boolean
 ) {
-  if (!persistKey || typeof window === "undefined") return defaultExpanded;
+  if (!persistKey || typeof window === 'undefined') return defaultExpanded;
   try {
     const stored = window.localStorage.getItem(
-      `${STORAGE_KEY_PREFIX}${persistKey}`,
+      `${STORAGE_KEY_PREFIX}${persistKey}`
     );
     if (stored == null) return defaultExpanded;
-    return stored === "true";
+    return stored === 'true';
   } catch {
     return defaultExpanded;
   }
@@ -50,7 +50,7 @@ export function CollapsibleSectionHeader({
   className,
 }: CollapsibleSectionHeaderProps) {
   const [expanded, setExpanded] = useState(() =>
-    getInitialExpanded(persistKey, defaultExpanded),
+    getInitialExpanded(persistKey, defaultExpanded)
   );
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function CollapsibleSectionHeader({
     try {
       window.localStorage.setItem(
         `${STORAGE_KEY_PREFIX}${persistKey}`,
-        String(expanded),
+        String(expanded)
       );
     } catch {
       // Ignore localStorage failures (private mode/quota/security errors).
@@ -71,7 +71,7 @@ export function CollapsibleSectionHeader({
 
   const handleActionClick = (
     e: MouseEvent<HTMLSpanElement>,
-    onClick: () => void,
+    onClick: () => void
   ) => {
     e.stopPropagation();
     onClick();
@@ -79,9 +79,9 @@ export function CollapsibleSectionHeader({
 
   const handleActionKeyDown = (
     e: KeyboardEvent<HTMLSpanElement>,
-    onClick: () => void,
+    onClick: () => void
   ) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
     e.stopPropagation();
     onClick();
@@ -104,8 +104,8 @@ export function CollapsibleSectionHeader({
               onClick={(e) => handleActionClick(e, action.onClick)}
               onKeyDown={(e) => handleActionKeyDown(e, action.onClick)}
               className={cn(
-                "hover:text-normal",
-                action.isActive ? "text-brand" : "text-low",
+                'hover:text-normal',
+                action.isActive ? 'text-brand' : 'text-low'
               )}
             >
               <ActionIcon className="size-icon-xs" weight="bold" />
@@ -116,8 +116,8 @@ export function CollapsibleSectionHeader({
           <CaretDownIcon
             weight="fill"
             className={cn(
-              "size-icon-xs text-low transition-transform",
-              !expanded && "-rotate-90",
+              'size-icon-xs text-low transition-transform',
+              !expanded && '-rotate-90'
             )}
           />
         )}
@@ -126,14 +126,14 @@ export function CollapsibleSectionHeader({
   );
 
   return (
-    <div className={cn("flex flex-col h-full min-h-0", className)}>
+    <div className={cn('flex flex-col h-full min-h-0', className)}>
       <div className="">
         {collapsible ? (
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
             className={cn(
-              "flex items-center justify-between w-full px-base py-half cursor-pointer",
+              'flex items-center justify-between w-full px-base py-half cursor-pointer'
             )}
           >
             {headerContent}
@@ -141,7 +141,7 @@ export function CollapsibleSectionHeader({
         ) : (
           <div
             className={cn(
-              "flex items-center justify-between w-full px-base py-half",
+              'flex items-center justify-between w-full px-base py-half'
             )}
           >
             {headerContent}

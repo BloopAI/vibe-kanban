@@ -1,15 +1,15 @@
-import type { ReactNode } from "react";
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
+import type { ReactNode } from 'react';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   CaretDownIcon,
   CpuIcon,
   CheckCircleIcon,
   XCircleIcon,
   CircleNotchIcon,
-} from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
-import type { ToolStatusLike } from "./ToolStatusDot";
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
+import type { ToolStatusLike } from './ToolStatusDot';
 
 export interface ChatSubagentResultLike {
   value?: unknown | null;
@@ -48,7 +48,7 @@ export function ChatSubagentEntry({
   workspaceId,
   renderMarkdown,
 }: ChatSubagentEntryProps) {
-  const { t } = useTranslation("common");
+  const { t } = useTranslation('common');
 
   // Determine status icon - consistent with ToolStatusDot
   const StatusIcon = useMemo(() => {
@@ -56,13 +56,13 @@ export function ChatSubagentEntry({
     const statusType = status.status;
 
     // Map status to visual state (consistent with ToolStatusDot)
-    const isSuccess = statusType === "success";
+    const isSuccess = statusType === 'success';
     const isError =
-      statusType === "failed" ||
-      statusType === "denied" ||
-      statusType === "timed_out";
+      statusType === 'failed' ||
+      statusType === 'denied' ||
+      statusType === 'timed_out';
     const isPending =
-      statusType === "created" || statusType === "pending_approval";
+      statusType === 'created' || statusType === 'pending_approval';
 
     if (isSuccess) {
       return (
@@ -82,15 +82,15 @@ export function ChatSubagentEntry({
   const isErrorStatus = useMemo(() => {
     if (!status) return false;
     return (
-      status.status === "failed" ||
-      status.status === "denied" ||
-      status.status === "timed_out"
+      status.status === 'failed' ||
+      status.status === 'denied' ||
+      status.status === 'timed_out'
     );
   }, [status]);
 
   // Format the subagent type for display
   const formattedType = useMemo(() => {
-    if (!subagentType) return t("conversation.subagent.defaultType");
+    if (!subagentType) return t('conversation.subagent.defaultType');
     // Capitalize first letter and format
     return subagentType.charAt(0).toUpperCase() + subagentType.slice(1);
   }, [subagentType, t]);
@@ -100,7 +100,7 @@ export function ChatSubagentEntry({
     if (!result?.value) return null;
 
     // Handle both string and object values
-    if (typeof result.value === "string") {
+    if (typeof result.value === 'string') {
       return result.value;
     }
 
@@ -114,20 +114,20 @@ export function ChatSubagentEntry({
   return (
     <div
       className={cn(
-        "rounded-sm border overflow-hidden",
-        isErrorStatus && "border-error bg-error/5",
-        status?.status === "success" && "border-success/50",
-        !isErrorStatus && status?.status !== "success" && "border-border",
-        className,
+        'rounded-sm border overflow-hidden',
+        isErrorStatus && 'border-error bg-error/5',
+        status?.status === 'success' && 'border-success/50',
+        !isErrorStatus && status?.status !== 'success' && 'border-border',
+        className
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          "flex items-center px-double py-base gap-base",
-          isErrorStatus && "bg-error/10",
-          status?.status === "success" && "bg-success/5",
-          onToggle && hasContent && "cursor-pointer",
+          'flex items-center px-double py-base gap-base',
+          isErrorStatus && 'bg-error/10',
+          status?.status === 'success' && 'bg-success/5',
+          onToggle && hasContent && 'cursor-pointer'
         )}
         onClick={hasContent ? onToggle : undefined}
       >
@@ -148,8 +148,8 @@ export function ChatSubagentEntry({
         {onToggle && hasContent && (
           <CaretDownIcon
             className={cn(
-              "size-icon-xs shrink-0 text-low transition-transform",
-              !expanded && "-rotate-90",
+              'size-icon-xs shrink-0 text-low transition-transform',
+              !expanded && '-rotate-90'
             )}
           />
         )}
@@ -159,7 +159,7 @@ export function ChatSubagentEntry({
       {expanded && hasContent && (
         <div className="border-t p-double bg-panel/50">
           <div className="text-xs font-medium text-low pb-base uppercase tracking-wide">
-            {t("conversation.output")}
+            {t('conversation.output')}
           </div>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             {renderMarkdown({ content: resultContent!, workspaceId })}

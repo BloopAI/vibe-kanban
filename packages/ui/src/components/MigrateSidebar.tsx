@@ -3,14 +3,14 @@ import {
   FolderIcon,
   CloudArrowUpIcon,
   CheckCircleIcon,
-} from "@phosphor-icons/react";
-import { cn } from "../lib/cn";
+} from '@phosphor-icons/react';
+import { cn } from '../lib/cn';
 
 export type MigrationStep =
-  | "introduction"
-  | "choose-projects"
-  | "migrate"
-  | "finish";
+  | 'introduction'
+  | 'choose-projects'
+  | 'migrate'
+  | 'finish';
 
 interface MigrateSidebarProps {
   currentStep: MigrationStep;
@@ -22,10 +22,10 @@ const steps: Array<{
   label: string;
   icon: typeof BookOpenIcon;
 }> = [
-  { id: "introduction", label: "Introduction", icon: BookOpenIcon },
-  { id: "choose-projects", label: "Choose projects", icon: FolderIcon },
-  { id: "migrate", label: "Migrate", icon: CloudArrowUpIcon },
-  { id: "finish", label: "Finish", icon: CheckCircleIcon },
+  { id: 'introduction', label: 'Introduction', icon: BookOpenIcon },
+  { id: 'choose-projects', label: 'Choose projects', icon: FolderIcon },
+  { id: 'migrate', label: 'Migrate', icon: CloudArrowUpIcon },
+  { id: 'finish', label: 'Finish', icon: CheckCircleIcon },
 ];
 
 export function MigrateSidebar({
@@ -48,20 +48,20 @@ export function MigrateSidebar({
             onClick={() => !isDisabled && onStepChange(step.id)}
             disabled={isDisabled}
             className={cn(
-              "w-full flex items-center gap-half rounded-sm border px-base py-half text-sm text-left transition-colors",
+              'w-full flex items-center gap-half rounded-sm border px-base py-half text-sm text-left transition-colors',
               isActive
-                ? "border-brand bg-brand/10 text-high"
+                ? 'border-brand bg-brand/10 text-high'
                 : isPast
-                  ? "border-border bg-secondary text-normal hover:bg-primary hover:text-high cursor-pointer"
-                  : "border-border bg-secondary text-low cursor-not-allowed opacity-50",
+                  ? 'border-border bg-secondary text-normal hover:bg-primary hover:text-high cursor-pointer'
+                  : 'border-border bg-secondary text-low cursor-not-allowed opacity-50'
             )}
           >
             <Icon
               className={cn(
-                "size-icon-sm shrink-0",
-                isActive ? "text-brand" : isPast ? "text-success" : "text-low",
+                'size-icon-sm shrink-0',
+                isActive ? 'text-brand' : isPast ? 'text-success' : 'text-low'
               )}
-              weight={isActive ? "fill" : "regular"}
+              weight={isActive ? 'fill' : 'regular'}
             />
             <span className="truncate">{step.label}</span>
             {isPast && (
