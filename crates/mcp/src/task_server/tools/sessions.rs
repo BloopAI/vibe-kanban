@@ -236,7 +236,9 @@ impl McpServer {
             return Ok(error_result);
         }
 
-        let payload = UpdateSessionPayload { name: name.clone() };
+        let payload = UpdateSessionPayload {
+            name: name.map(|value| value.trim().to_string()),
+        };
         let url = self.url(&format!("/api/sessions/{session_id}"));
         let updated: Session = match self.send_json(self.client.put(&url).json(&payload)).await {
             Ok(value) => value,
