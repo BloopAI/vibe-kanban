@@ -825,16 +825,18 @@ export function SessionChatBox<TExecutor extends string = string>({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 max-w-[200px]">
                       {renderAgentIcon?.(
                         s.executor ?? null,
                         'size-icon shrink-0'
                       )}
-                      {s.name
-                        ? s.name
-                        : index === 0
-                          ? t('conversation.sessions.latest')
-                          : formatSessionDate(s.created_at)}
+                      <span className="truncate">
+                        {s.name
+                          ? s.name
+                          : index === 0
+                            ? t('conversation.sessions.latest')
+                            : formatSessionDate(s.created_at)}
+                      </span>
                     </span>
                   </DropdownMenuItem>
                 ))}
