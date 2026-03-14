@@ -41,7 +41,9 @@
     "description": "View pending invitations for {{orgName}}",
     "loading": "Loading invitations...",
     "invited": "Invited {{date}}",
-    "pending": "Pending"
+    "pending": "Pending",
+    "copyInvitationLink": "招待リンクをコピー",
+    "invitationLinkCopied": "招待リンクをコピーしました"
   },
   "settings": {
     "title": "Organization Settings",
@@ -56,6 +58,8 @@
     "dangerZoneDescription": "Irreversible and destructive actions",
     "deleteOrganization": "Delete Organization",
     "deleteOrganizationDescription": "Permanently delete this organization and all its data",
+    "copyOrganizationId": "組織IDをコピー",
+    "organizationIdCopied": "組織IDをコピーしました",
     "confirmDelete": "Are you sure you want to delete {{orgName}}? This action cannot be undone.",
     "deleteSuccess": "Organization deleted successfully",
     "deleteError": "Failed to delete organization"

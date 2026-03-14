@@ -17,7 +17,7 @@ use crate::{
     config::RemoteServerConfig,
     db,
     github_app::GitHubAppService,
-    mail::{LoopsMailer, Mailer, NoopMailer},
+    mail::{LoopsMailer, Mailer, NodemailerMailer, NoopMailer},
     r2::R2Service,
     routes,
 };
@@ -97,12 +97,25 @@ impl Server {
                 tracing::info!("Email service (Loops) configured");
                 Arc::new(LoopsMailer::new(api_key))
             }
-            _ => {
-                tracing::info!(
-                    "LOOPS_EMAIL_API_KEY not set. Email notifications (invitations, review updates) will be disabled."
-                );
-                Arc::new(NoopMailer)
-            }
+            _ => match NodemailerMailer::from_env() {
+                Ok(Some(mailer)) => {
+                    tracing::info!("Email service (Nodemailer) configured");
+                    Arc::new(mailer)
+                }
+                Ok(None) => {
+                    tracing::info!(
+                        "Email notifications (invitations, review updates) disabled. Set LOOPS_EMAIL_API_KEY or NODEMAILER_SERVICE_URL/NODEMAILER_FROM to enable."
+                    );
+                    Arc::new(NoopMailer)
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        error = ?err,
+                        "Failed to configure Nodemailer mailer. Email notifications will be disabled."
+                    );
+                    Arc::new(NoopMailer)
+                }
+            },
         };
 
         let server_public_base_url = config.server_public_base_url.clone().ok_or_else(|| {

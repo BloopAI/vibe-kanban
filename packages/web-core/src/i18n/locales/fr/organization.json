@@ -41,7 +41,9 @@
     "description": "Voir les invitations en attente pour {{orgName}}",
     "loading": "Chargement des invitations...",
     "invited": "Invité le {{date}}",
-    "pending": "En attente"
+    "pending": "En attente",
+    "copyInvitationLink": "Copier le lien d’invitation",
+    "invitationLinkCopied": "Lien d’invitation copié"
   },
   "settings": {
     "title": "Paramètres de l'organisation",
@@ -56,6 +58,8 @@
     "dangerZoneDescription": "Actions irréversibles et destructives",
     "deleteOrganization": "Supprimer l'organisation",
     "deleteOrganizationDescription": "Supprime définitivement cette organisation et toutes ses données",
+    "copyOrganizationId": "Copier l’ID de l’organisation",
+    "organizationIdCopied": "ID de l’organisation copié",
     "confirmDelete": "Êtes-vous sûr de vouloir supprimer {{orgName}} ? Cette action est irréversible.",
     "deleteSuccess": "Organisation supprimée avec succès",
     "deleteError": "Échec de la suppression de l'organisation"

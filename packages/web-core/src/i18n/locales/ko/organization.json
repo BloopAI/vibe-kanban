@@ -41,7 +41,9 @@
     "description": "View pending invitations for {{orgName}}",
     "loading": "Loading invitations...",
     "invited": "Invited {{date}}",
-    "pending": "Pending"
+    "pending": "Pending",
+    "copyInvitationLink": "초대 링크 복사",
+    "invitationLinkCopied": "초대 링크가 복사되었습니다"
   },
   "settings": {
     "title": "Organization Settings",
@@ -56,6 +58,8 @@
     "dangerZoneDescription": "Irreversible and destructive actions",
     "deleteOrganization": "Delete Organization",
     "deleteOrganizationDescription": "Permanently delete this organization and all its data",
+    "copyOrganizationId": "조직 ID 복사",
+    "organizationIdCopied": "조직 ID가 복사되었습니다",
     "confirmDelete": "Are you sure you want to delete {{orgName}}? This action cannot be undone.",
     "deleteSuccess": "Organization deleted successfully",
     "deleteError": "Failed to delete organization"

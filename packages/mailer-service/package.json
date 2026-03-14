@@ -1,0 +1,13 @@
+{
+  "name": "@vibe/mailer-service",
+  "private": true,
+  "version": "0.0.0",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "nodemailer": "^6.10.0"
+  }
+}

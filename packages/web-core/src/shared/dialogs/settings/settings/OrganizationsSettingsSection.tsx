@@ -5,6 +5,8 @@ import {
   PlusIcon,
   UserPlusIcon,
   TrashIcon,
+  CopyIcon,
+  CheckIcon,
   SignInIcon,
   ArrowSquareOutIcon,
   InfoIcon,
@@ -29,6 +31,7 @@ import { PendingInvitationItem } from '@/shared/components/org/PendingInvitation
 import type { MemberRole } from 'shared/types';
 import { MemberRole as MemberRoleEnum } from 'shared/types';
 import { ApiError, organizationsApi } from '@/shared/lib/api';
+import { writeClipboardViaBridge } from '@/shared/lib/clipboard';
 import { cn } from '@/shared/lib/utils';
 import { getRemoteApiUrl } from '@/shared/lib/remoteApi';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
@@ -46,6 +49,8 @@ export function OrganizationsSettingsSection() {
   const { isSignedIn, isLoaded, userId } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [copySuccess, setCopySuccess] = useState<string | null>(null);
+  const [orgIdCopied, setOrgIdCopied] = useState(false);
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
 
   // Fetch all organizations
@@ -186,6 +191,21 @@ export function OrganizationsSettingsSection() {
     if (!selectedOrgId) return;
     setError(null);
     updateMemberRole.mutate({ orgId: selectedOrgId, userId, role: newRole });
+  };
+
+  const showCopySuccess = (message: string) => {
+    setCopySuccess(message);
+    setTimeout(() => setCopySuccess(null), 2000);
+  };
+
+  const handleCopyOrganizationId = async () => {
+    if (!selectedOrg) return;
+
+    setError(null);
+    await writeClipboardViaBridge(selectedOrg.id);
+    setOrgIdCopied(true);
+    showCopySuccess(t('settings.organizationIdCopied'));
+    setTimeout(() => setOrgIdCopied(false), 2000);
   };
 
   const handleDeleteOrganization = async () => {
@@ -331,6 +351,12 @@ export function OrganizationsSettingsSection() {
         </div>
       )}
 
+      {copySuccess && (
+        <div className="bg-success/10 border border-success/50 rounded-sm p-4 text-success font-medium">
+          {copySuccess}
+        </div>
+      )}
+
       {/* Organization selector */}
       <SettingsCard
         title={t('settings.title')}
@@ -404,6 +430,9 @@ export function OrganizationsSettingsSection() {
                     key={invitation.id}
                     invitation={invitation}
                     onRevoke={handleRevokeInvitation}
+                    onCopy={() =>
+                      showCopySuccess(t('invitationList.invitationLinkCopied'))
+                    }
                     isRevoking={revokeInvitation.isPending}
                   />
                 ))}
@@ -531,22 +560,44 @@ export function OrganizationsSettingsSection() {
                 {t('settings.deleteOrganizationDescription')}
               </p>
             </div>
-            <button
-              onClick={handleDeleteOrganization}
-              disabled={deleteOrganization.isPending}
-              className={cn(
-                'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium whitespace-nowrap shrink-0',
-                'bg-error/10 text-error hover:bg-error/20 border border-error/50',
-                'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
-              )}
-            >
-              {deleteOrganization.isPending ? (
-                <SpinnerIcon className="size-icon-xs animate-spin" />
-              ) : (
-                <TrashIcon className="size-icon-xs" weight="bold" />
-              )}
-              {t('common:buttons.delete')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => void handleCopyOrganizationId()}
+                className={cn(
+                  'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium whitespace-nowrap shrink-0',
+                  'bg-secondary/50 text-normal hover:bg-secondary border border-border/70',
+                  'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                )}
+                aria-label={t('settings.copyOrganizationId')}
+              >
+                {orgIdCopied ? (
+                  <CheckIcon
+                    className="size-icon-xs text-success"
+                    weight="bold"
+                  />
+                ) : (
+                  <CopyIcon className="size-icon-xs" weight="bold" />
+                )}
+                {t('settings.copyOrganizationId')}
+              </button>
+
+              <button
+                onClick={handleDeleteOrganization}
+                disabled={deleteOrganization.isPending}
+                className={cn(
+                  'flex items-center gap-2 px-base py-half rounded-sm text-sm font-medium whitespace-nowrap shrink-0',
+                  'bg-error/10 text-error hover:bg-error/20 border border-error/50',
+                  'disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+                )}
+              >
+                {deleteOrganization.isPending ? (
+                  <SpinnerIcon className="size-icon-xs animate-spin" />
+                ) : (
+                  <TrashIcon className="size-icon-xs" weight="bold" />
+                )}
+                {t('common:buttons.delete')}
+              </button>
+            </div>
           </div>
         </SettingsCard>
       )}
