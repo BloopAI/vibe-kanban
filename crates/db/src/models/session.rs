@@ -23,6 +23,7 @@ pub enum SessionError {
 pub struct Session {
     pub id: Uuid,
     pub workspace_id: Uuid,
+    pub name: Option<String>,
     pub executor: Option<String>,
     pub agent_working_dir: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -40,6 +41,7 @@ impl Session {
             Session,
             r#"SELECT id AS "id!: Uuid",
                       workspace_id AS "workspace_id!: Uuid",
+                      name,
                       executor,
                       agent_working_dir,
                       created_at AS "created_at!: DateTime<Utc>",
@@ -63,6 +65,7 @@ impl Session {
             Session,
             r#"SELECT s.id AS "id!: Uuid",
                       s.workspace_id AS "workspace_id!: Uuid",
+                      s.name,
                       s.executor,
                       s.agent_working_dir,
                       s.created_at AS "created_at!: DateTime<Utc>",
@@ -93,6 +96,7 @@ impl Session {
             Session,
             r#"SELECT s.id AS "id!: Uuid",
                       s.workspace_id AS "workspace_id!: Uuid",
+                      s.name,
                       s.executor,
                       s.agent_working_dir,
                       s.created_at AS "created_at!: DateTime<Utc>",
@@ -122,6 +126,7 @@ impl Session {
         sqlx::query_as::<_, Session>(
             r#"SELECT id,
                       workspace_id,
+                      name,
                       executor,
                       agent_working_dir,
                       created_at,
@@ -150,6 +155,7 @@ impl Session {
                VALUES ($1, $2, $3, $4)
                RETURNING id AS "id!: Uuid",
                          workspace_id AS "workspace_id!: Uuid",
+                         name,
                          executor,
                          agent_working_dir,
                          created_at AS "created_at!: DateTime<Utc>",
@@ -179,6 +185,28 @@ impl Session {
         };
 
         Ok(Some(path.to_string_lossy().to_string()))
+    }
+
+    pub async fn update(
+        pool: &SqlitePool,
+        id: Uuid,
+        name: Option<&str>,
+    ) -> Result<(), sqlx::Error> {
+        let name_value = name.filter(|s| !s.is_empty());
+        let name_provided = name.is_some();
+
+        sqlx::query!(
+            r#"UPDATE sessions SET
+                name = CASE WHEN $1 THEN $2 ELSE name END,
+                updated_at = datetime('now', 'subsec')
+            WHERE id = $3"#,
+            name_provided,
+            name_value,
+            id
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
     }
 
     pub async fn update_executor(

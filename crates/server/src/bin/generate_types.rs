@@ -165,6 +165,7 @@ fn generate_types_content() -> String {
         server::routes::workspaces::pr::CreateFromPrError::decl(),
         server::routes::workspaces::git::RepoBranchStatus::decl(),
         db::models::requests::UpdateWorkspace::decl(),
+        db::models::requests::UpdateSession::decl(),
         server::routes::workspaces::workspace_summary::WorkspaceSummaryRequest::decl(),
         server::routes::workspaces::workspace_summary::WorkspaceSummary::decl(),
         server::routes::workspaces::workspace_summary::WorkspaceSummaryResponse::decl(),

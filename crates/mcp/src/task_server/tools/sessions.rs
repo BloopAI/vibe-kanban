@@ -33,6 +33,8 @@ struct SessionSummary {
     id: String,
     #[schemars(description = "Workspace ID")]
     workspace_id: String,
+    #[schemars(description = "Session display name (if set)")]
+    name: Option<String>,
     #[schemars(description = "Session executor (if set)")]
     executor: Option<String>,
     #[schemars(description = "Creation timestamp")]
@@ -96,6 +98,26 @@ struct RunCodingAgentInSessionResponse {
     session_id: String,
     execution_id: String,
     execution: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+struct UpdateSessionRequest {
+    #[schemars(description = "Session ID to update")]
+    session_id: Uuid,
+    #[schemars(description = "Set session display name (empty string clears it)")]
+    name: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct UpdateSessionPayload {
+    name: Option<String>,
+}
+
+#[derive(Debug, Serialize, schemars::JsonSchema)]
+struct UpdateSessionResponse {
+    success: bool,
+    session_id: String,
+    name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -184,6 +206,35 @@ impl McpServer {
             workspace_id: workspace_id.to_string(),
             total_count: sessions.len(),
             sessions,
+        })
+    }
+
+    #[tool(description = "Update a session's name. `session_id` is required.")]
+    async fn update_session(
+        &self,
+        Parameters(UpdateSessionRequest { session_id, name }): Parameters<UpdateSessionRequest>,
+    ) -> Result<CallToolResult, ErrorData> {
+        // Verify session exists and check scope
+        let session_url = self.url(&format!("/api/sessions/{session_id}"));
+        let session: Session = match self.send_json(self.client.get(&session_url)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+        if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
+            return Ok(error_result);
+        }
+
+        let payload = UpdateSessionPayload { name: name.clone() };
+        let url = self.url(&format!("/api/sessions/{session_id}"));
+        let updated: Session = match self.send_json(self.client.put(&url).json(&payload)).await {
+            Ok(value) => value,
+            Err(error_result) => return Ok(error_result),
+        };
+
+        Self::success(&UpdateSessionResponse {
+            success: true,
+            session_id: updated.id.to_string(),
+            name: updated.name,
         })
     }
 
@@ -310,6 +361,7 @@ impl McpServer {
         SessionSummary {
             id: session.id.to_string(),
             workspace_id: session.workspace_id.to_string(),
+            name: session.name,
             executor: session.executor,
             created_at: session.created_at.to_rfc3339(),
             updated_at: session.updated_at.to_rfc3339(),

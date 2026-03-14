@@ -338,6 +338,17 @@ export const sessionsApi = {
       response
     );
   },
+
+  update: async (
+    sessionId: string,
+    data: { name?: string }
+  ): Promise<Session> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Session>(response);
+  },
 };
 
 // Workspace APIs

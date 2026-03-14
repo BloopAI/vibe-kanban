@@ -164,7 +164,12 @@
       "latest": "Latest",
       "previous": "Previous",
       "label": "Sessions",
-      "noPreviousSessions": "No previous sessions"
+      "noPreviousSessions": "No previous sessions",
+      "rename": "Rename",
+      "renameTitle": "Rename Session",
+      "renameDescription": "Enter a new name for this session.",
+      "renamePlaceholder": "Enter session name",
+      "renaming": "Renaming..."
     },
     "reviewComments": {
       "count_one": "{{count}} review comment will be included",
