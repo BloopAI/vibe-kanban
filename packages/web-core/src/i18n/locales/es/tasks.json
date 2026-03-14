@@ -28,7 +28,8 @@
     "reviewComments": "Comentarios de revisión ({{count}})",
     "includeGitContext": "Incluir contexto de git",
     "includeGitContextDescription": "Indica al agente cómo ver todos los cambios realizados en esta rama",
-    "newSession": "Nueva sesión"
+    "newSession": "Nueva sesión",
+    "sessionName": "Revisión"
   },
   "actionsMenu": {
     "startReview": "Iniciar revisión",
@@ -48,7 +49,8 @@
       "resolving": "Iniciando...",
       "filesWithConflicts_one": "{{count}} archivo tiene conflictos",
       "filesWithConflicts_other": "{{count}} archivos tienen conflictos",
-      "andMore": "...y {{count}} más"
+      "andMore": "...y {{count}} más",
+      "sessionName": "Resolver conflictos"
     }
   },
   "rebaseInProgress": {
@@ -437,7 +439,12 @@
       "latest": "Última",
       "previous": "Anterior",
       "label": "Sesiones",
-      "noPreviousSessions": "No hay sesiones anteriores"
+      "noPreviousSessions": "No hay sesiones anteriores",
+      "rename": "Renombrar",
+      "renameTitle": "Renombrar sesión",
+      "renameDescription": "Ingrese un nuevo nombre para esta sesión.",
+      "renamePlaceholder": "Ingrese el nombre de la sesión",
+      "renaming": "Renombrando..."
     },
     "reviewComments": {
       "count_one": "{{count}} comentario de revisión será incluido",

@@ -28,7 +28,8 @@
     "reviewComments": "レビューコメント（{{count}}）",
     "includeGitContext": "Gitコンテキストを含める",
     "includeGitContextDescription": "このブランチで行われたすべての変更を確認する方法をエージェントに伝えます",
-    "newSession": "新しいセッション"
+    "newSession": "新しいセッション",
+    "sessionName": "レビュー"
   },
   "actionsMenu": {
     "startReview": "レビューを開始",
@@ -48,7 +49,8 @@
       "resolving": "開始中...",
       "filesWithConflicts_one": "{{count}}件のファイルに競合があります",
       "filesWithConflicts_other": "{{count}}件のファイルに競合があります",
-      "andMore": "...他{{count}}件"
+      "andMore": "...他{{count}}件",
+      "sessionName": "コンフリクトを解決"
     }
   },
   "rebaseInProgress": {
@@ -437,7 +439,12 @@
       "latest": "最新",
       "previous": "前へ",
       "label": "セッション",
-      "noPreviousSessions": "以前のセッションはありません"
+      "noPreviousSessions": "以前のセッションはありません",
+      "rename": "名前を変更",
+      "renameTitle": "セッション名の変更",
+      "renameDescription": "このセッションの新しい名前を入力してください。",
+      "renamePlaceholder": "セッション名を入力",
+      "renaming": "名前を変更中..."
     },
     "reviewComments": {
       "count_one": "{{count}}件のレビューコメントが含まれます",

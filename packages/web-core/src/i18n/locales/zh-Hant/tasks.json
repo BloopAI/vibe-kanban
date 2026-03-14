@@ -238,7 +238,8 @@
     "reviewComments": "審查評論（{{count}}）",
     "includeGitContext": "包含 Git 上下文",
     "includeGitContextDescription": "告訴代理如何查看此分支上的所有變更",
-    "newSession": "新工作階段"
+    "newSession": "新工作階段",
+    "sessionName": "審查"
   },
   "actionsMenu": {
     "startReview": "開始審查",
@@ -253,7 +254,8 @@
       "resolving": "開始中...",
       "filesWithConflicts_one": "{{count}} 個檔案有衝突",
       "filesWithConflicts_other": "{{count}} 個檔案有衝突",
-      "andMore": "...還有 {{count}} 個"
+      "andMore": "...還有 {{count}} 個",
+      "sessionName": "解決衝突"
     }
   },
   "rebaseInProgress": {
@@ -437,7 +439,12 @@
       "latest": "最新",
       "previous": "上一個",
       "label": "工作階段",
-      "noPreviousSessions": "沒有先前的工作階段"
+      "noPreviousSessions": "沒有先前的工作階段",
+      "rename": "重新命名",
+      "renameTitle": "重新命名工作階段",
+      "renameDescription": "輸入此工作階段的新名稱。",
+      "renamePlaceholder": "輸入工作階段名稱",
+      "renaming": "正在重新命名..."
     },
     "reviewComments": {
       "count_one": "{{count}} 則審查評論將被包含",
