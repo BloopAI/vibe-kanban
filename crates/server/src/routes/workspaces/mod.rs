@@ -2,6 +2,7 @@ pub mod codex_setup;
 pub mod core;
 pub mod create;
 pub mod cursor_setup;
+pub mod devin_cli_setup;
 pub mod execution;
 pub mod gh_cli_setup;
 pub mod git;

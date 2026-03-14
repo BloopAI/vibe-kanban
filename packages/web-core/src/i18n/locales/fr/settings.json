@@ -372,7 +372,7 @@
         "addServerFailed": "Échec de l'ajout du serveur préconfiguré",
         "mcpError": "Erreur de configuration MCP : {{error}}",
         "notSupported": "MCP non pris en charge",
-        "supportMessage": "Pour utiliser les serveurs MCP, veuillez sélectionner un exécuteur différent prenant en charge MCP (Claude, Amp, Gemini, Codex ou Opencode) ci-dessus."
+        "supportMessage": "Pour utiliser les serveurs MCP, veuillez sélectionner un exécuteur différent prenant en charge MCP (Claude, Amp, Gemini, Codex, Devin ou Opencode) ci-dessus."
       },
       "save": {
         "button": "Enregistrer la configuration MCP",
