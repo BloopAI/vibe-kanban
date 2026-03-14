@@ -1,15 +1,15 @@
-import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
+import { NodeKey, SerializedLexicalNode, Spread } from "lexical";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from './RadixTooltip';
+} from "./RadixTooltip";
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
-} from './create-decorator-node';
+} from "./create-decorator-node";
 
 /**
  * Data model for a detected UI component.
@@ -39,8 +39,8 @@ function toRelativePath(absolutePath: string): string {
   const srcMatch = absolutePath.match(/\/(src\/.+)$/);
   if (srcMatch) return srcMatch[1];
 
-  if (absolutePath.startsWith('/') && absolutePath.split('/').length > 4) {
-    return absolutePath.split('/').slice(-3).join('/');
+  if (absolutePath.startsWith("/") && absolutePath.split("/").length > 4) {
+    return absolutePath.split("/").slice(-3).join("/");
   }
 
   return absolutePath;
@@ -54,7 +54,7 @@ function ComponentInfoComponent({
   nodeKey: NodeKey;
   onDoubleClickEdit: (event: React.MouseEvent) => void;
 }): JSX.Element {
-  const displayName = data.component || data.tagName || 'unknown';
+  const displayName = data.component || data.tagName || "unknown";
 
   let file = data.file;
   let line = data.line;
@@ -64,7 +64,7 @@ function ComponentInfoComponent({
     const firstFile = data.stack[0]?.file;
     if (firstFile) {
       const match = firstFile.match(
-        /^(.+\.(?:tsx|ts|jsx|js|vue|svelte)):(\d+):(\d+)$/
+        /^(.+\.(?:tsx|ts|jsx|js|vue|svelte)):(\d+):(\d+)$/,
       );
       if (match) {
         file = match[1];
@@ -83,7 +83,7 @@ function ComponentInfoComponent({
       : displayPath
     : null;
 
-  const fileName = file?.split('/').pop();
+  const fileName = file?.split("/").pop();
   const badgeLabel = fileName
     ? line != null
       ? column != null
@@ -94,7 +94,7 @@ function ComponentInfoComponent({
 
   const stackBreadcrumb =
     data.stack && data.stack.length > 1
-      ? data.stack.map((s) => `<${s.name}/>`).join(' \u2190 ')
+      ? data.stack.map((s) => `<${s.name}/>`).join(" \u2190 ")
       : null;
 
   return (
@@ -111,7 +111,7 @@ function ComponentInfoComponent({
         <TooltipContent
           side="top"
           className="max-w-[400px] px-plusfifty py-base"
-          style={{ backgroundColor: 'hsl(var(--bg-panel))' }}
+          style={{ backgroundColor: "hsl(var(--bg-panel))" }}
         >
           <div className="flex flex-col gap-half">
             <div className="flex items-center gap-base">
@@ -156,10 +156,10 @@ function ComponentInfoComponent({
 }
 
 const config: DecoratorNodeConfig<ComponentInfoData> = {
-  type: 'component-info',
+  type: "component-info",
   serialization: {
-    format: 'fenced',
-    language: 'vk-component',
+    format: "fenced",
+    language: "vk-component",
     serialize: (data) => JSON.stringify(data),
     deserialize: (content) => JSON.parse(content),
     validate: (data) =>
@@ -167,15 +167,15 @@ const config: DecoratorNodeConfig<ComponentInfoData> = {
   },
   component: ComponentInfoComponent,
   domStyle: {
-    display: 'inline-block',
-    paddingLeft: '2px',
-    paddingRight: '2px',
-    verticalAlign: 'bottom',
+    display: "inline-block",
+    paddingLeft: "2px",
+    paddingRight: "2px",
+    verticalAlign: "bottom",
   },
   keyboardSelectable: false,
   exportDOM: (data) => {
-    const span = document.createElement('span');
-    span.setAttribute('data-component-info', data.component);
+    const span = document.createElement("span");
+    span.setAttribute("data-component-info", data.component);
     span.textContent = `<${data.component}/>`;
     return span;
   },

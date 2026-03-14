@@ -1,19 +1,19 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import {
   ArrowSquareOutIcon,
   ArrowRightIcon,
   BuildingsIcon,
   CaretDownIcon,
   CloudArrowUpIcon,
-} from '@phosphor-icons/react';
-import { PrimaryButton } from './PrimaryButton';
+} from "@phosphor-icons/react";
+import { PrimaryButton } from "./PrimaryButton";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-} from './Dropdown';
-import { Checkbox } from './Checkbox';
+} from "./Dropdown";
+import { Checkbox } from "./Checkbox";
 
 export interface MigrateChooseProjectsProject {
   id: string;
@@ -55,7 +55,7 @@ export function MigrateChooseProjects({
   onGoToCreateWorkspace,
   onViewMigratedProject,
 }: MigrateChooseProjectsProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const selectedOrg = organizations.find((org) => org.id === selectedOrgId);
 
   const migrateableProjects = projects.filter((p) => !p.remote_project_id);
@@ -63,8 +63,8 @@ export function MigrateChooseProjects({
 
   const buttonText =
     selectedProjectIds.size === 0
-      ? 'Select projects to migrate'
-      : `Migrate ${selectedProjectIds.size} project${selectedProjectIds.size === 1 ? '' : 's'}`;
+      ? "Select projects to migrate"
+      : `Migrate ${selectedProjectIds.size} project${selectedProjectIds.size === 1 ? "" : "s"}`;
 
   if (isLoading) {
     return (
@@ -105,7 +105,7 @@ export function MigrateChooseProjects({
                   weight="duotone"
                 />
                 <span className="flex-1 text-sm text-high truncate">
-                  {selectedOrg?.name ?? 'Select organization'}
+                  {selectedOrg?.name ?? "Select organization"}
                 </span>
                 <CaretDownIcon
                   className="size-icon-xs text-normal"
@@ -164,7 +164,7 @@ export function MigrateChooseProjects({
                   className="text-sm text-normal cursor-pointer"
                 >
                   Select all ({migrateableProjects.length} project
-                  {migrateableProjects.length === 1 ? '' : 's'})
+                  {migrateableProjects.length === 1 ? "" : "s"})
                 </label>
               </div>
             )}
@@ -244,10 +244,10 @@ export function MigrateChooseProjects({
         {migrateableProjects.length === 0 && migratedProjects.length > 0 ? (
           <div className="flex items-center gap-base w-full">
             <p className="text-sm text-normal flex-1">
-              {t('migration.allProjectsMigrated')}
+              {t("migration.allProjectsMigrated")}
             </p>
             <PrimaryButton onClick={onSkip} actionIcon={ArrowRightIcon}>
-              {t('migration.continueToProjects')}
+              {t("migration.continueToProjects")}
             </PrimaryButton>
           </div>
         ) : (

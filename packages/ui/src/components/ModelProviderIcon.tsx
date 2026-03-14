@@ -2,23 +2,23 @@ import {
   GoogleLogoIcon,
   HardDriveIcon,
   SparkleIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
 
 interface ModelProviderIconProps {
   providerId: string;
-  theme?: 'light' | 'dark';
+  theme?: "light" | "dark";
 }
 
 export function ModelProviderIcon({
   providerId,
-  theme = 'light',
+  theme = "light",
 }: ModelProviderIconProps) {
-  const suffix = theme === 'dark' ? '-dark' : '-light';
+  const suffix = theme === "dark" ? "-dark" : "-light";
   const id = providerId.toLowerCase();
-  const className = cn('size-icon-sm', 'flex-shrink-0');
+  const className = cn("size-icon-sm", "flex-shrink-0");
 
-  if (id.includes('anthropic') || id.includes('claude')) {
+  if (id.includes("anthropic") || id.includes("claude")) {
     return (
       <img
         src={`/agents/claude${suffix}.svg`}
@@ -28,7 +28,7 @@ export function ModelProviderIcon({
     );
   }
 
-  if (id.includes('openai') || id.includes('gpt')) {
+  if (id.includes("openai") || id.includes("gpt")) {
     return (
       <img
         src={`/agents/codex${suffix}.svg`}
@@ -38,15 +38,15 @@ export function ModelProviderIcon({
     );
   }
 
-  if (id.includes('google') || id.includes('gemini')) {
+  if (id.includes("google") || id.includes("gemini")) {
     return <GoogleLogoIcon className={className} />;
   }
 
   if (
-    id.includes('local') ||
-    id.includes('ollama') ||
-    id.includes('llama') ||
-    id.includes('server')
+    id.includes("local") ||
+    id.includes("ollama") ||
+    id.includes("llama") ||
+    id.includes("server")
   ) {
     return <HardDriveIcon className={className} />;
   }

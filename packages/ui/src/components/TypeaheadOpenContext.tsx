@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode } from "react";
 
 export type TypeaheadOpenContextType = {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export function useTypeaheadOpen() {
   const context = useContext(TypeaheadOpenContext);
   if (context === undefined) {
     throw new Error(
-      'useTypeaheadOpen must be used within a TypeaheadOpenProvider'
+      "useTypeaheadOpen must be used within a TypeaheadOpenProvider",
     );
   }
   return context;

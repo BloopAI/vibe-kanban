@@ -1,5 +1,5 @@
-import { Loader2 } from 'lucide-react';
-import React from 'react';
+import { Loader2 } from "lucide-react";
+import React from "react";
 
 interface LoaderProps {
   message?: string | React.ReactElement;
@@ -10,7 +10,7 @@ interface LoaderProps {
 export const Loader: React.FC<LoaderProps> = ({
   message,
   size = 32,
-  className = '',
+  className = "",
 }) => (
   <div
     className={`flex flex-col items-center justify-center gap-2 ${className}`}

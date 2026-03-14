@@ -1,19 +1,19 @@
-import { type ElementType, type ReactNode, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { type ElementType, type ReactNode, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CaretDownIcon,
   FileIcon as DefaultFileIcon,
-} from '@phosphor-icons/react';
-import { FileDiff, PatchDiff } from '@pierre/diffs/react';
+} from "@phosphor-icons/react";
+import { FileDiff, PatchDiff } from "@pierre/diffs/react";
 import {
   parseDiffFromFile,
   type FileContents,
   type FileDiffMetadata,
   type ChangeContent,
-} from '@pierre/diffs';
-import { cn } from '../lib/cn';
-import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
-import '../styles/diff-style-overrides.css';
+} from "@pierre/diffs";
+import { cn } from "../lib/cn";
+import { ToolStatusDot, type ToolStatusLike } from "./ToolStatusDot";
+import "../styles/diff-style-overrides.css";
 
 /**
  * CSS overrides for @pierre/diffs to match our app's theme.
@@ -109,21 +109,21 @@ const PIERRE_DIFFS_THEME_CSS = `
 // Discriminated union for input format flexibility
 export type DiffInput =
   | {
-      type: 'content';
+      type: "content";
       oldContent: string;
       newContent: string;
       oldPath?: string;
       newPath: string;
     }
   | {
-      type: 'unified';
+      type: "unified";
       path: string;
       unifiedDiff: string;
       hasLineNumbers?: boolean;
     };
 
-export type DiffViewTheme = 'light' | 'dark';
-export type DiffViewMode = 'unified' | 'split';
+export type DiffViewTheme = "light" | "dark";
+export type DiffViewMode = "unified" | "split";
 
 interface DiffViewCardProps {
   input: DiffInput;
@@ -154,10 +154,10 @@ function parseDiffStats(unifiedDiff: string): {
 } {
   let additions = 0;
   let deletions = 0;
-  const lines = unifiedDiff.split('\n');
+  const lines = unifiedDiff.split("\n");
   for (const line of lines) {
-    if (line.startsWith('+') && !line.startsWith('+++')) additions++;
-    else if (line.startsWith('-') && !line.startsWith('---')) deletions++;
+    if (line.startsWith("+") && !line.startsWith("+++")) additions++;
+    else if (line.startsWith("-") && !line.startsWith("---")) deletions++;
   }
   return { additions, deletions };
 }
@@ -167,13 +167,13 @@ function parseDiffStats(unifiedDiff: string): {
  */
 export function useDiffData(
   input: DiffInput,
-  options?: { ignoreWhitespace?: boolean }
+  options?: { ignoreWhitespace?: boolean },
 ): DiffData {
   return useMemo(() => {
-    if (input.type === 'content') {
-      const filePath = input.newPath || input.oldPath || 'unknown';
-      const oldContent = input.oldContent || '';
-      const newContent = input.newContent || '';
+    if (input.type === "content") {
+      const filePath = input.newPath || input.oldPath || "unknown";
+      const oldContent = input.oldContent || "";
+      const newContent = input.newContent || "";
 
       if (oldContent === newContent) {
         return {
@@ -199,7 +199,7 @@ export function useDiffData(
         const metadata = parseDiffFromFile(
           oldFile,
           newFile,
-          options?.ignoreWhitespace ? { ignoreWhitespace: true } : undefined
+          options?.ignoreWhitespace ? { ignoreWhitespace: true } : undefined,
         );
 
         // Calculate additions/deletions from hunks
@@ -207,7 +207,7 @@ export function useDiffData(
         let deletions = 0;
         for (const hunk of metadata.hunks) {
           for (const content of hunk.hunkContent) {
-            if (content.type === 'change') {
+            if (content.type === "change") {
               const change = content as ChangeContent;
               additions += change.additions.length;
               deletions += change.deletions.length;
@@ -225,7 +225,7 @@ export function useDiffData(
           hideLineNumbers: false,
         };
       } catch (e) {
-        console.error('Failed to generate diff:', e);
+        console.error("Failed to generate diff:", e);
         return {
           fileDiffMetadata: null,
           unifiedDiff: null,
@@ -263,7 +263,7 @@ export function DiffViewCard({
   className,
   fileIcon,
   theme,
-  diffMode = 'unified',
+  diffMode = "unified",
   wrapText = false,
   ignoreWhitespace = false,
 }: DiffViewCardProps) {
@@ -281,12 +281,12 @@ export function DiffViewCard({
   const hasStats = additions > 0 || deletions > 0;
 
   return (
-    <div className={cn('rounded-sm border overflow-hidden', className)}>
+    <div className={cn("rounded-sm border overflow-hidden", className)}>
       {/* Header */}
       <div
         className={cn(
-          'flex items-center bg-panel p-base w-full',
-          onToggle && 'cursor-pointer'
+          "flex items-center bg-panel p-base w-full",
+          onToggle && "cursor-pointer",
         )}
         onClick={onToggle}
       >
@@ -308,7 +308,7 @@ export function DiffViewCard({
               {additions > 0 && (
                 <span className="text-success">+{additions}</span>
               )}
-              {additions > 0 && deletions > 0 && ' '}
+              {additions > 0 && deletions > 0 && " "}
               {deletions > 0 && (
                 <span className="text-error">-{deletions}</span>
               )}
@@ -318,8 +318,8 @@ export function DiffViewCard({
         {onToggle && (
           <CaretDownIcon
             className={cn(
-              'size-icon-xs shrink-0 text-low transition-transform',
-              !expanded && '-rotate-90'
+              "size-icon-xs shrink-0 text-low transition-transform",
+              !expanded && "-rotate-90",
             )}
           />
         )}
@@ -350,7 +350,7 @@ export function DiffViewBody({
   isValid,
   hideLineNumbers,
   theme,
-  diffMode = 'unified',
+  diffMode = "unified",
   wrapText,
   invalidMessage,
 }: {
@@ -363,28 +363,28 @@ export function DiffViewBody({
   wrapText?: boolean;
   invalidMessage?: ReactNode;
 }) {
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation("tasks");
 
   const options = useMemo(
     () => ({
       diffStyle:
-        diffMode === 'split' ? ('split' as const) : ('unified' as const),
-      diffIndicators: 'classic' as const,
+        diffMode === "split" ? ("split" as const) : ("unified" as const),
+      diffIndicators: "classic" as const,
       themeType: theme,
-      overflow: wrapText ? ('wrap' as const) : ('scroll' as const),
+      overflow: wrapText ? ("wrap" as const) : ("scroll" as const),
       hunkSeparators: () => document.createDocumentFragment(),
       disableFileHeader: true,
       disableLineNumbers: hideLineNumbers,
-      theme: { dark: 'github-dark', light: 'github-light' } as const,
+      theme: { dark: "github-dark", light: "github-light" } as const,
       unsafeCSS: PIERRE_DIFFS_THEME_CSS,
     }),
-    [diffMode, theme, wrapText, hideLineNumbers]
+    [diffMode, theme, wrapText, hideLineNumbers],
   );
 
   if (!isValid) {
     return (
       <div className="px-base pb-base text-xs font-ibm-plex-mono text-low">
-        {invalidMessage ?? t('conversation.unableToRenderDiff')}
+        {invalidMessage ?? t("conversation.unableToRenderDiff")}
       </div>
     );
   }

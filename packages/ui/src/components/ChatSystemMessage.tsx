@@ -1,5 +1,5 @@
-import { InfoIcon } from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
+import { InfoIcon } from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
 
 interface ChatSystemMessageProps {
   content: string;
@@ -17,8 +17,8 @@ export function ChatSystemMessage({
   return (
     <div
       className={cn(
-        'flex items-start gap-base text-sm text-low cursor-pointer',
-        className
+        "flex items-start gap-base text-sm text-low cursor-pointer",
+        className,
       )}
       onClick={onToggle}
       role="button"
@@ -26,8 +26,8 @@ export function ChatSystemMessage({
       <InfoIcon className="shrink-0 size-icon-base pt-0.5" />
       <span
         className={cn(
-          !expanded && 'truncate',
-          expanded && 'whitespace-pre-wrap break-all'
+          !expanded && "truncate",
+          expanded && "whitespace-pre-wrap break-all",
         )}
       >
         {content}

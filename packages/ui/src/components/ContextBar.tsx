@@ -3,10 +3,10 @@ import {
   type CSSProperties,
   type MouseEvent,
   type ReactNode,
-} from 'react';
-import type { Icon } from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { Tooltip } from './Tooltip';
+} from "react";
+import type { Icon } from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { Tooltip } from "./Tooltip";
 
 interface ContextBarButtonProps {
   icon: Icon;
@@ -19,29 +19,29 @@ interface ContextBarButtonProps {
 const ContextBarButton = forwardRef<HTMLButtonElement, ContextBarButtonProps>(
   function ContextBarButton(
     { icon: IconComponent, label, iconClassName, onClick, disabled },
-    ref
+    ref,
   ) {
     return (
       <button
         ref={ref}
         type="button"
         className={cn(
-          'flex items-center justify-center transition-colors',
-          'drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]',
-          'text-low group-hover:text-normal',
-          disabled && 'opacity-40'
+          "flex items-center justify-center transition-colors",
+          "drop-shadow-[2px_2px_4px_rgba(121,121,121,0.25)]",
+          "text-low group-hover:text-normal",
+          disabled && "opacity-40",
         )}
         aria-label={label}
         onClick={onClick}
         disabled={disabled}
       >
         <IconComponent
-          className={cn('size-icon-base', iconClassName)}
+          className={cn("size-icon-base", iconClassName)}
           weight="bold"
         />
       </button>
     );
-  }
+  },
 );
 
 function DragHandle({
@@ -54,8 +54,8 @@ function DragHandle({
   return (
     <div
       className={cn(
-        'flex justify-center py-half border-b',
-        isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        "flex justify-center py-half border-b",
+        isDragging ? "cursor-grabbing" : "cursor-grab",
       )}
       onMouseDown={onMouseDown}
     >
@@ -69,7 +69,7 @@ function DragHandle({
 }
 
 export interface ContextBarActionItem {
-  type: 'action';
+  type: "action";
   key: string;
   label: string;
   tooltip?: string;
@@ -82,7 +82,7 @@ export interface ContextBarActionItem {
 }
 
 export interface ContextBarDividerItem {
-  type: 'divider';
+  type: "divider";
   key: string;
 }
 
@@ -97,7 +97,7 @@ export interface ContextBarProps {
 }
 
 function renderContextBarItem(item: ContextBarRenderItem) {
-  if (item.type === 'divider') {
+  if (item.type === "divider") {
     return <div key={item.key} className="h-px bg-border" />;
   }
 
@@ -142,8 +142,8 @@ export function ContextBar({
   return (
     <div
       className={cn(
-        'absolute z-50',
-        !isDragging && 'transition-all duration-300 ease-out'
+        "absolute z-50",
+        !isDragging && "transition-all duration-300 ease-out",
       )}
       style={style}
     >

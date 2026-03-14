@@ -1,11 +1,11 @@
-import { useCallback } from 'react';
-import { NodeKey, SerializedLexicalNode, Spread } from 'lexical';
-import { PrCommentCard } from './pr-comment-card';
+import { useCallback } from "react";
+import { NodeKey, SerializedLexicalNode, Spread } from "lexical";
+import { PrCommentCard } from "./pr-comment-card";
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,
   type GeneratedDecoratorNode,
-} from './create-decorator-node';
+} from "./create-decorator-node";
 
 /**
  * Normalized comment data stored in the node.
@@ -13,7 +13,7 @@ import {
  */
 export interface NormalizedComment {
   id: string;
-  comment_type: 'general' | 'review';
+  comment_type: "general" | "review";
   author: string;
   body: string;
   created_at: string;
@@ -43,10 +43,10 @@ function PrCommentComponent({
       event.stopPropagation();
       // Open URL in new tab if available
       if (data.url) {
-        window.open(data.url, '_blank', 'noopener,noreferrer');
+        window.open(data.url, "_blank", "noopener,noreferrer");
       }
     },
-    [data.url]
+    [data.url],
   );
 
   return (
@@ -67,10 +67,10 @@ function PrCommentComponent({
 }
 
 const config: DecoratorNodeConfig<NormalizedComment> = {
-  type: 'github-comment',
+  type: "github-comment",
   serialization: {
-    format: 'fenced',
-    language: 'gh-comment',
+    format: "fenced",
+    language: "gh-comment",
     serialize: (data) => JSON.stringify(data, null, 2),
     deserialize: (content) => JSON.parse(content),
     validate: (data) =>
@@ -78,8 +78,8 @@ const config: DecoratorNodeConfig<NormalizedComment> = {
   },
   component: PrCommentComponent,
   exportDOM: (data) => {
-    const span = document.createElement('span');
-    span.setAttribute('data-pr-comment-id', data.id);
+    const span = document.createElement("span");
+    span.setAttribute("data-pr-comment-id", data.id);
     span.textContent = `PR comment by @${data.author}: ${data.body}`;
     return span;
   },

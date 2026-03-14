@@ -1,14 +1,14 @@
-import type { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
+import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import {
   GithubLogoIcon,
   CaretUpIcon,
   CaretDownIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { Tooltip } from './Tooltip';
-import { FileTreeSearchBar } from './FileTreeSearchBar';
-import { FileTreeNode, type FileTreeNodeItem } from './FileTreeNode';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { Tooltip } from "./Tooltip";
+import { FileTreeSearchBar } from "./FileTreeSearchBar";
+import { FileTreeNode, type FileTreeNodeItem } from "./FileTreeNode";
 
 export interface FileTreeViewNode extends FileTreeNodeItem {
   children?: FileTreeViewNode[];
@@ -36,7 +36,7 @@ interface FileTreeProps {
   /** Whether GitHub comments are currently loading */
   isGitHubCommentsLoading?: boolean;
   /** Callback to navigate between files with GitHub comments */
-  onNavigateComments?: (direction: 'prev' | 'next') => void;
+  onNavigateComments?: (direction: "prev" | "next") => void;
   /** Whether there are files with GitHub comments to navigate */
   hasFilesWithComments?: boolean;
 }
@@ -61,13 +61,13 @@ export function FileTree({
   hasFilesWithComments,
   renderFileIcon,
 }: FileTreeProps) {
-  const { t } = useTranslation(['tasks', 'common']);
+  const { t } = useTranslation(["tasks", "common"]);
   const renderNodes = (nodeList: FileTreeViewNode[], depth = 0) => {
     return nodeList.map((node) => (
       <div key={node.id}>
         <FileTreeNode
           ref={
-            node.type === 'file' && onNodeRef
+            node.type === "file" && onNodeRef
               ? (el) => onNodeRef(node.path, el)
               : undefined
           }
@@ -76,10 +76,10 @@ export function FileTree({
           isExpanded={!collapsedPaths.has(node.path)}
           isSelected={selectedPath === node.path}
           onToggle={
-            node.type === 'folder' ? () => onToggleExpand(node.path) : undefined
+            node.type === "folder" ? () => onToggleExpand(node.path) : undefined
           }
           onSelect={
-            node.type === 'file' && onSelectFile
+            node.type === "file" && onSelectFile
               ? () => onSelectFile(node.path)
               : undefined
           }
@@ -87,7 +87,7 @@ export function FileTree({
           commentCount={getGitHubCommentCountForFile?.(node.path)}
           showCommentBadge={showGitHubComments}
         />
-        {node.type === 'folder' &&
+        {node.type === "folder" &&
           node.children &&
           !collapsedPaths.has(node.path) &&
           renderNodes(node.children, depth + 1)}
@@ -96,7 +96,7 @@ export function FileTree({
   };
 
   return (
-    <div className={cn('flex-1 w-full bg-secondary flex flex-col', className)}>
+    <div className={cn("flex-1 w-full bg-secondary flex flex-col", className)}>
       <div className="px-base pt-base overflow-hidden">
         <div className="flex items-center gap-half">
           <div className="flex-1 min-w-0">
@@ -109,22 +109,22 @@ export function FileTree({
           </div>
           {showGitHubComments && onNavigateComments && hasFilesWithComments && (
             <>
-              <Tooltip content={t('common:fileTree.prevGitHubComment')}>
+              <Tooltip content={t("common:fileTree.prevGitHubComment")}>
                 <button
                   type="button"
-                  onClick={() => onNavigateComments('prev')}
+                  onClick={() => onNavigateComments("prev")}
                   className="p-1 rounded hover:bg-panel transition-colors shrink-0 text-low hover:text-normal"
-                  aria-label={t('common:fileTree.prevGitHubComment')}
+                  aria-label={t("common:fileTree.prevGitHubComment")}
                 >
                   <CaretUpIcon className="size-icon-sm" />
                 </button>
               </Tooltip>
-              <Tooltip content={t('common:fileTree.nextGitHubComment')}>
+              <Tooltip content={t("common:fileTree.nextGitHubComment")}>
                 <button
                   type="button"
-                  onClick={() => onNavigateComments('next')}
+                  onClick={() => onNavigateComments("next")}
                   className="p-1 rounded hover:bg-panel transition-colors shrink-0 text-low hover:text-normal"
-                  aria-label={t('common:fileTree.nextGitHubComment')}
+                  aria-label={t("common:fileTree.nextGitHubComment")}
                 >
                   <CaretDownIcon className="size-icon-sm" />
                 </button>
@@ -135,22 +135,22 @@ export function FileTree({
             <Tooltip
               content={
                 showGitHubComments
-                  ? t('common:fileTree.hideGitHubComments')
-                  : t('common:fileTree.showGitHubComments')
+                  ? t("common:fileTree.hideGitHubComments")
+                  : t("common:fileTree.showGitHubComments")
               }
             >
               <button
                 type="button"
                 onClick={() => onToggleGitHubComments(!showGitHubComments)}
                 className={cn(
-                  'p-1 rounded hover:bg-panel transition-colors shrink-0',
-                  showGitHubComments ? 'text-normal' : 'text-low',
-                  isGitHubCommentsLoading && 'opacity-50 animate-pulse'
+                  "p-1 rounded hover:bg-panel transition-colors shrink-0",
+                  showGitHubComments ? "text-normal" : "text-low",
+                  isGitHubCommentsLoading && "opacity-50 animate-pulse",
                 )}
                 aria-label={
                   showGitHubComments
-                    ? t('common:fileTree.hideGitHubComments')
-                    : t('common:fileTree.showGitHubComments')
+                    ? t("common:fileTree.hideGitHubComments")
+                    : t("common:fileTree.showGitHubComments")
                 }
               >
                 <GithubLogoIcon className="size-icon-sm" weight="fill" />
@@ -164,7 +164,7 @@ export function FileTree({
           renderNodes(nodes)
         ) : (
           <div className="p-base text-low text-sm">
-            {searchQuery ? t('common:fileTree.noResults') : 'No changed files'}
+            {searchQuery ? t("common:fileTree.noResults") : "No changed files"}
           </div>
         )}
       </div>

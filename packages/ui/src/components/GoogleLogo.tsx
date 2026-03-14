@@ -1,4 +1,4 @@
-import { cn } from '../lib/cn';
+import { cn } from "../lib/cn";
 
 interface GoogleLogoProps {
   className?: string;
@@ -11,7 +11,7 @@ interface GoogleLogoProps {
 export function GoogleLogo({ className }: GoogleLogoProps) {
   return (
     <svg
-      className={cn('size-5', className)}
+      className={cn("size-5", className)}
       viewBox="0 0 48 48"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"

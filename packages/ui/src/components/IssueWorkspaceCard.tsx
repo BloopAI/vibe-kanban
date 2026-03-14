@@ -1,5 +1,5 @@
-import { cn } from '../lib/cn';
-import { useTranslation } from 'react-i18next';
+import { cn } from "../lib/cn";
+import { useTranslation } from "react-i18next";
 import {
   GitPullRequestIcon,
   DotsThreeIcon,
@@ -9,20 +9,20 @@ import {
   HandIcon,
   TriangleIcon,
   CircleIcon,
-} from '@phosphor-icons/react';
-import { UserAvatar, type UserAvatarUser } from './UserAvatar';
-import { RunningDots } from './RunningDots';
+} from "@phosphor-icons/react";
+import { UserAvatar, type UserAvatarUser } from "./UserAvatar";
+import { RunningDots } from "./RunningDots";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './DropdownMenu';
+} from "./DropdownMenu";
 
 export interface WorkspacePr {
   number: number;
   url: string;
-  status: 'open' | 'merged' | 'closed';
+  status: "open" | "merged" | "closed";
 }
 
 export interface WorkspaceWithStats {
@@ -42,7 +42,7 @@ export interface WorkspaceWithStats {
   hasRunningDevServer?: boolean;
   hasUnseenActivity?: boolean;
   latestProcessCompletedAt?: string;
-  latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
+  latestProcessStatus?: "running" | "completed" | "failed" | "killed";
 }
 
 export interface IssueWorkspaceCardProps {
@@ -76,9 +76,9 @@ function IssueWorkspaceCardContainer({
   return (
     <div
       className={cn(
-        'flex flex-col gap-half p-base bg-panel rounded-sm transition-all duration-150',
-        onClick && 'cursor-pointer hover:bg-secondary/70',
-        className
+        "flex flex-col gap-half p-base bg-panel rounded-sm transition-all duration-150",
+        onClick && "cursor-pointer hover:bg-secondary/70",
+        className,
       )}
       onClick={
         onClick
@@ -88,12 +88,12 @@ function IssueWorkspaceCardContainer({
             }
           : undefined
       }
-      role={onClick ? 'button' : undefined}
+      role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={
         onClick
           ? (e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
+              if (e.key === "Enter" || e.key === " ") {
                 e.preventDefault();
                 e.stopPropagation();
                 onClick();
@@ -117,17 +117,17 @@ export function IssueWorkspaceCard({
   showNoPrText = true,
   className,
 }: IssueWorkspaceCardProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const timeAgo = getTimeAgo(
-    workspace.latestProcessCompletedAt ?? workspace.updatedAt
+    workspace.latestProcessCompletedAt ?? workspace.updatedAt,
   );
   const isRunning = workspace.isRunning ?? false;
   const hasPendingApproval = workspace.hasPendingApproval ?? false;
   const hasRunningDevServer = workspace.hasRunningDevServer ?? false;
   const hasUnseenActivity = workspace.hasUnseenActivity ?? false;
   const isFailed =
-    workspace.latestProcessStatus === 'failed' ||
-    workspace.latestProcessStatus === 'killed';
+    workspace.latestProcessStatus === "failed" ||
+    workspace.latestProcessStatus === "killed";
   const hasLiveStatusIndicator =
     hasRunningDevServer ||
     isFailed ||
@@ -142,15 +142,15 @@ export function IssueWorkspaceCard({
           {showStatusBadge && (
             <span
               className={cn(
-                'px-1.5 py-0.5 rounded text-xs font-medium shrink-0',
+                "px-1.5 py-0.5 rounded text-xs font-medium shrink-0",
                 workspace.archived
-                  ? 'bg-secondary text-low'
-                  : 'bg-success/10 text-success'
+                  ? "bg-secondary text-low"
+                  : "bg-success/10 text-success",
               )}
             >
               {workspace.archived
-                ? t('workspaces.archived')
-                : t('workspaces.active')}
+                ? t("workspaces.archived")
+                : t("workspaces.active")}
             </span>
           )}
           {workspace.name && (
@@ -171,7 +171,7 @@ export function IssueWorkspaceCard({
                 <button
                   onClick={(e) => e.stopPropagation()}
                   className="p-0.5 rounded hover:bg-secondary transition-colors"
-                  aria-label={t('workspaces.more')}
+                  aria-label={t("workspaces.more")}
                 >
                   <DotsThreeIcon
                     className="size-icon-xs text-low"
@@ -188,7 +188,7 @@ export function IssueWorkspaceCard({
                     }}
                   >
                     <LinkBreakIcon className="size-icon-xs" />
-                    {t('workspaces.unlinkFromIssue')}
+                    {t("workspaces.unlinkFromIssue")}
                   </DropdownMenuItem>
                 )}
                 {onDelete && (
@@ -200,7 +200,7 @@ export function IssueWorkspaceCard({
                     className="text-destructive focus:text-destructive"
                   >
                     <TrashIcon className="size-icon-xs" />
-                    {t('workspaces.deleteWorkspace')}
+                    {t("workspaces.deleteWorkspace")}
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
@@ -254,7 +254,7 @@ export function IssueWorkspaceCard({
             <>
               <span className="text-low/50 shrink-0">·</span>
               <span className="whitespace-nowrap shrink-0">
-                {t('workspaces.filesChanged', {
+                {t("workspaces.filesChanged", {
                   count: workspace.filesChanged,
                 })}
               </span>
@@ -288,12 +288,12 @@ export function IssueWorkspaceCard({
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
                 className={cn(
-                  'flex items-center gap-half px-1.5 py-0.5 rounded text-xs font-medium transition-colors',
-                  pr.status === 'merged'
-                    ? 'bg-merged/10 text-merged hover:bg-merged/20'
-                    : pr.status === 'closed'
-                      ? 'bg-error/10 text-error hover:bg-error/20'
-                      : 'bg-success/10 text-success hover:bg-success/20'
+                  "flex items-center gap-half px-1.5 py-0.5 rounded text-xs font-medium transition-colors",
+                  pr.status === "merged"
+                    ? "bg-merged/10 text-merged hover:bg-merged/20"
+                    : pr.status === "closed"
+                      ? "bg-error/10 text-error hover:bg-error/20"
+                      : "bg-success/10 text-success hover:bg-success/20",
                 )}
               >
                 <GitPullRequestIcon className="size-icon-2xs" weight="bold" />
@@ -302,7 +302,7 @@ export function IssueWorkspaceCard({
             ))
           ) : showNoPrText ? (
             <span className="text-xs text-low whitespace-nowrap">
-              {t('kanban.noPrCreated')}
+              {t("kanban.noPrCreated")}
             </span>
           ) : null}
         </div>
@@ -316,34 +316,34 @@ export function IssueWorkspaceCreateCard({
   className,
   shouldAnimateCreateButton = false,
 }: IssueWorkspaceCreateCardProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   return (
     <IssueWorkspaceCardContainer
-      className={cn('border border-dashed border-border', className)}
+      className={cn("border border-dashed border-border", className)}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-half min-w-0">
           <span className="px-1.5 py-0.5 rounded text-xs font-medium shrink-0 bg-secondary text-low">
-            {t('workspaces.draft')}
+            {t("workspaces.draft")}
           </span>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-base">
         <span className="text-sm text-low truncate">
-          {t('workspaces.newWorkspace')}
+          {t("workspaces.newWorkspace")}
         </span>
         <button
           type="button"
           onClick={onClick}
           disabled={!onClick}
           className={cn(
-            'shrink-0 rounded-sm px-base py-half text-cta h-cta flex items-center bg-brand-secondary text-on-brand hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
-            shouldAnimateCreateButton && 'create-issue-attention'
+            "shrink-0 rounded-sm px-base py-half text-cta h-cta flex items-center bg-brand-secondary text-on-brand hover:bg-brand-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
+            shouldAnimateCreateButton && "create-issue-attention",
           )}
         >
-          {t('buttons.create')}
+          {t("buttons.create")}
         </button>
       </div>
     </IssueWorkspaceCardContainer>
@@ -359,7 +359,7 @@ function getTimeAgo(dateString: string): string {
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
   const diffWeeks = Math.floor(diffDays / 7);
 
-  if (diffMins < 1) return 'just now';
+  if (diffMins < 1) return "just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;

@@ -1,10 +1,10 @@
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { ListChecksIcon } from '@phosphor-icons/react';
-import { Circle, Check, CircleDot } from 'lucide-react';
-import { cn } from '../lib/cn';
-import { Popover, PopoverTrigger, PopoverContent } from './Popover';
-import { Tooltip } from './Tooltip';
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import { ListChecksIcon } from "@phosphor-icons/react";
+import { Circle, Check, CircleDot } from "lucide-react";
+import { cn } from "../lib/cn";
+import { Popover, PopoverTrigger, PopoverContent } from "./Popover";
+import { Tooltip } from "./Tooltip";
 
 export interface TodoProgressItem {
   content: string;
@@ -17,12 +17,12 @@ interface TodoProgressPopupProps {
 }
 
 function getStatusIcon(status?: string | null) {
-  const s = (status || '').toLowerCase();
-  if (s === 'completed')
+  const s = (status || "").toLowerCase();
+  if (s === "completed")
     return <Check aria-hidden className="size-icon-sm text-success" />;
-  if (s === 'in_progress' || s === 'in-progress')
+  if (s === "in_progress" || s === "in-progress")
     return <CircleDot aria-hidden className="size-icon-sm text-blue-500" />;
-  if (s === 'cancelled')
+  if (s === "cancelled")
     return <Circle aria-hidden className="size-icon-sm text-gray-400" />;
   return <Circle aria-hidden className="size-icon-sm text-muted-foreground" />;
 }
@@ -31,22 +31,22 @@ export function TodoProgressPopup({
   todos,
   className,
 }: TodoProgressPopupProps) {
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation("tasks");
 
   const isEmpty = todos.length === 0;
 
   const { completed, total, percentage } = useMemo(() => {
     const total = todos.length;
     const completed = todos.filter(
-      (todo) => todo.status?.toLowerCase() === 'completed'
+      (todo) => todo.status?.toLowerCase() === "completed",
     ).length;
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { completed, total, percentage };
   }, [todos]);
 
   const tooltipText = isEmpty
-    ? t('todoPopup.noTasks')
-    : t('todoPopup.progress', { completed, total });
+    ? t("todoPopup.noTasks")
+    : t("todoPopup.progress", { completed, total });
 
   // When empty, render just a disabled icon without popover
   if (isEmpty) {
@@ -56,10 +56,10 @@ export function TodoProgressPopup({
           <button
             disabled
             className={cn(
-              'flex items-center justify-center text-lowest opacity-40 cursor-not-allowed',
-              className
+              "flex items-center justify-center text-lowest opacity-40 cursor-not-allowed",
+              className,
             )}
-            aria-label={t('todoPopup.title')}
+            aria-label={t("todoPopup.title")}
           >
             <ListChecksIcon className="size-icon-base" />
           </button>
@@ -75,11 +75,11 @@ export function TodoProgressPopup({
           <PopoverTrigger asChild>
             <button
               className={cn(
-                'flex items-center justify-center text-low hover:text-normal transition-colors',
-                'focus:outline-none focus-visible:ring-1 focus-visible:ring-brand',
-                className
+                "flex items-center justify-center text-low hover:text-normal transition-colors",
+                "focus:outline-none focus-visible:ring-1 focus-visible:ring-brand",
+                className,
               )}
-              aria-label={t('todoPopup.title')}
+              aria-label={t("todoPopup.title")}
             >
               <div className="relative">
                 <ListChecksIcon className="size-icon-base" />
@@ -103,10 +103,10 @@ export function TodoProgressPopup({
           {/* Header with progress */}
           <div className="flex items-center justify-between shrink-0">
             <h4 className="text-sm font-medium text-normal">
-              {t('todoPopup.title')}
+              {t("todoPopup.title")}
             </h4>
             <span className="text-xs text-low">
-              {t('todoPopup.progress', { completed, total })}
+              {t("todoPopup.progress", { completed, total })}
             </span>
           </div>
 
@@ -114,8 +114,8 @@ export function TodoProgressPopup({
           <div className="h-1.5 w-full bg-border rounded-full overflow-hidden shrink-0">
             <div
               className={cn(
-                'h-full transition-all duration-300 rounded-full',
-                percentage === 100 ? 'bg-success' : 'bg-blue-500'
+                "h-full transition-all duration-300 rounded-full",
+                percentage === 100 ? "bg-success" : "bg-blue-500",
               )}
               style={{ width: `${percentage}%` }}
             />
@@ -132,7 +132,7 @@ export function TodoProgressPopup({
                   {getStatusIcon(todo.status)}
                 </span>
                 <span className="text-sm leading-5 break-words text-normal">
-                  {todo.status?.toLowerCase() === 'cancelled' ? (
+                  {todo.status?.toLowerCase() === "cancelled" ? (
                     <s className="text-gray-400">{todo.content}</s>
                   ) : (
                     todo.content

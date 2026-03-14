@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react";
 import {
   type Icon,
   SortAscendingIcon,
@@ -6,9 +6,9 @@ import {
   CalendarIcon,
   UserIcon,
   TagIcon,
-} from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { cn } from '../lib/cn';
+} from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import { cn } from "../lib/cn";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTriggerButton,
-} from './Dropdown';
+} from "./Dropdown";
 
 interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -24,7 +24,7 @@ interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
 
 function Toolbar({ children, className, ...props }: ToolbarProps) {
   return (
-    <div className={cn('flex items-center gap-base', className)} {...props}>
+    <div className={cn("flex items-center gap-base", className)} {...props}>
       {children}
     </div>
   );
@@ -44,9 +44,9 @@ function ToolbarIconButton({
   return (
     <button
       className={cn(
-        'flex items-center justify-center text-low hover:text-normal',
-        disabled && 'opacity-40 cursor-not-allowed hover:text-low',
-        className
+        "flex items-center justify-center text-low hover:text-normal",
+        disabled && "opacity-40 cursor-not-allowed hover:text-low",
+        className,
       )}
       disabled={disabled}
       {...props}
@@ -71,7 +71,7 @@ function ToolbarDropdown({
   className,
   disabled,
 }: ToolbarDropdownProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   return (
     <DropdownMenu>
@@ -84,23 +84,23 @@ function ToolbarDropdown({
       <DropdownMenuContent>
         {children ?? (
           <>
-            <DropdownMenuLabel>{t('toolbar.sortBy')}</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("toolbar.sortBy")}</DropdownMenuLabel>
             <DropdownMenuItem icon={SortAscendingIcon}>
-              {t('sorting.ascending')}
+              {t("sorting.ascending")}
             </DropdownMenuItem>
             <DropdownMenuItem icon={SortDescendingIcon}>
-              {t('sorting.descending')}
+              {t("sorting.descending")}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuLabel>{t('toolbar.groupBy')}</DropdownMenuLabel>
+            <DropdownMenuLabel>{t("toolbar.groupBy")}</DropdownMenuLabel>
             <DropdownMenuItem icon={CalendarIcon}>
-              {t('grouping.date')}
+              {t("grouping.date")}
             </DropdownMenuItem>
             <DropdownMenuItem icon={UserIcon}>
-              {t('grouping.assignee')}
+              {t("grouping.assignee")}
             </DropdownMenuItem>
             <DropdownMenuItem icon={TagIcon}>
-              {t('grouping.label')}
+              {t("grouping.label")}
             </DropdownMenuItem>
           </>
         )}

@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { cn } from '../lib/cn';
-import { Draggable } from '@hello-pangea/dnd';
-import { DotsSixVerticalIcon } from '@phosphor-icons/react';
-import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
-import { StatusDot } from './StatusDot';
-import { KanbanBadge } from './KanbanBadge';
-import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
+import { cn } from "../lib/cn";
+import { Draggable } from "@hello-pangea/dnd";
+import { DotsSixVerticalIcon } from "@phosphor-icons/react";
+import { PriorityIcon, type PriorityLevel } from "./PriorityIcon";
+import { StatusDot } from "./StatusDot";
+import { KanbanBadge } from "./KanbanBadge";
+import { KanbanAssignee, type KanbanAssigneeUser } from "./KanbanAssignee";
 import {
   RelationshipBadge,
   type RelationshipDisplayType,
-} from './RelationshipBadge';
+} from "./RelationshipBadge";
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -32,7 +32,7 @@ function formatRelativeTime(dateString: string): string {
   if (diffMinutes > 0) {
     return `${diffMinutes}m`;
   }
-  return 'now';
+  return "now";
 }
 
 const MAX_VISIBLE_TAGS = 2;
@@ -92,18 +92,18 @@ export function IssueListRow({
           tabIndex={0}
           onClick={onClick}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();
               onClick();
             }
           }}
           className={cn(
-            'flex items-center justify-between gap-double px-double py-half',
-            'transition-colors',
-            'hover:bg-secondary',
-            isSelected && 'bg-secondary',
-            snapshot.isDragging && 'bg-secondary shadow-lg cursor-grabbing',
-            className
+            "flex items-center justify-between gap-double px-double py-half",
+            "transition-colors",
+            "hover:bg-secondary",
+            isSelected && "bg-secondary",
+            snapshot.isDragging && "bg-secondary shadow-lg cursor-grabbing",
+            className,
           )}
         >
           {/* Left side: Drag handle, Priority, ID, Status, Title */}

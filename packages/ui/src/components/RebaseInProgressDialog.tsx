@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -7,10 +7,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './KeyboardDialog';
-import { Button } from './Button';
-import NiceModal, { useModal } from '@ebay/nice-modal-react';
-import { defineModal } from '../lib/modals';
+} from "./KeyboardDialog";
+import { Button } from "./Button";
+import NiceModal, { useModal } from "@ebay/nice-modal-react";
+import { defineModal } from "../lib/modals";
 
 export interface RebaseInProgressDialogProps {
   targetBranch: string;
@@ -19,15 +19,15 @@ export interface RebaseInProgressDialogProps {
 }
 
 export type RebaseInProgressDialogResult =
-  | { action: 'continued' }
-  | { action: 'aborted' }
-  | { action: 'cancelled' };
+  | { action: "continued" }
+  | { action: "aborted" }
+  | { action: "cancelled" };
 
 const RebaseInProgressDialogImpl =
   NiceModal.create<RebaseInProgressDialogProps>(
     ({ targetBranch, onContinue, onAbort }) => {
       const modal = useModal();
-      const { t } = useTranslation(['tasks', 'common']);
+      const { t } = useTranslation(["tasks", "common"]);
 
       const [isSubmitting, setIsSubmitting] = useState(false);
       const [error, setError] = useState<string | null>(null);
@@ -40,16 +40,16 @@ const RebaseInProgressDialogImpl =
           await onContinue();
 
           modal.resolve({
-            action: 'continued',
+            action: "continued",
           } as RebaseInProgressDialogResult);
           modal.hide();
         } catch (err) {
-          console.error('Failed to continue rebase:', err);
+          console.error("Failed to continue rebase:", err);
           setError(
             t(
-              'rebaseInProgress.dialog.continueError',
-              'Failed to continue rebase. There may be unresolved conflicts.'
-            )
+              "rebaseInProgress.dialog.continueError",
+              "Failed to continue rebase. There may be unresolved conflicts.",
+            ),
           );
         } finally {
           setIsSubmitting(false);
@@ -64,16 +64,16 @@ const RebaseInProgressDialogImpl =
           await onAbort();
 
           modal.resolve({
-            action: 'aborted',
+            action: "aborted",
           } as RebaseInProgressDialogResult);
           modal.hide();
         } catch (err) {
-          console.error('Failed to abort rebase:', err);
+          console.error("Failed to abort rebase:", err);
           setError(
             t(
-              'rebaseInProgress.dialog.abortError',
-              'Failed to abort rebase. Please try again.'
-            )
+              "rebaseInProgress.dialog.abortError",
+              "Failed to abort rebase. Please try again.",
+            ),
           );
         } finally {
           setIsSubmitting(false);
@@ -82,7 +82,7 @@ const RebaseInProgressDialogImpl =
 
       const handleCancel = useCallback(() => {
         modal.resolve({
-          action: 'cancelled',
+          action: "cancelled",
         } as RebaseInProgressDialogResult);
         modal.hide();
       }, [modal]);
@@ -96,13 +96,13 @@ const RebaseInProgressDialogImpl =
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader>
               <DialogTitle>
-                {t('rebaseInProgress.dialog.title', 'Rebase In Progress')}
+                {t("rebaseInProgress.dialog.title", "Rebase In Progress")}
               </DialogTitle>
               <DialogDescription>
                 {t(
-                  'rebaseInProgress.dialog.description',
-                  'A rebase onto {{targetBranch}} is in progress with no conflicts. Choose how to proceed.',
-                  { targetBranch }
+                  "rebaseInProgress.dialog.description",
+                  "A rebase onto {{targetBranch}} is in progress with no conflicts. Choose how to proceed.",
+                  { targetBranch },
                 )}
               </DialogDescription>
             </DialogHeader>
@@ -112,8 +112,8 @@ const RebaseInProgressDialogImpl =
 
               <div className="text-sm text-muted-foreground">
                 {t(
-                  'rebaseInProgress.dialog.hint',
-                  'You can continue the rebase to complete it, or abort to return to your previous state.'
+                  "rebaseInProgress.dialog.hint",
+                  "You can continue the rebase to complete it, or abort to return to your previous state.",
                 )}
               </div>
             </div>
@@ -124,7 +124,7 @@ const RebaseInProgressDialogImpl =
                 onClick={handleCancel}
                 disabled={isSubmitting}
               >
-                {t('common:buttons.cancel')}
+                {t("common:buttons.cancel")}
               </Button>
               <Button
                 variant="destructive"
@@ -132,19 +132,19 @@ const RebaseInProgressDialogImpl =
                 disabled={isSubmitting}
               >
                 {isSubmitting
-                  ? t('rebaseInProgress.dialog.aborting', 'Aborting...')
-                  : t('rebaseInProgress.dialog.abort', 'Abort Rebase')}
+                  ? t("rebaseInProgress.dialog.aborting", "Aborting...")
+                  : t("rebaseInProgress.dialog.abort", "Abort Rebase")}
               </Button>
               <Button onClick={handleContinue} disabled={isSubmitting}>
                 {isSubmitting
-                  ? t('rebaseInProgress.dialog.continuing', 'Continuing...')
-                  : t('rebaseInProgress.dialog.continue', 'Continue Rebase')}
+                  ? t("rebaseInProgress.dialog.continuing", "Continuing...")
+                  : t("rebaseInProgress.dialog.continue", "Continue Rebase")}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       );
-    }
+    },
   );
 
 export const RebaseInProgressDialog = defineModal<

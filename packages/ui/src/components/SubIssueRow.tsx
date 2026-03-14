@@ -1,24 +1,24 @@
-'use client';
+"use client";
 
-import { Draggable } from '@hello-pangea/dnd';
+import { Draggable } from "@hello-pangea/dnd";
 import {
   CircleDashedIcon,
   DotsSixVerticalIcon,
   DotsThreeIcon,
   LinkBreakIcon,
   TrashIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { PriorityIcon, type PriorityLevel } from './PriorityIcon';
-import { StatusDot } from './StatusDot';
-import { KanbanAssignee, type KanbanAssigneeUser } from './KanbanAssignee';
-import { useTranslation } from 'react-i18next';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { PriorityIcon, type PriorityLevel } from "./PriorityIcon";
+import { StatusDot } from "./StatusDot";
+import { KanbanAssignee, type KanbanAssigneeUser } from "./KanbanAssignee";
+import { useTranslation } from "react-i18next";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './DropdownMenu';
+} from "./DropdownMenu";
 
 /**
  * Formats a date as a relative time string (e.g., "1d", "2h", "3m")
@@ -40,7 +40,7 @@ function formatRelativeTime(dateString: string): string {
   if (diffMinutes > 0) {
     return `${diffMinutes}m`;
   }
-  return 'now';
+  return "now";
 }
 
 export interface SubIssueRowProps {
@@ -76,7 +76,7 @@ export function SubIssueRow({
   onDeleteClick,
   className,
 }: SubIssueRowProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   return (
     <Draggable draggableId={id} index={index}>
@@ -84,20 +84,20 @@ export function SubIssueRow({
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          role={onClick ? 'button' : undefined}
+          role={onClick ? "button" : undefined}
           tabIndex={onClick ? 0 : undefined}
           onClick={onClick}
           onKeyDown={(e) => {
-            if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+            if (onClick && (e.key === "Enter" || e.key === " ")) {
               e.preventDefault();
               onClick();
             }
           }}
           className={cn(
-            'flex items-center gap-half px-base py-half rounded-sm transition-colors',
-            onClick && 'cursor-pointer hover:bg-secondary',
-            snapshot.isDragging && 'bg-secondary shadow-lg cursor-grabbing',
-            className
+            "flex items-center gap-half px-base py-half rounded-sm transition-colors",
+            onClick && "cursor-pointer hover:bg-secondary",
+            snapshot.isDragging && "bg-secondary shadow-lg cursor-grabbing",
+            className,
           )}
         >
           {/* Drag handle */}
@@ -176,7 +176,7 @@ export function SubIssueRow({
                       }}
                     >
                       <LinkBreakIcon className="size-icon-xs" />
-                      {t('kanban.markIndependentIssue')}
+                      {t("kanban.markIndependentIssue")}
                     </DropdownMenuItem>
                   )}
                   {onDeleteClick && (
@@ -188,7 +188,7 @@ export function SubIssueRow({
                       className="text-destructive focus:text-destructive"
                     >
                       <TrashIcon className="size-icon-xs" />
-                      {t('buttons.delete')}
+                      {t("buttons.delete")}
                     </DropdownMenuItem>
                   )}
                 </DropdownMenuContent>

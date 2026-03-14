@@ -1,23 +1,23 @@
-import { useCallback, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import { NodeKey, SerializedLexicalNode, Spread, $getNodeByKey } from 'lexical';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import { Download, File, HelpCircle, Loader2, X } from 'lucide-react';
+import { useCallback, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
+import { NodeKey, SerializedLexicalNode, Spread, $getNodeByKey } from "lexical";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
+import { Download, File, HelpCircle, Loader2, X } from "lucide-react";
 import {
   useWorkspaceId,
   useSessionId,
   useLocalImages,
   type LocalImageMetadata,
-} from './WorkspaceContext';
+} from "./WorkspaceContext";
 import {
   createDecoratorNode,
   type DecoratorNodeConfig,
-} from './create-decorator-node';
+} from "./create-decorator-node";
 
 const ATTACHMENT_URL_STALE_TIME = 4 * 60 * 1000;
 
-type AttachmentType = 'file' | 'thumbnail';
+type AttachmentType = "file" | "thumbnail";
 
 interface AttachmentUrlResult {
   url: string | null;
@@ -43,7 +43,7 @@ export interface OpenImagePreviewOptions {
 export interface CreateImageNodeOptions {
   fetchAttachmentUrl: (
     attachmentId: string,
-    type: AttachmentType
+    type: AttachmentType,
   ) => Promise<string>;
   openImagePreview: (options: OpenImagePreviewOptions) => void;
 }
@@ -62,13 +62,13 @@ export type SerializedImageNode = Spread<
 >;
 
 function truncatePath(path: string, maxLength = 24): string {
-  const filename = path.split('/').pop() || path;
+  const filename = path.split("/").pop() || path;
   if (filename.length <= maxLength) return filename;
-  return filename.slice(0, maxLength - 3) + '...';
+  return filename.slice(0, maxLength - 3) + "...";
 }
 
 function formatFileSize(bytes: bigint | number | null | undefined): string {
-  if (!bytes) return '';
+  if (!bytes) return "";
   const num = Number(bytes);
   if (num < 1024) return `${num} B`;
   if (num < 1024 * 1024) return `${(num / 1024).toFixed(1)} KB`;
@@ -77,20 +77,20 @@ function formatFileSize(bytes: bigint | number | null | undefined): string {
 
 async function downloadBlobUrl(url: string, filename: string): Promise<void> {
   const response = await fetch(url, {
-    method: 'GET',
-    mode: 'cors',
-    credentials: 'omit',
+    method: "GET",
+    mode: "cors",
+    credentials: "omit",
   });
 
   if (!response.ok) {
-    throw new Error('Failed to download attachment file');
+    throw new Error("Failed to download attachment file");
   }
 
   const blob = await response.blob();
   const objectUrl = URL.createObjectURL(blob);
 
   try {
-    const anchor = document.createElement('a');
+    const anchor = document.createElement("a");
     anchor.href = objectUrl;
     anchor.download = filename;
     document.body.appendChild(anchor);
@@ -102,7 +102,7 @@ async function downloadBlobUrl(url: string, filename: string): Promise<void> {
 }
 
 function toMetadataFromLocalImage(
-  localImage: LocalImageMetadata | undefined
+  localImage: LocalImageMetadata | undefined,
 ): ImageMetadataLike | null {
   if (!localImage) return null;
 
@@ -119,29 +119,29 @@ function useImageMetadata(
   workspaceId: string | undefined,
   sessionId: string | undefined,
   src: string,
-  localImages: LocalImageMetadata[]
+  localImages: LocalImageMetadata[],
 ) {
-  const isVibeImage = src.startsWith('.vibe-images/');
+  const isVibeImage = src.startsWith(".vibe-images/");
 
   const localImage = useMemo(
     () => localImages.find((img) => img.path === src),
-    [localImages, src]
+    [localImages, src],
   );
 
   const localImageMetadata = useMemo(
     () => toMetadataFromLocalImage(localImage),
-    [localImage]
+    [localImage],
   );
 
   const shouldFetch = isVibeImage && !!workspaceId && !localImage;
 
   const query = useQuery({
-    queryKey: ['image-metadata', workspaceId, sessionId, src],
+    queryKey: ["image-metadata", workspaceId, sessionId, src],
     queryFn: async (): Promise<ImageMetadataLike | null> => {
       if (!workspaceId || !sessionId) return null;
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
+        `/api/workspaces/${workspaceId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`,
       );
       const payload = await response.json();
       return payload.data as ImageMetadataLike | null;
@@ -159,10 +159,10 @@ function useImageMetadata(
 function useAttachmentUrl(
   attachmentId: string | null,
   type: AttachmentType,
-  fetchAttachmentUrl: CreateImageNodeOptions['fetchAttachmentUrl']
+  fetchAttachmentUrl: CreateImageNodeOptions["fetchAttachmentUrl"],
 ): AttachmentUrlResult {
   const query = useQuery({
-    queryKey: ['attachment-url', attachmentId, type],
+    queryKey: ["attachment-url", attachmentId, type],
     queryFn: () => fetchAttachmentUrl(attachmentId as string, type),
     enabled: !!attachmentId,
     staleTime: ATTACHMENT_URL_STALE_TIME,
@@ -184,33 +184,33 @@ export function createImageNode(options: CreateImageNodeOptions) {
     nodeKey: NodeKey;
     onDoubleClickEdit: (event: React.MouseEvent) => void;
   }): JSX.Element {
-    const { t } = useTranslation('common');
+    const { t } = useTranslation("common");
     const { src, altText } = data;
     const workspaceId = useWorkspaceId();
     const sessionId = useSessionId();
     const localImages = useLocalImages();
     const [editor] = useLexicalComposerContext();
 
-    const isVibeImage = src.startsWith('.vibe-images/');
-    const isAttachment = src.startsWith('attachment://');
-    const attachmentId = isAttachment ? src.replace('attachment://', '') : null;
+    const isVibeImage = src.startsWith(".vibe-images/");
+    const isAttachment = src.startsWith("attachment://");
+    const attachmentId = isAttachment ? src.replace("attachment://", "") : null;
 
     const { url: thumbnailUrl, loading: attachmentLoading } = useAttachmentUrl(
       attachmentId,
-      'thumbnail',
-      options.fetchAttachmentUrl
+      "thumbnail",
+      options.fetchAttachmentUrl,
     );
     const { url: fullSizeUrl } = useAttachmentUrl(
       attachmentId,
-      'file',
-      options.fetchAttachmentUrl
+      "file",
+      options.fetchAttachmentUrl,
     );
 
     const { data: metadata, isLoading: loading } = useImageMetadata(
       workspaceId,
       sessionId,
       src,
-      localImages
+      localImages,
     );
 
     const handleClick = useCallback(
@@ -226,7 +226,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
               fileName: altText || undefined,
             });
           } else {
-            window.open(fullSizeUrl, '_blank', 'noopener,noreferrer');
+            window.open(fullSizeUrl, "_blank", "noopener,noreferrer");
           }
           return;
         }
@@ -241,7 +241,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
           });
         }
       },
-      [isAttachment, fullSizeUrl, thumbnailUrl, metadata, altText]
+      [isAttachment, fullSizeUrl, thumbnailUrl, metadata, altText],
     );
 
     const handleDownload = useCallback(
@@ -251,11 +251,11 @@ export function createImageNode(options: CreateImageNodeOptions) {
 
         if (!fullSizeUrl) return;
 
-        downloadBlobUrl(fullSizeUrl, altText || 'attachment').catch((error) => {
-          console.error('Failed to download attachment:', error);
+        downloadBlobUrl(fullSizeUrl, altText || "attachment").catch((error) => {
+          console.error("Failed to download attachment:", error);
         });
       },
-      [fullSizeUrl, altText]
+      [fullSizeUrl, altText],
     );
 
     const handleDelete = useCallback(
@@ -272,7 +272,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
           }
         });
       },
-      [editor, nodeKey]
+      [editor, nodeKey],
     );
 
     let thumbnailContent: React.ReactNode;
@@ -306,7 +306,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
         );
       }
       displayName = truncatePath(
-        altText || t('kanban.imageAttachmentNameFallback')
+        altText || t("kanban.imageAttachmentNameFallback"),
       );
     } else if (isVibeImage && (hasLocalImage || hasContext)) {
       if (loading) {
@@ -336,7 +336,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
           parts.push(sizeText);
         }
         if (parts.length > 0) {
-          metadataLine = parts.join(' · ');
+          metadataLine = parts.join(" · ");
         }
       } else {
         thumbnailContent = (
@@ -385,7 +385,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
           <button
             onClick={handleDelete}
             className="absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-            aria-label={t('kanban.removeImage')}
+            aria-label={t("kanban.removeImage")}
             type="button"
           >
             <X className="w-2.5 h-2.5 text-background" />
@@ -396,10 +396,10 @@ export function createImageNode(options: CreateImageNodeOptions) {
             onClick={handleDownload}
             className={
               editor.isEditable()
-                ? 'absolute top-1 right-6 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
-                : 'absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity'
+                ? "absolute top-1 right-6 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                : "absolute top-1 right-1 w-4 h-4 rounded-full bg-foreground/70 hover:bg-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             }
-            aria-label={t('kanban.downloadAttachment')}
+            aria-label={t("kanban.downloadAttachment")}
             type="button"
           >
             <Download className="w-2.5 h-2.5 text-background" />
@@ -410,20 +410,20 @@ export function createImageNode(options: CreateImageNodeOptions) {
   }
 
   const config: DecoratorNodeConfig<ImageData> = {
-    type: 'image',
+    type: "image",
     serialization: {
-      format: 'inline',
+      format: "inline",
       pattern: /!\[([^\]]*)\]\(([^)]+)\)/,
-      trigger: ')',
+      trigger: ")",
       serialize: (data) => `![${data.altText}](${data.src})`,
       deserialize: (match) => ({ src: match[2], altText: match[1] }),
     },
     component: ImageComponent,
     domStyle: {
-      display: 'inline-block',
-      paddingLeft: '2px',
-      paddingRight: '2px',
-      verticalAlign: 'bottom',
+      display: "inline-block",
+      paddingLeft: "2px",
+      paddingRight: "2px",
+      verticalAlign: "bottom",
     },
     keyboardSelectable: false,
     importDOM: (createNode) => ({
@@ -432,8 +432,8 @@ export function createImageNode(options: CreateImageNodeOptions) {
           const imageElement = element as HTMLImageElement;
           return {
             node: createNode({
-              src: imageElement.getAttribute('src') || '',
-              altText: imageElement.getAttribute('alt') || '',
+              src: imageElement.getAttribute("src") || "",
+              altText: imageElement.getAttribute("alt") || "",
             }),
           };
         },
@@ -441,9 +441,9 @@ export function createImageNode(options: CreateImageNodeOptions) {
       }),
     }),
     exportDOM: (data) => {
-      const img = document.createElement('img');
-      img.setAttribute('src', data.src);
-      img.setAttribute('alt', data.altText);
+      const img = document.createElement("img");
+      img.setAttribute("src", data.src);
+      img.setAttribute("alt", data.altText);
       return img;
     },
   };

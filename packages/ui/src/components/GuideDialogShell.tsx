@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react';
-import { CaretLeftIcon, XIcon } from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
+import { useState, type ReactNode } from "react";
+import { CaretLeftIcon, XIcon } from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
 
 export interface GuideDialogTopic {
   id: string;
@@ -41,34 +41,34 @@ export function GuideDialogShell({
       {/* Dialog wrapper - handles positioning */}
       <div
         className={cn(
-          'fixed z-[9999]',
+          "fixed z-[9999]",
           // Mobile: full screen
-          'inset-0',
+          "inset-0",
           // Desktop: centered with fixed size
-          'md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2'
+          "md:inset-auto md:left-1/2 md:top-1/2 md:-translate-x-1/2 md:-translate-y-1/2",
         )}
       >
         <div
           className={cn(
-            'h-full w-full flex overflow-hidden',
-            'bg-panel/95 backdrop-blur-sm shadow-lg',
-            'animate-in fade-in-0 slide-in-from-bottom-4 duration-200',
+            "h-full w-full flex overflow-hidden",
+            "bg-panel/95 backdrop-blur-sm shadow-lg",
+            "animate-in fade-in-0 slide-in-from-bottom-4 duration-200",
             // Mobile: full screen, no rounded corners
-            'rounded-none border-0',
+            "rounded-none border-0",
             // Desktop: fixed size with rounded corners
-            'md:w-[800px] md:h-[600px] md:rounded-sm md:border md:border-border/50',
-            className
+            "md:w-[800px] md:h-[600px] md:rounded-sm md:border md:border-border/50",
+            className,
           )}
         >
           {/* Sidebar - hidden on mobile when showing content */}
           <div
             className={cn(
-              'bg-secondary/80 border-r border-border/50 flex flex-col',
+              "bg-secondary/80 border-r border-border/50 flex flex-col",
               // Mobile: full width, hidden when showing content
-              'w-full',
-              mobileShowContent && 'hidden',
+              "w-full",
+              mobileShowContent && "hidden",
               // Desktop: fixed width sidebar, always visible
-              'md:w-52 md:block'
+              "md:w-52 md:block",
             )}
           >
             {/* Header with mobile close button */}
@@ -90,10 +90,10 @@ export function GuideDialogShell({
                     setMobileShowContent(true);
                   }}
                   className={cn(
-                    'text-left px-3 py-2 rounded-sm text-sm transition-colors',
+                    "text-left px-3 py-2 rounded-sm text-sm transition-colors",
                     idx === selectedIndex
-                      ? 'bg-brand/10 text-brand font-medium'
-                      : 'text-normal hover:bg-primary/10'
+                      ? "bg-brand/10 text-brand font-medium"
+                      : "text-normal hover:bg-primary/10",
                   )}
                 >
                   {topic.title}
@@ -104,11 +104,11 @@ export function GuideDialogShell({
           {/* Content - hidden on mobile when showing nav */}
           <div
             className={cn(
-              'flex-1 flex flex-col relative overflow-y-auto',
+              "flex-1 flex flex-col relative overflow-y-auto",
               // Mobile: full width, hidden when showing nav
-              !mobileShowContent && 'hidden',
+              !mobileShowContent && "hidden",
               // Desktop: always visible
-              'md:flex'
+              "md:flex",
             )}
           >
             {/* Mobile header with back button */}
@@ -147,7 +147,7 @@ export function GuideDialogShell({
                 />
               )}
               <div className="text-normal text-sm leading-relaxed space-y-3">
-                {typeof selectedTopic.content === 'string' ? (
+                {typeof selectedTopic.content === "string" ? (
                   <p>{selectedTopic.content}</p>
                 ) : (
                   selectedTopic.content

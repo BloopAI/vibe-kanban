@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useEffect } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   KEY_ENTER_COMMAND,
   COMMAND_PRIORITY_NORMAL,
@@ -9,8 +9,8 @@ import {
   $isElementNode,
   $createRangeSelection,
   $setSelection,
-} from 'lexical';
-import { useTypeaheadOpen } from './TypeaheadOpenContext';
+} from "lexical";
+import { useTypeaheadOpen } from "./TypeaheadOpenContext";
 
 // Matches bullet prefixes: "- ", "* ", "+ "
 const BULLET_PREFIX_RE = /^(\s*)([-*+]) $/;
@@ -92,8 +92,8 @@ export function MarkdownListContinuePlugin() {
             const nodeKey = firstChild.getKey();
             const newSel = $createRangeSelection();
             const newOffset = emptyBullet[1].length;
-            newSel.anchor.set(nodeKey, newOffset, 'text');
-            newSel.focus.set(nodeKey, newOffset, 'text');
+            newSel.anchor.set(nodeKey, newOffset, "text");
+            newSel.focus.set(nodeKey, newOffset, "text");
             $setSelection(newSel);
           }
           return true;
@@ -115,8 +115,8 @@ export function MarkdownListContinuePlugin() {
             const nodeKey = firstChild.getKey();
             const newSel = $createRangeSelection();
             const newOffset = emptyNumber[1].length;
-            newSel.anchor.set(nodeKey, newOffset, 'text');
-            newSel.focus.set(nodeKey, newOffset, 'text');
+            newSel.anchor.set(nodeKey, newOffset, "text");
+            newSel.focus.set(nodeKey, newOffset, "text");
             $setSelection(newSel);
           }
           return true;
@@ -145,7 +145,7 @@ export function MarkdownListContinuePlugin() {
 
         return false;
       },
-      COMMAND_PRIORITY_NORMAL
+      COMMAND_PRIORITY_NORMAL,
     );
 
     return unregister;

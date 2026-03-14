@@ -1,13 +1,13 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import {
   IssueWorkspaceCard,
   IssueWorkspaceCreateCard,
   type WorkspaceWithStats,
-} from './IssueWorkspaceCard';
+} from "./IssueWorkspaceCard";
 import {
   CollapsibleSectionHeader,
   type SectionAction,
-} from './CollapsibleSectionHeader';
+} from "./CollapsibleSectionHeader";
 
 export interface IssueWorkspacesSectionProps {
   workspaces: WorkspaceWithStats[];
@@ -34,18 +34,18 @@ export function IssueWorkspacesSection({
   onDeleteWorkspace,
   shouldAnimateCreateButton = false,
 }: IssueWorkspacesSectionProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   return (
     <CollapsibleSectionHeader
-      title={t('workspaces.title')}
+      title={t("workspaces.title")}
       persistKey="kanban-issue-workspaces"
       defaultExpanded={true}
       actions={actions}
     >
       <div className="px-base p-base flex flex-col gap-base border-t">
         {isLoading ? (
-          <p className="text-low py-half">{t('workspaces.loading')}</p>
+          <p className="text-low py-half">{t("workspaces.loading")}</p>
         ) : workspaces.length === 0 ? (
           <IssueWorkspaceCreateCard
             onClick={onCreateWorkspace}

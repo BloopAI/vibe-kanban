@@ -1,9 +1,9 @@
-import type { ReactNode } from 'react';
-import { PlusIcon, HashIcon } from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { PRESET_COLORS } from './ColorPicker';
-import { PrBadge, type PrBadgeStatus } from './PrBadge';
-import { TAG_COLORS } from './SearchableTagDropdown';
+import type { ReactNode } from "react";
+import { PlusIcon, HashIcon } from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { PRESET_COLORS } from "./ColorPicker";
+import { PrBadge, type PrBadgeStatus } from "./PrBadge";
+import { TAG_COLORS } from "./SearchableTagDropdown";
 
 // Re-export for backwards compatibility.
 export { PRESET_COLORS, TAG_COLORS };
@@ -35,7 +35,7 @@ export interface IssueTagsRowProps<TTag extends IssueTagBase = IssueTagBase> {
   onTagsChange: (tagIds: string[]) => void;
   onCreateTag?: (data: { name: string; color: string }) => string;
   renderAddTagControl?: (
-    props: IssueTagsRowAddTagControlProps<TTag>
+    props: IssueTagsRowAddTagControlProps<TTag>,
   ) => ReactNode;
   disabled?: boolean;
   className?: string;
@@ -64,7 +64,7 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
   className,
 }: IssueTagsRowProps<TTag>) {
   const selectedTags = availableTags.filter((tag) =>
-    selectedTagIds.includes(tag.id)
+    selectedTagIds.includes(tag.id),
   );
 
   const handleTagToggle = (tagId: string) => {
@@ -76,7 +76,7 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
   };
 
   const handleCreateTag = (data: { name: string; color: string }): string => {
-    return onCreateTag?.(data) ?? '';
+    return onCreateTag?.(data) ?? "";
   };
 
   const addTagTrigger = (
@@ -91,7 +91,7 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
   );
 
   return (
-    <div className={cn('flex items-center gap-half flex-wrap', className)}>
+    <div className={cn("flex items-center gap-half flex-wrap", className)}>
       {/* Selected Tags - clickable to remove on hover */}
       {selectedTags.map((tag) => (
         <button
@@ -100,15 +100,15 @@ export function IssueTagsRow<TTag extends IssueTagBase>({
           onClick={() => handleTagToggle(tag.id)}
           disabled={disabled}
           className={cn(
-            'inline-flex items-center justify-center',
-            'h-5 px-base gap-half',
-            'bg-panel rounded-sm',
-            'text-sm text-low font-medium',
-            'whitespace-nowrap',
-            'transition-colors',
+            "inline-flex items-center justify-center",
+            "h-5 px-base gap-half",
+            "bg-panel rounded-sm",
+            "text-sm text-low font-medium",
+            "whitespace-nowrap",
+            "transition-colors",
             !disabled &&
-              'hover:bg-error/20 hover:text-error hover:line-through cursor-pointer',
-            disabled && 'cursor-default'
+              "hover:bg-error/20 hover:text-error hover:line-through cursor-pointer",
+            disabled && "cursor-default",
           )}
         >
           <span

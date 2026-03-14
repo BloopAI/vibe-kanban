@@ -1,4 +1,4 @@
-import { cn } from '../lib/cn';
+import { cn } from "../lib/cn";
 
 export interface ChatMarkdownRenderProps {
   content: string;
@@ -16,12 +16,12 @@ interface ChatMarkdownProps {
 
 export function ChatMarkdown({
   content,
-  maxWidth = '800px',
+  maxWidth = "800px",
   className,
   workspaceId,
   renderContent,
 }: ChatMarkdownProps) {
-  const contentClassName = cn('whitespace-pre-wrap break-words', className);
+  const contentClassName = cn("whitespace-pre-wrap break-words", className);
 
   return (
     <div className="text-sm" style={{ maxWidth }}>

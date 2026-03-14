@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { cn } from '../lib/cn';
+import type { ReactNode } from "react";
+import { cn } from "../lib/cn";
 
-export type CommentCardVariant = 'user' | 'github' | 'input';
+export type CommentCardVariant = "user" | "github" | "input";
 
 interface CommentCardProps {
   /** Determines the visual styling */
@@ -17,9 +17,9 @@ interface CommentCardProps {
 }
 
 const variantStyles: Record<CommentCardVariant, string> = {
-  user: 'bg-brand/20 border-brand',
-  github: 'bg-secondary border-border',
-  input: 'bg-brand/20 border-brand',
+  user: "bg-brand/20 border-brand",
+  github: "bg-secondary border-border",
+  input: "bg-brand/20 border-brand",
 };
 
 /**
@@ -37,9 +37,9 @@ export function CommentCard({
     <div className="p-base bg-panel font-sans text-base">
       <div
         className={cn(
-          'p-base rounded-sm border',
+          "p-base rounded-sm border",
           variantStyles[variant],
-          className
+          className,
         )}
       >
         {header && <div className="mb-half">{header}</div>}

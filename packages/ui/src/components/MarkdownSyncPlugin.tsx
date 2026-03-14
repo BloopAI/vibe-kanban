@@ -1,11 +1,11 @@
-import { useEffect, useRef } from 'react';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useEffect, useRef } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   $convertToMarkdownString,
   $convertFromMarkdownString,
   type Transformer,
-} from '@lexical/markdown';
-import { $getRoot, type EditorState } from 'lexical';
+} from "@lexical/markdown";
+import { $getRoot, type EditorState } from "lexical";
 
 // Lexical escapes markdown-special characters (*, _, ~, etc.) when they
 // appear as literal text.  In plain-text editing mode the user *intends*
@@ -58,7 +58,7 @@ export function MarkdownSyncPlugin({
 
     try {
       editor.update(() => {
-        if (value.trim() === '') {
+        if (value.trim() === "") {
           $getRoot().clear();
         } else {
           $convertFromMarkdownString(value, transformers);
@@ -77,7 +77,7 @@ export function MarkdownSyncPlugin({
       });
       lastSerializedRef.current = value;
     } catch (err) {
-      console.error('Failed to parse markdown', err);
+      console.error("Failed to parse markdown", err);
     }
   }, [editor, value, transformers]);
 
@@ -88,10 +88,10 @@ export function MarkdownSyncPlugin({
       if (!onChange) return;
 
       let markdown = editorState.read(() =>
-        $convertToMarkdownString(transformers)
+        $convertToMarkdownString(transformers),
       );
       if (preserveMarkdownSyntax) {
-        markdown = markdown.replace(MARKDOWN_ESCAPE_RE, '$1');
+        markdown = markdown.replace(MARKDOWN_ESCAPE_RE, "$1");
       }
 
       if (markdown === lastSerializedRef.current) return;

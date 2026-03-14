@@ -4,10 +4,10 @@ import {
   useImperativeHandle,
   useMemo,
   useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import type { AskUserQuestionItem, QuestionAnswer } from 'shared/types';
-import { QuestionIcon } from '@phosphor-icons/react';
+} from "react";
+import { useTranslation } from "react-i18next";
+import type { AskUserQuestionItem, QuestionAnswer } from "shared/types";
+import { QuestionIcon } from "@phosphor-icons/react";
 
 export interface AskUserQuestionBannerHandle {
   /** Submit a custom free-text answer for the current question (triggered by Enter in the editor) */
@@ -27,9 +27,9 @@ export const AskUserQuestionBanner = forwardRef<
   AskUserQuestionBannerProps
 >(function AskUserQuestionBanner(
   { questions, onSubmitAnswers, isSubmitting, isTimedOut, error },
-  ref
+  ref,
 ) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   // Track completed answers: question text -> selected labels array
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
 
@@ -39,7 +39,7 @@ export const AskUserQuestionBanner = forwardRef<
       questions
         .filter((q) => rec[q.question] !== undefined)
         .map((q) => ({ question: q.question, answer: rec[q.question] })),
-    [questions]
+    [questions],
   );
   // Track which question index we're currently showing
   const currentIndex = useMemo(() => {
@@ -51,7 +51,7 @@ export const AskUserQuestionBanner = forwardRef<
 
   // For multi-select: track toggled labels for the current question
   const [multiSelectLabels, setMultiSelectLabels] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const currentQuestion =
@@ -97,7 +97,7 @@ export const AskUserQuestionBanner = forwardRef<
       questions.length,
       onSubmitAnswers,
       toQuestionAnswers,
-    ]
+    ],
   );
 
   // Confirm multi-select or "Other" text answer
@@ -151,7 +151,7 @@ export const AskUserQuestionBanner = forwardRef<
       questions.length,
       onSubmitAnswers,
       toQuestionAnswers,
-    ]
+    ],
   );
 
   if (isAllAnswered && !isSubmitting) return null;
@@ -162,7 +162,7 @@ export const AskUserQuestionBanner = forwardRef<
       <div className="flex items-center gap-base px-double py-base">
         <QuestionIcon className="h-4 w-4 text-brand flex-shrink-0" />
         <span className="text-sm text-normal flex-1">
-          {t('askQuestion.title')}
+          {t("askQuestion.title")}
           {questions.length > 1 && (
             <span className="text-low ml-1">
               ({Math.min(currentIndex + 1, questions.length)}/{questions.length}
@@ -181,7 +181,7 @@ export const AskUserQuestionBanner = forwardRef<
             </span>
             {currentQuestion.multiSelect && (
               <span className="text-xs text-low">
-                {t('askQuestion.selectMultiple')}
+                {t("askQuestion.selectMultiple")}
               </span>
             )}
           </div>
@@ -202,10 +202,10 @@ export const AskUserQuestionBanner = forwardRef<
                     group relative rounded-md border px-2.5 py-1.5 text-xs transition-all
                     ${
                       isSelected
-                        ? 'border-brand bg-brand/10 text-normal'
-                        : 'border-border text-low hover:border-brand/40 hover:text-normal hover:bg-accent'
+                        ? "border-brand bg-brand/10 text-normal"
+                        : "border-border text-low hover:border-brand/40 hover:text-normal hover:bg-accent"
                     }
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+                    ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                   `}
                   title={opt.description}
                 >
@@ -222,7 +222,7 @@ export const AskUserQuestionBanner = forwardRef<
               onClick={handleConfirmMultiSelect}
               className="mt-2 rounded-md bg-brand px-3 py-1 text-xs font-medium text-white hover:bg-brand/90 transition-colors disabled:opacity-50"
             >
-              {t('askQuestion.confirmSelection')}
+              {t("askQuestion.confirmSelection")}
             </button>
           )}
         </div>
@@ -234,7 +234,7 @@ export const AskUserQuestionBanner = forwardRef<
 
       {isSubmitting && (
         <div className="px-double pb-base text-sm text-low">
-          {t('askQuestion.submitting')}
+          {t("askQuestion.submitting")}
         </div>
       )}
     </div>

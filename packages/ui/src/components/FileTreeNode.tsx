@@ -1,20 +1,20 @@
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, type ReactNode } from "react";
 import {
   CaretDownIcon,
   CaretRightIcon,
   FolderSimpleIcon,
   GithubLogoIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
 
-export type FileTreeNodeType = 'file' | 'folder';
+export type FileTreeNodeType = "file" | "folder";
 export type FileTreeNodeChangeKind =
-  | 'added'
-  | 'deleted'
-  | 'modified'
-  | 'renamed'
-  | 'copied'
-  | 'permissionChange';
+  | "added"
+  | "deleted"
+  | "modified"
+  | "renamed"
+  | "copied"
+  | "permissionChange";
 
 export interface FileTreeNodeItem {
   id: string;
@@ -56,17 +56,17 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
       commentCount,
       showCommentBadge,
     },
-    ref
+    ref,
   ) {
-    const isFolder = node.type === 'folder';
-    const isDeleted = node.changeKind === 'deleted';
-    const isAdded = node.changeKind === 'added';
-    const isRenamed = node.changeKind === 'renamed';
-    const isCopied = node.changeKind === 'copied';
+    const isFolder = node.type === "folder";
+    const isDeleted = node.changeKind === "deleted";
+    const isAdded = node.changeKind === "added";
+    const isRenamed = node.changeKind === "renamed";
+    const isCopied = node.changeKind === "copied";
     const fileIcon = isFolder ? null : renderFileIcon?.(node.name);
 
     // Extract filename from path for renamed/copied display
-    const getFileName = (path: string) => path.split('/').pop() || path;
+    const getFileName = (path: string) => path.split("/").pop() || path;
 
     const handleClick = () => {
       if (isFolder && onToggle) {
@@ -80,9 +80,9 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
       <div
         ref={ref}
         className={cn(
-          'flex items-center h-[26px] cursor-pointer text-low hover:bg-panel rounded',
-          'relative select-none',
-          isSelected && 'bg-panel text-normal'
+          "flex items-center h-[26px] cursor-pointer text-low hover:bg-panel rounded",
+          "relative select-none",
+          isSelected && "bg-panel text-normal",
         )}
         onClick={handleClick}
       >
@@ -93,7 +93,7 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
               <div
                 key={i}
                 className="h-full w-3 flex justify-center"
-                style={{ marginLeft: i === 0 ? '6px' : '0' }}
+                style={{ marginLeft: i === 0 ? "6px" : "0" }}
               >
                 <div className="h-full border-l border-border" />
               </div>
@@ -127,9 +127,9 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
           {/* File/folder name - color based on change kind */}
           <span
             className={cn(
-              'text-sm',
-              isDeleted && 'text-error line-through',
-              isAdded && 'text-success'
+              "text-sm",
+              isDeleted && "text-error line-through",
+              isAdded && "text-success",
             )}
           >
             {node.name}
@@ -143,7 +143,7 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
           )}
 
           {/* Stats for files */}
-          {node.type === 'file' && (node.additions || node.deletions) && (
+          {node.type === "file" && (node.additions || node.deletions) && (
             <span className="text-sm shrink-0 ml-base">
               {node.additions != null && node.additions > 0 && (
                 <span className="text-success">+{node.additions}</span>
@@ -152,7 +152,7 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
                 node.additions > 0 &&
                 node.deletions != null &&
                 node.deletions > 0 &&
-                ' '}
+                " "}
               {node.deletions != null && node.deletions > 0 && (
                 <span className="text-error">-{node.deletions}</span>
               )}
@@ -161,7 +161,7 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
 
           {/* GitHub comment badge */}
           {showCommentBadge &&
-            node.type === 'file' &&
+            node.type === "file" &&
             commentCount != null &&
             commentCount > 0 && (
               <span className="inline-flex items-center gap-0.5 text-xs text-low shrink-0 ml-half">
@@ -172,5 +172,5 @@ export const FileTreeNode = forwardRef<HTMLDivElement, FileTreeNodeProps>(
         </div>
       </div>
     );
-  }
+  },
 );

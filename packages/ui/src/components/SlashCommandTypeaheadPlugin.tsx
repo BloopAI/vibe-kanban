@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
-} from '@lexical/react/LexicalTypeaheadMenuPlugin';
+} from "@lexical/react/LexicalTypeaheadMenuPlugin";
 import {
   $createTextNode,
   KEY_ESCAPE_COMMAND,
   COMMAND_PRIORITY_NORMAL,
-} from 'lexical';
-import { TerminalIcon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { useTypeaheadOpen } from './TypeaheadOpenContext';
-import { TypeaheadMenu } from './TypeaheadMenu';
+} from "lexical";
+import { TerminalIcon } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import { useTypeaheadOpen } from "./TypeaheadOpenContext";
+import { TypeaheadMenu } from "./TypeaheadMenu";
 
 export type SlashCommandDescriptionLike = {
   name: string;
@@ -31,14 +31,14 @@ class SlashCommandOption extends MenuOption {
 
 function filterSlashCommands(
   all: SlashCommandDescriptionLike[],
-  query: string
+  query: string,
 ): SlashCommandDescriptionLike[] {
   const q = query.trim().toLowerCase();
   if (!q) return all;
 
   const startsWith = all.filter((c) => c.name.toLowerCase().startsWith(q));
   const includes = all.filter(
-    (c) => !startsWith.includes(c) && c.name.toLowerCase().includes(q)
+    (c) => !startsWith.includes(c) && c.name.toLowerCase().includes(q),
   );
   return [...startsWith, ...includes];
 }
@@ -55,12 +55,12 @@ export function SlashCommandTypeaheadPlugin({
   isDiscovering: boolean;
 }) {
   const [editor] = useLexicalComposerContext();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const { setIsOpen } = useTypeaheadOpen();
   const [options, setOptions] = useState<SlashCommandOption[]>([]);
   const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const closeTypeahead = useCallback(() => {
-    editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent('keydown'));
+    editor.dispatchCommand(KEY_ESCAPE_COMMAND, new KeyboardEvent("keydown"));
   }, [editor]);
 
   const isLoading = !isInitialized && enabled;
@@ -77,7 +77,7 @@ export function SlashCommandTypeaheadPlugin({
       const filtered = filterSlashCommands(commands, query).slice(0, 20);
       setOptions(filtered.map((c) => new SlashCommandOption(c)));
     },
-    [enabled, commands]
+    [enabled, commands],
   );
 
   const hasVisibleResults = useMemo(() => {
@@ -119,7 +119,7 @@ export function SlashCommandTypeaheadPlugin({
           const commandNode = $createTextNode(textToInsert);
           nodeToReplace.replace(commandNode);
 
-          const spaceNode = $createTextNode(' ');
+          const spaceNode = $createTextNode(" ");
           commandNode.insertAfter(spaceNode);
           spaceNode.select(1, 1);
         });
@@ -128,7 +128,7 @@ export function SlashCommandTypeaheadPlugin({
       }}
       menuRenderFn={(
         anchorRef,
-        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
       ) => {
         if (!anchorRef.current) return null;
         if (!enabled) return null;
@@ -137,8 +137,8 @@ export function SlashCommandTypeaheadPlugin({
         const isEmpty = !isLoading && !isDiscovering && commands.length === 0;
         const showLoadingRow = isLoading || isDiscovering;
         const loadingText = isLoading
-          ? 'Loading commands…'
-          : 'Discovering commands…';
+          ? "Loading commands…"
+          : "Discovering commands…";
 
         return createPortal(
           <TypeaheadMenu
@@ -148,12 +148,12 @@ export function SlashCommandTypeaheadPlugin({
           >
             <TypeaheadMenu.Header>
               <TerminalIcon className="size-icon-xs" weight="bold" />
-              {t('typeahead.commands')}
+              {t("typeahead.commands")}
             </TypeaheadMenu.Header>
 
             {isEmpty ? (
               <TypeaheadMenu.Empty>
-                {t('typeahead.noCommands')}
+                {t("typeahead.noCommands")}
               </TypeaheadMenu.Empty>
             ) : options.length === 0 && !showLoadingRow ? null : (
               <TypeaheadMenu.ScrollArea>
@@ -189,7 +189,7 @@ export function SlashCommandTypeaheadPlugin({
               </TypeaheadMenu.ScrollArea>
             )}
           </TypeaheadMenu>,
-          document.body
+          document.body,
         );
       }}
     />

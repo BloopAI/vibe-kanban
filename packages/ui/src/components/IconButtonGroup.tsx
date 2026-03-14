@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { cn } from '../lib/cn';
-import type { Icon } from '@phosphor-icons/react';
-import { Tooltip } from './Tooltip';
+import type { ReactNode } from "react";
+import { cn } from "../lib/cn";
+import type { Icon } from "@phosphor-icons/react";
+import { Tooltip } from "./Tooltip";
 
 interface ButtonGroupProps {
   children: ReactNode;
@@ -16,8 +16,8 @@ export function ButtonGroup({ children, className }: ButtonGroupProps) {
   return (
     <div
       className={cn(
-        'flex items-center rounded-sm border border-border overflow-hidden',
-        className
+        "flex items-center rounded-sm border border-border overflow-hidden",
+        className,
       )}
     >
       {children}
@@ -34,7 +34,7 @@ interface IconButtonGroupItemProps {
   onClick?: () => void;
   disabled?: boolean;
   active?: boolean;
-  'aria-label': string;
+  "aria-label": string;
   title?: string;
   className?: string;
 }
@@ -45,26 +45,26 @@ export function IconButtonGroupItem({
   onClick,
   disabled,
   active,
-  'aria-label': ariaLabel,
+  "aria-label": ariaLabel,
   title,
   className,
 }: IconButtonGroupItemProps) {
   const stateStyles = disabled
-    ? 'opacity-40 cursor-not-allowed'
+    ? "opacity-40 cursor-not-allowed"
     : active
-      ? 'bg-secondary text-normal'
-      : 'text-low hover:text-normal hover:bg-secondary/50';
+      ? "bg-secondary text-normal"
+      : "text-low hover:text-normal hover:bg-secondary/50";
 
   const button = (
     <button
       type="button"
-      className={cn('p-half transition-colors', stateStyles, className)}
+      className={cn("p-half transition-colors", stateStyles, className)}
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel}
     >
       <IconComponent
-        className={cn('size-icon-sm', iconClassName)}
+        className={cn("size-icon-sm", iconClassName)}
         weight="bold"
       />
     </button>
@@ -79,7 +79,7 @@ interface ButtonGroupItemProps {
   onClick?: () => void;
   disabled?: boolean;
   active?: boolean;
-  'aria-label'?: string;
+  "aria-label"?: string;
   title?: string;
   className?: string;
   children?: ReactNode;
@@ -94,28 +94,28 @@ export function ButtonGroupItem({
   onClick,
   disabled,
   active,
-  'aria-label': ariaLabel,
+  "aria-label": ariaLabel,
   title,
   className,
   children,
 }: ButtonGroupItemProps) {
   const stateStyles = disabled
-    ? 'opacity-40 cursor-not-allowed'
+    ? "opacity-40 cursor-not-allowed"
     : active
-      ? 'bg-secondary text-normal'
-      : 'text-low hover:text-normal hover:bg-secondary/50';
+      ? "bg-secondary text-normal"
+      : "text-low hover:text-normal hover:bg-secondary/50";
 
   // Use smaller padding for icon-only, larger for text content
-  const paddingStyles = children ? 'px-base py-half' : 'p-half';
+  const paddingStyles = children ? "px-base py-half" : "p-half";
 
   const button = (
     <button
       type="button"
       className={cn(
-        'text-sm transition-colors',
+        "text-sm transition-colors",
         paddingStyles,
         stateStyles,
-        className
+        className,
       )}
       onClick={onClick}
       disabled={disabled}
@@ -123,7 +123,7 @@ export function ButtonGroupItem({
     >
       {IconComponent && (
         <IconComponent
-          className={cn('size-icon-sm', children && 'mr-half', iconClassName)}
+          className={cn("size-icon-sm", children && "mr-half", iconClassName)}
           weight="bold"
         />
       )}

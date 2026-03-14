@@ -4,12 +4,12 @@ export function isMac(): boolean {
     userAgentData?: { platform?: string };
   };
   if (nav.userAgentData?.platform) {
-    return nav.userAgentData.platform === 'macOS';
+    return nav.userAgentData.platform === "macOS";
   }
   // Fallback for Safari and older browsers.
   return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 }
 
 export function getModifierKey(): string {
-  return isMac() ? '\u2318' : 'Ctrl';
+  return isMac() ? "\u2318" : "Ctrl";
 }

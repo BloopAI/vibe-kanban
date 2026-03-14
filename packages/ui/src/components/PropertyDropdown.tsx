@@ -1,12 +1,12 @@
-import type { ReactNode } from 'react';
-import { cn } from '../lib/cn';
-import { CaretDownIcon, CheckIcon, type Icon } from '@phosphor-icons/react';
+import type { ReactNode } from "react";
+import { cn } from "../lib/cn";
+import { CaretDownIcon, CheckIcon, type Icon } from "@phosphor-icons/react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from './Dropdown';
+} from "./Dropdown";
 
 export interface PropertyDropdownOption<T extends string = string> {
   value: T;
@@ -46,12 +46,12 @@ export function PropertyDropdown<T extends string = string>({
         <button
           type="button"
           className={cn(
-            'flex items-center gap-half bg-panel rounded-sm',
-            'text-sm text-normal hover:bg-secondary transition-colors',
-            'disabled:opacity-50 disabled:cursor-not-allowed',
-            'py-half',
-            'px-base',
-            iconOnly && isNonDefault && 'text-brand'
+            "flex items-center gap-half bg-panel rounded-sm",
+            "text-sm text-normal hover:bg-secondary transition-colors",
+            "disabled:opacity-50 disabled:cursor-not-allowed",
+            "py-half",
+            "px-base",
+            iconOnly && isNonDefault && "text-brand",
           )}
         >
           {iconOnly && IconComponent ? (

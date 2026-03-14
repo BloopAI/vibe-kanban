@@ -1,7 +1,7 @@
-import * as React from 'react';
-import * as AccordionPrimitive from '@radix-ui/react-accordion';
+import * as React from "react";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
 
-import { cn } from '../lib/cn';
+import { cn } from "../lib/cn";
 
 const Accordion = AccordionPrimitive.Root;
 
@@ -23,11 +23,11 @@ const AccordionTrigger = React.forwardRef<
   AccordionTriggerProps
 >(({ className, children, sticky = false, ...props }, ref) => (
   <AccordionPrimitive.Header
-    className={cn('flex', sticky && 'sticky top-0 z-10 bg-panel')}
+    className={cn("flex", sticky && "sticky top-0 z-10 bg-panel")}
   >
     <AccordionPrimitive.Trigger
       ref={ref}
-      className={cn('flex w-full items-center', className)}
+      className={cn("flex w-full items-center", className)}
       {...props}
     >
       {children}
@@ -43,10 +43,10 @@ const AccordionContent = React.forwardRef<
   <AccordionPrimitive.Content
     ref={ref}
     className={cn(
-      'overflow-hidden',
-      'data-[state=open]:animate-accordion-down',
-      'data-[state=closed]:animate-accordion-up',
-      className
+      "overflow-hidden",
+      "data-[state=open]:animate-accordion-down",
+      "data-[state=closed]:animate-accordion-up",
+      className,
     )}
     {...props}
   />

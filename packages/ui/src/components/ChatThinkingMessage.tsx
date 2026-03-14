@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
-import { ChatDotsIcon } from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
+import type { ReactNode } from "react";
+import { ChatDotsIcon } from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
 
 export interface ChatThinkingMessageRenderProps {
   content: string;
@@ -23,13 +23,13 @@ export function ChatThinkingMessage({
 }: ChatThinkingMessageProps) {
   return (
     <div
-      className={cn('flex items-start gap-base text-sm text-low', className)}
+      className={cn("flex items-start gap-base text-sm text-low", className)}
     >
       <ChatDotsIcon className="shrink-0 size-icon-base pt-0.5" />
       {renderMarkdown({
         content,
         workspaceId: workspaceId,
-        className: 'text-sm',
+        className: "text-sm",
       })}
     </div>
   );

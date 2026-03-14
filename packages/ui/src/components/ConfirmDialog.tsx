@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -6,61 +6,61 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from './KeyboardDialog';
-import { Button } from './Button';
-import NiceModal, { useModal } from '@ebay/nice-modal-react';
+} from "./KeyboardDialog";
+import { Button } from "./Button";
+import NiceModal, { useModal } from "@ebay/nice-modal-react";
 import {
   WarningIcon,
   InfoIcon,
   CheckCircleIcon,
   XCircleIcon,
-} from '@phosphor-icons/react';
-import { defineModal, type ConfirmResult } from '../lib/modals';
+} from "@phosphor-icons/react";
+import { defineModal, type ConfirmResult } from "../lib/modals";
 
 export interface ConfirmDialogProps {
   title: string;
   message: string;
   confirmText?: string;
   cancelText?: string;
-  variant?: 'default' | 'destructive' | 'info' | 'success';
+  variant?: "default" | "destructive" | "info" | "success";
   icon?: boolean;
   showCancelButton?: boolean;
 }
 
 const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
-  const { t } = useTranslation(['tasks', 'common']);
+  const { t } = useTranslation(["tasks", "common"]);
   const modal = useModal();
   const {
     title,
     message,
-    confirmText = t('common:confirm.defaultConfirm'),
-    cancelText = t('common:confirm.defaultCancel'),
-    variant = 'default',
+    confirmText = t("common:confirm.defaultConfirm"),
+    cancelText = t("common:confirm.defaultCancel"),
+    variant = "default",
     icon = true,
     showCancelButton = true,
   } = props;
 
   const handleConfirm = () => {
-    modal.resolve('confirmed' as ConfirmResult);
+    modal.resolve("confirmed" as ConfirmResult);
     modal.hide();
   };
 
   const handleCancel = () => {
-    modal.resolve('canceled' as ConfirmResult);
+    modal.resolve("canceled" as ConfirmResult);
     modal.hide();
   };
 
   const getIcon = () => {
     if (!icon) return null;
 
-    const iconClass = 'h-6 w-6';
+    const iconClass = "h-6 w-6";
 
     switch (variant) {
-      case 'destructive':
+      case "destructive":
         return <WarningIcon className={`${iconClass} text-destructive`} />;
-      case 'info':
+      case "info":
         return <InfoIcon className={`${iconClass} text-blue-500`} />;
-      case 'success':
+      case "success":
         return <CheckCircleIcon className={`${iconClass} text-green-500`} />;
       default:
         return <XCircleIcon className={`${iconClass} text-muted-foreground`} />;
@@ -68,7 +68,7 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
   };
 
   const getConfirmButtonVariant = () => {
-    return variant === 'destructive' ? 'destructive' : 'default';
+    return variant === "destructive" ? "destructive" : "default";
   };
 
   return (
@@ -109,5 +109,5 @@ const ConfirmDialogImpl = NiceModal.create<ConfirmDialogProps>((props) => {
 });
 
 export const ConfirmDialog = defineModal<ConfirmDialogProps, ConfirmResult>(
-  ConfirmDialogImpl
+  ConfirmDialogImpl,
 );

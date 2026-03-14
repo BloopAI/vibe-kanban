@@ -8,11 +8,11 @@ import {
   GitBranchIcon,
   MinusIcon,
   PlusIcon,
-} from '@phosphor-icons/react';
-import type { Icon } from '@phosphor-icons/react';
-import type { ReactNode } from 'react';
-import { useDeferredValue, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+} from "@phosphor-icons/react";
+import type { Icon } from "@phosphor-icons/react";
+import type { ReactNode } from "react";
+import { useDeferredValue, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Command,
   CommandEmpty,
@@ -21,15 +21,15 @@ import {
   CommandItem,
   CommandList,
   CommandShortcut,
-} from './Command';
+} from "./Command";
 
-type PriorityId = 'urgent' | 'high' | 'medium' | 'low';
+type PriorityId = "urgent" | "high" | "medium" | "low";
 
 export interface CommandBarAction {
   id: string;
   icon: Icon | string;
   shortcut?: string;
-  variant?: 'default' | 'destructive' | string;
+  variant?: "default" | "destructive" | string;
   keywords?: string[];
 }
 
@@ -57,14 +57,14 @@ export interface CommandBarStatusItem {
 }
 
 interface PageItem<TPageId extends string = string> {
-  type: 'page';
+  type: "page";
   pageId: TPageId;
   label: string;
   icon: Icon;
 }
 
 interface RepoItem {
-  type: 'repo';
+  type: "repo";
   repo: {
     id: string;
     display_name: string;
@@ -72,7 +72,7 @@ interface RepoItem {
 }
 
 interface BranchItem {
-  type: 'branch';
+  type: "branch";
   branch: {
     name: string;
     isCurrent: boolean;
@@ -80,12 +80,12 @@ interface BranchItem {
 }
 
 interface StatusItem {
-  type: 'status';
+  type: "status";
   status: CommandBarStatusItem;
 }
 
 interface PriorityItem {
-  type: 'priority';
+  type: "priority";
   priority: {
     id: string | null;
     name: string;
@@ -93,11 +93,11 @@ interface PriorityItem {
 }
 
 interface CreateSubIssueItem {
-  type: 'createSubIssue';
+  type: "createSubIssue";
 }
 
 interface IssueItem {
-  type: 'issue';
+  type: "issue";
   issue: {
     id: string;
     simple_id: string;
@@ -108,7 +108,7 @@ interface IssueItem {
 }
 
 interface ActionItem<TAction extends CommandBarAction> {
-  type: 'action';
+  type: "action";
   action: TAction;
 }
 
@@ -144,10 +144,10 @@ const BRANCH_SEARCH_RESULT_LIMIT = 300;
 
 const PRIORITY_CONFIG: Record<PriorityId, { icon: Icon; colorClass: string }> =
   {
-    urgent: { icon: ArrowFatLineUpIcon, colorClass: 'text-error' },
-    high: { icon: ArrowUpIcon, colorClass: 'text-brand' },
-    medium: { icon: MinusIcon, colorClass: 'text-low' },
-    low: { icon: ArrowDownIcon, colorClass: 'text-success' },
+    urgent: { icon: ArrowFatLineUpIcon, colorClass: "text-error" },
+    high: { icon: ArrowUpIcon, colorClass: "text-brand" },
+    medium: { icon: MinusIcon, colorClass: "text-low" },
+    low: { icon: ArrowDownIcon, colorClass: "text-success" },
   };
 
 function getPriorityConfig(priorityId: string | null | undefined) {
@@ -165,8 +165,8 @@ function ActionItemIcon({
   icon: Icon | string;
   renderSpecialActionIcon?: (iconName: string) => ReactNode;
 }) {
-  if (typeof icon === 'string') {
-    if (icon === 'copy-icon') {
+  if (typeof icon === "string") {
+    if (icon === "copy-icon") {
       return <CopyIcon className="h-4 w-4" weight="regular" />;
     }
     const customIcon = renderSpecialActionIcon?.(icon);
@@ -191,7 +191,7 @@ export function CommandBar<
   statuses = [],
   renderSpecialActionIcon,
 }: CommandBarProps<TAction, TPageId>) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const deferredSearch = useDeferredValue(search);
   const normalizedSearch = deferredSearch.trim().toLowerCase();
   const isSearching = normalizedSearch.length > 0;
@@ -201,7 +201,7 @@ export function CommandBar<
       return page.groups;
     }
 
-    const isBranchSelectionPage = page.id === 'selectBranch';
+    const isBranchSelectionPage = page.id === "selectBranch";
     const groups: CommandBarGroup<TAction, TPageId>[] = [];
     let remainingBranchResults = BRANCH_SEARCH_RESULT_LIMIT;
 
@@ -213,7 +213,7 @@ export function CommandBar<
         if (!label) continue;
         if (!label.toLowerCase().includes(normalizedSearch)) continue;
 
-        if (isBranchSelectionPage && item.type === 'branch') {
+        if (isBranchSelectionPage && item.type === "branch") {
           if (remainingBranchResults <= 0) {
             continue;
           }
@@ -246,25 +246,25 @@ export function CommandBar<
     >
       <div className="flex items-center border-b border-border">
         <CommandInput
-          placeholder={page.title || t('commandBar.defaultPlaceholder')}
+          placeholder={page.title || t("commandBar.defaultPlaceholder")}
           value={search}
           onValueChange={onSearchChange}
         />
       </div>
       <CommandList>
-        <CommandEmpty>{t('commandBar.noResults')}</CommandEmpty>
+        <CommandEmpty>{t("commandBar.noResults")}</CommandEmpty>
         {canGoBack && !search && (
           <CommandGroup>
             <CommandItem value="__back__" onSelect={onGoBack}>
               <CaretLeftIcon className="h-4 w-4" weight="bold" />
-              <span>{t('commandBar.back')}</span>
+              <span>{t("commandBar.back")}</span>
             </CommandItem>
           </CommandGroup>
         )}
         {filteredGroups.map((group) => (
           <CommandGroup key={group.label} heading={group.label}>
             {group.items.map((item) => {
-              if (item.type === 'page') {
+              if (item.type === "page") {
                 const IconComponent = item.icon;
                 return (
                   <CommandItem
@@ -278,7 +278,7 @@ export function CommandBar<
                 );
               }
 
-              if (item.type === 'repo') {
+              if (item.type === "repo") {
                 return (
                   <CommandItem
                     key={item.repo.id}
@@ -291,7 +291,7 @@ export function CommandBar<
                 );
               }
 
-              if (item.type === 'branch') {
+              if (item.type === "branch") {
                 return (
                   <CommandItem
                     key={item.branch.name}
@@ -302,14 +302,14 @@ export function CommandBar<
                     <span>{item.branch.name}</span>
                     {item.branch.isCurrent && (
                       <span className="ml-auto text-xs capitalize text-low">
-                        {t('branchSelector.badges.current')}
+                        {t("branchSelector.badges.current")}
                       </span>
                     )}
                   </CommandItem>
                 );
               }
 
-              if (item.type === 'status') {
+              if (item.type === "status") {
                 return (
                   <CommandItem
                     key={item.status.id}
@@ -325,13 +325,13 @@ export function CommandBar<
                 );
               }
 
-              if (item.type === 'priority') {
+              if (item.type === "priority") {
                 const config = getPriorityConfig(item.priority.id);
                 const IconComponent = config?.icon;
                 return (
                   <CommandItem
-                    key={item.priority.id ?? 'no-priority'}
-                    value={`${item.priority.id ?? 'none'} ${item.priority.name}`}
+                    key={item.priority.id ?? "no-priority"}
+                    value={`${item.priority.id ?? "none"} ${item.priority.name}`}
                     onSelect={() => onSelect(item)}
                   >
                     {IconComponent && (
@@ -345,7 +345,7 @@ export function CommandBar<
                 );
               }
 
-              if (item.type === 'createSubIssue') {
+              if (item.type === "createSubIssue") {
                 return (
                   <CommandItem
                     key="create-sub-issue"
@@ -356,17 +356,17 @@ export function CommandBar<
                       className="h-4 w-4 shrink-0 text-brand"
                       weight="bold"
                     />
-                    <span>{t('kanban.createNewIssue')}</span>
+                    <span>{t("kanban.createNewIssue")}</span>
                   </CommandItem>
                 );
               }
 
-              if (item.type === 'issue') {
+              if (item.type === "issue") {
                 const config = getPriorityConfig(item.issue.priority ?? null);
                 const PriorityIconComponent = config?.icon;
                 const statusColor =
                   statuses.find((status) => status.id === item.issue.status_id)
-                    ?.color ?? '0 0% 50%';
+                    ?.color ?? "0 0% 50%";
                 return (
                   <CommandItem
                     key={item.issue.id}
@@ -398,8 +398,8 @@ export function CommandBar<
                   value={`${item.action.id} ${label}`}
                   onSelect={() => onSelect(item)}
                   className={
-                    item.action.variant === 'destructive'
-                      ? 'text-error'
+                    item.action.variant === "destructive"
+                      ? "text-error"
                       : undefined
                   }
                 >
@@ -426,29 +426,29 @@ function getItemSearchLabel<
   TPageId extends string,
 >(
   item: CommandBarGroupItem<TAction, TPageId>,
-  getLabel: (action: TAction) => string
+  getLabel: (action: TAction) => string,
 ) {
-  if (item.type === 'page') {
+  if (item.type === "page") {
     return `${item.pageId} ${item.label}`;
   }
-  if (item.type === 'repo') {
+  if (item.type === "repo") {
     return `${item.repo.id} ${item.repo.display_name}`;
   }
-  if (item.type === 'branch') {
+  if (item.type === "branch") {
     return item.branch.name;
   }
-  if (item.type === 'status') {
+  if (item.type === "status") {
     return `${item.status.id} ${item.status.name}`;
   }
-  if (item.type === 'priority') {
-    return `${item.priority.id ?? 'none'} ${item.priority.name}`;
+  if (item.type === "priority") {
+    return `${item.priority.id ?? "none"} ${item.priority.name}`;
   }
-  if (item.type === 'issue') {
+  if (item.type === "issue") {
     return `${item.issue.id} ${item.issue.simple_id} ${item.issue.title}`;
   }
-  if (item.type === 'createSubIssue') {
-    return 'create new issue';
+  if (item.type === "createSubIssue") {
+    return "create new issue";
   }
-  const keywords = item.action.keywords?.join(' ') ?? '';
+  const keywords = item.action.keywords?.join(" ") ?? "";
   return `${item.action.id} ${getLabel(item.action)} ${keywords}`.trim();
 }

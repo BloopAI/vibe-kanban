@@ -7,10 +7,10 @@ import {
   CircleIcon,
   GitPullRequestIcon,
   DotsThreeIcon,
-} from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { cn } from '../lib/cn';
-import { RunningDots } from './RunningDots';
+} from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import { cn } from "../lib/cn";
+import { RunningDots } from "./RunningDots";
 
 const formatRelativeElapsed = (dateString: string): string => {
   const date = new Date(dateString);
@@ -21,7 +21,7 @@ const formatRelativeElapsed = (dateString: string): string => {
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
 
-  if (diffSecs < 60) return 'just now';
+  if (diffSecs < 60) return "just now";
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   return `${diffDays}d ago`;
@@ -40,8 +40,8 @@ export interface WorkspaceSummaryProps {
   hasRunningDevServer?: boolean;
   hasUnseenActivity?: boolean;
   latestProcessCompletedAt?: string;
-  latestProcessStatus?: 'running' | 'completed' | 'failed' | 'killed';
-  prStatus?: 'open' | 'merged' | 'closed' | 'unknown';
+  latestProcessStatus?: "running" | "completed" | "failed" | "killed";
+  prStatus?: "open" | "merged" | "closed" | "unknown";
   onClick?: () => void;
   className?: string;
   summary?: boolean;
@@ -71,10 +71,10 @@ export function WorkspaceSummary({
   isDraft = false,
   onOpenWorkspaceActions,
 }: WorkspaceSummaryProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
   const hasChanges = filesChanged !== undefined && filesChanged > 0;
   const isFailed =
-    latestProcessStatus === 'failed' || latestProcessStatus === 'killed';
+    latestProcessStatus === "failed" || latestProcessStatus === "killed";
 
   const handleOpenCommandBar = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -85,37 +85,37 @@ export function WorkspaceSummary({
   return (
     <div
       className={cn(
-        'group relative rounded-sm transition-all duration-100 overflow-hidden',
-        isActive ? 'bg-tertiary' : '',
-        className
+        "group relative rounded-sm transition-all duration-100 overflow-hidden",
+        isActive ? "bg-tertiary" : "",
+        className,
       )}
     >
       {/* Selection indicator - thin colored tab on the left */}
       <div
         className={cn(
-          'absolute left-0 top-1 bottom-1 w-0.5 rounded-full transition-colors duration-100',
-          isActive ? 'bg-brand' : 'bg-transparent'
+          "absolute left-0 top-1 bottom-1 w-0.5 rounded-full transition-colors duration-100",
+          isActive ? "bg-brand" : "bg-transparent",
         )}
       />
       <button
         onClick={onClick}
         className={cn(
-          'flex w-full cursor-pointer flex-col text-left px-base py-half transition-all duration-150',
+          "flex w-full cursor-pointer flex-col text-left px-base py-half transition-all duration-150",
           isActive
-            ? 'text-normal'
-            : 'text-low sm:opacity-60 sm:hover:opacity-100 sm:hover:text-normal'
+            ? "text-normal"
+            : "text-low sm:opacity-60 sm:hover:opacity-100 sm:hover:text-normal",
         )}
       >
         <div
           className={cn(
-            'overflow-hidden whitespace-nowrap pr-double',
-            !summary && 'text-normal'
+            "overflow-hidden whitespace-nowrap pr-double",
+            !summary && "text-normal",
           )}
           style={{
             maskImage:
-              'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
+              "linear-gradient(to right, black calc(100% - 24px), transparent 100%)",
             WebkitMaskImage:
-              'linear-gradient(to right, black calc(100% - 24px), transparent 100%)',
+              "linear-gradient(to right, black calc(100% - 24px), transparent 100%)",
           }}
         >
           {name}
@@ -158,13 +158,13 @@ export function WorkspaceSummary({
             )}
 
             {/* PR status icon */}
-            {prStatus === 'open' && (
+            {prStatus === "open" && (
               <GitPullRequestIcon
                 className="size-icon-xs text-success shrink-0"
                 weight="fill"
               />
             )}
-            {prStatus === 'merged' && (
+            {prStatus === "merged" && (
               <GitPullRequestIcon
                 className="size-icon-xs text-merged shrink-0"
                 weight="fill"
@@ -183,7 +183,7 @@ export function WorkspaceSummary({
             {!isRunning &&
               (isDraft ? (
                 <span className="min-w-0 flex-1 truncate">
-                  {t('workspaces.draft')}
+                  {t("workspaces.draft")}
                 </span>
               ) : latestProcessCompletedAt ? (
                 <span className="min-w-0 flex-1 truncate">
@@ -224,7 +224,7 @@ export function WorkspaceSummary({
               onClick={handleOpenCommandBar}
               onPointerDown={(e) => e.stopPropagation()}
               className="p-1.5 rounded-sm text-low hover:text-normal hover:bg-tertiary"
-              title={t('workspaces.more')}
+              title={t("workspaces.more")}
             >
               <DotsThreeIcon className="size-5" weight="bold" />
             </button>

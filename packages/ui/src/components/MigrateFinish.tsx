@@ -2,8 +2,8 @@ import {
   FolderIcon,
   ArrowSquareOutIcon,
   ArrowCounterClockwiseIcon,
-} from '@phosphor-icons/react';
-import { PrimaryButton } from './PrimaryButton';
+} from "@phosphor-icons/react";
+import { PrimaryButton } from "./PrimaryButton";
 
 export interface MigrateFinishProject {
   localId: string;

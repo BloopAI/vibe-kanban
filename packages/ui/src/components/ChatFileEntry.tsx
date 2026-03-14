@@ -1,22 +1,22 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 import {
   CaretDownIcon,
   ArrowSquareUpRightIcon,
   FileIcon as DefaultFileIcon,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
-import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
+import { ToolStatusDot, type ToolStatusLike } from "./ToolStatusDot";
 
 export type ChatFileEntryDiffInput =
   | {
-      type: 'content';
+      type: "content";
       oldContent: string;
       newContent: string;
       oldPath?: string;
       newPath: string;
     }
   | {
-      type: 'unified';
+      type: "unified";
       path: string;
       unifiedDiff: string;
       hasLineNumbers?: boolean;
@@ -59,10 +59,10 @@ export function ChatFileEntry({
   onOpenInVSCode,
   renderDiffBody,
 }: ChatFileEntryProps) {
-  const { t } = useTranslation('tasks');
+  const { t } = useTranslation("tasks");
   const hasStats = additions !== undefined || deletions !== undefined;
   const FileIcon = fileIcon ?? DefaultFileIcon;
-  const isDenied = status?.status === 'denied';
+  const isDenied = status?.status === "denied";
   const hasDiffContent = Boolean(diffContent && renderDiffBody);
 
   const handleClick = () => {
@@ -78,17 +78,17 @@ export function ChatFileEntry({
     return (
       <div
         className={cn(
-          'rounded-sm border overflow-hidden',
-          isDenied && 'border-error bg-error/10',
-          className
+          "rounded-sm border overflow-hidden",
+          isDenied && "border-error bg-error/10",
+          className,
         )}
       >
         {/* Header */}
         <div
           className={cn(
-            'flex items-center p-base w-full',
-            isDenied ? 'bg-error/20' : 'bg-panel',
-            (onToggle || isVSCode) && 'cursor-pointer'
+            "flex items-center p-base w-full",
+            isDenied ? "bg-error/20" : "bg-panel",
+            (onToggle || isVSCode) && "cursor-pointer",
           )}
           onClick={handleClick}
         >
@@ -111,7 +111,7 @@ export function ChatFileEntry({
                   onOpenInChanges();
                 }}
                 className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
-                title={t('conversation.viewInChangesPanel')}
+                title={t("conversation.viewInChangesPanel")}
               >
                 <ArrowSquareUpRightIcon className="size-icon-xs" />
               </button>
@@ -121,7 +121,7 @@ export function ChatFileEntry({
                 {additions !== undefined && additions > 0 && (
                   <span className="text-success">+{additions}</span>
                 )}
-                {additions !== undefined && deletions !== undefined && ' '}
+                {additions !== undefined && deletions !== undefined && " "}
                 {deletions !== undefined && deletions > 0 && (
                   <span className="text-error">-{deletions}</span>
                 )}
@@ -131,8 +131,8 @@ export function ChatFileEntry({
           {!isVSCode && onToggle && (
             <CaretDownIcon
               className={cn(
-                'size-icon-xs shrink-0 text-low transition-transform',
-                !expanded && '-rotate-90'
+                "size-icon-xs shrink-0 text-low transition-transform",
+                !expanded && "-rotate-90",
               )}
             />
           )}
@@ -148,10 +148,10 @@ export function ChatFileEntry({
   return (
     <div
       className={cn(
-        'flex items-center border rounded-sm p-base w-full',
-        isDenied ? 'bg-error/20 border-error' : 'bg-panel',
-        (onToggle || isVSCode) && 'cursor-pointer',
-        className
+        "flex items-center border rounded-sm p-base w-full",
+        isDenied ? "bg-error/20 border-error" : "bg-panel",
+        (onToggle || isVSCode) && "cursor-pointer",
+        className,
       )}
       onClick={handleClick}
     >
@@ -174,7 +174,7 @@ export function ChatFileEntry({
               onOpenInChanges();
             }}
             className="shrink-0 p-0.5 rounded hover:bg-muted text-low hover:text-normal transition-colors"
-            title={t('conversation.viewInChangesPanel')}
+            title={t("conversation.viewInChangesPanel")}
           >
             <ArrowSquareUpRightIcon className="size-icon-xs" />
           </button>
@@ -184,7 +184,7 @@ export function ChatFileEntry({
             {additions !== undefined && additions > 0 && (
               <span className="text-success">+{additions}</span>
             )}
-            {additions !== undefined && deletions !== undefined && ' '}
+            {additions !== undefined && deletions !== undefined && " "}
             {deletions !== undefined && deletions > 0 && (
               <span className="text-error">-{deletions}</span>
             )}
@@ -194,8 +194,8 @@ export function ChatFileEntry({
       {!isVSCode && onToggle && (
         <CaretDownIcon
           className={cn(
-            'size-icon-xs shrink-0 text-low transition-transform',
-            !expanded && '-rotate-90'
+            "size-icon-xs shrink-0 text-low transition-transform",
+            !expanded && "-rotate-90",
           )}
         />
       )}

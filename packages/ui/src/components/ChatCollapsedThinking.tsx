@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { ChatDotsIcon, CaretRightIcon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { cn } from '../lib/cn';
+import type { ReactNode } from "react";
+import { ChatDotsIcon, CaretRightIcon } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import { cn } from "../lib/cn";
 
 export interface ThinkingEntry {
   content: string;
@@ -40,12 +40,12 @@ export function ChatCollapsedThinking({
   workspaceId,
   renderMarkdown,
 }: ChatCollapsedThinkingProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   if (entries.length === 0) return null;
 
   return (
-    <div className={cn('flex flex-col', className)}>
+    <div className={cn("flex flex-col", className)}>
       {/* Header row - clickable to expand/collapse */}
       <div
         className="flex items-center gap-base text-sm text-low cursor-pointer group"
@@ -59,15 +59,15 @@ export function ChatCollapsedThinking({
           {isHovered ? (
             <CaretRightIcon
               className={cn(
-                'size-icon-base transition-transform duration-150',
-                expanded && 'rotate-90'
+                "size-icon-base transition-transform duration-150",
+                expanded && "rotate-90",
               )}
             />
           ) : (
             <ChatDotsIcon className="size-icon-base" />
           )}
         </span>
-        <span className="truncate">{t('conversation.thinking')}</span>
+        <span className="truncate">{t("conversation.thinking")}</span>
       </div>
 
       {/* Expanded content */}
@@ -78,7 +78,7 @@ export function ChatCollapsedThinking({
               {renderMarkdown({
                 content: entry.content,
                 workspaceId: workspaceId,
-                className: 'text-sm',
+                className: "text-sm",
               })}
             </div>
           ))}

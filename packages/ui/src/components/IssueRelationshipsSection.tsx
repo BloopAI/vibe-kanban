@@ -1,12 +1,12 @@
-'use client';
+"use client";
 
-import { useTranslation } from 'react-i18next';
-import { XIcon } from '@phosphor-icons/react';
-import { CollapsibleSectionHeader } from './CollapsibleSectionHeader';
+import { useTranslation } from "react-i18next";
+import { XIcon } from "@phosphor-icons/react";
+import { CollapsibleSectionHeader } from "./CollapsibleSectionHeader";
 import {
   RelationshipBadge,
   type RelationshipDisplayType,
-} from './RelationshipBadge';
+} from "./RelationshipBadge";
 
 export interface IssueRelationshipsSectionRelationship {
   relationshipId: string;
@@ -30,21 +30,21 @@ export function IssueRelationshipsSection({
   isLoading,
   headerExtra,
 }: IssueRelationshipsSectionProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   return (
     <CollapsibleSectionHeader
-      title={t('kanban.relationships', 'Relationships')}
+      title={t("kanban.relationships", "Relationships")}
       persistKey="kanban-issue-relationships"
       defaultExpanded={true}
       headerExtra={headerExtra}
     >
       <div className="p-base flex flex-col gap-half border-t">
         {isLoading ? (
-          <p className="text-low py-half">{t('states.loading')}</p>
+          <p className="text-low py-half">{t("states.loading")}</p>
         ) : relationships.length === 0 ? (
           <p className="text-low py-half">
-            {t('kanban.noRelationships', 'No relationships')}
+            {t("kanban.noRelationships", "No relationships")}
           </p>
         ) : (
           relationships.map((rel) => (

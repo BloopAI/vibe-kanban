@@ -9,19 +9,19 @@ import {
   DOMConversionMap,
   DOMExportOutput,
   $createParagraphNode,
-} from 'lexical';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+} from "lexical";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   TextMatchTransformer,
   MultilineElementTransformer,
   Transformer,
-} from '@lexical/markdown';
-import { useCallback } from 'react';
+} from "@lexical/markdown";
+import { useCallback } from "react";
 
 // ====== Types ======
 
 export type InlineSerialization<T> = {
-  format: 'inline';
+  format: "inline";
   pattern: RegExp; // e.g., /!\[([^\]]*)\]\(([^)]+)\)/
   trigger: string; // e.g., ')'
   serialize: (data: T) => string;
@@ -29,7 +29,7 @@ export type InlineSerialization<T> = {
 };
 
 export type FencedSerialization<T> = {
-  format: 'fenced';
+  format: "fenced";
   language: string; // e.g., 'gh-comment'
   serialize: (data: T) => string;
   deserialize: (content: string) => T;
@@ -51,7 +51,7 @@ export type GeneratedDecoratorNodeClass<T> = {
   getType(): string;
   clone(node: GeneratedDecoratorNode<T>): GeneratedDecoratorNode<T>;
   importJSON(
-    json: Spread<{ data: T }, SerializedLexicalNode>
+    json: Spread<{ data: T }, SerializedLexicalNode>,
   ): GeneratedDecoratorNode<T>;
   importDOM(): DOMConversionMap | null;
   // Required by LexicalNode for registration
@@ -80,7 +80,7 @@ export interface DecoratorNodeResult<T> {
   Node: GeneratedDecoratorNodeClass<T>;
   createNode: (data: T) => GeneratedDecoratorNode<T>;
   isNode: (
-    node: LexicalNode | null | undefined
+    node: LexicalNode | null | undefined,
   ) => node is GeneratedDecoratorNode<T>;
   transformers: Transformer[]; // 1 for inline, 2 for fenced
 }
@@ -88,7 +88,7 @@ export interface DecoratorNodeResult<T> {
 // ====== Factory Function ======
 
 export function createDecoratorNode<T>(
-  config: DecoratorNodeConfig<T>
+  config: DecoratorNodeConfig<T>,
 ): DecoratorNodeResult<T> {
   const {
     type,
@@ -124,7 +124,7 @@ export function createDecoratorNode<T>(
     }
 
     createDOM(): HTMLElement {
-      const el = document.createElement('span');
+      const el = document.createElement("span");
       if (domStyle) {
         Object.assign(el.style, domStyle);
       }
@@ -136,7 +136,7 @@ export function createDecoratorNode<T>(
     }
 
     static importJSON(
-      json: Spread<{ data: T }, SerializedLexicalNode>
+      json: Spread<{ data: T }, SerializedLexicalNode>,
     ): GeneratedNode {
       return new GeneratedNode(json.data);
     }
@@ -156,7 +156,7 @@ export function createDecoratorNode<T>(
       if (exportDOM) {
         return { element: exportDOM(this.__data) };
       }
-      const span = document.createElement('span');
+      const span = document.createElement("span");
       span.textContent = `[${type}]`;
       return { element: span };
     }
@@ -229,12 +229,12 @@ export function createDecoratorNode<T>(
           const node = $getNodeByKey(nodeKey);
           if (isNodeFn(node)) {
             const markdownText =
-              serConfig.format === 'fenced'
-                ? '```' +
+              serConfig.format === "fenced"
+                ? "```" +
                   serConfig.language +
-                  '\n' +
+                  "\n" +
                   serConfig.serialize(node.getData()) +
-                  '\n```'
+                  "\n```"
                 : serConfig.serialize(node.getData());
             const textNode = $createTextNode(markdownText);
             node.replace(textNode);
@@ -242,7 +242,7 @@ export function createDecoratorNode<T>(
           }
         });
       },
-      [editor, nodeKey, isNodeFn, serConfig]
+      [editor, nodeKey, isNodeFn, serConfig],
     );
 
     return (
@@ -256,20 +256,20 @@ export function createDecoratorNode<T>(
 
   // Generate transformers based on serialization format
   const transformers: Transformer[] =
-    serialization.format === 'inline'
+    serialization.format === "inline"
       ? [
           createInlineTransformer(
             GeneratedNode,
             isNode,
             serialization,
-            createNode
+            createNode,
           ),
         ]
       : createFencedTransformers(
           GeneratedNode,
           isNode,
           serialization,
-          createNode
+          createNode,
         );
 
   return {
@@ -286,26 +286,26 @@ function createInlineTransformer<T>(
   NodeClass: unknown,
   isNode: (node: LexicalNode | null | undefined) => boolean,
   config: InlineSerialization<T>,
-  createNode: (data: T) => LexicalNode
+  createNode: (data: T) => LexicalNode,
 ): TextMatchTransformer {
   return {
     dependencies: [NodeClass as typeof LexicalNode],
     export: (node) => {
       if (isNode(node)) {
         return config.serialize(
-          (node as unknown as { getData(): T }).getData()
+          (node as unknown as { getData(): T }).getData(),
         );
       }
       return null;
     },
     importRegExp: config.pattern,
-    regExp: new RegExp(config.pattern.source + '$'),
+    regExp: new RegExp(config.pattern.source + "$"),
     replace: (textNode, match) => {
       const data = config.deserialize(match);
       textNode.replace(createNode(data));
     },
     trigger: config.trigger,
-    type: 'text-match',
+    type: "text-match",
   };
 }
 
@@ -313,7 +313,7 @@ function createFencedTransformers<T>(
   NodeClass: unknown,
   isNode: (node: LexicalNode | null | undefined) => boolean,
   config: FencedSerialization<T>,
-  createNode: (data: T) => LexicalNode
+  createNode: (data: T) => LexicalNode,
 ): [TextMatchTransformer, MultilineElementTransformer] {
   // Export transformer (TextMatchTransformer for DecoratorNodes)
   const exportTransformer: TextMatchTransformer = {
@@ -322,23 +322,23 @@ function createFencedTransformers<T>(
       if (!isNode(node)) return null;
       // Add newlines before and after to ensure the code block is on its own lines
       return (
-        '\n```' +
+        "\n```" +
         config.language +
-        '\n' +
+        "\n" +
         config.serialize((node as unknown as { getData(): T }).getData()) +
-        '\n```\n'
+        "\n```\n"
       );
     },
     importRegExp: /(?!)/, // Never match
     regExp: /(?!)$/, // Never match
     replace: () => {},
-    trigger: '',
-    type: 'text-match',
+    trigger: "",
+    type: "text-match",
   };
 
   // Import transformer (MultilineElementTransformer)
   const importTransformer: MultilineElementTransformer = {
-    type: 'multiline-element',
+    type: "multiline-element",
     dependencies: [NodeClass as typeof LexicalNode],
     regExpStart: new RegExp(`^\`\`\`${config.language}$`),
     regExpEnd: { optional: true, regExp: /^```$/ },
@@ -348,15 +348,15 @@ function createFencedTransformers<T>(
       _startMatch,
       endMatch,
       linesInBetween,
-      isImport
+      isImport,
     ) => {
       if (!isImport || !endMatch || !linesInBetween?.length) return false;
       try {
-        const content = linesInBetween.join('\n');
+        const content = linesInBetween.join("\n");
         const data = config.deserialize(content);
         if (config.validate && !config.validate(data)) {
           console.error(
-            `Invalid ${config.language} payload: validation failed`
+            `Invalid ${config.language} payload: validation failed`,
           );
           return false;
         }

@@ -4,8 +4,8 @@ import {
   WarningIcon,
   ArrowRightIcon,
   ArrowCounterClockwiseIcon,
-} from '@phosphor-icons/react';
-import { PrimaryButton } from './PrimaryButton';
+} from "@phosphor-icons/react";
+import { PrimaryButton } from "./PrimaryButton";
 
 interface MigrationEntityReport {
   total: number;
@@ -64,7 +64,7 @@ export function MigrateMigrate({
           />
           <p className="text-base text-normal text-center mb-half">
             Migrating {projectCount} project
-            {projectCount === 1 ? '' : 's'} to "{orgName}"...
+            {projectCount === 1 ? "" : "s"} to "{orgName}"...
           </p>
           <p className="text-sm text-low text-center">
             This may take a moment.

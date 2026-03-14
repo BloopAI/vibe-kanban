@@ -1,6 +1,6 @@
-import { WarningIcon, ArrowClockwiseIcon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { Popover, PopoverTrigger, PopoverContent } from './Popover';
+import { WarningIcon, ArrowClockwiseIcon } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import { Popover, PopoverTrigger, PopoverContent } from "./Popover";
 
 export interface SyncErrorIndicatorError {
   streamId: string;
@@ -25,7 +25,7 @@ export function SyncErrorIndicator({
   errors,
   onRefreshPage,
 }: SyncErrorIndicatorProps) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   if (!errors || errors.length === 0) {
     return null;
@@ -37,7 +37,7 @@ export function SyncErrorIndicator({
         <button
           type="button"
           className="flex items-center justify-center rounded-sm text-error hover:text-error/80"
-          aria-label={`${errors.length} sync error${errors.length > 1 ? 's' : ''}`}
+          aria-label={`${errors.length} sync error${errors.length > 1 ? "s" : ""}`}
         >
           <WarningIcon className="size-icon-base" weight="fill" />
         </button>
@@ -46,10 +46,10 @@ export function SyncErrorIndicator({
         <div className="space-y-base">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium text-normal">
-              {t('syncError.networkErrors')}
+              {t("syncError.networkErrors")}
             </h4>
             <span className="text-xs text-low">
-              {t('syncError.streamsAffected', { count: errors.length })}
+              {t("syncError.streamsAffected", { count: errors.length })}
             </span>
           </div>
 
@@ -66,7 +66,7 @@ export function SyncErrorIndicator({
                   {streamError.error.message}
                   {streamError.error.status && (
                     <span className="ml-1 text-error/70">
-                      {t('syncError.status', {
+                      {t("syncError.status", {
                         status: streamError.error.status,
                       })}
                     </span>
@@ -82,7 +82,7 @@ export function SyncErrorIndicator({
             className="flex w-full items-center justify-center gap-half rounded-sm bg-primary px-base py-half text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <ArrowClockwiseIcon className="size-icon-sm" />
-            {t('syncError.refreshPage')}
+            {t("syncError.refreshPage")}
           </button>
         </div>
       </PopoverContent>

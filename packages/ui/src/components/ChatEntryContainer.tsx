@@ -1,14 +1,14 @@
-import { ComponentType } from 'react';
+import { ComponentType } from "react";
 import {
   CaretDownIcon,
   UserIcon,
   ListChecksIcon,
   GearIcon,
   IconProps,
-} from '@phosphor-icons/react';
-import { cn } from '../lib/cn';
+} from "@phosphor-icons/react";
+import { cn } from "../lib/cn";
 
-type Variant = 'user' | 'plan' | 'plan_denied' | 'system';
+type Variant = "user" | "plan" | "plan_denied" | "system";
 
 export interface ChatEntryStatusLike {
   status: string;
@@ -24,27 +24,27 @@ interface VariantConfig {
 const variantConfig: Record<Variant, VariantConfig> = {
   user: {
     icon: UserIcon,
-    border: 'border-border',
-    headerBg: '',
-    bg: '',
+    border: "border-border",
+    headerBg: "",
+    bg: "",
   },
   plan: {
     icon: ListChecksIcon,
-    border: 'border-brand',
-    headerBg: 'bg-brand/20',
-    bg: 'bg-brand/10',
+    border: "border-brand",
+    headerBg: "bg-brand/20",
+    bg: "bg-brand/10",
   },
   plan_denied: {
     icon: ListChecksIcon,
-    border: 'border-error',
-    headerBg: 'bg-error/20',
-    bg: 'bg-error/10',
+    border: "border-error",
+    headerBg: "bg-error/20",
+    bg: "bg-error/10",
   },
   system: {
     icon: GearIcon,
-    border: 'border-border',
-    headerBg: 'bg-gray-50 dark:bg-gray-900/30',
-    bg: '',
+    border: "border-border",
+    headerBg: "bg-gray-50 dark:bg-gray-900/30",
+    bg: "",
   },
 };
 
@@ -75,7 +75,7 @@ export function ChatEntryContainer({
 }: ChatEntryContainerProps) {
   // Special case for plan denied
   const config =
-    variant === 'plan' && status?.status === 'denied'
+    variant === "plan" && status?.status === "denied"
       ? variantConfig.plan_denied
       : variantConfig[variant];
   const Icon = config.icon;
@@ -83,20 +83,20 @@ export function ChatEntryContainer({
   return (
     <div
       className={cn(
-        'rounded-sm w-full',
-        config.border && 'border',
+        "rounded-sm w-full",
+        config.border && "border",
         config.border,
         config.bg,
-        isGreyed && 'opacity-50 pointer-events-none',
-        className
+        isGreyed && "opacity-50 pointer-events-none",
+        className,
       )}
     >
       {/* Header */}
       <div
         className={cn(
-          'flex items-center px-double py-base gap-base rounded-sm overflow-hidden',
+          "flex items-center px-double py-base gap-base rounded-sm overflow-hidden",
           config.headerBg,
-          onToggle && 'cursor-pointer'
+          onToggle && "cursor-pointer",
         )}
         onClick={onToggle}
       >
@@ -108,8 +108,8 @@ export function ChatEntryContainer({
         {onToggle && (
           <CaretDownIcon
             className={cn(
-              'size-icon-xs shrink-0 text-low transition-transform',
-              !expanded && '-rotate-90'
+              "size-icon-xs shrink-0 text-low transition-transform",
+              !expanded && "-rotate-90",
             )}
           />
         )}

@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
-import { CheckIcon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
+import type { ReactNode } from "react";
+import { CheckIcon } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
 import {
   Command,
   CommandInput,
@@ -8,8 +8,8 @@ import {
   CommandEmpty,
   CommandGroup,
   CommandItem,
-} from './Command';
-import { PrimaryButton } from './PrimaryButton';
+} from "./Command";
+import { PrimaryButton } from "./PrimaryButton";
 
 export interface MultiSelectOption<T extends string = string> {
   value: T;
@@ -37,7 +37,7 @@ export function MultiSelectCommandBar<T extends string = string>({
   search,
   onSearchChange,
 }: MultiSelectCommandBarProps<T>) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation("common");
 
   return (
     <Command
@@ -48,7 +48,7 @@ export function MultiSelectCommandBar<T extends string = string>({
         return 0;
       }}
       onKeyDown={(e) => {
-        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
           e.preventDefault();
           onClose();
         }
@@ -63,7 +63,7 @@ export function MultiSelectCommandBar<T extends string = string>({
       </div>
       <CommandList className="min-h-[200px]">
         <CommandEmpty>
-          {t('commandBar.noResults', 'No results found')}
+          {t("commandBar.noResults", "No results found")}
         </CommandEmpty>
         <CommandGroup>
           {options.map((option) => {
@@ -87,7 +87,7 @@ export function MultiSelectCommandBar<T extends string = string>({
       </CommandList>
       <div className="border-t border-border p-base">
         <PrimaryButton onClick={onClose} className="w-full justify-center">
-          {t('buttons.close')}
+          {t("buttons.close")}
         </PrimaryButton>
       </div>
     </Command>

@@ -1,4 +1,4 @@
-import * as React from 'react';
+import * as React from "react";
 import {
   Table,
   TableHead,
@@ -8,7 +8,7 @@ import {
   TableCell,
   TableEmpty,
   TableLoading,
-} from './Table';
+} from "./Table";
 
 export type ColumnDef<T> = {
   id: string;
@@ -61,14 +61,14 @@ export function DataTable<T>({
         {isLoading ? (
           <TableLoading colSpan={colSpan} />
         ) : data.length === 0 ? (
-          <TableEmpty colSpan={colSpan}>{emptyState || 'No data'}</TableEmpty>
+          <TableEmpty colSpan={colSpan}>{emptyState || "No data"}</TableEmpty>
         ) : (
           data.map((row) => {
             const key = keyExtractor(row);
             const handleClick = onRowClick ? () => onRowClick(row) : undefined;
             const handleKeyDown = onRowClick
               ? (e: React.KeyboardEvent) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
                     onRowClick(row);
                   }
@@ -79,7 +79,7 @@ export function DataTable<T>({
               <TableRow
                 key={key}
                 clickable={!!onRowClick}
-                role={onRowClick ? 'button' : undefined}
+                role={onRowClick ? "button" : undefined}
                 tabIndex={onRowClick ? 0 : undefined}
                 onClick={handleClick}
                 onKeyDown={handleKeyDown}

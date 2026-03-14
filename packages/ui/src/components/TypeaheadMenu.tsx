@@ -7,11 +7,11 @@ import {
   type ReactNode,
   type MouseEvent,
   type CSSProperties,
-} from 'react';
+} from "react";
 
 // --- Headless Compound Components ---
 
-type VerticalSide = 'top' | 'bottom';
+type VerticalSide = "top" | "bottom";
 
 interface TypeaheadPlacement {
   side: VerticalSide;
@@ -35,7 +35,7 @@ function parseLength(value: string): number {
 
 function resolveLineHeight(
   style: CSSStyleDeclaration,
-  fallbackHeight: number
+  fallbackHeight: number,
 ): number {
   const explicit = parseLength(style.lineHeight);
   if (explicit > 0) return explicit;
@@ -56,7 +56,7 @@ function clamp(value: number, min: number, max: number) {
 
 function placementsEqual(
   a: TypeaheadPlacement,
-  b: TypeaheadPlacement
+  b: TypeaheadPlacement,
 ): boolean {
   return (
     a.side === b.side &&
@@ -69,7 +69,7 @@ function placementsEqual(
 function computePlacement(
   anchorEl: HTMLElement,
   menuEl: HTMLElement,
-  editorEl?: HTMLElement | null
+  editorEl?: HTMLElement | null,
 ): TypeaheadPlacement {
   const anchorRect = anchorEl.getBoundingClientRect();
   const menuRect = menuEl.getBoundingClientRect();
@@ -87,7 +87,7 @@ function computePlacement(
   const measuredHeight = round(
     menuRect.height ||
       parseLength(menuStyles.height) ||
-      parseLength(menuStyles.minHeight)
+      parseLength(menuStyles.minHeight),
   );
 
   const lineHeight = resolveLineHeight(anchorStyles, anchorRect.height);
@@ -98,10 +98,10 @@ function computePlacement(
   const aboveSpace = topBoundary - marginBottom;
   const belowSpace = viewportHeight - anchorRect.bottom - marginTop;
   const side: VerticalSide =
-    belowSpace >= measuredHeight || belowSpace >= aboveSpace ? 'bottom' : 'top';
+    belowSpace >= measuredHeight || belowSpace >= aboveSpace ? "bottom" : "top";
   const availableSpace = Math.max(
-    side === 'bottom' ? belowSpace : aboveSpace,
-    0
+    side === "bottom" ? belowSpace : aboveSpace,
+    0,
   );
 
   let maxHeight = configuredMaxHeight
@@ -110,7 +110,7 @@ function computePlacement(
   if (configuredMinHeight) {
     maxHeight = Math.max(
       maxHeight,
-      Math.min(configuredMinHeight, availableSpace)
+      Math.min(configuredMinHeight, availableSpace),
     );
   }
 
@@ -121,11 +121,11 @@ function computePlacement(
   const minLeft = marginLeft;
   const maxLeft = Math.max(
     minLeft,
-    viewportWidth - measuredWidth - marginRight
+    viewportWidth - measuredWidth - marginRight,
   );
   const left = clamp(round(anchorRect.left), round(minLeft), round(maxLeft));
   const top =
-    side === 'bottom'
+    side === "bottom"
       ? round(anchorRect.bottom + marginTop)
       : round(topBoundary - marginBottom);
 
@@ -178,20 +178,20 @@ function TypeaheadMenuRoot({
       window.requestAnimationFrame(syncPlacement);
     };
 
-    window.addEventListener('resize', updateOnFrame);
-    window.addEventListener('scroll', updateOnFrame, true);
+    window.addEventListener("resize", updateOnFrame);
+    window.addEventListener("scroll", updateOnFrame, true);
     const vv = window.visualViewport;
     if (vv) {
-      vv.addEventListener('resize', updateOnFrame);
-      vv.addEventListener('scroll', updateOnFrame);
+      vv.addEventListener("resize", updateOnFrame);
+      vv.addEventListener("scroll", updateOnFrame);
     }
 
     return () => {
-      window.removeEventListener('resize', updateOnFrame);
-      window.removeEventListener('scroll', updateOnFrame, true);
+      window.removeEventListener("resize", updateOnFrame);
+      window.removeEventListener("scroll", updateOnFrame, true);
       if (vv) {
-        vv.removeEventListener('resize', updateOnFrame);
-        vv.removeEventListener('scroll', updateOnFrame);
+        vv.removeEventListener("resize", updateOnFrame);
+        vv.removeEventListener("scroll", updateOnFrame);
       }
     };
   }, [syncPlacement]);
@@ -224,29 +224,29 @@ function TypeaheadMenuRoot({
         onClickOutside();
       }
     };
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => document.removeEventListener('pointerdown', handlePointerDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [onClickOutside]);
 
   // When side is 'top' the menu grows upward — use bottom-anchored positioning
   // so the menu expands upward from a fixed bottom edge.
   const style: CSSProperties = !placement
     ? {
-        position: 'fixed',
-        visibility: 'hidden',
+        position: "fixed",
+        visibility: "hidden",
       }
-    : placement.side === 'bottom'
+    : placement.side === "bottom"
       ? ({
-          position: 'fixed',
+          position: "fixed",
           left: placement.left,
           top: placement.top,
-          '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+          "--typeahead-menu-max-height": `${placement.maxHeight}px`,
         } as CSSProperties)
       : ({
-          position: 'fixed',
+          position: "fixed",
           left: placement.left,
           bottom: getViewportHeight() - placement.top,
-          '--typeahead-menu-max-height': `${placement.maxHeight}px`,
+          "--typeahead-menu-max-height": `${placement.maxHeight}px`,
         } as CSSProperties);
 
   return (
@@ -269,7 +269,7 @@ function TypeaheadMenuHeader({
 }) {
   return (
     <div
-      className={`px-base py-half border-b border-border ${className ?? ''}`}
+      className={`px-base py-half border-b border-border ${className ?? ""}`}
     >
       <div className="flex items-center gap-half text-xs font-medium text-low">
         {children}
@@ -282,7 +282,7 @@ function TypeaheadMenuScrollArea({ children }: { children: ReactNode }) {
   return (
     <div
       className="py-half overflow-auto flex-1 min-h-0"
-      style={{ maxHeight: 'var(--typeahead-menu-max-height, 100vh)' }}
+      style={{ maxHeight: "var(--typeahead-menu-max-height, 100vh)" }}
     >
       {children}
     </div>
@@ -348,7 +348,7 @@ function TypeaheadMenuItemComponent({
 
   useEffect(() => {
     if (isSelected && ref.current) {
-      ref.current.scrollIntoView({ block: 'nearest' });
+      ref.current.scrollIntoView({ block: "nearest" });
     }
   }, [isSelected]);
 
@@ -365,7 +365,7 @@ function TypeaheadMenuItemComponent({
     <div
       ref={ref}
       className={`px-base py-half rounded-sm cursor-pointer text-sm transition-colors ${
-        isSelected ? 'bg-secondary text-high' : 'hover:bg-secondary text-normal'
+        isSelected ? "bg-secondary text-high" : "hover:bg-secondary text-normal"
       }`}
       onMouseMove={handleMouseMove}
       onClick={onClick}

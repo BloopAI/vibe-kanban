@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
+import { useEffect } from "react";
+import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext";
 import {
   KEY_BACKSPACE_COMMAND,
   KEY_DELETE_COMMAND,
@@ -7,7 +7,7 @@ import {
   $getSelection,
   $isNodeSelection,
   type LexicalNode,
-} from 'lexical';
+} from "lexical";
 
 type ImageKeyboardPluginProps = {
   isTargetNode: (node: LexicalNode) => boolean;
@@ -38,13 +38,13 @@ export function ImageKeyboardPlugin({
     const unregisterBackspace = editor.registerCommand(
       KEY_BACKSPACE_COMMAND,
       () => deleteSelectedNodes(),
-      COMMAND_PRIORITY_LOW
+      COMMAND_PRIORITY_LOW,
     );
 
     const unregisterDelete = editor.registerCommand(
       KEY_DELETE_COMMAND,
       () => deleteSelectedNodes(),
-      COMMAND_PRIORITY_LOW
+      COMMAND_PRIORITY_LOW,
     );
 
     return () => {

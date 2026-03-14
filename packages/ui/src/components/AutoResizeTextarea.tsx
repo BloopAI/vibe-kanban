@@ -1,14 +1,14 @@
-import * as React from 'react';
-import { cn } from '../lib/cn';
+import * as React from "react";
+import { cn } from "../lib/cn";
 
 function normalizeSingleLineValue(value: string): string {
-  return value.replace(/\r\n|\r|\n/g, ' ');
+  return value.replace(/\r\n|\r|\n/g, " ");
 }
 
 export interface AutoResizeTextareaProps
   extends Omit<
-    React.ComponentPropsWithoutRef<'textarea'>,
-    'onChange' | 'value'
+    React.ComponentPropsWithoutRef<"textarea">,
+    "onChange" | "value"
   > {
   value: string;
   onChange: (value: string) => void;
@@ -30,7 +30,7 @@ export const AutoResizeTextarea = React.forwardRef<
     onPaste,
     ...props
   },
-  ref
+  ref,
 ) {
   const internalRef = React.useRef<HTMLTextAreaElement | null>(null);
 
@@ -39,14 +39,14 @@ export const AutoResizeTextarea = React.forwardRef<
       internalRef.current = node;
 
       if (!ref) return;
-      if (typeof ref === 'function') {
+      if (typeof ref === "function") {
         ref(node);
         return;
       }
 
       ref.current = node;
     },
-    [ref]
+    [ref],
   );
 
   const resizeToContent = React.useCallback(() => {
@@ -54,7 +54,7 @@ export const AutoResizeTextarea = React.forwardRef<
     if (!textarea) return;
     if (textarea.clientWidth <= 1) return;
 
-    textarea.style.height = 'auto';
+    textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, []);
 
@@ -70,7 +70,7 @@ export const AutoResizeTextarea = React.forwardRef<
     const textarea = internalRef.current;
     if (!textarea) return;
 
-    if (typeof ResizeObserver === 'undefined') return;
+    if (typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
       resizeToContent();
@@ -86,7 +86,7 @@ export const AutoResizeTextarea = React.forwardRef<
       resizeToContent();
       onInput?.(event);
     },
-    [resizeToContent, onInput]
+    [resizeToContent, onInput],
   );
 
   const handleChange = React.useCallback(
@@ -96,17 +96,17 @@ export const AutoResizeTextarea = React.forwardRef<
         : event.target.value;
       onChange(nextValue);
     },
-    [onChange, preventNewlines]
+    [onChange, preventNewlines],
   );
 
   const handleKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (preventNewlines && event.key === 'Enter') {
+      if (preventNewlines && event.key === "Enter") {
         event.preventDefault();
       }
       onKeyDown?.(event);
     },
-    [preventNewlines, onKeyDown]
+    [preventNewlines, onKeyDown],
   );
 
   const handlePaste = React.useCallback(
@@ -116,7 +116,7 @@ export const AutoResizeTextarea = React.forwardRef<
         return;
       }
 
-      const pastedText = event.clipboardData.getData('text');
+      const pastedText = event.clipboardData.getData("text");
       if (!/[\r\n]/.test(pastedText)) {
         onPaste?.(event);
         return;
@@ -145,7 +145,7 @@ export const AutoResizeTextarea = React.forwardRef<
 
       onPaste?.(event);
     },
-    [onChange, onPaste, preventNewlines]
+    [onChange, onPaste, preventNewlines],
   );
 
   return (
@@ -159,8 +159,8 @@ export const AutoResizeTextarea = React.forwardRef<
       onKeyDown={handleKeyDown}
       onPaste={handlePaste}
       className={cn(
-        'w-full resize-none overflow-hidden bg-transparent focus:outline-none',
-        className
+        "w-full resize-none overflow-hidden bg-transparent focus:outline-none",
+        className,
       )}
     />
   );

@@ -1,7 +1,7 @@
-import type { ReactNode } from 'react';
-import { ArrowSquareOutIcon, SpinnerIcon } from '@phosphor-icons/react';
-import { useTranslation } from 'react-i18next';
-import { cn } from '../lib/cn';
+import type { ReactNode } from "react";
+import { ArrowSquareOutIcon, SpinnerIcon } from "@phosphor-icons/react";
+import { useTranslation } from "react-i18next";
+import { cn } from "../lib/cn";
 
 export interface PreviewControlsProcessTab {
   id: string;
@@ -27,26 +27,26 @@ export function PreviewControls({
   isLoading,
   className,
 }: PreviewControlsProps) {
-  const { t } = useTranslation(['tasks', 'common']);
+  const { t } = useTranslation(["tasks", "common"]);
 
   return (
     <div
       className={cn(
-        'w-full bg-secondary flex flex-col overflow-hidden',
-        className
+        "w-full bg-secondary flex flex-col overflow-hidden",
+        className,
       )}
     >
       <div className="flex-1 flex flex-col min-h-0">
         <div className="flex items-center justify-between px-base py-half">
           <span className="text-xs font-medium text-low">
-            {t('preview.logs.label')}
+            {t("preview.logs.label")}
           </span>
           <button
             type="button"
             onClick={onViewFullLogs}
             className="flex items-center gap-half text-xs text-brand hover:text-brand-hover"
           >
-            <span>{t('preview.logs.viewFull')}</span>
+            <span>{t("preview.logs.viewFull")}</span>
             <ArrowSquareOutIcon className="size-icon-xs" />
           </button>
         </div>
@@ -57,10 +57,10 @@ export function PreviewControls({
               <button
                 key={process.id}
                 className={cn(
-                  'px-base py-half text-xs border-b-2 transition-colors',
+                  "px-base py-half text-xs border-b-2 transition-colors",
                   activeProcessId === process.id
-                    ? 'border-brand text-normal'
-                    : 'border-transparent text-low hover:text-normal'
+                    ? "border-brand text-normal"
+                    : "border-transparent text-low hover:text-normal",
                 )}
                 onClick={() => onTabChange(process.id)}
               >

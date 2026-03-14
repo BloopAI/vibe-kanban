@@ -1,16 +1,16 @@
-'use client';
+"use client";
 
-import { cn } from '../lib/cn';
-import type { KanbanAssigneeUser } from './KanbanAssignee';
+import { cn } from "../lib/cn";
+import type { KanbanAssigneeUser } from "./KanbanAssignee";
 import {
   IssueListSection,
   type IssueListSectionStatus,
-} from './IssueListSection';
+} from "./IssueListSection";
 import type {
   IssueListRowIssue,
   IssueListRowRelationship,
   IssueListRowTag,
-} from './IssueListRow';
+} from "./IssueListRow";
 
 export interface IssueListViewProps {
   statuses: IssueListSectionStatus[];
@@ -19,7 +19,7 @@ export interface IssueListViewProps {
   issueAssigneesMap: Record<string, KanbanAssigneeUser[]>;
   getTagObjectsForIssue: (issueId: string) => IssueListRowTag[];
   getResolvedRelationshipsForIssue?: (
-    issueId: string
+    issueId: string,
   ) => IssueListRowRelationship[];
   onIssueClick: (issueId: string) => void;
   selectedIssueId: string | null;
@@ -38,7 +38,7 @@ export function IssueListView({
   className,
 }: IssueListViewProps) {
   return (
-    <div className={cn('flex flex-col h-full overflow-y-auto', className)}>
+    <div className={cn("flex flex-col h-full overflow-y-auto", className)}>
       {statuses.map((status) => (
         <IssueListSection
           key={status.id}
