@@ -32,9 +32,12 @@ const RenameSessionDialogImpl = NiceModal.create<RenameSessionDialogProps>(
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => {
-      setName(currentName);
-      setError(null);
-    }, [currentName]);
+      if (modal.visible) {
+        setName(currentName);
+        setError(null);
+        setIsSubmitting(false);
+      }
+    }, [modal.visible, currentName]);
 
     const handleConfirm = async () => {
       const trimmedName = name.trim();
