@@ -19,12 +19,15 @@ struct CreateSessionRequest {
     workspace_id: Option<Uuid>,
     #[schemars(description = "Optional executor to pin this session to")]
     executor: Option<String>,
+    #[schemars(description = "Optional display name for the session")]
+    name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 struct CreateSessionPayload {
     workspace_id: Uuid,
     executor: Option<String>,
+    name: Option<String>,
 }
 
 #[derive(Debug, Serialize, schemars::JsonSchema)]
@@ -145,6 +148,7 @@ impl McpServer {
         Parameters(CreateSessionRequest {
             workspace_id,
             executor,
+            name,
         }): Parameters<CreateSessionRequest>,
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
@@ -158,6 +162,14 @@ impl McpServer {
         let payload = CreateSessionPayload {
             workspace_id,
             executor: executor.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            }),
+            name: name.and_then(|value| {
                 let trimmed = value.trim();
                 if trimmed.is_empty() {
                     None

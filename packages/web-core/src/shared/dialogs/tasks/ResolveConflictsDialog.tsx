@@ -150,12 +150,9 @@ const ResolveConflictsDialogImpl = create<ResolveConflictsDialogProps>(
           const session = await sessionsApi.create({
             workspace_id: workspaceId,
             executor: effectiveProfile.executor,
-          });
-          targetSessionId = session.id;
-          // Auto-name the session
-          await sessionsApi.update(session.id, {
             name: t('resolveConflicts.dialog.sessionName'),
           });
+          targetSessionId = session.id;
         }
 
         if (!targetSessionId) {

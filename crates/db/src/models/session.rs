@@ -33,6 +33,7 @@ pub struct Session {
 #[derive(Debug, Deserialize, TS)]
 pub struct CreateSession {
     pub executor: Option<String>,
+    pub name: Option<String>,
 }
 
 impl Session {
@@ -148,11 +149,12 @@ impl Session {
         workspace_id: Uuid,
     ) -> Result<Self, SessionError> {
         let agent_working_dir = Self::resolve_agent_working_dir(pool, workspace_id).await?;
+        let name = data.name.as_deref().filter(|s| !s.is_empty());
 
         Ok(sqlx::query_as!(
             Session,
-            r#"INSERT INTO sessions (id, workspace_id, executor, agent_working_dir)
-               VALUES ($1, $2, $3, $4)
+            r#"INSERT INTO sessions (id, workspace_id, name, executor, agent_working_dir)
+               VALUES ($1, $2, $3, $4, $5)
                RETURNING id AS "id!: Uuid",
                          workspace_id AS "workspace_id!: Uuid",
                          name,
@@ -162,6 +164,7 @@ impl Session {
                          updated_at AS "updated_at!: DateTime<Utc>""#,
             id,
             workspace_id,
+            name,
             data.executor,
             agent_working_dir
         )

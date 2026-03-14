@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO sessions (id, workspace_id, executor, agent_working_dir)\n               VALUES ($1, $2, $3, $4)\n               RETURNING id AS \"id!: Uuid\",\n                         workspace_id AS \"workspace_id!: Uuid\",\n                         name,\n                         executor,\n                         agent_working_dir,\n                         created_at AS \"created_at!: DateTime<Utc>\",\n                         updated_at AS \"updated_at!: DateTime<Utc>\"",
+  "query": "INSERT INTO sessions (id, workspace_id, name, executor, agent_working_dir)\n               VALUES ($1, $2, $3, $4, $5)\n               RETURNING id AS \"id!: Uuid\",\n                         workspace_id AS \"workspace_id!: Uuid\",\n                         name,\n                         executor,\n                         agent_working_dir,\n                         created_at AS \"created_at!: DateTime<Utc>\",\n                         updated_at AS \"updated_at!: DateTime<Utc>\"",
   "describe": {
     "columns": [
       {
@@ -40,7 +40,7 @@
       }
     ],
     "parameters": {
-      "Right": 4
+      "Right": 5
     },
     "nullable": [
       true,
@@ -52,5 +52,5 @@
       false
     ]
   },
-  "hash": "f46939a1182ffbb8fe98667b6cb55fa18d90f7ccbbcf5ca22c377cbd53ffb3dd"
+  "hash": "cac90f2884c7c0eed4d2ab621016a5bc62dfbcb65539eb4a52e3306f96c0698a"
 }

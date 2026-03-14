@@ -287,6 +287,7 @@ export const sessionsApi = {
   create: async (data: {
     workspace_id: string;
     executor?: string;
+    name?: string;
   }): Promise<Session> => {
     const response = await makeRequest('/api/sessions', {
       method: 'POST',
