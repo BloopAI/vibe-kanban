@@ -10,8 +10,9 @@ use workspace_utils::{
 };
 
 use super::types::{
-    MessageInfo, MessageRole, OpencodeExecutorEvent, Part, PermissionAskedEvent, QuestionInfo,
-    SdkEvent, SdkTodo, SessionStatus, ToolPart, ToolStateUpdate,
+    MessageInfo, MessagePartDeltaEvent, MessageRole, OpencodeExecutorEvent, Part,
+    PermissionAskedEvent, QuestionInfo, SdkEvent, SdkTodo, SessionStatus, ToolPart,
+    ToolStateUpdate,
 };
 use crate::{
     approvals::ToolCallMetadata,
@@ -257,6 +258,9 @@ impl LogState {
                     msg_store,
                 );
             }
+            SdkEvent::MessagePartDelta(event) => {
+                self.handle_part_delta(event, msg_store);
+            }
             SdkEvent::TodoUpdated(event) => {
                 self.handle_todo_updated(&event.todos, msg_store);
             }
@@ -472,6 +476,42 @@ impl LogState {
                 }
             }
             Part::Other => {}
+        }
+    }
+
+    fn handle_part_delta(&mut self, event: MessagePartDeltaEvent, msg_store: &Arc<MsgStore>) {
+        match event.field.as_str() {
+            "text" => {
+                // Only stream assistant text; check role if we know it, otherwise assume assistant
+                if self.message_roles.get(&event.message_id) == Some(&MessageRole::User) {
+                    return;
+                }
+                let entry_index = self.entry_index.clone();
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::AssistantMessage,
+                    &event.message_id,
+                    &mut self.assistant_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
+            "reasoning" => {
+                let entry_index = self.entry_index.clone();
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::Thinking,
+                    &event.message_id,
+                    &mut self.thinking_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
+            _ => {
+                // Silently ignore unknown fields (e.g. future additions)
+            }
         }
     }
 

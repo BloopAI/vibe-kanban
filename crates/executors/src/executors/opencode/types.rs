@@ -61,6 +61,7 @@ pub(super) struct SdkEventEnvelope {
 pub(super) enum SdkEvent {
     MessageUpdated(MessageUpdatedEvent),
     MessagePartUpdated(MessagePartUpdatedEvent),
+    MessagePartDelta(MessagePartDeltaEvent),
     MessageRemoved,
     MessagePartRemoved,
     PermissionAsked(PermissionAskedEvent),
@@ -89,6 +90,9 @@ impl SdkEvent {
             }
             "message.part.updated" => {
                 SdkEvent::MessagePartUpdated(serde_json::from_value(envelope.properties).ok()?)
+            }
+            "message.part.delta" => {
+                SdkEvent::MessagePartDelta(serde_json::from_value(envelope.properties).ok()?)
             }
             "message.removed" => SdkEvent::MessageRemoved,
             "message.part.removed" => SdkEvent::MessagePartRemoved,
@@ -205,6 +209,18 @@ pub(super) struct MessagePartUpdatedEvent {
     pub(super) part: Part,
     #[serde(default)]
     pub(super) delta: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub(super) struct MessagePartDeltaEvent {
+    #[serde(rename = "sessionID")]
+    pub(super) session_id: String,
+    #[serde(rename = "messageID")]
+    pub(super) message_id: String,
+    #[serde(rename = "partID")]
+    pub(super) part_id: String,
+    pub(super) field: String,
+    pub(super) delta: String,
 }
 
 #[derive(Debug, Deserialize)]
