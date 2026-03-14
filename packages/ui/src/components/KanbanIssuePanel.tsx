@@ -1,4 +1,11 @@
-import { useState, useEffect, useRef, useCallback, type ReactNode, type RefObject } from 'react';
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../lib/cn';
 import {
@@ -193,7 +200,8 @@ export function KanbanIssuePanel({
   const showCreator = !isCreateMode && Boolean(creatorName);
 
   // Description edit state: in edit mode, show preview by default; in create mode, always editable
-  const [isDescriptionEditing, setIsDescriptionEditing] = useState(isCreateMode);
+  const [isDescriptionEditing, setIsDescriptionEditing] =
+    useState(isCreateMode);
   const descriptionContainerRef = useRef<HTMLDivElement>(null);
 
   // Reset description editing state when switching between create/edit mode or when issue changes
@@ -371,7 +379,9 @@ export function KanbanIssuePanel({
               // Exit edit mode when focus leaves the description container
               if (
                 descriptionContainerRef.current &&
-                !descriptionContainerRef.current.contains(e.relatedTarget as Node)
+                !descriptionContainerRef.current.contains(
+                  e.relatedTarget as Node
+                )
               ) {
                 handleDescriptionBlur();
               }
@@ -384,7 +394,11 @@ export function KanbanIssuePanel({
               />
             )}
             {renderDescriptionEditor({
-              placeholder: isDescriptionEditing ? t('kanban.issueDescriptionPlaceholder') : (formData.description ? '' : t('kanban.issueDescriptionPlaceholder')),
+              placeholder: isDescriptionEditing
+                ? t('kanban.issueDescriptionPlaceholder')
+                : formData.description
+                  ? ''
+                  : t('kanban.issueDescriptionPlaceholder'),
               value: formData.description ?? '',
               onChange: (value) => onFormChange('description', value || null),
               onCmdEnter: onCmdEnterSubmit,
@@ -399,7 +413,9 @@ export function KanbanIssuePanel({
               showStaticToolbar: !isCreateMode || isDescriptionEditing,
               hideActions: true,
               saveStatus: descriptionSaveStatus,
-              onRequestEdit: !isCreateMode ? () => setIsDescriptionEditing(true) : undefined,
+              onRequestEdit: !isCreateMode
+                ? () => setIsDescriptionEditing(true)
+                : undefined,
               staticToolbarActions: (
                 <>
                   {isDescriptionEditing && onBrowseAttachment && (
@@ -446,8 +462,16 @@ export function KanbanIssuePanel({
                               'p-half rounded-sm transition-colors',
                               'text-low hover:text-normal hover:bg-panel/50'
                             )}
-                            title={isDescriptionEditing ? t('kanban.previewDescription', 'Preview') : t('kanban.editDescription', 'Edit')}
-                            aria-label={isDescriptionEditing ? t('kanban.previewDescription', 'Preview') : t('kanban.editDescription', 'Edit')}
+                            title={
+                              isDescriptionEditing
+                                ? t('kanban.previewDescription', 'Preview')
+                                : t('kanban.editDescription', 'Edit')
+                            }
+                            aria-label={
+                              isDescriptionEditing
+                                ? t('kanban.previewDescription', 'Preview')
+                                : t('kanban.editDescription', 'Edit')
+                            }
                           >
                             {isDescriptionEditing ? (
                               <EyeIcon className="size-icon-sm" />
@@ -457,7 +481,9 @@ export function KanbanIssuePanel({
                           </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {isDescriptionEditing ? t('kanban.previewDescription', 'Preview') : t('kanban.editDescription', 'Edit')}
+                          {isDescriptionEditing
+                            ? t('kanban.previewDescription', 'Preview')
+                            : t('kanban.editDescription', 'Edit')}
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>

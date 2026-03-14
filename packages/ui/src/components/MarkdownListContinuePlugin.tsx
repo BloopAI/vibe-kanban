@@ -67,10 +67,7 @@ export function MarkdownListContinuePlugin() {
 
         // Cursor must be at the very end of the paragraph
         const lastChild = parent.getLastChild();
-        if (
-          !lastChild ||
-          lastChild.getKey() !== anchorNode.getKey()
-        ) {
+        if (!lastChild || lastChild.getKey() !== anchorNode.getKey()) {
           return false;
         }
 
