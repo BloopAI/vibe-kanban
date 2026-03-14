@@ -85,6 +85,16 @@ VITE_RELAY_API_BASE_URL=http://localhost:8082
 
 # Email invitations (optional — leave empty to disable)
 LOOPS_EMAIL_API_KEY=
+
+# Email invitations (optional fallback when LOOPS_EMAIL_API_KEY is empty)
+NODEMAILER_SERVICE_URL=http://mailer-service:8787/
+NODEMAILER_SERVICE_TOKEN=
+NODEMAILER_FROM=
+NODEMAILER_SMTP_HOST=
+NODEMAILER_SMTP_PORT=465
+NODEMAILER_SMTP_SECURE=true
+NODEMAILER_SMTP_USER=
+NODEMAILER_SMTP_PASS=
 ```
 
 For production or self-hosting on a server, add `PUBLIC_BASE_URL` (your public URL, e.g. `https://kanban.example.com`) and `REMOTE_SERVER_PORTS=0.0.0.0:3000:8081` so the server is reachable from other hosts. Defaults keep local dev unchanged.

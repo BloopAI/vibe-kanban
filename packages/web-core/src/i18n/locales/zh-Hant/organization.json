@@ -41,7 +41,9 @@
     "description": "查看 {{orgName}} 的待處理邀請",
     "loading": "載入邀請中...",
     "invited": "邀請於 {{date}}",
-    "pending": "待處理"
+    "pending": "待處理",
+    "copyInvitationLink": "複製邀請連結",
+    "invitationLinkCopied": "邀請連結已複製"
   },
   "settings": {
     "title": "組織設定",
@@ -56,6 +58,8 @@
     "dangerZoneDescription": "不可逆且具破壞性的操作",
     "deleteOrganization": "刪除組織",
     "deleteOrganizationDescription": "永久刪除此組織及其所有資料",
+    "copyOrganizationId": "複製組織 ID",
+    "organizationIdCopied": "組織 ID 已複製",
     "confirmDelete": "您確定要刪除 {{orgName}} 嗎？此操作無法復原。",
     "deleteSuccess": "組織刪除成功",
     "deleteError": "刪除組織失敗"

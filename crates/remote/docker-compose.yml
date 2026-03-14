@@ -68,6 +68,19 @@ services:
       remote-server:
         condition: service_healthy
 
+  mailer-service:
+    build:
+      context: ../..
+      dockerfile: packages/mailer-service/Dockerfile
+    environment:
+      NODEMAILER_SERVICE_TOKEN: ${NODEMAILER_SERVICE_TOKEN:-}
+      NODEMAILER_SMTP_HOST: ${NODEMAILER_SMTP_HOST:-}
+      NODEMAILER_SMTP_PORT: ${NODEMAILER_SMTP_PORT:-465}
+      NODEMAILER_SMTP_SECURE: ${NODEMAILER_SMTP_SECURE:-true}
+      NODEMAILER_SMTP_USER: ${NODEMAILER_SMTP_USER:-}
+      NODEMAILER_SMTP_PASS: ${NODEMAILER_SMTP_PASS:-}
+    restart: unless-stopped
+
   remote-server:
     build:
       context: ../..
@@ -86,6 +99,8 @@ services:
         condition: service_healthy
       azurite-init:
         condition: service_completed_successfully
+      mailer-service:
+        condition: service_started
     environment:
       RUST_LOG: info,remote=info
 
@@ -100,6 +115,9 @@ services:
       VIBEKANBAN_REMOTE_JWT_SECRET: ${VIBEKANBAN_REMOTE_JWT_SECRET:?set in .env.remote}
       # Optional — leave empty to disable invitation emails
       LOOPS_EMAIL_API_KEY: ${LOOPS_EMAIL_API_KEY:-}
+      NODEMAILER_SERVICE_URL: ${NODEMAILER_SERVICE_URL:-}
+      NODEMAILER_SERVICE_TOKEN: ${NODEMAILER_SERVICE_TOKEN:-}
+      NODEMAILER_FROM: ${NODEMAILER_FROM:-}
       SERVER_PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:3000}
       ELECTRIC_ROLE_PASSWORD: ${ELECTRIC_ROLE_PASSWORD:-remote}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}

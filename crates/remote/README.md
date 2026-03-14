@@ -28,6 +28,16 @@ VITE_PUBLIC_REACT_VIRTUOSO_LICENSE_KEY=
 
 # Optional — leave empty to disable invitation emails
 LOOPS_EMAIL_API_KEY=
+
+# Optional (fallback when LOOPS_EMAIL_API_KEY is empty) — Nodemailer mailer service
+NODEMAILER_SERVICE_URL=http://mailer-service:8787/
+NODEMAILER_SERVICE_TOKEN=
+NODEMAILER_FROM=
+NODEMAILER_SMTP_HOST=
+NODEMAILER_SMTP_PORT=465
+NODEMAILER_SMTP_SECURE=true
+NODEMAILER_SMTP_USER=
+NODEMAILER_SMTP_PASS=
 ```
 
 Generate `VIBEKANBAN_REMOTE_JWT_SECRET` once using `openssl rand -base64 48` and copy the value into `.env.remote`.
