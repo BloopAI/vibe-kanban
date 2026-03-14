@@ -152,6 +152,10 @@ const ResolveConflictsDialogImpl = create<ResolveConflictsDialogProps>(
             executor: effectiveProfile.executor,
           });
           targetSessionId = session.id;
+          // Auto-name the session
+          await sessionsApi.update(session.id, {
+            name: t('resolveConflicts.dialog.sessionName'),
+          });
         }
 
         if (!targetSessionId) {

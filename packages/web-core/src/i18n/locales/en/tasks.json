@@ -335,7 +335,8 @@
       "resolving": "Starting...",
       "filesWithConflicts_one": "{{count}} file has conflicts",
       "filesWithConflicts_other": "{{count}} files have conflicts",
-      "andMore": "...and {{count}} more"
+      "andMore": "...and {{count}} more",
+      "sessionName": "Resolve conflicts"
     }
   },
   "rebaseInProgress": {
