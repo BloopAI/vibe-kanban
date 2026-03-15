@@ -6,16 +6,17 @@ use api_types::{
     AcceptInvitationResponse, CreateInvitationRequest, CreateInvitationResponse,
     CreateIssueAssigneeRequest, CreateIssueRelationshipRequest, CreateIssueRequest,
     CreateIssueTagRequest, CreateOrganizationRequest, CreateOrganizationResponse,
-    CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest, GetInvitationResponse,
-    GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse, HandoffRedeemRequest,
-    HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
+    CreatePullRequestApiRequest, CreateWorkspaceRequest, DeleteResponse, DeleteWorkspaceRequest,
+    GetInvitationResponse, GetOrganizationResponse, HandoffInitRequest, HandoffInitResponse,
+    HandoffRedeemRequest, HandoffRedeemResponse, Issue, IssueAssignee, IssueRelationship, IssueTag,
     ListAttachmentsResponse, ListInvitationsResponse, ListIssueAssigneesResponse,
     ListIssueRelationshipsResponse, ListIssueTagsResponse, ListIssuesResponse, ListMembersResponse,
     ListOrganizationsResponse, ListProjectStatusesResponse, ListProjectsResponse,
     ListPullRequestsResponse, ListTagsResponse, MutationResponse, Organization, ProfileResponse,
-    RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse, UpdateIssueRequest,
-    UpdateMemberRoleRequest, UpdateMemberRoleResponse, UpdateOrganizationRequest,
-    UpdateWorkspaceRequest, UpsertPullRequestRequest, Workspace,
+    PullRequest, RevokeInvitationRequest, Tag, TokenRefreshRequest, TokenRefreshResponse,
+    UpdateIssueRequest, UpdateMemberRoleRequest, UpdateMemberRoleResponse,
+    UpdateOrganizationRequest, UpdatePullRequestApiRequest, UpdateWorkspaceRequest,
+    UpsertPullRequestRequest, Workspace,
 };
 use backon::{ExponentialBuilder, Retryable};
 use chrono::Duration as ChronoDuration;
@@ -956,6 +957,22 @@ impl RemoteClient {
         )
         .await?;
         Ok(())
+    }
+
+    /// Creates a pull request linked directly to an issue (without a workspace).
+    pub async fn create_pull_request(
+        &self,
+        request: CreatePullRequestApiRequest,
+    ) -> Result<PullRequest, RemoteClientError> {
+        self.post_authed("/v1/pull_requests", Some(&request)).await
+    }
+
+    /// Updates a pull request status on the remote server.
+    pub async fn update_pull_request(
+        &self,
+        request: UpdatePullRequestApiRequest,
+    ) -> Result<PullRequest, RemoteClientError> {
+        self.patch_authed("/v1/pull_requests", &request).await
     }
 
     /// Lists pull requests linked to an issue.
