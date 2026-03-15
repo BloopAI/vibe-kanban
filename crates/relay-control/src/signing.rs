@@ -41,6 +41,13 @@ impl RelaySignatureValidationError {
 }
 
 const RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS: i64 = 30;
+
+fn max_timestamp_drift_secs() -> i64 {
+    std::env::var("VK_RELAY_SIGNATURE_MAX_DRIFT_SECS")
+        .ok()
+        .and_then(|v| v.parse::<i64>().ok())
+        .unwrap_or(RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS)
+}
 const RELAY_SIGNING_SESSION_TTL: Duration = Duration::from_secs(60 * 60);
 const RELAY_SIGNING_SESSION_IDLE_TTL: Duration = Duration::from_secs(15 * 60);
 const RELAY_NONCE_TTL: Duration = Duration::from_secs(2 * 60);
@@ -204,7 +211,7 @@ fn validate_timestamp(timestamp: i64) -> Result<(), RelaySignatureValidationErro
     .map_err(|_| RelaySignatureValidationError::TimestampOutOfDrift)?;
 
     let drift_secs = now_secs.saturating_sub(timestamp).abs();
-    if drift_secs > RELAY_SIGNATURE_MAX_TIMESTAMP_DRIFT_SECS {
+    if drift_secs > max_timestamp_drift_secs() {
         return Err(RelaySignatureValidationError::TimestampOutOfDrift);
     }
     Ok(())
