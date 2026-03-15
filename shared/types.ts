@@ -148,7 +148,7 @@ export type Workspace = { id: string, task_id: string | null, container_ref: str
 
 export type WorkspaceWithStatus = { is_running: boolean, is_errored: boolean, id: string, task_id: string | null, container_ref: string | null, branch: string, setup_completed_at: string | null, created_at: string, updated_at: string, archived: boolean, pinned: boolean, name: string | null, worktree_deleted: boolean, };
 
-export type Session = { id: string, workspace_id: string, executor: string | null, agent_working_dir: string | null, created_at: string, updated_at: string, };
+export type Session = { id: string, workspace_id: string, name: string | null, executor: string | null, agent_working_dir: string | null, created_at: string, updated_at: string, };
 
 export type ExecutionProcess = { id: string, session_id: string, run_reason: ExecutionProcessRunReason, executor_action: ExecutorAction, status: ExecutionProcessStatus, exit_code: bigint | null, 
 /**
@@ -405,6 +405,8 @@ export type CreateFromPrError = { "type": "pr_not_found" } | { "type": "branch_f
 export type RepoBranchStatus = { repo_id: string, repo_name: string, commits_behind: number | null, commits_ahead: number | null, has_uncommitted_changes: boolean | null, head_oid: string | null, uncommitted_count: number | null, untracked_count: number | null, target_branch_name: string, remote_commits_behind: number | null, remote_commits_ahead: number | null, merges: Array<Merge>, is_rebase_in_progress: boolean, conflict_op: ConflictOp | null, conflicted_files: Array<string>, is_target_remote: boolean, };
 
 export type UpdateWorkspace = { archived: boolean | null, pinned: boolean | null, name: string | null, };
+
+export type UpdateSession = { name: string | null, };
 
 export type WorkspaceSummaryRequest = { archived: boolean, };
 

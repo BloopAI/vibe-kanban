@@ -287,6 +287,7 @@ export const sessionsApi = {
   create: async (data: {
     workspace_id: string;
     executor?: string;
+    name?: string;
   }): Promise<Session> => {
     const response = await makeRequest('/api/sessions', {
       method: 'POST',
@@ -337,6 +338,17 @@ export const sessionsApi = {
     return handleApiResponseAsResult<ExecutionProcess, RunScriptError>(
       response
     );
+  },
+
+  update: async (
+    sessionId: string,
+    data: { name?: string }
+  ): Promise<Session> => {
+    const response = await makeRequest(`/api/sessions/${sessionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return handleApiResponse<Session>(response);
   },
 };
 

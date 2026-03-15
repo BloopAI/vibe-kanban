@@ -90,6 +90,7 @@ const StartReviewDialogImpl = create<StartReviewDialogProps>(
           const session = await sessionsApi.create({
             workspace_id: workspaceId,
             executor: effectiveProfile.executor,
+            name: t('startReviewDialog.sessionName'),
           });
           targetSessionId = session.id;
 

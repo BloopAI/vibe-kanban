@@ -13,6 +13,7 @@ import {
   ArrowUpIcon,
   ArrowsOutIcon,
   GithubLogoIcon,
+  PencilSimpleIcon,
 } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 import { ChatBoxBase, VisualVariant, type DropzoneProps } from './ChatBoxBase';
@@ -54,6 +55,7 @@ interface ActionsProps {
 
 export interface SessionOption<TExecutor extends string = string> {
   id: string;
+  name?: string | null;
   created_at: string | Date;
   executor?: TExecutor | string | null;
 }
@@ -64,6 +66,7 @@ interface SessionProps<TExecutor extends string = string> {
   onSelectSession: (sessionId: string) => void;
   isNewSessionMode?: boolean;
   onNewSession?: () => void;
+  onRenameSession?: (sessionId: string, currentName: string) => void;
 }
 
 export interface SessionToolbarActionItem {
@@ -347,14 +350,18 @@ export function SessionChatBox<TExecutor extends string = string>({
     onSelectSession,
     isNewSessionMode,
     onNewSession,
+    onRenameSession,
   } = session;
   const isLatestSelected =
     sessions.length > 0 && selectedSessionId === sessions[0].id;
+  const selectedSessionObj = sessions.find((s) => s.id === selectedSessionId);
   const sessionLabel = isNewSessionMode
     ? t('conversation.sessions.newSession')
-    : isLatestSelected
-      ? t('conversation.sessions.latest')
-      : t('conversation.sessions.previous');
+    : selectedSessionObj?.name
+      ? selectedSessionObj.name
+      : isLatestSelected
+        ? t('conversation.sessions.latest')
+        : t('conversation.sessions.previous');
 
   // Stats
   const filesChanged = stats?.filesChanged ?? 0;
@@ -818,14 +825,18 @@ export function SessionChatBox<TExecutor extends string = string>({
                     }
                     onClick={() => onSelectSession(s.id)}
                   >
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center gap-1.5 max-w-[200px]">
                       {renderAgentIcon?.(
                         s.executor ?? null,
                         'size-icon shrink-0'
                       )}
-                      {index === 0
-                        ? t('conversation.sessions.latest')
-                        : formatSessionDate(s.created_at)}
+                      <span className="truncate">
+                        {s.name
+                          ? s.name
+                          : index === 0
+                            ? t('conversation.sessions.latest')
+                            : formatSessionDate(s.created_at)}
+                      </span>
                     </span>
                   </DropdownMenuItem>
                 ))}
@@ -834,6 +845,22 @@ export function SessionChatBox<TExecutor extends string = string>({
               <DropdownMenuItem disabled>
                 {t('conversation.sessions.noPreviousSessions')}
               </DropdownMenuItem>
+            )}
+            {onRenameSession && selectedSessionId && !isNewSessionMode && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  icon={PencilSimpleIcon}
+                  onClick={() =>
+                    onRenameSession(
+                      selectedSessionId,
+                      selectedSessionObj?.name ?? ''
+                    )
+                  }
+                >
+                  {t('conversation.sessions.rename')}
+                </DropdownMenuItem>
+              </>
             )}
           </ToolbarDropdown>
         </>
