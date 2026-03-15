@@ -28,6 +28,18 @@ impl AnalyticsConfig {
             .map(|s| s.to_string())
             .or_else(|| std::env::var("POSTHOG_API_ENDPOINT").ok())?;
 
+        if api_key.is_empty() || api_endpoint.is_empty() {
+            return None;
+        }
+
+        // Validate that the endpoint is an absolute URL to avoid RelativeUrlWithoutBase errors
+        if url::Url::parse(&api_endpoint).is_err() {
+            tracing::warn!(
+                "POSTHOG_API_ENDPOINT is not a valid absolute URL, analytics disabled"
+            );
+            return None;
+        }
+
         Some(Self {
             posthog_api_key: api_key,
             posthog_api_endpoint: api_endpoint,

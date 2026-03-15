@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use serde_json::{Value, json};
+use url::Url;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -13,6 +14,19 @@ impl AnalyticsConfig {
     pub fn from_env() -> Option<Self> {
         let api_key = option_env!("POSTHOG_API_KEY")?.to_string();
         let api_endpoint = option_env!("POSTHOG_API_ENDPOINT")?.to_string();
+
+        if api_key.is_empty() || api_endpoint.is_empty() {
+            return None;
+        }
+
+        // Validate that the endpoint is an absolute URL to avoid RelativeUrlWithoutBase errors
+        if Url::parse(&api_endpoint).is_err() {
+            tracing::warn!(
+                "POSTHOG_API_ENDPOINT is not a valid absolute URL, analytics disabled"
+            );
+            return None;
+        }
+
         Some(Self {
             posthog_api_key: api_key,
             posthog_api_endpoint: api_endpoint,
