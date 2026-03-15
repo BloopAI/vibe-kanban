@@ -205,13 +205,19 @@ impl McpServer {
             Err(e) => return Ok(e),
         };
 
-        // Link workspace to remote issue if issue_id is provided
+        // Link workspace to remote issue if issue_id is provided.
+        // This is best-effort: the workspace was already created successfully,
+        // so we log and continue rather than failing the entire operation.
         if let Some(issue_id) = issue_id
-            && let Err(e) = self
+            && let Err(_e) = self
                 .link_workspace_to_issue(create_and_start_response.workspace.id, issue_id)
                 .await
         {
-            return Ok(e);
+            tracing::warn!(
+                workspace_id = %create_and_start_response.workspace.id,
+                issue_id = %issue_id,
+                "failed to link workspace to remote issue (workspace was created successfully)"
+            );
         }
 
         let response = StartWorkspaceResponse {
