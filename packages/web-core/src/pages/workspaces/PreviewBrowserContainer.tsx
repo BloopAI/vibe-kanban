@@ -743,8 +743,17 @@ export function PreviewBrowserContainer({
     if (!parsed) return undefined;
 
     try {
+      // Some reverse proxies embed the target port as a numeric prefix in the
+      // hostname (e.g. Coder: "8080--workspace--user.coder.example.com").
+      // In that case parsed.port is empty (protocol default), so we extract
+      // the port from the hostname prefix before falling back to 443/80.
+      const hostnamePortMatch = !parsed.port
+        ? /^(\d+)--/.exec(parsed.hostname)
+        : null;
       const devServerPort =
-        parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+        parsed.port ||
+        hostnamePortMatch?.[1] ||
+        (parsed.protocol === 'https:' ? '443' : '80');
 
       // Don't proxy to Vibe Kanban's own ports (would create infinite loop)
       const vibeKanbanPort = window.location.port || '80';
