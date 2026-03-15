@@ -31,7 +31,6 @@ import {
   resolveRelayNavigationHostId,
   useRelayAppBarHosts,
 } from "@remote/shared/hooks/useRelayAppBarHosts";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import {
   CreateOrganizationDialog,
   type CreateOrganizationResult,
@@ -155,7 +154,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
     void SettingsDialog.show({
       initialSection: "relay",
       ...(hostId ? { initialState: { hostId } } : {}),
-      sections: REMOTE_SETTINGS_SECTIONS,
     });
   }, []);
 
@@ -273,8 +271,6 @@ export function RemoteAppShell({ children }: RemoteAppShellProps) {
         <AppBar
           projects={projects}
           hosts={relayHosts}
-          hostsLabel="HOSTS"
-          projectsLabel="BOARDS"
           onPairHostClick={isSignedIn ? handlePairHostClick : undefined}
           activeHostId={activeHostId}
           onCreateProject={handleCreateProject}

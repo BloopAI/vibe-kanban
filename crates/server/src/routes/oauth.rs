@@ -18,7 +18,7 @@ use ts_rs::TS;
 use utils::{assets::config_path, jwt::extract_expiration, response::ApiResponse};
 use uuid::Uuid;
 
-use crate::{DeploymentImpl, error::ApiError, tunnel};
+use crate::{DeploymentImpl, error::ApiError, runtime::relay_registration};
 
 /// Base64-encoded 32x32 app icon (from `crates/tauri-app/icons/32x32.png`).
 const APP_ICON_BASE64: &str = "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";
@@ -275,7 +275,7 @@ async fn handoff_complete(
     // Start relay if enabled
     let relay_deployment = deployment.clone();
     tokio::spawn(async move {
-        tunnel::spawn_relay(&relay_deployment).await;
+        relay_registration::spawn_relay(&relay_deployment).await;
     });
 
     let is_desktop = query.source.as_deref() == Some("desktop");
@@ -299,7 +299,7 @@ async fn logout(State(deployment): State<DeploymentImpl>) -> Result<StatusCode, 
 
     auth_context.clear_profile().await;
 
-    tunnel::stop_relay(&deployment).await;
+    relay_registration::stop_relay(&deployment).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

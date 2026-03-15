@@ -4,7 +4,6 @@ import { PlusIcon } from '@phosphor-icons/react';
 import type { BaseCodingAgent, ExecutorProfile } from 'shared/types';
 import { McpConfig } from 'shared/types';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
-import { mcpServersApi } from '@/shared/lib/api';
 import { McpConfigStrategyGeneral } from '@/shared/lib/mcpStrategies';
 import { cn } from '@/shared/lib/utils';
 import { toPrettyCase } from '@/shared/lib/string';
@@ -22,10 +21,12 @@ import {
   SettingsTextarea,
 } from './SettingsComponents';
 import { useSettingsDirty } from './SettingsDirtyContext';
+import { useSettingsMachineClient } from './SettingsHostContext';
 
 export function McpSettingsSection() {
   const { t } = useTranslation('settings');
   const { setDirty: setContextDirty } = useSettingsDirty();
+  const machineClient = useSettingsMachineClient();
   const { config, profiles } = useUserSystem();
   const [mcpServers, setMcpServers] = useState('{}');
   const [originalMcpServers, setOriginalMcpServers] = useState('{}');
@@ -73,7 +74,11 @@ export function McpSettingsSection() {
           throw new Error('Profile key not found');
         }
 
-        const result = await mcpServersApi.load({
+        if (!machineClient) {
+          throw new Error('Machine client is required');
+        }
+
+        const result = await machineClient.loadMcpServers({
           executor: profileKey as BaseCodingAgent,
         });
         setMcpConfig(result.mcp_config);
@@ -101,7 +106,7 @@ export function McpSettingsSection() {
     if (selectedProfile) {
       loadMcpServersForProfile(selectedProfile);
     }
-  }, [selectedProfile, profiles]);
+  }, [machineClient, profiles, selectedProfile]);
 
   const handleMcpServersChange = (value: string) => {
     setMcpServers(value);
@@ -151,7 +156,11 @@ export function McpSettingsSection() {
             throw new Error('Selected profile key not found');
           }
 
-          await mcpServersApi.save(
+          if (!machineClient) {
+            throw new Error('Machine client is required');
+          }
+
+          await machineClient.saveMcpServers(
             {
               executor: selectedProfileKey as BaseCodingAgent,
             },

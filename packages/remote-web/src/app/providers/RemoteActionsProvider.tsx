@@ -30,7 +30,6 @@ import {
   openKanbanIssueComposer,
   type ProjectIssueCreateOptions,
 } from "@/shared/stores/useKanbanIssueComposerStore";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 
 interface RemoteActionsProviderProps {
   children: ReactNode;
@@ -43,7 +42,7 @@ function noOpSelection(name: string) {
 export function RemoteActionsProvider({
   children,
 }: RemoteActionsProviderProps) {
-  const runtime = useAppRuntime();
+  const appRuntime = useAppRuntime();
   const appNavigation = useAppNavigation();
   const queryClient = useQueryClient();
   const { projectId, hostId } = useParams({ strict: false });
@@ -100,6 +99,8 @@ export function RemoteActionsProvider({
 
   const executorContext = useMemo<ActionExecutorContext>(
     () => ({
+      appRuntime,
+      currentHostId: hostId ?? null,
       appNavigation,
       queryClient,
       selectWorkspace: () => {
@@ -129,10 +130,10 @@ export function RemoteActionsProvider({
       kanbanProjectId: projectId,
       projectMutations: projectMutations ?? undefined,
       remoteWorkspaces: userCtx?.workspaces ?? [],
-      runtime,
     }),
     [
-      runtime,
+      appRuntime,
+      hostId,
       queryClient,
       openStatusSelection,
       openPrioritySelection,
@@ -154,7 +155,6 @@ export function RemoteActionsProvider({
       if (action.id === "settings") {
         await SettingsDialog.show({
           initialSection: "organizations",
-          sections: REMOTE_SETTINGS_SECTIONS,
         });
         return;
       }
@@ -166,7 +166,6 @@ export function RemoteActionsProvider({
             organizationId: selectedOrgId ?? undefined,
             projectId: projectId ?? undefined,
           },
-          sections: REMOTE_SETTINGS_SECTIONS,
         });
         return;
       }

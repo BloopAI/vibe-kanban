@@ -52,6 +52,7 @@ import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
   onAtBottomChange?: (atBottom: boolean) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 export interface ConversationListHandle {
@@ -173,7 +174,10 @@ const itemIdentity: VirtuosoMessageListProps<
 export const ConversationList = forwardRef<
   ConversationListHandle,
   ConversationListProps
->(function ConversationList({ attempt, onAtBottomChange }, ref) {
+>(function ConversationList(
+  { attempt, onAtBottomChange, onLoadingChange },
+  ref
+) {
   const resetAction = useResetProcess();
   const [channelData, setChannelData] =
     useState<DataWithScrollModifier<DisplayEntry> | null>(null);
@@ -246,7 +250,11 @@ export const ConversationList = forwardRef<
     setLoading(true);
     setChannelData(null);
     reset();
-  }, [attempt.id, reset]);
+  }, [attempt.id, attempt.session?.id, reset]);
+
+  useEffect(() => {
+    onLoadingChange?.(loading);
+  }, [loading, onLoadingChange]);
 
   useEffect(() => {
     return () => {

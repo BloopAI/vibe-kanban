@@ -13,7 +13,6 @@ import { clearTokens } from "@remote/shared/lib/auth";
 import { SettingsDialog } from "@/shared/dialogs/settings/SettingsDialog";
 import { useOrganizationStore } from "@/shared/stores/useOrganizationStore";
 import { useUserOrganizations } from "@/shared/hooks/useUserOrganizations";
-import { REMOTE_SETTINGS_SECTIONS } from "@remote/shared/constants/settings";
 import { useAuth } from "@/shared/hooks/auth/useAuth";
 import { useIsMobile } from "@/shared/hooks/useIsMobile";
 import {
@@ -61,7 +60,6 @@ export default function HomePage() {
     void SettingsDialog.show({
       initialSection: "relay",
       ...(hostId ? { initialState: { hostId } } : {}),
-      sections: REMOTE_SETTINGS_SECTIONS,
     });
   }, []);
 
@@ -81,7 +79,6 @@ export default function HomePage() {
     void SettingsDialog.show({
       initialSection: "organizations",
       initialState: { organizationId: legacyOrgId },
-      sections: REMOTE_SETTINGS_SECTIONS,
     });
   }, [navigate, search.legacyOrgSettingsOrgId, setSelectedOrgId]);
 

@@ -53,6 +53,7 @@ export function WorkspacesLayout() {
     isCreateMode,
     selectedSession,
     sessions,
+    isSessionsLoading,
     selectSession,
     repos,
     isNewSessionMode,
@@ -223,6 +224,7 @@ export function WorkspacesLayout() {
                   sessions={sessions}
                   onSelectSession={selectSession}
                   isLoading={isLoading}
+                  isSessionsLoading={isSessionsLoading}
                   isNewSessionMode={isNewSessionMode}
                   onStartNewSession={startNewSession}
                 />
@@ -335,6 +337,7 @@ export function WorkspacesLayout() {
                     sessions={sessions}
                     onSelectSession={selectSession}
                     isLoading={isLoading}
+                    isSessionsLoading={isSessionsLoading}
                     isNewSessionMode={isNewSessionMode}
                     onStartNewSession={startNewSession}
                   />

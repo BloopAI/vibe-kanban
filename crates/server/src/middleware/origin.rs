@@ -6,6 +6,7 @@ use axum::{
     http::{StatusCode, header},
     response::Response,
 };
+use relay_client::RELAY_HEADER;
 use url::Url;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -97,7 +98,7 @@ fn get_header<B>(req: &Request<B>, name: header::HeaderName) -> Option<&str> {
 
 fn is_relay_request<B>(req: &Request<B>) -> bool {
     req.headers()
-        .get("x-vk-relayed")
+        .get(RELAY_HEADER)
         .and_then(|v| v.to_str().ok())
         .is_some_and(|v| v.trim() == "1")
 }

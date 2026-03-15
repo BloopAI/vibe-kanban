@@ -2,7 +2,9 @@
 resolver = "3"
 members = [
     "crates/api-types",
+    "crates/relay-client",
     "crates/server",
+    "crates/relay-types",
     "crates/trusted-key-auth",
     "crates/mcp",
     "crates/db",
@@ -11,13 +13,17 @@ members = [
     "crates/worktree-manager",
     "crates/workspace-manager",
     "crates/relay-control",
-    "crates/server-info",
+    "crates/relay-hosts",
+    "crates/client-info",
+    "crates/remote-info",
     "crates/utils",
     "crates/git",
     "crates/git-host",
     "crates/local-deployment",
     "crates/deployment",
     "crates/review",
+    "crates/embedded-ssh",
+    "crates/desktop-bridge",
     "crates/tauri-app",
 ]
 exclude = ["crates/remote", "crates/relay-tunnel"]
@@ -44,4 +50,3 @@ async-trait = "0.1"
 debug = 1
 split-debuginfo = "packed"
 strip = true
-

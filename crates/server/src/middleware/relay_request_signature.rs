@@ -9,21 +9,17 @@ use axum::{
 };
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
-use sha2::{Digest, Sha256};
+use ed25519_dalek::Signer;
+use relay_client::RELAY_HEADER;
+use relay_control::signing::{
+    NONCE_HEADER, REQUEST_SIGNATURE_HEADER, RESPONSE_NONCE_HEADER, RESPONSE_SIGNATURE_HEADER,
+    RESPONSE_TIMESTAMP_HEADER, SIGNING_SESSION_HEADER, TIMESTAMP_HEADER,
+    build_request_signing_message, build_response_signing_message,
+};
 use url::form_urlencoded;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
-
-const RELAY_HEADER: &str = "x-vk-relayed";
-const SIGNING_SESSION_HEADER: &str = "x-vk-sig-session";
-const TIMESTAMP_HEADER: &str = "x-vk-sig-ts";
-const NONCE_HEADER: &str = "x-vk-sig-nonce";
-const REQUEST_SIGNATURE_HEADER: &str = "x-vk-sig-signature";
-
-const RESPONSE_TIMESTAMP_HEADER: &str = "x-vk-resp-ts";
-const RESPONSE_NONCE_HEADER: &str = "x-vk-resp-nonce";
-const RESPONSE_SIGNATURE_HEADER: &str = "x-vk-resp-signature";
 
 #[derive(Clone, Debug)]
 pub struct RelayRequestSignatureContext {
@@ -57,11 +53,12 @@ pub async fn require_relay_request_signature(
         .await
         .map_err(|_| ApiError::Unauthorized)?;
 
-    let message = build_request_message(
+    let session_id_str = signature_input.signing_session_id.to_string();
+    let message = build_request_signing_message(
         signature_input.timestamp,
         &method,
         &signature_input.path_and_query,
-        &signature_input.signing_session_id,
+        &session_id_str,
         &signature_input.nonce,
         &body_bytes,
     );
@@ -117,29 +114,19 @@ pub async fn sign_relay_response(
     let response_nonce = Uuid::new_v4().simple().to_string();
     let status = parts.status.as_u16();
 
-    let message = build_response_message(
+    let message = build_response_signing_message(
         response_timestamp,
         status,
         &signature_input.path_and_query,
-        &signature_input.signing_session_id,
+        signature_input.signing_session_id,
         &signature_input.nonce,
         &response_nonce,
         &body_bytes,
     );
 
-    let response_signature = deployment
-        .relay_signing()
-        .sign_message(signature_input.signing_session_id, message.as_bytes())
-        .await
-        .map_err(|error| {
-            tracing::warn!(
-                signing_session_id = %signature_input.signing_session_id,
-                path = %signature_input.path_and_query,
-                reason = %error.as_str(),
-                "Failed to sign relay response"
-            );
-            ApiError::Unauthorized
-        })?;
+    let signing_key = deployment.relay_signing().signing_key();
+    let signature = signing_key.sign(message.as_bytes());
+    let response_signature = BASE64_STANDARD.encode(signature.to_bytes());
 
     insert_header(
         &mut parts,
@@ -150,33 +137,6 @@ pub async fn sign_relay_response(
     insert_header(&mut parts, RESPONSE_SIGNATURE_HEADER, &response_signature);
 
     Ok(Response::from_parts(parts, Body::from(body_bytes)))
-}
-
-fn build_request_message(
-    timestamp: i64,
-    method: &str,
-    path_and_query: &str,
-    signing_session_id: &Uuid,
-    nonce: &str,
-    body: &[u8],
-) -> String {
-    let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
-    format!("v1|{timestamp}|{method}|{path_and_query}|{signing_session_id}|{nonce}|{body_hash}")
-}
-
-fn build_response_message(
-    timestamp: i64,
-    status: u16,
-    path_and_query: &str,
-    signing_session_id: &Uuid,
-    request_nonce: &str,
-    response_nonce: &str,
-    body: &[u8],
-) -> String {
-    let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
-    format!(
-        "v1|{timestamp}|{status}|{path_and_query}|{signing_session_id}|{request_nonce}|{response_nonce}|{body_hash}"
-    )
 }
 
 fn relay_path_and_query(request: &Request) -> Result<String, ApiError> {

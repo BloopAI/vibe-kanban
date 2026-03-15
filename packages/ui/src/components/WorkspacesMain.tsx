@@ -10,6 +10,7 @@ export interface WorkspacesMainWorkspace {
 interface WorkspacesMainProps {
   workspaceWithSession: WorkspacesMainWorkspace | undefined;
   isLoading: boolean;
+  showLoadingOverlay?: boolean;
   containerRef: RefObject<HTMLElement>;
   conversationContent?: ReactNode;
   chatBoxContent: ReactNode;
@@ -23,6 +24,7 @@ interface WorkspacesMainProps {
 export function WorkspacesMain({
   workspaceWithSession,
   isLoading,
+  showLoadingOverlay = false,
   containerRef,
   conversationContent,
   chatBoxContent,
@@ -52,7 +54,14 @@ export function WorkspacesMain({
           <p className="text-low">{t('common:workspaces.selectToStart')}</p>
         </div>
       ) : (
-        conversationContent
+        <>
+          {showLoadingOverlay && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center bg-primary">
+              <SpinnerIcon className="size-6 animate-spin text-low" />
+            </div>
+          )}
+          {conversationContent}
+        </>
       )}
       {/* Scroll to bottom button */}
       {workspaceWithSession && !isAtBottom && (

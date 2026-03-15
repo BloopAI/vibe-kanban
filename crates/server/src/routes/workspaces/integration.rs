@@ -1,7 +1,10 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use axum::{
-    Extension, Json, Router, extract::State, response::Json as ResponseJson, routing::post,
+    Extension, Json, Router,
+    extract::{Query, State},
+    response::Json as ResponseJson,
+    routing::{get, post},
 };
 use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
@@ -36,8 +39,19 @@ pub struct OpenEditorResponse {
     pub url: Option<String>,
 }
 
+#[derive(Debug, Serialize, TS)]
+pub struct OpenEditorPathResponse {
+    pub workspace_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OpenEditorPathQuery {
+    file_path: Option<String>,
+}
+
 pub fn router() -> Router<DeploymentImpl> {
     Router::new()
+        .route("/editor/path", get(get_workspace_editor_path))
         .route("/editor/open", post(open_workspace_in_editor))
         .route("/agent/setup", post(run_agent_setup))
         .route("/github/cli/setup", post(gh_cli_setup_handler))
@@ -80,26 +94,8 @@ pub async fn open_workspace_in_editor(
     State(deployment): State<DeploymentImpl>,
     Json(payload): Json<OpenEditorRequest>,
 ) -> Result<ResponseJson<ApiResponse<OpenEditorResponse>>, ApiError> {
-    let container_ref = deployment
-        .container()
-        .ensure_container_exists(&workspace)
+    let path = resolve_workspace_editor_path(&deployment, &workspace, payload.file_path.as_deref())
         .await?;
-    deployment.container().touch(&workspace).await?;
-
-    let workspace_path = Path::new(&container_ref);
-    let workspace_repos =
-        WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
-    let workspace_path = if workspace_repos.len() == 1 && payload.file_path.is_none() {
-        workspace_path.join(&workspace_repos[0].name)
-    } else {
-        workspace_path.to_path_buf()
-    };
-
-    let path = if let Some(file_path) = payload.file_path.as_ref() {
-        workspace_path.join(file_path)
-    } else {
-        workspace_path
-    };
 
     let editor_config = {
         let config = deployment.config().read().await;
@@ -140,6 +136,46 @@ pub async fn open_workspace_in_editor(
             Err(ApiError::EditorOpen(e))
         }
     }
+}
+
+pub async fn get_workspace_editor_path(
+    Extension(workspace): Extension<Workspace>,
+    State(deployment): State<DeploymentImpl>,
+    Query(query): Query<OpenEditorPathQuery>,
+) -> Result<ResponseJson<ApiResponse<OpenEditorPathResponse>>, ApiError> {
+    let path =
+        resolve_workspace_editor_path(&deployment, &workspace, query.file_path.as_deref()).await?;
+
+    Ok(ResponseJson(ApiResponse::success(OpenEditorPathResponse {
+        workspace_path: path.to_string_lossy().into_owned(),
+    })))
+}
+
+async fn resolve_workspace_editor_path(
+    deployment: &DeploymentImpl,
+    workspace: &Workspace,
+    file_path: Option<&str>,
+) -> Result<PathBuf, ApiError> {
+    let container_ref = deployment
+        .container()
+        .ensure_container_exists(workspace)
+        .await?;
+    deployment.container().touch(workspace).await?;
+
+    let workspace_path = Path::new(&container_ref);
+    let workspace_repos =
+        WorkspaceRepo::find_repos_for_workspace(&deployment.db().pool, workspace.id).await?;
+    let workspace_path = if workspace_repos.len() == 1 && file_path.is_none() {
+        workspace_path.join(&workspace_repos[0].name)
+    } else {
+        workspace_path.to_path_buf()
+    };
+
+    Ok(if let Some(file_path) = file_path {
+        workspace_path.join(file_path)
+    } else {
+        workspace_path
+    })
 }
 
 #[axum::debug_handler]

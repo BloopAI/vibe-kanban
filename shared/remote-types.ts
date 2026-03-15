@@ -56,11 +56,7 @@ export type RelayHost = { id: string, owner_user_id: string, name: string, statu
 
 export type ListRelayHostsResponse = { hosts: Array<RelayHost>, };
 
-export type RelaySession = { id: string, host_id: string, request_user_id: string, state: string, created_at: string, expires_at: string, claimed_at: string | null, ended_at: string | null, };
-
-export type CreateRelaySessionResponse = { session: RelaySession, };
-
-export type RelaySessionAuthCodeResponse = { session_id: string, code: string, };
+export type CreateRemoteSessionResponse = { session_id: string, };
 
 export enum MemberRole { ADMIN = "ADMIN", MEMBER = "MEMBER" }
 

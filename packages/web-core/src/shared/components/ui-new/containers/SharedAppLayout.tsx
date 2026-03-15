@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { DropResult } from '@hello-pangea/dnd';
-import { Outlet } from '@tanstack/react-router';
+import { Outlet, useNavigate, useParams } from '@tanstack/react-router';
 import { siDiscord, siGithub } from 'simple-icons';
 import { XIcon, PlusIcon, LayoutIcon, KanbanIcon } from '@phosphor-icons/react';
 import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
@@ -10,7 +10,7 @@ import { cn } from '@/shared/lib/utils';
 import { isTauriMac } from '@/shared/lib/platform';
 
 import { NavbarContainer } from './NavbarContainer';
-import { AppBar } from '@vibe/ui/components/AppBar';
+import { AppBar, type AppBarHostStatus } from '@vibe/ui/components/AppBar';
 import { MobileDrawer } from '@vibe/ui/components/MobileDrawer';
 import { AppBarUserPopoverContainer } from './AppBarUserPopoverContainer';
 import { useUserOrganizations } from '@/shared/hooks/useUserOrganizations';
@@ -23,8 +23,9 @@ import { useAppUpdateStore } from '@/shared/stores/useAppUpdateStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import {
+  getDestinationHostId,
   getProjectDestination,
-  isWorkspacesDestination,
+  isLocalWorkspacesDestination,
 } from '@/shared/lib/routes/appNavigation';
 import {
   CreateOrganizationDialog,
@@ -35,6 +36,7 @@ import {
   type CreateRemoteProjectResult,
 } from '@/shared/dialogs/org/CreateRemoteProjectDialog';
 import { OAuthDialog } from '@/shared/dialogs/global/OAuthDialog';
+import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CommandBarDialog } from '@/shared/dialogs/command-bar/CommandBarDialog';
 import { useCommandBarShortcut } from '@/shared/hooks/useCommandBarShortcut';
 import { useWorkspaceSidebarPreviewController } from '@/shared/hooks/useWorkspaceSidebarPreviewController';
@@ -48,6 +50,7 @@ import {
 import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotificationBellContainer';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
+import { useRemoteCloudHostsAppBarModel } from '@/shared/hooks/useRemoteCloudHosts';
 
 export function SharedAppLayout() {
   const appNavigation = useAppNavigation();
@@ -66,6 +69,9 @@ export function SharedAppLayout() {
   const { data: starCount } = useGitHubStars();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isAppBarHovered, setIsAppBarHovered] = useState(false);
+  const { hosts: remoteCloudHosts } = useRemoteCloudHostsAppBarModel();
+  const { hostId: routeHostId } = useParams({ strict: false });
+  const navigate = useNavigate();
 
   // Register CMD+K shortcut globally for all routes under SharedAppLayout
   useCommandBarShortcut(() => CommandBarDialog.show());
@@ -168,10 +174,12 @@ export function SharedAppLayout() {
     () => getProjectDestination(currentDestination),
     [currentDestination]
   );
-  const isWorkspacesActive = isWorkspacesDestination(currentDestination);
+  const isWorkspacesActive = isLocalWorkspacesDestination(currentDestination);
   const isWorkspaceSidebarPreviewEnabled =
     !isMobile && isWorkspacesActive && !isLeftSidebarVisible;
   const activeProjectId = projectDestination?.projectId ?? null;
+  const activeHostId =
+    getDestinationHostId(currentDestination) ?? routeHostId ?? null;
   const sidebarPreview = useWorkspaceSidebarPreviewController({
     enabled: isWorkspaceSidebarPreviewEnabled,
     isAppBarHovered,
@@ -188,8 +196,8 @@ export function SharedAppLayout() {
   }, [activeProjectId, setSelectedProjectId]);
 
   const handleWorkspacesClick = useCallback(() => {
-    appNavigation.goToWorkspaces();
-  }, [appNavigation]);
+    void navigate({ to: '/workspaces' });
+  }, [navigate]);
 
   const handleProjectClick = useCallback(
     (projectId: string) => {
@@ -287,6 +295,31 @@ export function SharedAppLayout() {
     }
   }, [isSignedIn, appNavigation]);
 
+  const openRelaySettings = useCallback((hostId?: string) => {
+    void SettingsDialog.show({
+      initialSection: 'relay',
+      ...(hostId ? { initialState: { hostId } } : {}),
+    });
+  }, []);
+
+  const handleHostClick = useCallback(
+    (hostId: string, status: AppBarHostStatus) => {
+      if (status === 'offline') {
+        return;
+      }
+
+      void navigate({
+        to: '/hosts/$hostId/workspaces',
+        params: { hostId },
+      });
+    },
+    [navigate]
+  );
+
+  const handlePairHostClick = useCallback(() => {
+    openRelaySettings();
+  }, [openRelaySettings]);
+
   return (
     <SyncErrorProvider>
       <div
@@ -316,8 +349,12 @@ export function SharedAppLayout() {
             {/* Row 2, col 1: AppBar sidebar */}
             <AppBar
               projects={orderedProjects}
+              hosts={remoteCloudHosts}
+              activeHostId={activeHostId}
               onCreateProject={handleCreateProject}
               onWorkspacesClick={handleWorkspacesClick}
+              onHostClick={handleHostClick}
+              onPairHostClick={handlePairHostClick}
               onProjectClick={handleProjectClick}
               onProjectsDragEnd={handleProjectsDragEnd}
               isSavingProjectOrder={isSavingProjectOrder}
@@ -422,7 +459,7 @@ export function SharedAppLayout() {
             <button
               type="button"
               onClick={() => {
-                appNavigation.goToWorkspaces();
+                void navigate({ to: '/workspaces' });
                 setIsDrawerOpen(false);
               }}
               className="flex items-center gap-2 px-4 py-3 text-sm text-normal hover:bg-secondary cursor-pointer"

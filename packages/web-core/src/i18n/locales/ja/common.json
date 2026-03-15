@@ -536,7 +536,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "カンバン",
+      "tooltip": "サインインしてプロジェクトを表示",
       "title": "カンバンボード",
       "description": "サインインしてカンバンボードでコーディングエージェントを整理しましょう。",
       "migrateOldProjects": "古いプロジェクトを移行"

@@ -1,3 +1,4 @@
+pub mod signed_ws;
 pub mod signing;
 
 use tokio::sync::RwLock;

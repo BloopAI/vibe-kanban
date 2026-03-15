@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo } from 'react';
 import { workspacesApi } from '@/shared/lib/api';
+import { getHostRequestScopeQueryKey } from '@/shared/lib/hostRequestScope';
+import { useHostId } from '@/shared/providers/HostIdProvider';
 import type { RepoWithTargetBranch } from 'shared/types';
 
 interface UseWorkspaceRepoOptions {
@@ -8,21 +10,33 @@ interface UseWorkspaceRepoOptions {
 }
 
 export const workspaceRepoKeys = {
-  byWorkspace: (workspaceId: string | undefined) =>
-    ['workspaceRepos', workspaceId] as const,
-  selection: (workspaceId: string | undefined) =>
-    ['workspaceRepoSelection', workspaceId] as const,
+  byWorkspace: (
+    workspaceId: string | undefined,
+    hostId: string | null = null
+  ) =>
+    [
+      'workspaceRepos',
+      getHostRequestScopeQueryKey(hostId),
+      workspaceId,
+    ] as const,
+  selection: (workspaceId: string | undefined, hostId: string | null = null) =>
+    [
+      'workspaceRepoSelection',
+      getHostRequestScopeQueryKey(hostId),
+      workspaceId,
+    ] as const,
 };
 
 export function useWorkspaceRepo(
   workspaceId?: string,
   options: UseWorkspaceRepoOptions = {}
 ) {
+  const hostId = useHostId();
   const { enabled = true } = options;
   const queryClient = useQueryClient();
 
   const query = useQuery<RepoWithTargetBranch[]>({
-    queryKey: workspaceRepoKeys.byWorkspace(workspaceId),
+    queryKey: workspaceRepoKeys.byWorkspace(workspaceId, hostId),
     queryFn: async () => {
       const repos = await workspacesApi.getRepos(workspaceId!);
       return repos;
@@ -34,7 +48,7 @@ export function useWorkspaceRepo(
 
   // Use React Query cache for shared state across all hook consumers
   const { data: selectedRepoId = null } = useQuery<string | null>({
-    queryKey: workspaceRepoKeys.selection(workspaceId),
+    queryKey: workspaceRepoKeys.selection(workspaceId, hostId),
     queryFn: () => null,
     enabled: false,
     staleTime: Infinity,
@@ -42,9 +56,12 @@ export function useWorkspaceRepo(
 
   const setSelectedRepoId = useCallback(
     (id: string | null) => {
-      queryClient.setQueryData(workspaceRepoKeys.selection(workspaceId), id);
+      queryClient.setQueryData(
+        workspaceRepoKeys.selection(workspaceId, hostId),
+        id
+      );
     },
-    [queryClient, workspaceId]
+    [queryClient, workspaceId, hostId]
   );
 
   // Auto-select first repo when none selected

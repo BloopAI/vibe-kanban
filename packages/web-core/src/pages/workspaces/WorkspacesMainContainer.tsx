@@ -1,6 +1,7 @@
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
   useRef,
@@ -31,6 +32,7 @@ interface WorkspacesMainContainerProps {
   sessions: Session[];
   onSelectSession: (sessionId: string) => void;
   isLoading: boolean;
+  isSessionsLoading: boolean;
   /** Whether user is creating a new session */
   isNewSessionMode: boolean;
   /** Callback to start new session mode */
@@ -47,6 +49,7 @@ export const WorkspacesMainContainer = forwardRef<
     sessions,
     onSelectSession,
     isLoading,
+    isSessionsLoading,
     isNewSessionMode,
     onStartNewSession,
   },
@@ -67,6 +70,7 @@ export const WorkspacesMainContainer = forwardRef<
   }, []);
 
   const [isAtBottom, setIsAtBottom] = useState(true);
+  const [isConversationLoading, setIsConversationLoading] = useState(false);
   const handleAtBottomChange = useCallback((atBottom: boolean) => {
     setIsAtBottom(atBottom);
   }, []);
@@ -76,6 +80,12 @@ export const WorkspacesMainContainer = forwardRef<
   }, []);
 
   const { session } = workspaceWithSession ?? {};
+
+  useEffect(() => {
+    if (!session) {
+      setIsConversationLoading(false);
+    }
+  }, [session]);
 
   const entriesProviderKey = workspaceWithSession
     ? `${workspaceWithSession.id}-${session?.id}`
@@ -88,11 +98,18 @@ export const WorkspacesMainContainer = forwardRef<
           <ConversationList
             ref={conversationListRef}
             attempt={workspaceWithSession}
+            onLoadingChange={setIsConversationLoading}
           />
         </RetryUiProvider>
       </div>
     </div>
   ) : null;
+
+  const isMainLoading =
+    isLoading ||
+    (!!selectedWorkspace && !isNewSessionMode && isSessionsLoading);
+  const showConversationLoadingOverlay =
+    !isMainLoading && !!workspaceWithSession?.session && isConversationLoading;
 
   const chatBoxContent = (
     <SessionChatBoxContainer
@@ -145,7 +162,8 @@ export const WorkspacesMainContainer = forwardRef<
             workspaceWithSession={
               workspaceWithSession ? { id: workspaceWithSession.id } : undefined
             }
-            isLoading={isLoading}
+            isLoading={isMainLoading}
+            showLoadingOverlay={showConversationLoadingOverlay}
             containerRef={containerRef}
             conversationContent={conversationContent}
             chatBoxContent={chatBoxContent}

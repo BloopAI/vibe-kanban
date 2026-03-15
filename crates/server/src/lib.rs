@@ -1,9 +1,10 @@
 pub mod error;
 pub mod middleware;
 pub mod preview_proxy;
+pub mod relay_pairing;
 pub mod routes;
+pub mod runtime;
 pub mod startup;
-pub mod tunnel;
 
 // #[cfg(feature = "cloud")]
 // type DeploymentImpl = vibe_kanban_cloud::deployment::CloudDeployment;

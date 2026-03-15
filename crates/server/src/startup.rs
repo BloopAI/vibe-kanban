@@ -3,7 +3,7 @@ use services::services::container::ContainerService;
 use tokio_util::sync::CancellationToken;
 use utils::assets::asset_dir;
 
-use crate::{DeploymentImpl, tunnel};
+use crate::{DeploymentImpl, runtime::relay_registration};
 
 /// A running server instance. Callers can read the port, then call `serve()`
 /// to run the server until the shutdown token is cancelled.
@@ -32,20 +32,16 @@ impl ServerHandle {
         // Start relay tunnel so the host registers with the relay server.
         // This must happen after the port is known (it's needed for local
         // proxying) and is shared between the standalone binary and Tauri.
-        self.deployment.server_info().set_port(self.port).await;
         self.deployment
-            .server_info()
-            .set_bind_ip(self.main_listener.local_addr()?.ip())
-            .await;
-        let relay_host_name = {
-            let config = self.deployment.config().read().await;
-            tunnel::effective_relay_host_name(&config, self.deployment.user_id())
-        };
+            .client_info()
+            .set_port(self.port)
+            .expect("client port already set");
+        let host = self.main_listener.local_addr()?.ip().to_string();
         self.deployment
-            .server_info()
-            .set_hostname(relay_host_name)
-            .await;
-        tunnel::spawn_relay(&self.deployment).await;
+            .client_info()
+            .set_hostname(host)
+            .expect("client hostname already set");
+        relay_registration::spawn_relay(&self.deployment).await;
 
         let app_router = crate::routes::router(self.deployment.clone());
         let proxy_router: axum::Router = crate::preview_proxy::router();

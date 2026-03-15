@@ -15,18 +15,19 @@ pub mod events;
 pub mod execution_processes;
 pub mod frontend;
 pub mod health;
+pub mod host_relay;
 pub mod images;
 pub mod migration;
 pub mod oauth;
 pub mod organizations;
 pub mod relay_auth;
-pub mod relay_ws;
 pub mod releases;
 pub mod remote;
 pub mod repo;
 pub mod scratch;
 pub mod search;
 pub mod sessions;
+pub mod ssh_session;
 pub mod tags;
 pub mod terminal;
 pub mod workspaces;
@@ -51,6 +52,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(migration::router())
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
+        .route("/ssh-session", get(ssh_session::ssh_session_ws))
         .nest("/remote", remote::router())
         .nest("/images", images::routes())
         .layer(axum::middleware::from_fn_with_state(
@@ -65,6 +67,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
 
     let api_routes = Router::new()
         .merge(relay_auth::router())
+        .merge(host_relay::router(&deployment))
         .merge(relay_signed_routes)
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,

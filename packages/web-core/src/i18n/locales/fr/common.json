@@ -536,7 +536,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "Kanban",
+      "tooltip": "Connectez-vous pour voir les projets",
       "title": "Tableaux Kanban",
       "description": "Connectez-vous pour organiser vos agents de codage avec des tableaux kanban.",
       "migrateOldProjects": "Migrer les anciens projets"

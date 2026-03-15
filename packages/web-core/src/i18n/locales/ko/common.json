@@ -536,7 +536,7 @@
   },
   "appBar": {
     "kanban": {
-      "tooltip": "칸반",
+      "tooltip": "프로젝트를 보려면 로그인하세요",
       "title": "칸반 보드",
       "description": "로그인하여 칸반 보드로 코딩 에이전트를 정리하세요.",
       "migrateOldProjects": "이전 프로젝트 마이그레이션"

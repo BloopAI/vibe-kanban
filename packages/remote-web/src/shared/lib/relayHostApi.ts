@@ -1,6 +1,6 @@
 import {
-  invalidateRelaySessionBaseUrl,
-  resolveRelayHostContext,
+  invalidateRemoteSessionId,
+  resolveRemoteHostContext,
   tryRefreshRelayHostSigningSession,
 } from "@remote/shared/lib/relay/context";
 import { getActiveRelayHostId } from "@remote/shared/lib/relay/activeHostContext";
@@ -25,6 +25,11 @@ import {
   createRelaySignedWebSocket,
   createRelayWsSigningContext,
 } from "@remote/shared/lib/relay/ws";
+import { buildRemoteSessionBaseUrl } from "@/shared/lib/relayBackendApi";
+import type {
+  LocalApiRequestOptions,
+  LocalApiWebSocketOptions,
+} from "@/shared/lib/localApiTransport";
 
 const EMPTY_BYTES = new Uint8Array();
 
@@ -32,26 +37,34 @@ export { isWorkspaceRoutePath };
 
 export async function requestLocalApiViaRelay(
   pathOrUrl: string,
-  requestInit: RequestInit = {},
+  requestInit: LocalApiRequestOptions = {},
 ): Promise<Response> {
   const pathAndQuery = toPathAndQuery(pathOrUrl);
+  const {
+    relayHostId,
+    hostId: _hostId,
+    hostScope: _hostScope,
+    ...relayRequestInit
+  } = requestInit;
 
   if (!shouldRelayApiPath(pathAndQuery)) {
-    return fetch(pathOrUrl, requestInit);
+    return fetch(pathOrUrl, relayRequestInit);
   }
 
-  const hostId = resolveRelayHostIdForCurrentPage() ?? getActiveRelayHostId();
+  const hostId =
+    relayHostId ?? resolveRelayHostIdForCurrentPage() ?? getActiveRelayHostId();
   if (!hostId) {
     throw new Error(
       "Host context is required for local API requests. Navigate under /hosts/{hostId}/...",
     );
   }
 
-  return requestRelayHostApi(hostId, pathAndQuery, requestInit);
+  return requestRelayHostApi(hostId, pathAndQuery, relayRequestInit);
 }
 
 export async function openLocalApiWebSocketViaRelay(
   pathOrUrl: string,
+  options: LocalApiWebSocketOptions = {},
 ): Promise<WebSocket> {
   const pathAndQuery = toPathAndQuery(pathOrUrl);
 
@@ -59,7 +72,10 @@ export async function openLocalApiWebSocketViaRelay(
     return openBrowserWebSocket(pathOrUrl);
   }
 
-  const hostId = resolveRelayHostIdForCurrentPage() ?? getActiveRelayHostId();
+  const hostId =
+    options.relayHostId ??
+    resolveRelayHostIdForCurrentPage() ??
+    getActiveRelayHostId();
   if (!hostId) {
     throw new Error(
       "Host context is required for local API WebSocket requests. Navigate under /hosts/{hostId}/...",
@@ -82,7 +98,7 @@ export async function requestRelayHostApi(
     requestInit.body,
   );
 
-  const context = await resolveRelayHostContext(hostId);
+  const context = await resolveRemoteHostContext(hostId);
   const initialResponse = await sendRelayHostRequest(context, {
     normalizedPath,
     method,
@@ -95,7 +111,7 @@ export async function requestRelayHostApi(
     return initialResponse;
   }
 
-  invalidateRelaySessionBaseUrl(hostId);
+  invalidateRemoteSessionId(hostId);
   const refreshedContext = await tryRefreshRelayHostSigningSession(context);
   if (!refreshedContext) {
     return initialResponse;
@@ -110,7 +126,7 @@ export async function requestRelayHostApi(
     requestInit,
   });
   if (isAuthFailureStatus(retryResponse.status)) {
-    invalidateRelaySessionBaseUrl(hostId);
+    invalidateRemoteSessionId(hostId);
   }
 
   return retryResponse;
@@ -120,7 +136,7 @@ export async function openRelayHostWebSocket(
   hostId: string,
   pathOrUrl: string,
 ): Promise<WebSocket> {
-  const baseContext = await resolveRelayHostContext(hostId);
+  const baseContext = await resolveRemoteHostContext(hostId);
   const context =
     (await tryRefreshRelayHostSigningSession(baseContext)) ?? baseContext;
   const pathAndQuery = toPathAndQuery(pathOrUrl);
@@ -132,12 +148,13 @@ export async function openRelayHostWebSocket(
     normalizedPath,
     EMPTY_BYTES,
   );
+  const base_url = buildRemoteSessionBaseUrl(
+    context.pairedHost.host_id,
+    context.sessionId,
+  );
 
   const signedPath = appendSignatureToPath(normalizedPath, signature);
-  const wsUrl = `${context.relaySessionBaseUrl}${signedPath}`.replace(
-    /^http/i,
-    "ws",
-  );
+  const wsUrl = `${base_url}${signedPath}`.replace(/^http/i, "ws");
 
   const signingContext = await createRelayWsSigningContext(
     context.pairedHost,

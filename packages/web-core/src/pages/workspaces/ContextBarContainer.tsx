@@ -153,7 +153,7 @@ export interface ContextBarContainerProps {
 export function ContextBarContainer({
   containerRef,
 }: ContextBarContainerProps) {
-  const { executorContext } = useActions();
+  const { executeAction } = useActions();
   const { config } = useUserSystem();
   const editorType =
     (config?.editor?.editor_type as EditorType | undefined) ?? null;
@@ -161,14 +161,13 @@ export function ContextBarContainer({
   // Get visibility context (now includes dev server state)
   const actionCtx = useActionVisibilityContext();
 
-  // Action handler - use executor context directly from provider
   const handleExecuteAction = useCallback(
     async (action: ActionDefinition) => {
       if (action.requiresTarget === ActionTargetType.NONE) {
-        await action.execute(executorContext);
+        await executeAction(action);
       }
     },
-    [executorContext]
+    [executeAction]
   );
 
   const { style, isDragging, dragHandlers } =

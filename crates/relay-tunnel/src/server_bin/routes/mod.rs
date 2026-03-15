@@ -21,20 +21,17 @@ pub fn build_router(state: RelayAppState) -> Router {
     let protected = Router::new()
         .route("/relay/connect", get(connect::relay_connect))
         .route(
-            "/relay/sessions/{session_id}/auth-code",
-            post(auth_code::relay_session_auth_code),
+            "/relay/create/{host_id}",
+            post(auth_code::create_relay_session),
         )
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_session,
         ));
 
-    let public = Router::new()
-        .route("/health", get(health))
-        .route(
-            "/relay/h/{host_id}/exchange",
-            get(path_routes::relay_path_exchange),
-        )
+    // Proxy routes are authenticated at the application layer via
+    // browser_session_id validation and cryptographic signed headers/frames.
+    let proxy = Router::new()
         .route(
             "/relay/h/{host_id}/s/{browser_session_id}",
             any(path_routes::relay_path_proxy),
@@ -48,8 +45,11 @@ pub fn build_router(state: RelayAppState) -> Router {
             any(path_routes::relay_path_proxy_with_tail),
         );
 
+    let public = Router::new().route("/health", get(health));
+
     Router::<RelayAppState>::new()
         .nest("/v1", protected)
+        .nest("/v1", proxy)
         .merge(public)
         .layer(
             CorsLayer::new()

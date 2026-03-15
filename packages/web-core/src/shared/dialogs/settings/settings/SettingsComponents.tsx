@@ -9,6 +9,7 @@ import {
   DropdownMenuTriggerButton,
 } from '@vibe/ui/components/Dropdown';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
+import type { Icon } from '@phosphor-icons/react';
 
 // ============================================================================
 // Two-Column Picker Components
@@ -242,6 +243,7 @@ export function SettingsCheckbox({
 export function SettingsSelect<T extends string>({
   value,
   options,
+  actions,
   onChange,
   placeholder,
   disabled,
@@ -249,19 +251,21 @@ export function SettingsSelect<T extends string>({
 }: {
   value: T | undefined;
   options: { value: T; label: string }[];
+  actions?: { label: string; icon?: Icon; onClick: () => void }[];
   onChange: (value: T) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }) {
   const selectedOption = options.find((opt) => opt.value === value);
+  const hasMenuItems = options.length > 0 || (actions?.length ?? 0) > 0;
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <DropdownMenuTriggerButton
           label={selectedOption?.label || placeholder}
           className={cn('w-full justify-between', className)}
-          disabled={disabled}
+          disabled={disabled || !hasMenuItems}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-[var(--radix-dropdown-menu-trigger-width)]">
@@ -271,6 +275,15 @@ export function SettingsSelect<T extends string>({
             onClick={() => onChange(option.value)}
           >
             {option.label}
+          </DropdownMenuItem>
+        ))}
+        {actions?.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            icon={action.icon}
+            onClick={action.onClick}
+          >
+            {action.label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
