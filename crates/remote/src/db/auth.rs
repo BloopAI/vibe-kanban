@@ -226,10 +226,18 @@ impl<'a> AuthSessionRepository<'a> {
         sqlx::query!(
             r#"
             INSERT INTO revoked_refresh_tokens (token_id, user_id, revoked_reason)
-            SELECT refresh_token_id, user_id, 'reuse_of_revoked_token'
-            FROM auth_sessions
-            WHERE user_id = $1
-              AND refresh_token_id IS NOT NULL
+            SELECT token_id, user_id, 'reuse_of_revoked_token'
+            FROM (
+                SELECT refresh_token_id AS token_id, user_id
+                FROM auth_sessions
+                WHERE user_id = $1
+                  AND refresh_token_id IS NOT NULL
+                UNION
+                SELECT previous_refresh_token_id AS token_id, user_id
+                FROM auth_sessions
+                WHERE user_id = $1
+                  AND previous_refresh_token_id IS NOT NULL
+            ) tokens
             ON CONFLICT (token_id) DO NOTHING
             "#,
             user_id

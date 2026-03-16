@@ -107,6 +107,7 @@ class TokenManager {
 
       if (!data.access_token) {
         setRemoteAuthDegraded(REMOTE_AUTH_UNAVAILABLE_SLUG);
+        this.syncRecoveryState();
         return null;
       }
 
@@ -194,6 +195,7 @@ class TokenManager {
 
       if (!data.access_token) {
         setRemoteAuthDegraded(REMOTE_AUTH_UNAVAILABLE_SLUG);
+        this.syncRecoveryState();
         return null;
       }
 
