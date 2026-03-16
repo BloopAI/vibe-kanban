@@ -23,7 +23,7 @@ export type MobileTab =
   | 'git';
 
 export type MobileFontScale = 'default' | 'small' | 'smaller';
-export const DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT = true;
+export const DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT = false;
 
 const MOBILE_FONT_SCALE_KEY = 'vk-mobile-font-scale';
 
