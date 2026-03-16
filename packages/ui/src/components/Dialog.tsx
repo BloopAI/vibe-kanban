@@ -22,6 +22,7 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
+    data-tauri-drag-region
     className={cn(
       'fixed inset-0 z-[9998] bg-black/50',
       'data-[state=open]:animate-in data-[state=closed]:animate-out',

@@ -37,6 +37,7 @@ import { AgentIcon, getAgentName } from '@/shared/components/AgentIcon';
 import { IdeIcon } from '@/shared/components/IdeIcon';
 import { getIdeName } from '@/shared/lib/ideName';
 import { cn, playSound } from '@/shared/lib/utils';
+import { isTauriApp } from '@/shared/lib/platform';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 
@@ -326,6 +327,12 @@ export function LandingPage() {
 
   return (
     <div className="h-screen bg-primary flex items-center justify-center p-double">
+      {isTauriApp() && (
+        <div
+          data-tauri-drag-region
+          className="fixed inset-x-0 top-0 h-10 z-10"
+        />
+      )}
       <div className="flex max-h-full w-full max-w-5xl flex-col rounded-sm border border-border bg-secondary">
         {/* Header */}
         <header className="shrink-0 space-y-base p-double pb-base">
