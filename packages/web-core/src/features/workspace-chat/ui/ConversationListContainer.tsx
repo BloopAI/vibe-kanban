@@ -13,10 +13,11 @@ import { SpinnerIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 
 import {
-  buildConversationRowsIncremental,
   findPreviousUserMessageIndex,
   type ConversationRow,
 } from '../model/conversation-row-model';
+import { deriveConversationEntries } from '../model/deriveConversationEntries';
+import { deriveConversationTimeline } from '../model/deriveConversationTimeline';
 import { useConversationVirtualizer } from '../model/useConversationVirtualizer';
 import { useScrollCommandExecutor } from '../model/useScrollCommandExecutor';
 
@@ -29,7 +30,7 @@ import {
 } from '../model/hooks/useResetProcess';
 import type {
   AddEntryType,
-  PatchTypeWithKey,
+  ConversationTimelineSource,
   DisplayEntry,
 } from '@/shared/hooks/useConversationHistory/types';
 import {
@@ -38,12 +39,19 @@ import {
   isAggregatedThinkingGroup,
 } from '@/shared/hooks/useConversationHistory/types';
 import { useConversationHistory } from '../model/hooks/useConversationHistory';
-import { aggregateConsecutiveEntries } from '@/shared/lib/aggregateEntries';
+import { useSetTokenUsageInfo } from '../model/contexts/EntriesContext';
 import type { WorkspaceWithSession } from '@/shared/types/attempt';
 import type { RepoWithTargetBranch } from 'shared/types';
 import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
+
+function logConversationAnchorDebug(
+  event: string,
+  payload: Record<string, unknown>
+) {
+  console.log(`[conversation-anchor] ${event}`, payload);
+}
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -154,13 +162,20 @@ export const ConversationList = forwardRef<
   const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
+  const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
+  const [hasRunningProcess, setHasRunningProcess] = useState(false);
   const lastSettledTailStartIndexRef = useRef<number | null>(null);
   const { setEntries, reset } = useEntriesActions();
+  const setTokenUsageInfo = useSetTokenUsageInfo();
+  const scriptOutputCacheRef = useRef<
+    Map<string, { count: number; output: string }>
+  >(new Map());
   const scrollOnEntriesChangedRef = useRef<
     ((addType: AddEntryType, isInitialLoad: boolean) => void) | null
   >(null);
   const pendingUpdateRef = useRef<{
-    entries: PatchTypeWithKey[];
+    source: ConversationTimelineSource;
     addType: AddEntryType;
     loading: boolean;
     isInitialLoad: boolean;
@@ -178,6 +193,7 @@ export const ConversationList = forwardRef<
     top: number;
   } | null>(null);
   const pendingInteractionAnchorFrameRef = useRef<number | null>(null);
+  const pendingInteractionAnchorDeadlineRef = useRef(0);
 
   // Use ref to access current repos without causing callback recreation
   const reposRef = useRef(repos);
@@ -221,7 +237,11 @@ export const ConversationList = forwardRef<
       rafIdRef.current = null;
     }
     pendingUpdateRef.current = null;
+    scriptOutputCacheRef.current.clear();
     setLoading(true);
+    setHasSetupScriptRun(false);
+    setHasCleanupScriptRun(false);
+    setHasRunningProcess(false);
     setFilteredEntries([]);
     setDataVersion(0);
     lastSettledTailStartIndexRef.current = null;
@@ -244,8 +264,61 @@ export const ConversationList = forwardRef<
       cancelAnimationFrame(pendingInteractionAnchorFrameRef.current);
       pendingInteractionAnchorFrameRef.current = null;
     }
+    pendingInteractionAnchorDeadlineRef.current = 0;
     pendingInteractionAnchorRef.current = null;
   }, []);
+
+  const shouldSuppressInteractionDrivenSizeAdjustment = useCallback(
+    () =>
+      pendingInteractionAnchorRef.current !== null &&
+      performance.now() < pendingInteractionAnchorDeadlineRef.current,
+    []
+  );
+
+  const runInteractionAnchorCorrection = useCallback(() => {
+    pendingInteractionAnchorFrameRef.current = null;
+
+    const anchor = pendingInteractionAnchorRef.current;
+    const activeScrollContainer = tanstackScrollRef.current;
+    if (!anchor || !activeScrollContainer || !anchor.element.isConnected) {
+      logConversationAnchorDebug('correction-cancelled', {
+        hasAnchor: Boolean(anchor),
+        hasScrollContainer: Boolean(activeScrollContainer),
+        anchorConnected: anchor?.element.isConnected ?? false,
+      });
+      clearPendingInteractionAnchor();
+      return;
+    }
+
+    const beforeScrollTop = activeScrollContainer.scrollTop;
+    const currentTop = anchor.element.getBoundingClientRect().top;
+    const delta = anchor.element.getBoundingClientRect().top - anchor.top;
+    if (Math.abs(delta) >= 0.5) {
+      activeScrollContainer.scrollTop += delta;
+    }
+
+    logConversationAnchorDebug('correction-frame', {
+      anchorText: anchor.element.textContent?.slice(0, 120) ?? null,
+      originalTop: anchor.top,
+      currentTop,
+      delta,
+      beforeScrollTop,
+      afterScrollTop: activeScrollContainer.scrollTop,
+      remainingMs: Math.max(
+        0,
+        pendingInteractionAnchorDeadlineRef.current - performance.now()
+      ),
+    });
+
+    if (performance.now() < pendingInteractionAnchorDeadlineRef.current) {
+      pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
+        runInteractionAnchorCorrection
+      );
+      return;
+    }
+
+    clearPendingInteractionAnchor();
+  }, [clearPendingInteractionAnchor]);
 
   const handleConversationClickCapture = useCallback(
     (event: MouseEvent<HTMLDivElement>) => {
@@ -266,24 +339,23 @@ export const ConversationList = forwardRef<
         top: trigger.getBoundingClientRect().top,
       };
 
-      pendingInteractionAnchorFrameRef.current = requestAnimationFrame(() => {
-        pendingInteractionAnchorFrameRef.current = null;
-
-        const anchor = pendingInteractionAnchorRef.current;
-        pendingInteractionAnchorRef.current = null;
-
-        const activeScrollContainer = tanstackScrollRef.current;
-        if (!anchor || !activeScrollContainer || !anchor.element.isConnected) {
-          return;
-        }
-
-        const delta = anchor.element.getBoundingClientRect().top - anchor.top;
-        if (Math.abs(delta) < 0.5) return;
-
-        activeScrollContainer.scrollTop += delta;
+      logConversationAnchorDebug('click-capture', {
+        triggerTag: trigger.tagName,
+        triggerRole: trigger.getAttribute('role'),
+        triggerExpanded: trigger.getAttribute('aria-expanded'),
+        triggerText: trigger.textContent?.slice(0, 120) ?? null,
+        triggerTop: trigger.getBoundingClientRect().top,
+        scrollTop: scrollContainer.scrollTop,
+        scrollHeight: scrollContainer.scrollHeight,
+        clientHeight: scrollContainer.clientHeight,
       });
+
+      pendingInteractionAnchorDeadlineRef.current = performance.now() + 250;
+      pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
+        runInteractionAnchorCorrection
+      );
     },
-    [clearPendingInteractionAnchor]
+    [clearPendingInteractionAnchor, runInteractionAnchorCorrection]
   );
 
   const flushPendingUpdate = () => {
@@ -291,32 +363,28 @@ export const ConversationList = forwardRef<
     const pending = pendingUpdateRef.current;
     if (!pending) return;
 
-    const aggregatedEntries = aggregateConsecutiveEntries(pending.entries);
-
-    const newFilteredEntries = aggregatedEntries.filter((entry) => {
-      if (
-        'type' in entry &&
-        entry.type === 'NORMALIZED_ENTRY' &&
-        typeof entry.content !== 'string' &&
-        'entry_type' in entry.content
-      ) {
-        const t = entry.content.entry_type.type;
-        return t !== 'next_action' && t !== 'token_usage_info';
-      }
-
-      return (
-        entry.type === 'NORMALIZED_ENTRY' ||
-        entry.type === 'STDOUT' ||
-        entry.type === 'STDERR' ||
-        entry.type === 'AGGREGATED_GROUP' ||
-        entry.type === 'AGGREGATED_DIFF_GROUP' ||
-        entry.type === 'AGGREGATED_THINKING_GROUP'
-      );
+    const derivedEntries = deriveConversationEntries({
+      source: pending.source,
+      scriptOutputCache: scriptOutputCacheRef.current,
     });
 
-    setFilteredEntries(newFilteredEntries);
+    setHasSetupScriptRun(derivedEntries.hasSetupScriptRun);
+    setHasCleanupScriptRun(derivedEntries.hasCleanupScriptRun);
+    setHasRunningProcess(derivedEntries.hasRunningProcess);
+    setTokenUsageInfo(derivedEntries.latestTokenUsageInfo);
+
+    const derivedTimeline = deriveConversationTimeline(
+      derivedEntries.entries,
+      prevEntriesRef.current,
+      prevRowsRef.current
+    );
+
+    prevEntriesRef.current = derivedTimeline.displayEntries;
+    prevRowsRef.current = derivedTimeline.rows;
+
+    setFilteredEntries(derivedTimeline.displayEntries);
     setDataVersion((current) => current + 1);
-    setEntries(pending.entries);
+    setEntries(derivedEntries.entries);
 
     scrollOnEntriesChangedRef.current?.(pending.addType, pending.isInitialLoad);
 
@@ -325,13 +393,13 @@ export const ConversationList = forwardRef<
     }
   };
 
-  const onEntriesUpdated = (
-    newEntries: PatchTypeWithKey[],
+  const onTimelineUpdated = (
+    source: ConversationTimelineSource,
     addType: AddEntryType,
     newLoading: boolean
   ) => {
     pendingUpdateRef.current = {
-      entries: newEntries,
+      source,
       addType,
       loading: newLoading,
       isInitialLoad: loading,
@@ -342,29 +410,18 @@ export const ConversationList = forwardRef<
     }
   };
 
-  const {
-    hasSetupScriptRun,
-    hasCleanupScriptRun,
-    hasRunningProcess,
-    isFirstTurn,
-  } = useConversationHistory({
+  const { isFirstTurn } = useConversationHistory({
     attempt,
-    onEntriesUpdated,
+    onTimelineUpdated,
     scopeKey: conversationScopeKey,
   });
 
   const prevEntriesRef = useRef<DisplayEntry[]>([]);
   const prevRowsRef = useRef<ConversationRow[]>([]);
-  const conversationRows = useMemo(() => {
-    const rows = buildConversationRowsIncremental(
-      filteredEntries,
-      prevEntriesRef.current,
-      prevRowsRef.current
-    );
-    prevEntriesRef.current = filteredEntries;
-    prevRowsRef.current = rows;
-    return rows;
-  }, [filteredEntries]);
+  const conversationRows = useMemo(
+    () => prevRowsRef.current,
+    [filteredEntries]
+  );
 
   const hasActiveStreamingTurn = useMemo(
     () =>
@@ -429,6 +486,7 @@ export const ConversationList = forwardRef<
     rows: virtualizedRows,
     scrollContainerRef: tanstackScrollRef,
     onAtBottomChange,
+    shouldSuppressSizeAdjustment: shouldSuppressInteractionDrivenSizeAdjustment,
   });
 
   useLayoutEffect(() => {
@@ -591,6 +649,7 @@ export const ConversationList = forwardRef<
         <div
           ref={tanstackScrollRef}
           className="h-full overflow-y-auto scrollbar-none"
+          style={{ overflowAnchor: 'none' }}
           onClickCapture={handleConversationClickCapture}
         >
           <div className="pt-2">

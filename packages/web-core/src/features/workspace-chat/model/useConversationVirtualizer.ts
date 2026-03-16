@@ -68,6 +68,8 @@ export interface ConversationVirtualizerOptions {
    * the scroll-to-bottom affordance.
    */
   onAtBottomChange?: (atBottom: boolean) => void;
+
+  shouldSuppressSizeAdjustment?: () => boolean;
 }
 
 export interface ConversationVirtualizerResult {
@@ -143,7 +145,15 @@ export function useConversationVirtualizer({
   rows,
   scrollContainerRef,
   onAtBottomChange,
+  shouldSuppressSizeAdjustment,
 }: ConversationVirtualizerOptions): ConversationVirtualizerResult {
+  const logConversationVirtualizerDebug = useCallback(
+    (event: string, payload: Record<string, unknown>) => {
+      console.log(`[conversation-virtualizer] ${event}`, payload);
+    },
+    []
+  );
+
   const bottomScrollFrameRef = useRef<number | null>(null);
   const bottomScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -248,21 +258,40 @@ export function useConversationVirtualizer({
 
   useEffect(() => {
     virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (
-      _item,
-      _delta,
+      item,
+      delta,
       instance
     ) => {
       const viewportHeight = instance.scrollRect?.height ?? 0;
       const scrollOffset = instance.scrollOffset ?? 0;
       const remainingDistance =
         instance.getTotalSize() - (scrollOffset + viewportHeight);
-      return remainingDistance > NEAR_BOTTOM_THRESHOLD_PX;
+      const shouldAdjust =
+        !shouldSuppressSizeAdjustment?.() &&
+        remainingDistance > NEAR_BOTTOM_THRESHOLD_PX;
+
+      logConversationVirtualizerDebug('size-change-adjustment', {
+        itemIndex: item.index,
+        delta,
+        scrollOffset,
+        viewportHeight,
+        totalSize: instance.getTotalSize(),
+        remainingDistance,
+        isSuppressed: shouldSuppressSizeAdjustment?.() ?? false,
+        shouldAdjust,
+      });
+
+      return shouldAdjust;
     };
 
     return () => {
       virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
     };
-  }, [virtualizer]);
+  }, [
+    logConversationVirtualizerDebug,
+    shouldSuppressSizeAdjustment,
+    virtualizer,
+  ]);
 
   // -------------------------------------------------------------------------
   // Container resize invalidation
@@ -360,7 +389,7 @@ export function useConversationVirtualizer({
       el.scrollTo({ top: el.scrollHeight, behavior });
 
       if (behavior === 'auto') {
-        startBottomScrollCorrection(1000);
+        startBottomScrollCorrection(300);
         return;
       }
 

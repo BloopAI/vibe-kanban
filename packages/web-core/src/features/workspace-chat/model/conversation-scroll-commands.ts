@@ -156,7 +156,7 @@ export function resolveScrollIntent(
 
   if (addType === 'running') {
     return isAtBottom
-      ? { type: 'follow-bottom', behavior: 'smooth' }
+      ? { type: 'follow-bottom', behavior: 'auto' }
       : { type: 'preserve-anchor' };
   }
 
