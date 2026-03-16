@@ -18,7 +18,6 @@ tauri-plugin-updater = "2"
 tauri-plugin-notification = "2"
 
 server = { path = "../server" }
-deployment = { path = "../deployment" }
 services = { path = "../services" }
 utils = { path = "../utils" }
 async-trait = { workspace = true }

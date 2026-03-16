@@ -9280,7 +9280,6 @@ version = "0.1.30"
 dependencies = [
  "anyhow",
  "async-trait",
- "deployment",
  "objc2-web-kit",
  "rustls",
  "serde_json",
