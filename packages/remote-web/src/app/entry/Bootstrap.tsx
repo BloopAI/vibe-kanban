@@ -16,9 +16,9 @@ import { setLocalApiTransport } from "@/shared/lib/localApiTransport";
 import "@/shared/types/modals";
 import { queryClient } from "@/shared/lib/queryClient";
 import {
-  openLocalApiWebSocketViaRelay,
-  requestLocalApiViaRelay,
-} from "@remote/shared/lib/relayHostApi";
+  requestLocalApiViaWebRtc,
+  openLocalApiWebSocketViaWebRtc,
+} from "@remote/shared/lib/webrtc";
 
 if (import.meta.env.VITE_PUBLIC_POSTHOG_KEY) {
   posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_KEY, {
@@ -33,8 +33,8 @@ setRelayApiBase(
     window.location.origin,
 );
 setLocalApiTransport({
-  request: requestLocalApiViaRelay,
-  openWebSocket: openLocalApiWebSocketViaRelay,
+  request: requestLocalApiViaWebRtc,
+  openWebSocket: openLocalApiWebSocketViaWebRtc,
 });
 
 configureAuthRuntime({

@@ -6594,6 +6594,7 @@ dependencies = [
  "sha2 0.10.9",
  "tokio",
  "tokio-util",
+ "ts-rs 11.0.1",
  "uuid",
 ]
 
@@ -6676,6 +6677,7 @@ dependencies = [
  "tokio-tungstenite 0.26.2",
  "tokio-util",
  "tracing",
+ "ts-rs 11.0.1",
  "uuid",
  "webrtc",
  "webrtc-ice",

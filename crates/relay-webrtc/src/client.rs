@@ -37,6 +37,9 @@ use crate::{
     signaling::SdpOffer,
 };
 
+type PendingHttpMap = HashMap<String, oneshot::Sender<DataChannelResponse>>;
+type PendingWsOpenMap = HashMap<String, oneshot::Sender<Result<WsConnection, String>>>;
+
 // ---------------------------------------------------------------------------
 // Internal command types
 // ---------------------------------------------------------------------------
@@ -266,10 +269,10 @@ impl WebRtcClient {
         peer_connection.on_ice_gathering_state_change(Box::new(move |state| {
             let tx = gather_done_tx.clone();
             Box::pin(async move {
-                if state == RTCIceGathererState::Complete {
-                    if let Some(sender) = tx.lock().unwrap().take() {
-                        let _ = sender.send(());
-                    }
+                if state == RTCIceGathererState::Complete
+                    && let Some(sender) = tx.lock().unwrap().take()
+                {
+                    let _ = sender.send(());
                 }
             })
         }));
@@ -318,11 +321,8 @@ impl WebRtcClient {
         let connected = Arc::new(AtomicBool::new(false));
 
         // Shared state for routing incoming messages.
-        let pending_http: Arc<Mutex<HashMap<String, oneshot::Sender<DataChannelResponse>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let pending_ws_open: Arc<
-            Mutex<HashMap<String, oneshot::Sender<Result<WsConnection, String>>>>,
-        > = Arc::new(Mutex::new(HashMap::new()));
+        let pending_http: Arc<Mutex<PendingHttpMap>> = Arc::new(Mutex::new(HashMap::new()));
+        let pending_ws_open: Arc<Mutex<PendingWsOpenMap>> = Arc::new(Mutex::new(HashMap::new()));
         let ws_frame_senders: Arc<Mutex<HashMap<String, mpsc::Sender<WsFrame>>>> =
             Arc::new(Mutex::new(HashMap::new()));
 
@@ -435,11 +435,11 @@ impl WebRtcClient {
                     DataChannelMessage::WsFrame(frame) => {
                         let conn_id = frame.conn_id.clone();
                         let senders = ws_frame_senders_dispatch.lock().await;
-                        if let Some(tx) = senders.get(&conn_id) {
-                            if tx.send(frame).await.is_err() {
-                                drop(senders);
-                                ws_frame_senders_dispatch.lock().await.remove(&conn_id);
-                            }
+                        if let Some(tx) = senders.get(&conn_id)
+                            && tx.send(frame).await.is_err()
+                        {
+                            drop(senders);
+                            ws_frame_senders_dispatch.lock().await.remove(&conn_id);
                         }
                     }
 
@@ -594,8 +594,8 @@ impl WebRtcClient {
 async fn handle_command(
     cmd: ClientCommand,
     dc: &Arc<RTCDataChannel>,
-    pending_http: &Arc<Mutex<HashMap<String, oneshot::Sender<DataChannelResponse>>>>,
-    pending_ws_open: &Arc<Mutex<HashMap<String, oneshot::Sender<Result<WsConnection, String>>>>>,
+    pending_http: &Arc<Mutex<PendingHttpMap>>,
+    pending_ws_open: &Arc<Mutex<PendingWsOpenMap>>,
 ) {
     match cmd {
         ClientCommand::Http(req) => {
