@@ -50,6 +50,9 @@
     "tauri:dev": "set -a && [ -f .env ] && . ./.env && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && cd crates/tauri-app && cargo tauri dev",
     "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
+  "dependencies": {
+    "adm-zip": "^0.5.16"
+  },
   "devDependencies": {
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^20.0.0",
