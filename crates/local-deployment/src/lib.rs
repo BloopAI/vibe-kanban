@@ -8,6 +8,7 @@ use deployment::{Deployment, DeploymentError, RelayHostsNotConfigured, RemoteCli
 use desktop_bridge::tunnel::TunnelManager;
 use executors::profile::ExecutorConfigs;
 use git::GitService;
+use preview_proxy::PreviewProxyService;
 use relay_control::{RelayControl, signing::RelaySigningService};
 use relay_hosts::RelayHosts;
 use remote_info::RemoteInfo;
@@ -70,6 +71,7 @@ pub struct LocalDeployment {
     relay_control: Arc<RelayControl>,
     client_info: ClientInfo,
     remote_info: RemoteInfo,
+    preview_proxy: PreviewProxyService,
     tunnel_manager: Arc<TunnelManager>,
     relay_hosts: Option<Arc<RelayHosts>>,
     ssh_config: Arc<russh::server::Config>,
@@ -204,6 +206,7 @@ impl Deployment for LocalDeployment {
             .expect("Failed to load or generate server signing key");
         let relay_control = Arc::new(RelayControl::new());
         let client_info = ClientInfo::new();
+        let preview_proxy = PreviewProxyService::new();
 
         let ssh_host_key = embedded_ssh::host_key::load_or_generate(&ssh_host_key_path())
             .expect("Failed to load or generate SSH host key");
@@ -276,6 +279,7 @@ impl Deployment for LocalDeployment {
             relay_control,
             client_info,
             remote_info,
+            preview_proxy,
             tunnel_manager,
             relay_hosts,
             ssh_config,
@@ -355,6 +359,10 @@ impl Deployment for LocalDeployment {
 
     fn remote_info(&self) -> &RemoteInfo {
         &self.remote_info
+    }
+
+    fn preview_proxy(&self) -> &PreviewProxyService {
+        &self.preview_proxy
     }
 
     fn tunnel_manager(&self) -> &Arc<TunnelManager> {
