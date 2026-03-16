@@ -1,5 +1,8 @@
 use std::{collections::HashMap, path::Path, sync::Arc};
 
+type MessageId = String;
+type PartId = String;
+
 use futures::StreamExt;
 use serde::Deserialize;
 use serde_json::Value;
@@ -10,8 +13,9 @@ use workspace_utils::{
 };
 
 use super::types::{
-    MessageInfo, MessageRole, OpencodeExecutorEvent, Part, PermissionAskedEvent, QuestionInfo,
-    SdkEvent, SdkTodo, SessionStatus, ToolPart, ToolStateUpdate,
+    MessageInfo, MessagePartDeltaEvent, MessageRole, OpencodeExecutorEvent, Part,
+    PermissionAskedEvent, QuestionInfo, SdkEvent, SdkTodo, SessionStatus, ToolPart,
+    ToolStateUpdate,
 };
 use crate::{
     approvals::ToolCallMetadata,
@@ -200,6 +204,12 @@ enum UpdateMode {
     Set,
 }
 
+#[derive(Debug, Clone, Copy)]
+enum PartKind {
+    AssistantText,
+    Thinking,
+}
+
 #[derive(Default)]
 struct LogState {
     entry_index: EntryIndexProvider,
@@ -207,6 +217,7 @@ struct LogState {
     message_roles: HashMap<String, MessageRole>,
     assistant_text: HashMap<String, StreamingText>,
     thinking_text: HashMap<String, StreamingText>,
+    part_kinds: HashMap<PartId, (MessageId, PartKind)>,
     tool_states: HashMap<String, ToolCallState>,
     approvals: HashMap<String, ApprovalStatus>,
     model_system_message_emitted: bool,
@@ -223,6 +234,7 @@ impl LogState {
             message_roles: HashMap::new(),
             assistant_text: HashMap::new(),
             thinking_text: HashMap::new(),
+            part_kinds: HashMap::new(),
             tool_states: HashMap::new(),
             approvals: HashMap::new(),
             model_system_message_emitted: false,
@@ -256,6 +268,9 @@ impl LogState {
                     worktree_path,
                     msg_store,
                 );
+            }
+            SdkEvent::MessagePartDelta(event) => {
+                self.handle_part_delta(event, msg_store);
             }
             SdkEvent::TodoUpdated(event) => {
                 self.handle_todo_updated(&event.todos, msg_store);
@@ -403,6 +418,13 @@ impl LogState {
     ) {
         match part {
             Part::Text(part) => {
+                if let Some(id) = &part.id {
+                    self.part_kinds.insert(
+                        id.clone(),
+                        (part.message_id.clone(), PartKind::AssistantText),
+                    );
+                }
+
                 if self.message_roles.get(&part.message_id) != Some(&MessageRole::Assistant) {
                     tracing::debug!(
                         "Skipping text part for non-assistant message_id {}",
@@ -429,6 +451,13 @@ impl LogState {
                 );
             }
             Part::Reasoning(part) => {
+                if let Some(id) = &part.id {
+                    self.part_kinds.insert(
+                        id.clone(),
+                        (part.message_id.clone(), PartKind::Thinking),
+                    );
+                }
+
                 let (text, mode) = if let Some(delta) = delta {
                     (delta, UpdateMode::Append)
                 } else {
@@ -472,6 +501,47 @@ impl LogState {
                 }
             }
             Part::Other => {}
+        }
+    }
+
+    fn handle_part_delta(&mut self, event: MessagePartDeltaEvent, msg_store: &Arc<MsgStore>) {
+        if event.field != "text" || event.delta.is_empty() {
+            return;
+        }
+
+        let Some((message_id, kind)) = self.part_kinds.get(&event.part_id) else {
+            return;
+        };
+        let message_id = message_id.clone();
+        let kind = *kind;
+
+        let entry_index = self.entry_index.clone();
+        match kind {
+            PartKind::AssistantText => {
+                if self.message_roles.get(&message_id) != Some(&MessageRole::Assistant) {
+                    return;
+                }
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::AssistantMessage,
+                    &message_id,
+                    &mut self.assistant_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
+            PartKind::Thinking => {
+                update_streaming_text(
+                    &entry_index,
+                    &event.delta,
+                    NormalizedEntryType::Thinking,
+                    &message_id,
+                    &mut self.thinking_text,
+                    msg_store,
+                    UpdateMode::Append,
+                );
+            }
         }
     }
 
