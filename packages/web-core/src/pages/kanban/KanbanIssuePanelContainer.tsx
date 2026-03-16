@@ -41,6 +41,7 @@ import {
   selectDisplayData,
   selectIsCreateDraftDirty,
 } from './kanban-issue-panel-state';
+import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { useAzureAttachments } from '@/shared/hooks/useAzureAttachments';
 import {
   commitIssueAttachments,
@@ -123,6 +124,12 @@ export function KanbanIssuePanelContainer({
     createComposerInitial?.assigneeIds ?? null;
   const kanbanCreateDefaultParentIssueId =
     createComposerInitial?.parentIssueId ?? null;
+  const createDraftWorkspaceByDefault = useUiPreferencesStore(
+    (state) => state.createDraftWorkspaceByDefault
+  );
+  const setCreateDraftWorkspaceByDefault = useUiPreferencesStore(
+    (state) => state.setCreateDraftWorkspaceByDefault
+  );
   const openIssue = useCallback(
     (issueId: string) => {
       if (kanbanCreateMode && issueComposerKey) {
@@ -254,12 +261,13 @@ export function KanbanIssuePanelContainer({
       priority: kanbanCreateDefaultPriority ?? null,
       assigneeIds: [...(kanbanCreateDefaultAssigneeIds ?? [])],
       tagIds: [],
-      createDraftWorkspace: false,
+      createDraftWorkspace: createDraftWorkspaceByDefault,
     }),
     [
       defaultStatusId,
       kanbanCreateDefaultPriority,
       kanbanCreateDefaultAssigneeIds,
+      createDraftWorkspaceByDefault,
     ]
   );
 
@@ -369,8 +377,9 @@ export function KanbanIssuePanelContainer({
   }, [selectedKanbanIssueId, kanbanCreateMode]);
 
   const createFormFallback = useMemo(
-    () => createBlankCreateFormData(defaultStatusId),
-    [defaultStatusId]
+    () =>
+      createBlankCreateFormData(defaultStatusId, createDraftWorkspaceByDefault),
+    [defaultStatusId, createDraftWorkspaceByDefault]
   );
 
   // --- Image attachment upload integration ---
@@ -594,6 +603,9 @@ export function KanbanIssuePanelContainer({
           fallback: createFormFallback,
         });
         updateIssueComposerDraft({ [field]: value } as Partial<IssueFormData>);
+        if (field === 'createDraftWorkspace') {
+          setCreateDraftWorkspaceByDefault(value as boolean);
+        }
         return;
       }
 
@@ -666,6 +678,7 @@ export function KanbanIssuePanelContainer({
       openPrioritySelection,
       openAssigneeSelection,
       updateIssueComposerDraft,
+      setCreateDraftWorkspaceByDefault,
       issueTags,
       insertIssueTag,
       removeIssueTag,

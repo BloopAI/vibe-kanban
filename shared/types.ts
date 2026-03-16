@@ -126,7 +126,11 @@ selected_org_id: string | null,
 /**
  * Last selected project ID
  */
-selected_project_id: string | null, };
+selected_project_id: string | null, 
+/**
+ * Default setting for creating a draft workspace from new issues
+ */
+create_draft_workspace_by_default: boolean | null, };
 
 export type ProjectRepoDefaultsData = { repos: Array<DraftWorkspaceRepo>, };
 
