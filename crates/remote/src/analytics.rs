@@ -11,11 +11,23 @@ pub struct AnalyticsConfig {
 
 impl AnalyticsConfig {
     pub fn from_env() -> Option<Self> {
-        let api_key = option_env!("POSTHOG_API_KEY")?.to_string();
-        let api_endpoint = option_env!("POSTHOG_API_ENDPOINT")?.to_string();
+        Self::from_values(
+            option_env!("POSTHOG_API_KEY"),
+            option_env!("POSTHOG_API_ENDPOINT"),
+        )
+    }
+
+    fn from_values(api_key: Option<&str>, api_endpoint: Option<&str>) -> Option<Self> {
+        let api_key = api_key?.trim();
+        let api_endpoint = api_endpoint?.trim();
+
+        if api_key.is_empty() || api_endpoint.is_empty() {
+            return None;
+        }
+
         Some(Self {
-            posthog_api_key: api_key,
-            posthog_api_endpoint: api_endpoint,
+            posthog_api_key: api_key.to_string(),
+            posthog_api_endpoint: api_endpoint.to_string(),
         })
     }
 }
@@ -90,5 +102,42 @@ impl AnalyticsService {
                 _ => {}
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::AnalyticsConfig;
+
+    #[test]
+    fn from_values_returns_none_when_key_missing() {
+        assert!(AnalyticsConfig::from_values(None, Some("https://posthog.test")).is_none());
+    }
+
+    #[test]
+    fn from_values_returns_none_when_endpoint_missing() {
+        assert!(AnalyticsConfig::from_values(Some("key"), None).is_none());
+    }
+
+    #[test]
+    fn from_values_returns_none_when_values_are_empty() {
+        assert!(AnalyticsConfig::from_values(Some(""), Some("https://posthog.test")).is_none());
+        assert!(AnalyticsConfig::from_values(Some("key"), Some("")).is_none());
+    }
+
+    #[test]
+    fn from_values_returns_none_when_values_are_whitespace() {
+        assert!(AnalyticsConfig::from_values(Some("   "), Some("https://posthog.test")).is_none());
+        assert!(AnalyticsConfig::from_values(Some("key"), Some("   ")).is_none());
+    }
+
+    #[test]
+    fn from_values_trims_and_returns_config_for_non_empty_values() {
+        let config =
+            AnalyticsConfig::from_values(Some("  key  "), Some("  https://posthog.test  "))
+                .expect("config should be present");
+
+        assert_eq!(config.posthog_api_key, "key");
+        assert_eq!(config.posthog_api_endpoint, "https://posthog.test");
     }
 }
