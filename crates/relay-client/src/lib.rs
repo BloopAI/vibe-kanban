@@ -421,18 +421,16 @@ impl RelayHostTransport {
     where
         TData: DeserializeOwned,
     {
-        match self.get_signed_json_once(path).await {
-            Ok(data) => return Ok(data),
-            Err(_) => {}
+        if let Ok(data) = self.get_signed_json_once(path).await {
+            return Ok(data);
         }
 
         self.refresh_signing_session()
             .await
             .map_err(RelayTransportError::SigningSession)?;
 
-        match self.get_signed_json_once(path).await {
-            Ok(data) => return Ok(data),
-            Err(_) => {}
+        if let Ok(data) = self.get_signed_json_once(path).await {
+            return Ok(data);
         }
 
         self.rotate_remote_session()
@@ -574,6 +572,7 @@ where
         .ok_or_else(|| anyhow::anyhow!("Missing response data for relay path '{path}'"))
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn send_signed_http(
     base_url: &str,
     remote_session: &RemoteSession,
