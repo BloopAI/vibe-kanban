@@ -13,6 +13,7 @@ use crate::{
     approvals::ExecutorApprovalService,
     command::{CmdOverrides, CommandBuilder, apply_overrides},
     env::ExecutionEnv,
+    executor_discovery::ExecutorDiscoveredOptions,
     executors::{
         AppendPrompt, AvailabilityInfo, BaseCodingAgent, ExecutorError, SpawnedChild,
         StandardCodingAgentExecutor,
@@ -21,6 +22,7 @@ use crate::{
         NormalizedEntry, NormalizedEntryType, plain_text_processor::PlainTextLogProcessor,
         utils::EntryIndexProvider,
     },
+    model_selector::{ModelInfo, ModelSelectorConfig, PermissionPolicy},
     profile::ExecutorConfig,
 };
 
@@ -225,6 +227,41 @@ impl StandardCodingAgentExecutor for Kiro {
         } else {
             AvailabilityInfo::NotFound
         }
+    }
+
+    async fn discover_options(
+        &self,
+        _workdir: Option<&std::path::Path>,
+        _repo_path: Option<&std::path::Path>,
+    ) -> Result<futures::stream::BoxStream<'static, json_patch::Patch>, ExecutorError> {
+        use crate::logs::utils::patch;
+
+        let options = ExecutorDiscoveredOptions {
+            model_selector: ModelSelectorConfig {
+                models: [
+                    ("auto", "Auto"),
+                    ("claude-opus-4.6", "Claude Opus 4.6"),
+                    ("claude-sonnet-4.5", "Claude Sonnet 4.5"),
+                    ("claude-sonnet-4", "Claude Sonnet 4"),
+                    ("claude-haiku-4", "Claude Haiku 4"),
+                ]
+                .into_iter()
+                .map(|(id, name)| ModelInfo {
+                    id: id.to_string(),
+                    name: name.to_string(),
+                    provider_id: None,
+                    reasoning_options: vec![],
+                })
+                .collect(),
+                default_model: Some("auto".to_string()),
+                permissions: vec![PermissionPolicy::Auto],
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        Ok(Box::pin(futures::stream::once(async move {
+            patch::executor_discovered_options(options)
+        })))
     }
 
     fn get_preset_options(&self) -> ExecutorConfig {
