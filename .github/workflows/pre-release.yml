@@ -1080,7 +1080,7 @@ jobs:
           echo "Desktop manifest uploaded to: binaries/$TAG/tauri/desktop-manifest.json"
 
   create-prerelease:
-    needs: [bump-version, build-frontend, upload-to-r2, build-tauri]
+    needs: [bump-version, build-frontend, upload-to-r2, upload-tauri-update]
     runs-on: ubuntu-latest-m
     steps:
       - uses: actions/checkout@v6
