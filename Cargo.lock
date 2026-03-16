@@ -5944,7 +5944,6 @@ dependencies = [
  "reqwest 0.13.2",
  "tokio",
  "tokio-tungstenite 0.26.2",
- "tower-http 0.5.2",
  "tracing",
  "uuid",
 ]
