@@ -4,20 +4,14 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use services::services::{
-    config::load_config_from_file,
-    notification::{NotificationService, PushNotifier, set_global_push_notifier},
-};
+use services::services::notification::{PushNotifier, set_global_push_notifier};
 use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
-use utils::{
-    assets::config_path,
-    sentry::{self as sentry_utils, SentrySource, sentry_layer},
-};
+use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
 use uuid::Uuid;
 
 /// Native push notifier using Tauri's notification plugin.
@@ -28,11 +22,18 @@ struct TauriNotifier {
 }
 
 #[tauri::command]
-async fn show_system_notification(title: String, body: String) -> Result<(), String> {
-    let config = load_config_from_file(&config_path()).await;
-    let notification_service = NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
-    notification_service.notify(&title, &body, None).await;
-    Ok(())
+async fn show_system_notification(
+    app_handle: tauri::AppHandle,
+    title: String,
+    body: String,
+) -> Result<(), String> {
+    app_handle
+        .notification()
+        .builder()
+        .title(&title)
+        .body(&body)
+        .show()
+        .map_err(|e| format!("Failed to show notification: {}", e))
 }
 
 #[async_trait]
