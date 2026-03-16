@@ -301,7 +301,8 @@ pub(super) struct TodoUpdatedEvent {
 
 #[derive(Debug, Deserialize)]
 pub(super) struct SdkTodo {
-    pub(super) id: String,
+    #[serde(default)]
+    pub(super) id: Option<String>,
     pub(super) content: String,
     pub(super) status: String,
     pub(super) priority: String,

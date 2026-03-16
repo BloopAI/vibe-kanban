@@ -1464,7 +1464,7 @@ fn make_relative_path(path: &str, worktree_path: &Path) -> String {
 fn fingerprint_todos(todos: &[SdkTodo]) -> String {
     let mut parts = todos
         .iter()
-        .map(|t| format!("{}:{}:{}:{}", t.id, t.status, t.priority, t.content))
+        .map(|t| format!("{}:{}:{}:{}", t.id.as_deref().unwrap_or(""), t.status, t.priority, t.content))
         .collect::<Vec<_>>();
     parts.sort();
     parts.join("|")
