@@ -23,7 +23,7 @@ use crate::{
     env::ExecutionEnv,
     executors::{
         amp::Amp, claude::ClaudeCode, codex::Codex, copilot::Copilot, cursor::CursorAgent,
-        droid::Droid, gemini::Gemini, opencode::Opencode, qwen::QwenCode,
+        droid::Droid, gemini::Gemini, kiro::Kiro, opencode::Opencode, qwen::QwenCode,
     },
     logs::utils::patch,
     mcp_config::McpConfig,
@@ -38,6 +38,7 @@ pub mod copilot;
 pub mod cursor;
 pub mod droid;
 pub mod gemini;
+pub mod kiro;
 pub mod opencode;
 #[cfg(feature = "qa-mode")]
 pub mod qa_mock;
@@ -107,18 +108,19 @@ pub enum ExecutorError {
     sqlx(type_name = "TEXT", rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum CodingAgent {
-    ClaudeCode,
-    Amp,
-    Gemini,
-    Codex,
-    Opencode,
+    ClaudeCode(ClaudeCode),
+    Amp(Amp),
+    Gemini(Gemini),
+    Codex(Codex),
+    Kiro(Kiro),
+    Opencode(Opencode),
     #[serde(alias = "CURSOR")]
     #[strum_discriminants(serde(alias = "CURSOR"))]
     #[strum_discriminants(strum(serialize = "CURSOR", serialize = "CURSOR_AGENT"))]
-    CursorAgent,
-    QwenCode,
-    Copilot,
-    Droid,
+    CursorAgent(CursorAgent),
+    QwenCode(QwenCode),
+    Copilot(Copilot),
+    Droid(Droid),
     #[cfg(feature = "qa-mode")]
     QaMock(QaMockExecutor),
 }
@@ -138,6 +140,16 @@ impl CodingAgent {
                 vec!["amp.mcpServers".to_string()],
                 serde_json::json!({
                     "amp.mcpServers": {}
+                }),
+                self.preconfigured_mcp(),
+                false,
+            ),
+            Self::Kiro(_) => McpConfig::new(
+                vec!["mcp.servers".to_string()],
+                serde_json::json!({
+                    "mcp": {
+                        "servers": {}
+                    }
                 }),
                 self.preconfigured_mcp(),
                 false,
@@ -189,6 +201,7 @@ impl CodingAgent {
                 BaseAgentCapability::SetupHelper,
                 BaseAgentCapability::ContextUsage,
             ],
+            Self::Kiro(_) => vec![BaseAgentCapability::SetupHelper],
             Self::Gemini(_) | Self::QwenCode(_) => {
                 vec![BaseAgentCapability::SessionFork]
             }

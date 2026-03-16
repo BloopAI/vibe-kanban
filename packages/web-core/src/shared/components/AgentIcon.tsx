@@ -19,6 +19,8 @@ export function getAgentName(
       return 'Gemini';
     case BaseCodingAgent.CODEX:
       return 'Codex';
+    case BaseCodingAgent.KIRO:
+      return 'Kiro CLI';
     case BaseCodingAgent.OPENCODE:
       return 'OpenCode';
     case BaseCodingAgent.CURSOR_AGENT:
@@ -29,6 +31,8 @@ export function getAgentName(
       return 'Copilot';
     case BaseCodingAgent.DROID:
       return 'Droid';
+    default:
+      return 'Unknown Agent';
   }
 }
 
@@ -57,6 +61,9 @@ export function AgentIcon({ agent, className = 'h-4 w-4' }: AgentIconProps) {
       break;
     case BaseCodingAgent.CODEX:
       iconPath = `/agents/codex${suffix}.svg`;
+      break;
+    case BaseCodingAgent.KIRO:
+      iconPath = `/agents/kiro${suffix}.svg`;
       break;
     case BaseCodingAgent.OPENCODE:
       iconPath = `/agents/opencode${suffix}.svg`;

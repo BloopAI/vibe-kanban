@@ -64,6 +64,7 @@ impl Config {
             }
             "amp" => ProfileVariantLabel::default("amp".to_string()),
             "gemini" => ProfileVariantLabel::default("gemini".to_string()),
+            "kiro" => ProfileVariantLabel::default("kiro".to_string()),
             "codex" => ProfileVariantLabel::default("codex".to_string()),
             "opencode" => ProfileVariantLabel::default("opencode".to_string()),
             "qwen-code" => ProfileVariantLabel::default("qwen-code".to_string()),

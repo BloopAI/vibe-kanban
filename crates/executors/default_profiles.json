@@ -50,6 +50,13 @@
         }
       }
     },
+    "KIRO": {
+      "DEFAULT": {
+        "KIRO": {
+          "append_prompt": "NONE"
+        }
+      }
+    },
     "COPILOT": {
       "DEFAULT": {
         "COPILOT": {

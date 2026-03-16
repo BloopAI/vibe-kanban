@@ -14,7 +14,7 @@ use services::services::container::ContainerService;
 use ts_rs::TS;
 use utils::response::ApiResponse;
 
-use super::{codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError};
+use super::{codex_setup, cursor_setup, gh_cli_setup::GhCliSetupError, kiro_setup};
 use crate::{DeploymentImpl, error::ApiError};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -58,6 +58,9 @@ pub async fn run_agent_setup(
         }
         CodingAgent::Codex(codex) => {
             codex_setup::run_codex_setup(&deployment, &workspace, &codex).await?;
+        }
+        CodingAgent::Kiro(kiro) => {
+            kiro_setup::run_kiro_setup(&deployment, &workspace, &kiro).await?;
         }
         _ => return Err(ApiError::Executor(ExecutorError::SetupHelperNotSupported)),
     }

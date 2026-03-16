@@ -31,7 +31,7 @@ Vibe Kanban is built for this. Use kanban issues to plan work, either privately 
 - **Run coding agents in workspaces** — each workspace gives an agent a branch, a terminal, and a dev server
 - **Review diffs and leave inline comments** — send feedback directly to the agent without leaving the UI
 - **Preview your app** — built-in browser with devtools, inspect mode, and device emulation
-- **Switch between 10+ coding agents** — Claude Code, Codex, Gemini CLI, GitHub Copilot, Amp, Cursor, OpenCode, Droid, CCR, and Qwen Code
+- **Switch between 10+ coding agents** — Claude Code, Codex, Gemini CLI, Kiro CLI, GitHub Copilot, Amp, Cursor, OpenCode, Droid, CCR, and Qwen Code
 - **Create pull requests and merge** — open PRs with AI-generated descriptions, review on GitHub, and merge
 
 ![](packages/public/vibe-kanban-screenshot-workspace.png)

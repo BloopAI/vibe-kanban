@@ -40,6 +40,7 @@ codex-protocol = { git = "https://github.com/openai/codex.git", package = "codex
 codex-app-server-protocol = { git = "https://github.com/openai/codex.git", package = "codex-app-server-protocol", tag = "rust-v0.114.0" }
 sha2 = "0.10"
 derivative = "2.2.0"
+which = "6.0"
 reqwest = { workspace = true }
 eventsource-stream = "0.2"
 walkdir = "2"

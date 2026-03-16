@@ -7,6 +7,7 @@ pub mod gh_cli_setup;
 pub mod git;
 pub mod images;
 pub mod integration;
+pub mod kiro_setup;
 pub mod links;
 pub mod pr;
 pub mod repos;

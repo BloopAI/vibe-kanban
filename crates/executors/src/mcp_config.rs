@@ -401,6 +401,7 @@ impl CodingAgent {
             CodingAgent::QwenCode(_) | CodingAgent::Gemini(_) => Gemini,
             CodingAgent::CursorAgent(_) => Cursor,
             CodingAgent::Codex(_) => Codex,
+            CodingAgent::Kiro(_) => Passthrough,
             CodingAgent::Opencode(_) => Opencode,
             CodingAgent::Copilot(..) => Copilot,
             #[cfg(feature = "qa-mode")]
