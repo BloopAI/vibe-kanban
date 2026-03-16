@@ -48,9 +48,15 @@ where
         return None;
     }
 
+    // Create the background client using std::thread::spawn.
+    // https://github.com/frigus02/opentelemetry-application-insights/blob/6d3ac4505c0c47e448bb8de4ac67d904f8eacb76/src/lib.rs#L168
+    let http_client = std::thread::spawn(otel_reqwest::blocking::Client::new)
+        .join()
+        .ok()?;
+
     let exporter = opentelemetry_application_insights::Exporter::new_from_connection_string(
         &connection_string,
-        reqwest::Client::new(),
+        http_client,
     )
     .ok()?;
 

@@ -25,6 +25,7 @@ futures = "0.3"
 futures-util = "0.3"
 async-trait = "0.1"
 reqwest = { version = "0.13", default-features = false, features = ["json", "query", "form", "stream", "rustls"] }
+otel-reqwest = { package = "reqwest", version = "0.12", default-features = false, features = ["blocking", "rustls-tls-webpki-roots-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["aws_lc_rs", "std", "tls12"] }
 secrecy = "0.10.3"
 serde = { version = "1.0", features = ["derive"] }
@@ -40,7 +41,7 @@ tracing-opentelemetry = "0.32"
 opentelemetry = { version = "0.31", features = ["trace"] }
 opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"] }
 opentelemetry-application-insights = "0.44"
-opentelemetry-http = { version = "0.31", features = ["reqwest"] }
+opentelemetry-http = { version = "0.31", features = ["reqwest", "reqwest-blocking"] }
 thiserror = "2.0.12"
 ts-rs = { git = "https://github.com/xazukx/ts-rs.git", branch = "use-ts-enum", features = ["uuid-impl", "chrono-impl", "no-serde-warnings", "serde-json-impl"] }
 api-types = { path = "../api-types" }
