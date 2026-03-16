@@ -10,6 +10,7 @@
     "npx-cli/dist/**"
   ],
   "scripts": {
+    "prepare": "pnpm run build:npx-cli",
     "lint": "pnpm run local-web:lint && pnpm run ui:lint && pnpm run backend:lint && node scripts/check-unused-i18n-keys.mjs",
     "format": "pnpm run backend:format && pnpm run web-core:format && pnpm run local-web:format && pnpm run remote-web:format",
     "check": "pnpm run local-web:legacy-path-guard && pnpm run local-web:check && pnpm run remote-web:check && pnpm run web-core:check && pnpm run ui:check && pnpm run backend:check",
@@ -50,15 +51,8 @@
     "tauri:dev": "set -a && [ -f .env ] && . ./.env && set +a && export FRONTEND_PORT=$(node scripts/setup-dev-environment.js frontend) && export BACKEND_PORT=$(node scripts/setup-dev-environment.js backend) && export VK_ALLOWED_ORIGINS=\"http://localhost:${FRONTEND_PORT}\" && export DISABLE_WORKTREE_CLEANUP=1 && export RUST_LOG=debug && export VITE_VK_SHARED_API_BASE=${VK_SHARED_API_BASE:-} && cd crates/tauri-app && cargo tauri dev",
     "tauri:build": "cd crates/tauri-app && cargo tauri build"
   },
-  "devDependencies": {
-    "@types/adm-zip": "^0.5.7",
-    "@types/node": "^20.0.0",
-    "bippy": "0.5.28",
-    "concurrently": "^8.2.2",
-    "esbuild": "^0.27.2",
-    "jwt-decode": "^4.0.0",
-    "typescript": "^5.7.0",
-    "vite": "^7.3.1"
+  "dependencies": {
+    "adm-zip": "^0.5.16"
   },
   "engines": {
     "node": ">=20",
