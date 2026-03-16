@@ -4,16 +4,20 @@
 use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
-use services::services::notification::{PushNotifier, set_global_push_notifier};
-#[cfg(target_os = "macos")]
-use tauri::Manager;
-use tauri::{Emitter, Listener};
+use services::services::{
+    config::load_config_from_file,
+    notification::{NotificationService, PushNotifier, set_global_push_notifier},
+};
+use tauri::{Emitter, Listener, Manager};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
-use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
+use utils::{
+    assets::config_path,
+    sentry::{self as sentry_utils, SentrySource, sentry_layer},
+};
 use uuid::Uuid;
 
 /// Native push notifier using Tauri's notification plugin.
@@ -21,6 +25,14 @@ use uuid::Uuid;
 /// relevant workspace when the user clicks the notification and the app activates.
 struct TauriNotifier {
     app_handle: tauri::AppHandle,
+}
+
+#[tauri::command]
+async fn show_system_notification(title: String, body: String) -> Result<(), String> {
+    let config = load_config_from_file(&config_path()).await;
+    let notification_service = NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
+    notification_service.notify(&title, &body, None).await;
+    Ok(())
 }
 
 #[async_trait]
@@ -79,7 +91,8 @@ fn main() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        .invoke_handler(tauri::generate_handler![show_system_notification]);
 
     // Only register the updater plugin in release builds — dev builds have a
     // placeholder endpoint that fails config deserialization.
