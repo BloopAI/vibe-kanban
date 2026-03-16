@@ -61,13 +61,14 @@ pub fn fragment(data: Vec<u8>) -> Vec<Vec<u8>> {
 ///
 /// Relies on ordered delivery: chunks arrive sequentially, so no message ID
 /// or chunk index is needed.
+#[derive(Default)]
 pub struct Defragmenter {
     buffer: Vec<u8>,
 }
 
 impl Defragmenter {
     pub fn new() -> Self {
-        Self { buffer: Vec::new() }
+        Self::default()
     }
 
     /// Process an incoming chunk from the data channel.

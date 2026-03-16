@@ -815,6 +815,80 @@ export type ExecutorDiscoveredOptions = { model_selector: ModelSelectorConfig, s
 
 export type JsonValue = number | string | boolean | Array<JsonValue> | { [key in string]?: JsonValue } | null;
 
+export type RelayWsMessageType = "text" | "binary" | "ping" | "pong" | "close";
+
+export type DataChannelMessage = { "type": "http_request" } & DataChannelRequest | { "type": "http_response" } & DataChannelResponse | { "type": "ws_open" } & WsOpen | { "type": "ws_opened" } & WsOpened | { "type": "ws_frame" } & WsFrame | { "type": "ws_close" } & WsClose | { "type": "ws_error" } & WsError;
+
+export type DataChannelRequest = { id: string, method: string, path: string, headers: { [key in string]?: string }, 
+/**
+ * Base64-encoded request body, if any.
+ */
+body_b64?: string | null, };
+
+export type DataChannelResponse = { id: string, status: number, headers: { [key in string]?: string }, 
+/**
+ * Base64-encoded response body, if any.
+ */
+body_b64?: string | null, };
+
+export type WsOpen = { 
+/**
+ * Unique connection ID for multiplexing.
+ */
+conn_id: string, 
+/**
+ * Target path, e.g. `/api/sessions/abc/queue`.
+ */
+path: string, 
+/**
+ * Optional sub-protocol(s) to negotiate.
+ */
+protocols?: string | null, };
+
+export type WsOpened = { conn_id: string, 
+/**
+ * The sub-protocol selected by the server, if any.
+ */
+selected_protocol?: string | null, };
+
+export type WsFrame = { conn_id: string, msg_type: RelayWsMessageType, 
+/**
+ * Base64-encoded payload.
+ */
+payload_b64?: string | null, };
+
+export type WsClose = { conn_id: string, 
+/**
+ * Close code (RFC 6455 §7.4).
+ */
+code?: number | null, 
+/**
+ * Close reason.
+ */
+reason?: string | null, };
+
+export type WsError = { conn_id: string, error: string, };
+
+export type SdpOffer = { 
+/**
+ * The SDP string from the peer's `RTCPeerConnection.createOffer()`.
+ */
+sdp: string, 
+/**
+ * Caller-provided session identifier to correlate offer/answer/candidates.
+ */
+session_id: string, };
+
+export type SdpAnswer = { 
+/**
+ * The SDP string from `Rtc::direct_api().create_answer()`.
+ */
+sdp: string, 
+/**
+ * Echoed session identifier from the offer.
+ */
+session_id: string, };
+
 export const DEFAULT_PR_DESCRIPTION_PROMPT = "Update the PR that was just created with a better title and description.\nThe PR number is #{pr_number} and the URL is {pr_url}.\n\nAnalyze the changes in this branch and write:\n1. A concise, descriptive title that summarizes the changes, postfixed with \"(Vibe Kanban)\"\n2. A detailed description that explains:\n   - What changes were made\n   - Why they were made (based on the task context)\n   - Any important implementation details\n   - At the end, include a note: \"This PR was written using [Vibe Kanban](https://vibekanban.com)\"\n\nUse the appropriate CLI tool to update the PR (gh pr edit for GitHub, az repos pr update for Azure DevOps).";
 
 export const DEFAULT_COMMIT_REMINDER_PROMPT = "There are uncommitted changes. Please stage and commit them now with a descriptive commit message.";

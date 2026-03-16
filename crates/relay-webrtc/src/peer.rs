@@ -66,10 +66,10 @@ pub async fn accept_offer(offer_sdp: &str) -> anyhow::Result<(String, Arc<RTCPee
     peer_connection.on_ice_gathering_state_change(Box::new(move |state| {
         let tx = gather_done_tx.clone();
         Box::pin(async move {
-            if state == RTCIceGathererState::Complete {
-                if let Some(sender) = tx.lock().unwrap().take() {
-                    let _ = sender.send(());
-                }
+            if state == RTCIceGathererState::Complete
+                && let Some(sender) = tx.lock().unwrap().take()
+            {
+                let _ = sender.send(());
             }
         })
     }));
@@ -222,11 +222,11 @@ pub async fn run_peer(
                         DataChannelMessage::WsFrame(frame) => {
                             let conn_id = frame.conn_id.clone();
                             let conns = ws_conns.lock().await;
-                            if let Some(tx) = conns.get(&conn_id) {
-                                if tx.send(frame).await.is_err() {
-                                    drop(conns);
-                                    ws_conns.lock().await.remove(&conn_id);
-                                }
+                            if let Some(tx) = conns.get(&conn_id)
+                                && tx.send(frame).await.is_err()
+                            {
+                                drop(conns);
+                                ws_conns.lock().await.remove(&conn_id);
                             }
                         }
 
@@ -464,10 +464,10 @@ async fn run_ws_bridge(
             let is_close = matches!(relay_frame.msg_type, RelayWsMessageType::Close);
             let ws_frame = WsFrame::from_relay_frame(conn_id_up.clone(), relay_frame);
             let frame_msg = DataChannelMessage::WsFrame(ws_frame);
-            if let Ok(json) = serde_json::to_vec(&frame_msg) {
-                if dc_tx_up.send(json).await.is_err() {
-                    break;
-                }
+            if let Ok(json) = serde_json::to_vec(&frame_msg)
+                && dc_tx_up.send(json).await.is_err()
+            {
+                break;
             }
 
             if is_close {

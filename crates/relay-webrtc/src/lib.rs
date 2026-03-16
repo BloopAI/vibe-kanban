@@ -7,7 +7,10 @@ pub mod signaling;
 
 pub use client::{WebRtcClient, WebRtcWsStream, WsConnection, WsSender};
 pub use host::WebRtcHost;
-pub use proxy::WsFrame;
+pub use proxy::{
+    DataChannelMessage, DataChannelRequest, DataChannelResponse, WsClose, WsError, WsFrame, WsOpen,
+    WsOpened,
+};
 pub use signaling::{IceCandidate, SdpAnswer, SdpOffer};
 
 /// Build a webrtc API restricted to UDP4 (IPv4 only).

@@ -12,7 +12,7 @@ export interface RelayHostContext {
   sessionId: string;
 }
 
-export type RelayWsMessageType = "text" | "binary" | "ping" | "pong" | "close";
+import type { RelayWsMessageType } from "shared/types";
 
 export interface RelaySignedWsEnvelope {
   version: number;

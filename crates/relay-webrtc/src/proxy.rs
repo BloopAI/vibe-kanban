@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use base64::Engine as _;
 use relay_ws::{RelayWsFrame, RelayWsMessageType};
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 // ---------------------------------------------------------------------------
 // Top-level data channel envelope
@@ -13,7 +14,7 @@ use serde::{Deserialize, Serialize};
 /// Uses `#[serde(tag = "type")]` so the JSON always contains a `"type"` field
 /// that selects the variant. Existing HTTP messages use `"http_request"` /
 /// `"http_response"`; new WebSocket messages use `"ws_*"` prefixes.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(tag = "type")]
 pub enum DataChannelMessage {
     /// HTTP request (client → host).
@@ -45,7 +46,7 @@ pub enum DataChannelMessage {
 // ---------------------------------------------------------------------------
 
 /// A request message sent over the data channel.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DataChannelRequest {
     pub id: String,
     pub method: String,
@@ -58,7 +59,7 @@ pub struct DataChannelRequest {
 }
 
 /// A response message sent back over the data channel.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct DataChannelResponse {
     pub id: String,
     pub status: u16,
@@ -74,7 +75,7 @@ pub struct DataChannelResponse {
 // ---------------------------------------------------------------------------
 
 /// Request to open a WebSocket to the local backend (client → host).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct WsOpen {
     /// Unique connection ID for multiplexing.
     pub conn_id: String,
@@ -86,7 +87,7 @@ pub struct WsOpen {
 }
 
 /// Confirmation that the WebSocket was opened (host → client).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct WsOpened {
     pub conn_id: String,
     /// The sub-protocol selected by the server, if any.
@@ -98,7 +99,7 @@ pub struct WsOpened {
 ///
 /// Wraps [`RelayWsFrame`] with a `conn_id` for multiplexing and base64-encoded
 /// payload for JSON transport.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct WsFrame {
     pub conn_id: String,
     pub msg_type: RelayWsMessageType,
@@ -141,7 +142,7 @@ impl WsFrame {
 }
 
 /// Close a WebSocket connection (bidirectional).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct WsClose {
     pub conn_id: String,
     /// Close code (RFC 6455 §7.4).
@@ -153,7 +154,7 @@ pub struct WsClose {
 }
 
 /// WebSocket error — the connection could not be opened or has failed.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct WsError {
     pub conn_id: String,
     pub error: String,
