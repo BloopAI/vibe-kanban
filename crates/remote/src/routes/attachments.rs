@@ -55,7 +55,6 @@ pub fn router() -> Router<AppState> {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct InitUploadRequest {
     pub project_id: Uuid,
     pub filename: String,
@@ -65,7 +64,6 @@ pub struct InitUploadRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct InitUploadResponse {
     pub upload_url: String,
     pub upload_id: Uuid,
@@ -75,7 +73,6 @@ pub struct InitUploadResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct ConfirmUploadRequest {
     pub project_id: Uuid,
     pub upload_id: Uuid,
@@ -92,13 +89,11 @@ pub struct ConfirmUploadRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CommitAttachmentsRequest {
     pub attachment_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct CommitAttachmentsResponse {
     pub attachments: Vec<AttachmentWithBlob>,
 }

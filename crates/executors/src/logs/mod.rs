@@ -100,7 +100,6 @@ pub enum NormalizedEntryType {
 
 /// A question–answer pair from a completed AskUserQuestion interaction.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AnsweredQuestion {
     pub question: String,
     pub answer: Vec<String>,
@@ -243,7 +242,6 @@ pub enum ActionType {
 
 /// A single question in an AskUserQuestion tool call.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AskUserQuestionItem {
     pub question: String,
     pub header: String,
@@ -254,7 +252,6 @@ pub struct AskUserQuestionItem {
 
 /// An option for an AskUserQuestion question.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AskUserQuestionOption {
     pub label: String,
     pub description: String,
