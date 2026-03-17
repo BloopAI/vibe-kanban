@@ -8,8 +8,31 @@
 ALTER TABLE organizations
     ADD COLUMN IF NOT EXISTS issue_counter INTEGER NOT NULL DEFAULT 0;
 
--- 2. Bootstrap org counters from the max issue_number already assigned
---    across all projects in each org, preventing collision with existing issues.
+-- 2. Renumber all existing issues with org-wide sequential numbers.
+--    Under the old schema, issue_number was per-project (each project starts at 1),
+--    so multiple projects in the same org have overlapping numbers and duplicate
+--    simple_ids (e.g. both Project A and Project B show ORG-1). Reassign sequential
+--    numbers ordered by created_at (id as tiebreaker) and update simple_id to match.
+WITH renumbered AS (
+    SELECT
+        i.id,
+        ROW_NUMBER() OVER (
+            PARTITION BY p.organization_id
+            ORDER BY i.created_at, i.id
+        ) AS new_issue_number,
+        o.issue_prefix
+    FROM issues i
+    JOIN projects p ON p.id = i.project_id
+    JOIN organizations o ON o.id = p.organization_id
+)
+UPDATE issues i
+SET
+    issue_number = r.new_issue_number,
+    simple_id    = r.issue_prefix || '-' || r.new_issue_number
+FROM renumbered r
+WHERE i.id = r.id;
+
+-- 3. Set org counters to the maximum issue_number now assigned.
 UPDATE organizations o
 SET issue_counter = COALESCE(
     (
@@ -21,11 +44,11 @@ SET issue_counter = COALESCE(
     0
 );
 
--- 3. Drop the old per-project uniqueness constraint
+-- 4. Drop the old per-project uniqueness constraint
 ALTER TABLE issues
     DROP CONSTRAINT IF EXISTS issues_project_issue_number_uniq;
 
--- 4. Update the trigger function to increment the org counter instead of project counter.
+-- 5. Update the trigger function to increment the org counter instead of project counter.
 --    The trigger trg_issues_simple_id itself does not need to be recreated.
 --    Uniqueness is guaranteed by the atomic UPDATE ... RETURNING on the org row,
 --    which serializes concurrent inserts via row-level locking.
@@ -57,6 +80,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 5. Remove the now-unused per-project issue counter
+-- 6. Remove the now-unused per-project issue counter
 ALTER TABLE projects
     DROP COLUMN IF EXISTS issue_counter;
