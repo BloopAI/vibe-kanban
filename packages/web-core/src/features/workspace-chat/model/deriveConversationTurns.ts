@@ -53,6 +53,7 @@ export type ConversationTurn = ConversationAgentTurn | ConversationScriptTurn;
 export interface ConversationTurns {
   readonly turns: ConversationTurn[];
   readonly hasSetupScriptProcess: boolean;
+  readonly hasSetupScriptWithPrompt: boolean;
 }
 
 // Turns are the first product-shaped model in the pipeline.
@@ -113,7 +114,7 @@ function getSetupRequiredHelp(
 
 function deriveAgentTurn(
   process: ConversationSemanticProcessItem,
-  hasSetupScriptProcess: boolean,
+  hasSetupScriptWithPrompt: boolean,
   isLastTurn: boolean
 ): ConversationAgentTurn {
   const executorActionType = process.executionProcess.executor_action.typ;
@@ -126,7 +127,7 @@ function deriveAgentTurn(
   const needsSetup = Boolean(setupHelpText);
   const shouldEmitUserMessage = !(
     executorActionType.type === 'CodingAgentInitialRequest' &&
-    hasSetupScriptProcess
+    hasSetupScriptWithPrompt
   );
 
   if (process.hasPendingApprovalEntry) {
@@ -285,7 +286,7 @@ export function deriveConversationTurns(
       turns.push(
         deriveAgentTurn(
           item.process,
-          semanticTimeline.hasSetupScriptProcess,
+          semanticTimeline.hasSetupScriptWithPrompt,
           isLastTurn
         )
       );
@@ -317,5 +318,6 @@ export function deriveConversationTurns(
   return {
     turns,
     hasSetupScriptProcess: semanticTimeline.hasSetupScriptProcess,
+    hasSetupScriptWithPrompt: semanticTimeline.hasSetupScriptWithPrompt,
   };
 }

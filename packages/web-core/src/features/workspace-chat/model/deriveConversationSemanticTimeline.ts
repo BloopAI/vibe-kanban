@@ -24,6 +24,25 @@ export interface ConversationSemanticProcessItem {
 export interface ConversationSemanticTimeline {
   readonly processes: ConversationSemanticProcessItem[];
   readonly hasSetupScriptProcess: boolean;
+  readonly hasSetupScriptWithPrompt: boolean;
+}
+
+function extractPromptFromActionChain(
+  action: ExecutionProcessState['executionProcess']['executor_action'] | null
+): string | null {
+  let current = action;
+  while (current) {
+    const typ = current.typ;
+    if (
+      typ.type === 'CodingAgentInitialRequest' ||
+      typ.type === 'CodingAgentFollowUpRequest' ||
+      typ.type === 'ReviewRequest'
+    ) {
+      return typ.prompt;
+    }
+    current = current.next_action;
+  }
+  return null;
 }
 
 // This is the first semantic reshape after the raw source model.
@@ -112,6 +131,15 @@ export function deriveConversationSemanticTimeline(
       (process) =>
         process.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
         process.executionProcess.executor_action.typ.context === 'SetupScript'
+    ),
+    hasSetupScriptWithPrompt: processes.some(
+      (process) =>
+        process.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
+        process.executionProcess.executor_action.typ.context ===
+          'SetupScript' &&
+        extractPromptFromActionChain(
+          process.executionProcess.executor_action
+        ) !== null
     ),
   };
 }
