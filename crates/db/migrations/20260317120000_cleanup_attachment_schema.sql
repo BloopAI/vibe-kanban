@@ -24,13 +24,6 @@ CREATE INDEX idx_workspace_attachments_workspace_id
 CREATE INDEX idx_workspace_attachments_attachment_id
     ON workspace_attachments(attachment_id);
 
-UPDATE coding_agent_turns
-SET prompt = REPLACE(prompt, '.vibe-images/', '.vibe-attachments/')
-WHERE prompt LIKE '%.vibe-images/%';
-
-UPDATE coding_agent_turns
-SET summary = REPLACE(summary, '.vibe-images/', '.vibe-attachments/')
-WHERE summary LIKE '%.vibe-images/%';
 
 PRAGMA foreign_key_check;
 
