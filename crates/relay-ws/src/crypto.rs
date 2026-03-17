@@ -66,12 +66,12 @@ impl WsFrameSigner {
         }
     }
 
-    /// Encode a frame into a signed JSON envelope (as bytes).
+    /// Sign a frame and serialize it into a JSON envelope.
     ///
-    /// Increments the internal sequence counter, builds a signing input from
-    /// the session id, nonce, sequence number, message type, and SHA-256 of the
-    /// payload, then Ed25519-signs it.
-    pub fn encode(&mut self, frame: RelayWsFrame) -> anyhow::Result<Vec<u8>> {
+    /// Increments the sequence counter, Ed25519-signs over the session id,
+    /// nonce, sequence number, message type, and SHA-256 of the payload,
+    /// then wraps everything into a versioned envelope.
+    pub fn sign_frame(&mut self, frame: RelayWsFrame) -> anyhow::Result<Vec<u8>> {
         self.outbound_seq = self.outbound_seq.saturating_add(1);
         let signing_input = ws_signing_input(
             &self.signing_session_id,
@@ -118,9 +118,10 @@ impl WsFrameVerifier {
         }
     }
 
-    /// Decode a signed JSON envelope back into a frame, verifying the
-    /// Ed25519 signature and enforcing monotonic sequence ordering.
-    pub fn decode(&mut self, raw: &[u8]) -> anyhow::Result<RelayWsFrame> {
+    /// Verify a signed JSON envelope and deserialize it back into a frame.
+    ///
+    /// Checks the Ed25519 signature and enforces monotonic sequence ordering.
+    pub fn verify_frame(&mut self, raw: &[u8]) -> anyhow::Result<RelayWsFrame> {
         use anyhow::Context as _;
 
         let envelope: SignedWsEnvelope =
@@ -215,8 +216,8 @@ mod tests {
             msg_type: RelayWsMessageType::Text,
             payload: b"hello".to_vec(),
         };
-        let encoded = signer.encode(frame).expect("encode");
-        let decoded = verifier.decode(&encoded).expect("decode");
+        let encoded = signer.sign_frame(frame).expect("encode");
+        let decoded = verifier.verify_frame(&encoded).expect("decode");
 
         assert!(matches!(decoded.msg_type, RelayWsMessageType::Text));
         assert_eq!(decoded.payload, b"hello");
@@ -238,14 +239,14 @@ mod tests {
             msg_type: RelayWsMessageType::Binary,
             payload: b"second".to_vec(),
         };
-        let encoded1 = signer.encode(frame1).expect("encode first");
-        let encoded2 = signer.encode(frame2).expect("encode second");
+        let encoded1 = signer.sign_frame(frame1).expect("encode first");
+        let encoded2 = signer.sign_frame(frame2).expect("encode second");
 
-        let result = verifier.decode(&encoded2);
+        let result = verifier.verify_frame(&encoded2);
         assert!(result.is_err());
 
-        verifier.decode(&encoded1).expect("decode first");
-        verifier.decode(&encoded2).expect("decode second");
+        verifier.verify_frame(&encoded1).expect("decode first");
+        verifier.verify_frame(&encoded2).expect("decode second");
     }
 
     #[test]
@@ -260,7 +261,7 @@ mod tests {
             msg_type: RelayWsMessageType::Text,
             payload: b"original".to_vec(),
         };
-        let encoded = signer.encode(frame).expect("encode");
+        let encoded = signer.sign_frame(frame).expect("encode");
 
         let json_str = String::from_utf8(encoded).unwrap();
         let tampered = json_str.replace(
@@ -269,7 +270,7 @@ mod tests {
         );
         let encoded = tampered.into_bytes();
 
-        let result = verifier.decode(&encoded);
+        let result = verifier.verify_frame(&encoded);
         assert!(result.is_err());
     }
 }

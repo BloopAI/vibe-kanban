@@ -153,7 +153,7 @@ where
                 RelayWsMessageType::Ping | RelayWsMessageType::Pong => continue,
                 RelayWsMessageType::Close => return Poll::Ready(None),
                 RelayWsMessageType::Text | RelayWsMessageType::Binary => {
-                    let decoded = match this.receiver.verifier.decode(&frame.payload) {
+                    let decoded = match this.receiver.verifier.verify_frame(&frame.payload) {
                         Ok(decoded) => decoded,
                         Err(e) => return Poll::Ready(Some(Err(e))),
                     };
@@ -181,7 +181,7 @@ where
 
     fn start_send(self: Pin<&mut Self>, item: M) -> Result<(), Self::Error> {
         let this = self.get_mut();
-        let bytes = this.sender.signer.encode(item.decompose())?;
+        let bytes = this.sender.signer.sign_frame(item.decompose())?;
         let envelope_msg = M::reconstruct(RelayWsFrame {
             msg_type: RelayWsMessageType::Binary,
             payload: bytes,
@@ -237,7 +237,7 @@ where
     M: RelayTransportMessage,
 {
     pub async fn send(&mut self, frame: RelayWsFrame) -> anyhow::Result<()> {
-        let bytes = self.signer.encode(frame)?;
+        let bytes = self.signer.sign_frame(frame)?;
         let envelope_msg = M::reconstruct(RelayWsFrame {
             msg_type: RelayWsMessageType::Binary,
             payload: bytes,
@@ -280,7 +280,7 @@ where
                 RelayWsMessageType::Ping | RelayWsMessageType::Pong => continue,
                 RelayWsMessageType::Close => return Ok(None),
                 RelayWsMessageType::Text | RelayWsMessageType::Binary => {
-                    return Ok(Some(self.verifier.decode(&frame.payload)?));
+                    return Ok(Some(self.verifier.verify_frame(&frame.payload)?));
                 }
             }
         }
@@ -361,13 +361,13 @@ mod tests {
             msg_type: RelayWsMessageType::Binary,
             payload: b"second".to_vec(),
         };
-        let encoded1 = signer.encode(frame1).expect("encode first");
-        let encoded2 = signer.encode(frame2).expect("encode second");
+        let encoded1 = signer.sign_frame(frame1).expect("encode first");
+        let encoded2 = signer.sign_frame(frame2).expect("encode second");
 
-        let result = verifier.decode(&encoded2);
+        let result = verifier.verify_frame(&encoded2);
         assert!(result.is_err());
 
-        verifier.decode(&encoded1).expect("decode first");
-        verifier.decode(&encoded2).expect("decode second");
+        verifier.verify_frame(&encoded1).expect("decode first");
+        verifier.verify_frame(&encoded2).expect("decode second");
     }
 }
