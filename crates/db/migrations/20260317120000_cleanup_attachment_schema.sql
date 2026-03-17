@@ -24,25 +24,6 @@ CREATE INDEX idx_workspace_attachments_workspace_id
 CREATE INDEX idx_workspace_attachments_attachment_id
     ON workspace_attachments(attachment_id);
 
-UPDATE scratch
-SET payload = REPLACE(payload, '.vibe-images/', '.vibe-attachments/')
-WHERE payload LIKE '%.vibe-images/%';
-
-UPDATE scratch
-SET payload = json_set(
-    json_remove(payload, '$.data.images', '$.data.files'),
-    '$.data.attachments',
-    json(
-        COALESCE(
-            json_extract(payload, '$.data.attachments'),
-            json_extract(payload, '$.data.files'),
-            json_extract(payload, '$.data.images'),
-            '[]'
-        )
-    )
-)
-WHERE scratch_type = 'DRAFT_WORKSPACE';
-
 UPDATE coding_agent_turns
 SET prompt = REPLACE(prompt, '.vibe-images/', '.vibe-attachments/')
 WHERE prompt LIKE '%.vibe-images/%';
