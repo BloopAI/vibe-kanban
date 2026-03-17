@@ -28,7 +28,7 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_workspace_middleware,
-    routes::files::{AttachmentMetadata, AttachmentResponse, process_file_upload},
+    routes::attachments::{AttachmentMetadata, AttachmentResponse, process_file_upload},
 };
 
 #[derive(Debug, Deserialize)]

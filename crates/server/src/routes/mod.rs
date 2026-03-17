@@ -11,9 +11,9 @@ pub mod config;
 pub mod containers;
 pub mod filesystem;
 // pub mod github;
+pub mod attachments;
 pub mod events;
 pub mod execution_processes;
-pub mod files;
 pub mod frontend;
 pub mod health;
 pub mod migration;
@@ -52,7 +52,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .nest("/remote", remote::router())
-        .nest("/images", files::routes())
+        .nest("/images", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(
             deployment.clone(),
             middleware::sign_relay_response,

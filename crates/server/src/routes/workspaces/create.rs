@@ -16,7 +16,9 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    routes::workspaces::files::{ImportedIssueAttachment, import_issue_attachments_from_remote},
+    routes::workspaces::attachments::{
+        ImportedIssueAttachment, import_issue_attachments_from_remote,
+    },
 };
 
 static ISSUE_ATTACHMENT_MARKDOWN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
