@@ -19,6 +19,29 @@ use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
 
+pub(crate) fn content_type_and_disposition_for_attachment(
+    mime_type: &str,
+) -> (&str, Option<&'static str>) {
+    if is_safe_inline_attachment_mime_type(mime_type) {
+        (mime_type, None)
+    } else {
+        ("application/octet-stream", Some("attachment"))
+    }
+}
+
+fn is_safe_inline_attachment_mime_type(mime_type: &str) -> bool {
+    matches!(
+        mime_type,
+        "image/png"
+            | "image/jpeg"
+            | "image/gif"
+            | "image/webp"
+            | "image/bmp"
+            | "image/x-icon"
+            | "image/tiff"
+    )
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 pub struct AttachmentResponse {
     pub id: Uuid,
@@ -131,12 +154,19 @@ pub async fn serve_file(
         .mime_type
         .as_deref()
         .unwrap_or("application/octet-stream");
+    let (content_type, content_disposition) =
+        content_type_and_disposition_for_attachment(content_type);
 
-    let response = Response::builder()
+    let mut response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CONTENT_LENGTH, metadata.len())
         .header(header::CACHE_CONTROL, "public, max-age=31536000")
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff");
+    if let Some(content_disposition) = content_disposition {
+        response = response.header(header::CONTENT_DISPOSITION, content_disposition);
+    }
+    let response = response
         .body(body)
         .map_err(|e| ApiError::File(FileError::ResponseBuildError(e.to_string())))?;
 
@@ -160,4 +190,57 @@ pub fn routes() -> Router<DeploymentImpl> {
         )
         .route("/{id}/file", get(serve_file))
         .route("/{id}", delete(delete_file))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::http::header;
+
+    use super::content_type_and_disposition_for_attachment;
+
+    #[test]
+    fn allows_safe_images_inline() {
+        let (content_type, disposition) = content_type_and_disposition_for_attachment("image/png");
+        assert_eq!(content_type, "image/png");
+        assert_eq!(disposition, None);
+    }
+
+    #[test]
+    fn forces_html_to_download() {
+        let (content_type, disposition) = content_type_and_disposition_for_attachment("text/html");
+        assert_eq!(content_type, "application/octet-stream");
+        assert_eq!(disposition, Some("attachment"));
+    }
+
+    #[test]
+    fn forces_svg_to_download() {
+        let (content_type, disposition) =
+            content_type_and_disposition_for_attachment("image/svg+xml");
+        assert_eq!(content_type, "application/octet-stream");
+        assert_eq!(disposition, Some("attachment"));
+    }
+
+    #[test]
+    fn forces_pdf_to_download() {
+        let (content_type, disposition) =
+            content_type_and_disposition_for_attachment("application/pdf");
+        assert_eq!(content_type, "application/octet-stream");
+        assert_eq!(disposition, Some("attachment"));
+    }
+
+    #[test]
+    fn forces_unknown_types_to_download() {
+        let (content_type, disposition) =
+            content_type_and_disposition_for_attachment("application/octet-stream");
+        assert_eq!(content_type, "application/octet-stream");
+        assert_eq!(disposition, Some("attachment"));
+    }
+
+    #[test]
+    fn nosniff_header_name_matches_expected() {
+        assert_eq!(
+            header::X_CONTENT_TYPE_OPTIONS.as_str(),
+            "x-content-type-options"
+        );
+    }
 }

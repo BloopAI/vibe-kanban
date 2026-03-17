@@ -28,7 +28,10 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_workspace_middleware,
-    routes::attachments::{AttachmentMetadata, AttachmentResponse, process_file_upload},
+    routes::attachments::{
+        AttachmentMetadata, AttachmentResponse, content_type_and_disposition_for_attachment,
+        process_file_upload,
+    },
 };
 
 #[derive(Debug, Deserialize)]
@@ -250,12 +253,19 @@ pub async fn serve_file(
     let content_type = MimeGuess::from_path(&path)
         .first_raw()
         .unwrap_or("application/octet-stream");
+    let (content_type, content_disposition) =
+        content_type_and_disposition_for_attachment(content_type);
 
-    let response = Response::builder()
+    let mut response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CONTENT_LENGTH, metadata.len())
         .header(header::CACHE_CONTROL, "public, max-age=31536000")
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff");
+    if let Some(content_disposition) = content_disposition {
+        response = response.header(header::CONTENT_DISPOSITION, content_disposition);
+    }
+    let response = response
         .body(body)
         .map_err(|e| ApiError::File(FileError::ResponseBuildError(e.to_string())))?;
 
