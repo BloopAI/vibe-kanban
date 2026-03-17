@@ -46,13 +46,6 @@ import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 
-function logConversationAnchorDebug(
-  event: string,
-  payload: Record<string, unknown>
-) {
-  console.log(`[conversation-anchor] ${event}`, payload);
-}
-
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
   repos?: RepoWithTargetBranch[];
@@ -281,34 +274,14 @@ export const ConversationList = forwardRef<
     const anchor = pendingInteractionAnchorRef.current;
     const activeScrollContainer = tanstackScrollRef.current;
     if (!anchor || !activeScrollContainer || !anchor.element.isConnected) {
-      logConversationAnchorDebug('correction-cancelled', {
-        hasAnchor: Boolean(anchor),
-        hasScrollContainer: Boolean(activeScrollContainer),
-        anchorConnected: anchor?.element.isConnected ?? false,
-      });
       clearPendingInteractionAnchor();
       return;
     }
 
-    const beforeScrollTop = activeScrollContainer.scrollTop;
-    const currentTop = anchor.element.getBoundingClientRect().top;
     const delta = anchor.element.getBoundingClientRect().top - anchor.top;
     if (Math.abs(delta) >= 0.5) {
       activeScrollContainer.scrollTop += delta;
     }
-
-    logConversationAnchorDebug('correction-frame', {
-      anchorText: anchor.element.textContent?.slice(0, 120) ?? null,
-      originalTop: anchor.top,
-      currentTop,
-      delta,
-      beforeScrollTop,
-      afterScrollTop: activeScrollContainer.scrollTop,
-      remainingMs: Math.max(
-        0,
-        pendingInteractionAnchorDeadlineRef.current - performance.now()
-      ),
-    });
 
     if (performance.now() < pendingInteractionAnchorDeadlineRef.current) {
       pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
@@ -338,17 +311,6 @@ export const ConversationList = forwardRef<
         element: trigger,
         top: trigger.getBoundingClientRect().top,
       };
-
-      logConversationAnchorDebug('click-capture', {
-        triggerTag: trigger.tagName,
-        triggerRole: trigger.getAttribute('role'),
-        triggerExpanded: trigger.getAttribute('aria-expanded'),
-        triggerText: trigger.textContent?.slice(0, 120) ?? null,
-        triggerTop: trigger.getBoundingClientRect().top,
-        scrollTop: scrollContainer.scrollTop,
-        scrollHeight: scrollContainer.scrollHeight,
-        clientHeight: scrollContainer.clientHeight,
-      });
 
       pendingInteractionAnchorDeadlineRef.current = performance.now() + 250;
       pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
