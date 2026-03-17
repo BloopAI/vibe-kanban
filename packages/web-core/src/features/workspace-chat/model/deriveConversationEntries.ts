@@ -204,8 +204,9 @@ export function deriveConversationEntries({
       hasRunningProcess = true;
     }
 
+    const latestProcess = turn.processes.at(-1);
     if (
-      turn.processes.some((process) => process.process.failedOrKilled) &&
+      latestProcess?.process.failedOrKilled &&
       index === conversationTurns.turns.length - 1
     ) {
       lastProcessFailedOrKilled = true;

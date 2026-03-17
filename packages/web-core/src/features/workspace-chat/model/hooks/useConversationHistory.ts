@@ -171,17 +171,12 @@ export const useConversationHistory = ({
       const timelineSource = buildTimelineSource(executionProcessState);
       let modifiedAddEntryType = addEntryType;
 
-      const latestEntry = Object.values(executionProcessState)
-        .sort(
-          (a, b) =>
-            new Date(
-              a.executionProcess.created_at as unknown as string
-            ).getTime() -
-            new Date(
-              b.executionProcess.created_at as unknown as string
-            ).getTime()
+      const latestEntry = flattenEntries(executionProcessState)
+        .filter(
+          (entry) =>
+            entry.type !== 'NORMALIZED_ENTRY' ||
+            entry.content.entry_type.type !== 'token_usage_info'
         )
-        .flatMap((processState) => processState.entries)
         .at(-1);
 
       if (

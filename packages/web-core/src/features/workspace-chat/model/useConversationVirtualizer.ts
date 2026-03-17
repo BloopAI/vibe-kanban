@@ -147,13 +147,6 @@ export function useConversationVirtualizer({
   onAtBottomChange,
   shouldSuppressSizeAdjustment,
 }: ConversationVirtualizerOptions): ConversationVirtualizerResult {
-  const logConversationVirtualizerDebug = useCallback(
-    (event: string, payload: Record<string, unknown>) => {
-      console.log(`[conversation-virtualizer] ${event}`, payload);
-    },
-    []
-  );
-
   const bottomScrollFrameRef = useRef<number | null>(null);
   const bottomScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null
@@ -258,8 +251,8 @@ export function useConversationVirtualizer({
 
   useEffect(() => {
     virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (
-      item,
-      delta,
+      _item,
+      _delta,
       instance
     ) => {
       const viewportHeight = instance.scrollRect?.height ?? 0;
@@ -270,28 +263,13 @@ export function useConversationVirtualizer({
         !shouldSuppressSizeAdjustment?.() &&
         remainingDistance > NEAR_BOTTOM_THRESHOLD_PX;
 
-      logConversationVirtualizerDebug('size-change-adjustment', {
-        itemIndex: item.index,
-        delta,
-        scrollOffset,
-        viewportHeight,
-        totalSize: instance.getTotalSize(),
-        remainingDistance,
-        isSuppressed: shouldSuppressSizeAdjustment?.() ?? false,
-        shouldAdjust,
-      });
-
       return shouldAdjust;
     };
 
     return () => {
       virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
     };
-  }, [
-    logConversationVirtualizerDebug,
-    shouldSuppressSizeAdjustment,
-    virtualizer,
-  ]);
+  }, [shouldSuppressSizeAdjustment, virtualizer]);
 
   // -------------------------------------------------------------------------
   // Container resize invalidation
