@@ -11,7 +11,7 @@ use axum::{
 };
 use deployment::Deployment;
 use relay_hosts::{HostRelayProxyError, HostRelayWsConnection, RelayHostLookupError};
-use relay_tunnel::ws_io::{axum_ws_stream_io, tungstenite_ws_stream_io};
+use relay_tunnel::ws_io::ws_copy_bidirectional;
 use relay_ws::SignedTungsteniteSocket;
 use uuid::Uuid;
 
@@ -265,8 +265,11 @@ async fn bridge_ws(
     upstream: SignedTungsteniteSocket,
     client_socket: WebSocket,
 ) -> anyhow::Result<()> {
-    let mut upstream_io = tungstenite_ws_stream_io(upstream);
-    let mut client_io = axum_ws_stream_io(client_socket);
-    tokio::io::copy_bidirectional(&mut upstream_io, &mut client_io).await?;
-    Ok(())
+    ws_copy_bidirectional(
+        client_socket,
+        upstream,
+        relay_tunnel::ws_io::axum_to_tungstenite,
+        relay_tunnel::ws_io::tungstenite_to_axum,
+    )
+    .await
 }

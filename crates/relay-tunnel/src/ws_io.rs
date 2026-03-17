@@ -174,3 +174,85 @@ fn read_tungstenite_message(message: tungstenite::Message) -> WsIoReadMessage {
 fn write_tungstenite_message(bytes: Vec<u8>) -> tungstenite::Message {
     tungstenite::Message::Binary(bytes.into())
 }
+
+/// Convert an axum WS message to a tungstenite WS message, preserving
+/// the message type (text, binary, ping, pong, close).
+pub fn axum_to_tungstenite(msg: AxumWsMessage) -> tungstenite::Message {
+    match msg {
+        AxumWsMessage::Text(text) => tungstenite::Message::Text(text.to_string().into()),
+        AxumWsMessage::Binary(bytes) => tungstenite::Message::Binary(bytes.to_vec().into()),
+        AxumWsMessage::Ping(bytes) => tungstenite::Message::Ping(bytes.to_vec().into()),
+        AxumWsMessage::Pong(bytes) => tungstenite::Message::Pong(bytes.to_vec().into()),
+        AxumWsMessage::Close(frame) => tungstenite::Message::Close(frame.map(|cf| {
+            tungstenite::protocol::CloseFrame {
+                code: tungstenite::protocol::frame::coding::CloseCode::from(cf.code),
+                reason: cf.reason.to_string().into(),
+            }
+        })),
+    }
+}
+
+/// Convert a tungstenite WS message to an axum WS message, preserving
+/// the message type (text, binary, ping, pong, close).
+pub fn tungstenite_to_axum(msg: tungstenite::Message) -> AxumWsMessage {
+    match msg {
+        tungstenite::Message::Text(text) => AxumWsMessage::Text(text.to_string().into()),
+        tungstenite::Message::Binary(bytes) => AxumWsMessage::Binary(bytes.to_vec().into()),
+        tungstenite::Message::Ping(bytes) => AxumWsMessage::Ping(bytes.to_vec().into()),
+        tungstenite::Message::Pong(bytes) => AxumWsMessage::Pong(bytes.to_vec().into()),
+        tungstenite::Message::Close(frame) => AxumWsMessage::Close(frame.map(|cf| {
+            axum::extract::ws::CloseFrame {
+                code: cf.code.into(),
+                reason: cf.reason.to_string().into(),
+            }
+        })),
+        tungstenite::Message::Frame(_) => AxumWsMessage::Binary(vec![].into()),
+    }
+}
+
+/// Bidirectional message-level bridge between two WebSocket streams.
+///
+/// Like `tokio::io::copy_bidirectional` but operates on typed WS messages
+/// instead of raw bytes, preserving message types (text, binary, etc.)
+/// across the bridge via the provided conversion functions.
+pub async fn ws_copy_bidirectional<A, B, MA, MB, EA, EB>(
+    a: A,
+    b: B,
+    a_to_b: fn(MA) -> MB,
+    b_to_a: fn(MB) -> MA,
+) -> anyhow::Result<()>
+where
+    A: Stream<Item = Result<MA, EA>> + Sink<MA, Error = EA> + Unpin,
+    B: Stream<Item = Result<MB, EB>> + Sink<MB, Error = EB> + Unpin,
+    EA: Into<anyhow::Error>,
+    EB: Into<anyhow::Error>,
+{
+    use futures::StreamExt as _;
+    use futures_util::SinkExt as _;
+
+    let (mut a_sink, mut a_stream) = a.split();
+    let (mut b_sink, mut b_stream) = b.split();
+
+    let forward = async {
+        while let Some(msg) = a_stream.next().await {
+            let msg = msg.map_err(Into::into)?;
+            b_sink.send(a_to_b(msg)).await.map_err(Into::into)?;
+        }
+        let _ = b_sink.close().await;
+        Ok::<(), anyhow::Error>(())
+    };
+
+    let backward = async {
+        while let Some(msg) = b_stream.next().await {
+            let msg = msg.map_err(Into::into)?;
+            a_sink.send(b_to_a(msg)).await.map_err(Into::into)?;
+        }
+        let _ = a_sink.close().await;
+        Ok::<(), anyhow::Error>(())
+    };
+
+    tokio::select! {
+        result = forward => result,
+        result = backward => result,
+    }
+}
