@@ -1,10 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::{
-    sync::{Arc, Mutex},
-    time::Duration,
-};
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
 use services::services::notification::{PushNotifier, set_global_push_notifier};
@@ -14,7 +11,7 @@ use tauri::{Emitter, Listener};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
-use tokio::time::sleep;
+use tokio::{sync::Mutex, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
@@ -286,7 +283,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
 /// Takes the pending update bytes (if any) and installs them.
 /// Requires a network call to re-fetch the `Update` metadata.
 async fn install_pending_update(app: &tauri::AppHandle, pending: &Mutex<Option<Vec<u8>>>) {
-    let bytes = match pending.lock().ok().and_then(|mut g| g.take()) {
+    let bytes = match pending.lock().await.take() {
         Some(b) => b,
         None => return,
     };
@@ -316,13 +313,7 @@ async fn install_pending_update(app: &tauri::AppHandle, pending: &Mutex<Option<V
 }
 
 async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Option<Vec<u8>>>>) {
-    let has_pending_update = match pending_update.lock() {
-        Ok(guard) => guard.is_some(),
-        Err(poisoned) => {
-            tracing::warn!("Pending update state lock poisoned; skipping check");
-            poisoned.into_inner().is_some()
-        }
-    };
+    let has_pending_update = pending_update.lock().await.is_some();
     if has_pending_update {
         tracing::info!("Update already downloaded; skipping update check");
         return;
@@ -361,7 +352,7 @@ async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Opti
             match update.download(|_, _| {}, || {}).await {
                 Ok(bytes) => {
                     tracing::info!("Update {new_version} downloaded, waiting for user to restart");
-                    *pending_update.lock().unwrap() = Some(bytes);
+                    *pending_update.lock().await = Some(bytes);
                     let _ = app.emit(
                         "update-installed",
                         serde_json::json!({ "newVersion": new_version }),
