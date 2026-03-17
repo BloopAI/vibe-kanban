@@ -118,7 +118,7 @@ export function RetryEditorInline({
             prev ? `${prev}\n\n${imageMarkdown}` : imageMarkdown
           );
         } catch (error) {
-          console.error('Failed to upload file:', error);
+          console.error('Failed to upload attachment:', error);
         }
       }
     },

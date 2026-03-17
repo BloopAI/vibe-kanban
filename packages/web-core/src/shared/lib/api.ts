@@ -1004,11 +1004,11 @@ export const profilesApi = {
   },
 };
 
-// Files API
+// Workspace attachments API
 export const attachmentsApi = {
-  upload: async (file: File): Promise<AttachmentResponse> => {
+  upload: async (attachment: File): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest('/api/images/upload', {
       method: 'POST',
@@ -1019,7 +1019,7 @@ export const attachmentsApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload file: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
@@ -1030,10 +1030,10 @@ export const attachmentsApi = {
 
   uploadForTask: async (
     taskId: string,
-    file: File
+    attachment: File
   ): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
       `/api/images/task/${taskId}/upload`,
@@ -1047,7 +1047,7 @@ export const attachmentsApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload file: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
@@ -1059,10 +1059,10 @@ export const attachmentsApi = {
   uploadForAttempt: async (
     workspaceId: string,
     sessionId: string,
-    file: File
+    attachment: File
   ): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
       `/api/workspaces/${workspaceId}/images/upload?session_id=${sessionId}`,
@@ -1076,7 +1076,7 @@ export const attachmentsApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload file: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
@@ -1085,8 +1085,8 @@ export const attachmentsApi = {
     return handleApiResponse<AttachmentResponse>(response);
   },
 
-  delete: async (fileId: string): Promise<void> => {
-    const response = await makeRequest(`/api/images/${fileId}`, {
+  delete: async (attachmentId: string): Promise<void> => {
+    const response = await makeRequest(`/api/images/${attachmentId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
@@ -1097,8 +1097,8 @@ export const attachmentsApi = {
     return handleApiResponse<AttachmentResponse[]>(response);
   },
 
-  getFileUrl: (fileId: string): string => {
-    return `/api/images/${fileId}/file`;
+  getAttachmentUrl: (attachmentId: string): string => {
+    return `/api/images/${attachmentId}/file`;
   },
 };
 

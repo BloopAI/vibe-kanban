@@ -94,7 +94,7 @@ async function downloadBlobUrl(url: string, filename: string): Promise<void> {
   });
 
   if (!response.ok) {
-    throw new Error('Failed to download attachment file');
+    throw new Error('Failed to download attachment');
   }
 
   const blob = await response.blob();

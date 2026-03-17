@@ -80,7 +80,7 @@ export function CreateChatBoxContainer({
   const showRepoPickerStep = !hasSelectedRepos || isSelectingRepos;
   const showChatStep = hasSelectedRepos && !isSelectingRepos;
 
-  // Attachment handling - insert markdown and track file IDs
+  // Attachment handling - insert markdown and track attachment IDs
   const handleInsertMarkdown = useCallback(
     (markdown: string) => {
       const newMessage = message.trim()

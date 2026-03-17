@@ -9,27 +9,27 @@ export function isImageMimeType(mimeType?: string | null): boolean {
   return mimeType?.startsWith('image/') ?? false;
 }
 
-export function buildAttachmentMarkdown(file: {
+export function buildAttachmentMarkdown(attachment: {
   name: string;
   src: string;
   mimeType?: string | null;
 }): string {
-  const label = escapeMarkdownLabel(file.name);
-  if (isImageMimeType(file.mimeType)) {
-    return `![${label}](${file.src})`;
+  const label = escapeMarkdownLabel(attachment.name);
+  if (isImageMimeType(attachment.mimeType)) {
+    return `![${label}](${attachment.src})`;
   }
-  return `[${label}](${file.src})`;
+  return `[${label}](${attachment.src})`;
 }
 
-export function buildWorkspaceAttachmentMarkdown(file: {
+export function buildWorkspaceAttachmentMarkdown(attachment: {
   original_name: string;
   file_path: string;
   mime_type?: string | null;
 }): string {
   return buildAttachmentMarkdown({
-    name: file.original_name,
-    src: file.file_path,
-    mimeType: file.mime_type,
+    name: attachment.original_name,
+    src: attachment.file_path,
+    mimeType: attachment.mime_type,
   });
 }
 

@@ -117,7 +117,7 @@ function useAttachmentMetadata(
     isWorkspaceAttachment && !!workspaceId && !localAttachment;
 
   const query = useQuery({
-    queryKey: ['file-metadata', workspaceId, sessionId, src],
+    queryKey: ['attachment-metadata', workspaceId, sessionId, src],
     queryFn: async (): Promise<AttachmentMetadataLike | null> => {
       if (!workspaceId || !sessionId) return null;
 
@@ -141,7 +141,7 @@ function useAttachmentFileUrl(
   fetchAttachmentUrl: CreateAttachmentNodeOptions['fetchAttachmentUrl']
 ): AttachmentUrlResult {
   const query = useQuery({
-    queryKey: ['attachment-file-url', attachmentId],
+    queryKey: ['attachment-url', attachmentId, 'file'],
     queryFn: () => fetchAttachmentUrl(attachmentId as string, 'file'),
     enabled: !!attachmentId,
     staleTime: ATTACHMENT_URL_STALE_TIME,

@@ -1,4 +1,4 @@
-/** Downloads a file from a URL and triggers a browser save dialog. */
+/** Downloads an attachment from a URL and triggers a browser save dialog. */
 export async function downloadBlobUrl(
   url: string,
   filename: string
@@ -10,7 +10,7 @@ export async function downloadBlobUrl(
   });
 
   if (!response.ok) {
-    throw new Error('Failed to download attachment file');
+    throw new Error('Failed to download attachment');
   }
 
   const blob = await response.blob();

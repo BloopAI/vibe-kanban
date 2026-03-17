@@ -36,7 +36,7 @@ export function useSessionAttachments(
           );
           uploadResults.push(response);
         } catch (error) {
-          console.error('Failed to upload file:', error);
+          console.error('Failed to upload attachment:', error);
         }
       }
 

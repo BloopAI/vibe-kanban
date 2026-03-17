@@ -39,9 +39,9 @@ export function useCreateAttachments(
     async (selectedFiles: File[]) => {
       const uploadResults: DraftWorkspaceAttachment[] = [];
 
-      for (const file of selectedFiles) {
+      for (const attachment of selectedFiles) {
         try {
-          const response = await attachmentsApi.upload(file);
+          const response = await attachmentsApi.upload(attachment);
           uploadResults.push({
             id: response.id,
             file_path: response.file_path,
@@ -50,7 +50,7 @@ export function useCreateAttachments(
             size_bytes: Number(response.size_bytes) as unknown as bigint,
           });
         } catch (error) {
-          console.error('Failed to upload file:', error);
+          console.error('Failed to upload attachment:', error);
         }
       }
 

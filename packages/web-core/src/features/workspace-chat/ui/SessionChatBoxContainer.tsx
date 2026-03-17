@@ -379,7 +379,7 @@ export function SessionChatBoxContainer(props: SessionChatBoxContainerProps) {
     localMessageRef.current = localMessage;
   }, [localMessage]);
 
-  // Attachment handling - insert markdown when files are uploaded
+  // Attachment handling - insert markdown when attachments are uploaded
   const handleInsertMarkdown = useCallback(
     (markdown: string) => {
       const currentMessage = localMessageRef.current;
