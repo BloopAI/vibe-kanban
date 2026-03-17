@@ -7,12 +7,22 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
 export type OAuthProvider = "github" | "google";
 
+export type AuthMethodsResponse = {
+  local_auth_enabled: boolean;
+  oauth_providers: string[];
+};
+
 type HandoffInitResponse = {
   handoff_id: string;
   authorize_url: string;
 };
 
 type HandoffRedeemResponse = {
+  access_token: string;
+  refresh_token: string;
+};
+
+type LocalLoginResponse = {
   access_token: string;
   refresh_token: string;
 };
@@ -57,6 +67,16 @@ export async function initOAuth(
   return res.json();
 }
 
+export async function getAuthMethods(): Promise<AuthMethodsResponse> {
+  const res = await fetch(`${API_BASE}/v1/auth/methods`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Auth methods lookup failed (${res.status})`);
+  }
+  return res.json();
+}
+
 export async function redeemOAuth(
   handoffId: string,
   appCode: string,
@@ -73,6 +93,21 @@ export async function redeemOAuth(
   });
   if (!res.ok) {
     throw new Error(`OAuth redeem failed (${res.status})`);
+  }
+  return res.json();
+}
+
+export async function localLogin(
+  email: string,
+  password: string,
+): Promise<LocalLoginResponse> {
+  const res = await fetch(`${API_BASE}/v1/auth/local/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) {
+    throw new Error(`Local login failed (${res.status})`);
   }
   return res.json();
 }

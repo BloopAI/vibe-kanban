@@ -73,7 +73,7 @@ impl Server {
             )?);
         }
 
-        if registry.is_empty() {
+        if registry.is_empty() && auth_config.local().is_none() {
             bail!("no OAuth providers configured");
         }
 

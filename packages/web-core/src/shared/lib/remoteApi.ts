@@ -27,9 +27,9 @@ let _remoteApiBase: string = BUILD_TIME_API_BASE;
  * No-op if base is null/undefined/empty (preserves build-time fallback).
  */
 export function setRemoteApiBase(base: string | null | undefined) {
-  if (base) {
-    _remoteApiBase = base;
-    syncRelayApiBaseWithRemote(base);
+  _remoteApiBase = base || BUILD_TIME_API_BASE;
+  if (_remoteApiBase) {
+    syncRelayApiBaseWithRemote(_remoteApiBase);
   }
 }
 

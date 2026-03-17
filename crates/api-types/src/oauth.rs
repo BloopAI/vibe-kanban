@@ -29,6 +29,24 @@ pub struct HandoffRedeemResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, TS)]
+pub struct LocalLoginRequest {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+pub struct LocalLoginResponse {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
+pub struct AuthMethodsResponse {
+    pub local_auth_enabled: bool,
+    pub oauth_providers: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, TS)]
 pub struct TokenRefreshRequest {
     pub refresh_token: String,
 }

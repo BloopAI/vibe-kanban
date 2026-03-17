@@ -92,7 +92,11 @@ pub struct AzureBlobConfig {
 impl AzureBlobConfig {
     pub fn from_env() -> Result<Option<Self>, ConfigError> {
         let account_name = match env::var("AZURE_STORAGE_ACCOUNT_NAME") {
-            Ok(v) => v,
+            Ok(v) if !v.trim().is_empty() => v,
+            Ok(_) => {
+                tracing::info!("AZURE_STORAGE_ACCOUNT_NAME is empty, Azure Blob storage disabled");
+                return Ok(None);
+            }
             Err(_) => {
                 tracing::info!("AZURE_STORAGE_ACCOUNT_NAME not set, Azure Blob storage disabled");
                 return Ok(None);
@@ -101,18 +105,27 @@ impl AzureBlobConfig {
 
         tracing::info!("AZURE_STORAGE_ACCOUNT_NAME is set, checking other Azure Blob env vars");
 
-        let account_key = env::var("AZURE_STORAGE_ACCOUNT_KEY")
-            .map_err(|_| ConfigError::MissingVar("AZURE_STORAGE_ACCOUNT_KEY"))?;
+        let account_key = match env::var("AZURE_STORAGE_ACCOUNT_KEY") {
+            Ok(v) if !v.trim().is_empty() => v,
+            Ok(_) | Err(_) => return Err(ConfigError::MissingVar("AZURE_STORAGE_ACCOUNT_KEY")),
+        };
 
         let container_name = env::var("AZURE_STORAGE_CONTAINER_NAME")
-            .unwrap_or_else(|_| "issue-attachments".to_string());
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| "issue-attachments".to_string());
 
-        let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL").ok();
-        let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL").ok();
+        let endpoint_url = env::var("AZURE_STORAGE_ENDPOINT_URL")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
+        let public_endpoint_url = env::var("AZURE_STORAGE_PUBLIC_ENDPOINT_URL")
+            .ok()
+            .filter(|value| !value.trim().is_empty());
 
         let auth_mode = match env::var("AZURE_MANAGED_IDENTITY_CLIENT_ID") {
-            Ok(client_id) => AzureAuthMode::EntraId { client_id },
+            Ok(client_id) if !client_id.trim().is_empty() => AzureAuthMode::EntraId { client_id },
             Err(_) => AzureAuthMode::SharedKey,
+            Ok(_) => AzureAuthMode::SharedKey,
         };
 
         let presign_expiry_secs = env::var("AZURE_BLOB_PRESIGN_EXPIRY_SECS")
@@ -315,9 +328,49 @@ impl OAuthProviderConfig {
 }
 
 #[derive(Debug, Clone)]
+pub struct LocalAuthConfig {
+    email: String,
+    password: SecretString,
+}
+
+impl LocalAuthConfig {
+    fn from_env() -> Result<Option<Self>, ConfigError> {
+        let email = env::var("SELF_HOST_LOCAL_AUTH_EMAIL")
+            .ok()
+            .filter(|v| !v.trim().is_empty());
+        let password = env::var("SELF_HOST_LOCAL_AUTH_PASSWORD")
+            .ok()
+            .filter(|v| !v.is_empty());
+
+        let (email, password) = match (email, password) {
+            (None, None) => return Ok(None),
+            (Some(email), Some(password)) => (email, password),
+            (None, Some(_)) => return Err(ConfigError::MissingVar("SELF_HOST_LOCAL_AUTH_EMAIL")),
+            (Some(_), None) => {
+                return Err(ConfigError::MissingVar("SELF_HOST_LOCAL_AUTH_PASSWORD"));
+            }
+        };
+
+        Ok(Some(Self {
+            email,
+            password: SecretString::new(password.into()),
+        }))
+    }
+
+    pub fn email(&self) -> &str {
+        &self.email
+    }
+
+    pub fn password(&self) -> &SecretString {
+        &self.password
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct AuthConfig {
     github: Option<OAuthProviderConfig>,
     google: Option<OAuthProviderConfig>,
+    local: Option<LocalAuthConfig>,
     jwt_secret: SecretString,
     public_base_url: String,
 }
@@ -353,7 +406,9 @@ impl AuthConfig {
             _ => None,
         };
 
-        if github.is_none() && google.is_none() {
+        let local = LocalAuthConfig::from_env()?;
+
+        if github.is_none() && google.is_none() && local.is_none() {
             return Err(ConfigError::NoOAuthProviders);
         }
 
@@ -363,6 +418,7 @@ impl AuthConfig {
         Ok(Self {
             github,
             google,
+            local,
             jwt_secret,
             public_base_url,
         })
@@ -374,6 +430,10 @@ impl AuthConfig {
 
     pub fn google(&self) -> Option<&OAuthProviderConfig> {
         self.google.as_ref()
+    }
+
+    pub fn local(&self) -> Option<&LocalAuthConfig> {
+        self.local.as_ref()
     }
 
     pub fn jwt_secret(&self) -> &SecretString {
