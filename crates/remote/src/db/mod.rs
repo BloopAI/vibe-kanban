@@ -48,16 +48,16 @@ pub struct TxContext {
 }
 
 tokio::task_local! {
-    pub static TX_CONTEXT: std::cell::RefCell<Option<TxContext>>;
+    pub static TX_CONTEXT: Option<TxContext>;
 }
 
-/// Begin a transaction and tag it with the current request's user/request ID.
+/// Begin a transaction and tag it with the current request's request ID.
 /// If no context is set (e.g. background jobs), the transaction is untagged.
 pub async fn begin_tx(pool: &PgPool) -> Result<Tx<'_>, sqlx::Error> {
     let mut tx = pool.begin().await?;
-    let ctx = TX_CONTEXT.try_with(|c| c.borrow().clone()).ok().flatten();
+    let ctx = TX_CONTEXT.try_with(|c| c.clone()).ok().flatten();
     if let Some(ctx) = ctx {
-        let name = format!("vibe-kanban-remote u:{} r:{}", ctx.user_id, ctx.request_id);
+        let name = format!("vk r:{}", ctx.request_id.replace('-', ""));
         sqlx::query("SELECT set_config('application_name', $1, true)")
             .bind(&name)
             .execute(&mut *tx)

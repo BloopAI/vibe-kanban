@@ -1,5 +1,3 @@
-use std::cell::RefCell;
-
 use api_types::User;
 use axum::{
     body::Body,
@@ -64,9 +62,7 @@ pub async fn require_session(
     };
 
     req.extensions_mut().insert(ctx);
-    db::TX_CONTEXT
-        .scope(RefCell::new(Some(tx_ctx)), next.run(req))
-        .await
+    db::TX_CONTEXT.scope(Some(tx_ctx), next.run(req)).await
 }
 
 pub async fn request_context_from_access_token(
