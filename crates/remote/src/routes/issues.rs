@@ -1,7 +1,7 @@
 use api_types::{
     CreateIssueRequest, DeleteResponse, Issue, ListIssuesQuery, ListIssuesResponse,
-    MutationResponse, SearchIssuesRequest, UpdateIssueRequest,
-    NotificationPayload, NotificationType,
+    MutationResponse, NotificationPayload, NotificationType, SearchIssuesRequest,
+    UpdateIssueRequest,
 };
 use axum::{
     Json,
