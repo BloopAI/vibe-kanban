@@ -143,7 +143,6 @@ impl IssueRepository {
             SELECT
                 i.id                  AS "id!: Uuid",
                 i.project_id          AS "project_id!: Uuid",
-                i.organization_id     AS "organization_id!: Uuid",
                 i.issue_number        AS "issue_number!",
                 i.simple_id           AS "simple_id!",
                 i.status_id           AS "status_id!: Uuid",
