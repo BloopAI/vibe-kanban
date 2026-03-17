@@ -7,7 +7,7 @@ use axum::{
     routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
-use db::models::file::{File, WorkspaceImage};
+use db::models::file::{File, WorkspaceAttachment};
 use deployment::Deployment;
 use serde::{Deserialize, Serialize};
 use services::services::file::FileError;
@@ -33,7 +33,7 @@ pub struct AttachmentResponse {
 
 impl AttachmentResponse {
     pub fn from_file(file: File) -> Self {
-        let markdown_path = format!("{}/{}", utils::path::VIBE_IMAGES_DIR, file.file_path);
+        let markdown_path = format!("{}/{}", utils::path::VIBE_ATTACHMENTS_DIR, file.file_path);
         Self {
             id: file.id,
             file_path: markdown_path,
@@ -83,7 +83,7 @@ pub(crate) async fn process_file_upload(
             let file = file_service.store_file(&data, &filename).await?;
 
             if let Some(workspace_id) = link_workspace_id {
-                WorkspaceImage::associate_many_dedup(
+                WorkspaceAttachment::associate_many_dedup(
                     &deployment.db().pool,
                     workspace_id,
                     std::slice::from_ref(&file.id),

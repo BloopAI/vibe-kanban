@@ -38,7 +38,7 @@ export function toLocalAttachmentMetadata(
 ): LocalAttachmentMetadata {
   return {
     path: attachment.file_path,
-    proxy_url: `/api/images/${attachment.id}/file`,
+    proxy_url: `/api/attachments/${attachment.id}/file`,
     file_name: attachment.original_name,
     size_bytes: Number(attachment.size_bytes),
     format: attachment.mime_type?.split('/')[1] ?? 'bin',

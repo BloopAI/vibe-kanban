@@ -115,9 +115,9 @@ type WysiwygProps = {
   onShiftCmdEnter?: () => void;
   /** Keyboard shortcut mode for sending messages */
   sendShortcut?: SendMessageShortcut;
-  /** Task attempt ID for resolving .vibe-images paths */
+  /** Task attempt ID for resolving .vibe-attachments paths */
   workspaceId?: string;
-  /** Session ID used for workspace-scoped APIs (images, slash command discovery) */
+  /** Session ID used for workspace-scoped APIs (attachments, slash command discovery) */
   sessionId?: string;
   /** Repo ID for slash commands when no workspace yet */
   repoId?: string;

@@ -7,7 +7,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
 pub struct File {
     pub id: Uuid,
-    pub file_path: String, // relative path within cache/images/
+    pub file_path: String, // relative path within cache/attachments/
     pub original_name: String,
     pub mime_type: Option<String>,
     pub size_bytes: i64,
@@ -30,7 +30,7 @@ impl File {
         let id = Uuid::new_v4();
         sqlx::query_as!(
             File,
-            r#"INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)
+            r#"INSERT INTO attachments (id, file_path, original_name, mime_type, size_bytes, hash)
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id as "id!: Uuid", 
                          file_path as "file_path!", 
@@ -62,7 +62,7 @@ impl File {
                       hash as "hash!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
+               FROM attachments
                WHERE hash = $1"#,
             hash
         )
@@ -81,7 +81,7 @@ impl File {
                       hash as "hash!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
+               FROM attachments
                WHERE id = $1"#,
             id
         )
@@ -103,7 +103,7 @@ impl File {
                       hash as "hash!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
+               FROM attachments
                WHERE file_path = $1"#,
             file_path
         )
@@ -125,10 +125,10 @@ impl File {
                       i.hash as "hash!",
                       i.created_at as "created_at!: DateTime<Utc>",
                       i.updated_at as "updated_at!: DateTime<Utc>"
-               FROM images i
-               JOIN workspace_images wi ON i.id = wi.image_id
-               WHERE wi.workspace_id = $1
-               ORDER BY wi.created_at"#,
+               FROM attachments i
+               JOIN workspace_attachments wa ON i.id = wa.attachment_id
+               WHERE wa.workspace_id = $1
+               ORDER BY wa.created_at"#,
             workspace_id
         )
         .fetch_all(pool)
@@ -136,7 +136,7 @@ impl File {
     }
 
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(r#"DELETE FROM images WHERE id = $1"#, id)
+        sqlx::query!(r#"DELETE FROM attachments WHERE id = $1"#, id)
             .execute(pool)
             .await?;
         Ok(())
@@ -153,9 +153,9 @@ impl File {
                       i.hash as "hash!",
                       i.created_at as "created_at!: DateTime<Utc>",
                       i.updated_at as "updated_at!: DateTime<Utc>"
-               FROM images i
-               LEFT JOIN workspace_images wi ON i.id = wi.image_id
-               WHERE wi.workspace_id IS NULL"#
+               FROM attachments i
+               LEFT JOIN workspace_attachments wa ON i.id = wa.attachment_id
+               WHERE wa.workspace_id IS NULL"#
         )
         .fetch_all(pool)
         .await
@@ -163,31 +163,31 @@ impl File {
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
-pub struct WorkspaceImage {
+pub struct WorkspaceAttachment {
     pub id: Uuid,
     pub workspace_id: Uuid,
-    pub image_id: Uuid,
+    pub attachment_id: Uuid,
     pub created_at: DateTime<Utc>,
 }
 
-impl WorkspaceImage {
-    /// Associate multiple files with a workspace, skipping duplicates.
+impl WorkspaceAttachment {
+    /// Associate multiple attachments with a workspace, skipping duplicates.
     pub async fn associate_many_dedup(
         pool: &SqlitePool,
         workspace_id: Uuid,
-        file_ids: &[Uuid],
+        attachment_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
-        for &image_id in file_ids {
+        for &attachment_id in attachment_ids {
             let id = Uuid::new_v4();
             sqlx::query!(
-                r#"INSERT INTO workspace_images (id, workspace_id, image_id)
+                r#"INSERT INTO workspace_attachments (id, workspace_id, attachment_id)
                    SELECT $1, $2, $3
                    WHERE NOT EXISTS (
-                       SELECT 1 FROM workspace_images WHERE workspace_id = $2 AND image_id = $3
+                       SELECT 1 FROM workspace_attachments WHERE workspace_id = $2 AND attachment_id = $3
                    )"#,
                 id,
                 workspace_id,
-                image_id
+                attachment_id
             )
             .execute(pool)
             .await?;

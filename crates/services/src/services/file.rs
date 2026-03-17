@@ -65,7 +65,7 @@ pub struct FileService {
 
 impl FileService {
     pub fn new(pool: SqlitePool) -> Result<Self, FileError> {
-        let cache_dir = utils::cache_dir().join("images");
+        let cache_dir = utils::cache_dir().join("attachments");
         fs::create_dir_all(&cache_dir)?;
         Ok(Self {
             cache_dir,
@@ -215,27 +215,27 @@ impl FileService {
             return Ok(());
         }
 
-        let images_dir = worktree_path.join(utils::path::VIBE_IMAGES_DIR);
+        let attachments_dir = worktree_path.join(utils::path::VIBE_ATTACHMENTS_DIR);
 
         // Fast path: check if all files exist before doing anything
         let all_exist = files
             .iter()
-            .all(|file| images_dir.join(&file.file_path).exists());
+            .all(|file| attachments_dir.join(&file.file_path).exists());
         if all_exist {
             return Ok(());
         }
 
-        std::fs::create_dir_all(&images_dir)?;
+        std::fs::create_dir_all(&attachments_dir)?;
 
         // Create .gitignore to ignore all files in this directory
-        let gitignore_path = images_dir.join(".gitignore");
+        let gitignore_path = attachments_dir.join(".gitignore");
         if !gitignore_path.exists() {
             std::fs::write(&gitignore_path, "*\n")?;
         }
 
         for file in files {
             let src = self.cache_dir.join(&file.file_path);
-            let dst = images_dir.join(&file.file_path);
+            let dst = attachments_dir.join(&file.file_path);
 
             if dst.exists() {
                 continue;

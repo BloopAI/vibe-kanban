@@ -1010,7 +1010,7 @@ export const attachmentsApi = {
     const formData = new FormData();
     formData.append('image', attachment);
 
-    const response = await makeLocalApiRequest('/api/images/upload', {
+    const response = await makeLocalApiRequest('/api/attachments/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1036,7 +1036,7 @@ export const attachmentsApi = {
     formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
-      `/api/images/task/${taskId}/upload`,
+      `/api/attachments/task/${taskId}/upload`,
       {
         method: 'POST',
         body: formData,
@@ -1065,7 +1065,7 @@ export const attachmentsApi = {
     formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
-      `/api/workspaces/${workspaceId}/images/upload?session_id=${sessionId}`,
+      `/api/workspaces/${workspaceId}/attachments/upload?session_id=${sessionId}`,
       {
         method: 'POST',
         body: formData,
@@ -1086,19 +1086,19 @@ export const attachmentsApi = {
   },
 
   delete: async (attachmentId: string): Promise<void> => {
-    const response = await makeRequest(`/api/images/${attachmentId}`, {
+    const response = await makeRequest(`/api/attachments/${attachmentId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
   },
 
   getTaskAttachments: async (taskId: string): Promise<AttachmentResponse[]> => {
-    const response = await makeRequest(`/api/images/task/${taskId}`);
+    const response = await makeRequest(`/api/attachments/task/${taskId}`);
     return handleApiResponse<AttachmentResponse[]>(response);
   },
 
   getAttachmentUrl: (attachmentId: string): string => {
-    return `/api/images/${attachmentId}/file`;
+    return `/api/attachments/${attachmentId}/file`;
   },
 };
 

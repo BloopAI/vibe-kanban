@@ -33,7 +33,7 @@ use crate::{
 
 #[derive(Debug, Deserialize)]
 pub struct AttachmentMetadataQuery {
-    /// Path relative to worktree root, e.g., ".vibe-images/screenshot.png"
+    /// Path relative to worktree root, e.g., ".vibe-attachments/screenshot.png"
     pub path: String,
     pub session_id: Uuid,
 }
@@ -45,7 +45,6 @@ pub struct SessionScopedQuery {
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct AssociateWorkspaceAttachmentsRequest {
-    #[serde(alias = "file_ids")]
     pub attachment_ids: Vec<Uuid>,
 }
 
@@ -105,7 +104,7 @@ pub async fn associate_workspace_attachments(
         .load_managed_workspace(workspace)
         .await?;
     managed_workspace
-        .associate_files(&payload.attachment_ids)
+        .associate_attachments(&payload.attachment_ids)
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(())))
@@ -128,7 +127,9 @@ pub async fn import_issue_attachments(
         .workspace_manager()
         .load_managed_workspace(workspace)
         .await?;
-    managed_workspace.associate_files(&attachment_ids).await?;
+    managed_workspace
+        .associate_attachments(&attachment_ids)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(
         ImportIssueAttachmentsResponse { attachment_ids },
@@ -140,8 +141,8 @@ pub async fn get_attachment_metadata(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<AttachmentMetadataQuery>,
 ) -> Result<ResponseJson<ApiResponse<AttachmentMetadata>>, ApiError> {
-    let vibe_images_prefix = format!("{}/", utils::path::VIBE_IMAGES_DIR);
-    if !query.path.starts_with(&vibe_images_prefix) {
+    let vibe_attachments_prefix = format!("{}/", utils::path::VIBE_ATTACHMENTS_DIR);
+    if !query.path.starts_with(&vibe_attachments_prefix) {
         return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
             exists: false,
             file_name: None,
@@ -164,6 +165,11 @@ pub async fn get_attachment_metadata(
     }
 
     let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
+    let file_path = query
+        .path
+        .strip_prefix(&vibe_attachments_prefix)
+        .unwrap_or("");
+    ensure_workspace_attachment_exists(&deployment, &base_path, file_path).await?;
     let full_path = base_path.join(&query.path);
 
     let metadata = match tokio::fs::metadata(&full_path).await {
@@ -188,9 +194,8 @@ pub async fn get_attachment_metadata(
         .extension()
         .map(|ext| ext.to_string_lossy().to_lowercase());
 
-    let file_path = query.path.strip_prefix(&vibe_images_prefix).unwrap_or("");
     let proxy_url = format!(
-        "/api/workspaces/{}/images/file/{}?session_id={}",
+        "/api/workspaces/{}/attachments/file/{}?session_id={}",
         workspace.id, file_path, query.session_id
     );
 
@@ -214,18 +219,19 @@ pub async fn serve_file(
         return Err(ApiError::File(FileError::NotFound));
     }
     let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
-    let vibe_images_dir = base_path.join(utils::path::VIBE_IMAGES_DIR);
-    let full_path = vibe_images_dir.join(&path);
+    ensure_workspace_attachment_exists(&deployment, &base_path, &path).await?;
+    let vibe_attachments_dir = base_path.join(utils::path::VIBE_ATTACHMENTS_DIR);
+    let full_path = vibe_attachments_dir.join(&path);
 
     let canonical_path = tokio::fs::canonicalize(&full_path)
         .await
         .map_err(|_| ApiError::File(FileError::NotFound))?;
 
-    let canonical_vibe_images = tokio::fs::canonicalize(&vibe_images_dir)
+    let canonical_vibe_attachments = tokio::fs::canonicalize(&vibe_attachments_dir)
         .await
         .map_err(|_| ApiError::File(FileError::NotFound))?;
 
-    if !canonical_path.starts_with(&canonical_vibe_images) {
+    if !canonical_path.starts_with(&canonical_vibe_attachments) {
         return Err(ApiError::File(FileError::NotFound));
     }
 
@@ -254,6 +260,29 @@ pub async fn serve_file(
         .map_err(|e| ApiError::File(FileError::ResponseBuildError(e.to_string())))?;
 
     Ok(response)
+}
+
+async fn ensure_workspace_attachment_exists(
+    deployment: &DeploymentImpl,
+    base_path: &Path,
+    file_path: &str,
+) -> Result<(), ApiError> {
+    let attachment_dir = base_path.join(utils::path::VIBE_ATTACHMENTS_DIR);
+    let full_path = attachment_dir.join(file_path);
+    if full_path.exists() {
+        return Ok(());
+    }
+
+    let Some(file) = File::find_by_file_path(&deployment.db().pool, file_path).await? else {
+        return Err(ApiError::File(FileError::NotFound));
+    };
+
+    deployment
+        .file()
+        .copy_files_by_ids_to_worktree(base_path, &[file.id])
+        .await?;
+
+    Ok(())
 }
 
 async fn resolve_session_base_path(

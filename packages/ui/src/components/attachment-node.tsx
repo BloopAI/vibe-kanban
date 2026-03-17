@@ -101,7 +101,7 @@ function useAttachmentMetadata(
   src: string,
   localAttachments: LocalAttachmentMetadata[]
 ) {
-  const isWorkspaceAttachment = src.startsWith('.vibe-images/');
+  const isWorkspaceAttachment = src.startsWith('.vibe-attachments/');
 
   const localAttachment = useMemo(
     () => localAttachments.find((attachment) => attachment.path === src),
@@ -122,7 +122,7 @@ function useAttachmentMetadata(
       if (!workspaceId || !sessionId) return null;
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
+        `/api/workspaces/${workspaceId}/attachments/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
       );
       const payload = await response.json();
       return payload.data as AttachmentMetadataLike | null;
@@ -169,7 +169,7 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
     const localAttachments = useLocalAttachments();
     const [editor] = useLexicalComposerContext();
 
-    const isWorkspaceAttachment = src.startsWith('.vibe-images/');
+    const isWorkspaceAttachment = src.startsWith('.vibe-attachments/');
     const isPendingAttachment = src.startsWith('pending-attachment://');
     const isAttachment = isPendingAttachment || src.startsWith('attachment://');
     const attachmentId =
@@ -317,7 +317,7 @@ export function createAttachmentNode(options: CreateAttachmentNodeOptions) {
     serialization: {
       format: 'inline',
       pattern:
-        /(?<!!)\[([^\]]+)\]\((attachment:\/\/[^)]+|pending-attachment:\/\/[^)]+|\.vibe-images\/[^)]+)\)/,
+        /(?<!!)\[([^\]]+)\]\((attachment:\/\/[^)]+|pending-attachment:\/\/[^)]+|\.vibe-attachments\/[^)]+)\)/,
       trigger: ')',
       serialize: (data) => `[${data.label}](${data.src})`,
       deserialize: (match) => ({ src: match[2], label: match[1] }),

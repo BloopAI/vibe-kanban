@@ -176,7 +176,7 @@ pub struct DraftWorkspaceData {
     pub executor_config: Option<ExecutorConfig>,
     #[serde(default)]
     pub linked_issue: Option<DraftWorkspaceLinkedIssue>,
-    #[serde(default, alias = "images", alias = "files")]
+    #[serde(default)]
     pub attachments: Vec<DraftWorkspaceAttachment>,
 }
 

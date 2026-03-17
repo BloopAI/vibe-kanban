@@ -52,7 +52,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .nest("/remote", remote::router())
-        .nest("/images", attachments::routes())
+        .nest("/attachments", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(
             deployment.clone(),
             middleware::sign_relay_response,

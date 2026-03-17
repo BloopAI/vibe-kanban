@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)\n               VALUES ($1, $2, $3, $4, $5, $6)\n               RETURNING id as \"id!: Uuid\", \n                         file_path as \"file_path!\", \n                         original_name as \"original_name!\", \n                         mime_type,\n                         size_bytes as \"size_bytes!\",\n                         hash as \"hash!\",\n                         created_at as \"created_at!: DateTime<Utc>\", \n                         updated_at as \"updated_at!: DateTime<Utc>\"",
+  "query": "SELECT i.id as \"id!: Uuid\",\n                      i.file_path as \"file_path!\",\n                      i.original_name as \"original_name!\",\n                      i.mime_type,\n                      i.size_bytes as \"size_bytes!\",\n                      i.hash as \"hash!\",\n                      i.created_at as \"created_at!: DateTime<Utc>\",\n                      i.updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM attachments i\n               LEFT JOIN workspace_attachments wa ON i.id = wa.attachment_id\n               WHERE wa.workspace_id IS NULL",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       }
     ],
     "parameters": {
-      "Right": 6
+      "Right": 0
     },
     "nullable": [
       true,
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "943c19a516ecc2060133457fc8104ad612dfb872f616cd47bb900646b7f5af37"
+  "hash": "df2f35912a8055dff6cb24c83ea67fc49b432f457961fa584c6a13389bfdcea5"
 }

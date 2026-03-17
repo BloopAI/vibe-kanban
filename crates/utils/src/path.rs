@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
-/// Directory name for storing images in worktrees
-pub const VIBE_IMAGES_DIR: &str = ".vibe-images";
+/// Directory name for storing attachments in worktrees
+pub const VIBE_ATTACHMENTS_DIR: &str = ".vibe-attachments";
 
 /// Directories that should always be skipped regardless of gitignore.
 /// .git is not in .gitignore but should never be watched.

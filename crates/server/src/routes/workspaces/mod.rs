@@ -54,7 +54,7 @@ pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
             post(workspace_summary::get_workspace_summaries),
         )
         .nest("/{id}", workspace_id_router)
-        .nest("/{id}/images", attachments::router(deployment))
+        .nest("/{id}/attachments", attachments::router(deployment))
         .nest("/{id}/links", links::router(deployment));
 
     Router::new().nest("/workspaces", workspaces_router)

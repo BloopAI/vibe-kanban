@@ -90,7 +90,7 @@ fn build_workspace_attachment_markdown(
     label: &str,
     uses_image_markdown: bool,
 ) -> String {
-    let path = format!(".vibe-images/{}", file.file.file_path);
+    let path = format!(".vibe-attachments/{}", file.file.file_path);
     let normalized_label = if label.trim().is_empty() {
         file.file.original_name.as_str()
     } else {
@@ -247,7 +247,7 @@ pub async fn create_and_start_workspace(
     }
 
     if let Some(ids) = &attachment_ids {
-        managed_workspace.associate_files(ids).await?;
+        managed_workspace.associate_attachments(ids).await?;
     }
 
     if let Some(linked_issue) = &linked_issue
@@ -266,7 +266,7 @@ pub async fn create_and_start_workspace(
                     .map(|imported| imported.file.id)
                     .collect::<Vec<_>>();
 
-                if let Err(e) = managed_workspace.associate_files(&imported_ids).await {
+                if let Err(e) = managed_workspace.associate_attachments(&imported_ids).await {
                     tracing::warn!("Failed to associate imported files with workspace: {}", e);
                 }
 
@@ -361,7 +361,10 @@ mod tests {
 
         let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
 
-        assert_eq!(rewritten, "[proposal.pdf](.vibe-images/abc_proposal.pdf)");
+        assert_eq!(
+            rewritten,
+            "[proposal.pdf](.vibe-attachments/abc_proposal.pdf)"
+        );
     }
 
     #[test]
@@ -377,7 +380,10 @@ mod tests {
 
         let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
 
-        assert_eq!(rewritten, "![diagram.png](.vibe-images/xyz_diagram.png)");
+        assert_eq!(
+            rewritten,
+            "![diagram.png](.vibe-attachments/xyz_diagram.png)"
+        );
     }
 
     #[test]
@@ -393,7 +399,10 @@ mod tests {
 
         let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
 
-        assert_eq!(rewritten, "[diagram.png](.vibe-images/xyz_diagram.png)");
+        assert_eq!(
+            rewritten,
+            "[diagram.png](.vibe-attachments/xyz_diagram.png)"
+        );
     }
 
     #[test]
@@ -409,7 +418,10 @@ mod tests {
 
         let rewritten = rewrite_imported_issue_attachments_markdown(&prompt, &imported);
 
-        assert_eq!(rewritten, "![proposal.pdf](.vibe-images/abc_proposal.pdf)");
+        assert_eq!(
+            rewritten,
+            "![proposal.pdf](.vibe-attachments/abc_proposal.pdf)"
+        );
     }
 
     #[test]
@@ -454,7 +466,7 @@ mod tests {
 
         assert_eq!(
             rewritten,
-            "See [doc.pdf](.vibe-images/doc_file.pdf) and ![shot.png](.vibe-images/shot_file.png). https://example.com"
+            "See [doc.pdf](.vibe-attachments/doc_file.pdf) and ![shot.png](.vibe-attachments/shot_file.png). https://example.com"
         );
     }
 }

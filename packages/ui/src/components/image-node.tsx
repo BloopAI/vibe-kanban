@@ -132,7 +132,7 @@ function useImageMetadata(
   src: string,
   localAttachments: LocalAttachmentMetadata[]
 ) {
-  const isVibeImage = src.startsWith('.vibe-images/');
+  const isVibeImage = src.startsWith('.vibe-attachments/');
 
   const localImage = useMemo(
     () => localAttachments.find((attachment) => attachment.path === src),
@@ -152,7 +152,7 @@ function useImageMetadata(
       if (!workspaceId || !sessionId) return null;
 
       const response = await fetch(
-        `/api/workspaces/${workspaceId}/images/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
+        `/api/workspaces/${workspaceId}/attachments/metadata?path=${encodeURIComponent(src)}&session_id=${sessionId}`
       );
       const payload = await response.json();
       return payload.data as ImageMetadataLike | null;
@@ -202,7 +202,7 @@ export function createImageNode(options: CreateImageNodeOptions) {
     const localAttachments = useLocalAttachments();
     const [editor] = useLexicalComposerContext();
 
-    const isVibeImage = src.startsWith('.vibe-images/');
+    const isVibeImage = src.startsWith('.vibe-attachments/');
     const isPendingAttachment = src.startsWith('pending-attachment://');
     const isAttachment = isPendingAttachment || src.startsWith('attachment://');
     const attachmentId =
