@@ -1,7 +1,10 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
+use std::{
+    sync::{Arc, Mutex},
+    time::Duration,
+};
 
 use async_trait::async_trait;
 use services::services::notification::{PushNotifier, set_global_push_notifier};
@@ -11,10 +14,13 @@ use tauri::{Emitter, Listener};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
+use tokio::time::sleep;
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
 use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
 use uuid::Uuid;
+
+const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
 /// Native push notifier using Tauri's notification plugin.
 /// Emits a `navigate-to-workspace` event so the frontend can navigate to the
@@ -153,17 +159,18 @@ fn main() {
                     }
                 });
 
-                // Check for updates in the background. We only *download*
-                // the update here — installing it (which replaces the app
-                // bundle on disk) is deferred until the user exits or
-                // triggers a restart.  Installing while the app is running
-                // causes a code-signature mismatch on macOS, which makes
-                // NSOpenPanel (and other XPC services) return NULL and
-                // crash the app.  See tauri-apps/tauri#13047.
+                // Check for updates in the background on startup and then
+                // periodically. We only *download* the update here —
+                // installing it (which replaces the app bundle on disk) is
+                // deferred until the user exits or triggers a restart.
+                // Installing while the app is running causes a code-signature
+                // mismatch on macOS, which makes NSOpenPanel (and other XPC
+                // services) return NULL and crash the app.
+                // See tauri-apps/tauri#13047.
                 let update_handle = app.handle().clone();
                 let pending_for_download = pending_for_setup.clone();
                 tauri::async_runtime::spawn(async move {
-                    check_for_updates(update_handle, pending_for_download).await;
+                    run_periodic_update_checks(update_handle, pending_for_download).await;
                 });
 
                 // Listen for restart request from frontend (after update downloaded).
@@ -309,6 +316,18 @@ async fn install_pending_update(app: &tauri::AppHandle, pending: &Mutex<Option<V
 }
 
 async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Option<Vec<u8>>>>) {
+    let has_pending_update = match pending_update.lock() {
+        Ok(guard) => guard.is_some(),
+        Err(poisoned) => {
+            tracing::warn!("Pending update state lock poisoned; skipping check");
+            poisoned.into_inner().is_some()
+        }
+    };
+    if has_pending_update {
+        tracing::info!("Update already downloaded; skipping update check");
+        return;
+    }
+
     let updater = match app.updater() {
         Ok(updater) => updater,
         Err(e) => {
@@ -359,5 +378,17 @@ async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Opti
         Err(e) => {
             tracing::warn!("Failed to check for updates: {}", e);
         }
+    }
+}
+
+async fn run_periodic_update_checks(
+    app: tauri::AppHandle,
+    pending_update: Arc<Mutex<Option<Vec<u8>>>>,
+) {
+    check_for_updates(app.clone(), pending_update.clone()).await;
+
+    loop {
+        sleep(UPDATE_CHECK_INTERVAL).await;
+        check_for_updates(app.clone(), pending_update.clone()).await;
     }
 }
