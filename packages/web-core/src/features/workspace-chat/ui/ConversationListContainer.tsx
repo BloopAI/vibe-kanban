@@ -53,6 +53,22 @@ function logConversationAnchorDebug(
   console.log(`[conversation-anchor] ${event}`, payload);
 }
 
+function logConversationTimelineDebug(
+  event: string,
+  payload: Record<string, unknown>
+) {
+  console.log(`[conversation-timeline] ${event}`, payload);
+}
+
+function summarizeRowKeys(rows: ConversationRow[], count = 5) {
+  if (rows.length === 0) return [];
+
+  return rows.slice(Math.max(0, rows.length - count)).map((row) => ({
+    semanticKey: row.semanticKey,
+    rowFamily: row.rowFamily,
+  }));
+}
+
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
   repos?: RepoWithTargetBranch[];
@@ -67,6 +83,7 @@ export interface ConversationListHandle {
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
+const STREAMING_UNVIRTUALIZED_BUFFER_ROWS = 24;
 
 function renderRowContent(
   entry: DisplayEntry,
@@ -379,6 +396,17 @@ export const ConversationList = forwardRef<
       prevRowsRef.current
     );
 
+    logConversationTimelineDebug('flush-pending-update', {
+      addType: pending.addType,
+      isInitialLoad: pending.isInitialLoad,
+      loading: pending.loading,
+      derivedEntryCount: derivedEntries.entries.length,
+      displayEntryCount: derivedTimeline.displayEntries.length,
+      rowCount: derivedTimeline.rows.length,
+      hasRunningProcess: derivedEntries.hasRunningProcess,
+      tailRows: summarizeRowKeys(derivedTimeline.rows),
+    });
+
     prevEntriesRef.current = derivedTimeline.displayEntries;
     prevRowsRef.current = derivedTimeline.rows;
 
@@ -398,6 +426,15 @@ export const ConversationList = forwardRef<
     addType: AddEntryType,
     newLoading: boolean
   ) => {
+    logConversationTimelineDebug('timeline-updated', {
+      addType,
+      newLoading,
+      liveExecutionProcessCount: source.liveExecutionProcesses.length,
+      executionProcessStateCount: Object.keys(source.executionProcessState)
+        .length,
+      pendingUpdateScheduled: rafIdRef.current !== null,
+    });
+
     pendingUpdateRef.current = {
       source,
       addType,
@@ -469,7 +506,11 @@ export const ConversationList = forwardRef<
   }, [candidateFirstUnvirtualizedRowIndex, hasActiveStreamingTurn]);
 
   const firstUnvirtualizedRowIndex = hasActiveStreamingTurn
-    ? streamingFirstUnvirtualizedRowIndex
+    ? Math.max(
+        0,
+        streamingFirstUnvirtualizedRowIndex -
+          STREAMING_UNVIRTUALIZED_BUFFER_ROWS
+      )
     : candidateFirstUnvirtualizedRowIndex;
 
   const virtualizedRows = useMemo(
@@ -482,6 +523,27 @@ export const ConversationList = forwardRef<
     [conversationRows, firstUnvirtualizedRowIndex]
   );
 
+  useEffect(() => {
+    logConversationTimelineDebug('row-partition', {
+      rowCount: conversationRows.length,
+      hasActiveStreamingTurn,
+      candidateFirstUnvirtualizedRowIndex,
+      streamingFirstUnvirtualizedRowIndex,
+      firstUnvirtualizedRowIndex,
+      virtualizedCount: virtualizedRows.length,
+      unvirtualizedCount: unvirtualizedTailRows.length,
+      virtualizedTail: summarizeRowKeys(virtualizedRows),
+      unvirtualizedTail: summarizeRowKeys(unvirtualizedTailRows),
+    });
+  }, [
+    candidateFirstUnvirtualizedRowIndex,
+    conversationRows,
+    firstUnvirtualizedRowIndex,
+    hasActiveStreamingTurn,
+    unvirtualizedTailRows,
+    virtualizedRows,
+  ]);
+
   const conversationVirtualizer = useConversationVirtualizer({
     rows: virtualizedRows,
     scrollContainerRef: tanstackScrollRef,
@@ -489,9 +551,79 @@ export const ConversationList = forwardRef<
     shouldSuppressSizeAdjustment: shouldSuppressInteractionDrivenSizeAdjustment,
   });
 
+  // NOTE: Do NOT call conversationVirtualizer.virtualizer.measure() when
+  // firstUnvirtualizedRowIndex changes. measure() wipes ALL cached item sizes,
+  // triggering a massive re-measurement storm and multi-second jitter.
+  // TanStack Virtual handles count changes automatically via getItemKey.
+
   useLayoutEffect(() => {
-    conversationVirtualizer.virtualizer.measure();
-  }, [conversationVirtualizer.virtualizer, firstUnvirtualizedRowIndex]);
+    const scrollElement = tanstackScrollRef.current;
+    if (!scrollElement) return;
+
+    const rowNodes = Array.from(
+      scrollElement.querySelectorAll<HTMLElement>('[data-row-index]')
+    );
+    const seenRowIndices = new Map<string, HTMLElement[]>();
+
+    for (const node of rowNodes) {
+      const rowIndex = node.dataset.rowIndex;
+      if (!rowIndex) continue;
+
+      const existingNodes = seenRowIndices.get(rowIndex) ?? [];
+      existingNodes.push(node);
+      seenRowIndices.set(rowIndex, existingNodes);
+    }
+
+    const duplicateRowIndices = Array.from(seenRowIndices.entries())
+      .filter(([, nodes]) => nodes.length > 1)
+      .map(([rowIndex, nodes]) => ({
+        rowIndex,
+        semanticKeys: nodes.map((node) => node.dataset.semanticKey ?? null),
+      }));
+
+    const sortedNodes = rowNodes
+      .map((node) => ({
+        node,
+        rowIndex: Number(node.dataset.rowIndex ?? -1),
+        semanticKey: node.dataset.semanticKey ?? null,
+        rect: node.getBoundingClientRect(),
+      }))
+      .filter((item) => Number.isFinite(item.rowIndex))
+      .sort((a, b) => a.rowIndex - b.rowIndex);
+
+    const overlaps: Array<Record<string, unknown>> = [];
+    for (let index = 1; index < sortedNodes.length; index += 1) {
+      const previous = sortedNodes[index - 1];
+      const current = sortedNodes[index];
+      if (previous.rect.bottom > current.rect.top + 1) {
+        overlaps.push({
+          previousRowIndex: previous.rowIndex,
+          previousKey: previous.semanticKey,
+          previousBottom: previous.rect.bottom,
+          currentRowIndex: current.rowIndex,
+          currentKey: current.semanticKey,
+          currentTop: current.rect.top,
+          overlapPx: previous.rect.bottom - current.rect.top,
+        });
+      }
+    }
+
+    if (duplicateRowIndices.length > 0 || overlaps.length > 0) {
+      logConversationTimelineDebug('dom-layout-anomaly', {
+        duplicateRowIndices,
+        overlaps,
+        renderedRowCount: rowNodes.length,
+        scrollTop: scrollElement.scrollTop,
+        scrollHeight: scrollElement.scrollHeight,
+        clientHeight: scrollElement.clientHeight,
+      });
+    }
+  }, [
+    conversationRows,
+    firstUnvirtualizedRowIndex,
+    virtualizedRows,
+    unvirtualizedTailRows,
+  ]);
 
   const scrollToAbsoluteIndex = useCallback(
     (
@@ -562,6 +694,8 @@ export const ConversationList = forwardRef<
 
   // Expose scroll functionality via ref — delegates to TanStack Virtual
   const scrollToPreviousUserMessage = useCallback(() => {
+    conversationVirtualizer.releaseBottomLock();
+
     const scrollEl = tanstackScrollRef.current;
     if (!scrollEl || conversationRows.length === 0) return;
 
@@ -693,6 +827,7 @@ export const ConversationList = forwardRef<
                     key={row.semanticKey}
                     data-index={virtualItem.index}
                     data-row-index={virtualItem.index}
+                    data-semantic-key={row.semanticKey}
                     ref={measureElement}
                     style={{
                       position: 'absolute',
@@ -712,7 +847,11 @@ export const ConversationList = forwardRef<
           {unvirtualizedTailRows.map((row, tailIndex) => {
             const rowIndex = firstUnvirtualizedRowIndex + tailIndex;
             return (
-              <div key={row.semanticKey} data-row-index={rowIndex}>
+              <div
+                key={row.semanticKey}
+                data-row-index={rowIndex}
+                data-semantic-key={row.semanticKey}
+              >
                 {renderRowContent(row.entry, attempt, resetAction, repos)}
               </div>
             );

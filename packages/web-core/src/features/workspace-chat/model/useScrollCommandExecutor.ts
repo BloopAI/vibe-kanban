@@ -38,6 +38,13 @@ import {
   updateIsAtBottom,
 } from './conversation-scroll-commands';
 
+function logConversationScrollIntent(
+  event: string,
+  payload: Record<string, unknown>
+) {
+  console.log(`[conversation-scroll-intent] ${event}`, payload);
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -113,6 +120,13 @@ export function useScrollCommandExecutor({
   // Keep isAtBottom in sync with the virtualizer's reactive value
   const prevIsAtBottom = useRef(isAtBottom);
   if (isAtBottom !== prevIsAtBottom.current) {
+    logConversationScrollIntent('at-bottom-updated', {
+      previousIsAtBottom: prevIsAtBottom.current,
+      nextIsAtBottom: isAtBottom,
+      pendingIntentType: stateRef.current.pendingIntent?.type ?? null,
+      lastAppliedIntentType: stateRef.current.lastAppliedIntent?.type ?? null,
+    });
+
     prevIsAtBottom.current = isAtBottom;
     stateRef.current = updateIsAtBottom(stateRef.current, isAtBottom);
   }
@@ -130,6 +144,12 @@ export function useScrollCommandExecutor({
         isInitialLoad,
         stateRef.current.isAtBottom
       );
+      logConversationScrollIntent('resolved', {
+        addType,
+        isInitialLoad,
+        isAtBottom: stateRef.current.isAtBottom,
+        intentType: intent.type,
+      });
       stateRef.current = setPendingIntent(stateRef.current, intent);
     },
     []
@@ -201,6 +221,17 @@ export function useScrollCommandExecutor({
       return;
     }
 
+    logConversationScrollIntent('executing', {
+      intentType: intent.type,
+      itemCount,
+      dataVersion,
+      previousDataVersion: prevDataVersionRef.current,
+      isImperativeIntent,
+      virtualizedCount: virtualizer.options.count,
+      scrollOffset: virtualizer.scrollOffset ?? null,
+      totalSize: virtualizer.getTotalSize(),
+    });
+
     executeIntent(
       virtualizer,
       intent,
@@ -266,7 +297,6 @@ function executeIntent(
 
   switch (intent.type) {
     case 'initial-bottom': {
-      virtualizer.measure();
       scrollToBottom('auto');
       break;
     }
@@ -277,6 +307,12 @@ function executeIntent(
     }
 
     case 'preserve-anchor': {
+      logConversationScrollIntent('preserve-anchor-noop', {
+        itemCount,
+        virtualizedCount,
+        scrollOffset: virtualizer.scrollOffset ?? null,
+        totalSize: virtualizer.getTotalSize(),
+      });
       break;
     }
 
