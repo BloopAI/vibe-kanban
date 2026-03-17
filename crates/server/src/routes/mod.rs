@@ -69,6 +69,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
+        .layer(axum::middleware::from_fn(middleware::log_server_errors))
         .with_state(deployment);
 
     Router::new()
