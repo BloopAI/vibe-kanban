@@ -24,18 +24,15 @@ export function BulkActionBarContainer({
 
   const handleChangeStatus = useCallback(async () => {
     await openStatusSelection(projectId, issueIds);
-    clearSelection();
-  }, [projectId, issueIds, openStatusSelection, clearSelection]);
+  }, [projectId, issueIds, openStatusSelection]);
 
   const handleChangePriority = useCallback(async () => {
     await openPrioritySelection(projectId, issueIds);
-    clearSelection();
-  }, [projectId, issueIds, openPrioritySelection, clearSelection]);
+  }, [projectId, issueIds, openPrioritySelection]);
 
   const handleChangeAssignees = useCallback(async () => {
     await openAssigneeSelection(projectId, issueIds);
-    clearSelection();
-  }, [projectId, issueIds, openAssigneeSelection, clearSelection]);
+  }, [projectId, issueIds, openAssigneeSelection]);
 
   const handleDelete = useCallback(async () => {
     await executeAction(Actions.DeleteIssue, undefined, projectId, issueIds);
