@@ -180,48 +180,68 @@ export const SIZE_ESTIMATE_PX: Record<SizeEstimationHint, number> = {
 };
 
 // ---------------------------------------------------------------------------
-// Width-Aware Size Estimation
+// Width-Aware Content-Based Size Estimation
 // ---------------------------------------------------------------------------
 
-/**
- * Text-heavy row families that grow when the container becomes narrow.
- */
-const TEXT_HEAVY_FAMILIES = new Set<RowFamily>([
+const TEXT_CONTENT_FAMILIES = new Set<RowFamily>([
   'user_message',
   'assistant_message',
   'thinking',
 ]);
 
-/**
- * Width threshold below which text-heavy rows get a height bump because
- * text wraps more aggressively in narrow containers.
- */
-const NARROW_WIDTH_PX = 600;
+const AVG_CHAR_WIDTH_PX = 7.2; // avg proportional font char width
+const LINE_HEIGHT_PX = 22;
+const MESSAGE_CHROME_PX = 64; // avatar + timestamp + margins
+const MESSAGE_HORIZONTAL_PADDING_PX = 100; // avatar + padding + scrollbar
+const MIN_TEXT_ESTIMATE_PX = 60;
+const MAX_TEXT_ESTIMATE_PX = 12_000;
 
-/**
- * Multiplier applied to text-heavy row estimates when the container is
- * narrower than `NARROW_WIDTH_PX`. Conservative — real measurement
- * corrects quickly, but this reduces initial scroll position jank.
- */
-const NARROW_WIDTH_MULTIPLIER = 1.3;
+function estimateTextRowHeight(
+  textLength: number,
+  containerWidthPx: number,
+  fallback: number
+): number {
+  if (textLength <= 0 || containerWidthPx <= 0) return fallback;
 
-/**
- * Estimate row height before the DOM is measured.
- */
+  const textAreaWidth = Math.max(
+    100,
+    containerWidthPx - MESSAGE_HORIZONTAL_PADDING_PX
+  );
+  const charsPerLine = Math.max(
+    20,
+    Math.floor(textAreaWidth / AVG_CHAR_WIDTH_PX)
+  );
+  const lineCount = Math.max(1, Math.ceil(textLength / charsPerLine));
+  const estimated = MESSAGE_CHROME_PX + lineCount * LINE_HEIGHT_PX;
+
+  return Math.min(
+    Math.max(estimated, MIN_TEXT_ESTIMATE_PX),
+    MAX_TEXT_ESTIMATE_PX
+  );
+}
+
+function getEntryTextLength(
+  entry: import('@/shared/hooks/useConversationHistory/types').DisplayEntry
+): number {
+  if (entry.type !== 'NORMALIZED_ENTRY') return 0;
+  return entry.content.content?.length ?? 0;
+}
+
 export function estimateSizeForRow(
   row: ConversationRow,
   containerWidthPx?: number | null
 ): number {
   const base = SIZE_ESTIMATE_PX[row.estimationHint];
 
-  // Apply width-aware adjustment for text-heavy families in narrow containers
   if (
     containerWidthPx != null &&
     containerWidthPx > 0 &&
-    containerWidthPx < NARROW_WIDTH_PX &&
-    TEXT_HEAVY_FAMILIES.has(row.rowFamily)
+    TEXT_CONTENT_FAMILIES.has(row.rowFamily)
   ) {
-    return Math.round(base * NARROW_WIDTH_MULTIPLIER);
+    const textLength = getEntryTextLength(row.entry);
+    if (textLength > 0) {
+      return estimateTextRowHeight(textLength, containerWidthPx, base);
+    }
   }
 
   return base;

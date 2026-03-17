@@ -176,7 +176,7 @@ export function useConversationVirtualizer({
     },
     overscan: OVERSCAN,
     measureElement: defaultMeasureElement,
-    useAnimationFrameWithResizeObserver: true,
+    useAnimationFrameWithResizeObserver: false,
   });
 
   // -------------------------------------------------------------------------
