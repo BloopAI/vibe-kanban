@@ -43,7 +43,7 @@ export const useConversationHistoryOld = ({
     mutator(state);
   };
   useEffect(() => {
-    onEntriesUpdatedRef.current = onEntriesUpdated;
+    onEntriesUpdatedRef.current = onEntriesUpdated ?? null;
   }, [onEntriesUpdated]);
 
   // Keep executionProcesses up to date
