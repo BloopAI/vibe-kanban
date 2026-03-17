@@ -7037,6 +7037,7 @@ dependencies = [
  "shlex",
  "sqlx",
  "strip-ansi-escapes",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tokio-tungstenite 0.26.2",

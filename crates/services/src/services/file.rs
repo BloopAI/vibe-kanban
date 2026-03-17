@@ -59,6 +59,7 @@ fn sanitize_filename(name: &str) -> String {
 #[derive(Clone)]
 pub struct FileService {
     cache_dir: PathBuf,
+    legacy_cache_dir: PathBuf,
     pool: SqlitePool,
     max_size_bytes: u64,
 }
@@ -66,9 +67,11 @@ pub struct FileService {
 impl FileService {
     pub fn new(pool: SqlitePool) -> Result<Self, FileError> {
         let cache_dir = utils::cache_dir().join("attachments");
+        let legacy_cache_dir = utils::cache_dir().join("images");
         fs::create_dir_all(&cache_dir)?;
         Ok(Self {
             cache_dir,
+            legacy_cache_dir,
             pool,
             max_size_bytes: 20 * 1024 * 1024, // 20MB default
         })
@@ -161,7 +164,8 @@ impl FileService {
     }
 
     pub fn get_absolute_path(&self, file: &File) -> PathBuf {
-        self.cache_dir.join(&file.file_path)
+        self.resolve_cached_path(&file.file_path)
+            .unwrap_or_else(|| self.cache_dir.join(&file.file_path))
     }
 
     pub async fn get_file(&self, id: Uuid) -> Result<Option<File>, FileError> {
@@ -173,6 +177,11 @@ impl FileService {
             let file_path = self.cache_dir.join(&file.file_path);
             if file_path.exists() {
                 fs::remove_file(file_path)?;
+            }
+
+            let legacy_file_path = self.legacy_cache_dir.join(&file.file_path);
+            if legacy_file_path.exists() {
+                fs::remove_file(legacy_file_path)?;
             }
 
             File::delete(&self.pool, id).await?;
@@ -234,7 +243,9 @@ impl FileService {
         }
 
         for file in files {
-            let src = self.cache_dir.join(&file.file_path);
+            let src = self
+                .resolve_cached_path(&file.file_path)
+                .unwrap_or_else(|| self.cache_dir.join(&file.file_path));
             let dst = attachments_dir.join(&file.file_path);
 
             if dst.exists() {
@@ -253,5 +264,24 @@ impl FileService {
         }
 
         Ok(())
+    }
+
+    fn resolve_cached_path(&self, file_path: &str) -> Option<PathBuf> {
+        let primary = self.cache_dir.join(file_path);
+        if primary.exists() {
+            return Some(primary);
+        }
+
+        let legacy = self.legacy_cache_dir.join(file_path);
+        if legacy.exists() {
+            tracing::info!(
+                "Using legacy attachment cache path for {}: {}",
+                file_path,
+                legacy.display()
+            );
+            return Some(legacy);
+        }
+
+        None
     }
 }
