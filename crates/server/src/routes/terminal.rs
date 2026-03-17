@@ -9,14 +9,11 @@ use axum::{
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
+use relay_ws_server::RelayServerSocket;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-};
+use crate::{DeploymentImpl, error::ApiError, middleware::relay_ws::RelayWsUpgrade};
 
 #[derive(Debug, Deserialize)]
 pub struct TerminalQuery {
@@ -50,7 +47,7 @@ enum TerminalMessage {
 }
 
 pub async fn terminal_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<TerminalQuery>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -93,7 +90,7 @@ pub async fn terminal_ws(
 }
 
 async fn handle_terminal_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     working_dir: PathBuf,
     cols: u16,
@@ -165,7 +162,7 @@ async fn handle_terminal_ws(
     let _ = deployment.pty().close_session(session_id).await;
 }
 
-async fn send_error(socket: &mut MaybeSignedWebSocket, message: &str) -> anyhow::Result<()> {
+async fn send_error(socket: &mut RelayServerSocket, message: &str) -> anyhow::Result<()> {
     let msg = TerminalMessage::Error {
         message: message.to_string(),
     };

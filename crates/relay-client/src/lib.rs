@@ -4,26 +4,19 @@ use anyhow::Context as _;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use http::{HeaderMap, HeaderName, Method};
-use relay_control::{
-    signed_ws::{SignedWebSocket, signed_websocket},
-    signing::{
-        self, NONCE_HEADER, REQUEST_SIGNATURE_HEADER, RequestSignature, SIGNING_SESSION_HEADER,
-        TIMESTAMP_HEADER,
-    },
+use relay_control::signing::{
+    self, NONCE_HEADER, REQUEST_SIGNATURE_HEADER, SIGNING_SESSION_HEADER, TIMESTAMP_HEADER,
 };
 use relay_types::{
     FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, PairRelayHostRequest,
     RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayAuthState,
     RemoteSession, StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
 };
+use relay_ws_client::{RelayUpstreamSocket, RelayWsConnectError, connect_signed_relay_websocket};
+use relay_ws_protocol::RELAY_HEADER;
 use reqwest::Client;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use spake2::{Ed25519Group, Identity, Password, Spake2, SysRng, UnwrapErr};
-use tokio::net::TcpStream;
-use tokio_tungstenite::{
-    MaybeTlsStream, WebSocketStream,
-    tungstenite::{self, client::IntoClientRequest},
-};
 use trusted_key_auth::{
     key_confirmation::{build_client_proof, verify_server_proof},
     refresh::build_refresh_message,
@@ -32,13 +25,8 @@ use trusted_key_auth::{
 };
 use uuid::Uuid;
 
-pub const RELAY_HEADER: &str = "x-vk-relayed";
-
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
-
-pub type SignedUpstreamSocket =
-    SignedWebSocket<WebSocketStream<MaybeTlsStream<TcpStream>>, tungstenite::Message>;
 
 #[derive(Debug, Clone)]
 pub struct RelayApiClient {
@@ -376,7 +364,7 @@ impl RelayHostTransport {
         &mut self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(SignedUpstreamSocket, Option<String>), RelayTransportError> {
+    ) -> Result<(RelayUpstreamSocket, Option<String>), RelayTransportError> {
         match self.connect_ws_once(target_path, protocols).await {
             Ok(result) => return Ok(result),
             Err(RelayWsConnectError::AuthFailure) => {}
@@ -466,14 +454,17 @@ impl RelayHostTransport {
         &self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(SignedUpstreamSocket, Option<String>), RelayWsConnectError> {
-        connect_signed_upstream_ws(
-            self.relay_base_url(),
-            &self.auth_state.remote_session,
-            &self.signing_key,
-            &self.auth_state.signing_session_id,
+    ) -> Result<(RelayUpstreamSocket, Option<String>), RelayWsConnectError> {
+        connect_signed_relay_websocket(
+            &relay_session_url(
+                self.relay_base_url(),
+                self.identity.host_id,
+                self.auth_state.remote_session.id,
+            ),
             target_path,
             protocols,
+            &self.signing_key,
+            &self.auth_state.signing_session_id,
             self.identity.server_verify_key,
         )
         .await
@@ -514,12 +505,6 @@ impl RelayHostTransport {
             .await?;
         Ok(())
     }
-}
-
-#[derive(Debug)]
-pub enum RelayWsConnectError {
-    AuthFailure,
-    Other(anyhow::Error),
 }
 
 pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> String {
@@ -618,116 +603,11 @@ async fn send_signed_http(
     builder.send().await.context("Relay request to host failed")
 }
 
-async fn connect_signed_upstream_ws(
-    base_url: &str,
-    remote_session: &RemoteSession,
-    signing_key: &SigningKey,
-    signing_session_id: &str,
-    target_path: &str,
-    protocols: Option<&str>,
-    server_verify_key: VerifyingKey,
-) -> Result<(SignedUpstreamSocket, Option<String>), RelayWsConnectError> {
-    let request_signature =
-        signing::build_request_signature(signing_key, signing_session_id, "GET", target_path, &[]);
-
-    let ws_url = relay_http_to_ws_url(&format!(
-        "{}{target_path}",
-        relay_session_url(base_url, remote_session.host_id, remote_session.id)
-    ))
-    .map_err(RelayWsConnectError::Other)?;
-    let mut ws_request = ws_url
-        .into_client_request()
-        .context("Failed to build relay upstream WS request")
-        .map_err(RelayWsConnectError::Other)?;
-
-    if let Some(value) = protocols {
-        ws_request.headers_mut().insert(
-            "sec-websocket-protocol",
-            value
-                .parse()
-                .map_err(anyhow::Error::from)
-                .map_err(RelayWsConnectError::Other)?,
-        );
-    }
-
-    set_ws_signing_headers(ws_request.headers_mut(), &request_signature);
-
-    let (stream, response) = match tokio_tungstenite::connect_async(ws_request).await {
-        Ok(result) => result,
-        Err(tungstenite::Error::Http(response)) => {
-            let status = response.status();
-            if is_auth_failure_status(status) {
-                return Err(RelayWsConnectError::AuthFailure);
-            }
-            return Err(RelayWsConnectError::Other(anyhow::anyhow!(
-                "Relay WS handshake failed with status {status}"
-            )));
-        }
-        Err(error) => return Err(RelayWsConnectError::Other(anyhow::Error::from(error))),
-    };
-
-    let selected_protocol = response
-        .headers()
-        .get("sec-websocket-protocol")
-        .and_then(|value| value.to_str().ok())
-        .map(ToOwned::to_owned);
-
-    let upstream_socket = signed_websocket(
-        signing_session_id.to_string(),
-        request_signature.nonce,
-        signing_key.clone(),
-        server_verify_key,
-        stream,
-    );
-
-    Ok((upstream_socket, selected_protocol))
-}
-
-fn relay_http_to_ws_url(http_url: &str) -> anyhow::Result<String> {
-    if let Some(rest) = http_url.strip_prefix("https://") {
-        Ok(format!("wss://{rest}"))
-    } else if let Some(rest) = http_url.strip_prefix("http://") {
-        Ok(format!("ws://{rest}"))
-    } else {
-        anyhow::bail!("unsupported URL scheme: {http_url}")
-    }
-}
-
 fn relay_ws_error_to_anyhow(error: RelayWsConnectError, context: &'static str) -> anyhow::Error {
     match error {
         RelayWsConnectError::AuthFailure => anyhow::anyhow!("{context}: authentication failed"),
         RelayWsConnectError::Other(error) => anyhow::anyhow!("{context}: {error}"),
     }
-}
-
-fn set_ws_signing_headers(
-    headers: &mut tungstenite::http::HeaderMap,
-    signature: &RequestSignature,
-) {
-    headers.insert(RELAY_HEADER, "1".parse().expect("static header value"));
-    headers.insert(
-        SIGNING_SESSION_HEADER,
-        signature
-            .signing_session_id
-            .parse()
-            .expect("valid header value"),
-    );
-    headers.insert(
-        TIMESTAMP_HEADER,
-        signature
-            .timestamp
-            .to_string()
-            .parse()
-            .expect("valid header value"),
-    );
-    headers.insert(
-        NONCE_HEADER,
-        signature.nonce.parse().expect("valid header value"),
-    );
-    headers.insert(
-        REQUEST_SIGNATURE_HEADER,
-        signature.signature_b64.parse().expect("valid header value"),
-    );
 }
 
 fn is_hop_by_hop_header(name: &str) -> bool {

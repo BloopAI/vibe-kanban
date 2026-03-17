@@ -25,7 +25,7 @@ use utils::response::ApiResponse;
 use uuid::Uuid;
 
 use super::streams::{DiffStreamQuery, stream_workspace_diff_ws};
-use crate::{DeploymentImpl, error::ApiError, middleware::signed_ws::SignedWsUpgrade};
+use crate::{DeploymentImpl, error::ApiError, middleware::relay_ws::RelayWsUpgrade};
 
 #[derive(Debug, Deserialize, Serialize, TS)]
 pub struct RebaseWorkspaceRequest {
@@ -168,7 +168,7 @@ async fn resolve_vibe_kanban_identifier(
 
 #[axum::debug_handler]
 pub async fn stream_diff_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     query: axum::extract::Query<DiffStreamQuery>,
     workspace: Extension<Workspace>,
     deployment: State<DeploymentImpl>,

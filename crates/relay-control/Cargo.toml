@@ -3,28 +3,12 @@ name = "relay-control"
 version = "0.1.31"
 edition = "2024"
 
-[features]
-default = []
-axum = ["dep:axum"]
-tungstenite = ["dep:tokio-tungstenite"]
-
 [dependencies]
 anyhow = "1.0"
-tokio = { workspace = true }
-tokio-util = { version = "0.7", features = ["io"] }
 base64 = "0.22"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
-futures-util = { version = "0.3", features = ["sink"] }
 rand = "0.8"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
 sha2 = "0.10"
+tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["io"] }
 uuid = { version = "1.0", features = ["v4"] }
-
-# Optional transport impls for RelayTransportMessage
-axum = { version = "0.8.4", features = ["ws"], optional = true }
-tokio-tungstenite = { version = "0.26", optional = true }
-
-[dev-dependencies]
-futures-channel = { version = "0.3", features = ["sink"] }
-tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }

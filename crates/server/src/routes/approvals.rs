@@ -7,16 +7,14 @@ use axum::{
 };
 use deployment::Deployment;
 use futures_util::StreamExt;
+use relay_ws_server::RelayServerSocket;
 use utils::{
     approvals::{ApprovalOutcome, ApprovalResponse},
     log_msg::LogMsg,
     response::ApiResponse,
 };
 
-use crate::{
-    DeploymentImpl,
-    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-};
+use crate::{DeploymentImpl, middleware::relay_ws::RelayWsUpgrade};
 
 pub async fn respond_to_approval(
     State(deployment): State<DeploymentImpl>,
@@ -49,7 +47,7 @@ pub async fn respond_to_approval(
 }
 
 pub async fn stream_approvals_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
     ws.on_upgrade(move |socket| async move {
@@ -60,7 +58,7 @@ pub async fn stream_approvals_ws(
 }
 
 async fn handle_approvals_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
 ) -> anyhow::Result<()> {
     let mut stream = deployment.approvals().patch_stream();

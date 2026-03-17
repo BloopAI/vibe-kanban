@@ -1,0 +1,14 @@
+[package]
+name = "relay-ws-server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+axum = { workspace = true }
+futures-util = { version = "0.3", features = ["sink"] }
+relay-tunnel = { path = "../relay-tunnel" }
+relay-ws-client = { path = "../relay-ws-client" }
+relay-ws-crypto = { path = "../relay-ws-crypto" }
+relay-ws-protocol = { path = "../relay-ws-protocol" }
+tokio = { workspace = true }

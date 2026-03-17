@@ -17,6 +17,7 @@ use executors::{
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
+use relay_ws_server::RelayServerSocket;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::services::{
@@ -33,9 +34,7 @@ use utils::{assets::config_path, log_msg::LogMsg, response::ApiResponse};
 use uuid::Uuid;
 
 use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
+    DeploymentImpl, error::ApiError, middleware::relay_ws::RelayWsUpgrade,
     runtime::relay_registration,
 };
 
@@ -558,7 +557,7 @@ pub struct ExecutorDiscoveredOptionsStreamQuery {
 }
 
 pub async fn stream_executor_discovered_options_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ExecutorDiscoveredOptionsStreamQuery>,
 ) -> impl IntoResponse {
@@ -570,7 +569,7 @@ pub async fn stream_executor_discovered_options_ws(
 }
 
 async fn handle_executor_discovered_options_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     query: ExecutorDiscoveredOptionsStreamQuery,
 ) -> anyhow::Result<()> {

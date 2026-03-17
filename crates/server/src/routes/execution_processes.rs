@@ -12,6 +12,7 @@ use db::models::{
 };
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
+use relay_ws_server::RelayServerSocket;
 use serde::Deserialize;
 use services::services::container::ContainerService;
 use utils::{log_msg::LogMsg, response::ApiResponse};
@@ -20,10 +21,7 @@ use uuid::Uuid;
 use crate::{
     DeploymentImpl,
     error::ApiError,
-    middleware::{
-        load_execution_process_middleware,
-        signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-    },
+    middleware::{load_execution_process_middleware, relay_ws::RelayWsUpgrade},
 };
 
 #[derive(Debug, Deserialize)]
@@ -42,7 +40,7 @@ pub async fn get_execution_process_by_id(
 }
 
 pub async fn stream_raw_logs_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -63,7 +61,7 @@ pub async fn stream_raw_logs_ws(
 }
 
 async fn handle_raw_logs_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     exec_id: Uuid,
 ) -> anyhow::Result<()> {
@@ -131,7 +129,7 @@ async fn handle_raw_logs_ws(
 }
 
 pub async fn stream_normalized_logs_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(exec_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, ApiError> {
@@ -154,7 +152,7 @@ pub async fn stream_normalized_logs_ws(
 }
 
 async fn handle_normalized_logs_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
     let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
@@ -200,7 +198,7 @@ pub async fn stop_execution_process(
 }
 
 pub async fn stream_execution_processes_by_session_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionExecutionProcessQuery>,
 ) -> impl IntoResponse {
@@ -219,7 +217,7 @@ pub async fn stream_execution_processes_by_session_ws(
 }
 
 async fn handle_execution_processes_by_session_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     session_id: uuid::Uuid,
     show_soft_deleted: bool,

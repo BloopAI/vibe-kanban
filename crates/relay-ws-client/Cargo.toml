@@ -1,0 +1,15 @@
+[package]
+name = "relay-ws-client"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
+futures-util = { version = "0.3", features = ["sink"] }
+relay-control = { path = "../relay-control" }
+relay-tunnel = { path = "../relay-tunnel" }
+relay-ws-crypto = { path = "../relay-ws-crypto" }
+relay-ws-protocol = { path = "../relay-ws-protocol" }
+tokio = { workspace = true }
+tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }

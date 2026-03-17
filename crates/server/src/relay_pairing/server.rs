@@ -8,6 +8,7 @@ use relay_types::{
     RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayPairedClient,
     StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
 };
+use relay_ws_protocol::RELAY_HEADER;
 use services::services::{analytics::AnalyticsService, config::Config};
 use tokio::sync::RwLock;
 use trusted_key_auth::{
@@ -275,7 +276,7 @@ impl RelayPairingServer {
 
 pub fn is_relay_request(headers: &HeaderMap) -> bool {
     headers
-        .get(relay_client::RELAY_HEADER)
+        .get(RELAY_HEADER)
         .and_then(|value| value.to_str().ok())
         .is_some_and(|value| value.trim() == "1")
 }

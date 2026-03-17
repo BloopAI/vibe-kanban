@@ -7,10 +7,8 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use relay_control::{signed_ws::signed_websocket, signing};
-use relay_tunnel::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
+use relay_ws_client::connect_signed_tunnel_stream;
 use tokio::{net::TcpListener, sync::Mutex};
-use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
 
@@ -211,46 +209,15 @@ async fn bridge_tcp_to_relay(
     server_verify_key: VerifyingKey,
     api_path: &str,
 ) -> anyhow::Result<()> {
-    let base = relay_session_base_url.trim_end_matches('/');
-    let ws_url = relay_tunnel::http_to_ws_url(&format!("{base}{api_path}"))?;
-
-    let sig =
-        signing::build_request_signature(signing_key, signing_session_id, "GET", api_path, &[]);
-
-    let mut request = ws_url
-        .into_client_request()
-        .context("Failed to build WS request")?;
-
-    request.headers_mut().insert(
-        signing::SIGNING_SESSION_HEADER,
-        sig.signing_session_id.parse()?,
-    );
-    request.headers_mut().insert(
-        signing::TIMESTAMP_HEADER,
-        sig.timestamp.to_string().parse()?,
-    );
-    request
-        .headers_mut()
-        .insert(signing::NONCE_HEADER, sig.nonce.parse()?);
-    request.headers_mut().insert(
-        signing::REQUEST_SIGNATURE_HEADER,
-        sig.signature_b64.parse()?,
-    );
-
-    let (ws_stream, _response) =
-        tokio_tungstenite::connect_async_tls_with_config(request, None, false, ws_connector())
-            .await
-            .context("Failed to connect relay tunnel WS")?;
-
-    let signed_ws = signed_websocket(
-        sig.signing_session_id,
-        sig.nonce,
-        signing_key.clone(),
+    let mut ws_io = connect_signed_tunnel_stream(
+        relay_session_base_url,
+        api_path,
+        signing_key,
+        signing_session_id,
         server_verify_key,
-        ws_stream,
-    );
-
-    let mut ws_io = tungstenite_ws_stream_io(signed_ws);
+    )
+    .await
+    .map_err(|error| anyhow::anyhow!("Failed to connect relay tunnel WS: {error:?}"))?;
 
     tokio::io::copy_bidirectional(&mut tcp_stream, &mut ws_io)
         .await

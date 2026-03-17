@@ -1898,15 +1898,13 @@ dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
  "ed25519-dalek",
- "relay-control",
- "relay-tunnel",
+ "relay-ws-client",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "ssh-key",
  "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite 0.26.2",
  "tokio-util",
  "tracing",
  "ts-rs 11.0.1",
@@ -6370,11 +6368,12 @@ dependencies = [
  "os_info",
  "relay-control",
  "relay-types",
+ "relay-ws-client",
+ "relay-ws-protocol",
  "reqwest 0.13.2",
  "serde",
  "spake2",
  "tokio",
- "tokio-tungstenite 0.26.2",
  "trusted-key-auth",
  "uuid",
 ]
@@ -6384,17 +6383,11 @@ name = "relay-control"
 version = "0.1.31"
 dependencies = [
  "anyhow",
- "axum",
  "base64 0.22.1",
  "ed25519-dalek",
- "futures-channel",
- "futures-util",
  "rand 0.8.5",
- "serde",
- "serde_json",
  "sha2 0.10.9",
  "tokio",
- "tokio-tungstenite 0.26.2",
  "tokio-util",
  "uuid",
 ]
@@ -6411,6 +6404,7 @@ dependencies = [
  "relay-client",
  "relay-control",
  "relay-types",
+ "relay-ws-client",
  "remote-info",
  "reqwest 0.13.2",
  "serde",
@@ -6454,6 +6448,56 @@ dependencies = [
  "sqlx",
  "ts-rs 11.0.1",
  "uuid",
+]
+
+[[package]]
+name = "relay-ws-client"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "ed25519-dalek",
+ "futures-util",
+ "relay-control",
+ "relay-tunnel",
+ "relay-ws-crypto",
+ "relay-ws-protocol",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
+]
+
+[[package]]
+name = "relay-ws-crypto"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "rand 0.8.5",
+ "relay-ws-protocol",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "relay-ws-protocol"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "relay-ws-server"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "futures-util",
+ "relay-tunnel",
+ "relay-ws-client",
+ "relay-ws-crypto",
+ "relay-ws-protocol",
+ "tokio",
 ]
 
 [[package]]
@@ -7626,6 +7670,9 @@ dependencies = [
  "relay-hosts",
  "relay-tunnel",
  "relay-types",
+ "relay-ws-crypto",
+ "relay-ws-protocol",
+ "relay-ws-server",
  "reqwest 0.13.2",
  "rmp-serde",
  "rust-embed",

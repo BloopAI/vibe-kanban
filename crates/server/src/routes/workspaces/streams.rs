@@ -4,13 +4,11 @@ use axum::{
     response::IntoResponse,
 };
 use deployment::Deployment;
+use relay_ws_server::RelayServerSocket;
 use serde::Deserialize;
 use services::services::container::ContainerService;
 
-use crate::{
-    DeploymentImpl,
-    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-};
+use crate::{DeploymentImpl, middleware::relay_ws::RelayWsUpgrade};
 
 #[derive(Debug, Deserialize)]
 pub struct DiffStreamQuery {
@@ -25,7 +23,7 @@ pub struct WorkspaceStreamQuery {
 }
 
 pub async fn stream_workspaces_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     Query(query): Query<WorkspaceStreamQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
@@ -38,7 +36,7 @@ pub async fn stream_workspaces_ws(
 }
 
 pub async fn stream_workspace_diff_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     Query(params): Query<DiffStreamQuery>,
     Extension(workspace): Extension<db::models::workspace::Workspace>,
     State(deployment): State<DeploymentImpl>,
@@ -53,7 +51,7 @@ pub async fn stream_workspace_diff_ws(
 }
 
 async fn handle_workspace_diff_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     workspace: db::models::workspace::Workspace,
     stats_only: bool,
@@ -98,7 +96,7 @@ async fn handle_workspace_diff_ws(
 }
 
 async fn handle_workspaces_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     archived: Option<bool>,
     limit: Option<i64>,

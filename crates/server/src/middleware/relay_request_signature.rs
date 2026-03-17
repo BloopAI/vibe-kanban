@@ -10,12 +10,12 @@ use axum::{
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use deployment::Deployment;
 use ed25519_dalek::Signer;
-use relay_client::RELAY_HEADER;
 use relay_control::signing::{
     NONCE_HEADER, REQUEST_SIGNATURE_HEADER, RESPONSE_NONCE_HEADER, RESPONSE_SIGNATURE_HEADER,
     RESPONSE_TIMESTAMP_HEADER, SIGNING_SESSION_HEADER, TIMESTAMP_HEADER,
     build_request_signing_message, build_response_signing_message,
 };
+use relay_ws_protocol::RELAY_HEADER;
 use url::form_urlencoded;
 use uuid::Uuid;
 

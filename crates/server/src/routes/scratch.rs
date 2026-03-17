@@ -7,15 +7,12 @@ use axum::{
 use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
+use relay_ws_server::RelayServerSocket;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
 
-use crate::{
-    DeploymentImpl,
-    error::ApiError,
-    middleware::signed_ws::{MaybeSignedWebSocket, SignedWsUpgrade},
-};
+use crate::{DeploymentImpl, error::ApiError, middleware::relay_ws::RelayWsUpgrade};
 
 /// Path parameters for scratch routes with composite key
 #[derive(Deserialize)]
@@ -102,7 +99,7 @@ pub async fn delete_scratch(
 }
 
 pub async fn stream_scratch_ws(
-    ws: SignedWsUpgrade,
+    ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
 ) -> impl IntoResponse {
@@ -114,7 +111,7 @@ pub async fn stream_scratch_ws(
 }
 
 async fn handle_scratch_ws(
-    mut socket: MaybeSignedWebSocket,
+    mut socket: RelayServerSocket,
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,

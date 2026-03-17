@@ -1,0 +1,14 @@
+[package]
+name = "relay-ws-crypto"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { workspace = true }
+base64 = "0.22"
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
+relay-ws-protocol = { path = "../relay-ws-protocol" }
+sha2 = "0.10"
+
+[dev-dependencies]
+rand = "0.8"

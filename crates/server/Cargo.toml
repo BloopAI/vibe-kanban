@@ -20,11 +20,14 @@ services = { path = "../services" }
 worktree-manager = { path = "../worktree-manager" }
 workspace-manager = { path = "../workspace-manager" }
 embedded-ssh = { path = "../embedded-ssh" }
-relay-control = { path = "../relay-control", features = ["axum", "tungstenite"] }
+relay-control = { path = "../relay-control" }
 relay-client = { path = "../relay-client" }
 relay-hosts = { path = "../relay-hosts" }
 relay-types = { path = "../relay-types" }
 relay-tunnel = { path = "../relay-tunnel" }
+relay-ws-crypto = { path = "../relay-ws-crypto" }
+relay-ws-protocol = { path = "../relay-ws-protocol" }
+relay-ws-server = { path = "../relay-ws-server" }
 desktop-bridge = { path = "../desktop-bridge" }
 preview-proxy = { path = "../preview-proxy" }
 trusted-key-auth = { path = "../trusted-key-auth" }
