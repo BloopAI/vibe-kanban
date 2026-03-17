@@ -2,7 +2,7 @@ const ZOOM_STORAGE_KEY = 'vk-zoom-level';
 const DEFAULT_FONT_SIZE = 16;
 const MIN_FONT_SIZE = 8;
 const MAX_FONT_SIZE = 32;
-const STEP = 2;
+const STEP = 1;
 
 function loadFontSize(): number {
   try {
