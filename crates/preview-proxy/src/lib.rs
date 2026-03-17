@@ -35,6 +35,12 @@ pub struct PreviewProxyService {
     http_client: Client,
 }
 
+impl Default for PreviewProxyService {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PreviewProxyService {
     pub fn new() -> Self {
         let http_client = Client::builder()
