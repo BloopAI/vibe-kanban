@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -45,29 +44,6 @@ import type { RepoWithTargetBranch } from 'shared/types';
 import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
-
-function logConversationAnchorDebug(
-  event: string,
-  payload: Record<string, unknown>
-) {
-  console.log(`[conversation-anchor] ${event}`, payload);
-}
-
-function logConversationTimelineDebug(
-  event: string,
-  payload: Record<string, unknown>
-) {
-  console.log(`[conversation-timeline] ${event}`, payload);
-}
-
-function summarizeRowKeys(rows: ConversationRow[], count = 5) {
-  if (rows.length === 0) return [];
-
-  return rows.slice(Math.max(0, rows.length - count)).map((row) => ({
-    semanticKey: row.semanticKey,
-    rowFamily: row.rowFamily,
-  }));
-}
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -298,34 +274,15 @@ export const ConversationList = forwardRef<
     const anchor = pendingInteractionAnchorRef.current;
     const activeScrollContainer = tanstackScrollRef.current;
     if (!anchor || !activeScrollContainer || !anchor.element.isConnected) {
-      logConversationAnchorDebug('correction-cancelled', {
-        hasAnchor: Boolean(anchor),
-        hasScrollContainer: Boolean(activeScrollContainer),
-        anchorConnected: anchor?.element.isConnected ?? false,
-      });
       clearPendingInteractionAnchor();
       return;
     }
 
-    const beforeScrollTop = activeScrollContainer.scrollTop;
     const currentTop = anchor.element.getBoundingClientRect().top;
     const delta = currentTop - anchor.top;
     if (Math.abs(delta) >= 0.5) {
       activeScrollContainer.scrollTop += delta;
     }
-
-    logConversationAnchorDebug('correction-frame', {
-      anchorText: anchor.element.textContent?.slice(0, 120) ?? null,
-      originalTop: anchor.top,
-      currentTop,
-      delta,
-      beforeScrollTop,
-      afterScrollTop: activeScrollContainer.scrollTop,
-      remainingMs: Math.max(
-        0,
-        pendingInteractionAnchorDeadlineRef.current - performance.now()
-      ),
-    });
 
     if (performance.now() < pendingInteractionAnchorDeadlineRef.current) {
       pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
@@ -356,17 +313,6 @@ export const ConversationList = forwardRef<
         top: trigger.getBoundingClientRect().top,
       };
 
-      logConversationAnchorDebug('click-capture', {
-        triggerTag: trigger.tagName,
-        triggerRole: trigger.getAttribute('role'),
-        triggerExpanded: trigger.getAttribute('aria-expanded'),
-        triggerText: trigger.textContent?.slice(0, 120) ?? null,
-        triggerTop: trigger.getBoundingClientRect().top,
-        scrollTop: scrollContainer.scrollTop,
-        scrollHeight: scrollContainer.scrollHeight,
-        clientHeight: scrollContainer.clientHeight,
-      });
-
       pendingInteractionAnchorDeadlineRef.current = performance.now() + 250;
       pendingInteractionAnchorFrameRef.current = requestAnimationFrame(
         runInteractionAnchorCorrection
@@ -396,17 +342,6 @@ export const ConversationList = forwardRef<
       prevRowsRef.current
     );
 
-    logConversationTimelineDebug('flush-pending-update', {
-      addType: pending.addType,
-      isInitialLoad: pending.isInitialLoad,
-      loading: pending.loading,
-      derivedEntryCount: derivedEntries.entries.length,
-      displayEntryCount: derivedTimeline.displayEntries.length,
-      rowCount: derivedTimeline.rows.length,
-      hasRunningProcess: derivedEntries.hasRunningProcess,
-      tailRows: summarizeRowKeys(derivedTimeline.rows),
-    });
-
     prevEntriesRef.current = derivedTimeline.displayEntries;
     prevRowsRef.current = derivedTimeline.rows;
 
@@ -426,15 +361,6 @@ export const ConversationList = forwardRef<
     addType: AddEntryType,
     newLoading: boolean
   ) => {
-    logConversationTimelineDebug('timeline-updated', {
-      addType,
-      newLoading,
-      liveExecutionProcessCount: source.liveExecutionProcesses.length,
-      executionProcessStateCount: Object.keys(source.executionProcessState)
-        .length,
-      pendingUpdateScheduled: rafIdRef.current !== null,
-    });
-
     pendingUpdateRef.current = {
       source,
       addType,
@@ -523,27 +449,6 @@ export const ConversationList = forwardRef<
     [conversationRows, firstUnvirtualizedRowIndex]
   );
 
-  useEffect(() => {
-    logConversationTimelineDebug('row-partition', {
-      rowCount: conversationRows.length,
-      hasActiveStreamingTurn,
-      candidateFirstUnvirtualizedRowIndex,
-      streamingFirstUnvirtualizedRowIndex,
-      firstUnvirtualizedRowIndex,
-      virtualizedCount: virtualizedRows.length,
-      unvirtualizedCount: unvirtualizedTailRows.length,
-      virtualizedTail: summarizeRowKeys(virtualizedRows),
-      unvirtualizedTail: summarizeRowKeys(unvirtualizedTailRows),
-    });
-  }, [
-    candidateFirstUnvirtualizedRowIndex,
-    conversationRows,
-    firstUnvirtualizedRowIndex,
-    hasActiveStreamingTurn,
-    unvirtualizedTailRows,
-    virtualizedRows,
-  ]);
-
   const conversationVirtualizer = useConversationVirtualizer({
     rows: virtualizedRows,
     totalRowCount: conversationRows.length,
@@ -556,75 +461,6 @@ export const ConversationList = forwardRef<
   // firstUnvirtualizedRowIndex changes. measure() wipes ALL cached item sizes,
   // triggering a massive re-measurement storm and multi-second jitter.
   // TanStack Virtual handles count changes automatically via getItemKey.
-
-  useLayoutEffect(() => {
-    const scrollElement = tanstackScrollRef.current;
-    if (!scrollElement) return;
-
-    const rowNodes = Array.from(
-      scrollElement.querySelectorAll<HTMLElement>('[data-row-index]')
-    );
-    const seenRowIndices = new Map<string, HTMLElement[]>();
-
-    for (const node of rowNodes) {
-      const rowIndex = node.dataset.rowIndex;
-      if (!rowIndex) continue;
-
-      const existingNodes = seenRowIndices.get(rowIndex) ?? [];
-      existingNodes.push(node);
-      seenRowIndices.set(rowIndex, existingNodes);
-    }
-
-    const duplicateRowIndices = Array.from(seenRowIndices.entries())
-      .filter(([, nodes]) => nodes.length > 1)
-      .map(([rowIndex, nodes]) => ({
-        rowIndex,
-        semanticKeys: nodes.map((node) => node.dataset.semanticKey ?? null),
-      }));
-
-    const sortedNodes = rowNodes
-      .map((node) => ({
-        node,
-        rowIndex: Number(node.dataset.rowIndex ?? -1),
-        semanticKey: node.dataset.semanticKey ?? null,
-        rect: node.getBoundingClientRect(),
-      }))
-      .filter((item) => Number.isFinite(item.rowIndex))
-      .sort((a, b) => a.rowIndex - b.rowIndex);
-
-    const overlaps: Array<Record<string, unknown>> = [];
-    for (let index = 1; index < sortedNodes.length; index += 1) {
-      const previous = sortedNodes[index - 1];
-      const current = sortedNodes[index];
-      if (previous.rect.bottom > current.rect.top + 1) {
-        overlaps.push({
-          previousRowIndex: previous.rowIndex,
-          previousKey: previous.semanticKey,
-          previousBottom: previous.rect.bottom,
-          currentRowIndex: current.rowIndex,
-          currentKey: current.semanticKey,
-          currentTop: current.rect.top,
-          overlapPx: previous.rect.bottom - current.rect.top,
-        });
-      }
-    }
-
-    if (duplicateRowIndices.length > 0 || overlaps.length > 0) {
-      logConversationTimelineDebug('dom-layout-anomaly', {
-        duplicateRowIndices,
-        overlaps,
-        renderedRowCount: rowNodes.length,
-        scrollTop: scrollElement.scrollTop,
-        scrollHeight: scrollElement.scrollHeight,
-        clientHeight: scrollElement.clientHeight,
-      });
-    }
-  }, [
-    conversationRows,
-    firstUnvirtualizedRowIndex,
-    virtualizedRows,
-    unvirtualizedTailRows,
-  ]);
 
   const scrollToAbsoluteIndex = useCallback(
     (

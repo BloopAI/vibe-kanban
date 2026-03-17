@@ -152,13 +152,6 @@ export function useConversationVirtualizer({
   onAtBottomChange,
   shouldSuppressSizeAdjustment,
 }: ConversationVirtualizerOptions): ConversationVirtualizerResult {
-  const logConversationVirtualizerDebug = useCallback(
-    (event: string, payload: Record<string, unknown>) => {
-      console.log(`[conversation-virtualizer] ${event}`, payload);
-    },
-    []
-  );
-
   const bottomLockedRef = useRef(false);
   const smoothScrollDeadlineRef = useRef(0);
 
@@ -224,21 +217,6 @@ export function useConversationVirtualizer({
         isItemFullyAboveViewport &&
         remainingDistance > NEAR_BOTTOM_THRESHOLD_PX;
 
-      if (shouldAdjust || Math.abs(delta) >= 400) {
-        logConversationVirtualizerDebug('size-change-adjustment', {
-          itemIndex: item.index,
-          delta,
-          scrollOffset,
-          viewportHeight,
-          itemStart: item.start,
-          itemEnd: item.end,
-          isBottomLocked,
-          isBottomCorrectionActive: isBottomCorrActive,
-          isSuppressed: shouldSuppressSizeAdjustment?.() ?? false,
-          shouldAdjust,
-        });
-      }
-
       return shouldAdjust;
     };
 
@@ -247,7 +225,6 @@ export function useConversationVirtualizer({
     };
   }, [
     isBottomScrollCorrectionActive,
-    logConversationVirtualizerDebug,
     shouldSuppressSizeAdjustment,
     virtualizer,
   ]);
@@ -299,14 +276,6 @@ export function useConversationVirtualizer({
         : true;
 
     if (nextValue !== lastAtBottomRef.current) {
-      logConversationVirtualizerDebug('at-bottom-changed', {
-        nextValue,
-        scrollTop: el?.scrollTop ?? null,
-        scrollHeight: el?.scrollHeight ?? null,
-        clientHeight: el?.clientHeight ?? null,
-        isBottomCorrectionActive: isBottomScrollCorrectionActive(),
-      });
-
       lastAtBottomRef.current = nextValue;
       setIsAtBottomState(nextValue);
       onAtBottomChangeRef.current?.(nextValue);
@@ -329,10 +298,6 @@ export function useConversationVirtualizer({
     const handleWheel = (event: WheelEvent) => {
       if (bottomLockedRef.current && event.deltaY < 0) {
         bottomLockedRef.current = false;
-        logConversationVirtualizerDebug('bottom-lock-released', {
-          reason: 'wheel-up',
-          scrollTop: el.scrollTop,
-        });
       }
     };
 
@@ -364,12 +329,6 @@ export function useConversationVirtualizer({
 
     const maxScroll = el.scrollHeight - el.clientHeight;
     if (maxScroll > 0 && Math.abs(maxScroll - el.scrollTop) > 1) {
-      logConversationVirtualizerDebug('bottom-lock-correction', {
-        scrollTop: el.scrollTop,
-        maxScroll,
-        delta: maxScroll - el.scrollTop,
-        scrollHeight: el.scrollHeight,
-      });
       el.scrollTop = maxScroll;
     }
   }, [rows.length, totalRowCount, totalSize, syncIsAtBottom, scrollContainerRef]);
@@ -382,14 +341,6 @@ export function useConversationVirtualizer({
     (behavior: ScrollToOptionsBehavior = 'smooth') => {
       const el = scrollContainerRef.current;
       if (!el) return;
-
-      logConversationVirtualizerDebug('scroll-to-bottom', {
-        behavior,
-        beforeScrollTop: el.scrollTop,
-        beforeScrollHeight: el.scrollHeight,
-        clientHeight: el.clientHeight,
-        virtualizedTotalSize: virtualizer.getTotalSize(),
-      });
 
       bottomLockedRef.current = true;
 
@@ -413,10 +364,6 @@ export function useConversationVirtualizer({
     ) => {
       if (bottomLockedRef.current) {
         bottomLockedRef.current = false;
-        logConversationVirtualizerDebug('bottom-lock-released', {
-          reason: 'scroll-to-index',
-          targetIndex: index,
-        });
       }
 
       virtualizer.scrollToIndex(index, {
@@ -455,9 +402,6 @@ export function useConversationVirtualizer({
   const releaseBottomLock = useCallback(() => {
     if (!bottomLockedRef.current) return;
     bottomLockedRef.current = false;
-    logConversationVirtualizerDebug('bottom-lock-released', {
-      reason: 'explicit',
-    });
   }, []);
 
   // -------------------------------------------------------------------------
