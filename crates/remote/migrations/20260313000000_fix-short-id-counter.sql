@@ -9,6 +9,13 @@ ALTER TABLE organizations
     ADD COLUMN IF NOT EXISTS issue_counter INTEGER NOT NULL DEFAULT 0;
 
 -- 2. Renumber all existing issues with org-wide sequential numbers.
+--    Drop the old per-project uniqueness constraint first: the bulk UPDATE can
+--    otherwise hit transient (project_id, issue_number) collisions mid-statement
+--    before every row has been reassigned.
+ALTER TABLE issues
+    DROP CONSTRAINT IF EXISTS issues_project_issue_number_uniq;
+
+-- 3. Renumber all existing issues with org-wide sequential numbers.
 --    Under the old schema, issue_number was per-project (each project starts at 1),
 --    so multiple projects in the same org have overlapping numbers and duplicate
 --    simple_ids (e.g. both Project A and Project B show ORG-1). Reassign sequential
@@ -32,7 +39,7 @@ SET
 FROM renumbered r
 WHERE i.id = r.id;
 
--- 3. Set org counters to the maximum issue_number now assigned.
+-- 4. Set org counters to the maximum issue_number now assigned.
 UPDATE organizations o
 SET issue_counter = COALESCE(
     (
@@ -43,10 +50,6 @@ SET issue_counter = COALESCE(
     ),
     0
 );
-
--- 4. Drop the old per-project uniqueness constraint
-ALTER TABLE issues
-    DROP CONSTRAINT IF EXISTS issues_project_issue_number_uniq;
 
 -- 5. Update the trigger function to increment the org counter instead of project counter.
 --    The trigger trg_issues_simple_id itself does not need to be recreated.
