@@ -621,6 +621,7 @@ impl GitCli {
 
     /// Return true if there are staged changes (index differs from HEAD)
     pub fn has_staged_changes(&self, repo_path: &Path) -> Result<bool, GitCliError> {
+        use utils::command_ext::NoWindowExt;
         // `git diff --cached --quiet` returns exit code 1 if there are differences
         let out =
             Command::new(resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?)
@@ -629,6 +630,7 @@ impl GitCli {
                 .arg("diff")
                 .arg("--cached")
                 .arg("--quiet")
+                .no_window()
                 .output()
                 .map_err(|e| GitCliError::CommandFailed(e.to_string()))?;
         match out.status.code() {
@@ -729,9 +731,11 @@ impl GitCli {
 
     /// Ensure `git` is available on PATH
     fn ensure_available(&self) -> Result<(), GitCliError> {
+        use utils::command_ext::NoWindowExt;
         let git = resolve_executable_path_blocking("git").ok_or(GitCliError::NotAvailable)?;
         let out = Command::new(&git)
             .arg("--version")
+            .no_window()
             .output()
             .map_err(|_| GitCliError::NotAvailable)?;
         if out.status.success() {

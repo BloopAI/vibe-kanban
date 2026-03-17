@@ -16,7 +16,7 @@ use serde::Deserialize;
 use tempfile::NamedTempFile;
 use thiserror::Error;
 use url::Url;
-use utils::shell::resolve_executable_path_blocking;
+use utils::{command_ext::NoWindowExt, shell::resolve_executable_path_blocking};
 
 use crate::types::{
     CreatePrRequest, OpenPrInfo, PrComment, PrCommentAuthor, PrReviewComment, ReviewCommentUser,
@@ -162,6 +162,7 @@ impl GhCli {
             cmd.arg(arg);
         }
         let output = cmd
+            .no_window()
             .output()
             .map_err(|err| GhCliError::CommandFailed(err.to_string()))?;
 

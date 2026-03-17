@@ -5,7 +5,6 @@ use uuid::Uuid;
 
 /// An attachment links a blob to an issue or comment.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct Attachment {
     pub id: Uuid,
     pub blob_id: Uuid,
@@ -17,7 +16,6 @@ pub struct Attachment {
 
 /// An attachment with its associated blob data (for API responses).
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AttachmentWithBlob {
     pub id: Uuid,
     pub blob_id: Uuid,
@@ -52,7 +50,6 @@ pub struct ListAttachmentsResponse {
 
 /// Response containing a presigned URL for an attachment file or thumbnail.
 #[derive(Debug, Serialize, Deserialize, TS)]
-#[ts(export)]
 pub struct AttachmentUrlResponse {
     pub url: String,
 }

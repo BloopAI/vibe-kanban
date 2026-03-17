@@ -709,18 +709,17 @@ jobs:
             os: macos-15-xlarge
             platform: darwin-x86_64
           - target: x86_64-unknown-linux-gnu
-            os: ubuntu-latest-m
+            os: blacksmith-16vcpu-ubuntu-2404
             platform: linux-x86_64
           - target: aarch64-unknown-linux-gnu
-            os: ubuntu-latest-arm64-l
+            os: blacksmith-16vcpu-ubuntu-2404-arm
             platform: linux-aarch64
-          # Temporarily disable Windows Tauri builds in CI.
-          # - target: x86_64-pc-windows-msvc
-          #   os: windows-latest
-          #   platform: windows-x86_64
-          # - target: aarch64-pc-windows-msvc
-          #   os: windows-latest
-          #   platform: windows-aarch64
+          - target: x86_64-pc-windows-msvc
+            os: blacksmith-16vcpu-ubuntu-2404
+            platform: windows-x86_64
+          - target: aarch64-pc-windows-msvc
+            os: blacksmith-16vcpu-ubuntu-2404
+            platform: windows-aarch64
     env:
       CARGO_INCREMENTAL: "0"
       SCCACHE_GHA_ENABLED: "true"
@@ -728,6 +727,7 @@ jobs:
       SCCACHE_CACHE_SIZE: "10G"
       CARGO_HOME: ${{ github.workspace }}/.cargo
       RUSTUP_HOME: ${{ github.workspace }}/.rustup
+      XWIN_CACHE_DIR: ${{ github.workspace }}/.xwin-cache
     steps:
       - uses: actions/checkout@v6
         with:
@@ -736,28 +736,104 @@ jobs:
       - name: Setup sccache
         uses: BloopAI/sccache-action@main
 
+      - name: Cache Rust toolchain
+        uses: actions/cache@v5
+        with:
+          path: .rustup/toolchains
+          key: rust-toolchain-${{ runner.os }}-${{ matrix.target }}-${{ env.RUST_TOOLCHAIN }}
+
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
           targets: ${{ matrix.target }}
 
+      - name: Cache Cargo registry
+        uses: actions/cache@v5
+        with:
+          path: |
+            .cargo/registry/cache
+            .cargo/registry/index
+            .cargo/git/db
+            .cargo/bin
+            .cargo/.crates.toml
+            .cargo/.crates2.json
+          key: cargo-tauri-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-tauri-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Cache target
+        uses: actions/cache@v5
+        with:
+          path: target
+          key: tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-${{ github.ref_name }}-
+            tauri-target-${{ runner.os }}-${{ env.RUST_TOOLCHAIN }}-${{ matrix.target }}-
+
+      - name: Setup cargo-sweep
+        run: cargo install --locked cargo-sweep --version 0.8.0
+
       - name: Setup Node
         uses: ./.github/actions/setup-node
 
       - name: Install Linux dependencies
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && contains(matrix.target, 'linux')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential \
             libssl-dev libayatana-appindicator3-dev librsvg2-dev \
             libxdo-dev file pkg-config xdg-utils
 
+      - name: Install Windows cross-compilation dependencies
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: |
+          sudo apt-get update
+          DEBIAN_FRONTEND=noninteractive sudo apt-get install -y \
+            clang libclang-dev lld llvm nasm cmake ninja-build nsis \
+            clang-19 clang-tools-19 llvm-19 lld-19 \
+            meson valac bison gobject-introspection libgirepository1.0-dev \
+            libglib2.0-dev libgsf-1-dev libgcab-dev libmsi-dev
+          echo "/usr/lib/llvm-19/bin" >> $GITHUB_PATH
+
+      - name: Build and install wixl
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        env:
+          RUSTC_WRAPPER: ""
+        run: |
+          cd /tmp
+          curl -sL https://download.gnome.org/sources/msitools/0.103/msitools-0.103.tar.xz | tar xJ
+          cd msitools-0.103
+          meson setup builddir --prefix=/usr
+          meson compile -C builddir wixl
+          sudo install -m755 builddir/tools/wixl/wixl /usr/local/bin/wixl
+          sudo install -m644 builddir/libmsi/libmsi-1.0.so.0.0.0 /usr/local/lib/
+          sudo ln -sf libmsi-1.0.so.0.0.0 /usr/local/lib/libmsi-1.0.so.0
+          sudo ln -sf libmsi-1.0.so.0 /usr/local/lib/libmsi-1.0.so
+          sudo ldconfig
+          sudo mkdir -p /usr/share/wixl-0.103/ext
+          sudo cp -r data/ext/ui /usr/share/wixl-0.103/ext/
+          cd / && rm -rf /tmp/msitools-0.103
+          wixl --version
+
+      - name: Install cargo-xwin
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        run: cargo install --locked cargo-xwin --version ${{ env.CARGO_XWIN_VERSION }}
+
+      - name: Cache xwin downloads
+        if: runner.os == 'Linux' && contains(matrix.target, 'windows')
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/.xwin-cache
+          key: xwin-${{ runner.os }}-${{ matrix.target }}-cargo-xwin-${{ env.CARGO_XWIN_VERSION }}
+
       - name: Install dependencies
         run: pnpm install
 
       - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "^2" --locked
+        uses: taiki-e/cache-cargo-install-action@34ce5120836e5f9f1508d8713d7fdea0e8facd6f # v3.0.1
+        with:
+          tool: tauri-cli@2
 
       - name: Download frontend artifact
         uses: actions/download-artifact@v7
@@ -796,11 +872,21 @@ jobs:
 
       - name: Build Tauri app
         run: |
-          # Avoid aws-lc-sys CMake failures on ARM64 Windows cross-compilation.
           if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
+            # ring requires clang on arm64 windows cross-compile
+            chmod +x scripts/ring-cc-wrapper.sh scripts/clang
+            export PATH="${{ github.workspace }}/scripts:$PATH"
+            export RING_CC=/usr/lib/llvm-19/bin/clang
+            export DEFAULT_CC=clang-cl
+            export CC_aarch64_pc_windows_msvc="${{ github.workspace }}/scripts/ring-cc-wrapper.sh"
             export CARGO_PROFILE_RELEASE_DEBUG=0
           fi
-          cargo tauri build --target ${{ matrix.target }} --ci
+
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
+            cargo tauri build --runner cargo-xwin --target ${{ matrix.target }} --ci
+          else
+            cargo tauri build --target ${{ matrix.target }} --ci
+          fi
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
@@ -816,24 +902,57 @@ jobs:
           VK_SHARED_RELAY_API_BASE: ${{ secrets.VK_SHARED_RELAY_API_BASE }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
-      - name: Sign Windows artifacts with Azure Trusted Signing
-        if: runner.os == 'Windows' && env.AZURE_ENDPOINT != ''
-        uses: azure/trusted-signing-action@v0.5.0
+      - name: Build MSI with wixl
+        if: contains(matrix.target, 'windows')
+        run: |
+          node scripts/build-tauri-msi.js \
+            --target ${{ matrix.target }} \
+            --version ${{ needs.bump-version.outputs.new_version }}
+
+      - name: Setup Jsign
+        if: contains(matrix.target, 'windows')
+        id: jsign
+        uses: ./.github/actions/setup-jsign
+
+      - name: Install JRE for Jsign
+        if: contains(matrix.target, 'windows')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y default-jre-headless
+
+      - name: Azure CLI login
+        if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
+        uses: azure/login@v2
         with:
-          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
-          endpoint: ${{ secrets.AZURE_ENDPOINT }}
-          trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
-          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
-          files-folder: ${{ github.workspace }}/target/${{ matrix.target }}/release/bundle
-          files-folder-filter: exe,msi
-          files-folder-recurse: true
-          file-digest: SHA256
-          timestamp-rfc3161: http://timestamp.acs.microsoft.com
-          timestamp-digest: SHA256
+          creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+          allow-no-subscriptions: true
         env:
           AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+
+      - name: Sign Windows artifacts with Azure Trusted Signing
+        if: contains(matrix.target, 'windows') && env.AZURE_ENDPOINT != ''
+        env:
+          AZURE_ENDPOINT: ${{ secrets.AZURE_ENDPOINT }}
+          AZURE_CODE_SIGNING_NAME: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          AZURE_CERT_PROFILE_NAME: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+        run: |
+          TOKEN=$(az account get-access-token --resource https://codesigning.azure.net --query accessToken -o tsv)
+
+          # Extract hostname from endpoint URL
+          KEYSTORE=$(echo "$AZURE_ENDPOINT" | sed 's|https\?://||;s|/.*||')
+
+          # Sign all exe and msi files in the bundle directory
+          find target/${{ matrix.target }}/release/bundle -type f \( -name "*.exe" -o -name "*.msi" \) | while read file; do
+            echo "Signing: $file"
+            java -jar "${{ steps.jsign.outputs.jar-path }}" \
+              --storetype TRUSTEDSIGNING \
+              --keystore "$KEYSTORE" \
+              --storepass "$TOKEN" \
+              --alias "${AZURE_CODE_SIGNING_NAME}/${AZURE_CERT_PROFILE_NAME}" \
+              --tsaurl http://timestamp.acs.microsoft.com \
+              --tsmode RFC3161 \
+              "$file"
+          done
 
       - name: Collect updater artifacts and installers
         run: |
@@ -866,6 +985,12 @@ jobs:
           name: tauri-artifacts-${{ matrix.platform }}
           path: tauri-artifacts/
           retention-days: 1
+
+      - name: Sweep Cargo target cache
+        if: always()
+        run: |
+          cargo sweep --maxsize 10GB
+          cargo sweep --time 30
 
   upload-tauri-update:
     needs: [bump-version, build-tauri]
@@ -945,14 +1070,6 @@ jobs:
             --endpoint-url "$ENDPOINT" --content-type "application/json"
 
           echo "Update manifest uploaded to: binaries/$TAG/tauri/latest.json"
-
-          # Upload desktop manifest for NPX CLI auto-install
-          echo "Uploading desktop manifest..."
-          aws s3 cp desktop-manifest.json \
-            "s3://$BUCKET/binaries/$TAG/tauri/desktop-manifest.json" \
-            --endpoint-url "$ENDPOINT" --content-type "application/json"
-
-          echo "Desktop manifest uploaded to: binaries/$TAG/tauri/desktop-manifest.json"
 
           # Upload desktop manifest for NPX CLI auto-install
           echo "Uploading desktop manifest..."

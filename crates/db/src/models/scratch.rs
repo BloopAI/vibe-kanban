@@ -141,6 +141,9 @@ pub struct UiPreferencesData {
     /// Last selected project ID
     #[serde(default)]
     pub selected_project_id: Option<String>,
+    /// Default setting for creating a draft workspace from new issues
+    #[serde(default)]
+    pub create_draft_workspace_by_default: Option<bool>,
 }
 
 /// Linked issue data for draft workspace scratch

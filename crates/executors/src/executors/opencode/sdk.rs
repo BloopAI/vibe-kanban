@@ -1624,6 +1624,9 @@ fn event_matches_session(event_type: &str, event: &Value, session_id: &str) -> b
         "message.part.updated" => event
             .pointer("/properties/part/sessionID")
             .and_then(Value::as_str),
+        "message.part.delta" => event
+            .pointer("/properties/sessionID")
+            .and_then(Value::as_str),
         "permission.asked" | "permission.replied" | "question.asked" | "question.replied"
         | "question.rejected" | "session.idle" | "session.error" => event
             .pointer("/properties/sessionID")

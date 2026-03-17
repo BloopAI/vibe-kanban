@@ -50,3 +50,8 @@ pub struct UpdateWorkspace {
     pub pinned: Option<bool>,
     pub name: Option<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize, TS)]
+pub struct UpdateSession {
+    pub name: Option<String>,
+}

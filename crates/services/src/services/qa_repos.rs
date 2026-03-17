@@ -7,6 +7,7 @@ use std::{path::PathBuf, process::Command};
 
 use once_cell::sync::Lazy;
 use tracing::{info, warn};
+use utils::command_ext::NoWindowExt;
 
 use super::filesystem::{DirectoryEntry, FilesystemError};
 
@@ -79,6 +80,7 @@ fn clone_qa_repos_if_needed(base_dir: &std::path::Path) {
         // Use git CLI for reliable TLS support (git2 has TLS issues)
         let output = Command::new("git")
             .args(["clone", "--depth", "1", url, &repo_path.to_string_lossy()])
+            .no_window()
             .output();
 
         match output {

@@ -221,6 +221,7 @@ const KeyboardShortcutsDialogImpl = create<NoProps>(() => {
     <>
       {/* Overlay */}
       <div
+        data-tauri-drag-region
         className="fixed inset-0 z-[9998] bg-black/50 animate-in fade-in-0 duration-200"
         onClick={handleClose}
       />

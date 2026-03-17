@@ -28,7 +28,8 @@
     "reviewComments": "리뷰 댓글 ({{count}})",
     "includeGitContext": "Git 컨텍스트 포함",
     "includeGitContextDescription": "이 브랜치에서 수행된 모든 변경 사항을 확인하는 방법을 에이전트에게 알려줍니다",
-    "newSession": "새 세션"
+    "newSession": "새 세션",
+    "sessionName": "리뷰"
   },
   "actionsMenu": {
     "startReview": "리뷰 시작",
@@ -48,7 +49,8 @@
       "resolving": "시작 중...",
       "filesWithConflicts_one": "{{count}}개 파일에 충돌이 있습니다",
       "filesWithConflicts_other": "{{count}}개 파일에 충돌이 있습니다",
-      "andMore": "...외 {{count}}개"
+      "andMore": "...외 {{count}}개",
+      "sessionName": "충돌 해결"
     }
   },
   "rebaseInProgress": {
@@ -437,7 +439,12 @@
       "latest": "최신",
       "previous": "이전",
       "label": "세션",
-      "noPreviousSessions": "이전 세션이 없습니다"
+      "noPreviousSessions": "이전 세션이 없습니다",
+      "rename": "이름 변경",
+      "renameTitle": "세션 이름 변경",
+      "renameDescription": "이 세션의 새 이름을 입력하세요.",
+      "renamePlaceholder": "세션 이름 입력",
+      "renaming": "이름 변경 중..."
     },
     "reviewComments": {
       "count_one": "{{count}}개의 리뷰 댓글이 포함됩니다",
