@@ -2,18 +2,7 @@
  * Conversation Virtualizer Hook
  *
  * Shared TanStack Virtual configuration for the conversation list.
- * Owns the virtualizer instance, scroll container ref, row-to-virtual-item
- * mapping, and imperative scroll helpers needed by ConversationListContainer.
- *
- * All three shells (local, remote, VS Code) share this through
- * ConversationListContainer — no per-shell duplication.
- *
- * Adopted patterns from T3 audit (docs/t3-pattern-comparison.md):
- * - shouldAdjustScrollPositionOnItemSizeChange for anchor correction
- * - measureElement with ResizeObserver for real DOM measurement
- * - overscan: 8
- * - getItemKey using ConversationRow.semanticKey
- * - estimateSize using SIZE_ESTIMATE_PX[row.estimationHint]
+ * Owns the virtualizer instance, measurement, and imperative scroll helpers.
  */
 
 import {

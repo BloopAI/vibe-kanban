@@ -1,18 +1,7 @@
 /**
  * Conversation Scroll Commands
  *
- * Declarative scroll intent model for TanStack Virtual.
- * Single scroll authority — one pending intent at a time, no queue, no merge.
- * Intents survive the gap between data arrival and measured layout.
- *
- * | ScrollIntent variant | Purpose                                    |
- * |----------------------|--------------------------------------------|
- * | initial-bottom       | Jump to bottom on first data load          |
- * | follow-bottom        | Auto-scroll as new content streams in      |
- * | preserve-anchor      | Keep scroll position during historic loads |
- * | plan-reveal          | Scroll last item to top of viewport        |
- * | jump-to-bottom       | Imperative scroll to bottom                |
- * | jump-to-index        | Imperative scroll to specific index        |
+ * Declarative scroll intent model for the conversation list.
  */
 
 import type { AddEntryType } from '@/shared/hooks/useConversationHistory/types';
@@ -32,10 +21,7 @@ export const NEAR_BOTTOM_THRESHOLD_PX = 64;
 // ---------------------------------------------------------------------------
 
 /**
- * Jump to bottom on first load, invalidating all estimated sizes.
- * The `purgeEstimatedSizes` flag tells the virtualizer to discard cached
- * measurements and re-measure — critical because initial estimates are
- * heuristic, not DOM-measured.
+ * Jump to bottom on first load and invalidate estimated sizes.
  */
 export interface InitialBottomIntent {
   readonly type: 'initial-bottom';
@@ -43,8 +29,7 @@ export interface InitialBottomIntent {
 }
 
 /**
- * Stick to bottom during streaming. Only active when the user is at bottom;
- * if the user scrolls up, the system transitions to `preserve-anchor`.
+ * Follow the bottom while streaming if the user is already there.
  */
 export interface FollowBottomIntent {
   readonly type: 'follow-bottom';
@@ -52,9 +37,7 @@ export interface FollowBottomIntent {
 }
 
 /**
- * Don't scroll — user is reading history. The virtualizer should use
- * `shouldAdjustScrollPositionOnItemSizeChange` to keep the reading
- * position stable as items above change size.
+ * Preserve the current viewport while history changes above it.
  */
 export interface PreserveAnchorIntent {
   readonly type: 'preserve-anchor';
@@ -94,12 +77,6 @@ export type ScrollIntent =
 
 /**
  * Single source of truth for conversation scroll behaviour.
- *
- * Intent lifecycle:
- * 1. Data update → `resolveScrollIntent` produces intent
- * 2. `setPendingIntent` stores it in state
- * 3. React re-renders, TanStack Virtual measures new items
- * 4. Scroll executor reads `pendingIntent`, applies it, calls `markIntentApplied`
  */
 export interface ScrollState {
   /** Whether the user is at (or near) the bottom of the list. */
@@ -129,17 +106,7 @@ export function createInitialScrollState(): ScrollState {
 // ---------------------------------------------------------------------------
 
 /**
- * Map a data update to the appropriate scroll intent.
- *
- * Decision table:
- * ```
- * isInitialLoad                   → initial-bottom     (purge + jump)
- * addType === 'plan'              → plan-reveal        (reveal plan)
- * addType === 'running' + atBottom→ follow-bottom      (follow stream)
- * addType === 'running' + !atBottom→ preserve-anchor   (user reading)
- * else + atBottom                 → follow-bottom      (historic at bottom)
- * else + !atBottom                → preserve-anchor    (historic scrolled up)
- * ```
+ * Map a data update to the scroll intent that should be applied next.
  */
 export function resolveScrollIntent(
   addType: AddEntryType,
@@ -170,9 +137,7 @@ export function resolveScrollIntent(
 // ---------------------------------------------------------------------------
 
 /**
- * Whether the list should auto-follow to bottom on new data.
- * True when user is at bottom AND update is not a plan (plans have their
- * own scroll behaviour via plan-reveal).
+ * Whether a new update should auto-follow the bottom.
  */
 export function shouldAutoFollow(
   state: ScrollState,

@@ -1,21 +1,8 @@
 /**
  * Conversation Row Model
  *
- * Semantic row identity and metadata layer for TanStack Virtual migration.
- * Wraps `DisplayEntry` with explicit identity, row family classification,
- * execution-process affiliation, and size estimation hints needed by the
- * virtualizer without reading render DOM.
- *
- * Design decisions:
- * - `ConversationRow` is additive: existing `DisplayEntry` consumers are
- *   unaffected; the row model is a higher-level view built *on top of*
- *   `DisplayEntry[]`.
- * - `semanticKey` replaces the incidental `patchKey`-based identity with
- *   deliberate, stable keys suitable for `getItemKey`.
- * - `rowFamily` provides a discriminant the virtualizer can use to select
- *   per-family size estimators without inspecting entry internals.
- * - `SizeEstimationHint` gives the virtualizer an entry-type-aware initial
- *   height estimate, avoiding the "all items are 50px" cold-start problem.
+ * Semantic row identity and metadata for the conversation list.
+ * It wraps `DisplayEntry` with stable keys, row families, and size hints.
  */
 
 import type { DisplayEntry } from '@/shared/hooks/useConversationHistory/types';
@@ -25,12 +12,7 @@ import type { DisplayEntry } from '@/shared/hooks/useConversationHistory/types';
 // ---------------------------------------------------------------------------
 
 /**
- * Exhaustive classification of every visual row the conversation list can
- * render. Each member maps 1:1 to a renderer branch in
- * `DisplayConversationEntry`.
- *
- * Aggregated families correspond to the three `AGGREGATED_*` group types
- * produced by `aggregateConsecutiveEntries`.
+ * Exhaustive list of visual row families used by the renderer.
  */
 export type RowFamily =
   // Atomic NormalizedEntry types
@@ -62,18 +44,7 @@ export type RowFamily =
 // ---------------------------------------------------------------------------
 
 /**
- * Coarse height bucket for entry-type-aware initial size estimation.
- *
- * The virtualizer uses this to pick a reasonable `estimateSize` per row
- * *before* the DOM is measured, reducing layout jank on first render.
- *
- * | Hint      | Typical px | Representative rows                              |
- * |-----------|-----------|--------------------------------------------------|
- * | compact   | 32-48     | tool_summary, loading, token_usage_info           |
- * | medium    | 60-120    | user_message, system_message, error, script       |
- * | tall      | 150-300   | assistant_message, plan, subagent, aggregated     |
- * | dynamic   | varies    | file_edit (diff), thinking (streaming)            |
- * | hidden    | 0         | next_action, token_usage_info (filtered pre-list) |
+ * Coarse height bucket used before real DOM measurement is available.
  */
 export type SizeEstimationHint =
   | 'compact'
@@ -87,39 +58,11 @@ export type SizeEstimationHint =
 // ---------------------------------------------------------------------------
 
 /**
- * A single semantic row in the conversation list.
- *
- * This is the primary type consumed by the TanStack Virtual virtualizer.
- * It wraps `DisplayEntry` with metadata that enables:
- *
- * 1. **Stable identity** (`semanticKey`) for `getItemKey`.
- * 2. **Family classification** (`rowFamily`) for per-type size estimation
- *    and renderer dispatch.
- * 3. **Process affiliation** (`processId`) for scroll-to-process and
- *    group-by-turn operations.
- * 4. **Size hints** (`estimationHint`) for cold-start height estimation.
- * 5. **User-message search** (`isUserMessage`) for
- *    `scrollToPreviousUserMessage` without re-scanning the full list.
+ * A single semantic row consumed by the conversation renderer.
  */
 export interface ConversationRow {
   /**
-   * Stable semantic identity for this row.
-   *
-   * Key contracts:
-   * - Unique within the list at any point in time.
-   * - Survives aggregation transitions (individual <-> grouped).
-   * - Survives streaming-to-completed transitions for script rows.
-   * - Suitable as the return value of `getItemKey`.
-   *
-   * Key format conventions:
-   * - Backend entries: `conv-{processId}:{entryIndex}`
-   * - Synthetic user messages: `conv-{processId}:user`
-   * - Synthetic loading: `conv-{processId}:loading`
-   * - Script entries: `conv-{processId}:script`
-   * - Next action: `conv-next_action`
-   * - Aggregated tool groups: `conv-agg:{firstEntryKey}`
-   * - Aggregated diff groups: `conv-agg-diff:{firstEntryKey}`
-   * - Aggregated thinking groups: `conv-agg-thinking:{firstEntryKey}`
+   * Stable identity for the row. Used by the virtualizer and row renderer.
    */
   readonly semanticKey: string;
 
@@ -160,11 +103,7 @@ const SCRIPT_TOOL_NAMES = new Set([
 ]);
 
 /**
- * Determine the `RowFamily` for a `DisplayEntry`.
- *
- * This encapsulates the dispatch logic currently spread across
- * `ConversationListContainer.ItemContent` and `DisplayConversationEntry`
- * into a single, testable function.
+ * Determine the renderer family for a display entry.
  */
 export function classifyRowFamily(entry: DisplayEntry): RowFamily {
   // Aggregated group types
@@ -245,13 +184,7 @@ export const SIZE_ESTIMATE_PX: Record<SizeEstimationHint, number> = {
 // ---------------------------------------------------------------------------
 
 /**
- * Row families whose height is significantly affected by container width
- * due to text wrapping. These get width-aware adjustments when a container
- * width is available.
- *
- * Adapted from T3's `timelineHeight.ts` — only applied to text-heavy
- * families. The remaining 17+ families have fixed or state-dependent
- * heights that don't vary meaningfully with width.
+ * Text-heavy row families that grow when the container becomes narrow.
  */
 const TEXT_HEAVY_FAMILIES = new Set<RowFamily>([
   'user_message',
@@ -273,17 +206,7 @@ const NARROW_WIDTH_PX = 600;
 const NARROW_WIDTH_MULTIPLIER = 1.3;
 
 /**
- * Estimate the pixel height for a conversation row.
- *
- * This is the primary estimator consumed by the virtualizer's
- * `estimateSize` callback. It combines the coarse `SizeEstimationHint`
- * bucket with an optional width-aware adjustment for text-heavy families.
- *
- * @param row - The conversation row to estimate.
- * @param containerWidthPx - Optional container width in pixels. When
- *   provided and narrow (< 600px), text-heavy families get a ~30% bump
- *   to account for increased text wrapping.
- * @returns Estimated height in pixels.
+ * Estimate row height before the DOM is measured.
  */
 export function estimateSizeForRow(
   row: ConversationRow,
