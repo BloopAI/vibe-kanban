@@ -39,7 +39,14 @@ SET
 FROM renumbered r
 WHERE i.id = r.id;
 
--- 4. Set org counters to the maximum issue_number now assigned.
+-- 4. Backfill denormalized notification payloads that store issue_simple_id.
+UPDATE notifications n
+SET payload = jsonb_set(n.payload, '{issue_simple_id}', to_jsonb(i.simple_id), true)
+FROM issues i
+WHERE n.issue_id = i.id
+  AND n.payload ? 'issue_simple_id';
+
+-- 5. Set org counters to the maximum issue_number now assigned.
 UPDATE organizations o
 SET issue_counter = COALESCE(
     (
@@ -51,7 +58,7 @@ SET issue_counter = COALESCE(
     0
 );
 
--- 5. Update the trigger function to increment the org counter instead of project counter.
+-- 6. Update the trigger function to increment the org counter instead of project counter.
 --    The trigger trg_issues_simple_id itself does not need to be recreated.
 --    Uniqueness is guaranteed by the atomic UPDATE ... RETURNING on the org row,
 --    which serializes concurrent inserts via row-level locking.
@@ -83,6 +90,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 6. Remove the now-unused per-project issue counter
+-- 7. Remove the now-unused per-project issue counter
 ALTER TABLE projects
     DROP COLUMN IF EXISTS issue_counter;
