@@ -7023,7 +7023,6 @@ dependencies = [
  "mime_guess",
  "os_info",
  "rand 0.8.5",
- "regex",
  "relay-tunnel",
  "reqwest 0.13.2",
  "rmp-serde",

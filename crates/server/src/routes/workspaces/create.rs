@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::LazyLock};
+use std::collections::HashMap;
 
 use axum::{Json, extract::State, response::Json as ResponseJson};
 use db::models::{
@@ -8,7 +8,6 @@ use db::models::{
     workspace::{CreateWorkspace, Workspace},
 };
 use deployment::Deployment;
-use regex::{Captures, Regex};
 use services::services::container::ContainerService;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -20,11 +19,6 @@ use crate::{
         ImportedIssueAttachment, import_issue_attachments_from_remote,
     },
 };
-
-static ISSUE_ATTACHMENT_MARKDOWN_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(!?)\[([^\]]*)\]\(attachment://([0-9a-fA-F-]+)\)"#)
-        .expect("attachment markdown regex must compile")
-});
 
 pub(crate) async fn create_workspace_record(
     deployment: &DeploymentImpl,
@@ -111,6 +105,72 @@ fn build_workspace_attachment_markdown(
     }
 }
 
+struct ParsedAttachmentMarkdown<'a> {
+    attachment_id: Uuid,
+    label: &'a str,
+    uses_image_markdown: bool,
+    end: usize,
+}
+
+fn find_unescaped_char(haystack: &str, target: char) -> Option<usize> {
+    let mut escaped = false;
+
+    for (index, ch) in haystack.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+
+        if ch == '\\' {
+            escaped = true;
+            continue;
+        }
+
+        if ch == target {
+            return Some(index);
+        }
+    }
+
+    None
+}
+
+fn parse_attachment_markdown_at(
+    prompt: &str,
+    start: usize,
+) -> Option<ParsedAttachmentMarkdown<'_>> {
+    let rest = prompt.get(start..)?;
+    let (uses_image_markdown, label_start_offset) = if rest.starts_with("![") {
+        (true, 2)
+    } else if rest.starts_with('[') {
+        (false, 1)
+    } else {
+        return None;
+    };
+
+    let label_rest = rest.get(label_start_offset..)?;
+    let label_end_offset = find_unescaped_char(label_rest, ']')?;
+    let label = &label_rest[..label_end_offset];
+
+    let after_label = label_rest.get(label_end_offset + 1..)?;
+    let attachment_prefix = "(attachment://";
+    if !after_label.starts_with(attachment_prefix) {
+        return None;
+    }
+
+    let attachment_id_start =
+        start + label_start_offset + label_end_offset + 1 + attachment_prefix.len();
+    let attachment_id_rest = prompt.get(attachment_id_start..)?;
+    let attachment_id_end_offset = attachment_id_rest.find(')')?;
+    let attachment_id = Uuid::parse_str(&attachment_id_rest[..attachment_id_end_offset]).ok()?;
+
+    Some(ParsedAttachmentMarkdown {
+        attachment_id,
+        label,
+        uses_image_markdown,
+        end: attachment_id_start + attachment_id_end_offset + 1,
+    })
+}
+
 fn rewrite_imported_issue_attachments_markdown(
     prompt: &str,
     imported_attachments: &[ImportedIssueAttachment],
@@ -121,25 +181,32 @@ fn rewrite_imported_issue_attachments_markdown(
 
     let imported_by_attachment_id = imported_attachments
         .iter()
-        .map(|file| (file.attachment_id, file))
+        .map(|attachment| (attachment.attachment_id, attachment))
         .collect::<HashMap<_, _>>();
+    let mut rewritten = String::with_capacity(prompt.len());
+    let mut index = 0;
 
-    ISSUE_ATTACHMENT_MARKDOWN_REGEX
-        .replace_all(prompt, |captures: &Captures| {
-            let Some(attachment_id_match) = captures.get(3) else {
-                return captures[0].to_string();
-            };
-            let Ok(attachment_id) = Uuid::parse_str(attachment_id_match.as_str()) else {
-                return captures[0].to_string();
-            };
-            let Some(file) = imported_by_attachment_id.get(&attachment_id) else {
-                return captures[0].to_string();
-            };
-            let label = captures.get(2).map(|m| m.as_str()).unwrap_or_default();
-            let uses_image_markdown = captures.get(1).is_some_and(|marker| marker.as_str() == "!");
-            build_workspace_attachment_markdown(file, label, uses_image_markdown)
-        })
-        .into_owned()
+    while index < prompt.len() {
+        if let Some(parsed) = parse_attachment_markdown_at(prompt, index)
+            && let Some(attachment) = imported_by_attachment_id.get(&parsed.attachment_id)
+        {
+            rewritten.push_str(&build_workspace_attachment_markdown(
+                attachment,
+                parsed.label,
+                parsed.uses_image_markdown,
+            ));
+            index = parsed.end;
+            continue;
+        }
+
+        let Some(ch) = prompt[index..].chars().next() else {
+            break;
+        };
+        rewritten.push(ch);
+        index += ch.len_utf8();
+    }
+
+    rewritten
 }
 
 pub async fn create_and_start_workspace(
