@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 axum = { workspace = true }
 anyhow = { workspace = true }
-futures-util = "0.3"
+relay-tunnel = { path = "../relay-tunnel" }
 reqwest = { workspace = true }
 tokio = { workspace = true }
 tokio-tungstenite = "0.26"
