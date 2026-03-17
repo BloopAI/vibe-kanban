@@ -14,6 +14,7 @@ import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
 import { isTauriApp } from '@/shared/lib/platform';
+import { initZoom, zoomIn, zoomOut, zoomReset } from '@/shared/lib/zoom';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
@@ -43,10 +44,27 @@ if (
   );
 }
 
-// In the Tauri desktop app, block trackpad/touchpad pinch-to-zoom while
-// keeping Cmd+/- keyboard zoom (handled natively by zoom_hotkeys_enabled).
-// Pinch gestures fire as ctrl+wheel events and gesturechange events in WKWebView.
+// In the Tauri desktop app, implement custom zoom (Cmd/Ctrl + =/–/0) via root
+// font-size scaling and block trackpad/touchpad pinch-to-zoom.
 if (isTauriApp()) {
+  initZoom();
+
+  document.addEventListener('keydown', (e) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+
+    if (e.key === '=' || e.key === '+') {
+      e.preventDefault();
+      zoomIn();
+    } else if (e.key === '-') {
+      e.preventDefault();
+      zoomOut();
+    } else if (e.key === '0') {
+      e.preventDefault();
+      zoomReset();
+    }
+  });
+
   document.addEventListener(
     'wheel',
     (e) => {

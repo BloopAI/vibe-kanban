@@ -246,7 +246,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
         .inner_size(1280.0, 800.0)
         .min_inner_size(800.0, 600.0)
         .resizable(true)
-        .zoom_hotkeys_enabled(true)
+        .zoom_hotkeys_enabled(false)
         .disable_drag_drop_handler();
 
     // macOS: overlay title bar keeps traffic lights but removes title bar chrome,
