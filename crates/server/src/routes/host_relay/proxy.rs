@@ -3,17 +3,16 @@ use axum::{
     body::{Body, to_bytes},
     extract::{
         Path, Request, State,
-        ws::{Message, WebSocket, WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
+        ws::{WebSocket, WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
     },
     http::{StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::any,
 };
 use deployment::Deployment;
-use futures_util::{SinkExt, StreamExt};
-use relay_client::SignedUpstreamSocket;
-use relay_control::signed_ws::{RelayTransportMessage, RelayWsMessageType};
 use relay_hosts::{HostRelayProxyError, HostRelayWsConnection, RelayHostLookupError};
+use relay_tunnel::ws_io::{axum_ws_stream_io, tungstenite_ws_stream_io};
+use relay_ws::SignedTungsteniteSocket;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -262,45 +261,12 @@ fn relay_http_response(response: reqwest::Response) -> Response {
     })
 }
 
-async fn bridge_ws(upstream: SignedUpstreamSocket, client_socket: WebSocket) -> anyhow::Result<()> {
-    let (mut upstream_sender, mut upstream_receiver) = upstream.split();
-    let (mut client_sender, mut client_receiver) = client_socket.split();
-
-    let client_to_upstream = tokio::spawn(async move {
-        while let Some(msg_result) = client_receiver.next().await {
-            let msg = msg_result?;
-            let close = matches!(msg, Message::Close(_));
-            let frame = msg.decompose();
-            upstream_sender.send(frame).await?;
-            if close {
-                break;
-            }
-        }
-        let _ = upstream_sender.close().await;
-        Ok::<(), anyhow::Error>(())
-    });
-
-    let upstream_to_client = tokio::spawn(async move {
-        while let Some(frame) = upstream_receiver.recv().await? {
-            let close = matches!(frame.msg_type, RelayWsMessageType::Close);
-            let msg = Message::reconstruct(frame)?;
-            client_sender.send(msg).await?;
-            if close {
-                break;
-            }
-        }
-        let _ = client_sender.close().await;
-        Ok::<(), anyhow::Error>(())
-    });
-
-    tokio::select! {
-        result = client_to_upstream => {
-            result??;
-        }
-        result = upstream_to_client => {
-            result??;
-        }
-    }
-
+async fn bridge_ws(
+    upstream: SignedTungsteniteSocket,
+    client_socket: WebSocket,
+) -> anyhow::Result<()> {
+    let mut upstream_io = tungstenite_ws_stream_io(upstream);
+    let mut client_io = axum_ws_stream_io(client_socket);
+    tokio::io::copy_bidirectional(&mut upstream_io, &mut client_io).await?;
     Ok(())
 }

@@ -13,6 +13,7 @@ members = [
     "crates/worktree-manager",
     "crates/workspace-manager",
     "crates/relay-control",
+    "crates/relay-ws",
     "crates/relay-hosts",
     "crates/client-info",
     "crates/remote-info",

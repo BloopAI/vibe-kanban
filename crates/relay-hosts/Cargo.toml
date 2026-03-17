@@ -10,6 +10,7 @@ desktop-bridge = { path = "../desktop-bridge" }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 http = "1"
 relay-client = { path = "../relay-client" }
+relay-ws = { path = "../relay-ws" }
 relay-control = { path = "../relay-control" }
 remote-info = { path = "../remote-info" }
 relay-types = { path = "../relay-types" }

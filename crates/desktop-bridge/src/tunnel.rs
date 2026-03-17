@@ -7,8 +7,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use relay_control::{signed_ws::signed_websocket, signing};
+use relay_control::signing;
 use relay_tunnel::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
+use relay_ws::signed_tungstenite_websocket;
 use tokio::{net::TcpListener, sync::Mutex};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_util::sync::CancellationToken;
@@ -242,7 +243,7 @@ async fn bridge_tcp_to_relay(
             .await
             .context("Failed to connect relay tunnel WS")?;
 
-    let signed_ws = signed_websocket(
+    let signed_ws = signed_tungstenite_websocket(
         sig.signing_session_id,
         sig.nonce,
         signing_key.clone(),

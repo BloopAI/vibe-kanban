@@ -9,7 +9,8 @@ base64 = "0.22"
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 http = "1"
 os_info = "3.12.0"
-relay-control = { path = "../relay-control", features = ["tungstenite"] }
+relay-control = { path = "../relay-control" }
+relay-ws = { path = "../relay-ws" }
 relay-types = { path = "../relay-types" }
 reqwest = { workspace = true }
 serde = { workspace = true }

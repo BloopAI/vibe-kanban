@@ -1900,6 +1900,7 @@ dependencies = [
  "ed25519-dalek",
  "relay-control",
  "relay-tunnel",
+ "relay-ws",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -6370,6 +6371,7 @@ dependencies = [
  "os_info",
  "relay-control",
  "relay-types",
+ "relay-ws",
  "reqwest 0.13.2",
  "serde",
  "spake2",
@@ -6384,17 +6386,11 @@ name = "relay-control"
 version = "0.1.31"
 dependencies = [
  "anyhow",
- "axum",
  "base64 0.22.1",
  "ed25519-dalek",
- "futures-channel",
- "futures-util",
  "rand 0.8.5",
- "serde",
- "serde_json",
  "sha2 0.10.9",
  "tokio",
- "tokio-tungstenite 0.26.2",
  "tokio-util",
  "uuid",
 ]
@@ -6411,6 +6407,7 @@ dependencies = [
  "relay-client",
  "relay-control",
  "relay-types",
+ "relay-ws",
  "remote-info",
  "reqwest 0.13.2",
  "serde",
@@ -6454,6 +6451,24 @@ dependencies = [
  "sqlx",
  "ts-rs 11.0.1",
  "uuid",
+]
+
+[[package]]
+name = "relay-ws"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "axum",
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "futures-channel",
+ "futures-util",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tokio",
+ "tokio-tungstenite 0.26.2",
 ]
 
 [[package]]
@@ -7626,6 +7641,7 @@ dependencies = [
  "relay-hosts",
  "relay-tunnel",
  "relay-types",
+ "relay-ws",
  "reqwest 0.13.2",
  "rmp-serde",
  "rust-embed",

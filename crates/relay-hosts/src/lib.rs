@@ -7,10 +7,11 @@ use ed25519_dalek::{SigningKey, VerifyingKey};
 use http::{HeaderMap, Method};
 use relay_client::{
     RelayApiClient, RelayHostIdentity, RelayHostTransport, RelayTransportBootstrapError,
-    RelayTransportError, SignedUpstreamSocket,
+    RelayTransportError,
 };
 use relay_control::signing::RelaySigningService;
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
+use relay_ws::SignedTungsteniteSocket;
 use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
 use services::services::remote_client::RemoteClient;
@@ -201,7 +202,7 @@ pub struct RelayHost {
 }
 
 pub struct HostRelayWsConnection {
-    pub upstream_socket: SignedUpstreamSocket,
+    pub upstream_socket: SignedTungsteniteSocket,
     pub selected_protocol: Option<String>,
 }
 
