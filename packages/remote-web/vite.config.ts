@@ -59,7 +59,7 @@ export default defineConfig({
   plugins: [
     tanstackRouter({
       target: "react",
-      autoCodeSplitting: false,
+      autoCodeSplitting: true,
     }),
     react({
       babel: {
@@ -97,6 +97,86 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "../../shared"),
       },
     ],
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+
+          // Core React runtime — needed on every page
+          if (id.includes("/react-dom/") || id.includes("/react/")) {
+            return "vendor-react";
+          }
+
+          // Routing & data fetching — needed on every page
+          if (
+            id.includes("@tanstack/react-router") ||
+            id.includes("@tanstack/react-query")
+          ) {
+            return "vendor-router";
+          }
+
+          // Diff viewer libraries — only needed for diff / code views
+          if (
+            id.includes("@pierre/diffs") ||
+            id.includes("@git-diff-view")
+          ) {
+            return "vendor-diffs";
+          }
+
+          // Shiki core (engine, themes, transformers) — NOT individual lang
+          // grammars which Vite already splits into their own async chunks.
+          if (
+            (id.includes("@shikijs/core") ||
+              id.includes("@shikijs/engine") ||
+              id.includes("@shikijs/themes") ||
+              id.includes("@shikijs/transformers") ||
+              id.includes("@shikijs/types") ||
+              id.includes("@shikijs/vscode-textmate") ||
+              id.includes("node_modules/shiki/")) &&
+            !id.includes("@shikijs/langs/")
+          ) {
+            return "vendor-syntax";
+          }
+
+          // Rich-text / code editors — heavy, lazy-load with routes
+          if (
+            id.includes("@lexical") ||
+            id.includes("lexical") ||
+            id.includes("@codemirror") ||
+            id.includes("@uiw/react-codemirror") ||
+            id.includes("@lezer")
+          ) {
+            return "vendor-editor";
+          }
+
+          // Terminal emulator — only used in workspace views
+          if (id.includes("@xterm")) {
+            return "vendor-xterm";
+          }
+
+          // Form schema (rjsf + ajv) — only used in executor config
+          if (id.includes("@rjsf") || id.includes("ajv")) {
+            return "vendor-forms";
+          }
+
+          // Icons — large tree-shakeable packages
+          if (
+            id.includes("@phosphor-icons") ||
+            id.includes("simple-icons") ||
+            id.includes("lucide-react")
+          ) {
+            return "vendor-icons";
+          }
+
+          // Observability — analytics & error tracking
+          if (id.includes("@sentry") || id.includes("posthog")) {
+            return "vendor-observability";
+          }
+        },
+      },
+    },
   },
   server: {
     port: 3002,
