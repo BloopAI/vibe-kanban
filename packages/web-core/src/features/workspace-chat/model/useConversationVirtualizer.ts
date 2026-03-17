@@ -46,8 +46,17 @@ const OVERSCAN = 8;
 // ---------------------------------------------------------------------------
 
 export interface ConversationVirtualizerOptions {
-  /** The semantic row model driving the list. */
+  /** The semantic row model driving the list (virtualized head only). */
   rows: ConversationRow[];
+
+  /**
+   * Total number of conversation rows (virtualized + unvirtualized tail).
+   * The bottom-lock correction must fire when ANY row is added — including
+   * unvirtualized tail rows that don't change `rows.length` or `totalSize`.
+   * Without this, streaming entries appended to the tail silently grow the
+   * scroll container while the correction never fires.
+   */
+  totalRowCount: number;
 
   /** Ref to the scrollable container element. */
   scrollContainerRef: RefObject<HTMLDivElement | null>;
@@ -138,6 +147,7 @@ export interface ConversationVirtualizerResult {
  */
 export function useConversationVirtualizer({
   rows,
+  totalRowCount,
   scrollContainerRef,
   onAtBottomChange,
   shouldSuppressSizeAdjustment,
@@ -362,7 +372,7 @@ export function useConversationVirtualizer({
       });
       el.scrollTop = maxScroll;
     }
-  }, [rows.length, totalSize, syncIsAtBottom, scrollContainerRef]);
+  }, [rows.length, totalRowCount, totalSize, syncIsAtBottom, scrollContainerRef]);
 
   // -------------------------------------------------------------------------
   // Imperative helpers

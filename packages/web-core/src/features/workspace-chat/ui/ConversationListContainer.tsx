@@ -439,7 +439,7 @@ export const ConversationList = forwardRef<
       source,
       addType,
       loading: newLoading,
-      isInitialLoad: loading,
+      isInitialLoad: addType === 'initial',
     };
 
     if (rafIdRef.current === null) {
@@ -546,6 +546,7 @@ export const ConversationList = forwardRef<
 
   const conversationVirtualizer = useConversationVirtualizer({
     rows: virtualizedRows,
+    totalRowCount: conversationRows.length,
     scrollContainerRef: tanstackScrollRef,
     onAtBottomChange,
     shouldSuppressSizeAdjustment: shouldSuppressInteractionDrivenSizeAdjustment,

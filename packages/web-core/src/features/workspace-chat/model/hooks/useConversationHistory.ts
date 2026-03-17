@@ -403,31 +403,20 @@ export const useConversationHistory = ({
       emittedEmptyInitialRef.current = false;
       loadedInitialEntries.current = true;
 
-      const hasActiveProcess = executionProcesses.current.some(
-        (process) => process.status === ExecutionProcessStatus.running
-      );
-
-      const allInitialEntries = await loadHistoricEntries(
-        hasActiveProcess ? MIN_INITIAL_ENTRIES : undefined
-      );
+      const allInitialEntries = await loadHistoricEntries(MIN_INITIAL_ENTRIES);
       if (cancelled) return;
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
 
-      if (!hasActiveProcess) {
-        return;
-      }
-
       while (
         !cancelled &&
         (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
       ) {
         if (cancelled) return;
+        emitEntries(displayedExecutionProcesses.current, 'historic', false);
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      emitEntries(displayedExecutionProcesses.current, 'historic', false);
     })();
     return () => {
       cancelled = true;
