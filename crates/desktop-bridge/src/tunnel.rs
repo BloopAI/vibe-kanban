@@ -7,7 +7,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use relay_ws_client::connect_signed_tunnel_stream;
+use relay_ws_client::RelaySession;
 use tokio::{net::TcpListener, sync::Mutex};
 use tokio_util::sync::CancellationToken;
 use uuid::Uuid;
@@ -209,13 +209,13 @@ async fn bridge_tcp_to_relay(
     server_verify_key: VerifyingKey,
     api_path: &str,
 ) -> anyhow::Result<()> {
-    let mut ws_io = connect_signed_tunnel_stream(
+    let mut ws_io = RelaySession::new(
         relay_session_base_url,
-        api_path,
-        signing_key,
-        signing_session_id,
+        signing_key.clone(),
+        signing_session_id.to_string(),
         server_verify_key,
     )
+    .connect_tunnel(api_path)
     .await
     .map_err(|error| anyhow::anyhow!("Failed to connect relay tunnel WS: {error:?}"))?;
 

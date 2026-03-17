@@ -9,7 +9,7 @@ use axum::{
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use db::models::{workspace::Workspace, workspace_repo::WorkspaceRepo};
 use deployment::Deployment;
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::RelaySocket;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -84,13 +84,13 @@ pub async fn terminal_ws(
         }
     }
 
-    Ok(ws.on_upgrade(move |socket| {
+    Ok(ws.on_socket(move |socket| {
         handle_terminal_ws(socket, deployment, working_dir, query.cols, query.rows)
     }))
 }
 
 async fn handle_terminal_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     working_dir: PathBuf,
     cols: u16,
@@ -162,7 +162,7 @@ async fn handle_terminal_ws(
     let _ = deployment.pty().close_session(session_id).await;
 }
 
-async fn send_error(socket: &mut RelayServerSocket, message: &str) -> anyhow::Result<()> {
+async fn send_error(socket: &mut RelaySocket, message: &str) -> anyhow::Result<()> {
     let msg = TerminalMessage::Error {
         message: message.to_string(),
     };

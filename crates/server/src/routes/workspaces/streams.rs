@@ -4,7 +4,7 @@ use axum::{
     response::IntoResponse,
 };
 use deployment::Deployment;
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::RelaySocket;
 use serde::Deserialize;
 use services::services::container::ContainerService;
 
@@ -27,7 +27,7 @@ pub async fn stream_workspaces_ws(
     Query(query): Query<WorkspaceStreamQuery>,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
+    ws.on_socket(move |socket| async move {
         if let Err(e) = handle_workspaces_ws(socket, deployment, query.archived, query.limit).await
         {
             tracing::warn!("workspaces WS closed: {}", e);
@@ -43,7 +43,7 @@ pub async fn stream_workspace_diff_ws(
 ) -> impl IntoResponse {
     let _ = deployment.container().touch(&workspace).await;
     let stats_only = params.stats_only;
-    ws.on_upgrade(move |socket| async move {
+    ws.on_socket(move |socket| async move {
         if let Err(e) = handle_workspace_diff_ws(socket, deployment, workspace, stats_only).await {
             tracing::warn!("diff WS closed: {}", e);
         }
@@ -51,7 +51,7 @@ pub async fn stream_workspace_diff_ws(
 }
 
 async fn handle_workspace_diff_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     workspace: db::models::workspace::Workspace,
     stats_only: bool,
@@ -96,7 +96,7 @@ async fn handle_workspace_diff_ws(
 }
 
 async fn handle_workspaces_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     archived: Option<bool>,
     limit: Option<i64>,

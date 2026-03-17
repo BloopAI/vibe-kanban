@@ -11,7 +11,6 @@ use axum::{
 };
 use deployment::Deployment;
 use relay_hosts::{HostRelayProxyError, HostRelayWsConnection, RelayHostLookupError};
-use relay_ws_server::bridge_axum_client_to_upstream;
 use uuid::Uuid;
 
 use crate::DeploymentImpl;
@@ -135,7 +134,7 @@ async fn forward_ws(
 
     Ok(ws
         .on_upgrade(|socket| async move {
-            if let Err(error) = bridge_axum_client_to_upstream(upstream_socket, socket).await {
+            if let Err(error) = upstream_socket.bridge_axum_client(socket).await {
                 tracing::debug!(?error, "Relay WS bridge closed with error");
             }
         })

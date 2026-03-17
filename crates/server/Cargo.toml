@@ -25,6 +25,7 @@ relay-client = { path = "../relay-client" }
 relay-hosts = { path = "../relay-hosts" }
 relay-types = { path = "../relay-types" }
 relay-tunnel = { path = "../relay-tunnel" }
+relay-ws-client = { path = "../relay-ws-client", features = ["axum"] }
 relay-ws-crypto = { path = "../relay-ws-crypto" }
 relay-ws-protocol = { path = "../relay-ws-protocol" }
 relay-ws-server = { path = "../relay-ws-server" }

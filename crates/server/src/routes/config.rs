@@ -17,7 +17,7 @@ use executors::{
     mcp_config::{McpConfig, read_agent_config, write_agent_config},
     profile::{ExecutorConfigs, ExecutorProfileId},
 };
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::RelaySocket;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use services::services::{
@@ -561,7 +561,7 @@ pub async fn stream_executor_discovered_options_ws(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<ExecutorDiscoveredOptionsStreamQuery>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
+    ws.on_socket(move |socket| async move {
         if let Err(e) = handle_executor_discovered_options_ws(socket, deployment, query).await {
             tracing::warn!("discovered options WS closed: {}", e);
         }
@@ -569,7 +569,7 @@ pub async fn stream_executor_discovered_options_ws(
 }
 
 async fn handle_executor_discovered_options_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     query: ExecutorDiscoveredOptionsStreamQuery,
 ) -> anyhow::Result<()> {

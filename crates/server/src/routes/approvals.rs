@@ -7,7 +7,7 @@ use axum::{
 };
 use deployment::Deployment;
 use futures_util::StreamExt;
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::RelaySocket;
 use utils::{
     approvals::{ApprovalOutcome, ApprovalResponse},
     log_msg::LogMsg,
@@ -50,7 +50,7 @@ pub async fn stream_approvals_ws(
     ws: RelayWsUpgrade,
     State(deployment): State<DeploymentImpl>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
+    ws.on_socket(move |socket| async move {
         if let Err(e) = handle_approvals_ws(socket, deployment).await {
             tracing::warn!("approvals WS closed: {}", e);
         }
@@ -58,7 +58,7 @@ pub async fn stream_approvals_ws(
 }
 
 async fn handle_approvals_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
 ) -> anyhow::Result<()> {
     let mut stream = deployment.approvals().patch_stream();

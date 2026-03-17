@@ -1,7 +1,7 @@
 # Relay WebSocket Boundary Refactor Plan
 
 Date: 2026-03-17
-Status: Updated after hard cutover; includes follow-up "final form" cleanup
+Status: Updated after Wave 2 cutover; includes Wave 3 "straight-line" redesign
 Owner: Codex
 
 ## Objective
@@ -19,12 +19,13 @@ The end state should make these questions easy to answer by inspection:
 - Which code is application-facing?
 - If a byte is written into the tunnel, where exactly does it become a signed relay message?
 
-This document now covers two waves:
+This document now covers three waves:
 
 - Wave 1: the hard-cutover boundary refactor that has already landed
-- Wave 2: the "time and money are no object" cleanup that removes the remaining compromise abstractions
+- Wave 2: the concrete-crate cleanup that has now landed
+- Wave 3: the "with hindsight, make it totally straightforward" redesign
 
-Wave 2 must also be a single hard cutover:
+Wave 3 must also be a single hard cutover:
 
 - one branch
 - one review cycle
@@ -34,27 +35,32 @@ Wave 2 must also be a single hard cutover:
 - no deprecated transitional surface
 - old abstractions deleted in the same change that introduces their replacements
 
-## Current State After Wave 1
+## Current State After Wave 2
 
-The code now has explicit protocol, crypto, transport-adapter, socket, and tunnel layers.
+The code now has explicit protocol, crypto, client, and server crates:
 
-That is materially better than the original single-file generic design, but some compromise abstractions still remain:
+- `relay-ws-protocol`
+- `relay-ws-crypto`
+- `relay-ws-client`
+- `relay-ws-server`
 
-- `SignedRelaySocket<S, A>` is still a reusable transport-generic public core.
-- `RelayTransportAdapter` still exists as a general-purpose abstraction rather than an edge-only implementation detail.
-- `MaybeSignedWebSocket` still mixes plain and signed route behaviour in one server-side type.
-- Client bootstrap still spans request signing, websocket handshake, and session-crypto setup in multiple places.
-- Some route code still does explicit bridging work that could be hidden behind use-case helpers.
+That is materially better than the original single-file generic design, but some readability compromises still remain:
 
-The rest of this plan describes the final cleanup pass that would remove those compromises.
+- Upgrade authentication and post-upgrade frame signing still live close together in the client connect flow.
+- `RelaySessionCrypto` still leaks into public application-facing APIs even though it is really frame-signing state.
+- Public sender/receiver split types still exist in the client/server crates.
+- The tunnel runtime is still derived from the message-socket runtime instead of being a first-class product-specific path.
+- The server upgrade path still exposes one runtime type that internally branches between plain and signed behaviour.
+
+The rest of this plan describes the next redesign pass that would remove those remaining compromises.
 
 ## Current Problems
 
-- `crates/relay-control/src/signed_ws.rs` currently mixes protocol, crypto, transport adaptation, runtime wrappers, and tests in one file.
-- The public API still exposes transport-driven concepts such as transport message types and transport wrappers.
-- Tunnel code and application WebSocket code share infrastructure that sits at the wrong abstraction level.
-- Axum and tungstenite concerns are normalised in an implementation-oriented way rather than a domain-oriented way.
-- The code is readable once understood, but it is not easy to learn locally from first principles.
+- Request signing for the websocket upgrade and frame signing after the websocket upgrade are still conceptually too close together.
+- The public API still exposes lower-level relay mechanics such as session crypto or split sender/receiver types.
+- Tunnel code and application WebSocket code still share runtime concepts that should be separated.
+- The current flow is readable once understood, but it is still not the shortest path from call site to "what exactly is being signed here?"
+- The simplest mental model would be "authenticate the upgrade, then authenticate the stream", and the current design is not yet shaped that way.
 
 ## Target Design
 
@@ -159,6 +165,135 @@ Notably absent from this target shape:
 - public `RelayTransportAdapter`
 - public split sender/receiver types
 - public "maybe signed, maybe plain" websocket wrappers
+
+## Wave 3: Straight-Line Redesign
+
+With hindsight, the cleanest design is not "generic but hidden." It is "two security boundaries, two product runtimes, one obvious session object."
+
+The primary conceptual split should be:
+
+- upgrade authentication: prove the websocket upgrade request is allowed
+- frame authentication: sign and verify every message after the socket is open
+
+Those are different jobs and should not share the same public API surface.
+
+### Straight-Line Public API
+
+The public API should collapse to one product-facing concept:
+
+- `RelaySession`
+
+That session should expose only the use cases the product actually has:
+
+- `RelaySession::connect_socket(path, protocol) -> RelaySocket`
+- `RelaySession::connect_tunnel(path) -> RelayTunnel`
+- `RelayWsUpgrade::on_socket(...)`
+- `RelayWsUpgrade::on_tunnel(...)`
+
+What should disappear from the public model:
+
+- `RelaySessionCrypto`
+- public sender/receiver split types
+- public "upstream socket" transport helpers
+- direct use of `build_request_signature(...)` in websocket entrypoints
+- deriving tunnel behaviour by reusing the message-socket runtime
+
+### Straight-Line Security Boundary
+
+The redesign should make upgrade authentication and frame authentication visibly separate.
+
+Proposed split:
+
+- `request_auth`
+  - owns HTTP header/query signing for relay upgrade requests
+  - builds signed websocket upgrade requests
+  - never knows about websocket frames
+- `frame_auth`
+  - owns relay envelope signing and verification after upgrade
+  - never knows about HTTP headers or request construction
+
+The call flow should read like this:
+
+1. `RelaySession` asks `request_auth` to build an authenticated upgrade request.
+2. The websocket connection is established.
+3. The resulting runtime asks `frame_auth` to sign outbound frames and verify inbound frames.
+
+### Tunnel-First Runtime
+
+The tunnel path should stop reusing the message-oriented runtime.
+
+Instead, the tunnel should have its own explicit runtime with its own explicit steps:
+
+1. read bytes from local TCP
+2. wrap those bytes as a relay binary payload
+3. sign that payload into a relay envelope
+4. write the signed envelope to the websocket
+
+Inbound:
+
+1. read a websocket frame
+2. decode and verify the relay envelope
+3. extract the relay binary payload
+4. write bytes back to TCP
+
+This means the tunnel module should call named steps like:
+
+- `sign_outbound_chunk(...)`
+- `verify_inbound_chunk(...)`
+
+Even if those functions are thin wrappers over shared crypto internals, the tunnel path should read directly in terms of bytes and signed chunks, not in terms of a generic message socket that later becomes a tunnel.
+
+### Socket Runtime
+
+The message-oriented websocket path should also stand on its own.
+
+The socket runtime should read like:
+
+1. accept/send semantic websocket messages
+2. sign or verify relay envelopes
+3. adapt to axum or tungstenite only at the edge
+
+Tunnel and socket may share protocol and frame crypto, but they should not share their top-level runtime type.
+
+### Straight-Line Module Ownership
+
+The cleanest end state probably keeps the current crates, but changes what they own:
+
+- `relay-ws-protocol`
+  - relay messages
+  - signed envelope encoding/decoding
+- `relay-ws-frame-auth`
+  - sequence tracking
+  - frame signing and verification
+- `relay-ws-request-auth`
+  - upgrade-request signing
+  - header/query encoding
+- `relay-ws-client`
+  - `RelaySession`
+  - concrete tungstenite socket runtime
+  - concrete tungstenite tunnel runtime
+- `relay-ws-server`
+  - concrete axum upgrade/runtime types
+  - server socket and tunnel entrypoints
+
+If crate churn is undesirable, `request_auth` and `frame_auth` can remain modules at first, but they should still be treated as separate ownership boundaries.
+
+### If Compatibility Can Break
+
+If a protocol v3 is allowed, the signed websocket channel should become binary-only.
+
+That means:
+
+- all signed relay envelopes are binary websocket frames
+- websocket text transport is not part of the signed relay channel
+- ping/pong stays transport-local rather than appearing in the core relay message model unless the product truly needs it
+
+That would reduce the wire model to:
+
+- authenticate the upgrade with signed request metadata
+- authenticate the stream with binary signed envelopes
+
+That is the straightest possible design.
 
 ## Boundary Changes Still Wanted
 
@@ -505,6 +640,100 @@ Deliverables:
 Exit criteria:
 
 - Protocol format remains an explicit product decision, not an incidental byproduct of refactoring.
+
+### Phase 13: Separate upgrade authentication from frame authentication
+
+Goals:
+
+- Pull websocket upgrade request signing into its own explicit subsystem.
+- Remove direct request-signature construction from websocket and tunnel call sites.
+
+Deliverables:
+
+- `request_auth` module or crate
+- session-level upgrade request builder API
+
+Exit criteria:
+
+- A reader can understand websocket upgrade authentication without reading any frame-signing code.
+
+### Phase 14: Introduce `RelaySession`
+
+Goals:
+
+- Replace scattered client bootstrap helpers with one product-facing session object.
+
+Deliverables:
+
+- `RelaySession::connect_socket(...)`
+- `RelaySession::connect_tunnel(...)`
+
+Exit criteria:
+
+- Application code no longer assembles relay websocket bootstrap from lower-level pieces.
+
+### Phase 15: Split tunnel and socket runtimes completely
+
+Goals:
+
+- Stop deriving tunnel behaviour from the message-oriented websocket runtime.
+- Give tunnel code first-class, byte-oriented naming.
+
+Deliverables:
+
+- dedicated client tunnel runtime
+- dedicated server tunnel runtime
+- named chunk-signing helpers
+
+Exit criteria:
+
+- The tunnel path is readable entirely in terms of bytes, signed chunks, and websocket transport.
+
+### Phase 16: Hide frame-signing implementation types
+
+Goals:
+
+- Remove public `RelaySessionCrypto`
+- Remove public sender/receiver split types
+
+Deliverables:
+
+- internal-only frame auth state
+- simplified public socket and tunnel types
+
+Exit criteria:
+
+- App-facing APIs expose only product concepts, not relay-plumbing concepts.
+
+### Phase 17: Simplify server upgrades to product entrypoints
+
+Goals:
+
+- Replace generic upgrade wrappers with direct product entrypoints.
+
+Deliverables:
+
+- `RelayWsUpgrade::on_socket(...)`
+- `RelayWsUpgrade::on_tunnel(...)`
+
+Exit criteria:
+
+- Server route code reads as pure policy plus one lifecycle callback.
+
+### Phase 18: Optional binary-only signed channel
+
+Goals:
+
+- Evaluate whether the signed relay websocket protocol should become binary-only.
+
+Deliverables:
+
+- explicit decision record
+- if approved, protocol v3 wire spec and migration plan
+
+Exit criteria:
+
+- The relay websocket protocol is either intentionally preserved or intentionally simplified, with no accidental middle state.
 
 ## File-By-File Execution Map
 

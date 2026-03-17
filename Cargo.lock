@@ -6455,6 +6455,7 @@ name = "relay-ws-client"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum",
  "ed25519-dalek",
  "futures-util",
  "relay-control",
@@ -6492,9 +6493,9 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "ed25519-dalek",
  "futures-util",
  "relay-tunnel",
- "relay-ws-client",
  "relay-ws-crypto",
  "relay-ws-protocol",
  "tokio",
@@ -7670,6 +7671,7 @@ dependencies = [
  "relay-hosts",
  "relay-tunnel",
  "relay-types",
+ "relay-ws-client",
  "relay-ws-crypto",
  "relay-ws-protocol",
  "relay-ws-server",

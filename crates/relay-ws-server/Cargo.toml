@@ -6,9 +6,9 @@ edition = "2024"
 [dependencies]
 anyhow = { workspace = true }
 axum = { workspace = true }
+ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 futures-util = { version = "0.3", features = ["sink"] }
 relay-tunnel = { path = "../relay-tunnel" }
-relay-ws-client = { path = "../relay-ws-client" }
 relay-ws-crypto = { path = "../relay-ws-crypto" }
 relay-ws-protocol = { path = "../relay-ws-protocol" }
 tokio = { workspace = true }

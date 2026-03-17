@@ -12,7 +12,7 @@ use db::models::{
 };
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::RelaySocket;
 use serde::Deserialize;
 use services::services::container::ContainerService;
 use utils::{log_msg::LogMsg, response::ApiResponse};
@@ -53,7 +53,7 @@ pub async fn stream_raw_logs_ws(
             ApiError::ExecutionProcess(ExecutionProcessError::ExecutionProcessNotFound)
         })?;
 
-    Ok(ws.on_upgrade(move |socket| async move {
+    Ok(ws.on_socket(move |socket| async move {
         if let Err(e) = handle_raw_logs_ws(socket, deployment, exec_id).await {
             tracing::warn!("raw logs WS closed: {}", e);
         }
@@ -61,7 +61,7 @@ pub async fn stream_raw_logs_ws(
 }
 
 async fn handle_raw_logs_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     exec_id: Uuid,
 ) -> anyhow::Result<()> {
@@ -144,7 +144,7 @@ pub async fn stream_normalized_logs_ws(
     // Convert the error type to anyhow::Error and turn TryStream -> Stream<Result<_, _>>
     let stream = stream.err_into::<anyhow::Error>().into_stream();
 
-    Ok(ws.on_upgrade(move |socket| async move {
+    Ok(ws.on_socket(move |socket| async move {
         if let Err(e) = handle_normalized_logs_ws(socket, stream).await {
             tracing::warn!("normalized logs WS closed: {}", e);
         }
@@ -152,7 +152,7 @@ pub async fn stream_normalized_logs_ws(
 }
 
 async fn handle_normalized_logs_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     stream: impl futures_util::Stream<Item = anyhow::Result<LogMsg>> + Unpin + Send + 'static,
 ) -> anyhow::Result<()> {
     let mut stream = stream.map_ok(|msg| msg.to_ws_message_unchecked());
@@ -202,7 +202,7 @@ pub async fn stream_execution_processes_by_session_ws(
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionExecutionProcessQuery>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
+    ws.on_socket(move |socket| async move {
         if let Err(e) = handle_execution_processes_by_session_ws(
             socket,
             deployment,
@@ -217,7 +217,7 @@ pub async fn stream_execution_processes_by_session_ws(
 }
 
 async fn handle_execution_processes_by_session_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     session_id: uuid::Uuid,
     show_soft_deleted: bool,

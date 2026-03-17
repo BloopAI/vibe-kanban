@@ -3,8 +3,13 @@ name = "relay-ws-client"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+axum = ["dep:axum"]
+
 [dependencies]
 anyhow = { workspace = true }
+axum = { workspace = true, optional = true }
 ed25519-dalek = { version = "2.2.0", features = ["rand_core"] }
 futures-util = { version = "0.3", features = ["sink"] }
 relay-control = { path = "../relay-control" }

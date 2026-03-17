@@ -12,7 +12,7 @@ use relay_types::{
     RefreshRelaySigningSessionRequest, RefreshRelaySigningSessionResponse, RelayAuthState,
     RemoteSession, StartSpake2EnrollmentRequest, StartSpake2EnrollmentResponse,
 };
-use relay_ws_client::{RelayUpstreamSocket, RelayWsConnectError, connect_signed_relay_websocket};
+use relay_ws_client::{RelaySession, RelaySocket, RelayWsConnectError};
 use relay_ws_protocol::RELAY_HEADER;
 use reqwest::Client;
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
@@ -364,7 +364,7 @@ impl RelayHostTransport {
         &mut self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(RelayUpstreamSocket, Option<String>), RelayTransportError> {
+    ) -> Result<(RelaySocket, Option<String>), RelayTransportError> {
         match self.connect_ws_once(target_path, protocols).await {
             Ok(result) => return Ok(result),
             Err(RelayWsConnectError::AuthFailure) => {}
@@ -454,19 +454,18 @@ impl RelayHostTransport {
         &self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(RelayUpstreamSocket, Option<String>), RelayWsConnectError> {
-        connect_signed_relay_websocket(
+    ) -> Result<(RelaySocket, Option<String>), RelayWsConnectError> {
+        RelaySession::new(
             &relay_session_url(
                 self.relay_base_url(),
                 self.identity.host_id,
                 self.auth_state.remote_session.id,
             ),
-            target_path,
-            protocols,
-            &self.signing_key,
-            &self.auth_state.signing_session_id,
+            self.signing_key.clone(),
+            self.auth_state.signing_session_id.clone(),
             self.identity.server_verify_key,
         )
+        .connect_socket(target_path, protocols)
         .await
     }
 

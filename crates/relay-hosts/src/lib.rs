@@ -11,7 +11,7 @@ use relay_client::{
 };
 use relay_control::signing::RelaySigningService;
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
-use relay_ws_client::RelayUpstreamSocket;
+use relay_ws_client::RelaySocket;
 use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
 use services::services::remote_client::RemoteClient;
@@ -202,7 +202,7 @@ pub struct RelayHost {
 }
 
 pub struct HostRelayWsConnection {
-    pub upstream_socket: RelayUpstreamSocket,
+    pub upstream_socket: RelaySocket,
     pub selected_protocol: Option<String>,
 }
 

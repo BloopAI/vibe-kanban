@@ -7,7 +7,7 @@ use axum::{
 use db::models::scratch::{CreateScratch, Scratch, ScratchType, UpdateScratch};
 use deployment::Deployment;
 use futures_util::{StreamExt, TryStreamExt};
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::RelaySocket;
 use serde::Deserialize;
 use utils::response::ApiResponse;
 use uuid::Uuid;
@@ -103,7 +103,7 @@ pub async fn stream_scratch_ws(
     State(deployment): State<DeploymentImpl>,
     Path(ScratchPath { scratch_type, id }): Path<ScratchPath>,
 ) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| async move {
+    ws.on_socket(move |socket| async move {
         if let Err(e) = handle_scratch_ws(socket, deployment, id, scratch_type).await {
             tracing::warn!("scratch WS closed: {}", e);
         }
@@ -111,7 +111,7 @@ pub async fn stream_scratch_ws(
 }
 
 async fn handle_scratch_ws(
-    mut socket: RelayServerSocket,
+    mut socket: RelaySocket,
     deployment: DeploymentImpl,
     id: Uuid,
     scratch_type: ScratchType,

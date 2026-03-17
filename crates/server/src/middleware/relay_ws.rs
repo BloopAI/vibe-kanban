@@ -5,8 +5,7 @@ use axum::{
 };
 use deployment::Deployment;
 use ed25519_dalek::{SigningKey, VerifyingKey};
-use relay_ws_crypto::RelaySessionCrypto;
-use relay_ws_server::RelayServerSocket;
+use relay_ws_server::{RelaySocket, RelayTunnel};
 
 use crate::{DeploymentImpl, middleware::RelayRequestSignatureContext};
 
@@ -58,26 +57,45 @@ where
 }
 
 impl RelayWsUpgrade {
-    pub fn on_upgrade<F, Fut>(self, callback: F) -> impl IntoResponse
+    pub fn on_socket<F, Fut>(self, callback: F) -> impl IntoResponse
     where
-        F: FnOnce(RelayServerSocket) -> Fut + Send + 'static,
+        F: FnOnce(RelaySocket) -> Fut + Send + 'static,
         Fut: std::future::Future<Output = ()> + Send + 'static,
     {
         let relay_signing = self.relay_signing;
         self.ws.on_upgrade(move |socket| async move {
             let socket = match relay_signing {
-                Some(params) => RelayServerSocket::signed(
-                    RelaySessionCrypto::new(
-                        params.session_id,
-                        params.nonce,
-                        params.signing_key,
-                        params.verify_key,
-                    ),
+                Some(params) => RelaySocket::signed(
+                    params.session_id,
+                    params.nonce,
+                    params.signing_key,
+                    params.verify_key,
                     socket,
                 ),
-                None => RelayServerSocket::plain(socket),
+                None => RelaySocket::plain(socket),
             };
             callback(socket).await;
+        })
+    }
+
+    pub fn on_tunnel<F, Fut>(self, callback: F) -> impl IntoResponse
+    where
+        F: FnOnce(RelayTunnel) -> Fut + Send + 'static,
+        Fut: std::future::Future<Output = ()> + Send + 'static,
+    {
+        let relay_signing = self.relay_signing;
+        self.ws.on_upgrade(move |socket| async move {
+            let tunnel = match relay_signing {
+                Some(params) => RelayTunnel::signed(
+                    params.session_id,
+                    params.nonce,
+                    params.signing_key,
+                    params.verify_key,
+                    socket,
+                ),
+                None => RelayTunnel::plain(socket),
+            };
+            callback(tunnel).await;
         })
     }
 }
