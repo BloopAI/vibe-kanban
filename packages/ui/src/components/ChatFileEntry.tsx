@@ -160,19 +160,19 @@ export function ChatFileEntry({
   // Original header-only rendering (no diff content)
   return (
     <div
-        className={cn(
-          'flex items-center border rounded-sm p-base w-full',
-          isDenied ? 'bg-error/20 border-error' : 'bg-panel',
-          isInteractive && 'cursor-pointer',
-          className
-        )}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        role={isInteractive ? 'button' : undefined}
-        aria-expanded={onToggle ? expanded : undefined}
-        tabIndex={isInteractive ? 0 : undefined}
-        data-scroll-anchor-target={isInteractive ? '' : undefined}
-      >
+      className={cn(
+        'flex items-center border rounded-sm p-base w-full',
+        isDenied ? 'bg-error/20 border-error' : 'bg-panel',
+        isInteractive && 'cursor-pointer',
+        className
+      )}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      role={isInteractive ? 'button' : undefined}
+      aria-expanded={onToggle ? expanded : undefined}
+      tabIndex={isInteractive ? 0 : undefined}
+      data-scroll-anchor-target={isInteractive ? '' : undefined}
+    >
       <div className="flex-1 flex items-center gap-base min-w-0">
         <span className="relative shrink-0">
           <FileIcon className="size-icon-base" />

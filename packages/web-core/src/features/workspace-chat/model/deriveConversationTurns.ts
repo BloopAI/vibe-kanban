@@ -45,7 +45,7 @@ export interface ConversationScriptTurnProcess {
 export interface ConversationScriptTurn {
   readonly key: string;
   readonly kind: ScriptTurnKind;
-  readonly processes: ConversationScriptTurnProcess[];
+  readonly processes: ReadonlyArray<ConversationScriptTurnProcess>;
 }
 
 export type ConversationTurn = ConversationAgentTurn | ConversationScriptTurn;
@@ -302,9 +302,13 @@ export function deriveConversationTurns(
       !isAgentTurn(previousTurn) &&
       previousTurn.kind === kind
     ) {
-      previousTurn.processes.push(
-        deriveScriptTurnProcess(item.process, kind, index === 0)
-      );
+      turns[turns.length - 1] = {
+        ...previousTurn,
+        processes: [
+          ...previousTurn.processes,
+          deriveScriptTurnProcess(item.process, kind, index === 0),
+        ],
+      };
       continue;
     }
 

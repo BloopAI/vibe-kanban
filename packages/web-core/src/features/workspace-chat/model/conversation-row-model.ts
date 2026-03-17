@@ -393,20 +393,6 @@ export function findPreviousUserMessageIndex(
   return -1;
 }
 
-/**
- * Collect indices of all user-message rows.
- *
- * Useful for building a jump-list or breadcrumb navigation between
- * conversation turns.
- */
-export function getUserMessageIndices(rows: ConversationRow[]): number[] {
-  const indices: number[] = [];
-  for (let i = 0; i < rows.length; i++) {
-    if (rows[i].isUserMessage) indices.push(i);
-  }
-  return indices;
-}
-
 // ---------------------------------------------------------------------------
 // Key Contract Audit Notes
 // ---------------------------------------------------------------------------

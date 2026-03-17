@@ -292,7 +292,7 @@ export const ConversationList = forwardRef<
 
     const beforeScrollTop = activeScrollContainer.scrollTop;
     const currentTop = anchor.element.getBoundingClientRect().top;
-    const delta = anchor.element.getBoundingClientRect().top - anchor.top;
+    const delta = currentTop - anchor.top;
     if (Math.abs(delta) >= 0.5) {
       activeScrollContainer.scrollTop += delta;
     }
