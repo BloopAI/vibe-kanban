@@ -201,7 +201,6 @@ checksum = "7f202df86484c868dbad7eaa557ef785d5c66295e41b460ef922eca0723b842c"
 name = "api-types"
 version = "0.1.30"
 dependencies = [
- "base64 0.22.1",
  "chrono",
  "schemars 1.2.1",
  "serde",
@@ -1575,7 +1574,6 @@ dependencies = [
  "chrono",
  "executors",
  "futures",
- "log",
  "serde",
  "serde_json",
  "serde_with",
@@ -1629,7 +1627,6 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.18",
  "tokio",
- "tracing",
  "trusted-key-auth",
  "utils",
  "worktree-manager",
@@ -4120,7 +4117,6 @@ dependencies = [
  "serde_json",
  "server-info",
  "services",
- "sqlx",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -6035,7 +6031,6 @@ dependencies = [
  "tokio-util",
  "tokio-yamux",
  "tracing",
- "url",
 ]
 
 [[package]]
@@ -6235,25 +6230,6 @@ dependencies = [
  "quote",
  "serde_json",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "rmp"
-version = "0.8.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ba8be72d372b2c9b35542551678538b562e7cf86c3315773cae48dfbfe7790c"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
-name = "rmp-serde"
-version = "1.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72f81bee8c8ef9b577d1681a70ebbc962c232461e397b22c208c43c04b67a155"
-dependencies = [
- "rmp",
- "serde",
 ]
 
 [[package]]
@@ -7004,29 +6980,22 @@ dependencies = [
  "api-types",
  "axum",
  "base64 0.22.1",
- "bytes",
  "chrono",
  "db",
  "deployment",
  "dotenv",
- "ed25519-dalek",
  "executors",
- "futures",
  "futures-util",
  "git",
  "git-host",
  "git2",
  "http",
- "hyper",
- "hyper-util",
  "local-deployment",
  "mime_guess",
  "os_info",
  "rand 0.8.5",
- "regex",
  "relay-tunnel",
  "reqwest 0.13.2",
- "rmp-serde",
  "rust-embed",
  "rustls",
  "schemars 1.2.1",
@@ -7042,7 +7011,6 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.26.2",
  "tokio-util",
- "tokio-yamux",
  "tower-http 0.5.2",
  "tracing",
  "tracing-subscriber",
@@ -9203,7 +9171,6 @@ checksum = "06abde3611657adf66d383f00b093d7faecc7fa57071cce2578660c9f1010821"
 name = "utils"
 version = "0.1.30"
 dependencies = [
- "api-types",
  "axum",
  "bytes",
  "chrono",
@@ -9225,7 +9192,6 @@ dependencies = [
  "shellexpand",
  "shlex",
  "similar",
- "sqlx",
  "thiserror 2.0.18",
  "tokio",
  "tokio-stream",
@@ -9279,7 +9245,6 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 name = "vibe-kanban-tauri"
 version = "0.1.30"
 dependencies = [
- "anyhow",
  "async-trait",
  "objc2-web-kit",
  "rustls",
@@ -9292,7 +9257,6 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-shell",
  "tauri-plugin-updater",
- "tokio",
  "tokio-util",
  "tracing",
  "tracing-subscriber",

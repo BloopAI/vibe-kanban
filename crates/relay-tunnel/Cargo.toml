@@ -41,7 +41,6 @@ tokio-tungstenite = { version = "0.24", features = ["rustls-tls-webpki-roots"] }
 tokio-util = { version = "0.7", features = ["io"] }
 tokio-yamux = "0.3.17"
 tracing = "0.1.43"
-url = "2.5"
 
 # Optional deps for the relay-server binary
 api-types = { path = "../api-types", optional = true }
