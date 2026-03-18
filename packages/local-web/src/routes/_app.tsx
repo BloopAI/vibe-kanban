@@ -1,5 +1,4 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { UserProvider } from '@/shared/providers/remote/UserProvider';
 import { SequenceTrackerProvider } from '@/shared/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/shared/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/shared/keyboard/useWorkspaceShortcuts';
@@ -23,15 +22,13 @@ function KeyboardShortcutsHandler() {
 
 function AppLayoutRouteComponent() {
   return (
-    <UserProvider>
-      <SequenceTrackerProvider>
-        <SequenceIndicator />
-        <KeyboardShortcutsHandler />
-        <TerminalProvider>
-          <SharedAppLayout />
-        </TerminalProvider>
-      </SequenceTrackerProvider>
-    </UserProvider>
+    <SequenceTrackerProvider>
+      <SequenceIndicator />
+      <KeyboardShortcutsHandler />
+      <TerminalProvider>
+        <SharedAppLayout />
+      </TerminalProvider>
+    </SequenceTrackerProvider>
   );
 }
 

@@ -23,6 +23,7 @@ export type MobileTab =
   | 'git';
 
 export type MobileFontScale = 'default' | 'small' | 'smaller';
+export const DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT = false;
 
 const MOBILE_FONT_SCALE_KEY = 'vk-mobile-font-scale';
 
@@ -344,6 +345,7 @@ type State = {
   // Last selected organization and project (persisted via scratch store)
   selectedOrgId: string | null;
   selectedProjectId: string | null;
+  createDraftWorkspaceByDefault: boolean;
 
   // UI preferences actions
   setRepoAction: (repoId: string, action: RepoAction) => void;
@@ -427,6 +429,7 @@ type State = {
   setSelectedOrgId: (orgId: string | null) => void;
   clearSelectedOrgId: () => void;
   setSelectedProjectId: (projectId: string | null) => void;
+  setCreateDraftWorkspaceByDefault: (value: boolean) => void;
 };
 
 export const useUiPreferencesStore = create<State>()((set, get) => ({
@@ -469,6 +472,7 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   // Last selected organization and project
   selectedOrgId: null,
   selectedProjectId: null,
+  createDraftWorkspaceByDefault: DEFAULT_CREATE_DRAFT_WORKSPACE_BY_DEFAULT,
 
   // UI preferences actions
   setRepoAction: (repoId, action) =>
@@ -797,6 +801,8 @@ export const useUiPreferencesStore = create<State>()((set, get) => ({
   setSelectedOrgId: (orgId) => set({ selectedOrgId: orgId }),
   clearSelectedOrgId: () => set({ selectedOrgId: null }),
   setSelectedProjectId: (projectId) => set({ selectedProjectId: projectId }),
+  setCreateDraftWorkspaceByDefault: (value) =>
+    set({ createDraftWorkspaceByDefault: value }),
 }));
 
 // Hook for repo action preference

@@ -2,7 +2,7 @@ use axum::{
     Router,
     routing::{IntoMakeService, get},
 };
-use tower_http::validate_request::ValidateRequestHeaderLayer;
+use tower_http::{compression::CompressionLayer, validate_request::ValidateRequestHeaderLayer};
 
 use crate::{DeploymentImpl, middleware};
 
@@ -11,11 +11,11 @@ pub mod config;
 pub mod containers;
 pub mod filesystem;
 // pub mod github;
+pub mod attachments;
 pub mod events;
 pub mod execution_processes;
 pub mod frontend;
 pub mod health;
-pub mod images;
 pub mod migration;
 pub mod oauth;
 pub mod organizations;
@@ -52,7 +52,7 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .merge(sessions::router(&deployment))
         .merge(terminal::router())
         .nest("/remote", remote::router())
-        .nest("/images", images::routes())
+        .nest("/attachments", attachments::routes())
         .layer(axum::middleware::from_fn_with_state(
             deployment.clone(),
             middleware::sign_relay_response,
@@ -69,11 +69,13 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .layer(ValidateRequestHeaderLayer::custom(
             middleware::validate_origin,
         ))
+        .layer(axum::middleware::from_fn(middleware::log_server_errors))
         .with_state(deployment);
 
     Router::new()
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
         .nest("/api", api_routes)
+        .layer(CompressionLayer::new())
         .into_make_service()
 }

@@ -671,16 +671,16 @@ async fn handle_ws_proxy(
                 Ok(axum_msg) => {
                     let tungstenite_msg = match axum_msg {
                         axum::extract::ws::Message::Text(text) => {
-                            tungstenite::Message::Text(text.to_string())
+                            tungstenite::Message::Text(text.to_string().into())
                         }
                         axum::extract::ws::Message::Binary(data) => {
-                            tungstenite::Message::Binary(data.to_vec())
+                            tungstenite::Message::Binary(data.to_vec().into())
                         }
                         axum::extract::ws::Message::Ping(data) => {
-                            tungstenite::Message::Ping(data.to_vec())
+                            tungstenite::Message::Ping(data.to_vec().into())
                         }
                         axum::extract::ws::Message::Pong(data) => {
-                            tungstenite::Message::Pong(data.to_vec())
+                            tungstenite::Message::Pong(data.to_vec().into())
                         }
                         axum::extract::ws::Message::Close(close_frame) => {
                             let close = close_frame.map(|cf| tungstenite::protocol::CloseFrame {

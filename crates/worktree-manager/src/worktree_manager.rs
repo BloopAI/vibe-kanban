@@ -472,9 +472,11 @@ impl WorktreeManager {
 
         let git_path = resolve_executable_path("git").await?;
 
+        use utils::command_ext::NoWindowExt;
         let output = tokio::process::Command::new(git_path)
             .args(["rev-parse", "--git-common-dir"])
             .current_dir(&worktree_path_owned)
+            .no_window()
             .output()
             .await
             .ok()?;

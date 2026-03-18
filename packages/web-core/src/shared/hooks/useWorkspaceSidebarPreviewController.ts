@@ -85,10 +85,13 @@ export function useWorkspaceSidebarPreviewController({
     if (!enabled) {
       return;
     }
-    hoverStateRef.current.isHandleHovered = true;
+    // The handle unmounts as soon as the preview opens, so treat it as a
+    // transient trigger instead of persistent hover state.
+    hoverStateRef.current.isHandleHovered = false;
     clearScheduledClose();
     setIsPreviewOpen(true);
-  }, [clearScheduledClose, enabled]);
+    scheduleCloseIfIdle();
+  }, [clearScheduledClose, enabled, scheduleCloseIfIdle]);
 
   const handleHandleHoverEnd = useCallback(() => {
     hoverStateRef.current.isHandleHovered = false;

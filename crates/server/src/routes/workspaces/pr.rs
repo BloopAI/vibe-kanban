@@ -119,7 +119,10 @@ async fn trigger_pr_description_follow_up(
             None => {
                 Session::create(
                     &deployment.db().pool,
-                    &CreateSession { executor: None },
+                    &CreateSession {
+                        executor: None,
+                        name: None,
+                    },
                     Uuid::new_v4(),
                     workspace.id,
                 )
@@ -783,7 +786,10 @@ pub async fn create_workspace_from_pr(
         if let Some(setup_action) = deployment.container().setup_actions_for_repos(&repos) {
             let session = Session::create(
                 pool,
-                &CreateSession { executor: None },
+                &CreateSession {
+                    executor: None,
+                    name: None,
+                },
                 Uuid::new_v4(),
                 workspace.id,
             )

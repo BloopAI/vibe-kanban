@@ -34,6 +34,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       backend: ${{ steps.filter.outputs.backend }}
       backend-remote: ${{ steps.filter.outputs['backend-remote'] }}
+      tauri: ${{ steps.filter.outputs.tauri }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@0bc4621a3135347011ad047f9ecf449bf72ce2bd # v3.0.0
@@ -92,6 +93,30 @@ jobs:
               - '.cargo/**'
               - 'pnpm-lock.yaml'
               - 'package.json'
+              - '.github/workflows/test.yml'
+              - '.github/actions/**'
+            tauri:
+              - 'crates/tauri-app/**'
+              - 'crates/api-types/**'
+              - 'crates/db/**'
+              - 'crates/deployment/**'
+              - 'crates/executors/**'
+              - 'crates/git/**'
+              - 'crates/local-deployment/**'
+              - 'crates/mcp/**'
+              - 'crates/review/**'
+              - 'crates/server/**'
+              - 'crates/services/**'
+              - 'crates/utils/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'rustfmt.toml'
+              - 'rust-toolchain.toml'
+              - '.cargo/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.npmrc'
               - '.github/workflows/test.yml'
               - '.github/actions/**'
 
@@ -171,7 +196,7 @@ jobs:
         uses: ./.github/actions/cargo-checks-common-setup
         with:
           toolchain: ${{ env.RUST_TOOLCHAIN }}
-          components: rustfmt
+          components: rustfmt, clippy
           cache-key: backend-remote-checks-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
           setup-node: 'true'
           setup-sqlx-cli: 'true'
@@ -190,6 +215,11 @@ jobs:
         run: |
           cargo fmt --all --manifest-path crates/remote/Cargo.toml -- --check
           cargo fmt --all --manifest-path crates/relay-tunnel/Cargo.toml -- --check
+
+      - name: Run Clippy
+        run: |
+          cargo clippy --all-targets --manifest-path crates/remote/Cargo.toml -- -D warnings
+          cargo clippy --all-targets --manifest-path crates/relay-tunnel/Cargo.toml -- -D warnings
 
       - name: Check generated types
         run: npm run remote:generate-types:check
@@ -218,7 +248,7 @@ jobs:
         run: |
           set -x
           cargo fmt --all -- --check & pid_fmt=$!
-          cargo clippy --all --all-targets -- -D warnings
+          cargo clippy --workspace --all-targets --exclude vibe-kanban-tauri -- -D warnings
           wait $pid_fmt
 
   backend-test:
@@ -241,4 +271,34 @@ jobs:
         uses: taiki-e/install-action@nextest
 
       - name: Run Cargo tests
-        run: cargo nextest run --workspace
+        run: cargo nextest run --workspace --exclude vibe-kanban-tauri
+
+  tauri-checks:
+    needs: changes
+    if: always() && (needs.changes.outputs.tauri == 'true' || needs.changes.result == 'skipped')
+    runs-on: *runner_label
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: ./.github/actions/cargo-checks-common-setup
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: rustfmt, clippy
+          cache-key: tauri-checks-${{ runner.os }}-${{ runner.arch }}-${{ env.RUNNER_LABEL }}
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev file pkg-config xdg-utils
+
+      - name: Run Tauri fmt, clippy, and compile checks
+        run: |
+          cargo fmt --all --manifest-path crates/tauri-app/Cargo.toml -- --check
+          cargo clippy --all-targets --manifest-path crates/tauri-app/Cargo.toml -- -D warnings
+          cargo check -p vibe-kanban-tauri

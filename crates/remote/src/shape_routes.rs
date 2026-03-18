@@ -4,7 +4,8 @@ use api_types::{
     ListIssueAssigneesResponse, ListIssueCommentReactionsResponse, ListIssueCommentsResponse,
     ListIssueFollowersResponse, ListIssueRelationshipsResponse, ListIssueTagsResponse,
     ListIssuesResponse, ListProjectStatusesResponse, ListProjectsResponse,
-    ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember, User, Workspace,
+    ListPullRequestsResponse, ListTagsResponse, Notification, OrganizationMember,
+    SearchIssuesRequest, User, Workspace,
 };
 use axum::{
     Json,
@@ -78,7 +79,7 @@ pub fn all_shape_routes() -> Vec<ShapeRoute> {
         ),
         ShapeRoute::new(
             &shapes::NOTIFICATIONS_SHAPE,
-            ShapeScope::OrgWithUser,
+            ShapeScope::User,
             "/fallback/notifications",
             fallback_list_notifications,
         ),
@@ -196,23 +197,21 @@ async fn fallback_list_projects(
 async fn fallback_list_notifications(
     State(state): State<AppState>,
     Extension(ctx): Extension<RequestContext>,
-    Query(query): Query<OrgFallbackQuery>,
+    Query(_query): Query<NoQueryParams>,
 ) -> Result<Json<ListNotificationsResponse>, ErrorResponse> {
-    ensure_member_access(state.pool(), query.organization_id, ctx.user.id).await?;
-
-    let notifications = NotificationRepository::list_by_organization_and_user(
-        state.pool(),
-        query.organization_id,
-        ctx.user.id,
-    )
-    .await
-    .map_err(|error| {
-        tracing::error!(?error, organization_id = %query.organization_id, "failed to list notifications (fallback)");
-        ErrorResponse::new(
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "failed to list notifications",
-        )
-    })?;
+    let notifications = NotificationRepository::list_by_user(state.pool(), ctx.user.id, true)
+        .await
+        .map_err(|error| {
+            tracing::error!(
+                ?error,
+                user_id = %ctx.user.id,
+                "failed to list notifications (fallback)"
+            );
+            ErrorResponse::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "failed to list notifications",
+            )
+        })?;
 
     Ok(Json(ListNotificationsResponse { notifications }))
 }
@@ -307,14 +306,32 @@ async fn fallback_list_issues(
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
     ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
 
-    let issues = IssueRepository::list_by_project(state.pool(), query.project_id)
-        .await
-        .map_err(|error| {
-            tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
-            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
-        })?;
+    let response = IssueRepository::search(
+        state.pool(),
+        &SearchIssuesRequest {
+            project_id: query.project_id,
+            status_id: None,
+            status_ids: None,
+            priority: None,
+            parent_issue_id: None,
+            search: None,
+            simple_id: None,
+            assignee_user_id: None,
+            tag_id: None,
+            tag_ids: None,
+            sort_field: None,
+            sort_direction: None,
+            limit: None,
+            offset: None,
+        },
+    )
+    .await
+    .map_err(|error| {
+        tracing::error!(?error, project_id = %query.project_id, "failed to list issues (fallback)");
+        ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
+    })?;
 
-    Ok(Json(ListIssuesResponse { issues }))
+    Ok(Json(response))
 }
 
 async fn fallback_list_project_workspaces(

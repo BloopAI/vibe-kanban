@@ -145,6 +145,7 @@ export const useJsonPatchWsStream = <T extends object>(
               // Handle Ready messages (initial data has been sent)
               if ('Ready' in msg) {
                 setIsInitialized(true);
+                setError(null);
               }
 
               // Handle finished messages ({finished: true})

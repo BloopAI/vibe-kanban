@@ -164,7 +164,12 @@
       "latest": "Plus récent",
       "previous": "Précédent",
       "label": "Sessions",
-      "noPreviousSessions": "Aucune session précédente"
+      "noPreviousSessions": "Aucune session précédente",
+      "rename": "Renommer",
+      "renameTitle": "Renommer la session",
+      "renameDescription": "Entrez un nouveau nom pour cette session.",
+      "renamePlaceholder": "Entrez le nom de la session",
+      "renaming": "Renommage..."
     },
     "reviewComments": {
       "count_one": "{{count}} commentaire de révision sera inclus",
@@ -315,7 +320,8 @@
     "reviewComments": "Commentaires de révision ({{count}})",
     "includeGitContext": "Inclure le contexte git",
     "includeGitContextDescription": "Indique à l'agent comment voir toutes les modifications effectuées sur cette branche",
-    "newSession": "Nouvelle session"
+    "newSession": "Nouvelle session",
+    "sessionName": "Révision"
   },
   "actionsMenu": {
     "startReview": "Démarrer la révision",
@@ -330,7 +336,8 @@
       "resolving": "Démarrage...",
       "filesWithConflicts_one": "{{count}} fichier a des conflits",
       "filesWithConflicts_other": "{{count}} fichiers ont des conflits",
-      "andMore": "...et {{count}} autres"
+      "andMore": "...et {{count}} autres",
+      "sessionName": "Résoudre les conflits"
     }
   },
   "rebaseInProgress": {
@@ -395,7 +402,7 @@
       "cancelled": "Annulé"
     },
     "startLabel": "Démarrer",
-    "attachImage": "Joindre une image",
+    "attachFile": "Joindre un fichier",
     "dropImagesHere": "Déposez les images ici",
     "updating": "Mise à jour...",
     "updateTask": "Mettre à jour la tâche",

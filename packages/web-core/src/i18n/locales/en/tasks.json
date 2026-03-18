@@ -164,7 +164,12 @@
       "latest": "Latest",
       "previous": "Previous",
       "label": "Sessions",
-      "noPreviousSessions": "No previous sessions"
+      "noPreviousSessions": "No previous sessions",
+      "rename": "Rename",
+      "renameTitle": "Rename Session",
+      "renameDescription": "Enter a new name for this session.",
+      "renamePlaceholder": "Enter session name",
+      "renaming": "Renaming..."
     },
     "reviewComments": {
       "count_one": "{{count}} review comment will be included",
@@ -315,7 +320,8 @@
     "reviewComments": "Review Comments ({{count}})",
     "includeGitContext": "Include git context",
     "includeGitContextDescription": "Tells the agent how to view all changes made on this branch",
-    "newSession": "New Session"
+    "newSession": "New Session",
+    "sessionName": "Review"
   },
   "actionsMenu": {
     "startReview": "Start Review",
@@ -330,7 +336,8 @@
       "resolving": "Starting...",
       "filesWithConflicts_one": "{{count}} file has conflicts",
       "filesWithConflicts_other": "{{count}} files have conflicts",
-      "andMore": "...and {{count}} more"
+      "andMore": "...and {{count}} more",
+      "sessionName": "Resolve conflicts"
     }
   },
   "rebaseInProgress": {
@@ -395,7 +402,7 @@
       "cancelled": "Cancelled"
     },
     "startLabel": "Start",
-    "attachImage": "Attach image",
+    "attachFile": "Attach file",
     "dropImagesHere": "Drop images here",
     "updating": "Updating...",
     "updateTask": "Update Task",

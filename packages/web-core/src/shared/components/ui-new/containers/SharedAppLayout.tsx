@@ -7,6 +7,7 @@ import { SyncErrorProvider } from '@/shared/providers/SyncErrorProvider';
 import { useIsMobile } from '@/shared/hooks/useIsMobile';
 import { useUiPreferencesStore } from '@/shared/stores/useUiPreferencesStore';
 import { cn } from '@/shared/lib/utils';
+import { isTauriMac } from '@/shared/lib/platform';
 
 import { NavbarContainer } from './NavbarContainer';
 import { AppBar } from '@vibe/ui/components/AppBar';
@@ -18,6 +19,7 @@ import { useAuth } from '@/shared/hooks/auth/useAuth';
 import { useDiscordOnlineCount } from '@/shared/hooks/useDiscordOnlineCount';
 import { useGitHubStars } from '@/shared/hooks/useGitHubStars';
 import { useUserSystem } from '@/shared/hooks/useUserSystem';
+import { useAppUpdateStore } from '@/shared/stores/useAppUpdateStore';
 import { useAppNavigation } from '@/shared/hooks/useAppNavigation';
 import { useCurrentAppDestination } from '@/shared/hooks/useCurrentAppDestination';
 import {
@@ -43,6 +45,7 @@ import {
   PROJECTS_SHAPE,
   type Project as RemoteProject,
 } from 'shared/remote-types';
+import { AppBarNotificationBellContainer } from '@/pages/workspaces/AppBarNotificationBellContainer';
 import { WorkspacesSidebarContainer } from '@/pages/workspaces/WorkspacesSidebarContainer';
 import { WorkspacesSidebarReopenTag } from '@vibe/ui/components/WorkspacesSidebar';
 
@@ -57,6 +60,8 @@ export function SharedAppLayout() {
   );
   const { isSignedIn } = useAuth();
   const { appVersion } = useUserSystem();
+  const updateVersion = useAppUpdateStore((s) => s.updateVersion);
+  const restartForUpdate = useAppUpdateStore((s) => s.restart);
   const { data: onlineCount } = useDiscordOnlineCount();
   const { data: starCount } = useGitHubStars();
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -286,42 +291,110 @@ export function SharedAppLayout() {
     <SyncErrorProvider>
       <div
         className={cn(
-          'flex bg-primary',
+          'bg-primary',
           isMobile
-            ? 'fixed inset-0 pb-[env(safe-area-inset-bottom)]'
-            : 'h-screen'
+            ? 'flex fixed inset-0 pb-[env(safe-area-inset-bottom)]'
+            : !isMigrateRoute
+              ? 'grid grid-cols-[auto_1fr] grid-rows-[auto_1fr] h-screen'
+              : 'flex h-screen'
         )}
       >
         {!isMobile && !isMigrateRoute && (
-          <AppBar
-            projects={orderedProjects}
-            onCreateProject={handleCreateProject}
-            onWorkspacesClick={handleWorkspacesClick}
-            onProjectClick={handleProjectClick}
-            onProjectsDragEnd={handleProjectsDragEnd}
-            isSavingProjectOrder={isSavingProjectOrder}
-            isWorkspacesActive={isWorkspacesActive}
-            activeProjectId={activeProjectId}
-            isSignedIn={isSignedIn}
-            isLoadingProjects={isLoading}
-            onSignIn={handleSignIn}
-            onMigrate={handleMigrate}
-            onHoverStart={() => setIsAppBarHovered(true)}
-            onHoverEnd={() => setIsAppBarHovered(false)}
-            userPopover={
-              <AppBarUserPopoverContainer
-                organizations={organizations}
-                selectedOrgId={selectedOrgId ?? ''}
-                onOrgSelect={setSelectedOrgId}
-                onCreateOrg={handleCreateOrg}
-              />
-            }
-            starCount={starCount}
-            onlineCount={onlineCount}
-            appVersion={appVersion}
-            githubIconPath={siGithub.path}
-            discordIconPath={siDiscord.path}
-          />
+          <>
+            {/* Row 1, col 1: corner spacer — seamless with AppBar bg */}
+            <div
+              data-tauri-drag-region
+              className="bg-secondary"
+              style={isTauriMac() ? { minWidth: 56 } : undefined}
+            />
+            {/* Row 1, col 2: Navbar stretches full width */}
+            <NavbarContainer
+              onCreateOrg={handleCreateOrg}
+              onOrgSelect={setSelectedOrgId}
+              onOpenDrawer={() => setIsDrawerOpen(true)}
+            />
+            {/* Row 2, col 1: AppBar sidebar */}
+            <AppBar
+              projects={orderedProjects}
+              onCreateProject={handleCreateProject}
+              onWorkspacesClick={handleWorkspacesClick}
+              onProjectClick={handleProjectClick}
+              onProjectsDragEnd={handleProjectsDragEnd}
+              isSavingProjectOrder={isSavingProjectOrder}
+              isWorkspacesActive={isWorkspacesActive}
+              activeProjectId={activeProjectId}
+              isSignedIn={isSignedIn}
+              isLoadingProjects={isLoading}
+              onSignIn={handleSignIn}
+              onMigrate={handleMigrate}
+              onHoverStart={() => setIsAppBarHovered(true)}
+              onHoverEnd={() => setIsAppBarHovered(false)}
+              notificationBell={
+                isSignedIn ? <AppBarNotificationBellContainer /> : undefined
+              }
+              userPopover={
+                <AppBarUserPopoverContainer
+                  organizations={organizations}
+                  selectedOrgId={selectedOrgId ?? ''}
+                  onOrgSelect={setSelectedOrgId}
+                  onCreateOrg={handleCreateOrg}
+                />
+              }
+              starCount={starCount}
+              onlineCount={onlineCount}
+              appVersion={appVersion}
+              updateVersion={updateVersion}
+              onUpdateClick={restartForUpdate ?? undefined}
+              githubIconPath={siGithub.path}
+              discordIconPath={siDiscord.path}
+            />
+            {/* Row 2, col 2: Content */}
+            <div className="relative min-h-0 overflow-hidden">
+              {isWorkspaceSidebarPreviewEnabled && (
+                <div className="absolute inset-y-0 left-0 z-20 flex items-center">
+                  <WorkspacesSidebarReopenTag
+                    active={sidebarPreview.isPreviewOpen}
+                    onHoverStart={sidebarPreview.handleHandleHoverStart}
+                    onHoverEnd={sidebarPreview.handleHandleHoverEnd}
+                    ariaLabel="Workspaces"
+                  />
+                </div>
+              )}
+
+              {isWorkspaceSidebarPreviewEnabled && (
+                <div
+                  className={cn(
+                    'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
+                    sidebarPreview.isPreviewOpen
+                      ? 'translate-x-0 pointer-events-auto'
+                      : '-translate-x-full pointer-events-none'
+                  )}
+                  onMouseEnter={sidebarPreview.handlePreviewHoverStart}
+                  onMouseLeave={sidebarPreview.handlePreviewHoverEnd}
+                >
+                  <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
+                    <WorkspacesSidebarContainer />
+                  </div>
+                </div>
+              )}
+
+              <Outlet />
+            </div>
+          </>
+        )}
+
+        {(isMobile || isMigrateRoute) && (
+          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+            <NavbarContainer
+              mobileMode={isMobile}
+              onCreateOrg={handleCreateOrg}
+              onOrgSelect={setSelectedOrgId}
+              onOpenDrawer={() => setIsDrawerOpen(true)}
+            />
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <Outlet />
+            </div>
+          </div>
         )}
 
         {/* Mobile project navigation drawer */}
@@ -443,45 +516,6 @@ export function SharedAppLayout() {
             )}
           </div>
         </MobileDrawer>
-        <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-          <NavbarContainer
-            mobileMode={isMobile}
-            onCreateOrg={handleCreateOrg}
-            onOrgSelect={setSelectedOrgId}
-            onOpenDrawer={() => setIsDrawerOpen(true)}
-          />
-          <div className="relative flex-1 min-h-0 overflow-hidden">
-            {isWorkspaceSidebarPreviewEnabled && (
-              <div className="absolute inset-y-0 left-0 z-20 flex items-center">
-                <WorkspacesSidebarReopenTag
-                  active={sidebarPreview.isPreviewOpen}
-                  onHoverStart={sidebarPreview.handleHandleHoverStart}
-                  onHoverEnd={sidebarPreview.handleHandleHoverEnd}
-                  ariaLabel="Workspaces"
-                />
-              </div>
-            )}
-
-            {isWorkspaceSidebarPreviewEnabled && (
-              <div
-                className={cn(
-                  'absolute left-0 top-0 z-30 h-full w-[300px] transition-transform duration-150 ease-out',
-                  sidebarPreview.isPreviewOpen
-                    ? 'translate-x-0 pointer-events-auto'
-                    : '-translate-x-full pointer-events-none'
-                )}
-                onMouseEnter={sidebarPreview.handlePreviewHoverStart}
-                onMouseLeave={sidebarPreview.handlePreviewHoverEnd}
-              >
-                <div className="h-full w-full overflow-hidden border-r border-border bg-secondary shadow-lg">
-                  <WorkspacesSidebarContainer />
-                </div>
-              </div>
-            )}
-
-            <Outlet />
-          </div>
-        </div>
       </div>
     </SyncErrorProvider>
   );

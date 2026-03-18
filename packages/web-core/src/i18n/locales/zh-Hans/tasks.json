@@ -238,7 +238,8 @@
     "reviewComments": "审查评论（{{count}}）",
     "includeGitContext": "包含 Git 上下文",
     "includeGitContextDescription": "告诉代理如何查看此分支上的所有更改",
-    "newSession": "新会话"
+    "newSession": "新会话",
+    "sessionName": "审查"
   },
   "actionsMenu": {
     "startReview": "开始审查",
@@ -253,7 +254,8 @@
       "resolving": "开始中...",
       "filesWithConflicts_one": "{{count}} 个文件有冲突",
       "filesWithConflicts_other": "{{count}} 个文件有冲突",
-      "andMore": "...还有 {{count}} 个"
+      "andMore": "...还有 {{count}} 个",
+      "sessionName": "解决冲突"
     }
   },
   "rebaseInProgress": {
@@ -318,7 +320,7 @@
       "cancelled": "已取消"
     },
     "startLabel": "开始",
-    "attachImage": "附加图片",
+    "attachFile": "附加文件",
     "dropImagesHere": "在此处放置图片",
     "updating": "更新中...",
     "updateTask": "更新任务",
@@ -419,7 +421,12 @@
       "latest": "最新",
       "previous": "上一个",
       "label": "会话",
-      "noPreviousSessions": "没有以前的会话"
+      "noPreviousSessions": "没有以前的会话",
+      "rename": "重命名",
+      "renameTitle": "重命名会话",
+      "renameDescription": "输入此会话的新名称。",
+      "renamePlaceholder": "输入会话名称",
+      "renaming": "正在重命名..."
     },
     "reviewComments": {
       "count_one": "{{count}} 条审查评论将被包含",

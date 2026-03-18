@@ -70,6 +70,7 @@ packages/**/dist
 
 build-npm-package-codesign.sh
 
+npx-cli/bin/
 npx-cli/dist
 npx-cli/vibe-kanban-*
 vibe-kanban-*.tgz

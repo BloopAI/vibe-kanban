@@ -264,7 +264,9 @@ pub trait ContainerService {
                 return;
             }
         };
-        self.notification_service().notify(&title, &message).await;
+        self.notification_service()
+            .notify(&title, &message, Some(ctx.workspace.id))
+            .await;
     }
 
     /// Cleanup executions marked as running in the db, call at startup
@@ -500,7 +502,10 @@ pub trait ContainerService {
             None => {
                 Session::create(
                     pool,
-                    &CreateSession { executor: None },
+                    &CreateSession {
+                        executor: None,
+                        name: None,
+                    },
                     Uuid::new_v4(),
                     workspace.id,
                 )
@@ -1059,6 +1064,7 @@ pub trait ContainerService {
             &self.db().pool,
             &CreateSession {
                 executor: Some(executor_config.executor.to_string()),
+                name: None,
             },
             Uuid::new_v4(),
             workspace.id,

@@ -31,10 +31,40 @@ pub mod users;
 pub mod workspaces;
 
 use sqlx::{
-    Executor, PgPool, Postgres, Transaction, migrate::MigrateError, postgres::PgPoolOptions,
+    Executor, PgPool, Postgres, Transaction,
+    migrate::MigrateError,
+    postgres::{PgConnectOptions, PgPoolOptions},
 };
+use uuid::Uuid;
 
 pub(crate) type Tx<'a> = Transaction<'a, Postgres>;
+
+/// Per-request context propagated to database transactions via a tokio task-local.
+/// The auth middleware initialises the scope; `begin_tx` reads it.
+#[derive(Clone)]
+pub struct TxContext {
+    pub user_id: Uuid,
+    pub request_id: String,
+}
+
+tokio::task_local! {
+    pub static TX_CONTEXT: Option<TxContext>;
+}
+
+/// Begin a transaction and tag it with the current request's request ID.
+/// If no context is set (e.g. background jobs), the transaction is untagged.
+pub async fn begin_tx(pool: &PgPool) -> Result<Tx<'_>, sqlx::Error> {
+    let mut tx = pool.begin().await?;
+    let ctx = TX_CONTEXT.try_with(|c| c.clone()).ok().flatten();
+    if let Some(ctx) = ctx {
+        let name = format!("vk r:{}", ctx.request_id.replace('-', ""));
+        sqlx::query("SELECT set_config('application_name', $1, true)")
+            .bind(&name)
+            .execute(&mut *tx)
+            .await?;
+    }
+    Ok(tx)
+}
 
 /// Get the current transaction ID from Postgres.
 /// Must be called within an active transaction.
@@ -54,9 +84,13 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<(), MigrateError> {
 }
 
 pub async fn create_pool(database_url: &str) -> Result<PgPool, sqlx::Error> {
+    let options: PgConnectOptions = database_url
+        .parse::<PgConnectOptions>()?
+        .application_name("vibe-kanban-remote");
+
     PgPoolOptions::new()
         .max_connections(10)
-        .connect(database_url)
+        .connect_with(options)
         .await
 }
 

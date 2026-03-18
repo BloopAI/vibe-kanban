@@ -197,6 +197,7 @@ impl StandardCodingAgentExecutor for Copilot {
         let options = ExecutorDiscoveredOptions {
             model_selector: ModelSelectorConfig {
                 models: [
+                    ("gpt-5.4", "GPT-5.4"),
                     ("claude-opus-4.6", "Claude Opus 4.6"),
                     ("claude-opus-4.6-fast", "Claude Opus 4.6 Fast"),
                     ("gpt-5.3-codex", "GPT-5.3 Codex"),

@@ -55,7 +55,8 @@ const EMPTY_EDIT_TEXT_STATE: EditTextState = {
 };
 
 export function createBlankCreateFormData(
-  defaultStatusId: string
+  defaultStatusId: string,
+  createDraftWorkspaceByDefault = false
 ): IssueFormData {
   return {
     title: '',
@@ -64,7 +65,7 @@ export function createBlankCreateFormData(
     priority: null,
     assigneeIds: [],
     tagIds: [],
-    createDraftWorkspace: false,
+    createDraftWorkspace: createDraftWorkspaceByDefault,
   };
 }
 

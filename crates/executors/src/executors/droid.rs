@@ -1,13 +1,12 @@
 use std::{path::Path, process::Stdio, sync::Arc};
 
 use async_trait::async_trait;
-use command_group::AsyncCommandGroup;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 use tokio::{io::AsyncWriteExt, process::Command};
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use crate::{
     command::{CommandBuildError, CommandBuilder, CommandParts},
@@ -131,7 +130,7 @@ async fn spawn_droid(
         .with_profile(cmd_overrides)
         .apply_to_command(&mut command);
 
-    let mut child = command.group_spawn()?;
+    let mut child = command.group_spawn_no_window()?;
 
     if let Some(mut stdin) = child.inner().stdin.take() {
         stdin.write_all(prompt.as_bytes()).await?;

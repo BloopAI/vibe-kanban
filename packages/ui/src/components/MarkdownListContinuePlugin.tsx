@@ -6,9 +6,11 @@ import {
   $getSelection,
   $isRangeSelection,
   $isTextNode,
+  $isElementNode,
   $createRangeSelection,
   $setSelection,
 } from 'lexical';
+import { useTypeaheadOpen } from './TypeaheadOpenContext';
 
 // Matches bullet prefixes: "- ", "* ", "+ "
 const BULLET_PREFIX_RE = /^(\s*)([-*+]) $/;
@@ -24,15 +26,22 @@ const NUMBER_LINE_RE = /^(\s*)(\d+)\. (.+)/;
  * When the cursor is at the end of a line that starts with a list prefix:
  * - If the line has content after the prefix, insert a newline + next prefix
  * - If the line is just the prefix (empty item), remove it to end the list
+ *
+ * Uses the full paragraph text (not just the anchor text node) to detect
+ * list prefixes, so that formatted inline content (e.g. code-formatted
+ * file references inserted via typeahead) doesn't break list continuation.
  */
 export function MarkdownListContinuePlugin() {
   const [editor] = useLexicalComposerContext();
+  const { isOpen: isTypeaheadOpen } = useTypeaheadOpen();
 
   useEffect(() => {
     const unregister = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (event: KeyboardEvent | null) => {
         if (!event) return false;
+        // Let typeahead handle Enter when it's open
+        if (isTypeaheadOpen) return false;
         // Don't interfere with Shift+Enter (line break) or modifier combos
         if (event.shiftKey || event.metaKey || event.ctrlKey) return false;
 
@@ -44,24 +53,49 @@ export function MarkdownListContinuePlugin() {
         const anchorNode = selection.anchor.getNode();
         if (!$isTextNode(anchorNode)) return false;
 
-        const text = anchorNode.getTextContent();
+        const anchorText = anchorNode.getTextContent();
         const offset = selection.anchor.offset;
 
-        // Only handle when cursor is at the end of the text node
-        if (offset !== text.length) return false;
+        // Only handle when cursor is at the end of the anchor text node
+        if (offset !== anchorText.length) return false;
+
+        // Get the parent element (paragraph) and its full text content.
+        // A paragraph may contain multiple text nodes when inline formatting
+        // is present (e.g. code-formatted file names from typeahead).
+        const parent = anchorNode.getParent();
+        if (!parent || !$isElementNode(parent)) return false;
+
+        // Cursor must be at the very end of the paragraph
+        const lastChild = parent.getLastChild();
+        if (!lastChild || lastChild.getKey() !== anchorNode.getKey()) {
+          return false;
+        }
+
+        const text = parent.getTextContent();
 
         // Check for empty bullet prefix (just "- " / "* " / "+ ")
         const emptyBullet = text.match(BULLET_PREFIX_RE);
         if (emptyBullet) {
           event.preventDefault();
-          // Remove the prefix to end the list
-          anchorNode.setTextContent(emptyBullet[1]); // keep leading whitespace or empty
-          const nodeKey = anchorNode.getKey();
-          const newSel = $createRangeSelection();
-          const newOffset = emptyBullet[1].length;
-          newSel.anchor.set(nodeKey, newOffset, 'text');
-          newSel.focus.set(nodeKey, newOffset, 'text');
-          $setSelection(newSel);
+          // Remove the prefix to end the list — clear all children, keep
+          // only leading whitespace in a single text node.
+          const firstChild = parent.getFirstChild();
+          if (firstChild && $isTextNode(firstChild)) {
+            // Remove all siblings after the first text node
+            let sibling = firstChild.getNextSibling();
+            while (sibling) {
+              const next = sibling.getNextSibling();
+              sibling.remove();
+              sibling = next;
+            }
+            firstChild.setTextContent(emptyBullet[1]);
+            const nodeKey = firstChild.getKey();
+            const newSel = $createRangeSelection();
+            const newOffset = emptyBullet[1].length;
+            newSel.anchor.set(nodeKey, newOffset, 'text');
+            newSel.focus.set(nodeKey, newOffset, 'text');
+            $setSelection(newSel);
+          }
           return true;
         }
 
@@ -69,13 +103,22 @@ export function MarkdownListContinuePlugin() {
         const emptyNumber = text.match(NUMBER_PREFIX_RE);
         if (emptyNumber) {
           event.preventDefault();
-          anchorNode.setTextContent(emptyNumber[1]);
-          const nodeKey = anchorNode.getKey();
-          const newSel = $createRangeSelection();
-          const newOffset = emptyNumber[1].length;
-          newSel.anchor.set(nodeKey, newOffset, 'text');
-          newSel.focus.set(nodeKey, newOffset, 'text');
-          $setSelection(newSel);
+          const firstChild = parent.getFirstChild();
+          if (firstChild && $isTextNode(firstChild)) {
+            let sibling = firstChild.getNextSibling();
+            while (sibling) {
+              const next = sibling.getNextSibling();
+              sibling.remove();
+              sibling = next;
+            }
+            firstChild.setTextContent(emptyNumber[1]);
+            const nodeKey = firstChild.getKey();
+            const newSel = $createRangeSelection();
+            const newOffset = emptyNumber[1].length;
+            newSel.anchor.set(nodeKey, newOffset, 'text');
+            newSel.focus.set(nodeKey, newOffset, 'text');
+            $setSelection(newSel);
+          }
           return true;
         }
 
@@ -106,7 +149,7 @@ export function MarkdownListContinuePlugin() {
     );
 
     return unregister;
-  }, [editor]);
+  }, [editor, isTypeaheadOpen]);
 
   return null;
 }

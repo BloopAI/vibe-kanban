@@ -6,13 +6,13 @@ use std::{
     time::Duration,
 };
 
-use command_group::AsyncCommandGroup;
 use convert_case::{Case, Casing};
 use tokio::{
     fs,
     io::{AsyncBufReadExt, BufReader},
     process::Command,
 };
+use workspace_utils::command_ext::GroupSpawnNoWindowExt;
 
 use super::{ClaudeCode, ClaudeJson, ClaudePlugin, base_command};
 use crate::{
@@ -237,7 +237,7 @@ impl ClaudeCode {
             command.env_remove("ANTHROPIC_API_KEY");
         }
 
-        let mut child = command.group_spawn()?;
+        let mut child = command.group_spawn_no_window()?;
         let stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Claude Code missing stdout"))
         })?;

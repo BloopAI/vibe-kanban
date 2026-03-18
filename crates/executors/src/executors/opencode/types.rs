@@ -61,6 +61,7 @@ pub(super) struct SdkEventEnvelope {
 pub(super) enum SdkEvent {
     MessageUpdated(MessageUpdatedEvent),
     MessagePartUpdated(MessagePartUpdatedEvent),
+    MessagePartDelta(MessagePartDeltaEvent),
     MessageRemoved,
     MessagePartRemoved,
     PermissionAsked(PermissionAskedEvent),
@@ -89,6 +90,9 @@ impl SdkEvent {
             }
             "message.part.updated" => {
                 SdkEvent::MessagePartUpdated(serde_json::from_value(envelope.properties).ok()?)
+            }
+            "message.part.delta" => {
+                SdkEvent::MessagePartDelta(serde_json::from_value(envelope.properties).ok()?)
             }
             "message.removed" => SdkEvent::MessageRemoved,
             "message.part.removed" => SdkEvent::MessagePartRemoved,
@@ -208,6 +212,17 @@ pub(super) struct MessagePartUpdatedEvent {
 }
 
 #[derive(Debug, Deserialize)]
+pub(super) struct MessagePartDeltaEvent {
+    #[allow(dead_code)]
+    #[serde(rename = "messageID")]
+    pub(super) message_id: String,
+    #[serde(rename = "partID")]
+    pub(super) part_id: String,
+    pub(super) field: String,
+    pub(super) delta: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub(super) struct PermissionAskedEvent {
     #[allow(dead_code)]
     pub(super) id: String,
@@ -286,7 +301,8 @@ pub(super) struct TodoUpdatedEvent {
 
 #[derive(Debug, Deserialize)]
 pub(super) struct SdkTodo {
-    pub(super) id: String,
+    #[serde(default)]
+    pub(super) id: Option<String>,
     pub(super) content: String,
     pub(super) status: String,
     pub(super) priority: String,
@@ -307,6 +323,8 @@ pub(super) enum Part {
 
 #[derive(Debug, Deserialize)]
 pub(super) struct TextPart {
+    #[serde(default)]
+    pub(super) id: Option<String>,
     #[serde(rename = "messageID")]
     pub(super) message_id: String,
     pub(super) text: String,

@@ -13,7 +13,7 @@ use chrono::{DateTime, Utc};
 use db::models::merge::{MergeStatus, PullRequestInfo};
 use serde::Deserialize;
 use thiserror::Error;
-use utils::shell::resolve_executable_path_blocking;
+use utils::{command_ext::NoWindowExt, shell::resolve_executable_path_blocking};
 
 use crate::types::{CreatePrRequest, UnifiedPrComment};
 
@@ -150,6 +150,7 @@ impl AzCli {
         tracing::debug!("Running Azure CLI command: {:?} {:?}", az, cmd.get_args());
 
         let output = cmd
+            .no_window()
             .output()
             .map_err(|err| AzCliError::CommandFailed(err.to_string()))?;
 

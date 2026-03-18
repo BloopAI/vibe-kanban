@@ -13,6 +13,8 @@ import { tokenManager } from '@/shared/lib/auth/tokenManager';
 import { configureAuthRuntime } from '@/shared/lib/auth/runtime';
 import '@/shared/types/modals';
 import { queryClient } from '@/shared/lib/queryClient';
+import { isTauriApp } from '@/shared/lib/platform';
+import { initZoom, zoomIn, zoomOut, zoomReset } from '@/shared/lib/zoom';
 
 if (import.meta.env.VITE_SENTRY_DSN) {
   Sentry.init({
@@ -40,6 +42,38 @@ if (
   console.warn(
     'PostHog API key or endpoint not set. Analytics will be disabled.'
   );
+}
+
+// In the Tauri desktop app, implement custom zoom (Cmd/Ctrl + =/–/0) via root
+// font-size scaling and block trackpad/touchpad pinch-to-zoom.
+if (isTauriApp()) {
+  initZoom();
+
+  document.addEventListener('keydown', (e) => {
+    const mod = e.metaKey || e.ctrlKey;
+    if (!mod) return;
+
+    if (e.key === '=' || e.key === '+') {
+      e.preventDefault();
+      zoomIn();
+    } else if (e.key === '-') {
+      e.preventDefault();
+      zoomOut();
+    } else if (e.key === '0') {
+      e.preventDefault();
+      zoomReset();
+    }
+  });
+
+  document.addEventListener(
+    'wheel',
+    (e) => {
+      if (e.ctrlKey) e.preventDefault();
+    },
+    { passive: false }
+  );
+  document.addEventListener('gesturestart', (e) => e.preventDefault());
+  document.addEventListener('gesturechange', (e) => e.preventDefault());
 }
 
 configureAuthRuntime({

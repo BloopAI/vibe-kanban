@@ -1,7 +1,9 @@
 import type { CreateModeInitialState } from '@/shared/types/createMode';
 import type { DraftWorkspaceData } from 'shared/types';
 import { ScratchType } from 'shared/types';
+import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
 import { scratchApi } from '@/shared/lib/api';
+import { localStorageScratchUpdate } from '@/shared/hooks/useLocalStorageScratch';
 
 interface WorkspaceDefaultsLike {
   preferredRepos?: CreateModeInitialState['preferredRepos'];
@@ -51,12 +53,14 @@ export function buildWorkspaceCreateInitialState(args: {
   prompt: string | null;
   defaults?: WorkspaceDefaultsLike | null;
   linkedIssue?: CreateModeInitialState['linkedIssue'];
+  executorConfig?: CreateModeInitialState['executorConfig'];
 }): CreateModeInitialState {
   return {
     initialPrompt: args.prompt,
     preferredRepos: args.defaults?.preferredRepos ?? null,
     project_id: args.defaults?.project_id ?? null,
     linkedIssue: args.linkedIssue ?? null,
+    executorConfig: args.executorConfig ?? null,
   };
 }
 
@@ -80,7 +84,7 @@ export function toDraftWorkspaceData(
         repo_id: repo.repo_id,
         target_branch: repo.target_branch ?? '',
       })) ?? [],
-    executor_config: null,
+    executor_config: initialState.executorConfig ?? null,
     linked_issue: initialState.linkedIssue
       ? {
           issue_id: initialState.linkedIssue.issueId,
@@ -89,23 +93,38 @@ export function toDraftWorkspaceData(
           remote_project_id: initialState.linkedIssue.remoteProjectId,
         }
       : null,
-    images: [],
+    attachments: [],
   };
 }
 
 export async function persistWorkspaceCreateDraft(
   initialState: CreateModeInitialState,
-  draftId = DEFAULT_WORKSPACE_CREATE_DRAFT_ID
+  draftId = DEFAULT_WORKSPACE_CREATE_DRAFT_ID,
+  runtime: AppRuntime = 'local'
 ): Promise<string | null> {
   const draftData = toDraftWorkspaceData(initialState);
+  const payload = {
+    type: 'DRAFT_WORKSPACE' as const,
+    data: draftData,
+  };
 
   try {
-    await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
-      payload: {
-        type: 'DRAFT_WORKSPACE',
-        data: draftData,
-      },
-    });
+    if (runtime === 'remote') {
+      const didPersist = localStorageScratchUpdate(
+        ScratchType.DRAFT_WORKSPACE,
+        draftId,
+        {
+          payload,
+        }
+      );
+      if (!didPersist) {
+        throw new Error('Failed to persist create-workspace draft in storage');
+      }
+    } else {
+      await scratchApi.update(ScratchType.DRAFT_WORKSPACE, draftId, {
+        payload,
+      });
+    }
     return draftId;
   } catch (error) {
     console.error('Failed to persist create-workspace draft:', error);

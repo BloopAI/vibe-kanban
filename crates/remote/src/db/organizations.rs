@@ -72,7 +72,7 @@ impl<'a> OrganizationRepository<'a> {
             Some(org) => org,
             None => {
                 // Create new personal org WITH initial project in a transaction
-                let mut tx = self.pool.begin().await?;
+                let mut tx = super::begin_tx(self.pool).await?;
 
                 let org = create_personal_org_tx(&mut *tx, &name, &slug).await?;
 
@@ -116,7 +116,7 @@ impl<'a> OrganizationRepository<'a> {
         slug: &str,
         creator_user_id: Uuid,
     ) -> Result<OrganizationWithRole, IdentityError> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = super::begin_tx(self.pool).await?;
 
         let issue_prefix = derive_issue_prefix(name);
         let org = sqlx::query_as!(

@@ -11,6 +11,7 @@ import {
   $createParagraphNode,
   $isParagraphNode,
   KEY_ESCAPE_COMMAND,
+  COMMAND_PRIORITY_NORMAL,
 } from 'lexical';
 import {
   TagIcon,
@@ -376,6 +377,7 @@ export function FileTagTypeaheadPlugin({
 
   return (
     <LexicalTypeaheadMenuPlugin<FileTagOption>
+      commandPriority={COMMAND_PRIORITY_NORMAL}
       triggerFn={(text) => {
         const match = /(?:^|\s)@([^\s@]*)$/.exec(text);
         if (!match) return null;

@@ -1488,7 +1488,12 @@ pub fn normalize_logs(
                 | EventMsg::RemoteSkillDownloaded(..)
                 | EventMsg::RealtimeConversationStarted(..)
                 | EventMsg::RealtimeConversationRealtime(..)
-                | EventMsg::RealtimeConversationClosed(..) => {}
+                | EventMsg::RealtimeConversationClosed(..)
+                | EventMsg::ImageGenerationBegin(..)
+                | EventMsg::ImageGenerationEnd(..)
+                | EventMsg::RequestPermissions(..)
+                | EventMsg::HookCompleted(..)
+                | EventMsg::HookStarted(..) => {}
             }
         }
     });

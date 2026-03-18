@@ -1,6 +1,6 @@
 import { forwardRef, createElement } from 'react';
 import type { Icon, IconProps } from '@phosphor-icons/react';
-import type { Merge, Workspace } from 'shared/types';
+import type { ExecutorConfig, Merge, Workspace } from 'shared/types';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   CopyIcon,
@@ -72,10 +72,8 @@ import posthog from 'posthog-js';
 import { WorkspacesGuideDialog } from '@/shared/dialogs/shared/WorkspacesGuideDialog';
 import { SettingsDialog } from '@/shared/dialogs/settings/SettingsDialog';
 import { CreateWorkspaceFromPrDialog } from '@/shared/dialogs/command-bar/CreateWorkspaceFromPrDialog';
-import {
-  buildWorkspaceCreateInitialState,
-  persistWorkspaceCreateDraft,
-} from '@/shared/lib/workspaceCreateState';
+import { buildWorkspaceCreateInitialState } from '@/shared/lib/workspaceCreateState';
+import { setCreateModeSeedState } from '@/features/create-mode/model/createModeSeedStore';
 
 // Mirrored sidebar icon for right sidebar toggle
 const RightSidebarIcon: Icon = forwardRef<SVGSVGElement, IconProps>(
@@ -98,7 +96,23 @@ import type {
 } from '@/shared/types/actions';
 import { ActionTargetType, NavbarDivider } from '@/shared/types/actions';
 
-// Helper to get workspace from query cache or fetch from API
+async function resolveLinkedIssue(
+  workspaceId: string,
+  remoteWorkspaces: {
+    local_workspace_id: string | null;
+    issue_id: string | null;
+    project_id: string;
+  }[]
+): Promise<{ issueId: string; remoteProjectId: string } | undefined> {
+  const remoteWs = remoteWorkspaces.find(
+    (w) => w.local_workspace_id === workspaceId
+  );
+  if (remoteWs?.issue_id) {
+    return { issueId: remoteWs.issue_id, remoteProjectId: remoteWs.project_id };
+  }
+  return undefined;
+}
+
 async function getWorkspace(
   queryClient: QueryClient,
   workspaceId: string
@@ -166,21 +180,23 @@ export const Actions = {
     requiresTarget: ActionTargetType.WORKSPACE,
     execute: async (ctx, workspaceId) => {
       try {
-        const [firstMessage, repos] = await Promise.all([
+        const [firstMessage, repos, workspaceWithSession] = await Promise.all([
           workspacesApi.getFirstUserMessage(workspaceId),
           workspacesApi.getRepos(workspaceId),
+          workspacesApi.getWithSession(workspaceId),
         ]);
 
-        // Find linked issue from remote workspace (synced via Electric)
-        const remoteWs = ctx.remoteWorkspaces.find(
-          (w) => w.local_workspace_id === workspaceId
+        const linkedIssue = await resolveLinkedIssue(
+          workspaceId,
+          ctx.remoteWorkspaces
         );
-        const linkedIssue = remoteWs?.issue_id
+
+        const executorConfig = workspaceWithSession.session?.executor
           ? {
-              issueId: remoteWs.issue_id,
-              remoteProjectId: remoteWs.project_id,
+              executor: workspaceWithSession.session
+                .executor as ExecutorConfig['executor'],
             }
-          : undefined;
+          : null;
 
         const createState = buildWorkspaceCreateInitialState({
           prompt: firstMessage,
@@ -191,21 +207,11 @@ export const Actions = {
             })),
           },
           linkedIssue,
+          executorConfig,
         });
-        const draftId = await persistWorkspaceCreateDraft(createState);
-        if (!draftId) {
-          await ConfirmDialog.show({
-            title: 'Error',
-            message: 'Failed to prepare workspace draft. Please try again.',
-            confirmText: 'OK',
-            showCancelButton: false,
-          });
-          return;
-        }
-
+        setCreateModeSeedState(createState);
         ctx.appNavigation.goToWorkspacesCreate();
       } catch {
-        // Fallback to creating without the prompt/repos
         ctx.appNavigation.goToWorkspacesCreate();
       }
     },
@@ -358,15 +364,10 @@ export const Actions = {
           getWorkspace(ctx.queryClient, workspaceId),
           workspacesApi.getRepos(workspaceId),
         ]);
-        const remoteWs = ctx.remoteWorkspaces.find(
-          (w) => w.local_workspace_id === workspaceId
+        const linkedIssue = await resolveLinkedIssue(
+          workspaceId,
+          ctx.remoteWorkspaces
         );
-        const linkedIssue = remoteWs?.issue_id
-          ? {
-              issueId: remoteWs.issue_id,
-              remoteProjectId: remoteWs.project_id,
-            }
-          : undefined;
 
         const createState = buildWorkspaceCreateInitialState({
           prompt: null,
@@ -378,17 +379,7 @@ export const Actions = {
           },
           linkedIssue,
         });
-        const draftId = await persistWorkspaceCreateDraft(createState);
-        if (!draftId) {
-          await ConfirmDialog.show({
-            title: 'Error',
-            message: 'Failed to prepare workspace draft. Please try again.',
-            confirmText: 'OK',
-            showCancelButton: false,
-          });
-          return;
-        }
-
+        setCreateModeSeedState(createState);
         ctx.appNavigation.goToWorkspacesCreate();
       } catch {
         ctx.appNavigation.goToWorkspacesCreate();

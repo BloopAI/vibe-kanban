@@ -64,10 +64,13 @@ interface AppBarProps {
   onMigrate?: () => void;
   onHoverStart?: () => void;
   onHoverEnd?: () => void;
+  notificationBell?: ReactNode;
   userPopover?: ReactNode;
   starCount?: number | null;
   onlineCount?: number | null;
   appVersion?: string | null;
+  updateVersion?: string | null;
+  onUpdateClick?: () => void;
   githubIconPath: string;
   discordIconPath: string;
 }
@@ -120,10 +123,13 @@ export function AppBar({
   onMigrate,
   onHoverStart,
   onHoverEnd,
+  notificationBell,
   userPopover,
   starCount,
   onlineCount,
   appVersion,
+  updateVersion,
+  onUpdateClick,
   githubIconPath,
   discordIconPath,
 }: AppBarProps) {
@@ -136,7 +142,7 @@ export function AppBar({
       onMouseEnter={onHoverStart}
       onMouseLeave={onHoverEnd}
       className={cn(
-        'flex flex-col items-center h-full p-base gap-base',
+        'flex flex-col items-center h-full min-h-0 overflow-y-auto p-base gap-base',
         'bg-secondary border-r border-border'
       )}
     >
@@ -378,8 +384,9 @@ export function AppBar({
         </Tooltip>
       )}
 
-      {/* Bottom section: User popover + GitHub + Discord */}
+      {/* Bottom section: Notifications + User popover + GitHub + Discord */}
       <div className="mt-auto pt-base flex flex-col items-center gap-4">
+        {notificationBell}
         {userPopover}
         <AppBarSocialLink
           href="https://github.com/BloopAI/vibe-kanban"
@@ -402,10 +409,30 @@ export function AppBar({
             onlineCount != null && (onlineCount > 999 ? '999+' : onlineCount)
           }
         />
-        {appVersion && (
-          <p className="text-[9px] font-ibm-plex-mono text-low leading-none">
-            v{appVersion}
-          </p>
+        {updateVersion ? (
+          <Tooltip content={`Update to v${updateVersion}`} side="right">
+            <button
+              type="button"
+              onClick={onUpdateClick}
+              className={cn(
+                'flex items-center justify-center py-1 rounded-md w-10',
+                'text-[9px] font-ibm-plex-mono font-medium leading-none',
+                'bg-brand text-on-brand hover:bg-brand-hover',
+                'transition-colors cursor-pointer'
+              )}
+            >
+              Update
+            </button>
+          </Tooltip>
+        ) : (
+          appVersion && (
+            <p
+              className="text-[9px] font-ibm-plex-mono text-low leading-none truncate max-w-10 text-center"
+              title={`v${appVersion}`}
+            >
+              v{appVersion}
+            </p>
+          )
         )}
       </div>
     </div>

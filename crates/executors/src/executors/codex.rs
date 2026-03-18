@@ -24,6 +24,13 @@ pub fn codex_home() -> Option<PathBuf> {
     dirs::home_dir().map(|home| home.join(".codex"))
 }
 
+pub(crate) fn resolve_model(model: Option<&str>) -> (Option<&str>, bool) {
+    match model.and_then(|m| m.strip_suffix("-fast")) {
+        Some(base) => (Some(base), true),
+        None => (model, false),
+    }
+}
+
 pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> ThreadForkParams {
     ThreadForkParams {
         thread_id,
@@ -35,6 +42,7 @@ pub(crate) fn fork_params_from(thread_id: String, params: ThreadStartParams) -> 
         config: params.config,
         base_instructions: params.base_instructions,
         developer_instructions: params.developer_instructions,
+        service_tier: params.service_tier,
         ..Default::default()
     }
 }
@@ -44,7 +52,7 @@ use codex_app_server_protocol::{
     AskForApproval as V2AskForApproval, ReviewTarget, SandboxMode as V2SandboxMode,
     ThreadForkParams, ThreadStartParams, UserInput,
 };
-use command_group::AsyncCommandGroup;
+use codex_protocol::config_types::ServiceTier;
 use derivative::Derivative;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -52,7 +60,7 @@ use serde_json::Value;
 use strum_macros::{AsRefStr, EnumString};
 use tokio::process::Command;
 use ts_rs::TS;
-use workspace_utils::msg_store::MsgStore;
+use workspace_utils::{command_ext::GroupSpawnNoWindowExt, msg_store::MsgStore};
 
 use self::{
     client::{AppServerClient, LogWriter},
@@ -197,11 +205,13 @@ impl StandardCodingAgentExecutor for Codex {
             match permission_policy {
                 crate::model_selector::PermissionPolicy::Auto => {
                     self.ask_for_approval = Some(AskForApproval::Never);
+                    self.plan = false;
                 }
                 crate::model_selector::PermissionPolicy::Supervised => {
                     if matches!(self.ask_for_approval, None | Some(AskForApproval::Never)) {
                         self.ask_for_approval = Some(AskForApproval::UnlessTrusted);
                     }
+                    self.plan = false;
                 }
                 crate::model_selector::PermissionPolicy::Plan => {
                     self.plan = true;
@@ -324,6 +334,12 @@ impl StandardCodingAgentExecutor for Codex {
                         reasoning_options: xhigh_reasoning_options.clone(),
                     },
                     ModelInfo {
+                        id: "gpt-5.4-fast".to_string(),
+                        name: "GPT-5.4 Fast".to_string(),
+                        provider_id: None,
+                        reasoning_options: xhigh_reasoning_options.clone(),
+                    },
+                    ModelInfo {
                         id: "gpt-5.3-codex".to_string(),
                         name: "GPT-5.3 Codex".to_string(),
                         provider_id: None,
@@ -378,6 +394,12 @@ impl StandardCodingAgentExecutor for Codex {
                     name: "mcp".to_string(),
                     description: Some("list configured MCP tools".to_string()),
                 },
+                SlashCommandDescription {
+                    name: "fast".to_string(),
+                    description: Some(
+                        "toggle fast mode for highest speed inference (2× plan usage). Use `/fast on` or `/fast off` to set explicitly".to_string(),
+                    ),
+                },
             ],
             ..Default::default()
         };
@@ -407,7 +429,7 @@ impl StandardCodingAgentExecutor for Codex {
 
 impl Codex {
     pub fn base_command() -> &'static str {
-        "npx -y @openai/codex@0.110.0"
+        "npx -y @openai/codex@0.114.0"
     }
 
     fn build_command_builder(&self) -> Result<CommandBuilder, CommandBuildError> {
@@ -469,8 +491,15 @@ impl Codex {
             );
         }
 
+        let (model, is_fast) = resolve_model(self.model.as_deref());
+        let service_tier = if is_fast {
+            Some(Some(ServiceTier::Fast))
+        } else {
+            None
+        };
+
         ThreadStartParams {
-            model: self.model.clone(),
+            model: model.map(|m| m.to_string()),
             cwd: Some(cwd.to_string_lossy().to_string()),
             approval_policy,
             sandbox,
@@ -478,6 +507,7 @@ impl Codex {
             base_instructions: self.base_instructions.clone(),
             model_provider: self.model_provider.clone(),
             developer_instructions: self.developer_instructions.clone(),
+            service_tier,
             ..Default::default()
         }
     }
@@ -581,7 +611,7 @@ impl Codex {
                     text: combined_prompt,
                     text_elements: vec![],
                 }],
-                collaboration_mode,
+                Some(collaboration_mode),
             )
             .await?;
 
@@ -621,7 +651,7 @@ impl Codex {
             .with_profile(&self.cmd)
             .apply_to_command(&mut process);
 
-        let mut child = process.group_spawn()?;
+        let mut child = process.group_spawn_no_window()?;
 
         let child_stdout = child.inner().stdout.take().ok_or_else(|| {
             ExecutorError::Io(std::io::Error::other("Codex app server missing stdout"))

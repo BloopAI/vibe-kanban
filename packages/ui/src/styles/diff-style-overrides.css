@@ -405,7 +405,7 @@
   font-weight: var(--diff-view-light-font-weight, inherit);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw * {
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw * {
   color: var(--diff-view-dark, inherit);
   font-weight: var(--diff-view-dark-font-weight, inherit);
 }
@@ -456,7 +456,7 @@
 .diff-tailwindcss-wrapper .diff-add-widget,
 .diff-tailwindcss-wrapper .diff-widget-tooltip {
   font-family: inherit;
-  font-feature-settings: 'liga' off;
+  font-feature-settings: "liga" off;
   font-variation-settings: inherit;
   font-size: 100%;
   font-weight: inherit;
@@ -490,7 +490,7 @@
 .diff-tailwindcss-wrapper .diff-widget-tooltip::before {
   display: none;
   box-sizing: border-box;
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: calc(100% - 2px);
@@ -655,7 +655,7 @@
   /* purposely ignored */
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   pre
   code.hljs {
@@ -664,7 +664,7 @@
   padding: 1em;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw code.hljs {
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw code.hljs {
   padding: 3px 5px;
 }
 
@@ -678,78 +678,78 @@
   Outdated base version: https://github.com/primer/github-syntax-dark
   Current colors taken from GitHub's CSS
 */
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs {
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs {
   color: var(--syntax-punctuation);
   background: #0d1117;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-doctag,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-doctag,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-keyword,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-meta
   .hljs-keyword,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-template-tag,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-template-variable,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-type,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-type,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-variable.language_ {
   /* prettylights-syntax-keyword */
   color: var(--syntax-keyword);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-title,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-title,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-title.class_,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-title.class_.inherited__,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-title.function_ {
   /* prettylights-syntax-entity */
   color: var(--syntax-function);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-attr,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-attr,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-attribute,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-literal,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-meta,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-number,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-meta,
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-number,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-operator,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-variable,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-selector-attr,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-selector-class,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-selector-id {
   /* prettylights-syntax-constant */
   color: var(--syntax-constant);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-regexp,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-string,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-regexp,
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-string,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-meta
   .hljs-string {
@@ -757,45 +757,45 @@
   color: var(--syntax-string);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-built_in,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-symbol {
   /* prettylights-syntax-variable */
   color: var(--syntax-variable);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-comment,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-code,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-code,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-formula {
   /* prettylights-syntax-comment */
   color: var(--syntax-comment);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-name,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-quote,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-name,
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-quote,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-selector-tag,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-selector-pseudo {
   /* prettylights-syntax-entity-tag */
   color: var(--syntax-tag);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-subst {
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-subst {
   /* prettylights-syntax-storage-modifier-import */
   color: var(--syntax-punctuation);
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-section {
   /* prettylights-syntax-markup-heading */
@@ -803,14 +803,14 @@
   font-weight: bold;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-bullet {
   /* prettylights-syntax-markup-list */
   color: #f2cc60;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-emphasis {
   /* prettylights-syntax-markup-italic */
@@ -818,7 +818,7 @@
   font-style: italic;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-strong {
   /* prettylights-syntax-markup-bold */
@@ -826,7 +826,7 @@
   font-weight: bold;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-addition {
   /* prettylights-syntax-markup-inserted */
@@ -834,7 +834,7 @@
   background-color: #033a16;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-deletion {
   /* prettylights-syntax-markup-deleted */
@@ -842,18 +842,18 @@
   background-color: #67060c;
 }
 
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-char.escape_,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-link,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-params,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-link,
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-params,
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-property,
-.diff-tailwindcss-wrapper[data-theme='dark']
+.diff-tailwindcss-wrapper[data-theme="dark"]
   .diff-line-syntax-raw
   .hljs-punctuation,
-.diff-tailwindcss-wrapper[data-theme='dark'] .diff-line-syntax-raw .hljs-tag {
+.diff-tailwindcss-wrapper[data-theme="dark"] .diff-line-syntax-raw .hljs-tag {
   /* purposely ignored */
 }
 
@@ -890,14 +890,14 @@ diffs-container {
 
 /* Font: Use IBM Plex Mono to match old design */
 diffs-container {
-  --diffs-font-family: 'IBM Plex Mono', 'SF Mono', Monaco, Consolas, monospace;
+  --diffs-font-family: "IBM Plex Mono", "SF Mono", Monaco, Consolas, monospace;
   --diffs-font-size: 12px;
   --diffs-line-height: 18px;
 }
 
 /* Light Mode Colors - Match old design */
 .light diffs-container,
-diffs-container[data-theme-type='light'] {
+diffs-container[data-theme-type="light"] {
   /* Addition colors - soft green (HSL 160 77% 88%) */
   --diffs-light-addition-color: hsl(160, 77%, 40%);
   --diffs-bg-addition-override: hsl(160, 77%, 88%);
@@ -920,7 +920,7 @@ diffs-container[data-theme-type='light'] {
 
 /* Dark Mode Colors - Match old design */
 .dark diffs-container,
-diffs-container[data-theme-type='dark'] {
+diffs-container[data-theme-type="dark"] {
   /* Addition colors - dark green (HSL 130 30% 20%) */
   --diffs-dark-addition-color: hsl(130, 50%, 50%);
   --diffs-bg-addition-override: hsl(130, 30%, 20%);
@@ -953,7 +953,7 @@ diffs-container[data-theme-type='dark'] {
  * The slotted content needs to appear BETWEEN the number and code columns.
  * Using left:100% positions it just to the right of the hover slot container.
  */
-diffs-container [slot='hover-slot'] {
+diffs-container [slot="hover-slot"] {
   left: 100%;
   right: auto;
   display: flex;
@@ -963,10 +963,10 @@ diffs-container [slot='hover-slot'] {
 }
 
 /* Style the hover utility button - no visual changes on hover */
-diffs-container [slot='hover-slot'] button,
-diffs-container [slot='hover-slot'] button:hover,
-diffs-container [slot='hover-slot'] button:focus,
-diffs-container [slot='hover-slot'] button:active {
+diffs-container [slot="hover-slot"] button,
+diffs-container [slot="hover-slot"] button:hover,
+diffs-container [slot="hover-slot"] button:focus,
+diffs-container [slot="hover-slot"] button:active {
   background-color: hsl(var(--brand) / 0.2);
   color: hsl(var(--brand));
   border: none;

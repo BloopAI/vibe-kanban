@@ -30,7 +30,7 @@ impl MigrationRepository {
             return Ok(vec![]);
         }
 
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         let org_ids: Vec<Uuid> = inputs.iter().map(|i| i.organization_id).collect();
         let names: Vec<String> = inputs.iter().map(|i| i.name.clone()).collect();

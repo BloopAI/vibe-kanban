@@ -3,9 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useShape } from '@/shared/integrations/electric/hooks';
 import {
   PROJECTS_SHAPE,
-  NOTIFICATIONS_SHAPE,
   PROJECT_MUTATION,
-  NOTIFICATION_MUTATION,
   type Project,
 } from 'shared/remote-types';
 import type { OrganizationMemberWithProfile } from 'shared/types';
@@ -30,11 +28,6 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
     enabled,
     mutation: PROJECT_MUTATION,
   });
-  const notificationsResult = useShape(
-    NOTIFICATIONS_SHAPE,
-    { ...params, user_id: '' }, // user_id will be filled by Electric based on auth
-    { enabled, mutation: NOTIFICATION_MUTATION }
-  );
 
   // Members data from API
   const membersQuery = useQuery({
@@ -45,20 +38,16 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
   });
 
   // Combined loading state
-  const isLoading =
-    projectsResult.isLoading ||
-    notificationsResult.isLoading ||
-    membersQuery.isLoading;
+  const isLoading = projectsResult.isLoading || membersQuery.isLoading;
 
   // First error found
-  const error = projectsResult.error || notificationsResult.error || null;
+  const error = projectsResult.error || null;
 
   // Combined retry
   const retry = useCallback(() => {
     projectsResult.retry();
-    notificationsResult.retry();
     membersQuery.refetch();
-  }, [projectsResult, notificationsResult, membersQuery]);
+  }, [projectsResult, membersQuery]);
 
   // Computed Maps for O(1) lookup
   const projectsById = useMemo(() => {
@@ -83,18 +72,12 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
     [projectsById]
   );
 
-  const getUnseenNotifications = useCallback(
-    () => notificationsResult.data.filter((n) => !n.seen),
-    [notificationsResult.data]
-  );
-
   const value = useMemo<OrgContextValue>(
     () => ({
       organizationId,
 
       // Data
       projects: projectsResult.data,
-      notifications: notificationsResult.data,
 
       // Loading/error
       isLoading,
@@ -106,12 +89,8 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
       updateProject: projectsResult.update,
       removeProject: projectsResult.remove,
 
-      // Notification mutations
-      updateNotification: notificationsResult.update,
-
       // Lookup helpers
       getProject,
-      getUnseenNotifications,
 
       // Computed aggregations
       projectsById,
@@ -120,12 +99,10 @@ export function OrgProvider({ organizationId, children }: OrgProviderProps) {
     [
       organizationId,
       projectsResult,
-      notificationsResult,
       isLoading,
       error,
       retry,
       getProject,
-      getUnseenNotifications,
       projectsById,
       membersWithProfilesById,
     ]

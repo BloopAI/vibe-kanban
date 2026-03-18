@@ -12,6 +12,7 @@ import type { LayoutMode } from '@/shared/stores/useUiPreferencesStore';
 import { RIGHT_MAIN_PANEL_MODES } from '@/shared/stores/useUiPreferencesStore';
 import type { AppNavigation } from '@/shared/lib/routes/appNavigation';
 import type { ProjectIssueCreateOptions } from '@/shared/stores/useKanbanIssueComposerStore';
+import type { AppRuntime } from '@/shared/hooks/useAppRuntime';
 
 // Portable type aliases (avoid importing from component containers)
 export type LogEntry = Extract<
@@ -52,6 +53,7 @@ interface SidebarWorkspace {
 
 // Context provided to action executors (from React hooks)
 export interface ActionExecutorContext {
+  runtime: AppRuntime;
   appNavigation: AppNavigation;
   queryClient: QueryClient;
   selectWorkspace: (workspaceId: string) => void;

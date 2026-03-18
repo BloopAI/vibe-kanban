@@ -90,7 +90,7 @@ impl IssueAssigneeRepository {
         user_id: Uuid,
     ) -> Result<MutationResponse<IssueAssignee>, IssueAssigneeError> {
         let id = id.unwrap_or_else(Uuid::new_v4);
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         let data = sqlx::query_as!(
             IssueAssignee,
             r#"
@@ -115,7 +115,7 @@ impl IssueAssigneeRepository {
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueAssigneeError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
         sqlx::query!("DELETE FROM issue_assignees WHERE id = $1", id)
             .execute(&mut *tx)
             .await?;

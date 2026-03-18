@@ -31,6 +31,8 @@ use ts_rs::TS;
 
 use crate::AppState;
 
+type MutationMarker<E, C, U> = fn() -> (E, C, U);
+
 // =============================================================================
 // HasJsonPayload - Structural trait linking handlers to their payload types
 // =============================================================================
@@ -78,7 +80,7 @@ pub struct MutationBuilder<E, C = (), U = ()> {
     table: &'static str,
     base_route: MethodRouter<AppState>,
     id_route: MethodRouter<AppState>,
-    _phantom: PhantomData<fn() -> (E, C, U)>,
+    _phantom: PhantomData<MutationMarker<E, C, U>>,
 }
 
 impl<E: TS + Send + Sync + 'static> MutationBuilder<E, NoCreate, NoUpdate> {
