@@ -517,7 +517,9 @@ export function AppBar({
           {section.items.map((item) => (
             <div
               key={item.key}
-              className={'wrapperClassName' in item ? item.wrapperClassName : undefined}
+              className={
+                'wrapperClassName' in item ? item.wrapperClassName : undefined
+              }
             >
               {renderSectionItem(item)}
             </div>
