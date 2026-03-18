@@ -131,7 +131,7 @@ impl Clone for RemoteClient {
 
 impl RemoteClient {
     const REQUEST_TIMEOUT: Duration = Duration::from_secs(30);
-    const TOKEN_REFRESH_REQUEST_TIMEOUT: Duration = Duration::from_mins(5);
+    const TOKEN_REFRESH_REQUEST_TIMEOUT: Duration = Duration::from_secs(5 * 60);
     const TOKEN_REFRESH_LEEWAY_SECS: i64 = 20;
 
     pub fn new(base_url: &str, auth_context: AuthContext) -> Result<Self, RemoteClientError> {

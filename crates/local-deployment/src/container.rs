@@ -63,7 +63,7 @@ use workspace_manager::{RepoWorkspaceInput, WorkspaceError, WorkspaceManager};
 
 use crate::{command, copy};
 
-const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_mins(2);
+const WORKSPACE_TOUCH_DEBOUNCE: Duration = Duration::from_secs(2 * 60);
 
 #[derive(Clone)]
 pub struct LocalContainerService {
