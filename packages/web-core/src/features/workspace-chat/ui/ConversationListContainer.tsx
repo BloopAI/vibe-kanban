@@ -987,7 +987,7 @@ export const ConversationList = forwardRef<
           >
             <input
               ref={searchInputRef}
-              type="text"
+              type="search"
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="Search conversation"
