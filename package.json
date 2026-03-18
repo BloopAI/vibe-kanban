@@ -64,5 +64,8 @@
     "node": ">=20",
     "pnpm": ">=8"
   },
+  "dependencies": {
+    "cac": "^7.0.0"
+  },
   "packageManager": "pnpm@10.13.1"
 }
