@@ -9,10 +9,9 @@ use api_types::{
     IssueRelationshipType, IssueSortField, IssueTag, ListIssuesQuery, ListIssuesResponse,
     MemberRole, Notification, NotificationGroupKind, NotificationPayload, NotificationType,
     OrganizationMember, Project, ProjectStatus, PullRequest, PullRequestStatus,
-    SearchIssuesRequest, SortDirection, Tag,
-    UpdateIssueCommentReactionRequest, UpdateIssueCommentRequest, UpdateIssueRequest,
-    UpdateNotificationRequest, UpdateProjectRequest, UpdateProjectStatusRequest, UpdateTagRequest,
-    User, UserData, Workspace,
+    SearchIssuesRequest, SortDirection, Tag, UpdateIssueCommentReactionRequest,
+    UpdateIssueCommentRequest, UpdateIssueRequest, UpdateNotificationRequest, UpdateProjectRequest,
+    UpdateProjectStatusRequest, UpdateTagRequest, User, UserData, Workspace,
 };
 use relay_types::{CreateRemoteSessionResponse, ListRelayHostsResponse, RelayHost};
 use remote::{
