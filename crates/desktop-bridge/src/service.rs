@@ -7,7 +7,7 @@ use ed25519_dalek::SigningKey;
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::ssh_config;
+use crate::{DesktopBridgeError, ssh_config};
 
 #[derive(Debug, Clone, Serialize, TS)]
 pub struct OpenRemoteEditorResponse {
@@ -25,7 +25,7 @@ pub fn open_remote_editor(
     host_id: &str,
     workspace_path: &str,
     editor_type: Option<&str>,
-) -> anyhow::Result<OpenRemoteEditorResponse> {
+) -> Result<OpenRemoteEditorResponse, DesktopBridgeError> {
     let (key_path, alias) = ssh_config::provision_ssh_key(signing_key, host_id)?;
     ssh_config::update_ssh_config(&alias, local_port, &key_path)?;
     ssh_config::ensure_ssh_include()?;

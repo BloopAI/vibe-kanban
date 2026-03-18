@@ -6,10 +6,11 @@
 
 use std::{fs, path::PathBuf};
 
-use anyhow::Context as _;
 use ed25519_dalek::SigningKey;
 use sha2::{Digest, Sha256};
 use ssh_key::private::{Ed25519Keypair, Ed25519PrivateKey, KeypairData};
+
+use crate::DesktopBridgeError;
 
 /// Provision an SSH identity for the given signing key and remote host.
 ///
@@ -18,25 +19,24 @@ use ssh_key::private::{Ed25519Keypair, Ed25519PrivateKey, KeypairData};
 pub fn provision_ssh_key(
     signing_key: &SigningKey,
     host_id: &str,
-) -> anyhow::Result<(PathBuf, String)> {
+) -> Result<(PathBuf, String), DesktopBridgeError> {
     let key_hash = short_key_hash(signing_key);
     let alias = format!("vk-{host_id}");
 
     let ssh_dir = vk_ssh_dir()?;
     let keys_dir = ssh_dir.join("keys");
-    fs::create_dir_all(&keys_dir).context("Failed to create ~/.vk-ssh/keys")?;
+    fs::create_dir_all(&keys_dir)?;
 
     let key_path = keys_dir.join(&key_hash);
 
     // Write the OpenSSH PEM private key
     let pem = signing_key_to_openssh_pem(signing_key)?;
-    fs::write(&key_path, pem.as_bytes()).context("Failed to write SSH key")?;
+    fs::write(&key_path, pem.as_bytes())?;
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))
-            .context("Failed to set SSH key permissions")?;
+        fs::set_permissions(&key_path, fs::Permissions::from_mode(0o600))?;
     }
 
     Ok((key_path, alias))
@@ -45,7 +45,11 @@ pub fn provision_ssh_key(
 /// Write (or update) an SSH config entry for the given host alias.
 ///
 /// The config is written to `~/.vk-ssh/config` and points at the local tunnel port.
-pub fn update_ssh_config(alias: &str, port: u16, key_path: &std::path::Path) -> anyhow::Result<()> {
+pub fn update_ssh_config(
+    alias: &str,
+    port: u16,
+    key_path: &std::path::Path,
+) -> Result<(), DesktopBridgeError> {
     let ssh_dir = vk_ssh_dir()?;
     let config_path = ssh_dir.join("config");
 
@@ -57,15 +61,17 @@ pub fn update_ssh_config(alias: &str, port: u16, key_path: &std::path::Path) -> 
     // Read existing config and replace or append the entry for this alias
     let existing = fs::read_to_string(&config_path).unwrap_or_default();
     let new_config = replace_host_block(&existing, alias, &entry);
-    fs::write(&config_path, new_config).context("Failed to write ~/.vk-ssh/config")?;
+    fs::write(&config_path, new_config)?;
 
     Ok(())
 }
 
 /// Ensure `~/.ssh/config` includes our `~/.vk-ssh/config`.
-pub fn ensure_ssh_include() -> anyhow::Result<()> {
-    let ssh_dir = dirs::home_dir().context("No home directory")?.join(".ssh");
-    fs::create_dir_all(&ssh_dir).context("Failed to create ~/.ssh")?;
+pub fn ensure_ssh_include() -> Result<(), DesktopBridgeError> {
+    let ssh_dir = dirs::home_dir()
+        .ok_or(DesktopBridgeError::NoHomeDirectory)?
+        .join(".ssh");
+    fs::create_dir_all(&ssh_dir)?;
 
     let config_path = ssh_dir.join("config");
     let include_line = "Include ~/.vk-ssh/config";
@@ -77,13 +83,13 @@ pub fn ensure_ssh_include() -> anyhow::Result<()> {
 
     // Prepend the Include directive (SSH config is first-match)
     let new_content = format!("{include_line}\n{existing}");
-    fs::write(&config_path, new_content).context("Failed to update ~/.ssh/config")?;
+    fs::write(&config_path, new_content)?;
 
     Ok(())
 }
 
-fn vk_ssh_dir() -> anyhow::Result<PathBuf> {
-    let home = dirs::home_dir().context("No home directory")?;
+fn vk_ssh_dir() -> Result<PathBuf, DesktopBridgeError> {
+    let home = dirs::home_dir().ok_or(DesktopBridgeError::NoHomeDirectory)?;
     Ok(home.join(".vk-ssh"))
 }
 
@@ -92,15 +98,12 @@ fn short_key_hash(key: &SigningKey) -> String {
     hash[..8].iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn signing_key_to_openssh_pem(key: &SigningKey) -> anyhow::Result<String> {
+fn signing_key_to_openssh_pem(key: &SigningKey) -> Result<String, DesktopBridgeError> {
     let ed25519_private = Ed25519PrivateKey::from_bytes(&key.to_bytes());
     let keypair = Ed25519Keypair::from(ed25519_private);
     let keypair_data = KeypairData::Ed25519(keypair);
-    let private_key =
-        ssh_key::PrivateKey::new(keypair_data, "").context("Failed to create SSH private key")?;
-    let pem = private_key
-        .to_openssh(ssh_key::LineEnding::LF)
-        .context("Failed to encode SSH key as OpenSSH PEM")?;
+    let private_key = ssh_key::PrivateKey::new(keypair_data, "")?;
+    let pem = private_key.to_openssh(ssh_key::LineEnding::LF)?;
     Ok(pem.to_string())
 }
 

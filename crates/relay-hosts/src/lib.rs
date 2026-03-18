@@ -1,20 +1,19 @@
 use std::{collections::HashMap, sync::Arc};
 
-use anyhow::Context as _;
 use chrono::Utc;
-use desktop_bridge::{service::OpenRemoteEditorResponse, tunnel::TunnelManager};
+use desktop_bridge::{
+    DesktopBridgeError, service::OpenRemoteEditorResponse, tunnel::TunnelManager,
+};
 use ed25519_dalek::{SigningKey, VerifyingKey};
 use http::{HeaderMap, Method};
-use relay_client::{
-    RelayApiClient, RelayHostIdentity, RelayHostTransport, RelayTransportBootstrapError,
-    RelayTransportError,
-};
+pub use relay_client::RelayApiError;
+use relay_client::{RelayApiClient, RelayHostIdentity, RelayHostTransport};
 use relay_control::signing::RelaySigningService;
 use relay_types::{PairRelayHostRequest, RelayAuthState, RelayPairedHost, RemoteSession};
 use relay_ws::SignedTungsteniteSocket;
 use remote_info::RemoteInfo;
 use serde::{Deserialize, Serialize};
-use services::services::remote_client::RemoteClient;
+use services::services::remote_client::{RemoteClient, RemoteClientError};
 use tokio::sync::RwLock;
 use trusted_key_auth::trusted_keys::parse_public_key_base64;
 use utils::assets::relay_host_credentials_path;
@@ -34,11 +33,24 @@ struct RelayHostCredentials {
     pub server_public_key_b64: Option<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum RelayHostLookupError {
+    #[error("No paired relay credentials for this host")]
     NotPaired,
+    #[error("This host pairing is missing required client metadata. Re-pair it.")]
     MissingClientMetadata,
+    #[error("This host pairing is missing required signing metadata. Re-pair it.")]
     MissingSigningMetadata,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RelayConnectionError {
+    #[error("Remote relay API is not configured")]
+    NotConfigured,
+    #[error(transparent)]
+    RemoteClient(#[from] RemoteClientError),
+    #[error(transparent)]
+    Relay(#[from] RelayApiError),
 }
 
 #[derive(Clone)]
@@ -60,7 +72,7 @@ impl RelayHostRepository {
         paired_at: Option<String>,
         client_id: Option<String>,
         server_public_key_b64: Option<String>,
-    ) -> anyhow::Result<()> {
+    ) -> Result<(), RelayPairingClientError> {
         let mut credentials = self.credentials.write().await;
         let existing = credentials.get(&host_id).cloned();
         credentials.insert(
@@ -96,7 +108,7 @@ impl RelayHostRepository {
             .collect()
     }
 
-    pub async fn remove_credentials(&self, host_id: Uuid) -> anyhow::Result<bool> {
+    pub async fn remove_credentials(&self, host_id: Uuid) -> Result<bool, RelayPairingClientError> {
         let mut credentials = self.credentials.write().await;
         let removed = credentials.remove(&host_id).is_some();
 
@@ -206,40 +218,34 @@ pub struct HostRelayWsConnection {
     pub selected_protocol: Option<String>,
 }
 
-#[derive(Debug)]
-pub enum HostRelayProxyError {
-    RelayNotConfigured,
-    Authentication(anyhow::Error),
-    Upstream(anyhow::Error),
-    SigningSession(anyhow::Error),
-    RemoteSession(anyhow::Error),
-}
-
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum OpenRemoteEditorError {
-    RelayNotConfigured,
-    Authentication(anyhow::Error),
-    ResolveEditorPath(anyhow::Error),
-    SigningSession(anyhow::Error),
-    RemoteSession(anyhow::Error),
-    CreateTunnel(anyhow::Error),
-    LaunchEditor(anyhow::Error),
+    #[error(transparent)]
+    Connection(#[from] RelayConnectionError),
+    #[error("Failed to create SSH tunnel: {0}")]
+    CreateTunnel(std::io::Error),
+    #[error("Failed to set up SSH for remote editor: {0}")]
+    SshSetup(DesktopBridgeError),
 }
 
-#[derive(Debug)]
+impl From<RelayApiError> for OpenRemoteEditorError {
+    fn from(err: RelayApiError) -> Self {
+        Self::Connection(err.into())
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
 pub enum RelayPairingClientError {
+    #[error("Remote relay API is not configured")]
     NotConfigured,
-    Authentication(anyhow::Error),
-    Pairing(anyhow::Error),
-    Store(anyhow::Error),
-}
-
-#[derive(Debug)]
-enum HostRelayResolveError {
-    RelayNotConfigured,
-    Authentication(anyhow::Error),
-    RemoteSession(anyhow::Error),
-    SigningSession(anyhow::Error),
+    #[error("Relay host pairing authentication failed: {0}")]
+    RemoteClient(#[from] RemoteClientError),
+    #[error("Relay host pairing failed: {0}")]
+    Pairing(RelayApiError),
+    #[error("Failed to serialize relay host credentials: {0}")]
+    StoreSerialization(serde_json::Error),
+    #[error("Failed to persist relay host credentials: {0}")]
+    Store(std::io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -292,11 +298,7 @@ impl RelayHosts {
             .get_relay_api_base()
             .ok_or(RelayPairingClientError::NotConfigured)?;
         let relay_signing = self.runtime.relay_signing.clone();
-        let access_token = remote_client
-            .access_token()
-            .await
-            .context("Failed to get access token for relay auth code")
-            .map_err(RelayPairingClientError::Authentication)?;
+        let access_token = remote_client.access_token().await?;
         let relay_client = RelayApiClient::new(relay_base_url, access_token);
         let relay_client::PairRelayHostResult {
             signing_session_id,
@@ -315,8 +317,7 @@ impl RelayHosts {
                 Some(client_id.to_string()),
                 Some(server_public_key_b64),
             )
-            .await
-            .map_err(RelayPairingClientError::Store)?;
+            .await?;
         self.sessions
             .cache_signing_session_id(req.host_id, signing_session_id.to_string())
             .await;
@@ -330,11 +331,7 @@ impl RelayHosts {
     }
 
     pub async fn remove_host(&self, host_id: Uuid) -> Result<bool, RelayPairingClientError> {
-        let removed = self
-            .repository
-            .remove_credentials(host_id)
-            .await
-            .map_err(RelayPairingClientError::Store)?;
+        let removed = self.repository.remove_credentials(host_id).await?;
         if removed {
             self.sessions.clear(host_id).await;
         }
@@ -343,19 +340,15 @@ impl RelayHosts {
 }
 
 impl RelayHost {
-    async fn open_transport(&self) -> Result<RelayHostTransport, HostRelayResolveError> {
+    async fn open_transport(&self) -> Result<RelayHostTransport, RelayConnectionError> {
         let remote_client = self.runtime.remote_client.clone();
         let relay_base_url = self
             .runtime
             .remote_info
             .get_relay_api_base()
-            .ok_or(HostRelayResolveError::RelayNotConfigured)?;
+            .ok_or(RelayConnectionError::NotConfigured)?;
         let signing_key = self.runtime.relay_signing.signing_key().clone();
-        let access_token = remote_client
-            .access_token()
-            .await
-            .map_err(anyhow::Error::from)
-            .map_err(HostRelayResolveError::Authentication)?;
+        let access_token = remote_client.access_token().await?;
         let cached_auth_state = self.sessions.load_auth_state(self.identity.host_id).await;
         let transport = RelayHostTransport::bootstrap(
             RelayApiClient::new(relay_base_url, access_token),
@@ -366,8 +359,7 @@ impl RelayHost {
                 .map(|value| value.remote_session.clone()),
             cached_auth_state.map(|value| value.signing_session_id),
         )
-        .await
-        .map_err(map_bootstrap_error)?;
+        .await?;
 
         Ok(transport)
     }
@@ -384,32 +376,22 @@ impl RelayHost {
         target_path: &str,
         headers: &HeaderMap,
         body: &[u8],
-    ) -> Result<reqwest::Response, HostRelayProxyError> {
-        let mut transport = self
-            .open_transport()
-            .await
-            .map_err(HostRelayProxyError::from)?;
+    ) -> Result<reqwest::Response, RelayConnectionError> {
+        let mut transport = self.open_transport().await?;
         let response = transport
             .send_http(method, target_path, headers, body)
-            .await
-            .map_err(HostRelayProxyError::from);
+            .await;
         self.persist_auth_state(&transport).await;
-        response
+        Ok(response?)
     }
 
     pub async fn proxy_ws(
         &self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<HostRelayWsConnection, HostRelayProxyError> {
-        let mut transport = self
-            .open_transport()
-            .await
-            .map_err(HostRelayProxyError::from)?;
-        let connection = transport
-            .connect_ws(target_path, protocols)
-            .await
-            .map_err(HostRelayProxyError::from);
+    ) -> Result<HostRelayWsConnection, RelayConnectionError> {
+        let mut transport = self.open_transport().await?;
+        let connection = transport.connect_ws(target_path, protocols).await;
         self.persist_auth_state(&transport).await;
         let (upstream_socket, selected_protocol) = connection?;
 
@@ -426,15 +408,11 @@ impl RelayHost {
         editor_type: Option<&str>,
         file_path: Option<&str>,
     ) -> Result<OpenRemoteEditorResponse, OpenRemoteEditorError> {
-        let mut transport = self
-            .open_transport()
-            .await
-            .map_err(OpenRemoteEditorError::from)?;
+        let mut transport = self.open_transport().await?;
         let editor_path_api_path = build_workspace_editor_path_api_path(workspace_id, file_path);
         let editor_path = transport
             .get_signed_json::<RelayEditorPathResponse>(&editor_path_api_path)
-            .await
-            .map_err(OpenRemoteEditorError::from);
+            .await;
         self.persist_auth_state(&transport).await;
         let editor_path = editor_path?;
         let tunnel_access = relay_tunnel_access(&transport);
@@ -456,49 +434,7 @@ impl RelayHost {
             &editor_path.workspace_path,
             editor_type,
         )
-        .map_err(OpenRemoteEditorError::LaunchEditor)
-    }
-}
-
-impl From<HostRelayResolveError> for HostRelayProxyError {
-    fn from(value: HostRelayResolveError) -> Self {
-        match value {
-            HostRelayResolveError::RelayNotConfigured => Self::RelayNotConfigured,
-            HostRelayResolveError::Authentication(error) => Self::Authentication(error),
-            HostRelayResolveError::RemoteSession(error) => Self::RemoteSession(error),
-            HostRelayResolveError::SigningSession(error) => Self::SigningSession(error),
-        }
-    }
-}
-
-impl From<RelayTransportError> for HostRelayProxyError {
-    fn from(value: RelayTransportError) -> Self {
-        match value {
-            RelayTransportError::Upstream(error) => Self::Upstream(error),
-            RelayTransportError::SigningSession(error) => Self::SigningSession(error),
-            RelayTransportError::RemoteSession(error) => Self::RemoteSession(error),
-        }
-    }
-}
-
-impl From<HostRelayResolveError> for OpenRemoteEditorError {
-    fn from(value: HostRelayResolveError) -> Self {
-        match value {
-            HostRelayResolveError::RelayNotConfigured => Self::RelayNotConfigured,
-            HostRelayResolveError::Authentication(error) => Self::Authentication(error),
-            HostRelayResolveError::RemoteSession(error) => Self::RemoteSession(error),
-            HostRelayResolveError::SigningSession(error) => Self::SigningSession(error),
-        }
-    }
-}
-
-impl From<RelayTransportError> for OpenRemoteEditorError {
-    fn from(value: RelayTransportError) -> Self {
-        match value {
-            RelayTransportError::Upstream(error) => Self::ResolveEditorPath(error),
-            RelayTransportError::SigningSession(error) => Self::SigningSession(error),
-            RelayTransportError::RemoteSession(error) => Self::RemoteSession(error),
-        }
+        .map_err(OpenRemoteEditorError::SshSetup)
     }
 }
 
@@ -523,17 +459,6 @@ fn build_workspace_editor_path_api_path(workspace_id: Uuid, file_path: Option<&s
     format!("{base}?{query}")
 }
 
-fn map_bootstrap_error(error: RelayTransportBootstrapError) -> HostRelayResolveError {
-    match error {
-        RelayTransportBootstrapError::RemoteSession(error) => {
-            HostRelayResolveError::RemoteSession(error)
-        }
-        RelayTransportBootstrapError::SigningSession(error) => {
-            HostRelayResolveError::SigningSession(error)
-        }
-    }
-}
-
 async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials> {
     let path = relay_host_credentials_path();
     let Ok(raw) = tokio::fs::read_to_string(&path).await else {
@@ -555,9 +480,12 @@ async fn load_relay_host_credentials_map() -> HashMap<Uuid, RelayHostCredentials
 
 async fn persist_relay_host_credentials_map(
     map: &HashMap<Uuid, RelayHostCredentials>,
-) -> anyhow::Result<()> {
+) -> Result<(), RelayPairingClientError> {
     let path = relay_host_credentials_path();
-    let json = serde_json::to_string_pretty(map)?;
-    tokio::fs::write(&path, json).await?;
+    let json =
+        serde_json::to_string_pretty(map).map_err(RelayPairingClientError::StoreSerialization)?;
+    tokio::fs::write(&path, json)
+        .await
+        .map_err(RelayPairingClientError::Store)?;
     Ok(())
 }

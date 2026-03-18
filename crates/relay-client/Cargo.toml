@@ -13,6 +13,7 @@ relay-control = { path = "../relay-control" }
 relay-ws = { path = "../relay-ws" }
 relay-types = { path = "../relay-types" }
 reqwest = { workspace = true }
+thiserror = { workspace = true }
 serde = { workspace = true }
 spake2 = { version = "0.5.0-pre.0", features = ["getrandom"] }
 tokio-tungstenite = { version = "0.26", features = ["rustls-tls-native-roots"] }

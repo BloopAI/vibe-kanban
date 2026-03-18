@@ -1,6 +1,5 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use anyhow::Context as _;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use http::{HeaderMap, HeaderName, Method};
@@ -27,6 +26,16 @@ use trusted_key_auth::{
 use uuid::Uuid;
 
 pub const RELAY_HEADER: &str = "x-vk-relayed";
+
+#[derive(Debug, thiserror::Error)]
+pub enum RelayApiError {
+    #[error("{0}")]
+    Request(#[from] reqwest::Error),
+    #[error("{0}")]
+    WebSocket(#[from] tungstenite::Error),
+    #[error("{0}")]
+    Other(String),
+}
 
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
@@ -59,24 +68,14 @@ impl RelayApiClient {
             .bearer_auth(&self.access_token)
     }
 
-    pub async fn create_session(&self, host_id: Uuid) -> anyhow::Result<RemoteSession> {
+    pub async fn create_session(&self, host_id: Uuid) -> Result<RemoteSession, RelayApiError> {
         let url = format!("{}/v1/relay/create/{host_id}", self.base_url);
         let response = self
             .authenticated_post(url)
             .send()
-            .await
-            .context("Failed to create relay session")?;
-        let status = response.status();
-
-        if !status.is_success() {
-            let body = response.text().await.unwrap_or_default();
-            anyhow::bail!("Failed to create relay session (status {status}): {body}");
-        }
-
-        let res = response
-            .json::<CreateRelaySessionResponse>()
-            .await
-            .context("Failed to decode relay session response")?;
+            .await?
+            .error_for_status()?;
+        let res = response.json::<CreateRelaySessionResponse>().await?;
 
         Ok(RemoteSession {
             host_id,
@@ -89,7 +88,7 @@ impl RelayApiClient {
         remote_session: &RemoteSession,
         path: &str,
         payload: &TPayload,
-    ) -> anyhow::Result<TData>
+    ) -> Result<TData, RelayApiError>
     where
         TPayload: Serialize,
         TData: DeserializeOwned,
@@ -102,27 +101,10 @@ impl RelayApiClient {
             .authenticated_post(url)
             .json(payload)
             .send()
-            .await
-            .with_context(|| format!("Relay request failed for '{path}'"))?;
-        let status = response.status();
-        let response_json = response
-            .json::<RelayApiResponse<TData>>()
-            .await
-            .with_context(|| format!("Failed to parse relay response for '{path}'"))?;
-
-        if !status.is_success() {
-            let message = response_json.message().unwrap_or("Relay request failed");
-            anyhow::bail!("{message} (status {status})");
-        }
-
-        if !response_json.is_success() {
-            let message = response_json.message().unwrap_or("Relay request failed");
-            anyhow::bail!("{message}");
-        }
-
-        response_json
-            .into_data()
-            .ok_or_else(|| anyhow::anyhow!("Relay response was missing data"))
+            .await?
+            .error_for_status()?;
+        let response_json = response.json::<RelayApiResponse<TData>>().await?;
+        Ok(response_json.data)
     }
 
     pub async fn refresh_signing_session(
@@ -130,7 +112,7 @@ impl RelayApiClient {
         remote_session: &RemoteSession,
         signing_key: &SigningKey,
         client_id: Uuid,
-    ) -> anyhow::Result<RefreshRelaySigningSessionResponse> {
+    ) -> Result<RefreshRelaySigningSessionResponse, RelayApiError> {
         let timestamp = unix_timestamp_now()?;
         let nonce = Uuid::new_v4().simple().to_string();
         let refresh_message = build_refresh_message(timestamp, &nonce, client_id);
@@ -156,11 +138,11 @@ impl RelayApiClient {
         &self,
         request: &PairRelayHostRequest,
         signing_key: &SigningKey,
-    ) -> anyhow::Result<PairRelayHostResult> {
+    ) -> Result<PairRelayHostResult, RelayApiError> {
         let remote_session = self.create_session(request.host_id).await?;
 
         let normalized_code = normalize_enrollment_code(&request.enrollment_code)
-            .map_err(|error| anyhow::anyhow!(error.to_string()))?;
+            .map_err(|e| RelayApiError::Other(e.to_string()))?;
 
         let password = Password::new(normalized_code.as_bytes());
         let id_a = Identity::new(SPAKE2_CLIENT_ID);
@@ -181,10 +163,10 @@ impl RelayApiClient {
 
         let server_message = BASE64_STANDARD
             .decode(&start_response.server_message_b64)
-            .context("Invalid server_message_b64 in relay PAKE response")?;
-        let shared_key = client_state
-            .finish(&server_message)
-            .map_err(|_| anyhow::anyhow!("Failed to complete relay PAKE handshake"))?;
+            .map_err(|e| RelayApiError::Other(format!("invalid server_message_b64: {e}")))?;
+        let shared_key = client_state.finish(&server_message).map_err(|_| {
+            RelayApiError::Other("failed to complete relay PAKE handshake".to_string())
+        })?;
 
         let client_public_key = signing_key.verifying_key();
         let client_public_key_b64 = BASE64_STANDARD.encode(client_public_key.as_bytes());
@@ -193,7 +175,7 @@ impl RelayApiClient {
             &start_response.enrollment_id,
             client_public_key.as_bytes(),
         )
-        .map_err(|_| anyhow::anyhow!("Failed to build relay PAKE client proof"))?;
+        .map_err(|_| RelayApiError::Other("failed to build relay PAKE client proof".to_string()))?;
 
         let os = os_info::get();
         let client_id = Uuid::new_v4();
@@ -215,7 +197,9 @@ impl RelayApiClient {
             .await?;
 
         let server_public_key = parse_public_key_base64(&finish_response.server_public_key_b64)
-            .map_err(|_| anyhow::anyhow!("Invalid server_public_key_b64 in relay PAKE response"))?;
+            .map_err(|_| {
+                RelayApiError::Other("invalid server_public_key_b64 in PAKE response".to_string())
+            })?;
 
         verify_server_proof(
             &shared_key,
@@ -224,7 +208,7 @@ impl RelayApiClient {
             server_public_key.as_bytes(),
             &finish_response.server_proof_b64,
         )
-        .map_err(|_| anyhow::anyhow!("Relay server proof verification failed"))?;
+        .map_err(|_| RelayApiError::Other("relay server proof verification failed".to_string()))?;
 
         Ok(PairRelayHostResult {
             signing_session_id: finish_response.signing_session_id,
@@ -248,19 +232,6 @@ pub struct RelayHostIdentity {
     pub server_verify_key: VerifyingKey,
 }
 
-#[derive(Debug)]
-pub enum RelayTransportBootstrapError {
-    RemoteSession(anyhow::Error),
-    SigningSession(anyhow::Error),
-}
-
-#[derive(Debug)]
-pub enum RelayTransportError {
-    Upstream(anyhow::Error),
-    SigningSession(anyhow::Error),
-    RemoteSession(anyhow::Error),
-}
-
 pub struct RelayHostTransport {
     api_client: RelayApiClient,
     identity: RelayHostIdentity,
@@ -275,21 +246,17 @@ impl RelayHostTransport {
         signing_key: SigningKey,
         cached_remote_session: Option<RemoteSession>,
         cached_signing_session_id: Option<String>,
-    ) -> Result<Self, RelayTransportBootstrapError> {
+    ) -> Result<Self, RelayApiError> {
         let remote_session = match cached_remote_session {
             Some(remote_session) => remote_session,
-            None => api_client
-                .create_session(identity.host_id)
-                .await
-                .map_err(RelayTransportBootstrapError::RemoteSession)?,
+            None => api_client.create_session(identity.host_id).await?,
         };
         let signing_session_id = match cached_signing_session_id {
             Some(signing_session_id) => signing_session_id,
             None => api_client
                 .refresh_signing_session(&remote_session, &signing_key, identity.client_id)
                 .await
-                .map(|response| response.signing_session_id.to_string())
-                .map_err(RelayTransportBootstrapError::SigningSession)?,
+                .map(|response| response.signing_session_id.to_string())?,
         };
 
         Ok(Self {
@@ -333,12 +300,11 @@ impl RelayHostTransport {
         target_path: &str,
         headers: &HeaderMap,
         body: &[u8],
-    ) -> Result<reqwest::Response, RelayTransportError> {
+    ) -> Result<reqwest::Response, RelayApiError> {
         let first = self
             .send_http_once(method, target_path, headers, body)
-            .await
-            .map_err(RelayTransportError::Upstream)?;
-        if !is_auth_failure_status(first.status()) {
+            .await?;
+        if !is_auth_failure_status(first.status().as_u16()) {
             return Ok(first);
         }
 
@@ -348,9 +314,8 @@ impl RelayHostTransport {
 
         let second = self
             .send_http_once(method, target_path, headers, body)
-            .await
-            .map_err(RelayTransportError::Upstream)?;
-        if !is_auth_failure_status(second.status()) {
+            .await?;
+        if !is_auth_failure_status(second.status().as_u16()) {
             return Ok(second);
         }
 
@@ -360,55 +325,33 @@ impl RelayHostTransport {
 
         self.send_http_once(method, target_path, headers, body)
             .await
-            .map_err(RelayTransportError::Upstream)
     }
 
     pub async fn connect_ws(
         &mut self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(SignedTungsteniteSocket, Option<String>), RelayTransportError> {
+    ) -> Result<(SignedTungsteniteSocket, Option<String>), RelayApiError> {
         match self.connect_ws_once(target_path, protocols).await {
             Ok(result) => return Ok(result),
-            Err(RelayWsConnectError::AuthFailure) => {}
-            Err(error) => {
-                return Err(RelayTransportError::Upstream(relay_ws_error_to_anyhow(
-                    error,
-                    "Failed to connect relay host websocket",
-                )));
-            }
+            Err(ref e) if is_ws_auth_failure(e) => {}
+            Err(e) => return Err(e),
         }
 
-        self.refresh_signing_session()
-            .await
-            .map_err(RelayTransportError::SigningSession)?;
+        self.refresh_signing_session().await?;
 
         match self.connect_ws_once(target_path, protocols).await {
             Ok(result) => return Ok(result),
-            Err(RelayWsConnectError::AuthFailure) => {}
-            Err(error) => {
-                return Err(RelayTransportError::Upstream(relay_ws_error_to_anyhow(
-                    error,
-                    "Failed to connect relay host websocket after signing refresh",
-                )));
-            }
+            Err(ref e) if is_ws_auth_failure(e) => {}
+            Err(e) => return Err(e),
         }
 
-        self.rotate_remote_session()
-            .await
-            .map_err(RelayTransportError::RemoteSession)?;
+        self.rotate_remote_session().await?;
 
-        self.connect_ws_once(target_path, protocols)
-            .await
-            .map_err(|error| {
-                RelayTransportError::Upstream(relay_ws_error_to_anyhow(
-                    error,
-                    "Failed to connect relay host websocket after session rotation",
-                ))
-            })
+        self.connect_ws_once(target_path, protocols).await
     }
 
-    pub async fn get_signed_json<TData>(&mut self, path: &str) -> Result<TData, RelayTransportError>
+    pub async fn get_signed_json<TData>(&mut self, path: &str) -> Result<TData, RelayApiError>
     where
         TData: DeserializeOwned,
     {
@@ -416,21 +359,15 @@ impl RelayHostTransport {
             return Ok(data);
         }
 
-        self.refresh_signing_session()
-            .await
-            .map_err(RelayTransportError::SigningSession)?;
+        self.refresh_signing_session().await?;
 
         if let Ok(data) = self.get_signed_json_once(path).await {
             return Ok(data);
         }
 
-        self.rotate_remote_session()
-            .await
-            .map_err(RelayTransportError::RemoteSession)?;
+        self.rotate_remote_session().await?;
 
-        self.get_signed_json_once(path)
-            .await
-            .map_err(RelayTransportError::Upstream)
+        self.get_signed_json_once(path).await
     }
 
     async fn send_http_once(
@@ -439,7 +376,7 @@ impl RelayHostTransport {
         target_path: &str,
         headers: &HeaderMap,
         body: &[u8],
-    ) -> anyhow::Result<reqwest::Response> {
+    ) -> Result<reqwest::Response, RelayApiError> {
         send_signed_http(
             self.relay_base_url(),
             &self.auth_state.remote_session,
@@ -457,7 +394,7 @@ impl RelayHostTransport {
         &self,
         target_path: &str,
         protocols: Option<&str>,
-    ) -> Result<(SignedTungsteniteSocket, Option<String>), RelayWsConnectError> {
+    ) -> Result<(SignedTungsteniteSocket, Option<String>), RelayApiError> {
         connect_signed_upstream_ws(
             self.relay_base_url(),
             &self.auth_state.remote_session,
@@ -470,7 +407,7 @@ impl RelayHostTransport {
         .await
     }
 
-    async fn get_signed_json_once<TData>(&self, path: &str) -> anyhow::Result<TData>
+    async fn get_signed_json_once<TData>(&self, path: &str) -> Result<TData, RelayApiError>
     where
         TData: DeserializeOwned,
     {
@@ -485,7 +422,7 @@ impl RelayHostTransport {
         .await
     }
 
-    async fn refresh_signing_session(&mut self) -> anyhow::Result<()> {
+    async fn refresh_signing_session(&mut self) -> Result<(), RelayApiError> {
         let refreshed = self
             .api_client
             .refresh_signing_session(
@@ -498,19 +435,13 @@ impl RelayHostTransport {
         Ok(())
     }
 
-    async fn rotate_remote_session(&mut self) -> anyhow::Result<()> {
+    async fn rotate_remote_session(&mut self) -> Result<(), RelayApiError> {
         self.auth_state.remote_session = self
             .api_client
             .create_session(self.identity.host_id)
             .await?;
         Ok(())
     }
-}
-
-#[derive(Debug)]
-pub enum RelayWsConnectError {
-    AuthFailure,
-    Other(anyhow::Error),
 }
 
 pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> String {
@@ -527,7 +458,7 @@ async fn get_signed_relay_api<TData>(
     path: &str,
     signing_key: &SigningKey,
     signing_session_id: &str,
-) -> anyhow::Result<TData>
+) -> Result<TData, RelayApiError>
 where
     TData: DeserializeOwned,
 {
@@ -541,26 +472,11 @@ where
         .header(signing::NONCE_HEADER, &sig.nonce)
         .header(signing::REQUEST_SIGNATURE_HEADER, &sig.signature_b64)
         .send()
-        .await
-        .with_context(|| format!("Relay request failed for '{path}'"))?;
+        .await?
+        .error_for_status()?;
 
-    let status = response.status();
-    let payload = response
-        .json::<RelayApiResponse<TData>>()
-        .await
-        .with_context(|| format!("Failed to decode relay response for '{path}'"))?;
-
-    if !status.is_success() || !payload.is_success() {
-        let message = payload
-            .message()
-            .map(ToOwned::to_owned)
-            .unwrap_or_else(|| format!("Relay request failed for '{path}'"));
-        anyhow::bail!("{message}");
-    }
-
-    payload
-        .into_data()
-        .ok_or_else(|| anyhow::anyhow!("Missing response data for relay path '{path}'"))
+    let payload = response.json::<RelayApiResponse<TData>>().await?;
+    Ok(payload.data)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -573,7 +489,7 @@ async fn send_signed_http(
     target_path: &str,
     headers: &HeaderMap,
     body: &[u8],
-) -> anyhow::Result<reqwest::Response> {
+) -> Result<reqwest::Response, RelayApiError> {
     let signature = signing::build_request_signature(
         signing_key,
         signing_session_id,
@@ -585,9 +501,7 @@ async fn send_signed_http(
         "{}{target_path}",
         relay_session_url(base_url, remote_session.host_id, remote_session.id)
     );
-    let reqwest_method = reqwest::Method::from_bytes(method.as_str().as_bytes())
-        .context("Unsupported HTTP method for relay request")?;
-    let mut builder = Client::new().request(reqwest_method, url);
+    let mut builder = Client::new().request(method.clone(), url);
 
     for (name, value) in headers {
         if should_forward_request_header(name) {
@@ -606,7 +520,7 @@ async fn send_signed_http(
         builder = builder.body(body.to_vec());
     }
 
-    builder.send().await.context("Relay request to host failed")
+    Ok(builder.send().await?)
 }
 
 async fn connect_signed_upstream_ws(
@@ -617,45 +531,27 @@ async fn connect_signed_upstream_ws(
     target_path: &str,
     protocols: Option<&str>,
     server_verify_key: VerifyingKey,
-) -> Result<(SignedTungsteniteSocket, Option<String>), RelayWsConnectError> {
+) -> Result<(SignedTungsteniteSocket, Option<String>), RelayApiError> {
     let request_signature =
         signing::build_request_signature(signing_key, signing_session_id, "GET", target_path, &[]);
 
     let ws_url = relay_http_to_ws_url(&format!(
         "{}{target_path}",
         relay_session_url(base_url, remote_session.host_id, remote_session.id)
-    ))
-    .map_err(RelayWsConnectError::Other)?;
-    let mut ws_request = ws_url
-        .into_client_request()
-        .context("Failed to build relay upstream WS request")
-        .map_err(RelayWsConnectError::Other)?;
+    ))?;
+    let mut ws_request = ws_url.into_client_request()?;
 
     if let Some(value) = protocols {
-        ws_request.headers_mut().insert(
-            "sec-websocket-protocol",
-            value
-                .parse()
-                .map_err(anyhow::Error::from)
-                .map_err(RelayWsConnectError::Other)?,
-        );
+        if let Ok(header_value) = value.parse() {
+            ws_request
+                .headers_mut()
+                .insert("sec-websocket-protocol", header_value);
+        }
     }
 
     set_ws_signing_headers(ws_request.headers_mut(), &request_signature);
 
-    let (stream, response) = match tokio_tungstenite::connect_async(ws_request).await {
-        Ok(result) => result,
-        Err(tungstenite::Error::Http(response)) => {
-            let status = response.status();
-            if is_auth_failure_status(status) {
-                return Err(RelayWsConnectError::AuthFailure);
-            }
-            return Err(RelayWsConnectError::Other(anyhow::anyhow!(
-                "Relay WS handshake failed with status {status}"
-            )));
-        }
-        Err(error) => return Err(RelayWsConnectError::Other(anyhow::Error::from(error))),
-    };
+    let (stream, response) = tokio_tungstenite::connect_async(ws_request).await?;
 
     let selected_protocol = response
         .headers()
@@ -674,20 +570,15 @@ async fn connect_signed_upstream_ws(
     Ok((upstream_socket, selected_protocol))
 }
 
-fn relay_http_to_ws_url(http_url: &str) -> anyhow::Result<String> {
+fn relay_http_to_ws_url(http_url: &str) -> Result<String, RelayApiError> {
     if let Some(rest) = http_url.strip_prefix("https://") {
         Ok(format!("wss://{rest}"))
     } else if let Some(rest) = http_url.strip_prefix("http://") {
         Ok(format!("ws://{rest}"))
     } else {
-        anyhow::bail!("unsupported URL scheme: {http_url}")
-    }
-}
-
-fn relay_ws_error_to_anyhow(error: RelayWsConnectError, context: &'static str) -> anyhow::Error {
-    match error {
-        RelayWsConnectError::AuthFailure => anyhow::anyhow!("{context}: authentication failed"),
-        RelayWsConnectError::Other(error) => anyhow::anyhow!("{context}: {error}"),
+        Err(RelayApiError::Other(format!(
+            "unsupported URL scheme: {http_url}"
+        )))
     }
 }
 
@@ -743,15 +634,24 @@ fn should_forward_request_header(name: &HeaderName) -> bool {
         && !is_hop_by_hop_header(name)
 }
 
-fn is_auth_failure_status(status: reqwest::StatusCode) -> bool {
-    status == reqwest::StatusCode::UNAUTHORIZED || status == reqwest::StatusCode::FORBIDDEN
+fn is_auth_failure_status(status_code: u16) -> bool {
+    status_code == 401 || status_code == 403
 }
 
-fn unix_timestamp_now() -> anyhow::Result<i64> {
+fn is_ws_auth_failure(error: &RelayApiError) -> bool {
+    if let RelayApiError::WebSocket(tungstenite::Error::Http(response)) = error {
+        is_auth_failure_status(response.status().as_u16())
+    } else {
+        false
+    }
+}
+
+fn unix_timestamp_now() -> Result<i64, RelayApiError> {
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map_err(|_| anyhow::anyhow!("system time before unix epoch"))?;
-    i64::try_from(duration.as_secs()).map_err(anyhow::Error::from)
+        .map_err(|_| RelayApiError::Other("system time before unix epoch".to_string()))?;
+    i64::try_from(duration.as_secs())
+        .map_err(|e| RelayApiError::Other(format!("unix timestamp overflow: {e}")))
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -761,21 +661,5 @@ struct CreateRelaySessionResponse {
 
 #[derive(Debug, Deserialize)]
 struct RelayApiResponse<T> {
-    success: bool,
-    data: Option<T>,
-    message: Option<String>,
-}
-
-impl<T> RelayApiResponse<T> {
-    fn is_success(&self) -> bool {
-        self.success
-    }
-
-    fn into_data(self) -> Option<T> {
-        self.data
-    }
-
-    fn message(&self) -> Option<&str> {
-        self.message.as_deref()
-    }
+    data: T,
 }

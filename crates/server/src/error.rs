@@ -14,6 +14,10 @@ use git::GitServiceError;
 use git_host::GitHostError;
 use git2::Error as Git2Error;
 use local_deployment::pty::PtyError;
+use relay_hosts::{
+    OpenRemoteEditorError, RelayApiError, RelayConnectionError, RelayHostLookupError,
+    RelayPairingClientError,
+};
 use services::services::{
     config::{ConfigError, EditorOpenError},
     container::ContainerError,
@@ -77,6 +81,8 @@ pub enum ApiError {
     Forbidden(String),
     #[error("Too many requests: {0}")]
     TooManyRequests(String),
+    #[error("Bad gateway: {0}")]
+    BadGateway(String),
     #[error(transparent)]
     CommandBuilder(#[from] CommandBuildError),
     #[error(transparent)]
@@ -444,6 +450,9 @@ impl IntoResponse for ApiError {
                 "TooManyRequests",
                 msg.clone(),
             ),
+            ApiError::BadGateway(msg) => {
+                ErrorInfo::with_status(StatusCode::BAD_GATEWAY, "BadGateway", msg.clone())
+            }
             ApiError::Multipart(_) => ErrorInfo::bad_request(
                 "MultipartError",
                 "Failed to upload file. Please ensure the file is valid and try again.",
@@ -573,6 +582,72 @@ impl From<RepoServiceError> for ApiError {
             }
             RepoServiceError::InvalidFolderName(name) => {
                 ApiError::BadRequest(format!("Invalid folder name: {}", name))
+            }
+        }
+    }
+}
+
+impl From<RelayHostLookupError> for ApiError {
+    fn from(err: RelayHostLookupError) -> Self {
+        ApiError::BadRequest(err.to_string())
+    }
+}
+
+impl From<RelayConnectionError> for ApiError {
+    fn from(err: RelayConnectionError) -> Self {
+        match err {
+            RelayConnectionError::NotConfigured => ApiError::BadRequest(err.to_string()),
+            RelayConnectionError::RemoteClient(ref inner) => {
+                tracing::warn!(%inner, "Relay connection authentication failed");
+                ApiError::Unauthorized
+            }
+            RelayConnectionError::Relay(err) => err.into(),
+        }
+    }
+}
+
+impl From<RelayApiError> for ApiError {
+    fn from(err: RelayApiError) -> Self {
+        tracing::warn!(%err, "Relay transport failed");
+        ApiError::BadGateway(err.to_string())
+    }
+}
+
+impl From<OpenRemoteEditorError> for ApiError {
+    fn from(err: OpenRemoteEditorError) -> Self {
+        match err {
+            OpenRemoteEditorError::Connection(err) => err.into(),
+            OpenRemoteEditorError::CreateTunnel(ref detail) => {
+                tracing::warn!(%detail, "Failed to create SSH tunnel");
+                ApiError::BadGateway(err.to_string())
+            }
+            OpenRemoteEditorError::SshSetup(ref detail) => {
+                tracing::warn!(%detail, "Failed to open remote editor");
+                ApiError::BadGateway(err.to_string())
+            }
+        }
+    }
+}
+
+impl From<RelayPairingClientError> for ApiError {
+    fn from(err: RelayPairingClientError) -> Self {
+        match err {
+            RelayPairingClientError::NotConfigured => ApiError::BadRequest(err.to_string()),
+            RelayPairingClientError::RemoteClient(ref inner) => {
+                tracing::warn!(%inner, "Relay host pairing authentication failed");
+                ApiError::Unauthorized
+            }
+            RelayPairingClientError::Pairing(ref detail) => {
+                tracing::warn!(%detail, "Relay host pairing failed");
+                ApiError::BadRequest(err.to_string())
+            }
+            RelayPairingClientError::StoreSerialization(ref detail) => {
+                tracing::error!(%detail, "Failed to serialize relay host credentials");
+                ApiError::BadGateway(err.to_string())
+            }
+            RelayPairingClientError::Store(ref detail) => {
+                tracing::error!(%detail, "Failed to persist paired relay host credentials");
+                ApiError::BadGateway(err.to_string())
             }
         }
     }

@@ -49,7 +49,7 @@ impl TunnelManager {
         signing_key: &SigningKey,
         signing_session_id: &str,
         server_verify_key: VerifyingKey,
-    ) -> anyhow::Result<u16> {
+    ) -> std::io::Result<u16> {
         let local_port = self
             .get_or_create_tunnel_for_path(
                 host_id,
@@ -72,7 +72,7 @@ impl TunnelManager {
         signing_session_id: &str,
         server_verify_key: VerifyingKey,
         api_path: &str,
-    ) -> anyhow::Result<u16> {
+    ) -> std::io::Result<u16> {
         let key = TunnelKey {
             host_id,
             api_path: api_path.to_string(),
@@ -105,9 +105,7 @@ impl TunnelManager {
         }
 
         // Create new tunnel
-        let listener = TcpListener::bind("127.0.0.1:0")
-            .await
-            .context("Failed to bind local tunnel listener")?;
+        let listener = TcpListener::bind("127.0.0.1:0").await?;
         let local_port = listener.local_addr()?.port();
         let tunnel_id = Uuid::new_v4();
 

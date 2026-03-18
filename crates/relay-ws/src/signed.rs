@@ -64,7 +64,13 @@ pub fn signed_tungstenite_websocket(
     peer_verify_key: VerifyingKey,
     stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
 ) -> SignedTungsteniteSocket {
-    SignedWebSocket::new(stream, signing_session_id, request_nonce, signing_key, peer_verify_key)
+    SignedWebSocket::new(
+        stream,
+        signing_session_id,
+        request_nonce,
+        signing_key,
+        peer_verify_key,
+    )
 }
 
 /// Wrap an axum WebSocket into a signed channel.
@@ -78,7 +84,13 @@ pub fn signed_axum_websocket(
     peer_verify_key: VerifyingKey,
     socket: WebSocket,
 ) -> SignedAxumSocket {
-    SignedWebSocket::new(socket, signing_session_id, request_nonce, signing_key, peer_verify_key)
+    SignedWebSocket::new(
+        socket,
+        signing_session_id,
+        request_nonce,
+        signing_key,
+        peer_verify_key,
+    )
 }
 
 impl<S, M, E> SignedWebSocket<S, M>

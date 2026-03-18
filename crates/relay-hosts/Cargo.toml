@@ -18,6 +18,7 @@ reqwest = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 services = { path = "../services" }
+thiserror = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 trusted-key-auth = { path = "../trusted-key-auth" }

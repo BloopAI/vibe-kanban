@@ -183,12 +183,12 @@ pub fn axum_to_tungstenite(msg: AxumWsMessage) -> tungstenite::Message {
         AxumWsMessage::Binary(bytes) => tungstenite::Message::Binary(bytes.to_vec().into()),
         AxumWsMessage::Ping(bytes) => tungstenite::Message::Ping(bytes.to_vec().into()),
         AxumWsMessage::Pong(bytes) => tungstenite::Message::Pong(bytes.to_vec().into()),
-        AxumWsMessage::Close(frame) => tungstenite::Message::Close(frame.map(|cf| {
-            tungstenite::protocol::CloseFrame {
+        AxumWsMessage::Close(frame) => {
+            tungstenite::Message::Close(frame.map(|cf| tungstenite::protocol::CloseFrame {
                 code: tungstenite::protocol::frame::coding::CloseCode::from(cf.code),
                 reason: cf.reason.to_string().into(),
-            }
-        })),
+            }))
+        }
     }
 }
 
@@ -200,12 +200,12 @@ pub fn tungstenite_to_axum(msg: tungstenite::Message) -> AxumWsMessage {
         tungstenite::Message::Binary(bytes) => AxumWsMessage::Binary(bytes.to_vec().into()),
         tungstenite::Message::Ping(bytes) => AxumWsMessage::Ping(bytes.to_vec().into()),
         tungstenite::Message::Pong(bytes) => AxumWsMessage::Pong(bytes.to_vec().into()),
-        tungstenite::Message::Close(frame) => AxumWsMessage::Close(frame.map(|cf| {
-            axum::extract::ws::CloseFrame {
+        tungstenite::Message::Close(frame) => {
+            AxumWsMessage::Close(frame.map(|cf| axum::extract::ws::CloseFrame {
                 code: cf.code.into(),
                 reason: cf.reason.to_string().into(),
-            }
-        })),
+            }))
+        }
         tungstenite::Message::Frame(_) => AxumWsMessage::Binary(vec![].into()),
     }
 }
