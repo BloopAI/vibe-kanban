@@ -54,6 +54,7 @@
     "@types/adm-zip": "^0.5.7",
     "@types/node": "^20.0.0",
     "bippy": "0.5.28",
+    "cac": "^7.0.0",
     "concurrently": "^8.2.2",
     "esbuild": "^0.27.2",
     "jwt-decode": "^4.0.0",
@@ -63,9 +64,6 @@
   "engines": {
     "node": ">=20",
     "pnpm": ">=8"
-  },
-  "dependencies": {
-    "cac": "^7.0.0"
   },
   "packageManager": "pnpm@10.13.1"
 }

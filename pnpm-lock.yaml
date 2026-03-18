@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      cac:
-        specifier: ^7.0.0
-        version: 7.0.0
     devDependencies:
       '@types/adm-zip':
         specifier: ^0.5.7
@@ -21,6 +17,9 @@ importers:
       bippy:
         specifier: 0.5.28
         version: 0.5.28(@types/react@18.3.23)(react@18.3.1)
+      cac:
+        specifier: ^7.0.0
+        version: 7.0.0
       concurrently:
         specifier: ^8.2.2
         version: 8.2.2
