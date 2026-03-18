@@ -53,7 +53,8 @@
     },
     "subagent": {
       "defaultType": "子代理"
-    }
+    },
+    "loadingEarlierMessages": "正在加载早期消息"
   },
   "folderPicker": {
     "legend": "点击文件夹名称进行导航 • 使用操作按钮进行选择",

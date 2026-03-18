@@ -61,7 +61,8 @@
     },
     "subagent": {
       "defaultType": "서브에이전트"
-    }
+    },
+    "loadingEarlierMessages": "이전 메시지 불러오는 중"
   },
   "language": {
     "browserDefault": "브라우저 기본값"

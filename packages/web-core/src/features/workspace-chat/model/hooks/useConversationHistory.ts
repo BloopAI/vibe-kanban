@@ -4,7 +4,7 @@ import {
   PatchType,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
   AddEntryType,
@@ -18,6 +18,8 @@ import type {
 export interface UseConversationHistoryResult {
   /** Whether the conversation only has a single coding agent turn (no follow-ups) */
   isFirstTurn: boolean;
+  /** Whether background batches are still loading older history entries */
+  isLoadingHistory: boolean;
 }
 import {
   MIN_INITIAL_ENTRIES,
@@ -44,6 +46,7 @@ export const useConversationHistory = ({
   const previousStatusMapRef = useRef<Map<string, ExecutionProcessStatus>>(
     new Map()
   );
+  const [isLoadingHistoryState, setIsLoadingHistory] = useState(false);
 
   // Derive whether this is the first turn (no follow-up processes exist)
   const isFirstTurn = useMemo(() => {
@@ -410,6 +413,7 @@ export const useConversationHistory = ({
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
 
+      setIsLoadingHistory(true);
       while (
         !cancelled &&
         (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
@@ -417,6 +421,7 @@ export const useConversationHistory = ({
         if (cancelled) return;
         emitEntries(displayedExecutionProcesses.current, 'historic', false);
       }
+      if (!cancelled) setIsLoadingHistory(false);
     })();
     return () => {
       cancelled = true;
@@ -531,5 +536,5 @@ export const useConversationHistory = ({
     }
   }, [scopeKey, idListKey, executionProcessesRaw]);
 
-  return { isFirstTurn };
+  return { isFirstTurn, isLoadingHistory: isLoadingHistoryState };
 };

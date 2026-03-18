@@ -376,7 +376,7 @@ export const ConversationList = forwardRef<
     }
   };
 
-  const { isFirstTurn } = useConversationHistory({
+  const { isFirstTurn, isLoadingHistory } = useConversationHistory({
     attempt,
     onTimelineUpdated,
     scopeKey: conversationScopeKey,
@@ -661,6 +661,30 @@ export const ConversationList = forwardRef<
               </div>
             )}
           </div>
+
+          {isLoadingHistory && !showLoader && (
+            <div className="flex flex-col items-center gap-2 px-double py-3">
+              <div className="flex w-full max-w-md flex-col gap-1.5">
+                <div className="flex items-center gap-2">
+                  <div className="h-2.5 w-16 animate-pulse rounded-full bg-foreground/10" />
+                  <div className="h-2.5 flex-1 animate-pulse rounded-full bg-foreground/[0.06]" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className="h-2.5 w-24 animate-pulse rounded-full bg-foreground/[0.07]"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <div
+                    className="h-2.5 w-32 animate-pulse rounded-full bg-foreground/[0.05]"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                </div>
+              </div>
+              <span className="text-xs text-low">
+                {t('conversation.loadingEarlierMessages')}
+              </span>
+            </div>
+          )}
 
           {showEmptyState && (
             <div className="flex min-h-full items-center justify-center px-double py-12">

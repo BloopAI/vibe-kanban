@@ -53,7 +53,8 @@
     },
     "subagent": {
       "defaultType": "Sous-agent"
-    }
+    },
+    "loadingEarlierMessages": "Chargement des messages pr\u00e9c\u00e9dents"
   },
   "folderPicker": {
     "legend": "Cliquez sur les noms de dossiers pour naviguer • Utilisez les boutons d'action pour sélectionner",
