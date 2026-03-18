@@ -208,12 +208,10 @@ export function useConversationVirtualizer({
         totalScrollableSize - (scrollOffset + viewportHeight);
       const isItemFullyAboveViewport = item.end <= scrollOffset;
       const isBottomLocked = bottomLockedRef.current;
-      const isBottomCorrActive = isBottomScrollCorrectionActive();
 
       const shouldAdjust =
         !isBottomLocked &&
         !shouldSuppressSizeAdjustment?.() &&
-        !isBottomCorrActive &&
         isItemFullyAboveViewport &&
         remainingDistance > NEAR_BOTTOM_THRESHOLD_PX;
 
@@ -223,11 +221,7 @@ export function useConversationVirtualizer({
     return () => {
       virtualizer.shouldAdjustScrollPositionOnItemSizeChange = undefined;
     };
-  }, [
-    isBottomScrollCorrectionActive,
-    shouldSuppressSizeAdjustment,
-    virtualizer,
-  ]);
+  }, [shouldSuppressSizeAdjustment, virtualizer]);
 
   // -------------------------------------------------------------------------
   // Container resize invalidation
