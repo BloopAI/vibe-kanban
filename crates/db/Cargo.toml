@@ -1,6 +1,6 @@
 [package]
 name = "db"
-version = "0.1.33-artef.1"
+version = "0.1.33-artef.2"
 edition = "2024"
 
 [dependencies]
