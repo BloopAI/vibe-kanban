@@ -39,6 +39,8 @@ schemars = { workspace = true }
 sentry = { version = "0.46.2", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest", "rustls"] }
 reqwest = { workspace = true }
 rustls = { workspace = true }
+aws-lc-sys = { workspace = true }
+aws-lc-rs = { workspace = true }
 strip-ansi-escapes = "0.2.1"
 thiserror = { workspace = true }
 os_info = "3.12.0"
