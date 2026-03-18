@@ -8,7 +8,7 @@ export function useIssueMultiSelect() {
   const clearSelection = useIssueSelectionStore((s) => s.clearSelection);
   const selectAll = useIssueSelectionStore((s) => s.selectAll);
 
-  const isMultiSelectActive = selectedIssueIds.size > 1;
+  const isMultiSelectActive = selectedIssueIds.size > 0;
 
   const handleIssueClick = useCallback(
     (issueId: string, event: MouseEvent) => {
