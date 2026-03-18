@@ -104,7 +104,9 @@ impl<'a> AuthSessionRepository<'a> {
         old_refresh_token_id: Uuid,
         new_refresh_token_id: Uuid,
     ) -> Result<(), AuthSessionError> {
-        let mut tx = self.pool.begin().await.map_err(AuthSessionError::from)?;
+        let mut tx = super::begin_tx(self.pool)
+            .await
+            .map_err(AuthSessionError::from)?;
 
         let updated = sqlx::query!(
             r#"
@@ -167,7 +169,9 @@ impl<'a> AuthSessionRepository<'a> {
     }
 
     pub async fn revoke_all_user_sessions(&self, user_id: Uuid) -> Result<i64, AuthSessionError> {
-        let mut tx = self.pool.begin().await.map_err(AuthSessionError::from)?;
+        let mut tx = super::begin_tx(self.pool)
+            .await
+            .map_err(AuthSessionError::from)?;
 
         sqlx::query!(
             r#"

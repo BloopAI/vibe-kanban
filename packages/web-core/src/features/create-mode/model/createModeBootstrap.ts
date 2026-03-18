@@ -1,6 +1,6 @@
 import type {
   DraftWorkspaceData,
-  DraftWorkspaceImage,
+  DraftWorkspaceAttachment,
   ExecutorConfig,
   Repo,
 } from 'shared/types';
@@ -20,7 +20,7 @@ export interface CreateModeBootstrapData {
   linkedIssue?: LinkedIssue | null;
   repos?: BootstrapSelectedRepo[];
   executorConfig?: ExecutorConfig | null;
-  images?: DraftWorkspaceImage[];
+  attachments?: DraftWorkspaceAttachment[];
 }
 
 export interface ResolveCreateModeBootstrapParams {
@@ -156,8 +156,8 @@ export async function resolveCreateModeBootstrap({
       };
     }
 
-    if (scratchData.images?.length > 0) {
-      data.images = scratchData.images;
+    if (scratchData.attachments?.length > 0) {
+      data.attachments = scratchData.attachments;
     }
 
     if (scratchData.repos?.length > 0) {

@@ -5,9 +5,9 @@ use ts_rs::TS;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize, TS)]
-pub struct Image {
+pub struct File {
     pub id: Uuid,
-    pub file_path: String, // relative path within cache/images/
+    pub file_path: String, // relative path within cache/attachments/
     pub original_name: String,
     pub mime_type: Option<String>,
     pub size_bytes: i64,
@@ -17,7 +17,7 @@ pub struct Image {
 }
 
 #[derive(Debug, Deserialize, TS)]
-pub struct CreateImage {
+pub struct CreateFile {
     pub file_path: String,
     pub original_name: String,
     pub mime_type: Option<String>,
@@ -25,12 +25,12 @@ pub struct CreateImage {
     pub hash: String,
 }
 
-impl Image {
-    pub async fn create(pool: &SqlitePool, data: &CreateImage) -> Result<Self, sqlx::Error> {
+impl File {
+    pub async fn create(pool: &SqlitePool, data: &CreateFile) -> Result<Self, sqlx::Error> {
         let id = Uuid::new_v4();
         sqlx::query_as!(
-            Image,
-            r#"INSERT INTO images (id, file_path, original_name, mime_type, size_bytes, hash)
+            File,
+            r#"INSERT INTO attachments (id, file_path, original_name, mime_type, size_bytes, hash)
                VALUES ($1, $2, $3, $4, $5, $6)
                RETURNING id as "id!: Uuid", 
                          file_path as "file_path!", 
@@ -53,7 +53,7 @@ impl Image {
 
     pub async fn find_by_hash(pool: &SqlitePool, hash: &str) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT id as "id!: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
@@ -62,7 +62,7 @@ impl Image {
                       hash as "hash!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
+               FROM attachments
                WHERE hash = $1"#,
             hash
         )
@@ -72,7 +72,7 @@ impl Image {
 
     pub async fn find_by_id(pool: &SqlitePool, id: Uuid) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT id as "id!: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
@@ -81,7 +81,7 @@ impl Image {
                       hash as "hash!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
+               FROM attachments
                WHERE id = $1"#,
             id
         )
@@ -94,7 +94,7 @@ impl Image {
         file_path: &str,
     ) -> Result<Option<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT id as "id!: Uuid",
                       file_path as "file_path!",
                       original_name as "original_name!",
@@ -103,7 +103,7 @@ impl Image {
                       hash as "hash!",
                       created_at as "created_at!: DateTime<Utc>",
                       updated_at as "updated_at!: DateTime<Utc>"
-               FROM images
+               FROM attachments
                WHERE file_path = $1"#,
             file_path
         )
@@ -116,7 +116,7 @@ impl Image {
         workspace_id: Uuid,
     ) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT i.id as "id!: Uuid",
                       i.file_path as "file_path!",
                       i.original_name as "original_name!",
@@ -125,10 +125,10 @@ impl Image {
                       i.hash as "hash!",
                       i.created_at as "created_at!: DateTime<Utc>",
                       i.updated_at as "updated_at!: DateTime<Utc>"
-               FROM images i
-               JOIN workspace_images wi ON i.id = wi.image_id
-               WHERE wi.workspace_id = $1
-               ORDER BY wi.created_at"#,
+               FROM attachments i
+               JOIN workspace_attachments wa ON i.id = wa.attachment_id
+               WHERE wa.workspace_id = $1
+               ORDER BY wa.created_at"#,
             workspace_id
         )
         .fetch_all(pool)
@@ -136,15 +136,15 @@ impl Image {
     }
 
     pub async fn delete(pool: &SqlitePool, id: Uuid) -> Result<(), sqlx::Error> {
-        sqlx::query!(r#"DELETE FROM images WHERE id = $1"#, id)
+        sqlx::query!(r#"DELETE FROM attachments WHERE id = $1"#, id)
             .execute(pool)
             .await?;
         Ok(())
     }
 
-    pub async fn find_orphaned_images(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
+    pub async fn find_orphaned_files(pool: &SqlitePool) -> Result<Vec<Self>, sqlx::Error> {
         sqlx::query_as!(
-            Image,
+            File,
             r#"SELECT i.id as "id!: Uuid",
                       i.file_path as "file_path!",
                       i.original_name as "original_name!",
@@ -153,9 +153,9 @@ impl Image {
                       i.hash as "hash!",
                       i.created_at as "created_at!: DateTime<Utc>",
                       i.updated_at as "updated_at!: DateTime<Utc>"
-               FROM images i
-               LEFT JOIN workspace_images wi ON i.id = wi.image_id
-               WHERE wi.workspace_id IS NULL"#
+               FROM attachments i
+               LEFT JOIN workspace_attachments wa ON i.id = wa.attachment_id
+               WHERE wa.workspace_id IS NULL"#
         )
         .fetch_all(pool)
         .await
@@ -163,31 +163,31 @@ impl Image {
 }
 
 #[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
-pub struct WorkspaceImage {
+pub struct WorkspaceAttachment {
     pub id: Uuid,
     pub workspace_id: Uuid,
-    pub image_id: Uuid,
+    pub attachment_id: Uuid,
     pub created_at: DateTime<Utc>,
 }
 
-impl WorkspaceImage {
-    /// Associate multiple images with a workspace, skipping duplicates.
+impl WorkspaceAttachment {
+    /// Associate multiple attachments with a workspace, skipping duplicates.
     pub async fn associate_many_dedup(
         pool: &SqlitePool,
         workspace_id: Uuid,
-        image_ids: &[Uuid],
+        attachment_ids: &[Uuid],
     ) -> Result<(), sqlx::Error> {
-        for &image_id in image_ids {
+        for &attachment_id in attachment_ids {
             let id = Uuid::new_v4();
             sqlx::query!(
-                r#"INSERT INTO workspace_images (id, workspace_id, image_id)
+                r#"INSERT INTO workspace_attachments (id, workspace_id, attachment_id)
                    SELECT $1, $2, $3
                    WHERE NOT EXISTS (
-                       SELECT 1 FROM workspace_images WHERE workspace_id = $2 AND image_id = $3
+                       SELECT 1 FROM workspace_attachments WHERE workspace_id = $2 AND attachment_id = $3
                    )"#,
                 id,
                 workspace_id,
-                image_id
+                attachment_id
             )
             .execute(pool)
             .await?;

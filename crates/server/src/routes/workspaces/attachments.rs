@@ -9,15 +9,16 @@ use axum::{
     response::{Json as ResponseJson, Response},
     routing::{get, post},
 };
-use db::models::{image::Image, session::Session, workspace::Workspace};
+use db::models::{file::File, session::Session, workspace::Workspace};
 use deployment::Deployment;
+use mime_guess::MimeGuess;
 use serde::{Deserialize, Serialize};
 use services::services::{
     container::ContainerService,
-    image::{ImageError, ImageService},
+    file::{FileError, FileService},
     remote_client::RemoteClient,
 };
-use tokio::fs::File;
+use tokio::fs::File as TokioFile;
 use tokio_util::io::ReaderStream;
 use ts_rs::TS;
 use utils::response::ApiResponse;
@@ -27,12 +28,15 @@ use crate::{
     DeploymentImpl,
     error::ApiError,
     middleware::load_workspace_middleware,
-    routes::images::{ImageMetadata, ImageResponse, process_image_upload},
+    routes::attachments::{
+        AttachmentMetadata, AttachmentResponse, content_type_and_disposition_for_attachment,
+        process_file_upload,
+    },
 };
 
 #[derive(Debug, Deserialize)]
-pub struct ImageMetadataQuery {
-    /// Path relative to worktree root, e.g., ".vibe-images/screenshot.png"
+pub struct AttachmentMetadataQuery {
+    /// Path relative to worktree root, e.g., ".vibe-attachments/screenshot.png"
     pub path: String,
     pub session_id: Uuid,
 }
@@ -43,8 +47,8 @@ pub struct SessionScopedQuery {
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
-pub struct AssociateWorkspaceImagesRequest {
-    pub image_ids: Vec<Uuid>,
+pub struct AssociateWorkspaceAttachmentsRequest {
+    pub attachment_ids: Vec<Uuid>,
 }
 
 #[derive(Debug, Deserialize, Serialize, TS)]
@@ -54,50 +58,56 @@ pub struct ImportIssueAttachmentsRequest {
 
 #[derive(Debug, Serialize, TS)]
 pub struct ImportIssueAttachmentsResponse {
-    pub image_ids: Vec<Uuid>,
+    pub attachment_ids: Vec<Uuid>,
 }
 
-/// List all images associated with a workspace.
-pub async fn get_workspace_images(
+#[derive(Debug, Clone)]
+pub(crate) struct ImportedIssueAttachment {
+    pub attachment_id: Uuid,
+    pub file: File,
+}
+
+pub async fn get_workspace_files(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-) -> Result<ResponseJson<ApiResponse<Vec<ImageResponse>>>, ApiError> {
-    let images = Image::find_by_workspace_id(&deployment.db().pool, workspace.id).await?;
-    let image_responses = images.into_iter().map(ImageResponse::from_image).collect();
-    Ok(ResponseJson(ApiResponse::success(image_responses)))
+) -> Result<ResponseJson<ApiResponse<Vec<AttachmentResponse>>>, ApiError> {
+    let files = File::find_by_workspace_id(&deployment.db().pool, workspace.id).await?;
+    let attachment_responses = files
+        .into_iter()
+        .map(AttachmentResponse::from_file)
+        .collect();
+    Ok(ResponseJson(ApiResponse::success(attachment_responses)))
 }
 
-/// Upload an image and immediately copy it to the workspace's worktree.
-/// This allows images to be available in the container before follow-up is sent.
-pub async fn upload_image(
+pub async fn upload_file(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionScopedQuery>,
     multipart: Multipart,
-) -> Result<ResponseJson<ApiResponse<ImageResponse>>, ApiError> {
-    // Process upload (store in cache, associate with workspace)
-    let image_response = process_image_upload(&deployment, multipart, Some(workspace.id)).await?;
+) -> Result<ResponseJson<ApiResponse<AttachmentResponse>>, ApiError> {
+    let attachment_response =
+        process_file_upload(&deployment, multipart, Some(workspace.id)).await?;
 
     let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
     deployment
-        .image()
-        .copy_images_by_ids_to_worktree(&base_path, &[image_response.id])
+        .file()
+        .copy_files_by_ids_to_worktree(&base_path, &[attachment_response.id])
         .await?;
 
-    Ok(ResponseJson(ApiResponse::success(image_response)))
+    Ok(ResponseJson(ApiResponse::success(attachment_response)))
 }
 
-pub async fn associate_workspace_images(
+pub async fn associate_workspace_attachments(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    axum::Json(payload): axum::Json<AssociateWorkspaceImagesRequest>,
+    axum::Json(payload): axum::Json<AssociateWorkspaceAttachmentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<()>>, ApiError> {
     let managed_workspace = deployment
         .workspace_manager()
         .load_managed_workspace(workspace)
         .await?;
     managed_workspace
-        .associate_images(&payload.image_ids)
+        .associate_attachments(&payload.attachment_ids)
         .await?;
 
     Ok(ResponseJson(ApiResponse::success(())))
@@ -109,30 +119,34 @@ pub async fn import_issue_attachments(
     axum::Json(payload): axum::Json<ImportIssueAttachmentsRequest>,
 ) -> Result<ResponseJson<ApiResponse<ImportIssueAttachmentsResponse>>, ApiError> {
     let client = deployment.remote_client()?;
-    let image_ids =
-        import_issue_attachment_images(&client, deployment.image(), payload.issue_id).await?;
+    let imported_attachments =
+        import_issue_attachments_from_remote(&client, deployment.file(), payload.issue_id).await?;
+    let attachment_ids = imported_attachments
+        .iter()
+        .map(|imported| imported.file.id)
+        .collect::<Vec<_>>();
 
     let managed_workspace = deployment
         .workspace_manager()
         .load_managed_workspace(workspace)
         .await?;
-    managed_workspace.associate_images(&image_ids).await?;
+    managed_workspace
+        .associate_attachments(&attachment_ids)
+        .await?;
 
     Ok(ResponseJson(ApiResponse::success(
-        ImportIssueAttachmentsResponse { image_ids },
+        ImportIssueAttachmentsResponse { attachment_ids },
     )))
 }
 
-/// Get metadata about an image in the workspace's worktree.
-pub async fn get_image_metadata(
+pub async fn get_attachment_metadata(
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
-    Query(query): Query<ImageMetadataQuery>,
-) -> Result<ResponseJson<ApiResponse<ImageMetadata>>, ApiError> {
-    // Validate path starts with .vibe-images/
-    let vibe_images_prefix = format!("{}/", utils::path::VIBE_IMAGES_DIR);
-    if !query.path.starts_with(&vibe_images_prefix) {
-        return Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+    Query(query): Query<AttachmentMetadataQuery>,
+) -> Result<ResponseJson<ApiResponse<AttachmentMetadata>>, ApiError> {
+    let vibe_attachments_prefix = format!("{}/", utils::path::VIBE_ATTACHMENTS_DIR);
+    if !query.path.starts_with(&vibe_attachments_prefix) {
+        return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
             exists: false,
             file_name: None,
             path: Some(query.path),
@@ -142,9 +156,8 @@ pub async fn get_image_metadata(
         })));
     }
 
-    // Reject paths with .. to prevent traversal
     if query.path.contains("..") {
-        return Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+        return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
             exists: false,
             file_name: None,
             path: Some(query.path),
@@ -155,13 +168,17 @@ pub async fn get_image_metadata(
     }
 
     let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
+    let file_path = query
+        .path
+        .strip_prefix(&vibe_attachments_prefix)
+        .unwrap_or("");
+    ensure_workspace_attachment_exists(&deployment, &base_path, file_path).await?;
     let full_path = base_path.join(&query.path);
 
-    // Check if file exists
     let metadata = match tokio::fs::metadata(&full_path).await {
         Ok(m) if m.is_file() => m,
         _ => {
-            return Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+            return Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
                 exists: false,
                 file_name: None,
                 path: Some(query.path),
@@ -172,24 +189,20 @@ pub async fn get_image_metadata(
         }
     };
 
-    // Extract filename
     let file_name = Path::new(&query.path)
         .file_name()
         .map(|s| s.to_string_lossy().to_string());
 
-    // Detect format from extension
     let format = Path::new(&query.path)
         .extension()
         .map(|ext| ext.to_string_lossy().to_lowercase());
 
-    // Build proxy URL - the path after .vibe-images/
-    let image_path = query.path.strip_prefix(&vibe_images_prefix).unwrap_or("");
     let proxy_url = format!(
-        "/api/workspaces/{}/images/file/{}?session_id={}",
-        workspace.id, image_path, query.session_id
+        "/api/workspaces/{}/attachments/file/{}?session_id={}",
+        workspace.id, file_path, query.session_id
     );
 
-    Ok(ResponseJson(ApiResponse::success(ImageMetadata {
+    Ok(ResponseJson(ApiResponse::success(AttachmentMetadata {
         exists: true,
         file_name,
         path: Some(query.path),
@@ -199,72 +212,87 @@ pub async fn get_image_metadata(
     })))
 }
 
-/// Serve an image file from the workspace's .vibe-images folder.
-pub async fn serve_image(
+pub async fn serve_file(
     axum::extract::Path((_id, path)): axum::extract::Path<(Uuid, String)>,
     Extension(workspace): Extension<Workspace>,
     State(deployment): State<DeploymentImpl>,
     Query(query): Query<SessionScopedQuery>,
 ) -> Result<Response, ApiError> {
-    // Reject paths with .. to prevent traversal
     if path.contains("..") {
-        return Err(ApiError::Image(ImageError::NotFound));
+        return Err(ApiError::File(FileError::NotFound));
     }
     let base_path = resolve_session_base_path(&deployment, &workspace, query.session_id).await?;
-    let vibe_images_dir = base_path.join(utils::path::VIBE_IMAGES_DIR);
-    let full_path = vibe_images_dir.join(&path);
+    ensure_workspace_attachment_exists(&deployment, &base_path, &path).await?;
+    let vibe_attachments_dir = base_path.join(utils::path::VIBE_ATTACHMENTS_DIR);
+    let full_path = vibe_attachments_dir.join(&path);
 
-    // Security: Canonicalize and verify path is within .vibe-images
     let canonical_path = tokio::fs::canonicalize(&full_path)
         .await
-        .map_err(|_| ApiError::Image(ImageError::NotFound))?;
+        .map_err(|_| ApiError::File(FileError::NotFound))?;
 
-    let canonical_vibe_images = tokio::fs::canonicalize(&vibe_images_dir)
+    let canonical_vibe_attachments = tokio::fs::canonicalize(&vibe_attachments_dir)
         .await
-        .map_err(|_| ApiError::Image(ImageError::NotFound))?;
+        .map_err(|_| ApiError::File(FileError::NotFound))?;
 
-    if !canonical_path.starts_with(&canonical_vibe_images) {
-        return Err(ApiError::Image(ImageError::NotFound));
+    if !canonical_path.starts_with(&canonical_vibe_attachments) {
+        return Err(ApiError::File(FileError::NotFound));
     }
 
-    // Open and stream the file
-    let file = File::open(&canonical_path)
+    let file = TokioFile::open(&canonical_path)
         .await
-        .map_err(|_| ApiError::Image(ImageError::NotFound))?;
+        .map_err(|_| ApiError::File(FileError::NotFound))?;
 
     let metadata = file
         .metadata()
         .await
-        .map_err(|_| ApiError::Image(ImageError::NotFound))?;
+        .map_err(|_| ApiError::File(FileError::NotFound))?;
 
     let stream = ReaderStream::new(file);
     let body = Body::from_stream(stream);
 
-    // Determine content type from extension
-    let content_type = Path::new(&path)
-        .extension()
-        .and_then(|ext| match ext.to_string_lossy().to_lowercase().as_str() {
-            "png" => Some("image/png"),
-            "jpg" | "jpeg" => Some("image/jpeg"),
-            "gif" => Some("image/gif"),
-            "webp" => Some("image/webp"),
-            "svg" => Some("image/svg+xml"),
-            "ico" => Some("image/x-icon"),
-            "bmp" => Some("image/bmp"),
-            "tiff" | "tif" => Some("image/tiff"),
-            _ => None,
-        })
+    let content_type = MimeGuess::from_path(&path)
+        .first_raw()
         .unwrap_or("application/octet-stream");
+    let (content_type, content_disposition) =
+        content_type_and_disposition_for_attachment(content_type);
 
-    let response = Response::builder()
+    let mut response = Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CONTENT_LENGTH, metadata.len())
         .header(header::CACHE_CONTROL, "public, max-age=31536000")
+        .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff");
+    if let Some(content_disposition) = content_disposition {
+        response = response.header(header::CONTENT_DISPOSITION, content_disposition);
+    }
+    let response = response
         .body(body)
-        .map_err(|e| ApiError::Image(ImageError::ResponseBuildError(e.to_string())))?;
+        .map_err(|e| ApiError::File(FileError::ResponseBuildError(e.to_string())))?;
 
     Ok(response)
+}
+
+async fn ensure_workspace_attachment_exists(
+    deployment: &DeploymentImpl,
+    base_path: &Path,
+    file_path: &str,
+) -> Result<(), ApiError> {
+    let attachment_dir = base_path.join(utils::path::VIBE_ATTACHMENTS_DIR);
+    let full_path = attachment_dir.join(file_path);
+    if full_path.exists() {
+        return Ok(());
+    }
+
+    let Some(file) = File::find_by_file_path(&deployment.db().pool, file_path).await? else {
+        return Err(ApiError::File(FileError::NotFound));
+    };
+
+    deployment
+        .file()
+        .copy_files_by_ids_to_worktree(base_path, &[file.id])
+        .await?;
+
+    Ok(())
 }
 
 async fn resolve_session_base_path(
@@ -310,29 +338,19 @@ async fn load_workspace_with_wildcard(
     Ok(next.run(request).await)
 }
 
-/// Downloads image attachments from a remote issue and stores them locally.
-pub(crate) async fn import_issue_attachment_images(
+pub(crate) async fn import_issue_attachments_from_remote(
     client: &RemoteClient,
-    image_service: &ImageService,
+    file_service: &FileService,
     issue_id: Uuid,
-) -> Result<Vec<Uuid>, ApiError> {
+) -> Result<Vec<ImportedIssueAttachment>, ApiError> {
     let response = client
         .list_issue_attachments(issue_id)
         .await
         .map_err(ApiError::from)?;
 
-    let mut imported_image_ids = Vec::new();
+    let mut imported_attachments = Vec::new();
 
     for entry in response.attachments {
-        let is_image = entry
-            .attachment
-            .mime_type
-            .as_ref()
-            .is_some_and(|mime_type| mime_type.starts_with("image/"));
-        if !is_image {
-            continue;
-        }
-
         let Some(file_url) = entry.file_url.as_deref() else {
             tracing::warn!(
                 "No file_url for attachment {}, skipping",
@@ -353,14 +371,14 @@ pub(crate) async fn import_issue_attachment_images(
             }
         };
 
-        let image = match image_service
-            .store_image(&bytes, &entry.attachment.original_name)
+        let file = match file_service
+            .store_file(&bytes, &entry.attachment.original_name)
             .await
         {
-            Ok(image) => image,
+            Ok(file) => file,
             Err(error) => {
                 tracing::warn!(
-                    "Failed to store imported image '{}': {}",
+                    "Failed to store imported file '{}': {}",
                     entry.attachment.original_name,
                     error
                 );
@@ -368,33 +386,37 @@ pub(crate) async fn import_issue_attachment_images(
             }
         };
 
-        imported_image_ids.push(image.id);
+        imported_attachments.push(ImportedIssueAttachment {
+            attachment_id: entry.attachment.id,
+            file,
+        });
     }
 
-    Ok(imported_image_ids)
+    Ok(imported_attachments)
 }
 
 pub fn router(deployment: &DeploymentImpl) -> Router<DeploymentImpl> {
     let metadata_router = Router::new()
-        .route("/", get(get_workspace_images))
-        .route("/associate", post(associate_workspace_images))
+        .route("/", get(get_workspace_files))
+        .route("/associate", post(associate_workspace_attachments))
         .route("/import-issue-attachments", post(import_issue_attachments))
-        .route("/metadata", get(get_image_metadata))
+        .route("/metadata", get(get_attachment_metadata))
         .route(
             "/upload",
-            post(upload_image).layer(DefaultBodyLimit::max(20 * 1024 * 1024)), // 20MB limit
+            post(upload_file).layer(DefaultBodyLimit::max(20 * 1024 * 1024)),
         )
         .layer(from_fn_with_state(
             deployment.clone(),
             load_workspace_middleware,
         ));
 
-    let file_router = Router::new()
-        .route("/file/{*path}", get(serve_image))
-        .layer(from_fn_with_state(
-            deployment.clone(),
-            load_workspace_with_wildcard,
-        ));
+    let file_router =
+        Router::new()
+            .route("/file/{*path}", get(serve_file))
+            .layer(from_fn_with_state(
+                deployment.clone(),
+                load_workspace_with_wildcard,
+            ));
 
     metadata_router.merge(file_router)
 }

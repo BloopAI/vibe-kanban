@@ -44,9 +44,19 @@ export type IssueCommentReaction = { id: string, comment_id: string, user_id: st
 
 export type IssuePriority = "urgent" | "high" | "medium" | "low";
 
+export type IssueSortField = "sort_order" | "priority" | "created_at" | "updated_at" | "title";
+
+export type ListIssuesQuery = { project_id: string, };
+
+export type SearchIssuesRequest = { project_id: string, status_id?: string, status_ids?: Array<string>, priority?: IssuePriority, parent_issue_id?: string, search?: string, simple_id?: string, assignee_user_id?: string, tag_id?: string, tag_ids?: Array<string>, sort_field?: IssueSortField, sort_direction?: SortDirection, limit?: number, offset?: number, };
+
+export type ListIssuesResponse = { issues: Array<Issue>, total_count: number, limit: number, offset: number, };
+
 export type PullRequestStatus = "open" | "merged" | "closed";
 
 export type PullRequest = { id: string, url: string, number: number, status: PullRequestStatus, merged_at: string | null, merge_commit_sha: string | null, target_branch_name: string, issue_id: string, workspace_id: string | null, created_at: string, updated_at: string, };
+
+export type SortDirection = "asc" | "desc";
 
 export type UserData = { user_id: string, first_name: string | null, last_name: string | null, username: string | null, };
 

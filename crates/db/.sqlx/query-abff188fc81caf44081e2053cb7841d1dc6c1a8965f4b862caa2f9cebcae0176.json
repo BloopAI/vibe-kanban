@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT id as \"id!: Uuid\",\n                      file_path as \"file_path!\",\n                      original_name as \"original_name!\",\n                      mime_type,\n                      size_bytes as \"size_bytes!\",\n                      hash as \"hash!\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM images\n               WHERE file_path = $1",
+  "query": "SELECT id as \"id!: Uuid\",\n                      file_path as \"file_path!\",\n                      original_name as \"original_name!\",\n                      mime_type,\n                      size_bytes as \"size_bytes!\",\n                      hash as \"hash!\",\n                      created_at as \"created_at!: DateTime<Utc>\",\n                      updated_at as \"updated_at!: DateTime<Utc>\"\n               FROM attachments\n               WHERE file_path = $1",
   "describe": {
     "columns": [
       {
@@ -58,5 +58,5 @@
       false
     ]
   },
-  "hash": "f4dfe229b47380175daba08daa93a9b832e5ba96da7f68374b05d09ec93087e1"
+  "hash": "abff188fc81caf44081e2053cb7841d1dc6c1a8965f4b862caa2f9cebcae0176"
 }

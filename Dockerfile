@@ -1,82 +1,142 @@
-# Build stage
-FROM node:24-alpine AS builder
+# syntax=docker/dockerfile:1.6
 
-# Install build dependencies
-RUN apk add --no-cache \
-    curl \
-    build-base \
-    perl \
-    llvm-dev \
-    clang-dev
+FROM node:24-alpine AS fe-builder
 
-# Allow linking libclang on musl
-ENV RUSTFLAGS="-C target-feature=-crt-static"
+ARG POSTHOG_API_KEY=""
+ARG POSTHOG_API_ENDPOINT=""
 
-# Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
-
-ARG POSTHOG_API_KEY
-ARG POSTHOG_API_ENDPOINT
-
-ENV VITE_PUBLIC_POSTHOG_KEY=$POSTHOG_API_KEY
-ENV VITE_PUBLIC_POSTHOG_HOST=$POSTHOG_API_ENDPOINT
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files for dependency caching
-COPY package*.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/local-web/package*.json ./packages/local-web/
-COPY npx-cli/package*.json ./npx-cli/
+ENV PNPM_HOME=/pnpm
+ENV PATH=${PNPM_HOME}:${PATH}
+ENV VITE_PUBLIC_POSTHOG_KEY=${POSTHOG_API_KEY}
+ENV VITE_PUBLIC_POSTHOG_HOST=${POSTHOG_API_ENDPOINT}
+ENV NODE_OPTIONS=--max-old-space-size=4096
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm && pnpm install
+RUN corepack enable
+RUN pnpm config set store-dir /pnpm/store
 
-# Copy source code
-COPY . .
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/local-web/package.json packages/local-web/package.json
+COPY packages/ui/package.json packages/ui/package.json
+COPY packages/web-core/package.json packages/web-core/package.json
 
-# Build application
-RUN npm run generate-types
-RUN cd packages/local-web && pnpm run build
-RUN cargo build --release --bin server
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    pnpm install --frozen-lockfile
 
-# Runtime stage
-FROM alpine:latest AS runtime
+COPY packages/local-web/ packages/local-web/
+COPY packages/public/ packages/public/
+COPY packages/ui/ packages/ui/
+COPY packages/web-core/ packages/web-core/
+COPY shared/ shared/
 
-# Install runtime dependencies
-RUN apk add --no-cache \
+RUN pnpm -C packages/local-web build
+
+FROM rust:1.93-slim-bookworm AS builder
+
+ARG POSTHOG_API_KEY=""
+ARG POSTHOG_API_ENDPOINT=""
+ARG SENTRY_DSN=""
+ARG VK_SHARED_API_BASE=""
+
+ENV CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV CARGO_TARGET_DIR=/app/target
+ENV POSTHOG_API_KEY=${POSTHOG_API_KEY}
+ENV POSTHOG_API_ENDPOINT=${POSTHOG_API_ENDPOINT}
+ENV SENTRY_DSN=${SENTRY_DSN}
+ENV VK_SHARED_API_BASE=${VK_SHARED_API_BASE}
+
+WORKDIR /app
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    build-essential \
     ca-certificates \
+    git \
+    libclang-dev \
+    libssl-dev \
+    pkg-config \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY rust-toolchain.toml ./
+RUN cargo --version >/dev/null
+
+COPY Cargo.toml Cargo.lock ./
+COPY crates/api-types/Cargo.toml crates/api-types/Cargo.toml
+COPY crates/db/Cargo.toml crates/db/Cargo.toml
+COPY crates/deployment/Cargo.toml crates/deployment/Cargo.toml
+COPY crates/executors/Cargo.toml crates/executors/Cargo.toml
+COPY crates/git/Cargo.toml crates/git/Cargo.toml
+COPY crates/git-host/Cargo.toml crates/git-host/Cargo.toml
+COPY crates/local-deployment/Cargo.toml crates/local-deployment/Cargo.toml
+COPY crates/mcp/Cargo.toml crates/mcp/Cargo.toml
+COPY crates/relay-control/Cargo.toml crates/relay-control/Cargo.toml
+COPY crates/relay-tunnel/Cargo.toml crates/relay-tunnel/Cargo.toml
+COPY crates/review/Cargo.toml crates/review/Cargo.toml
+COPY crates/server/Cargo.toml crates/server/Cargo.toml
+COPY crates/server-info/Cargo.toml crates/server-info/Cargo.toml
+COPY crates/services/Cargo.toml crates/services/Cargo.toml
+COPY crates/tauri-app/Cargo.toml crates/tauri-app/Cargo.toml
+COPY crates/trusted-key-auth/Cargo.toml crates/trusted-key-auth/Cargo.toml
+COPY crates/utils/Cargo.toml crates/utils/Cargo.toml
+COPY crates/workspace-manager/Cargo.toml crates/workspace-manager/Cargo.toml
+COPY crates/worktree-manager/Cargo.toml crates/worktree-manager/Cargo.toml
+
+COPY crates/api-types/ crates/api-types/
+COPY crates/db/ crates/db/
+COPY crates/deployment/ crates/deployment/
+COPY crates/executors/ crates/executors/
+COPY crates/git/ crates/git/
+COPY crates/git-host/ crates/git-host/
+COPY crates/local-deployment/ crates/local-deployment/
+COPY crates/mcp/ crates/mcp/
+COPY crates/relay-control/ crates/relay-control/
+COPY crates/relay-tunnel/ crates/relay-tunnel/
+COPY crates/review/ crates/review/
+COPY crates/server/ crates/server/
+COPY crates/server-info/ crates/server-info/
+COPY crates/services/ crates/services/
+COPY crates/trusted-key-auth/ crates/trusted-key-auth/
+COPY crates/utils/ crates/utils/
+COPY crates/workspace-manager/ crates/workspace-manager/
+COPY crates/worktree-manager/ crates/worktree-manager/
+COPY assets/ assets/
+COPY --from=fe-builder /app/packages/local-web/dist packages/local-web/dist
+
+RUN --mount=type=cache,id=cargo-registry,target=/usr/local/cargo/registry \
+    --mount=type=cache,id=cargo-git,target=/usr/local/cargo/git \
+    --mount=type=cache,id=workspace-target,target=/app/target \
+    cargo build --locked --release --bin server \
+ && cp /app/target/release/server /usr/local/bin/server
+
+FROM debian:bookworm-slim AS runtime
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    git \
+    openssh-client \
     tini \
-    libgcc \
-    wget
+    wget \
+  && rm -rf /var/lib/apt/lists/* \
+  && useradd --system --create-home --uid 10001 appuser
 
-# Create app user for security
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -u 1001 -S appuser -G appgroup
-
-# Copy binary from builder
-COPY --from=builder /app/target/release/server /usr/local/bin/server
-
-# Create repos directory and set permissions
-RUN mkdir -p /repos && \
-    chown -R appuser:appgroup /repos
-
-# Switch to non-root user
-USER appuser
-
-# Set runtime environment
-ENV HOST=0.0.0.0
-ENV PORT=3000
-EXPOSE 3000
-
-# Set working directory
 WORKDIR /repos
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD wget --quiet --tries=1 --spider "http://${HOST:-localhost}:${PORT:-3000}" || exit 1
+COPY --from=builder /usr/local/bin/server /usr/local/bin/server
 
-# Run the application
-ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["server"]
+RUN mkdir -p /repos \
+  && chown -R appuser:appuser /repos
+
+USER appuser
+
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["/bin/sh", "-c", "wget --spider -q http://127.0.0.1:${PORT:-3000}/health"]
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/server"]

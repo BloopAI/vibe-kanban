@@ -1,6 +1,7 @@
 use api_types::{
     CreateIssueRequest, DeleteResponse, Issue, ListIssuesQuery, ListIssuesResponse,
-    MutationResponse, NotificationPayload, NotificationType, UpdateIssueRequest,
+    MutationResponse, NotificationPayload, NotificationType, SearchIssuesRequest,
+    UpdateIssueRequest,
 };
 use axum::{
     Json,
@@ -43,6 +44,7 @@ pub fn mutation() -> MutationBuilder<Issue, CreateIssueRequest, UpdateIssueReque
 pub fn router() -> axum::Router<AppState> {
     mutation()
         .router()
+        .route("/issues/search", post(search_issues))
         .route("/issues/bulk", post(bulk_update_issues))
 }
 
@@ -180,16 +182,55 @@ async fn list_issues(
     Extension(ctx): Extension<RequestContext>,
     Query(query): Query<ListIssuesQuery>,
 ) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
-    ensure_project_access(state.pool(), ctx.user.id, query.project_id).await?;
+    let project_id = query.project_id;
+    ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
+    let request = SearchIssuesRequest {
+        project_id,
+        status_id: None,
+        status_ids: None,
+        priority: None,
+        parent_issue_id: None,
+        search: None,
+        simple_id: None,
+        assignee_user_id: None,
+        tag_id: None,
+        tag_ids: None,
+        sort_field: None,
+        sort_direction: None,
+        limit: None,
+        offset: None,
+    };
 
-    let issues = IssueRepository::list_by_project(state.pool(), query.project_id)
+    let response = IssueRepository::search(state.pool(), &request)
         .await
         .map_err(|error| {
-            tracing::error!(?error, project_id = %query.project_id, "failed to list issues");
+            tracing::error!(?error, project_id = %project_id, "failed to list issues");
             ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to list issues")
         })?;
 
-    Ok(Json(ListIssuesResponse { issues }))
+    Ok(Json(response))
+}
+
+#[instrument(
+    name = "issues.search_issues",
+    skip(state, ctx, payload),
+    fields(project_id = %payload.project_id, user_id = %ctx.user.id)
+)]
+async fn search_issues(
+    State(state): State<AppState>,
+    Extension(ctx): Extension<RequestContext>,
+    Json(payload): Json<SearchIssuesRequest>,
+) -> Result<Json<ListIssuesResponse>, ErrorResponse> {
+    ensure_project_access(state.pool(), ctx.user.id, payload.project_id).await?;
+
+    let response = IssueRepository::search(state.pool(), &payload)
+        .await
+        .map_err(|error| {
+            tracing::error!(?error, project_id = %payload.project_id, "failed to search issues");
+            ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "failed to search issues")
+        })?;
+
+    Ok(Json(response))
 }
 
 #[instrument(
@@ -316,7 +357,7 @@ async fn update_issue(
     let organization_id =
         ensure_project_access(state.pool(), ctx.user.id, issue.project_id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;
@@ -471,7 +512,7 @@ async fn bulk_update_issues(
     let project_id = first_issue.project_id;
     let organization_id = ensure_project_access(state.pool(), ctx.user.id, project_id).await?;
 
-    let mut tx = state.pool().begin().await.map_err(|error| {
+    let mut tx = crate::db::begin_tx(state.pool()).await.map_err(|error| {
         tracing::error!(?error, "failed to begin transaction");
         ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, "internal server error")
     })?;

@@ -1,4 +1,7 @@
-use api_types::{DeleteResponse, Issue, IssuePriority, MutationResponse, PullRequestStatus};
+use api_types::{
+    DeleteResponse, Issue, IssuePriority, IssueSortField, ListIssuesResponse, MutationResponse,
+    PullRequestStatus, SearchIssuesRequest, SortDirection,
+};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use sqlx::{Executor, PgPool, Postgres};
@@ -33,6 +36,235 @@ enum IssueWorkflowSignal {
 }
 
 impl IssueRepository {
+    fn sort_field_key(sort_field: IssueSortField) -> &'static str {
+        match sort_field {
+            IssueSortField::SortOrder => "sort_order",
+            IssueSortField::Priority => "priority",
+            IssueSortField::CreatedAt => "created_at",
+            IssueSortField::UpdatedAt => "updated_at",
+            IssueSortField::Title => "title",
+        }
+    }
+
+    fn sort_direction_key(sort_direction: SortDirection) -> &'static str {
+        match sort_direction {
+            SortDirection::Asc => "asc",
+            SortDirection::Desc => "desc",
+        }
+    }
+
+    fn escape_like_pattern(value: &str) -> String {
+        value
+            .replace('\\', r"\\")
+            .replace('%', r"\%")
+            .replace('_', r"\_")
+    }
+
+    pub async fn search(
+        pool: &PgPool,
+        query: &SearchIssuesRequest,
+    ) -> Result<ListIssuesResponse, IssueError> {
+        let status_ids = query.status_ids.as_deref();
+        let search_pattern = query
+            .search
+            .as_deref()
+            .map(Self::escape_like_pattern)
+            .map(|search| format!("%{search}%"));
+        let simple_id = query.simple_id.as_deref().map(Self::escape_like_pattern);
+        let tag_ids = query.tag_ids.as_deref();
+        let sort_field =
+            Self::sort_field_key(query.sort_field.unwrap_or(IssueSortField::SortOrder));
+        let sort_direction =
+            Self::sort_direction_key(query.sort_direction.unwrap_or(SortDirection::Asc));
+        let offset = query.offset.unwrap_or(0).max(0) as usize;
+        let query_limit = query
+            .limit
+            .map(|value| value.max(0) as i64)
+            .unwrap_or(i64::MAX);
+
+        let total_count = sqlx::query_scalar!(
+            r#"
+            SELECT COUNT(*)::BIGINT
+            FROM issues i
+            WHERE i.project_id = $1
+              AND ($2::uuid IS NULL OR i.status_id = $2)
+              AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))
+              AND ($4::issue_priority IS NULL OR i.priority = $4)
+              AND ($5::uuid IS NULL OR i.parent_issue_id = $5)
+              AND (
+                  $6::text IS NULL
+                  OR i.title ILIKE $6 ESCAPE '\'
+                  OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\'
+              )
+              AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\')
+              AND (
+                  $8::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_assignees ia
+                      WHERE ia.issue_id = i.id AND ia.user_id = $8
+                  )
+              )
+              AND (
+                  $9::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = $9
+                  )
+              )
+              AND (
+                  $10::uuid[] IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = ANY($10)
+                  )
+              )
+            "#,
+            query.project_id,
+            query.status_id,
+            status_ids,
+            query.priority as Option<IssuePriority>,
+            query.parent_issue_id,
+            search_pattern.as_deref(),
+            simple_id.as_deref(),
+            query.assignee_user_id,
+            query.tag_id,
+            tag_ids,
+        )
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0) as usize;
+
+        let issues = sqlx::query_as!(
+            Issue,
+            r#"
+            SELECT
+                i.id                  AS "id!: Uuid",
+                i.project_id          AS "project_id!: Uuid",
+                i.issue_number        AS "issue_number!",
+                i.simple_id           AS "simple_id!",
+                i.status_id           AS "status_id!: Uuid",
+                i.title               AS "title!",
+                i.description         AS "description?",
+                i.priority            AS "priority: IssuePriority",
+                i.start_date          AS "start_date?: DateTime<Utc>",
+                i.target_date         AS "target_date?: DateTime<Utc>",
+                i.completed_at        AS "completed_at?: DateTime<Utc>",
+                i.sort_order          AS "sort_order!",
+                i.parent_issue_id     AS "parent_issue_id?: Uuid",
+                i.parent_issue_sort_order AS "parent_issue_sort_order?",
+                i.extension_metadata  AS "extension_metadata!: Value",
+                i.creator_user_id     AS "creator_user_id?: Uuid",
+                i.created_at          AS "created_at!: DateTime<Utc>",
+                i.updated_at          AS "updated_at!: DateTime<Utc>"
+            FROM issues i
+            LEFT JOIN project_statuses ps ON ps.id = i.status_id
+            WHERE i.project_id = $1
+              AND ($2::uuid IS NULL OR i.status_id = $2)
+              AND ($3::uuid[] IS NULL OR i.status_id = ANY($3))
+              AND ($4::issue_priority IS NULL OR i.priority = $4)
+              AND ($5::uuid IS NULL OR i.parent_issue_id = $5)
+              AND (
+                  $6::text IS NULL
+                  OR i.title ILIKE $6 ESCAPE '\'
+                  OR COALESCE(i.description, '') ILIKE $6 ESCAPE '\'
+              )
+              AND ($7::text IS NULL OR i.simple_id ILIKE $7 ESCAPE '\')
+              AND (
+                  $8::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_assignees ia
+                      WHERE ia.issue_id = i.id AND ia.user_id = $8
+                  )
+              )
+              AND (
+                  $9::uuid IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = $9
+                  )
+              )
+              AND (
+                  $10::uuid[] IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM issue_tags it
+                      WHERE it.issue_id = i.id AND it.tag_id = ANY($10)
+                  )
+              )
+            ORDER BY
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN ps.sort_order
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN ps.sort_order
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'asc' THEN i.sort_order
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'sort_order' AND $12 = 'desc' THEN i.sort_order
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'priority' AND $12 = 'asc' THEN i.priority
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'priority' AND $12 = 'desc' THEN i.priority
+                END DESC NULLS FIRST,
+                CASE
+                    WHEN $11 = 'created_at' AND $12 = 'asc' THEN i.created_at
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'created_at' AND $12 = 'desc' THEN i.created_at
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'updated_at' AND $12 = 'asc' THEN i.updated_at
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'updated_at' AND $12 = 'desc' THEN i.updated_at
+                END DESC NULLS LAST,
+                CASE
+                    WHEN $11 = 'title' AND $12 = 'asc' THEN i.title
+                END ASC NULLS LAST,
+                CASE
+                    WHEN $11 = 'title' AND $12 = 'desc' THEN i.title
+                END DESC NULLS LAST,
+                i.issue_number ASC
+            LIMIT $13
+            OFFSET $14
+            "#,
+            query.project_id,
+            query.status_id,
+            status_ids,
+            query.priority as Option<IssuePriority>,
+            query.parent_issue_id,
+            search_pattern.as_deref(),
+            simple_id.as_deref(),
+            query.assignee_user_id,
+            query.tag_id,
+            tag_ids,
+            sort_field,
+            sort_direction,
+            query_limit,
+            offset as i64,
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let limit = query.limit.unwrap_or(issues.len() as i32).max(0) as usize;
+
+        Ok(ListIssuesResponse {
+            issues,
+            total_count,
+            limit,
+            offset,
+        })
+    }
+
     pub async fn find_by_id<'e, E>(executor: E, id: Uuid) -> Result<Option<Issue>, IssueError>
     where
         E: Executor<'e, Database = Postgres>,
@@ -89,43 +321,6 @@ impl IssueRepository {
         Ok(record)
     }
 
-    pub async fn list_by_project(
-        pool: &PgPool,
-        project_id: Uuid,
-    ) -> Result<Vec<Issue>, IssueError> {
-        let records = sqlx::query_as!(
-            Issue,
-            r#"
-            SELECT
-                id                  AS "id!: Uuid",
-                project_id          AS "project_id!: Uuid",
-                issue_number        AS "issue_number!",
-                simple_id           AS "simple_id!",
-                status_id           AS "status_id!: Uuid",
-                title               AS "title!",
-                description         AS "description?",
-                priority            AS "priority: IssuePriority",
-                start_date          AS "start_date?: DateTime<Utc>",
-                target_date         AS "target_date?: DateTime<Utc>",
-                completed_at        AS "completed_at?: DateTime<Utc>",
-                sort_order          AS "sort_order!",
-                parent_issue_id     AS "parent_issue_id?: Uuid",
-                parent_issue_sort_order AS "parent_issue_sort_order?",
-                extension_metadata  AS "extension_metadata!: Value",
-                creator_user_id     AS "creator_user_id?: Uuid",
-                created_at          AS "created_at!: DateTime<Utc>",
-                updated_at          AS "updated_at!: DateTime<Utc>"
-            FROM issues
-            WHERE project_id = $1
-            "#,
-            project_id
-        )
-        .fetch_all(pool)
-        .await?;
-
-        Ok(records)
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub async fn create(
         pool: &PgPool,
@@ -144,7 +339,7 @@ impl IssueRepository {
         extension_metadata: Value,
         creator_user_id: Uuid,
     ) -> Result<MutationResponse<Issue>, IssueError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         let id = id.unwrap_or_else(Uuid::new_v4);
         // Note: issue_number and simple_id are auto-generated by the DB trigger
@@ -310,7 +505,7 @@ impl IssueRepository {
     }
 
     pub async fn delete(pool: &PgPool, id: Uuid) -> Result<DeleteResponse, IssueError> {
-        let mut tx = pool.begin().await?;
+        let mut tx = super::begin_tx(pool).await?;
 
         sqlx::query!("DELETE FROM issues WHERE id = $1", id)
             .execute(&mut *tx)
@@ -486,5 +681,18 @@ impl IssueRepository {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::IssueRepository;
+
+    #[test]
+    fn escapes_like_pattern_special_characters() {
+        assert_eq!(
+            IssueRepository::escape_like_pattern(r"100%_done\ish"),
+            r"100\%\_done\\ish"
+        );
     }
 }

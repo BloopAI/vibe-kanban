@@ -98,6 +98,15 @@ function formatKanbanDescriptionPreview(
           : options.fileLabel;
       }
     )
+    .replace(
+      /(?<!!)\[([^\]]*)\]\((attachment:\/\/[^)]+|\.vibe-attachments\/[^)]+)\)/g,
+      (_match, label: string) => {
+        const normalizedLabel = label.trim();
+        return normalizedLabel
+          ? options.fileWithNameLabel(normalizedLabel)
+          : options.fileLabel;
+      }
+    )
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
     .replace(/^#{1,6}\s+/gm, '')
     .replace(/^\s*>\s?/gm, '')

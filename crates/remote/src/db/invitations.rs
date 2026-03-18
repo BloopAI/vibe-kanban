@@ -196,7 +196,7 @@ impl<'a> InvitationRepository<'a> {
         user_id: Uuid,
         billing: &BillingService,
     ) -> Result<(Organization, MemberRole), IdentityError> {
-        let mut tx = self.pool.begin().await?;
+        let mut tx = super::begin_tx(self.pool).await?;
 
         let invitation = sqlx::query_as!(
             Invitation,

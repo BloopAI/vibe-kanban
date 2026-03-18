@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "DELETE FROM images WHERE id = $1",
+  "query": "DELETE FROM attachments WHERE id = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,5 +8,5 @@
     },
     "nullable": []
   },
-  "hash": "79b35e39d668ad2285b3a05c15d5243cc91d35e03104d222488c7e27b8bbb569"
+  "hash": "4ac35216ead7e5be9cc2de504a06b6e375e23ca2ed14493ec991f53e458a6a34"
 }

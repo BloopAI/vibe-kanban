@@ -1,6 +1,6 @@
 {
   "name": "vibe-kanban",
-  "version": "0.1.31",
+  "version": "0.1.32",
   "private": true,
   "bin": {
     "vibe-kanban": "npx-cli/bin/cli.js"
@@ -40,7 +40,7 @@
     "prepare-db:check": "node scripts/prepare-db.js --check",
     "build:bippy-bundle": "node scripts/build-bippy-bundle.mjs",
     "build:npx": "bash ./local-build.sh",
-    "build:npx-cli": "esbuild npx-cli/src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=npx-cli/bin/cli.js --external:adm-zip --banner:js=\"#!/usr/bin/env node\"",
+    "build:npx-cli": "cd npx-cli && npm ci && npm run build",
     "check:npx-cli": "tsc --noEmit -p npx-cli/tsconfig.json",
     "prepack": "pnpm run build:npx && pnpm run build:npx-cli",
     "remote:dev": "cd crates/remote && docker compose --env-file .env.remote up --build ; docker compose --env-file .env.remote down -v",

@@ -1,6 +1,6 @@
 [package]
 name = "local-deployment"
-version = "0.1.31"
+version = "0.1.32"
 edition = "2024"
 
 [dependencies]
@@ -30,7 +30,6 @@ base64 = "0.22"
 ed25519-dalek = "2.2.0"
 anyhow = { workspace = true }
 tracing = { workspace = true }
-sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls-aws-lc-rs", "sqlite", "sqlite-preupdate-hook", "chrono", "uuid"] }
 uuid = { version = "1.0", features = ["v4", "serde"] }
 async-trait = { workspace = true }
 thiserror = { workspace = true }

@@ -1,26 +1,43 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::sync::{Arc, Mutex};
+use std::{sync::Arc, time::Duration};
 
 use async_trait::async_trait;
-use services::services::notification::{PushNotifier, set_global_push_notifier};
+use services::services::{
+    config::load_config_from_file,
+    notification::{NotificationService, PushNotifier, set_global_push_notifier},
+};
 #[cfg(target_os = "macos")]
 use tauri::Manager;
 use tauri::{Emitter, Listener};
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::UpdaterExt;
+use tokio::{sync::Mutex, time::sleep};
 use tokio_util::sync::CancellationToken;
 use tracing_subscriber::{EnvFilter, prelude::*};
-use utils::sentry::{self as sentry_utils, SentrySource, sentry_layer};
+use utils::{
+    assets::config_path,
+    sentry::{self as sentry_utils, SentrySource, sentry_layer},
+};
 use uuid::Uuid;
+
+const UPDATE_CHECK_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
 /// Native push notifier using Tauri's notification plugin.
 /// Emits a `navigate-to-workspace` event so the frontend can navigate to the
 /// relevant workspace when the user clicks the notification and the app activates.
 struct TauriNotifier {
     app_handle: tauri::AppHandle,
+}
+
+#[tauri::command]
+async fn show_system_notification(title: String, body: String) -> Result<(), String> {
+    let config = load_config_from_file(&config_path()).await;
+    let notification_service = NotificationService::new(Arc::new(tokio::sync::RwLock::new(config)));
+    notification_service.notify(&title, &body, None).await;
+    Ok(())
 }
 
 #[async_trait]
@@ -79,7 +96,8 @@ fn main() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_notification::init());
+        .plugin(tauri_plugin_notification::init())
+        .invoke_handler(tauri::generate_handler![show_system_notification]);
 
     // Only register the updater plugin in release builds — dev builds have a
     // placeholder endpoint that fails config deserialization.
@@ -153,17 +171,18 @@ fn main() {
                     }
                 });
 
-                // Check for updates in the background. We only *download*
-                // the update here — installing it (which replaces the app
-                // bundle on disk) is deferred until the user exits or
-                // triggers a restart.  Installing while the app is running
-                // causes a code-signature mismatch on macOS, which makes
-                // NSOpenPanel (and other XPC services) return NULL and
-                // crash the app.  See tauri-apps/tauri#13047.
+                // Check for updates in the background on startup and then
+                // periodically. We only *download* the update here —
+                // installing it (which replaces the app bundle on disk) is
+                // deferred until the user exits or triggers a restart.
+                // Installing while the app is running causes a code-signature
+                // mismatch on macOS, which makes NSOpenPanel (and other XPC
+                // services) return NULL and crash the app.
+                // See tauri-apps/tauri#13047.
                 let update_handle = app.handle().clone();
                 let pending_for_download = pending_for_setup.clone();
                 tauri::async_runtime::spawn(async move {
-                    check_for_updates(update_handle, pending_for_download).await;
+                    run_periodic_update_checks(update_handle, pending_for_download).await;
                 });
 
                 // Listen for restart request from frontend (after update downloaded).
@@ -246,7 +265,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
         .inner_size(1280.0, 800.0)
         .min_inner_size(800.0, 600.0)
         .resizable(true)
-        .zoom_hotkeys_enabled(true)
+        .zoom_hotkeys_enabled(false)
         .disable_drag_drop_handler();
 
     // macOS: overlay title bar keeps traffic lights but removes title bar chrome,
@@ -279,7 +298,7 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
 /// Takes the pending update bytes (if any) and installs them.
 /// Requires a network call to re-fetch the `Update` metadata.
 async fn install_pending_update(app: &tauri::AppHandle, pending: &Mutex<Option<Vec<u8>>>) {
-    let bytes = match pending.lock().ok().and_then(|mut g| g.take()) {
+    let bytes = match pending.lock().await.take() {
         Some(b) => b,
         None => return,
     };
@@ -309,6 +328,12 @@ async fn install_pending_update(app: &tauri::AppHandle, pending: &Mutex<Option<V
 }
 
 async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Option<Vec<u8>>>>) {
+    let has_pending_update = pending_update.lock().await.is_some();
+    if has_pending_update {
+        tracing::info!("Update already downloaded; skipping update check");
+        return;
+    }
+
     let updater = match app.updater() {
         Ok(updater) => updater,
         Err(e) => {
@@ -342,7 +367,7 @@ async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Opti
             match update.download(|_, _| {}, || {}).await {
                 Ok(bytes) => {
                     tracing::info!("Update {new_version} downloaded, waiting for user to restart");
-                    *pending_update.lock().unwrap() = Some(bytes);
+                    *pending_update.lock().await = Some(bytes);
                     let _ = app.emit(
                         "update-installed",
                         serde_json::json!({ "newVersion": new_version }),
@@ -359,5 +384,17 @@ async fn check_for_updates(app: tauri::AppHandle, pending_update: Arc<Mutex<Opti
         Err(e) => {
             tracing::warn!("Failed to check for updates: {}", e);
         }
+    }
+}
+
+async fn run_periodic_update_checks(
+    app: tauri::AppHandle,
+    pending_update: Arc<Mutex<Option<Vec<u8>>>>,
+) {
+    check_for_updates(app.clone(), pending_update.clone()).await;
+
+    loop {
+        sleep(UPDATE_CHECK_INTERVAL).await;
+        check_for_updates(app.clone(), pending_update.clone()).await;
     }
 }

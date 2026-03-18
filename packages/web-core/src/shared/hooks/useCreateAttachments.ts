@@ -1,65 +1,63 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { imagesApi } from '@/shared/lib/api';
-import type { LocalImageMetadata } from '@vibe/ui/components/WorkspaceContext';
-import type { DraftWorkspaceImage } from 'shared/types';
+import { attachmentsApi } from '@/shared/lib/api';
+import type { LocalAttachmentMetadata } from '@vibe/ui/components/WorkspaceContext';
+import {
+  buildWorkspaceAttachmentMarkdown,
+  toLocalAttachmentMetadata,
+} from '@/shared/lib/workspaceAttachments';
+import type { DraftWorkspaceAttachment } from 'shared/types';
 
 /**
- * Hook for handling image attachments during workspace creation.
- * Uploads images and tracks their IDs for association with the workspace.
- * Also tracks uploaded images for immediate preview in the editor.
- * Supports restoring previously uploaded images from a persisted draft.
+ * Hook for handling attachments during workspace creation.
+ * Uploads attachments and tracks their IDs for association with the workspace.
+ * Also tracks uploaded attachments for immediate preview in the editor.
+ * Supports restoring previously uploaded attachments from a persisted draft.
  */
 export function useCreateAttachments(
   onInsertMarkdown: (markdown: string) => void,
-  initialImages?: DraftWorkspaceImage[],
-  onImagesChange?: (images: DraftWorkspaceImage[]) => void
+  initialAttachments?: DraftWorkspaceAttachment[],
+  onAttachmentsChange?: (attachments: DraftWorkspaceAttachment[]) => void
 ) {
-  const [images, setImages] = useState<DraftWorkspaceImage[]>(
-    initialImages ?? []
+  const [attachments, setAttachments] = useState<DraftWorkspaceAttachment[]>(
+    initialAttachments ?? []
   );
   const hasInitialized = useRef(false);
 
-  // Seed from draft when initialImages arrives (only once)
   useEffect(() => {
     if (hasInitialized.current) return;
-    if (initialImages && initialImages.length > 0) {
+    if (initialAttachments && initialAttachments.length > 0) {
       hasInitialized.current = true;
-      setImages(initialImages);
+      setAttachments(initialAttachments);
     }
-  }, [initialImages]);
+  }, [initialAttachments]);
 
-  // Notify parent when images change (for draft persistence)
   useEffect(() => {
-    onImagesChange?.(images);
-  }, [images, onImagesChange]);
+    onAttachmentsChange?.(attachments);
+  }, [attachments, onAttachmentsChange]);
 
   const uploadFiles = useCallback(
-    async (files: File[]) => {
-      const imageFiles = files.filter((f) => f.type.startsWith('image/'));
-      if (imageFiles.length === 0) return;
+    async (selectedFiles: File[]) => {
+      const uploadResults: DraftWorkspaceAttachment[] = [];
 
-      const uploadResults: DraftWorkspaceImage[] = [];
-
-      for (const file of imageFiles) {
+      for (const attachment of selectedFiles) {
         try {
-          const response = await imagesApi.upload(file);
+          const response = await attachmentsApi.upload(attachment);
           uploadResults.push({
             id: response.id,
             file_path: response.file_path,
             original_name: response.original_name,
             mime_type: response.mime_type,
-            // size_bytes comes as a JSON number despite the bigint TS type
             size_bytes: Number(response.size_bytes) as unknown as bigint,
           });
         } catch (error) {
-          console.error('Failed to upload image:', error);
+          console.error('Failed to upload attachment:', error);
         }
       }
 
       if (uploadResults.length > 0) {
-        setImages((prev) => [...prev, ...uploadResults]);
+        setAttachments((prev) => [...prev, ...uploadResults]);
         const allMarkdown = uploadResults
-          .map((r) => `![${r.original_name}](${r.file_path})`)
+          .map(buildWorkspaceAttachmentMarkdown)
           .join('\n\n');
         onInsertMarkdown(allMarkdown);
       }
@@ -67,21 +65,27 @@ export function useCreateAttachments(
     [onInsertMarkdown]
   );
 
-  const getImageIds = useCallback(() => {
-    const ids = images.map((img) => img.id);
+  const getAttachmentIds = useCallback(() => {
+    const ids = attachments.map((attachment) => attachment.id);
     return ids.length > 0 ? ids : null;
-  }, [images]);
+  }, [attachments]);
 
-  const clearAttachments = useCallback(() => setImages([]), []);
+  const clearAttachments = useCallback(() => setAttachments([]), []);
 
-  // Convert images to LocalImageMetadata format for WYSIWYG preview
-  const localImages: LocalImageMetadata[] = images.map((img) => ({
-    path: img.file_path,
-    proxy_url: `/api/images/${img.id}/file`,
-    file_name: img.original_name,
-    size_bytes: Number(img.size_bytes),
-    format: img.mime_type?.split('/')[1] ?? 'png',
-  }));
+  const localAttachments: LocalAttachmentMetadata[] = attachments.map(
+    (attachment) =>
+      toLocalAttachmentMetadata({
+        ...attachment,
+        hash: '',
+        created_at: '',
+        updated_at: '',
+      })
+  );
 
-  return { uploadFiles, getImageIds, clearAttachments, localImages };
+  return {
+    uploadFiles,
+    getAttachmentIds,
+    clearAttachments,
+    localAttachments,
+  };
 }

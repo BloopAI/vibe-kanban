@@ -402,7 +402,7 @@
       "cancelled": "Annulé"
     },
     "startLabel": "Démarrer",
-    "attachImage": "Joindre une image",
+    "attachFile": "Joindre un fichier",
     "dropImagesHere": "Déposez les images ici",
     "updating": "Mise à jour...",
     "updateTask": "Mettre à jour la tâche",

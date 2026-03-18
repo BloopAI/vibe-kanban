@@ -26,7 +26,7 @@ import {
   McpServerQuery,
   UpdateMcpServersBody,
   GetMcpServerResponse,
-  ImageResponse,
+  AttachmentResponse,
   GitOperationError,
   ApprovalResponse,
   RebaseWorkspaceRequest,
@@ -1099,13 +1099,13 @@ export const profilesApi = {
   },
 };
 
-// Images API
-export const imagesApi = {
-  upload: async (file: File): Promise<ImageResponse> => {
+// Workspace attachments API
+export const attachmentsApi = {
+  upload: async (attachment: File): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
-    const response = await makeLocalApiRequest('/api/images/upload', {
+    const response = await makeLocalApiRequest('/api/attachments/upload', {
       method: 'POST',
       body: formData,
       credentials: 'include',
@@ -1114,21 +1114,24 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  uploadForTask: async (taskId: string, file: File): Promise<ImageResponse> => {
+  uploadForTask: async (
+    taskId: string,
+    attachment: File
+  ): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
-      `/api/images/task/${taskId}/upload`,
+      `/api/attachments/task/${taskId}/upload`,
       {
         method: 'POST',
         body: formData,
@@ -1139,29 +1142,25 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  /**
-   * Upload an image for a workspace and immediately copy it to the container.
-   * Returns the image with a file_path that can be used in markdown.
-   */
   uploadForAttempt: async (
     workspaceId: string,
     sessionId: string,
-    file: File
-  ): Promise<ImageResponse> => {
+    attachment: File
+  ): Promise<AttachmentResponse> => {
     const formData = new FormData();
-    formData.append('image', file);
+    formData.append('image', attachment);
 
     const response = await makeLocalApiRequest(
-      `/api/workspaces/${workspaceId}/images/upload?session_id=${sessionId}`,
+      `/api/workspaces/${workspaceId}/attachments/upload?session_id=${sessionId}`,
       {
         method: 'POST',
         body: formData,
@@ -1172,29 +1171,29 @@ export const imagesApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new ApiError(
-        `Failed to upload image: ${errorText}`,
+        `Failed to upload attachment: ${errorText}`,
         response.status,
         response
       );
     }
 
-    return handleApiResponse<ImageResponse>(response);
+    return handleApiResponse<AttachmentResponse>(response);
   },
 
-  delete: async (imageId: string): Promise<void> => {
-    const response = await makeRequest(`/api/images/${imageId}`, {
+  delete: async (attachmentId: string): Promise<void> => {
+    const response = await makeRequest(`/api/attachments/${attachmentId}`, {
       method: 'DELETE',
     });
     return handleApiResponse<void>(response);
   },
 
-  getTaskImages: async (taskId: string): Promise<ImageResponse[]> => {
-    const response = await makeRequest(`/api/images/task/${taskId}`);
-    return handleApiResponse<ImageResponse[]>(response);
+  getTaskAttachments: async (taskId: string): Promise<AttachmentResponse[]> => {
+    const response = await makeRequest(`/api/attachments/task/${taskId}`);
+    return handleApiResponse<AttachmentResponse[]>(response);
   },
 
-  getImageUrl: (imageId: string): string => {
-    return `/api/images/${imageId}/file`;
+  getAttachmentUrl: (attachmentId: string): string => {
+    return `/api/attachments/${attachmentId}/file`;
   },
 };
 

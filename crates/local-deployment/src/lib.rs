@@ -19,9 +19,9 @@ use services::services::{
     config::{Config, load_config_from_file, save_config_to_file},
     container::ContainerService,
     events::EventService,
+    file::FileService,
     file_search::FileSearchCache,
     filesystem::FilesystemService,
-    image::ImageService,
     oauth_credentials::OAuthCredentials,
     pr_monitor::PrMonitorService,
     queued_message::QueuedMessageService,
@@ -57,7 +57,7 @@ pub struct LocalDeployment {
     container: LocalContainerService,
     git: GitService,
     repo: RepoService,
-    image: ImageService,
+    file: FileService,
     filesystem: FilesystemService,
     events: EventService,
     file_search_cache: Arc<FileSearchCache>,
@@ -143,13 +143,13 @@ impl Deployment for LocalDeployment {
             DBService::new_with_after_connect(hook).await?
         };
 
-        let image = ImageService::new(db.clone().pool)?;
+        let file = FileService::new(db.clone().pool)?;
         {
-            let image_service = image.clone();
+            let file_service = file.clone();
             tokio::spawn(async move {
-                tracing::info!("Starting orphaned image cleanup...");
-                if let Err(e) = image_service.delete_orphaned_images().await {
-                    tracing::error!("Failed to clean up orphaned images: {}", e);
+                tracing::info!("Starting orphaned file cleanup...");
+                if let Err(e) = file_service.delete_orphaned_files().await {
+                    tracing::error!("Failed to clean up orphaned files: {}", e);
                 }
             });
         }
@@ -225,7 +225,7 @@ impl Deployment for LocalDeployment {
             msg_stores.clone(),
             config.clone(),
             git.clone(),
-            image.clone(),
+            file.clone(),
             analytics_ctx,
             approvals.clone(),
             queued_message_service.clone(),
@@ -265,7 +265,7 @@ impl Deployment for LocalDeployment {
             container,
             git,
             repo,
-            image,
+            file,
             filesystem,
             events,
             file_search_cache,
@@ -317,8 +317,8 @@ impl Deployment for LocalDeployment {
         &self.repo
     }
 
-    fn image(&self) -> &ImageService {
-        &self.image
+    fn file(&self) -> &FileService {
+        &self.file
     }
 
     fn filesystem(&self) -> &FilesystemService {

@@ -132,9 +132,12 @@ if [[ "$1" == "--desktop" || "$1" == "--all" ]]; then
 fi
 
 echo ""
+echo "📦 Installing npx-cli dependencies..."
+(cd npx-cli && npm ci)
+
+echo ""
 echo "🔨 Building npx-cli TypeScript..."
-mkdir -p npx-cli/bin
-npx esbuild npx-cli/src/cli.ts --bundle --platform=node --target=node20 --format=cjs --outfile=npx-cli/bin/cli.js --external:adm-zip --banner:js="#!/usr/bin/env node"
+(cd npx-cli && npm run build)
 
 echo ""
 echo "🚀 To test locally, run:"
