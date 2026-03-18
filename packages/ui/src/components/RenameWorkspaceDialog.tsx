@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -30,6 +30,12 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
     const [name, setName] = useState<string>(currentName);
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const inputRef = useCallback((node: HTMLInputElement | null) => {
+      if (node) {
+        node.select();
+      }
+    }, []);
 
     useEffect(() => {
       setName(currentName);
@@ -90,6 +96,7 @@ const RenameWorkspaceDialogImpl = NiceModal.create<RenameWorkspaceDialogProps>(
                 {t('workspaces.rename.nameLabel')}
               </label>
               <Input
+                ref={inputRef}
                 id="workspace-name"
                 type="text"
                 value={name}
