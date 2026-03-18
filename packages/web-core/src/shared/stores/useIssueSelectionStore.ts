@@ -80,12 +80,8 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
       const end = Math.max(anchorIndex, targetIndex);
       const rangeIds = orderedIssueIds.slice(start, end + 1);
 
-      // Union with existing selection
-      const next = new Set(selectedIssueIds);
-      for (const id of rangeIds) {
-        next.add(id);
-      }
-      set({ selectedIssueIds: next, cursorIssueId: targetIssueId });
+      // Replace selection with the new range (standard platform behavior)
+      set({ selectedIssueIds: new Set(rangeIds), cursorIssueId: targetIssueId });
     },
 
     selectAdjacent: (
