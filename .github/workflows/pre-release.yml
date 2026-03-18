@@ -872,6 +872,9 @@ jobs:
 
       - name: Build Tauri app
         run: |
+          # Avoid stale cached bundle artifacts from previous versions.
+          rm -rf "target/${{ matrix.target }}/release/bundle"
+
           if [[ "${{ matrix.target }}" == "aarch64-pc-windows-msvc" ]]; then
             # ring requires clang on arm64 windows cross-compile
             chmod +x scripts/ring-cc-wrapper.sh scripts/clang
@@ -1108,10 +1111,14 @@ jobs:
           TAG="${{ needs.bump-version.outputs.new_tag }}"
           ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
-          aws s3 ls "s3://$BUCKET/binaries/$TAG/tauri/" \
-            --recursive \
+          aws s3api list-objects-v2 \
+            --bucket "$BUCKET" \
+            --prefix "binaries/$TAG/tauri/" \
             --endpoint-url "$ENDPOINT" \
-            | awk '{print $4}' \
+            --output json \
+            > tauri-objects.json
+
+          jq -r '.Contents[]?.Key // empty' tauri-objects.json \
             | grep -E '(\.dmg|\.AppImage|\.deb|\.msi|-setup\.exe)$' \
             > tauri-installer-paths.txt || true
 
@@ -1142,7 +1149,8 @@ jobs:
               while IFS= read -r key; do
                 [ -n "$key" ] || continue
                 file="$(basename "$key")"
-                echo "- [$file](${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/$TAG/tauri/$platform/$file)" >> release-notes.md
+                encoded_file="${file// /%20}"
+                echo "- [$file](${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/$TAG/tauri/$platform/$encoded_file)" >> release-notes.md
               done <<< "$matches"
             else
               echo "- Not available" >> release-notes.md
