@@ -1,6 +1,6 @@
 [package]
 name = "local-deployment"
-version = "0.1.33-artef.2"
+version = "0.1.33-artef.3"
 edition = "2024"
 
 [dependencies]
