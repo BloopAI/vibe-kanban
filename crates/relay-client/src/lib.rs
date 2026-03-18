@@ -541,12 +541,12 @@ async fn connect_signed_upstream_ws(
     ))?;
     let mut ws_request = ws_url.into_client_request()?;
 
-    if let Some(value) = protocols {
-        if let Ok(header_value) = value.parse() {
-            ws_request
-                .headers_mut()
-                .insert("sec-websocket-protocol", header_value);
-        }
+    if let Some(value) = protocols
+        && let Ok(header_value) = value.parse()
+    {
+        ws_request
+            .headers_mut()
+            .insert("sec-websocket-protocol", header_value);
     }
 
     set_ws_signing_headers(ws_request.headers_mut(), &request_signature);
@@ -570,6 +570,7 @@ async fn connect_signed_upstream_ws(
     Ok((upstream_socket, selected_protocol))
 }
 
+#[allow(clippy::result_large_err)]
 fn relay_http_to_ws_url(http_url: &str) -> Result<String, RelayApiError> {
     if let Some(rest) = http_url.strip_prefix("https://") {
         Ok(format!("wss://{rest}"))
@@ -646,6 +647,7 @@ fn is_ws_auth_failure(error: &RelayApiError) -> bool {
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn unix_timestamp_now() -> Result<i64, RelayApiError> {
     let duration = SystemTime::now()
         .duration_since(UNIX_EPOCH)
