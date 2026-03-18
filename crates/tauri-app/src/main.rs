@@ -279,14 +279,6 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
             .traffic_light_position(tauri::LogicalPosition::new(8.0, 14.0));
     }
 
-    // Linux: keep using a borderless window.
-    // Windows should keep native decorations so minimize/maximize/close
-    // buttons are available in the title bar.
-    #[cfg(target_os = "linux")]
-    {
-        builder = builder.decorations(false);
-    }
-
     builder
         .on_new_window(move |url, _features| {
             tracing::info!("New window requested for URL: {}", url);
