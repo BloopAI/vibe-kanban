@@ -459,6 +459,11 @@ html {
   display: none !important;
 }
 
+/* In-panel find highlights (Custom Highlight API, non-DOM-mutating). */
+::highlight(vk-search-highlight) {
+  background-color: hsl(43 96% 56% / 0.45);
+}
+
 /* Mobile-specific styles */
 @media (max-width: 767px) {
   html,

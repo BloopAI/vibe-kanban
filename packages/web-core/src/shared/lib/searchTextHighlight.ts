@@ -1,4 +1,14 @@
 const HIGHLIGHT_SELECTOR = 'mark[data-vk-search-highlight="true"]';
+const CUSTOM_HIGHLIGHT_KEY = 'vk-search-highlight';
+
+function supportsCustomHighlights(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof (window as { Highlight?: unknown }).Highlight !== 'undefined' &&
+    typeof CSS !== 'undefined' &&
+    'highlights' in CSS
+  );
+}
 
 function collectSearchRoots(root: HTMLElement): Node[] {
   const roots: Node[] = [root];
@@ -62,6 +72,12 @@ function collectTextNodes(root: HTMLElement): Text[] {
 }
 
 export function clearSearchTextHighlights(root: HTMLElement): void {
+  if (supportsCustomHighlights()) {
+    (CSS as { highlights: Map<string, unknown> }).highlights.delete(
+      CUSTOM_HIGHLIGHT_KEY
+    );
+  }
+
   const searchRoots = collectSearchRoots(root);
   searchRoots.forEach((searchRoot) => {
     const highlights =
@@ -90,6 +106,8 @@ export function applySearchTextHighlights(
   const maxMatches = options?.maxMatches ?? Number.POSITIVE_INFINITY;
   let count = 0;
   const textNodes = collectTextNodes(root);
+  const useCustomHighlights = supportsCustomHighlights();
+  const ranges: Range[] = [];
 
   for (const textNode of textNodes) {
     if (count >= maxMatches) break;
@@ -111,22 +129,40 @@ export function applySearchTextHighlights(
       }
 
       const end = matchIndex + normalizedQuery.length;
-      const mark = document.createElement('mark');
-      mark.dataset.vkSearchHighlight = 'true';
-      mark.className = 'bg-yellow-500/35 rounded-sm px-[1px]';
-      mark.textContent = content.slice(matchIndex, end);
-      fragment.appendChild(mark);
+      if (useCustomHighlights) {
+        const range = document.createRange();
+        range.setStart(textNode, matchIndex);
+        range.setEnd(textNode, end);
+        ranges.push(range);
+      } else {
+        const mark = document.createElement('mark');
+        mark.dataset.vkSearchHighlight = 'true';
+        mark.className = 'bg-yellow-500/35 rounded-sm px-[1px]';
+        mark.textContent = content.slice(matchIndex, end);
+        fragment.appendChild(mark);
+      }
       count += 1;
 
       start = end;
       matchIndex = lower.indexOf(normalizedQuery, start);
     }
 
-    if (start < content.length) {
-      fragment.appendChild(document.createTextNode(content.slice(start)));
+    if (!useCustomHighlights) {
+      if (start < content.length) {
+        fragment.appendChild(document.createTextNode(content.slice(start)));
+      }
+      textNode.replaceWith(fragment);
     }
+  }
 
-    textNode.replaceWith(fragment);
+  if (useCustomHighlights) {
+    const highlightCtor = (
+      window as { Highlight: new (...args: Range[]) => unknown }
+    ).Highlight;
+    const highlight = new highlightCtor(...ranges);
+    (
+      CSS as { highlights: { set: (key: string, value: unknown) => void } }
+    ).highlights.set(CUSTOM_HIGHLIGHT_KEY, highlight);
   }
 
   return count;
