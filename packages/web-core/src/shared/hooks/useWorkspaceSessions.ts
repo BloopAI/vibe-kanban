@@ -59,6 +59,16 @@ export function useWorkspaceSessions(
       // Only preserve new session mode within the same workspace
       setSelection((prev) => {
         if (prev?.mode === 'new' && !workspaceChanged) return prev;
+        // Preserve explicit existing-session selection if the session still
+        // exists — avoids snapping back to sessions[0] on every React Query
+        // refetch, which would override the user's manual session switch.
+        if (
+          prev?.mode === 'existing' &&
+          !workspaceChanged &&
+          sessions.some((s) => s.id === prev.sessionId)
+        ) {
+          return prev;
+        }
         return { mode: 'existing', sessionId: sessions[0].id };
       });
     } else {
