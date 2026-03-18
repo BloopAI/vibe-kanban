@@ -214,6 +214,9 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 pr_info.number, pr_info.status, candidate.workspace_id, candidate.repo_id
             );
 
+            // Created as 'open' — check_all_open_prs will pick it up on the
+            // next cycle, detect the actual status, and run the full lifecycle
+            // (archival, remote sync, analytics) if already merged/closed.
             PullRequest::create_for_workspace(
                 &self.db.pool,
                 candidate.workspace_id,
@@ -223,19 +226,6 @@ impl<C: ContainerService + Send + Sync + 'static> PrMonitorService<C> {
                 &pr_info.url,
             )
             .await?;
-
-            // create_for_workspace inserts as 'open'; correct the status immediately so
-            // check_all_open_prs doesn't falsely trigger the merged/closed lifecycle.
-            if !matches!(pr_info.status, MergeStatus::Open) {
-                PullRequest::update_status(
-                    &self.db.pool,
-                    &pr_info.url,
-                    &pr_info.status,
-                    pr_info.merged_at,
-                    pr_info.merge_commit_sha.clone(),
-                )
-                .await?;
-            }
         }
 
         Ok(())
