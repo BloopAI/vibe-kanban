@@ -247,7 +247,7 @@ export function ChatAggregatedDiffEntries({
 
   const isDenied = aggregateStatus?.status === 'denied';
   const hasStats = totalStats.additions > 0 || totalStats.deletions > 0;
-  const handleToggle = handleClick;
+
 
   return (
     <div
@@ -263,7 +263,7 @@ export function ChatAggregatedDiffEntries({
           isDenied ? 'bg-error/20' : 'bg-panel',
           'cursor-pointer'
         )}
-        onClick={handleToggle}
+        onClick={handleClick}
         onMouseEnter={() => onHoverChange(true)}
         onMouseLeave={() => onHoverChange(false)}
         role="button"
