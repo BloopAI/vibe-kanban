@@ -34,7 +34,8 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
     toggleIssue: (issueId: string) => {
       const { selectedIssueIds, anchorIssueId } = get();
       const next = new Set(selectedIssueIds);
-      if (next.has(issueId)) {
+      const isDeselecting = next.has(issueId);
+      if (isDeselecting) {
         next.delete(issueId);
       } else {
         // When starting multi-select from an opened issue, include the
@@ -44,10 +45,12 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
         }
         next.add(issueId);
       }
+      // Only move anchor/cursor when selecting, not when deselecting
       set({
         selectedIssueIds: next,
-        anchorIssueId: issueId,
-        cursorIssueId: issueId,
+        ...(isDeselecting
+          ? {}
+          : { anchorIssueId: issueId, cursorIssueId: issueId }),
       });
     },
 

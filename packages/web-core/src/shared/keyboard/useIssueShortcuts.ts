@@ -61,6 +61,11 @@ export function useIssueShortcuts() {
     selectAdjacentRef.current = selectAdjacent;
   });
 
+  // Clean up sequence timer on unmount
+  useEffect(() => {
+    return () => clearTimeout(sequenceTimerRef.current);
+  }, []);
+
   // Use multi-selected IDs when available, otherwise fall back to single issue
   const issueIds = useMemo(() => {
     if (multiSelectedIssueIds.size > 0) {
@@ -100,6 +105,22 @@ export function useIssueShortcuts() {
   );
 
   const enabled = isKanban;
+
+  // Track when a sequence prefix key (i) is pressed so standalone keys
+  // like `x` don't fire during a sequence like `i>x`.
+  const sequencePendingRef = useRef(false);
+  const sequenceTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useHotkeys(
+    'i',
+    () => {
+      sequencePendingRef.current = true;
+      clearTimeout(sequenceTimerRef.current);
+      sequenceTimerRef.current = setTimeout(() => {
+        sequencePendingRef.current = false;
+      }, SEQUENCE_TIMEOUT_MS);
+    },
+    { scopes: [Scope.KANBAN], enabled, keydown: true, keyup: false }
+  );
 
   useHotkeys('i>c', (e) => executeIssueAction(Actions.CreateIssue, e), {
     ...OPTIONS,
@@ -193,6 +214,8 @@ export function useIssueShortcuts() {
     'x',
     (e) => {
       if (!isKanbanRef.current) return;
+      // Skip if part of a sequence (e.g. i>x for delete)
+      if (sequencePendingRef.current) return;
       const currentIssueId = issueIdRef.current;
       if (!currentIssueId) return;
       e.preventDefault();
