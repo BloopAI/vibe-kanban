@@ -301,56 +301,48 @@ export function WorkspacesSidebar({
           /* Accordion layout view */
           <div className="flex flex-col gap-base">
             {/* Needs Attention section */}
-            <CollapsibleSectionHeader
-              title={t('common:workspaces.needsAttention')}
-              persistKey={persistKeys.raisedHand}
-              defaultExpanded={true}
-            >
-              <div className="flex flex-col gap-base py-half">
-                {draftTitle && (
-                  <WorkspaceSummary
-                    name={draftTitle}
-                    isActive={isCreateMode}
-                    isDraft={true}
-                    onClick={onSelectCreate}
-                  />
-                )}
-                {raisedHandWorkspaces.length === 0 && !draftTitle ? (
-                  <span className="text-sm text-low opacity-60 pl-base">
-                    {t('common:workspaces.noWorkspaces')}
-                  </span>
-                ) : (
+            {(raisedHandWorkspaces.length > 0 || draftTitle) && (
+              <CollapsibleSectionHeader
+                title={t('common:workspaces.needsAttention')}
+                persistKey={persistKeys.raisedHand}
+                defaultExpanded={true}
+              >
+                <div className="flex flex-col gap-base py-half">
+                  {draftTitle && (
+                    <WorkspaceSummary
+                      name={draftTitle}
+                      isActive={isCreateMode}
+                      isDraft={true}
+                      onClick={onSelectCreate}
+                    />
+                  )}
                   <WorkspaceList
                     workspaces={raisedHandWorkspaces}
                     selectedWorkspaceId={selectedWorkspaceId}
                     onSelectWorkspace={onSelectWorkspace}
                     onOpenWorkspaceActions={handleOpenWorkspaceActions}
                   />
-                )}
-              </div>
-            </CollapsibleSectionHeader>
+                </div>
+              </CollapsibleSectionHeader>
+            )}
 
             {/* Running section */}
-            <CollapsibleSectionHeader
-              title={t('common:workspaces.running')}
-              persistKey={persistKeys.running}
-              defaultExpanded={true}
-            >
-              <div className="flex flex-col gap-base py-half">
-                {runningWorkspaces.length === 0 ? (
-                  <span className="text-sm text-low opacity-60 pl-base">
-                    {t('common:workspaces.noWorkspaces')}
-                  </span>
-                ) : (
+            {runningWorkspaces.length > 0 && (
+              <CollapsibleSectionHeader
+                title={t('common:workspaces.running')}
+                persistKey={persistKeys.running}
+                defaultExpanded={true}
+              >
+                <div className="flex flex-col gap-base py-half">
                   <WorkspaceList
                     workspaces={runningWorkspaces}
                     selectedWorkspaceId={selectedWorkspaceId}
                     onSelectWorkspace={onSelectWorkspace}
                     onOpenWorkspaceActions={handleOpenWorkspaceActions}
                   />
-                )}
-              </div>
-            </CollapsibleSectionHeader>
+                </div>
+              </CollapsibleSectionHeader>
+            )}
 
             {/* Idle section */}
             <CollapsibleSectionHeader
