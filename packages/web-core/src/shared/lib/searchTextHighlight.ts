@@ -1,5 +1,28 @@
 const HIGHLIGHT_SELECTOR = 'mark[data-vk-search-highlight="true"]';
 
+function collectSearchRoots(root: HTMLElement): Node[] {
+  const roots: Node[] = [root];
+
+  const stack: Element[] = [root];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    if (!current) continue;
+
+    if (current.shadowRoot) {
+      roots.push(current.shadowRoot);
+      Array.from(current.shadowRoot.children).forEach((child) => {
+        stack.push(child);
+      });
+    }
+
+    Array.from(current.children).forEach((child) => {
+      stack.push(child);
+    });
+  }
+
+  return roots;
+}
+
 function isSkippableTextNode(node: Text): boolean {
   if (!node.parentElement) return true;
   if (!node.nodeValue || !node.nodeValue.trim()) return true;
@@ -19,26 +42,39 @@ function isSkippableTextNode(node: Text): boolean {
 }
 
 function collectTextNodes(root: HTMLElement): Text[] {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const nodes: Text[] = [];
+  const roots = collectSearchRoots(root);
 
-  let current = walker.nextNode();
-  while (current) {
-    const textNode = current as Text;
-    if (!isSkippableTextNode(textNode)) {
-      nodes.push(textNode);
+  roots.forEach((searchRoot) => {
+    const walker = document.createTreeWalker(searchRoot, NodeFilter.SHOW_TEXT);
+
+    let current = walker.nextNode();
+    while (current) {
+      const textNode = current as Text;
+      if (!isSkippableTextNode(textNode)) {
+        nodes.push(textNode);
+      }
+      current = walker.nextNode();
     }
-    current = walker.nextNode();
-  }
+  });
 
   return nodes;
 }
 
 export function clearSearchTextHighlights(root: HTMLElement): void {
-  const highlights = root.querySelectorAll(HIGHLIGHT_SELECTOR);
-  highlights.forEach((el) => {
-    const text = document.createTextNode(el.textContent ?? '');
-    el.replaceWith(text);
+  const searchRoots = collectSearchRoots(root);
+  searchRoots.forEach((searchRoot) => {
+    const highlights =
+      searchRoot instanceof ShadowRoot
+        ? searchRoot.querySelectorAll(HIGHLIGHT_SELECTOR)
+        : (searchRoot as HTMLElement).querySelectorAll(HIGHLIGHT_SELECTOR);
+    highlights.forEach((el) => {
+      const text = document.createTextNode(el.textContent ?? '');
+      el.replaceWith(text);
+    });
+    if (searchRoot instanceof ShadowRoot) {
+      searchRoot.normalize();
+    }
   });
   root.normalize();
 }
