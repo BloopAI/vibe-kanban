@@ -698,11 +698,54 @@ export const ConversationList = forwardRef<
   useEffect(() => {
     const root = panelRef.current;
     if (!root) return;
-    clearSearchTextHighlights(root);
-    const query = searchQuery.trim();
-    if (showSearch && query.length >= 1) {
-      applySearchTextHighlights(root, query, { maxMatches: 1200 });
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let rafId: number | null = null;
+    let isApplying = false;
+
+    const apply = () => {
+      if (!panelRef.current) return;
+      isApplying = true;
+      clearSearchTextHighlights(panelRef.current);
+      const query = searchQuery.trim();
+      if (showSearch && query.length >= 1) {
+        applySearchTextHighlights(panelRef.current, query, {
+          maxMatches: 1200,
+        });
+      }
+      isApplying = false;
+    };
+
+    const scheduleApply = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(apply);
+      }, 60);
+    };
+
+    apply();
+
+    if (!showSearch || !searchQuery.trim()) {
+      return () => {
+        clearSearchTextHighlights(root);
+      };
     }
+    const observer = new MutationObserver(() => {
+      if (isApplying) return;
+      scheduleApply();
+    });
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+      if (rafId) cancelAnimationFrame(rafId);
+      clearSearchTextHighlights(root);
+    };
   }, [showSearch, searchQuery, conversationRows, currentMatchIdx]);
 
   // Determine if there are entries to show placeholders
