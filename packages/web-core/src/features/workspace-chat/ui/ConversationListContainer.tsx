@@ -8,7 +8,11 @@ import {
   useState,
   type MouseEvent,
 } from 'react';
-import { SpinnerIcon } from '@phosphor-icons/react';
+import {
+  CaretDownIcon,
+  CaretUpIcon,
+  SpinnerIcon,
+} from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -158,6 +162,9 @@ export const ConversationList = forwardRef<
   const [filteredEntries, setFilteredEntries] = useState<DisplayEntry[]>([]);
   const [dataVersion, setDataVersion] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
   const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
   const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
   const [hasRunningProcess, setHasRunningProcess] = useState(false);
@@ -170,6 +177,8 @@ export const ConversationList = forwardRef<
   const scrollOnEntriesChangedRef = useRef<
     ((addType: AddEntryType, isInitialLoad: boolean) => void) | null
   >(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const pendingUpdateRef = useRef<{
     source: ConversationTimelineSource;
     addType: AddEntryType;
@@ -549,6 +558,136 @@ export const ConversationList = forwardRef<
   });
   scrollOnEntriesChangedRef.current = scrollExecutor.onEntriesChanged;
 
+  const focusSearchInput = useCallback(() => {
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+    });
+  }, []);
+
+  const searchableTextByPatchKey = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of conversationRows) {
+      try {
+        map.set(row.entry.patchKey, JSON.stringify(row.entry).toLowerCase());
+      } catch {
+        map.set(row.entry.patchKey, '');
+      }
+    }
+    return map;
+  }, [conversationRows]);
+
+  const matchRowIndices = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return [];
+
+    const indices: number[] = [];
+    conversationRows.forEach((row, index) => {
+      const searchText = searchableTextByPatchKey.get(row.entry.patchKey) ?? '';
+      if (searchText.includes(query)) {
+        indices.push(index);
+      }
+    });
+    return indices;
+  }, [conversationRows, searchQuery, searchableTextByPatchKey]);
+
+  const currentMatchRowIndex = matchRowIndices[currentMatchIdx] ?? null;
+  const currentMatchPatchKey =
+    currentMatchRowIndex === null
+      ? null
+      : (conversationRows[currentMatchRowIndex]?.entry.patchKey ?? null);
+
+  const matchPatchKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const rowIndex of matchRowIndices) {
+      const patchKey = conversationRows[rowIndex]?.entry.patchKey;
+      if (patchKey) keys.add(patchKey);
+    }
+    return keys;
+  }, [conversationRows, matchRowIndices]);
+
+  useEffect(() => {
+    setCurrentMatchIdx(0);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (matchRowIndices.length === 0) return;
+    if (currentMatchIdx < matchRowIndices.length) return;
+    setCurrentMatchIdx(0);
+  }, [currentMatchIdx, matchRowIndices.length]);
+
+  useEffect(() => {
+    if (currentMatchRowIndex === null) return;
+    scrollToAbsoluteIndex(currentMatchRowIndex, 'center', 'smooth');
+  }, [currentMatchRowIndex, scrollToAbsoluteIndex]);
+
+  const handleNextMatch = useCallback(() => {
+    if (matchRowIndices.length === 0) return;
+    setCurrentMatchIdx((prev) => (prev + 1) % matchRowIndices.length);
+  }, [matchRowIndices.length]);
+
+  const handlePrevMatch = useCallback(() => {
+    if (matchRowIndices.length === 0) return;
+    setCurrentMatchIdx(
+      (prev) => (prev - 1 + matchRowIndices.length) % matchRowIndices.length
+    );
+  }, [matchRowIndices.length]);
+
+  const closeSearch = useCallback(() => {
+    setShowSearch(false);
+    setSearchQuery('');
+    setCurrentMatchIdx(0);
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      const isFindShortcut =
+        (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'f';
+      if (!isFindShortcut) return;
+
+      const target = event.target as Node | null;
+      if (!panelRef.current || !target || !panelRef.current.contains(target)) {
+        return;
+      }
+
+      if (showSearch) {
+        return;
+      }
+
+      event.preventDefault();
+      setShowSearch(true);
+      focusSearchInput();
+    };
+
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [focusSearchInput, showSearch]);
+
+  const renderSearchHighlightedContent = useCallback(
+    (row: ConversationRow) => {
+      const content = renderRowContent(row.entry, attempt, resetAction, repos);
+      const isMatch = matchPatchKeys.has(row.entry.patchKey);
+      if (!isMatch) return content;
+
+      const isCurrentMatch = currentMatchPatchKey === row.entry.patchKey;
+      return (
+        <div
+          className={
+            isCurrentMatch
+              ? 'rounded-sm ring-1 ring-brand/70 bg-brand/8'
+              : 'rounded-sm ring-1 ring-brand/30 bg-brand/4'
+          }
+        >
+          {content}
+        </div>
+      );
+    },
+    [attempt, currentMatchPatchKey, matchPatchKeys, repos, resetAction]
+  );
+
   // Determine if there are entries to show placeholders
   const hasEntries = conversationRows.length > 0;
 
@@ -754,7 +893,74 @@ export const ConversationList = forwardRef<
 
   return (
     <ApprovalFormProvider>
-      <div className="relative h-full overflow-hidden">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        onMouseDown={(event) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest(
+              'input, textarea, select, button, a, [contenteditable="true"]'
+            )
+          ) {
+            return;
+          }
+          panelRef.current?.focus({ preventScroll: true });
+        }}
+        className="relative h-full overflow-hidden"
+      >
+        {showSearch && (
+          <div className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-sm border border-border bg-secondary p-2 shadow-lg">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search conversation"
+              className="w-[280px] rounded-sm border border-border bg-primary px-base py-half text-sm text-high placeholder:text-low focus:border-brand focus:outline-none"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (event.shiftKey) {
+                    handlePrevMatch();
+                  } else {
+                    handleNextMatch();
+                  }
+                } else if (event.key === 'Escape') {
+                  event.preventDefault();
+                  closeSearch();
+                }
+              }}
+            />
+            {searchQuery && (
+              <>
+                <span className="text-xs text-low whitespace-nowrap">
+                  {matchRowIndices.length > 0
+                    ? `${currentMatchIdx + 1}/${matchRowIndices.length}`
+                    : '0/0'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handlePrevMatch}
+                  disabled={matchRowIndices.length === 0}
+                  className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Previous match (Shift+Enter)"
+                >
+                  <CaretUpIcon className="size-icon-sm" weight="bold" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNextMatch}
+                  disabled={matchRowIndices.length === 0}
+                  className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Next match (Enter)"
+                >
+                  <CaretDownIcon className="size-icon-sm" weight="bold" />
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {showLoader && (
           <div className="absolute inset-0 flex items-center justify-center z-10">
             <SpinnerIcon className="size-6 animate-spin text-low" />
@@ -841,7 +1047,7 @@ export const ConversationList = forwardRef<
                       transform: `translateY(${virtualItem.start}px)`,
                     }}
                   >
-                    {renderRowContent(row.entry, attempt, resetAction, repos)}
+                    {renderSearchHighlightedContent(row)}
                   </div>
                 );
               })}
@@ -856,7 +1062,7 @@ export const ConversationList = forwardRef<
                 data-row-index={rowIndex}
                 data-semantic-key={row.semanticKey}
               >
-                {renderRowContent(row.entry, attempt, resetAction, repos)}
+                {renderSearchHighlightedContent(row)}
               </div>
             );
           })}
