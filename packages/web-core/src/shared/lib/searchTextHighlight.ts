@@ -45,25 +45,29 @@ export function clearSearchTextHighlights(root: HTMLElement): void {
 
 export function applySearchTextHighlights(
   root: HTMLElement,
-  query: string
+  query: string,
+  options?: { maxMatches?: number }
 ): number {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return 0;
 
+  const maxMatches = options?.maxMatches ?? Number.POSITIVE_INFINITY;
   let count = 0;
   const textNodes = collectTextNodes(root);
 
-  textNodes.forEach((textNode) => {
+  for (const textNode of textNodes) {
+    if (count >= maxMatches) break;
+
     const content = textNode.nodeValue ?? '';
     const lower = content.toLowerCase();
     let start = 0;
     let matchIndex = lower.indexOf(normalizedQuery, start);
 
-    if (matchIndex === -1) return;
+    if (matchIndex === -1) continue;
 
     const fragment = document.createDocumentFragment();
 
-    while (matchIndex !== -1) {
+    while (matchIndex !== -1 && count < maxMatches) {
       if (matchIndex > start) {
         fragment.appendChild(
           document.createTextNode(content.slice(start, matchIndex))
@@ -87,7 +91,7 @@ export function applySearchTextHighlights(
     }
 
     textNode.replaceWith(fragment);
-  });
+  }
 
   return count;
 }

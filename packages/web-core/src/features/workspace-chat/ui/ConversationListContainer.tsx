@@ -700,8 +700,8 @@ export const ConversationList = forwardRef<
     if (!root) return;
     clearSearchTextHighlights(root);
     const query = searchQuery.trim();
-    if (showSearch && query.length >= 2) {
-      applySearchTextHighlights(root, query);
+    if (showSearch && query.length >= 1) {
+      applySearchTextHighlights(root, query, { maxMatches: 1200 });
     }
   }, [showSearch, searchQuery, conversationRows, currentMatchIdx]);
 
