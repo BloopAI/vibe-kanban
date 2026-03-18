@@ -183,6 +183,9 @@ export const ConversationList = forwardRef<
   >(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null
+  );
   const pendingUpdateRef = useRef<{
     source: ConversationTimelineSource;
     addType: AddEntryType;
@@ -695,44 +698,26 @@ export const ConversationList = forwardRef<
   useEffect(() => {
     const root = panelRef.current;
     if (!root) return;
-
-    let isApplying = false;
-
-    const apply = () => {
-      if (!panelRef.current) return;
-      isApplying = true;
-      clearSearchTextHighlights(panelRef.current);
-      if (showSearch && searchQuery.trim()) {
-        applySearchTextHighlights(panelRef.current, searchQuery);
-      }
-      isApplying = false;
-    };
-
-    apply();
-
-    if (!showSearch || !searchQuery.trim()) {
-      return;
+    clearSearchTextHighlights(root);
+    const query = searchQuery.trim();
+    if (showSearch && query.length >= 2) {
+      applySearchTextHighlights(root, query);
     }
-
-    const observer = new MutationObserver(() => {
-      if (isApplying) return;
-      requestAnimationFrame(apply);
-    });
-
-    observer.observe(root, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    return () => {
-      observer.disconnect();
-      clearSearchTextHighlights(root);
-    };
   }, [showSearch, searchQuery, conversationRows, currentMatchIdx]);
 
   // Determine if there are entries to show placeholders
   const hasEntries = conversationRows.length > 0;
+
+  useEffect(() => {
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+      }
+      if (panelRef.current) {
+        clearSearchTextHighlights(panelRef.current);
+      }
+    };
+  }, []);
 
   // Show placeholders only if script not configured AND not already run AND first turn
   const showSetupPlaceholder =
