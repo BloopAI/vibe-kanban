@@ -177,9 +177,11 @@ export function useIssueShortcuts() {
   // Clear selection on Escape
   useHotkeys(
     'escape',
-    () => {
+    (e) => {
       if (!isKanbanRef.current) return;
       if (multiSelectedIssueIdsRef.current.size > 0) {
+        e.preventDefault();
+        e.stopPropagation();
         clearSelectionRef.current();
       }
     },

@@ -792,7 +792,7 @@ export function KanbanContainer() {
       const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       openPrioritySelection(projectId, ids);
     },
-    [projectId, openPrioritySelection, selectedIssueIds]
+    [projectId, openPrioritySelection, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardAssigneeClick = useCallback(
@@ -800,7 +800,7 @@ export function KanbanContainer() {
       const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       openAssigneeSelection(projectId, ids);
     },
-    [projectId, openAssigneeSelection, selectedIssueIds]
+    [projectId, openAssigneeSelection, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardMoreActionsClick = useCallback(
@@ -812,7 +812,7 @@ export function KanbanContainer() {
         issueIds: ids,
       });
     },
-    [projectId, selectedIssueIds]
+    [projectId, selectedIssueIds, isMultiSelectActive]
   );
 
   const handleCardTagToggle = useCallback(
@@ -995,13 +995,7 @@ export function KanbanContainer() {
                             name={issue.title}
                             index={index}
                             className="group"
-                            onClick={(e) => {
-                              if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) {
-                                handleIssueClick(issue.id, e);
-                              } else {
-                                handleCardClick(issue.id);
-                              }
-                            }}
+                            onClick={(e) => handleCardClick(issue.id, e)}
                             isOpen={selectedKanbanIssueId === issue.id}
                             isMobile={isMobile}
                             isSelected={selectedIssueIds.has(issue.id)}

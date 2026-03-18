@@ -52,7 +52,7 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
     },
 
     selectRange: (targetIssueId: string) => {
-      const { anchorIssueId, orderedIssueIds, selectedIssueIds } = get();
+      const { anchorIssueId, orderedIssueIds } = get();
       if (!anchorIssueId) {
         // No anchor — just select the target
         set({
@@ -81,7 +81,10 @@ export const useIssueSelectionStore = create<IssueSelectionState>(
       const rangeIds = orderedIssueIds.slice(start, end + 1);
 
       // Replace selection with the new range (standard platform behavior)
-      set({ selectedIssueIds: new Set(rangeIds), cursorIssueId: targetIssueId });
+      set({
+        selectedIssueIds: new Set(rangeIds),
+        cursorIssueId: targetIssueId,
+      });
     },
 
     selectAdjacent: (
