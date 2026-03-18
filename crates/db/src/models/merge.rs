@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{SqlitePool, Type};
+use sqlx::{FromRow, SqlitePool, Type};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -53,6 +53,22 @@ pub struct PullRequestInfo {
     pub merge_commit_sha: Option<String>,
 }
 
+/// Active workspace-repo pair used for auto-detecting PRs created outside of VK.
+#[derive(Debug, Clone, FromRow)]
+pub struct ActiveWorkspaceRepo {
+    pub workspace_id: Uuid,
+    pub repo_id: Uuid,
+    pub workspace_branch: String,
+    pub target_branch: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+#[sqlx(type_name = "TEXT", rename_all = "snake_case")]
+pub enum MergeType {
+    Direct,
+    Pr,
+}
+
 /// Row type for direct merges only (PR data now lives in pull_requests).
 struct DirectMergeRow {
     id: Uuid,
@@ -103,6 +119,27 @@ impl Merge {
             target_branch_name: target_branch_name.to_string(),
             created_at: now,
         })
+    }
+
+    /// Find all active (non-archived) workspace-repo pairs.
+    /// Used by the PR monitor to discover PRs created outside of VK.
+    pub async fn get_active_workspace_repos(
+        pool: &SqlitePool,
+    ) -> Result<Vec<ActiveWorkspaceRepo>, sqlx::Error> {
+        sqlx::query_as!(
+            ActiveWorkspaceRepo,
+            r#"SELECT
+                wr.workspace_id AS "workspace_id!: Uuid",
+                wr.repo_id AS "repo_id!: Uuid",
+                w.branch AS "workspace_branch!",
+                wr.target_branch AS "target_branch!"
+            FROM workspace_repos wr
+            JOIN workspaces w ON w.id = wr.workspace_id
+            WHERE w.archived = FALSE
+            ORDER BY w.updated_at DESC"#,
+        )
+        .fetch_all(pool)
+        .await
     }
 
     /// Find all merges for a workspace (returns both direct merges and PRs).

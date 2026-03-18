@@ -1,0 +1,20 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT pr_number AS \"pr_number!: i64\"\n               FROM pull_requests\n               WHERE workspace_id = $1\n                 AND repo_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "name": "pr_number!: i64",
+        "ordinal": 0,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "042944307765b8ddab6a86ec12b26b1fcfd3f541af40cb3c8176a02abd91c48c"
+}
