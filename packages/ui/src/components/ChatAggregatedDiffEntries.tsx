@@ -248,7 +248,6 @@ export function ChatAggregatedDiffEntries({
   const isDenied = aggregateStatus?.status === 'denied';
   const hasStats = totalStats.additions > 0 || totalStats.deletions > 0;
 
-
   return (
     <div
       className={cn(

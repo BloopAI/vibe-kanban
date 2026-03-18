@@ -331,7 +331,13 @@ export function useConversationVirtualizer({
     if (maxScroll > 0 && Math.abs(maxScroll - el.scrollTop) > 1) {
       el.scrollTop = maxScroll;
     }
-  }, [rows.length, totalRowCount, totalSize, syncIsAtBottom, scrollContainerRef]);
+  }, [
+    rows.length,
+    totalRowCount,
+    totalSize,
+    syncIsAtBottom,
+    scrollContainerRef,
+  ]);
 
   // -------------------------------------------------------------------------
   // Imperative helpers
