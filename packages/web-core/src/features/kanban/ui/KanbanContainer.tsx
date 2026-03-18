@@ -789,7 +789,7 @@ export function KanbanContainer() {
   // When multi-select is active, apply to all selected issues
   const handleCardPriorityClick = useCallback(
     (issueId: string) => {
-      const ids = selectedIssueIds.size > 0 ? [...selectedIssueIds] : [issueId];
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       openPrioritySelection(projectId, ids);
     },
     [projectId, openPrioritySelection, selectedIssueIds]
@@ -797,7 +797,7 @@ export function KanbanContainer() {
 
   const handleCardAssigneeClick = useCallback(
     (issueId: string) => {
-      const ids = selectedIssueIds.size > 0 ? [...selectedIssueIds] : [issueId];
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       openAssigneeSelection(projectId, ids);
     },
     [projectId, openAssigneeSelection, selectedIssueIds]
@@ -805,7 +805,7 @@ export function KanbanContainer() {
 
   const handleCardMoreActionsClick = useCallback(
     (issueId: string) => {
-      const ids = selectedIssueIds.size > 0 ? [...selectedIssueIds] : [issueId];
+      const ids = isMultiSelectActive ? [...selectedIssueIds] : [issueId];
       CommandBarDialog.show({
         page: 'issueActions',
         projectId,
