@@ -52,6 +52,7 @@ export function AppSystemNotifications() {
         id: group.id,
         title: 'Vibe Kanban',
         body: getGroupedNotificationText(group, membersByUserId),
+        deeplinkPath: group.deeplinkPath ?? undefined,
       });
     }
   }, [enabled, groupedNotifications, isFetching, isLoading, membersByUserId]);
