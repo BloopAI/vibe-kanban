@@ -48,6 +48,10 @@ import type { RepoWithTargetBranch } from 'shared/types';
 import { ChatEmptyState } from '@vibe/ui/components/ChatEmptyState';
 import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder';
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
+import {
+  applySearchTextHighlights,
+  clearSearchTextHighlights,
+} from '@/shared/lib/searchTextHighlight';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -688,6 +692,45 @@ export const ConversationList = forwardRef<
     [attempt, currentMatchPatchKey, matchPatchKeys, repos, resetAction]
   );
 
+  useEffect(() => {
+    const root = panelRef.current;
+    if (!root) return;
+
+    let isApplying = false;
+
+    const apply = () => {
+      if (!panelRef.current) return;
+      isApplying = true;
+      clearSearchTextHighlights(panelRef.current);
+      if (showSearch && searchQuery.trim()) {
+        applySearchTextHighlights(panelRef.current, searchQuery);
+      }
+      isApplying = false;
+    };
+
+    apply();
+
+    if (!showSearch || !searchQuery.trim()) {
+      return;
+    }
+
+    const observer = new MutationObserver(() => {
+      if (isApplying) return;
+      requestAnimationFrame(apply);
+    });
+
+    observer.observe(root, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => {
+      observer.disconnect();
+      clearSearchTextHighlights(root);
+    };
+  }, [showSearch, searchQuery, conversationRows, currentMatchIdx]);
+
   // Determine if there are entries to show placeholders
   const hasEntries = conversationRows.length > 0;
 
@@ -910,7 +953,10 @@ export const ConversationList = forwardRef<
         className="relative h-full overflow-hidden"
       >
         {showSearch && (
-          <div className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-sm border border-border bg-secondary p-2 shadow-lg">
+          <div
+            data-vk-search-ignore="true"
+            className="absolute right-3 top-3 z-20 flex items-center gap-2 rounded-sm border border-border bg-secondary p-2 shadow-lg"
+          >
             <input
               ref={searchInputRef}
               type="text"
