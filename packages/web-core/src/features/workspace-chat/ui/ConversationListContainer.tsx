@@ -261,10 +261,13 @@ export const ConversationList = forwardRef<
     pendingInteractionAnchorRef.current = null;
   }, []);
 
+  const programmaticScrollDeadlineRef = useRef(0);
+
   const shouldSuppressInteractionDrivenSizeAdjustment = useCallback(
     () =>
-      pendingInteractionAnchorRef.current !== null &&
-      performance.now() < pendingInteractionAnchorDeadlineRef.current,
+      performance.now() < programmaticScrollDeadlineRef.current ||
+      (pendingInteractionAnchorRef.current !== null &&
+        performance.now() < pendingInteractionAnchorDeadlineRef.current),
     []
   );
 
@@ -561,17 +564,42 @@ export const ConversationList = forwardRef<
 
     if (targetIndex < 0) return;
 
-    if (scrollToAbsoluteIndex(targetIndex, 'start', 'smooth')) return;
+    programmaticScrollDeadlineRef.current = performance.now() + 1000;
 
-    if (targetIndex >= firstUnvirtualizedRowIndex) {
-      conversationVirtualizer.scrollToBottom();
-      return;
-    }
+    let attempts = 0;
+    const maxAttempts = 6;
 
-    conversationVirtualizer.scrollToIndex(targetIndex, {
-      align: 'start',
-      behavior: 'smooth',
-    });
+    const correctScroll = () => {
+      if (attempts >= maxAttempts) return;
+      attempts++;
+
+      programmaticScrollDeadlineRef.current = performance.now() + 500;
+
+      const node = scrollEl.querySelector<HTMLElement>(
+        `[data-row-index="${targetIndex}"]`
+      );
+      if (!node) {
+        if (attempts === 1) {
+          conversationVirtualizer.scrollToIndex(targetIndex, {
+            align: 'start',
+            behavior: 'auto',
+          });
+        }
+        requestAnimationFrame(correctScroll);
+        return;
+      }
+
+      const nodeRect = node.getBoundingClientRect();
+      const contRect = scrollEl.getBoundingClientRect();
+      const delta = nodeRect.top - contRect.top;
+
+      if (Math.abs(delta) < 2) return;
+
+      scrollEl.scrollTop += delta;
+      requestAnimationFrame(correctScroll);
+    };
+
+    correctScroll();
   }, [
     conversationRows,
     firstUnvirtualizedRowIndex,

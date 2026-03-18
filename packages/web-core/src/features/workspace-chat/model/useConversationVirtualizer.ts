@@ -194,7 +194,7 @@ export function useConversationVirtualizer({
   useEffect(() => {
     virtualizer.shouldAdjustScrollPositionOnItemSizeChange = (
       item,
-      delta,
+      _delta,
       instance
     ) => {
       const scrollElement = scrollContainerRef.current;
