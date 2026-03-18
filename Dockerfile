@@ -7,11 +7,14 @@ ARG POSTHOG_API_ENDPOINT=""
 
 WORKDIR /app
 
+ENV PNPM_HOME=/pnpm
+ENV PATH=${PNPM_HOME}:${PATH}
 ENV VITE_PUBLIC_POSTHOG_KEY=${POSTHOG_API_KEY}
 ENV VITE_PUBLIC_POSTHOG_HOST=${POSTHOG_API_ENDPOINT}
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 RUN corepack enable
+RUN pnpm config set store-dir /pnpm/store
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages/local-web/package.json packages/local-web/package.json
