@@ -279,8 +279,10 @@ fn create_window<R: tauri::Runtime, M: tauri::Manager<R>>(
             .traffic_light_position(tauri::LogicalPosition::new(8.0, 14.0));
     }
 
-    // Windows/Linux: remove native decorations entirely.
-    #[cfg(not(target_os = "macos"))]
+    // Linux: keep using a borderless window.
+    // Windows should keep native decorations so minimize/maximize/close
+    // buttons are available in the title bar.
+    #[cfg(target_os = "linux")]
     {
         builder = builder.decorations(false);
     }
