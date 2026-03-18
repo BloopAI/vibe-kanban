@@ -786,29 +786,33 @@ export function KanbanContainer() {
   );
 
   // Inline editing callbacks for kanban cards
+  // When multi-select is active, apply to all selected issues
   const handleCardPriorityClick = useCallback(
     (issueId: string) => {
-      openPrioritySelection(projectId, [issueId]);
+      const ids = selectedIssueIds.size > 0 ? [...selectedIssueIds] : [issueId];
+      openPrioritySelection(projectId, ids);
     },
-    [projectId, openPrioritySelection]
+    [projectId, openPrioritySelection, selectedIssueIds]
   );
 
   const handleCardAssigneeClick = useCallback(
     (issueId: string) => {
-      openAssigneeSelection(projectId, [issueId]);
+      const ids = selectedIssueIds.size > 0 ? [...selectedIssueIds] : [issueId];
+      openAssigneeSelection(projectId, ids);
     },
-    [projectId, openAssigneeSelection]
+    [projectId, openAssigneeSelection, selectedIssueIds]
   );
 
   const handleCardMoreActionsClick = useCallback(
     (issueId: string) => {
+      const ids = selectedIssueIds.size > 0 ? [...selectedIssueIds] : [issueId];
       CommandBarDialog.show({
         page: 'issueActions',
         projectId,
-        issueIds: [issueId],
+        issueIds: ids,
       });
     },
-    [projectId]
+    [projectId, selectedIssueIds]
   );
 
   const handleCardTagToggle = useCallback(
