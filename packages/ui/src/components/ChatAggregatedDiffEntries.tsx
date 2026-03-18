@@ -9,13 +9,6 @@ import { cn } from '../lib/cn';
 import { ToolStatusDot, type ToolStatusLike } from './ToolStatusDot';
 import type { ChatFileEntryDiffInput } from './ChatFileEntry';
 
-function logConversationDiffDebug(
-  event: string,
-  payload: Record<string, unknown>
-) {
-  console.log(`[conversation-diff] ${event}`, payload);
-}
-
 export type ChatAggregatedDiffChange = {
   action: 'edit' | 'write' | 'delete' | 'rename';
   unified_diff?: string;
@@ -254,16 +247,7 @@ export function ChatAggregatedDiffEntries({
 
   const isDenied = aggregateStatus?.status === 'denied';
   const hasStats = totalStats.additions > 0 || totalStats.deletions > 0;
-  const handleDebugToggle = () => {
-    logConversationDiffDebug('toggle', {
-      filePath,
-      expandedBefore: expanded,
-      entryCount: entries.length,
-      additions: totalStats.additions,
-      deletions: totalStats.deletions,
-    });
-    handleClick();
-  };
+  const handleToggle = handleClick;
 
   return (
     <div
@@ -279,7 +263,7 @@ export function ChatAggregatedDiffEntries({
           isDenied ? 'bg-error/20' : 'bg-panel',
           'cursor-pointer'
         )}
-        onClick={handleDebugToggle}
+        onClick={handleToggle}
         onMouseEnter={() => onHoverChange(true)}
         onMouseLeave={() => onHoverChange(false)}
         role="button"
