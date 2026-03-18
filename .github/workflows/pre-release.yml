@@ -966,7 +966,7 @@ jobs:
               echo "Collected updater artifact: $(basename $artifact)"
             fi
           done
-          # Collect installer files for GitHub Release (DMG, AppImage, deb, msi, NSIS exe)
+          # Collect installer files for R2 distribution and release note links
           find target/${{ matrix.target }}/release/bundle \
             \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) | while read f; do
             cp "$f" "tauri-artifacts/${{ matrix.platform }}/"
@@ -975,16 +975,28 @@ jobs:
           echo "All artifacts for ${{ matrix.platform }}:"
           ls -la tauri-artifacts/${{ matrix.platform }}/
 
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Upload Tauri artifacts to R2
+        run: |
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          if [ -d "tauri-artifacts/${{ matrix.platform }}" ]; then
+            aws s3 cp "tauri-artifacts/${{ matrix.platform }}" \
+              "s3://$BUCKET/binaries/$TAG/tauri/${{ matrix.platform }}/" \
+              --recursive \
+              --endpoint-url "$ENDPOINT"
+          fi
+
       - name: Clean up signing keys
         if: always() && runner.os == 'macOS'
         run: rm -rf ~/.private_keys
-
-      - name: Upload Tauri artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: tauri-artifacts-${{ matrix.platform }}
-          path: tauri-artifacts/
-          retention-days: 1
 
       - name: Sweep Cargo target cache
         if: always()
@@ -1003,12 +1015,26 @@ jobs:
       - name: Setup Node
         uses: ./.github/actions/setup-node
 
-      - name: Download all Tauri artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: tauri-artifacts-*
-          path: tauri-artifacts/
-          merge-multiple: true
+      - name: Configure AWS CLI for R2
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Download all Tauri artifacts from R2
+        run: |
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+
+          mkdir -p tauri-artifacts
+          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 linux-aarch64 windows-x86_64 windows-aarch64; do
+            aws s3 cp \
+              "s3://$BUCKET/binaries/$TAG/tauri/$platform/" \
+              "tauri-artifacts/$platform/" \
+              --recursive \
+              --endpoint-url "$ENDPOINT" || true
+          done
 
       - name: List Tauri artifacts
         run: find tauri-artifacts/
@@ -1033,33 +1059,11 @@ jobs:
           echo "Generated desktop-manifest.json:"
           cat desktop-manifest.json
 
-      - name: Configure AWS CLI for R2
-        run: |
-          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
-          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
-          aws configure set default.region auto
-
       - name: Upload Tauri artifacts and update manifest to R2
         run: |
           TAG="${{ needs.bump-version.outputs.new_tag }}"
           ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
           BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
-
-          # Upload individual platform artifacts
-          for platform in darwin-aarch64 darwin-x86_64 linux-x86_64 linux-aarch64 windows-x86_64 windows-aarch64; do
-            if [ -d "tauri-artifacts/$platform" ]; then
-              for file in tauri-artifacts/$platform/*; do
-                [ -f "$file" ] || continue
-                # Skip .sig files from artifact upload (signatures are in latest.json)
-                [[ "$file" == *.sig ]] && continue
-                filename=$(basename "$file")
-                echo "Uploading $filename for $platform..."
-                aws s3 cp "$file" \
-                  "s3://$BUCKET/binaries/$TAG/tauri/$platform/$filename" \
-                  --endpoint-url "$ENDPOINT"
-              done
-            fi
-          done
 
           # Upload latest.json alongside the tag artifacts (NOT to the fixed
           # update endpoint). The fixed endpoint is only updated when a
@@ -1093,20 +1097,64 @@ jobs:
           name: frontend-dist
           path: packages/local-web/dist/
 
-      - name: Download Tauri artifacts for release
-        uses: actions/download-artifact@v7
-        with:
-          pattern: tauri-artifacts-*
-          path: tauri-release/
-          merge-multiple: true
-
-      - name: Collect Tauri installers for release
+      - name: Configure AWS CLI for R2
         run: |
-          mkdir -p tauri-installers
-          find tauri-release \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.deb" -o -name "*.msi" -o -name "*-setup.exe" \) \
-            -exec cp {} tauri-installers/ \;
-          echo "Tauri installers for release:"
-          ls -la tauri-installers/ 2>/dev/null || echo "No installers found"
+          aws configure set aws_access_key_id ${{ secrets.R2_BINARIES_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
+          aws configure set default.region auto
+
+      - name: Prepare release notes with Tauri installer links
+        run: |
+          TAG="${{ needs.bump-version.outputs.new_tag }}"
+          ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
+          BUCKET="${{ secrets.R2_BINARIES_BUCKET }}"
+          aws s3 ls "s3://$BUCKET/binaries/$TAG/tauri/" \
+            --recursive \
+            --endpoint-url "$ENDPOINT" \
+            | awk '{print $4}' \
+            | grep -E '(\.dmg|\.AppImage|\.deb|\.msi|-setup\.exe)$' \
+            > tauri-installer-paths.txt || true
+
+          cat > release-notes.md <<EOF
+          ## Desktop Installers (R2)
+          EOF
+
+          platforms=(
+            "darwin-aarch64|macOS (Apple Silicon)"
+            "darwin-x86_64|macOS (Intel)"
+            "linux-x86_64|Linux (x86_64)"
+            "linux-aarch64|Linux (ARM64)"
+            "windows-x86_64|Windows (x86_64)"
+            "windows-aarch64|Windows (ARM64)"
+          )
+
+          for item in "${platforms[@]}"; do
+            platform="${item%%|*}"
+            label="${item##*|}"
+            echo "" >> release-notes.md
+            echo "### $label" >> release-notes.md
+            if [ -s tauri-installer-paths.txt ]; then
+              matches=$(grep "/$platform/" tauri-installer-paths.txt || true)
+            else
+              matches=""
+            fi
+            if [ -n "$matches" ]; then
+              while IFS= read -r key; do
+                [ -n "$key" ] || continue
+                file="$(basename "$key")"
+                echo "- [$file](${{ secrets.R2_BINARIES_PUBLIC_URL }}/binaries/$TAG/tauri/$platform/$file)" >> release-notes.md
+              done <<< "$matches"
+            else
+              echo "- Not available" >> release-notes.md
+            fi
+          done
+
+          echo "" >> release-notes.md
+          echo "---" >> release-notes.md
+          echo "" >> release-notes.md
+
+          echo "Generated release notes preamble:"
+          cat release-notes.md
 
       - name: List downloaded artifacts
         run: |
@@ -1143,7 +1191,7 @@ jobs:
           name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
           prerelease: true
           generate_release_notes: true
+          body_path: release-notes.md
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
             npx-cli/vibe-kanban-*.tgz
-            tauri-installers/*
