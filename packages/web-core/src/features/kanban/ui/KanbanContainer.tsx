@@ -742,6 +742,14 @@ export function KanbanContainer() {
     clearSelection();
   }, [projectId, kanbanViewMode, clearSelection]);
 
+  // Keep anchor in sync with the currently opened issue (e.g. from URL on
+  // page load) so Shift/Cmd+Click on another issue includes it.
+  useEffect(() => {
+    if (selectedKanbanIssueId) {
+      setAnchor(selectedKanbanIssueId);
+    }
+  }, [selectedKanbanIssueId, setAnchor]);
+
   const handleCardClick = useCallback(
     (issueId: string, e?: MouseEvent) => {
       if (e && (e.metaKey || e.ctrlKey || e.shiftKey)) {
