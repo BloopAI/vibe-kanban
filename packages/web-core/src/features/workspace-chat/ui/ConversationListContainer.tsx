@@ -1015,33 +1015,31 @@ export const ConversationList = forwardRef<
                 }
               }}
             />
-            {searchQuery && (
-              <>
-                <span className="text-xs text-low whitespace-nowrap">
-                  {matchRowIndices.length > 0
-                    ? `${currentMatchIdx + 1}/${matchRowIndices.length}`
-                    : '0/0'}
-                </span>
-                <button
-                  type="button"
-                  onClick={handlePrevMatch}
-                  disabled={matchRowIndices.length === 0}
-                  className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Previous match (Shift+Enter)"
-                >
-                  <CaretUpIcon className="size-icon-sm" weight="bold" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleNextMatch}
-                  disabled={matchRowIndices.length === 0}
-                  className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Next match (Enter)"
-                >
-                  <CaretDownIcon className="size-icon-sm" weight="bold" />
-                </button>
-              </>
-            )}
+            <>
+              <span className="w-12 text-right text-xs text-low whitespace-nowrap">
+                {matchRowIndices.length > 0
+                  ? `${currentMatchIdx + 1}/${matchRowIndices.length}`
+                  : '0/0'}
+              </span>
+              <button
+                type="button"
+                onClick={handlePrevMatch}
+                disabled={matchRowIndices.length === 0}
+                className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Previous match (Shift+Enter)"
+              >
+                <CaretUpIcon className="size-icon-sm" weight="bold" />
+              </button>
+              <button
+                type="button"
+                onClick={handleNextMatch}
+                disabled={matchRowIndices.length === 0}
+                className="p-1 text-low hover:text-normal disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Next match (Enter)"
+              >
+                <CaretDownIcon className="size-icon-sm" weight="bold" />
+              </button>
+            </>
           </div>
         )}
         {showLoader && (
