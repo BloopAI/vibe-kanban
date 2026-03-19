@@ -588,7 +588,11 @@ function LocalRelaySettingsSectionContent() {
             </a>
           }
         >
-          <RemoteCloudHostsSettingsCardContent />
+          {isSignedIn ? (
+            <RemoteCloudHostsSettingsCardContent />
+          ) : (
+            <SignInPrompt />
+          )}
         </SettingsCard>
       )}
 
