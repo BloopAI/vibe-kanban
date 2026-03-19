@@ -39,7 +39,7 @@ struct RelayParams {
 async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams> {
     let config = deployment.config().read().await;
     if !config.relay_enabled {
-        tracing::info!("Relay disabled by config");
+        tracing::debug!("Relay disabled by config");
         return None;
     }
     let host_nickname = clean_host_nickname(&config, deployment.user_id());
@@ -57,7 +57,7 @@ async fn resolve_relay_params(deployment: &DeploymentImpl) -> Option<RelayParams
 
     let login_status = deployment.get_login_status().await;
     if matches!(login_status, api_types::LoginStatus::LoggedOut) {
-        tracing::info!("Not logged in; relay will start on login");
+        tracing::debug!("Not logged in; relay will start on login");
         return None;
     }
 
@@ -85,7 +85,7 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
     let cancel_token = deployment.relay_control().reset().await;
 
     tokio::spawn(async move {
-        tracing::info!("Relay auto-reconnect loop started");
+        tracing::debug!("Relay auto-reconnect loop started");
 
         let mut delay = std::time::Duration::from_secs(RELAY_RECONNECT_INITIAL_DELAY_SECS);
         let max_delay = std::time::Duration::from_secs(RELAY_RECONNECT_MAX_DELAY_SECS);
@@ -107,14 +107,14 @@ pub async fn spawn_relay(deployment: &DeploymentImpl) {
             delay = std::cmp::min(delay.saturating_mul(2), max_delay);
         }
 
-        tracing::info!("Relay reconnect loop exited");
+        tracing::debug!("Relay reconnect loop exited");
     });
 }
 
 /// Stop the relay by cancelling the current session token.
 pub async fn stop_relay(deployment: &DeploymentImpl) {
     deployment.relay_control().stop().await;
-    tracing::info!("Relay stopped");
+    tracing::debug!("Relay stopped");
 }
 
 /// Start the relay client transport.
@@ -144,7 +144,7 @@ async fn start_relay(
         .await
         .context("Failed to get access token for relay")?;
 
-    tracing::info!(%ws_url, "Connecting relay control channel");
+    tracing::debug!(%ws_url, "Connecting relay control channel");
 
     start_relay_client(RelayClientConfig {
         ws_url,

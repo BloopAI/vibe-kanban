@@ -58,7 +58,7 @@ impl TunnelManager {
                 "/api/ssh-session",
             )
             .await?;
-        tracing::info!(local_port, "SSH session tunnel created");
+        tracing::debug!(local_port, "SSH session tunnel created");
         Ok(local_port)
     }
 
@@ -87,7 +87,7 @@ impl TunnelManager {
                     return Ok(tunnel.local_port);
                 }
 
-                tracing::info!(
+                tracing::debug!(
                     previous_relay_session_base_url = %tunnel.relay_session_base_url,
                     new_relay_session_base_url = %relay_session_base_url,
                     previous_signing_session_id = %tunnel.signing_session_id,

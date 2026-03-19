@@ -51,7 +51,7 @@ impl SshSessionHandler {
         command: Option<&str>,
         session: &mut Session,
     ) -> Result<(), anyhow::Error> {
-        tracing::info!("Spawning stdio session (no PTY)");
+        tracing::debug!("Spawning stdio session (no PTY)");
         let state = self
             .channels
             .remove(&channel_id)
@@ -229,7 +229,7 @@ impl russh::server::Handler for SshSessionHandler {
             .has_active_session_with_key(key_bytes)
             .await
         {
-            tracing::info!("SSH auth accepted for Ed25519 key");
+            tracing::debug!("SSH auth accepted for Ed25519 key");
             Ok(Auth::Accept)
         } else {
             tracing::debug!("SSH auth rejected: no matching signing session");
@@ -304,7 +304,7 @@ impl russh::server::Handler for SshSessionHandler {
 
         let port = port_to_connect as u16;
         let target_host = host_to_connect.to_string();
-        tracing::info!(
+        tracing::debug!(
             %target_host,
             port,
             %originator_address,
@@ -433,7 +433,7 @@ impl russh::server::Handler for SshSessionHandler {
         });
 
         self.tcpip_forwards.insert(key, task);
-        tracing::info!(%bind_addr, actual_port, "tcpip-forward enabled");
+        tracing::debug!(%bind_addr, actual_port, "tcpip-forward enabled");
         Ok(true)
     }
 
@@ -451,7 +451,7 @@ impl russh::server::Handler for SshSessionHandler {
         let key = (bind_addr.clone(), port);
         if let Some(task) = self.tcpip_forwards.remove(&key) {
             task.abort();
-            tracing::info!(%bind_addr, port, "tcpip-forward cancelled");
+            tracing::debug!(%bind_addr, port, "tcpip-forward cancelled");
             Ok(true)
         } else {
             tracing::warn!(%bind_addr, port, "cancel-tcpip-forward failed: forward not found");
@@ -464,7 +464,7 @@ impl russh::server::Handler for SshSessionHandler {
         channel: ChannelId,
         session: &mut Session,
     ) -> Result<(), Self::Error> {
-        tracing::info!(?channel, "Shell request");
+        tracing::debug!(?channel, "Shell request");
         self.spawn_stdio_session(channel, None, session)?;
         Ok(())
     }
@@ -476,7 +476,7 @@ impl russh::server::Handler for SshSessionHandler {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         let command = std::str::from_utf8(data).unwrap_or("");
-        tracing::info!(?channel, %command, "Exec request");
+        tracing::debug!(?channel, %command, "Exec request");
         self.spawn_stdio_session(channel, Some(command), session)?;
         Ok(())
     }
@@ -513,7 +513,7 @@ impl russh::server::Handler for SshSessionHandler {
         session: &mut Session,
     ) -> Result<(), Self::Error> {
         if name == "sftp" {
-            tracing::info!(?channel_id, "SFTP subsystem request");
+            tracing::debug!(?channel_id, "SFTP subsystem request");
 
             if let Some(ChannelState::Pending { channel, .. }) = self.channels.remove(&channel_id) {
                 let _ = session.channel_success(channel_id);
