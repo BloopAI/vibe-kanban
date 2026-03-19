@@ -127,7 +127,7 @@ function RelayRoleChoice({
       className={
         selected
           ? 'flex w-full flex-col items-start gap-2 rounded-sm border border-brand/40 bg-brand/10 p-4 text-left transition-colors'
-          : 'flex w-full flex-col items-start gap-2 rounded-sm border border-border bg-secondary/25 p-4 text-left transition-colors hover:border-brand/30 hover:bg-secondary/45'
+          : 'flex w-full flex-col items-start gap-2 rounded-sm border border-border bg-panel p-4 text-left transition-colors hover:border-brand/30 hover:bg-secondary/20'
       }
     >
       <div

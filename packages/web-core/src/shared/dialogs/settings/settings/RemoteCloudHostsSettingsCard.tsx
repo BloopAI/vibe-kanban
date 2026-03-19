@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { ArrowSquareOutIcon, SpinnerIcon } from '@phosphor-icons/react';
+import { SpinnerIcon } from '@phosphor-icons/react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   usePairRemoteCloudHostMutation,
@@ -335,56 +335,16 @@ export function RemoteCloudHostsSettingsCardContent({
       )}
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium text-normal">
-          <ArrowSquareOutIcon
-            className="size-icon-sm text-brand"
-            weight="bold"
-          />
-          <span>
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm font-medium text-normal">
             {t(
               'settings.relay.client.connectedHosts.title',
-              'Hosts this device can access'
+              'Connected hosts'
             )}
           </span>
-        </div>
-
-        <p className="text-sm text-low">
-          {t(
-            'settings.relay.client.connectedHosts.description',
-            'These are hosts that this device is already paired to as a client.'
-          )}
-        </p>
-
-        {relayHostsLoading && (
-          <div className="flex items-center gap-2 text-sm text-low">
-            <SpinnerIcon className="size-icon-sm animate-spin" weight="bold" />
-            <span>
-              {t(
-                'settings.relay.client.availableHosts.loading',
-                'Loading available hosts...'
-              )}
-            </span>
-          </div>
-        )}
-
-        {!relayHostsLoading &&
-          relayHostOptions.length === 0 &&
-          connectedHosts.length === 0 && (
-            <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
-              {t(
-                'settings.relay.client.availableHosts.empty',
-                'No hosts are available to pair right now.'
-              )}
-            </div>
-          )}
-
-        <div className="flex flex-wrap items-center gap-2">
           <PrimaryButton
             variant="secondary"
-            value={t(
-              'settings.relay.client.pair.button',
-              'Pair this device to a host'
-            )}
+            value={t('settings.relay.client.pair.button', 'Pair to a host')}
             onClick={() => {
               setErrorMessage(null);
               setSuccessMessage(null);
@@ -397,11 +357,7 @@ export function RemoteCloudHostsSettingsCardContent({
           />
         </div>
 
-        <h4 className="pt-2 text-sm font-medium text-normal">
-          {t('settings.relay.client.connectedHosts.heading', 'Paired hosts')}
-        </h4>
-
-        {isLoading && (
+        {(relayHostsLoading || isLoading) && (
           <div className="flex items-center gap-2 text-sm text-low">
             <SpinnerIcon className="size-icon-sm animate-spin" weight="bold" />
             <span>
@@ -412,10 +368,7 @@ export function RemoteCloudHostsSettingsCardContent({
 
         {!isLoading && connectedHosts.length === 0 && (
           <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
-            {t(
-              'settings.relay.remoteCloudHost.empty',
-              'No remote cloud hosts connected yet.'
-            )}
+            {t('settings.relay.remoteCloudHost.empty', 'No hosts paired yet.')}
           </div>
         )}
 
