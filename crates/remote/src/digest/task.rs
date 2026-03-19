@@ -21,7 +21,7 @@ pub fn spawn_digest_task(
     mailer: Arc<dyn Mailer>,
     base_url: String,
 ) -> JoinHandle<()> {
-    let interval_override = std::env::var("DIGEST_INTERVAL_SECS")
+    let interval_override = std::env::var("DIGEST_INTERVAL_SECS_OVERRIDE")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
         .map(Duration::from_secs);
@@ -30,7 +30,7 @@ pub fn spawn_digest_task(
         .and_then(|v| v.parse::<u32>().ok())
         .filter(|hour| *hour < 24)
         .unwrap_or(DEFAULT_RUN_HOUR_UTC);
-    let window = std::env::var("DIGEST_WINDOW_SECS")
+    let window = std::env::var("DIGEST_WINDOW_SECS_OVERRIDE")
         .ok()
         .and_then(|v| v.parse::<u64>().ok())
         .map(Duration::from_secs)

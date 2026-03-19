@@ -111,7 +111,7 @@ fn build_digest_copy(row: &NotificationDigestRow) -> DigestCopy {
                 .as_deref()
                 .map(clean_preview_text)
                 .filter(|value| !value.is_empty())
-                .map(|value| format!("\"{}\"", truncate_text(&value, 180)))
+                .map(|value| format!("\"{}\"", truncate_text(&value, 177)))
                 .or_else(|| issue_context(payload)),
         ),
         NotificationType::IssueStatusChanged => {

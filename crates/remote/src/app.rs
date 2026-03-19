@@ -185,12 +185,18 @@ impl Server {
             spawn_cleanup_task(pool.clone(), azure_blob_service.clone());
         }
 
-        if loops_email_api_key.is_some() {
+        let digest_enabled = std::env::var("DIGEST_ENABLED")
+            .map(|v| matches!(v.as_str(), "true" | "1"))
+            .unwrap_or(false);
+
+        if loops_email_api_key.is_some() && digest_enabled {
             digest::task::spawn_digest_task(
                 pool.clone(),
                 mailer.clone(),
                 server_public_base_url.clone(),
             );
+        } else if !digest_enabled {
+            tracing::info!("Notification digest disabled (feature flag)");
         } else {
             tracing::info!("Notification digest disabled (no email provider configured)");
         }
