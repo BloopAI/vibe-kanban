@@ -83,10 +83,6 @@ function createHighlightMark(text: string): HTMLElement {
   return mark;
 }
 
-export function clearSearchTextHighlights(root: HTMLElement): void {
-  clearSearchTextHighlightsWithKey(root, CUSTOM_HIGHLIGHT_KEY);
-}
-
 export function clearSearchTextHighlightsWithKey(
   root: HTMLElement,
   highlightKey: string

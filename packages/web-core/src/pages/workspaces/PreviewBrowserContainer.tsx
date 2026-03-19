@@ -795,9 +795,9 @@ export function PreviewBrowserContainer({
   const handleRefresh = useCallback(() => {
     const canUseBridgeRefresh = Boolean(
       showIframe &&
-      isReady &&
-      iframeRef.current?.contentWindow &&
-      bridgeRef.current
+        isReady &&
+        iframeRef.current?.contentWindow &&
+        bridgeRef.current
     );
 
     if (canUseBridgeRefresh) {

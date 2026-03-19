@@ -8,11 +8,7 @@ import {
   useState,
   type MouseEvent,
 } from 'react';
-import {
-  CaretDownIcon,
-  CaretUpIcon,
-  SpinnerIcon,
-} from '@phosphor-icons/react';
+import { CaretDownIcon, CaretUpIcon, SpinnerIcon } from '@phosphor-icons/react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -55,6 +51,37 @@ import {
 
 const CONVERSATION_HIGHLIGHT_KEY = 'vk-search-highlight-conversation';
 const PANEL_FIND_EVENT = 'vk-open-panel-find';
+
+function toSearchableText(value: unknown): string {
+  const pieces: string[] = [];
+  const stack: unknown[] = [value];
+
+  while (stack.length > 0) {
+    const current = stack.pop();
+
+    if (typeof current === 'string') {
+      pieces.push(current);
+      continue;
+    }
+    if (typeof current === 'number' || typeof current === 'boolean') {
+      pieces.push(String(current));
+      continue;
+    }
+    if (Array.isArray(current)) {
+      for (const item of current) {
+        stack.push(item);
+      }
+      continue;
+    }
+    if (current && typeof current === 'object') {
+      for (const item of Object.values(current)) {
+        stack.push(item);
+      }
+    }
+  }
+
+  return pieces.join(' ').toLowerCase();
+}
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -578,11 +605,7 @@ export const ConversationList = forwardRef<
   const searchableTextByPatchKey = useMemo(() => {
     const map = new Map<string, string>();
     for (const row of conversationRows) {
-      try {
-        map.set(row.entry.patchKey, JSON.stringify(row.entry).toLowerCase());
-      } catch {
-        map.set(row.entry.patchKey, '');
-      }
+      map.set(row.entry.patchKey, toSearchableText(row.entry));
     }
     return map;
   }, [conversationRows]);
@@ -601,7 +624,11 @@ export const ConversationList = forwardRef<
     return indices;
   }, [conversationRows, searchQuery, searchableTextByPatchKey]);
 
-  const currentMatchRowIndex = matchRowIndices[currentMatchIdx] ?? null;
+  const activeMatchIdx =
+    matchRowIndices.length === 0
+      ? 0
+      : Math.min(currentMatchIdx, matchRowIndices.length - 1);
+  const currentMatchRowIndex = matchRowIndices[activeMatchIdx] ?? null;
   const currentMatchPatchKey =
     currentMatchRowIndex === null
       ? null
@@ -1060,7 +1087,7 @@ export const ConversationList = forwardRef<
             <>
               <span className="w-12 text-right text-xs text-low whitespace-nowrap">
                 {matchRowIndices.length > 0
-                  ? `${currentMatchIdx + 1}/${matchRowIndices.length}`
+                  ? `${activeMatchIdx + 1}/${matchRowIndices.length}`
                   : '0/0'}
               </span>
               <button
