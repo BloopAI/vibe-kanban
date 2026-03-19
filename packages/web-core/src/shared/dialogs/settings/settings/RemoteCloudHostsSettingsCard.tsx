@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { SpinnerIcon } from '@phosphor-icons/react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   usePairRemoteCloudHostMutation,
@@ -38,7 +37,6 @@ export function RemoteCloudHostsSettingsCardContent({
   const { t } = useTranslation(['settings', 'common']);
   const navigate = useNavigate();
   const { hostId: routeHostId } = useParams({ strict: false });
-  const [showConnectForm, setShowConnectForm] = useState(false);
   const [hostName, setHostName] = useState('');
   const [selectedHostId, setSelectedHostId] = useState<string | undefined>();
   const [pairingCode, setPairingCode] = useState('');
@@ -110,7 +108,6 @@ export function RemoteCloudHostsSettingsCardContent({
     }
 
     setSelectedHostId(initialHost.id);
-    setShowConnectForm(true);
     setErrorMessage(null);
     setSuccessMessage(null);
     hasAppliedInitialHostRef.current = true;
@@ -159,7 +156,6 @@ export function RemoteCloudHostsSettingsCardContent({
   const resetForm = () => {
     setHostName('');
     setPairingCode('');
-    setShowConnectForm(false);
   };
 
   const handleConnect = async () => {
@@ -264,100 +260,81 @@ export function RemoteCloudHostsSettingsCardContent({
         </div>
       )}
 
-      {showConnectForm && (
-        <div className="border border-border rounded-sm bg-secondary/40 p-4 space-y-4">
-          <SettingsField
-            label={t('settings.relay.client.pair.hostLabel', 'Host to pair to')}
-            description={t(
-              'settings.relay.client.pair.hostHelp',
-              'Choose the host this device should connect to.'
+      <div className="border border-border rounded-sm bg-secondary/40 p-4 space-y-4">
+        <SettingsField
+          label={t('settings.relay.client.pair.hostLabel', 'Host to pair to')}
+          description={t(
+            'settings.relay.client.pair.hostHelp',
+            'Choose the host this device should connect to.'
+          )}
+        >
+          <SettingsSelect
+            value={selectedHostId}
+            options={relayHostOptions}
+            onChange={setSelectedHostId}
+            placeholder={t(
+              'settings.relay.remoteCloudHost.hostPlaceholder',
+              relayHostsLoading ? 'Loading hosts...' : 'Select a host'
             )}
-          >
-            <SettingsSelect
-              value={selectedHostId}
-              options={relayHostOptions}
-              onChange={setSelectedHostId}
-              placeholder={t(
-                'settings.relay.remoteCloudHost.hostPlaceholder',
-                relayHostsLoading ? 'Loading hosts...' : 'Select a host'
-              )}
-              disabled={relayHostsLoading || relayHostOptions.length === 0}
-            />
-          </SettingsField>
+            disabled={relayHostsLoading || relayHostOptions.length === 0}
+          />
+        </SettingsField>
 
-          <SettingsField
-            label={t(
-              'settings.relay.client.pair.nameLabel',
-              'How this device appears on that host (optional)'
+        <SettingsField
+          label={t(
+            'settings.relay.client.pair.nameLabel',
+            'How this device appears on that host (optional)'
+          )}
+        >
+          <SettingsInput
+            value={hostName}
+            onChange={setHostName}
+            placeholder={t(
+              'settings.relay.remoteCloudHost.namePlaceholder',
+              'Production Host'
             )}
-          >
-            <SettingsInput
-              value={hostName}
-              onChange={setHostName}
-              placeholder={t(
-                'settings.relay.remoteCloudHost.namePlaceholder',
-                'Production Host'
-              )}
-            />
-          </SettingsField>
+          />
+        </SettingsField>
 
-          <SettingsField
-            label={t(
-              'settings.relay.client.pair.pairingCodeLabel',
-              'Pairing code from the host'
-            )}
-            description={t(
-              'settings.relay.client.pair.pairingCodeHelp',
-              'Enter the 6-character code shown on the host you want to connect to.'
-            )}
-          >
-            <PairingCodeInput value={pairingCode} onChange={setPairingCode} />
-          </SettingsField>
+        <SettingsField
+          label={t(
+            'settings.relay.client.pair.pairingCodeLabel',
+            'Pairing code from the host'
+          )}
+          description={t(
+            'settings.relay.client.pair.pairingCodeHelp',
+            'Enter the 6-character code shown on the host you want to connect to.'
+          )}
+        >
+          <PairingCodeInput value={pairingCode} onChange={setPairingCode} />
+        </SettingsField>
 
-          <div className="flex items-center gap-2">
-            <PrimaryButton
-              value={t(
-                'settings.relay.client.pair.confirm',
-                'Pair this device'
-              )}
-              onClick={() => void handleConnect()}
-              disabled={!canSubmitPairing}
-              actionIcon={isPairing ? 'spinner' : undefined}
-            />
-            <PrimaryButton
-              variant="tertiary"
-              value={t('common:buttons.cancel')}
-              onClick={resetForm}
-              disabled={isPairing}
-            />
-          </div>
+        <div className="flex items-center gap-2">
+          <PrimaryButton
+            value={t(
+              'settings.relay.client.pair.confirm',
+              'Pair this device'
+            )}
+            onClick={() => void handleConnect()}
+            disabled={!canSubmitPairing}
+            actionIcon={isPairing ? 'spinner' : undefined}
+          />
+          <PrimaryButton
+            variant="tertiary"
+            value={t('common:buttons.cancel')}
+            onClick={resetForm}
+            disabled={isPairing}
+          />
         </div>
-      )}
+      </div>
 
       <div className="space-y-2">
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-sm font-medium text-normal">
-            {t(
-              'settings.relay.client.connectedHosts.title',
-              'Connected hosts'
-            )}
-          </span>
-          {relayHostsLoading ? (
-            <SpinnerIcon
-              className="size-icon-sm animate-spin text-low"
-              weight="bold"
-            />
-          ) : (
-            <PrimaryButton
-              value={t('settings.relay.client.pair.button', 'Pair to a host')}
-              onClick={() => {
-                setErrorMessage(null);
-                setSuccessMessage(null);
-                setShowConnectForm((current) => !current);
-              }}
-            />
+        <span className="text-sm font-medium text-normal">
+          {t(
+            'settings.relay.client.connectedHosts.title',
+            'Connected hosts'
           )}
-        </div>
+        </span>
 
         {!isLoading && connectedHosts.length === 0 && (
           <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
