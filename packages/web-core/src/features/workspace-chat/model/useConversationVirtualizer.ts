@@ -224,35 +224,6 @@ export function useConversationVirtualizer({
   }, [shouldSuppressSizeAdjustment, virtualizer]);
 
   // -------------------------------------------------------------------------
-  // Container resize invalidation
-  //
-  // Width change → text wrapping changes → all row heights stale.
-  // virtualizer.measure() invalidates cached sizes so rows re-measure.
-  // -------------------------------------------------------------------------
-
-  useEffect(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-
-    let lastWidth = el.clientWidth;
-
-    const ro = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const newWidth = Math.round(
-          entry.contentBoxSize?.[0]?.inlineSize ?? el.clientWidth
-        );
-        if (newWidth !== lastWidth) {
-          lastWidth = newWidth;
-          virtualizer.measure();
-        }
-      }
-    });
-
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [scrollContainerRef, virtualizer]);
-
-  // -------------------------------------------------------------------------
   // Reactive isAtBottom state
   // -------------------------------------------------------------------------
 
