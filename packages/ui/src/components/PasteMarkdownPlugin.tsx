@@ -28,17 +28,25 @@ type Props = {
 export function PasteMarkdownPlugin({ transformers }: Props) {
   const [editor] = useLexicalComposerContext();
   const shiftHeldRef = useRef(false);
-  const debugPaste =
-    typeof window !== 'undefined' &&
-    Boolean((window as Window & { __VIBE_DEBUG_PASTE__?: boolean }).__VIBE_DEBUG_PASTE__);
+
+  const isDebugPasteEnabled = (): boolean => {
+    if (typeof window === 'undefined') return false;
+    const globalFlag = Boolean(
+      (window as Window & { __VIBE_DEBUG_PASTE__?: boolean })
+        .__VIBE_DEBUG_PASTE__
+    );
+    const storageFlag =
+      window.localStorage?.getItem('vibe.debug.paste') === '1';
+    return globalFlag || storageFlag;
+  };
 
   useEffect(() => {
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
         shiftHeldRef.current = e.shiftKey;
-        if (debugPaste) {
-          console.debug('[PasteMarkdownPlugin] keydown paste combo', {
+        if (isDebugPasteEnabled()) {
+          console.log('[PasteMarkdownPlugin] keydown paste combo', {
             key: e.key,
             metaKey: e.metaKey,
             ctrlKey: e.ctrlKey,
@@ -50,8 +58,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
     };
 
     const handleKeyUp = () => {
-      if (debugPaste && shiftHeldRef.current) {
-        console.debug('[PasteMarkdownPlugin] keyup reset shift state');
+      if (isDebugPasteEnabled() && shiftHeldRef.current) {
+        console.log('[PasteMarkdownPlugin] keyup reset shift state');
       }
       shiftHeldRef.current = false;
     };
@@ -73,8 +81,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
           clipboardData.getData('text/plain') || clipboardData.getData('text');
         const htmlText = clipboardData.getData('text/html');
 
-        if (debugPaste) {
-          console.debug('[PasteMarkdownPlugin] paste event received', {
+        if (isDebugPasteEnabled()) {
+          console.log('[PasteMarkdownPlugin] paste event received', {
             shiftHeldRef: shiftHeldRef.current,
             hasHtml: Boolean(htmlText),
             htmlLength: htmlText.length,
@@ -94,8 +102,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             selection.insertRawText(plainText);
           });
 
-          if (debugPaste) {
-            console.debug('[PasteMarkdownPlugin] handled raw paste');
+          if (isDebugPasteEnabled()) {
+            console.log('[PasteMarkdownPlugin] handled raw paste');
           }
           shiftHeldRef.current = false;
           return true;
@@ -103,8 +111,8 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
         // If HTML exists, let default Lexical handling work.
         if (htmlText) {
-          if (debugPaste) {
-            console.debug(
+          if (isDebugPasteEnabled()) {
+            console.log(
               '[PasteMarkdownPlugin] skipping markdown conversion because HTML is present'
             );
           }
@@ -144,22 +152,26 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             // we have a valid selection context for the fallback
             $setSelection(savedSelection);
             savedSelection.insertRawText(plainText);
-            if (debugPaste) {
-              console.debug(
+            if (isDebugPasteEnabled()) {
+              console.log(
                 '[PasteMarkdownPlugin] markdown conversion failed, used raw text fallback'
               );
             }
           }
         });
 
-        if (debugPaste) {
-          console.debug('[PasteMarkdownPlugin] handled markdown/plain paste');
+        if (isDebugPasteEnabled()) {
+          console.log('[PasteMarkdownPlugin] handled markdown/plain paste');
         }
         shiftHeldRef.current = false;
         return true;
       },
       COMMAND_PRIORITY_LOW
     );
+
+    if (isDebugPasteEnabled()) {
+      console.log('[PasteMarkdownPlugin] debug logging enabled');
+    }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
