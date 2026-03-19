@@ -1,6 +1,5 @@
 pub mod config;
 pub mod handler;
-pub mod host_key;
 pub mod sftp;
 
 use std::sync::Arc;

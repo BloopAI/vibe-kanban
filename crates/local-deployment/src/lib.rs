@@ -31,10 +31,7 @@ use services::services::{
 use tokio::sync::RwLock;
 use trusted_key_auth::runtime::TrustedKeyAuthRuntime;
 use utils::{
-    assets::{
-        config_path, credentials_path, server_signing_key_path, ssh_host_key_path,
-        trusted_keys_path,
-    },
+    assets::{config_path, credentials_path, server_signing_key_path, trusted_keys_path},
     msg_store::MsgStore,
 };
 use uuid::Uuid;
@@ -208,9 +205,7 @@ impl Deployment for LocalDeployment {
         let client_info = ClientInfo::new();
         let preview_proxy = PreviewProxyService::new();
 
-        let ssh_host_key = embedded_ssh::host_key::load_or_generate(&ssh_host_key_path())
-            .expect("Failed to load or generate SSH host key");
-        let ssh_config = embedded_ssh::config::build_config(ssh_host_key);
+        let ssh_config = embedded_ssh::config::build_config(relay_signing.signing_key());
 
         // We need to make analytics accessible to the ContainerService
         // TODO: Handle this more gracefully

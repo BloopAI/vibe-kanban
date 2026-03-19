@@ -2296,7 +2296,6 @@ dependencies = [
  "anyhow",
  "async-trait",
  "ed25519-dalek",
- "rand 0.8.5",
  "relay-control",
  "relay-tunnel",
  "russh",
@@ -2305,7 +2304,6 @@ dependencies = [
  "ssh-key",
  "tokio",
  "tracing",
- "utils",
 ]
 
 [[package]]

@@ -6,7 +6,6 @@ edition = "2024"
 [dependencies]
 relay-control = { path = "../relay-control" }
 relay-tunnel = { path = "../relay-tunnel" }
-utils = { path = "../utils" }
 russh = "0.48"
 russh-keys = "0.48"
 russh-sftp = "2.0"
@@ -16,4 +15,3 @@ tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
-rand = "0.8"
