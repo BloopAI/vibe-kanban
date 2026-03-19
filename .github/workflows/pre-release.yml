@@ -1122,7 +1122,7 @@ jobs:
           aws configure set aws_secret_access_key ${{ secrets.R2_BINARIES_SECRET_ACCESS_KEY }}
           aws configure set default.region auto
 
-      - name: Prepare release notes with Tauri installer links
+      - name: Prepare installer links for release notes
         run: |
           TAG="${{ needs.bump-version.outputs.new_tag }}"
           ENDPOINT="${{ secrets.R2_BINARIES_ENDPOINT }}"
@@ -1177,7 +1177,7 @@ jobs:
           echo "---" >> release-notes.md
           echo "" >> release-notes.md
 
-          echo "Generated release notes preamble:"
+          echo "Generated installer links section:"
           cat release-notes.md
 
       - name: List downloaded artifacts
@@ -1215,6 +1215,7 @@ jobs:
           name: Pre-release ${{ needs.bump-version.outputs.new_tag }}
           prerelease: true
           generate_release_notes: true
+          append_body: true
           body_path: release-notes.md
           files: |
             vibe-kanban-${{ needs.bump-version.outputs.new_tag }}.zip
