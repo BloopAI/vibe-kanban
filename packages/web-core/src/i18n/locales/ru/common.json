@@ -530,7 +530,9 @@
   },
   "syncError": {
     "networkErrors": "Сетевые ошибки",
-    "streamsAffected": "Затронут {{count}} поток",
+    "streamsAffected_one": "Затронут {{count}} поток",
+    "streamsAffected_few": "Затронуто {{count}} потока",
+    "streamsAffected_many": "Затронуто {{count}} потоков",
     "streamsAffected_other": "Затронуто {{count}} потоков",
     "status": "(статус {{status}})",
     "refreshPage": "Обновить страницу"
@@ -552,7 +554,9 @@
     "selectMultiple": "выбрать несколько",
     "confirmSelection": "Подтвердить выбор",
     "submitting": "Отправка ответов...",
-    "answeredCount": "Отвечено на {{count}} вопрос",
+    "answeredCount_one": "Отвечено на {{count}} вопрос",
+    "answeredCount_few": "Отвечено на {{count}} вопроса",
+    "answeredCount_many": "Отвечено на {{count}} вопросов",
     "answeredCount_other": "Отвечено на {{count}} вопросов"
   }
 }

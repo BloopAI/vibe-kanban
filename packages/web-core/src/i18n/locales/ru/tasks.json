@@ -83,6 +83,8 @@
   },
   "diff": {
     "filesChanged_one": "{{count}} файл изменён",
+    "filesChanged_few": "{{count}} файла изменено",
+    "filesChanged_many": "{{count}} файлов изменено",
     "filesChanged_other": "{{count}} файлов изменено",
     "largeDiff": {
       "title": "Большой файл",
@@ -157,6 +159,8 @@
     "approval": {
       "conflictWarning": "Конфликтные файлы требуют ручного разрешения",
       "conflicts_one": "{{count}} конфликт",
+      "conflicts_few": "{{count}} конфликта",
+      "conflicts_many": "{{count}} конфликтов",
       "conflicts_other": "{{count}} конфликтов"
     },
     "sessions": {
@@ -173,6 +177,8 @@
     },
     "reviewComments": {
       "count_one": "Будет включён {{count}} комментарий к ревью",
+      "count_few": "Будет включено {{count}} комментария к ревью",
+      "count_many": "Будет включено {{count}} комментариев к ревью",
       "count_other": "Будет включено {{count}} комментариев к ревью"
     },
     "workspace": {
@@ -223,6 +229,8 @@
     },
     "status": {
       "commits_one": "коммит",
+      "commits_few": "коммита",
+      "commits_many": "коммитов",
       "commits_other": "коммитов",
       "conflicts": "Конфликты",
       "upToDate": "Актуально",
@@ -335,6 +343,8 @@
       "resolve": "Разрешить конфликты",
       "resolving": "Запуск...",
       "filesWithConflicts_one": "{{count}} файл с конфликтами",
+      "filesWithConflicts_few": "{{count}} файла с конфликтами",
+      "filesWithConflicts_many": "{{count}} файлов с конфликтами",
       "filesWithConflicts_other": "{{count}} файлов с конфликтами",
       "andMore": "...и ещё {{count}}",
       "sessionName": "Разрешение конфликтов"
@@ -423,13 +433,21 @@
       "title": "Изменение истории",
       "willDelete": "Этот процесс будет удалён",
       "willDeleteProcesses_one": "Будет удалён {{count}} процесс",
+      "willDeleteProcesses_few": "Будет удалено {{count}} процесса",
+      "willDeleteProcesses_many": "Будет удалено {{count}} процессов",
       "willDeleteProcesses_other": "Будет удалено {{count}} процессов",
       "andLaterProcesses_one": "и {{count}} последующий процесс",
+      "andLaterProcesses_few": "и {{count}} последующих процесса",
+      "andLaterProcesses_many": "и {{count}} последующих процессов",
       "andLaterProcesses_other": "и {{count}} последующих процессов",
       "fromHistory": "из истории.",
       "codingAgentRuns_one": "{{count}} запуск агента кодирования",
+      "codingAgentRuns_few": "{{count}} запуска агента кодирования",
+      "codingAgentRuns_many": "{{count}} запусков агента кодирования",
       "codingAgentRuns_other": "{{count}} запусков агента кодирования",
       "scriptProcesses_one": "{{count}} процесс скрипта",
+      "scriptProcesses_few": "{{count}} процесса скриптов",
+      "scriptProcesses_many": "{{count}} процессов скриптов",
       "scriptProcesses_other": "{{count}} процессов скриптов",
       "setupCleanupBreakdown": "({{setup}} настройки, {{cleanup}} очистки)",
       "permanentWarning": "Это навсегда изменит историю и не может быть отменено."
@@ -437,8 +455,12 @@
     "uncommittedChanges": {
       "title": "Обнаружены незакоммиченные изменения",
       "description_one": "У вас {{count}} незакоммиченное изменение",
+      "description_few": "У вас {{count}} незакоммиченных изменения",
+      "description_many": "У вас {{count}} незакоммиченных изменений",
       "description_other": "У вас {{count}} незакоммиченных изменений",
       "andUntracked_one": " и {{count}} неотслеживаемый файл",
+      "andUntracked_few": " и {{count}} неотслеживаемых файла",
+      "andUntracked_many": " и {{count}} неотслеживаемых файлов",
       "andUntracked_other": " и {{count}} неотслеживаемых файлов",
       "acknowledgeLabel": "Я понимаю, что эти изменения могут быть затронуты"
     },
@@ -449,8 +471,12 @@
       "disabledUncommitted": "Отключено (обнаружены незакоммиченные изменения)",
       "restoreDescription": "Рабочее дерево будет восстановлено до этого коммита.",
       "discardChanges_one": "Отменить {{count}} незакоммиченное изменение.",
+      "discardChanges_few": "Отменить {{count}} незакоммиченных изменения.",
+      "discardChanges_many": "Отменить {{count}} незакоммиченных изменений.",
       "discardChanges_other": "Отменить {{count}} незакоммиченных изменений.",
       "untrackedPresent_one": "{{count}} неотслеживаемый файл (не затрагивается сбросом).",
+      "untrackedPresent_few": "{{count}} неотслеживаемых файла (не затрагиваются сбросом).",
+      "untrackedPresent_many": "{{count}} неотслеживаемых файлов (не затрагиваются сбросом).",
       "untrackedPresent_other": "{{count}} неотслеживаемых файлов (не затрагиваются сбросом).",
       "forceReset": "Принудительный сброс (отменить незакоммиченные изменения)",
       "uncommittedWillDiscard": "Незакоммиченные изменения будут отменены.",
