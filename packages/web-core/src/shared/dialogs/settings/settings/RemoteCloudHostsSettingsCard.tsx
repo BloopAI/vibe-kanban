@@ -270,11 +270,24 @@ export function RemoteCloudHostsSettingsCardContent({
           onChange={setSelectedHostId}
           placeholder={t(
             'settings.relay.remoteCloudHost.hostPlaceholder',
-            relayHostsLoading ? 'Loading hosts...' : 'Select a host'
+            relayHostsLoading
+              ? 'Loading hosts...'
+              : relayHosts.length === 0
+                ? 'No hosts available'
+                : 'Select a host'
           )}
           disabled={relayHostsLoading || relayHostOptions.length === 0}
         />
       </SettingsField>
+
+      {!relayHostsLoading && relayHosts.length === 0 && (
+        <p className="text-sm text-low">
+          {t(
+            'settings.relay.remoteCloudHost.hostsUnavailable',
+            'No hosts found yet. Make sure another device is running as a host and has paired with this account.'
+          )}
+        </p>
+      )}
 
       {selectedHostId && (
         <>
