@@ -327,19 +327,23 @@ impl RelayHostTransport {
             return Ok(first);
         }
 
-        if self.refresh_signing_session().await.is_err() {
-            return Ok(first);
-        }
+        let mut last_auth_response = first;
 
-        let second = self
-            .send_http_once(method, target_path, headers, body)
-            .await?;
-        if !is_auth_failure_status(second.status().as_u16()) {
-            return Ok(second);
+        if self.refresh_signing_session().await.is_ok() {
+            let second = self
+                .send_http_once(method, target_path, headers, body)
+                .await?;
+            if !is_auth_failure_status(second.status().as_u16()) {
+                return Ok(second);
+            }
+            last_auth_response = second;
         }
 
         if self.rotate_remote_session().await.is_err() {
-            return Ok(second);
+            return Ok(last_auth_response);
+        }
+        if self.refresh_signing_session().await.is_err() {
+            return Ok(last_auth_response);
         }
 
         self.send_http_once(method, target_path, headers, body)
@@ -351,21 +355,28 @@ impl RelayHostTransport {
         target_path: &str,
         protocols: Option<&str>,
     ) -> Result<(SignedTungsteniteSocket, Option<String>), RelayApiError> {
-        match self.connect_ws_once(target_path, protocols).await {
+        let mut last_auth_error = match self.connect_ws_once(target_path, protocols).await {
             Ok(result) => return Ok(result),
-            Err(ref e) if is_ws_auth_failure(e) => {}
+            Err(e) if is_ws_auth_failure(&e) => e,
             Err(e) => return Err(e),
+        };
+
+        if self.refresh_signing_session().await.is_ok() {
+            match self.connect_ws_once(target_path, protocols).await {
+                Ok(result) => return Ok(result),
+                Err(e) if is_ws_auth_failure(&e) => {
+                    last_auth_error = e;
+                }
+                Err(e) => return Err(e),
+            }
         }
 
-        self.refresh_signing_session().await?;
-
-        match self.connect_ws_once(target_path, protocols).await {
-            Ok(result) => return Ok(result),
-            Err(ref e) if is_ws_auth_failure(e) => {}
-            Err(e) => return Err(e),
+        if self.rotate_remote_session().await.is_err() {
+            return Err(last_auth_error);
         }
-
-        self.rotate_remote_session().await?;
+        if self.refresh_signing_session().await.is_err() {
+            return Err(last_auth_error);
+        }
 
         self.connect_ws_once(target_path, protocols).await
     }
@@ -381,19 +392,24 @@ impl RelayHostTransport {
         if !is_http_auth_failure(&first_err) {
             return Err(first_err);
         }
-        if self.refresh_signing_session().await.is_err() {
-            return Err(first_err);
-        }
 
-        let second_err = match self.get_signed_json_once(path).await {
-            Ok(data) => return Ok(data),
-            Err(error) => error,
-        };
-        if !is_http_auth_failure(&second_err) {
-            return Err(second_err);
+        let mut last_auth_error = first_err;
+
+        if self.refresh_signing_session().await.is_ok() {
+            let second_err = match self.get_signed_json_once(path).await {
+                Ok(data) => return Ok(data),
+                Err(error) => error,
+            };
+            if !is_http_auth_failure(&second_err) {
+                return Err(second_err);
+            }
+            last_auth_error = second_err;
         }
         if self.rotate_remote_session().await.is_err() {
-            return Err(second_err);
+            return Err(last_auth_error);
+        }
+        if self.refresh_signing_session().await.is_err() {
+            return Err(last_auth_error);
         }
 
         self.get_signed_json_once(path).await
