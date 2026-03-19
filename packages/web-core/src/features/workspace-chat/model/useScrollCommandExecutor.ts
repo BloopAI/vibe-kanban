@@ -54,6 +54,9 @@ export interface ScrollCommandExecutorOptions {
   /** Reactive isAtBottom from the virtualizer hook. */
   isAtBottom: boolean;
 
+  /** Point-in-time DOM check for isAtBottom (avoids stale React state). */
+  checkIsAtBottom: () => boolean;
+
   scrollToBottom: (behavior?: TanStackScrollBehavior) => void;
 
   scrollToAbsoluteIndex?: (
@@ -99,6 +102,7 @@ export function useScrollCommandExecutor({
   itemCount,
   dataVersion,
   isAtBottom,
+  checkIsAtBottom,
   scrollToBottom,
   scrollToAbsoluteIndex,
 }: ScrollCommandExecutorOptions): ScrollCommandExecutorResult {
@@ -128,11 +132,11 @@ export function useScrollCommandExecutor({
       const intent = resolveScrollIntent(
         addType,
         isInitialLoad,
-        stateRef.current.isAtBottom
+        checkIsAtBottom()
       );
       stateRef.current = setPendingIntent(stateRef.current, intent);
     },
-    []
+    [checkIsAtBottom]
   );
 
   // -------------------------------------------------------------------------

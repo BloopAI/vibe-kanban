@@ -118,7 +118,9 @@ export function resolveScrollIntent(
   }
 
   if (addType === 'plan') {
-    return { type: 'plan-reveal', align: 'start' };
+    return isAtBottom
+      ? { type: 'plan-reveal', align: 'start' }
+      : { type: 'preserve-anchor' };
   }
 
   if (addType === 'running') {
