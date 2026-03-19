@@ -342,25 +342,22 @@ export function RemoteCloudHostsSettingsCardContent({
               'Connected hosts'
             )}
           </span>
-          <PrimaryButton
-            value={t('settings.relay.client.pair.button', 'Pair to a host')}
-            onClick={() => {
-              setErrorMessage(null);
-              setSuccessMessage(null);
-              setShowConnectForm((current) => !current);
-            }}
-            disabled={relayHostsLoading}
-          />
+          {relayHostsLoading ? (
+            <SpinnerIcon
+              className="size-icon-sm animate-spin text-low"
+              weight="bold"
+            />
+          ) : (
+            <PrimaryButton
+              value={t('settings.relay.client.pair.button', 'Pair to a host')}
+              onClick={() => {
+                setErrorMessage(null);
+                setSuccessMessage(null);
+                setShowConnectForm((current) => !current);
+              }}
+            />
+          )}
         </div>
-
-        {(relayHostsLoading || isLoading) && (
-          <div className="flex items-center gap-2 text-sm text-low">
-            <SpinnerIcon className="size-icon-sm animate-spin" weight="bold" />
-            <span>
-              {t('settings.relay.remoteCloudHost.loading', 'Loading hosts...')}
-            </span>
-          </div>
-        )}
 
         {!isLoading && connectedHosts.length === 0 && (
           <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
