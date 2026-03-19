@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     pin::Pin,
     task::{Context, Poll},
 };
@@ -76,6 +77,15 @@ enum WebSocketInner {
 }
 
 impl SignedWsUpgrade {
+    pub fn protocols<I>(mut self, protocols: I) -> Self
+    where
+        I: IntoIterator,
+        I::Item: Into<Cow<'static, str>>,
+    {
+        self.ws = self.ws.protocols(protocols);
+        self
+    }
+
     pub fn on_upgrade<F, Fut>(self, callback: F) -> impl IntoResponse
     where
         F: FnOnce(MaybeSignedWebSocket) -> Fut + Send + 'static,

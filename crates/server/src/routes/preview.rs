@@ -87,12 +87,19 @@ async fn forward_preview_ws(
         .and_then(|v| v.to_str().ok())
         .map(ToOwned::to_owned);
 
-    let upstream_ws = match connect_upstream_ws(&ws_url, protocols.as_deref()).await {
-        Ok(ws) => ws,
-        Err(error) => {
-            tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
-            return (StatusCode::BAD_GATEWAY, "Preview WebSocket unavailable").into_response();
-        }
+    let (upstream_ws, selected_protocol) =
+        match connect_upstream_ws(&ws_url, protocols.as_deref()).await {
+            Ok(value) => value,
+            Err(error) => {
+                tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
+                return (StatusCode::BAD_GATEWAY, "Preview WebSocket unavailable").into_response();
+            }
+        };
+
+    let ws = if let Some(protocol) = selected_protocol {
+        ws.protocols([protocol])
+    } else {
+        ws
     };
 
     ws.on_upgrade(move |client| async move {
@@ -113,9 +120,10 @@ async fn forward_preview_ws(
 async fn connect_upstream_ws(
     ws_url: &str,
     protocols: Option<&str>,
-) -> anyhow::Result<
+) -> anyhow::Result<(
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
-> {
+    Option<String>,
+)> {
     let mut request = ws_url.into_client_request()?;
     if let Some(protocols) = protocols
         && !protocols.trim().is_empty()
@@ -124,8 +132,13 @@ async fn connect_upstream_ws(
             .headers_mut()
             .insert("sec-websocket-protocol", protocols.parse()?);
     }
-    let (stream, _response) = tokio_tungstenite::connect_async(request).await?;
-    Ok(stream)
+    let (stream, response) = tokio_tungstenite::connect_async(request).await?;
+    let selected_protocol = response
+        .headers()
+        .get("sec-websocket-protocol")
+        .and_then(|value| value.to_str().ok())
+        .map(ToOwned::to_owned);
+    Ok((stream, selected_protocol))
 }
 
 async fn subdomain_proxy_request(
