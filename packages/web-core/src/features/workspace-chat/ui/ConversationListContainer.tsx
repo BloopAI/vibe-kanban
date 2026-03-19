@@ -50,8 +50,10 @@ import { ChatScriptPlaceholder } from '@vibe/ui/components/ChatScriptPlaceholder
 import { ScriptFixerDialog } from '@/shared/dialogs/scripts/ScriptFixerDialog';
 import {
   applySearchTextHighlights,
-  clearSearchTextHighlights,
+  clearSearchTextHighlightsWithKey,
 } from '@/shared/lib/searchTextHighlight';
+
+const CONVERSATION_HIGHLIGHT_KEY = 'vk-search-highlight-conversation';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -705,11 +707,15 @@ export const ConversationList = forwardRef<
     const apply = () => {
       if (!panelRef.current) return;
       isApplying = true;
-      clearSearchTextHighlights(panelRef.current);
+      clearSearchTextHighlightsWithKey(
+        panelRef.current,
+        CONVERSATION_HIGHLIGHT_KEY
+      );
       const query = searchQuery.trim();
       if (showSearch && query.length >= 1) {
         applySearchTextHighlights(panelRef.current, query, {
           maxMatches: 1200,
+          highlightKey: CONVERSATION_HIGHLIGHT_KEY,
         });
       }
       isApplying = false;
@@ -727,7 +733,7 @@ export const ConversationList = forwardRef<
 
     if (!showSearch || !searchQuery.trim()) {
       return () => {
-        clearSearchTextHighlights(root);
+        clearSearchTextHighlightsWithKey(root, CONVERSATION_HIGHLIGHT_KEY);
       };
     }
     const observer = new MutationObserver(() => {
@@ -744,7 +750,7 @@ export const ConversationList = forwardRef<
       observer.disconnect();
       if (timeoutId) clearTimeout(timeoutId);
       if (rafId) cancelAnimationFrame(rafId);
-      clearSearchTextHighlights(root);
+      clearSearchTextHighlightsWithKey(root, CONVERSATION_HIGHLIGHT_KEY);
     };
   }, [showSearch, searchQuery, conversationRows, currentMatchIdx]);
 
@@ -757,7 +763,10 @@ export const ConversationList = forwardRef<
         clearTimeout(highlightTimeoutRef.current);
       }
       if (panelRef.current) {
-        clearSearchTextHighlights(panelRef.current);
+        clearSearchTextHighlightsWithKey(
+          panelRef.current,
+          CONVERSATION_HIGHLIGHT_KEY
+        );
       }
     };
   }, []);

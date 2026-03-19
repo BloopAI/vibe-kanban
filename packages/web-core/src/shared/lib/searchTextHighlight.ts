@@ -72,9 +72,16 @@ function collectTextNodes(root: HTMLElement): Text[] {
 }
 
 export function clearSearchTextHighlights(root: HTMLElement): void {
+  clearSearchTextHighlightsWithKey(root, CUSTOM_HIGHLIGHT_KEY);
+}
+
+export function clearSearchTextHighlightsWithKey(
+  root: HTMLElement,
+  highlightKey: string
+): void {
   if (supportsCustomHighlights()) {
     (CSS as { highlights: Map<string, unknown> }).highlights.delete(
-      CUSTOM_HIGHLIGHT_KEY
+      highlightKey
     );
   }
 
@@ -98,12 +105,13 @@ export function clearSearchTextHighlights(root: HTMLElement): void {
 export function applySearchTextHighlights(
   root: HTMLElement,
   query: string,
-  options?: { maxMatches?: number }
+  options?: { maxMatches?: number; highlightKey?: string }
 ): number {
   const normalizedQuery = query.trim().toLowerCase();
   if (!normalizedQuery) return 0;
 
   const maxMatches = options?.maxMatches ?? Number.POSITIVE_INFINITY;
+  const highlightKey = options?.highlightKey ?? CUSTOM_HIGHLIGHT_KEY;
   let count = 0;
   const textNodes = collectTextNodes(root);
   const useCustomHighlights = supportsCustomHighlights();
@@ -162,7 +170,7 @@ export function applySearchTextHighlights(
     const highlight = new highlightCtor(...ranges);
     (
       CSS as { highlights: { set: (key: string, value: unknown) => void } }
-    ).highlights.set(CUSTOM_HIGHLIGHT_KEY, highlight);
+    ).highlights.set(highlightKey, highlight);
   }
 
   return count;

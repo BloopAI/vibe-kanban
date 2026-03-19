@@ -460,7 +460,9 @@ html {
 }
 
 /* In-panel find highlights (Custom Highlight API, non-DOM-mutating). */
-::highlight(vk-search-highlight) {
+::highlight(vk-search-highlight),
+::highlight(vk-search-highlight-conversation),
+::highlight(vk-search-highlight-diffs) {
   background-color: hsl(43 96% 56% / 0.45);
 }
 
