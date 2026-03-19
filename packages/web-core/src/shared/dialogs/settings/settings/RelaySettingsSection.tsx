@@ -66,26 +66,21 @@ function RelayRoleChooser({
   const { t } = useTranslation(['settings']);
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-xs font-medium text-low">
-        {t('settings.relay.roleChooser.label', 'Remote control')}
-      </span>
-      <div className="flex gap-2">
-        <RelayRoleChoice
-          role="host"
-          selected={selectedRole === 'host'}
-          icon={<BroadcastIcon className="size-icon-xs" weight="bold" />}
-          label={t('settings.relay.host.label', 'Host')}
-          onSelect={onSelect}
-        />
-        <RelayRoleChoice
-          role="client"
-          selected={selectedRole === 'client'}
-          icon={<DesktopIcon className="size-icon-xs" weight="bold" />}
-          label={t('settings.relay.client.label', 'Client')}
-          onSelect={onSelect}
-        />
-      </div>
+    <div className="flex justify-end gap-2">
+      <RelayRoleChoice
+        role="host"
+        selected={selectedRole === 'host'}
+        icon={<BroadcastIcon className="size-icon-xs" weight="bold" />}
+        label={t('settings.relay.host.label', 'Host')}
+        onSelect={onSelect}
+      />
+      <RelayRoleChoice
+        role="client"
+        selected={selectedRole === 'client'}
+        icon={<DesktopIcon className="size-icon-xs" weight="bold" />}
+        label={t('settings.relay.client.label', 'Client')}
+        onSelect={onSelect}
+      />
     </div>
   );
 }
@@ -120,13 +115,11 @@ function RelayRoleChoice({
 }
 
 function RolePanel({
-  eyebrow,
   title,
   description,
   icon,
   children,
 }: {
-  eyebrow: string;
   title: string;
   description: ReactNode;
   icon: ReactNode;
@@ -140,9 +133,6 @@ function RolePanel({
             {icon}
           </div>
           <div className="space-y-1">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-              {eyebrow}
-            </div>
             <h3 className="text-base font-semibold text-high">{title}</h3>
             <p className="text-sm text-low">{description}</p>
           </div>
@@ -358,7 +348,6 @@ function LocalRelaySettingsSectionContent() {
 
       {selectedRole === 'host' && (
         <RolePanel
-          eyebrow={t('settings.relay.host.eyebrow', 'Host')}
           title={t(
             'settings.relay.host.title',
             'Accept incoming connections'
@@ -605,7 +594,6 @@ function LocalRelaySettingsSectionContent() {
 
       {selectedRole === 'client' && (
         <RolePanel
-          eyebrow={t('settings.relay.client.eyebrow', 'Client')}
           title={t('settings.relay.client.panelTitle', 'Connect to a host')}
           description={t(
             'settings.relay.client.panelDescription',
