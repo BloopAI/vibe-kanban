@@ -1,6 +1,6 @@
 [package]
 name = "executors"
-version = "0.1.33-artef.5"
+version = "0.1.33-artef.6"
 edition = "2024"
 
 [dependencies]
