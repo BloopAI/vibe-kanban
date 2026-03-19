@@ -66,41 +66,29 @@ function RelayRoleChooser({
   const { t } = useTranslation(['settings']);
 
   return (
-    <div className="space-y-2">
-      <div className="flex justify-end">
-        <a
-          href={RELAY_REMOTE_CONTROL_DOCS_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="text-sm text-brand hover:underline"
-        >
-          {t('settings.relay.docsLink', 'Read docs')}
-        </a>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <RelayRoleChoice
-          role="host"
-          selected={selectedRole === 'host'}
-          icon={<BroadcastIcon className="size-icon-sm" weight="bold" />}
-          label={t('settings.relay.host.label', 'Host')}
-          description={t(
-            'settings.relay.host.description',
-            'Allow other devices to remotely control workspaces on this machine.'
-          )}
-          onSelect={onSelect}
-        />
-        <RelayRoleChoice
-          role="client"
-          selected={selectedRole === 'client'}
-          icon={<DesktopIcon className="size-icon-sm" weight="bold" />}
-          label={t('settings.relay.client.label', 'Client')}
-          description={t(
-            'settings.relay.client.panelDescription',
-            'Control workspaces on another device by pairing to it with a one-time code.'
-          )}
-          onSelect={onSelect}
-        />
-      </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <RelayRoleChoice
+        role="host"
+        selected={selectedRole === 'host'}
+        icon={<BroadcastIcon className="size-icon-sm" weight="bold" />}
+        label={t('settings.relay.host.label', 'Host')}
+        description={t(
+          'settings.relay.host.description',
+          'Allow other devices to remotely control workspaces on this machine.'
+        )}
+        onSelect={onSelect}
+      />
+      <RelayRoleChoice
+        role="client"
+        selected={selectedRole === 'client'}
+        icon={<DesktopIcon className="size-icon-sm" weight="bold" />}
+        label={t('settings.relay.client.label', 'Client')}
+        description={t(
+          'settings.relay.client.panelDescription',
+          'Control workspaces on another device by pairing to it with a one-time code.'
+        )}
+        onSelect={onSelect}
+      />
     </div>
   );
 }
@@ -144,44 +132,6 @@ function RelayRoleChoice({
         <div className="mt-0.5 text-xs text-low">{description}</div>
       </div>
     </button>
-  );
-}
-
-function RolePanel({
-  title,
-  description,
-  docsUrl,
-  docsLabel,
-  children,
-}: {
-  title: string;
-  description?: string;
-  docsUrl?: string;
-  docsLabel?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-sm border border-border bg-panel/95 shadow-sm">
-      <div className="border-b border-border bg-secondary/35 px-5 py-3 flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-semibold text-high">{title}</h3>
-          {description && (
-            <p className="mt-0.5 text-sm text-low">{description}</p>
-          )}
-        </div>
-        {docsUrl && docsLabel && (
-          <a
-            href={docsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-brand hover:underline shrink-0 mt-0.5"
-          >
-            {docsLabel}
-          </a>
-        )}
-      </div>
-      <div className="space-y-5 px-5 py-5">{children}</div>
-    </div>
   );
 }
 
@@ -389,10 +339,18 @@ function LocalRelaySettingsSectionContent() {
       )}
 
       {selectedRole === 'host' && (
-        <RolePanel
+        <SettingsCard
           title={t('settings.relay.host.title', 'Accept incoming connections')}
-          docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
-          docsLabel={t('settings.relay.docsLink', 'Read docs')}
+          headerAction={
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          }
         >
           <SettingsCheckbox
             id="relay-enabled"
@@ -613,17 +571,25 @@ function LocalRelaySettingsSectionContent() {
               )}
             </div>
           )}
-        </RolePanel>
+        </SettingsCard>
       )}
 
       {selectedRole === 'client' && (
-        <RolePanel
+        <SettingsCard
           title={t('settings.relay.client.panelTitle', 'Connect to a host')}
-          docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
-          docsLabel={t('settings.relay.docsLink', 'Read docs')}
+          headerAction={
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          }
         >
-          <RemoteCloudHostsSettingsCardContent embedded />
-        </RolePanel>
+          <RemoteCloudHostsSettingsCardContent />
+        </SettingsCard>
       )}
 
       <SettingsSaveBar
@@ -659,21 +625,28 @@ function RemoteRelaySettingsSectionContent({
   }
 
   return (
-    <RolePanel
+    <SettingsCard
       title={t('settings.relay.client.panelTitle', 'Connect to a host')}
       description={t(
         'settings.relay.client.panelDescription',
         'Control workspaces on another device by pairing to it with a one-time code.'
       )}
-      docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
-      docsLabel={t('settings.relay.docsLink', 'Read docs')}
+      headerAction={
+        <a
+          href={RELAY_REMOTE_CONTROL_DOCS_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-brand hover:underline"
+        >
+          {t('settings.relay.docsLink', 'Read docs')}
+        </a>
+      }
     >
       <RemoteCloudHostsSettingsCardContent
         initialHostId={initialState?.hostId}
         mode="remote"
-        embedded
       />
-    </RolePanel>
+    </SettingsCard>
   );
 }
 
