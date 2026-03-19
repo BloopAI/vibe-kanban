@@ -35,7 +35,6 @@ import {
   markIntentApplied,
   resolveScrollIntent,
   setPendingIntent,
-  updateIsAtBottom,
 } from './conversation-scroll-commands';
 
 // ---------------------------------------------------------------------------
@@ -50,9 +49,6 @@ export interface ScrollCommandExecutorOptions {
   itemCount: number;
 
   dataVersion: number;
-
-  /** Reactive isAtBottom from the virtualizer hook. */
-  isAtBottom: boolean;
 
   /** Point-in-time DOM check for isAtBottom (avoids stale React state). */
   checkIsAtBottom: () => boolean;
@@ -101,26 +97,11 @@ export function useScrollCommandExecutor({
   virtualizer,
   itemCount,
   dataVersion,
-  isAtBottom,
   checkIsAtBottom,
   scrollToBottom,
   scrollToAbsoluteIndex,
 }: ScrollCommandExecutorOptions): ScrollCommandExecutorResult {
-  // -------------------------------------------------------------------------
-  // Scroll state lives in a ref to avoid re-render cascades.
-  // The only consumer of pendingIntent is the useLayoutEffect below,
-  // which runs synchronously after every render anyway.
-  // -------------------------------------------------------------------------
-
   const stateRef = useRef<ScrollState>(createInitialScrollState());
-
-  // Keep isAtBottom in sync with the virtualizer's reactive value
-  const prevIsAtBottom = useRef(isAtBottom);
-  if (isAtBottom !== prevIsAtBottom.current) {
-    prevIsAtBottom.current = isAtBottom;
-    stateRef.current = updateIsAtBottom(stateRef.current, isAtBottom);
-  }
-
   const prevDataVersionRef = useRef(dataVersion);
 
   // -------------------------------------------------------------------------

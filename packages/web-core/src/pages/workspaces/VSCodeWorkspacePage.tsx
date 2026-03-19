@@ -22,6 +22,7 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
+import { forwardWheelToScroller } from '@/features/workspace-chat/ui/forwardWheelToScroller';
 import { createWorkspaceWithSession } from '@/shared/types/attempt';
 
 function VSCodeChatBox({
@@ -183,7 +184,10 @@ export function VSCodeWorkspacePage() {
                     <p className="text-low">{t('workspaces.notFound')}</p>
                   </div>
                 ) : (
-                  <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
+                  <div
+                    className="flex-1 min-h-0 overflow-hidden flex justify-center"
+                    onWheel={(e) => forwardWheelToScroller(e, conversationListRef)}
+                  >
                     <div className="w-chat max-w-full h-full">
                       <RetryUiProvider workspaceId={workspaceWithSession.id}>
                         <ConversationList

@@ -56,6 +56,7 @@ export interface ConversationListHandle {
   scrollToPreviousUserMessage: () => void;
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   adjustScrollBy: (delta: number) => void;
+  getScrollElement: () => HTMLDivElement | null;
 }
 
 const ALWAYS_UNVIRTUALIZED_TAIL_ROWS = 8;
@@ -513,7 +514,6 @@ export const ConversationList = forwardRef<
     virtualizer: conversationVirtualizer.virtualizer,
     itemCount: conversationRows.length,
     dataVersion,
-    isAtBottom: conversationVirtualizer.isAtBottom,
     checkIsAtBottom: conversationVirtualizer.checkIsAtBottom,
     scrollToBottom: conversationVirtualizer.scrollToBottom,
     scrollToAbsoluteIndex,
@@ -623,6 +623,7 @@ export const ConversationList = forwardRef<
         if (!scrollElement) return;
         scrollElement.scrollTop += delta;
       },
+      getScrollElement: () => tanstackScrollRef.current,
     }),
     [conversationVirtualizer, scrollToPreviousUserMessage]
   );

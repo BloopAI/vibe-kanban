@@ -20,6 +20,7 @@ import { EntriesProvider } from '@/features/workspace-chat/model/contexts/Entrie
 import { MessageEditProvider } from '@/features/workspace-chat/model/contexts/MessageEditContext';
 import { RetryUiProvider } from '@/features/workspace-chat/model/contexts/RetryUiContext';
 import { ApprovalFeedbackProvider } from '@/features/workspace-chat/model/contexts/ApprovalFeedbackContext';
+import { forwardWheelToScroller } from '@/features/workspace-chat/ui/forwardWheelToScroller';
 import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 
 /**
@@ -184,7 +185,10 @@ export const WorkspacesMainContainer = forwardRef<
     : 'empty';
 
   const conversationContent = workspaceWithSession ? (
-    <div className="flex-1 min-h-0 overflow-hidden flex justify-center">
+    <div
+      className="flex-1 min-h-0 overflow-hidden flex justify-center"
+      onWheel={(e) => forwardWheelToScroller(e, conversationListRef)}
+    >
       <div className="w-chat max-w-full h-full">
         <RetryUiProvider workspaceId={workspaceWithSession.id}>
           <ConversationList
