@@ -47,8 +47,13 @@ function SettingsDialogNavigation({
   onSectionSelect: (sectionId: SettingsSectionType) => void;
 }) {
   const { t } = useTranslation('settings');
-  const { availableHosts, selectedHostId, setSelectedHostId } =
-    useSettingsHost();
+  const {
+    availableHosts,
+    hostsResolved,
+    selectedHost,
+    selectedHostId,
+    setSelectedHostId,
+  } = useSettingsHost();
   const hostSections = SETTINGS_SECTION_DEFINITIONS.filter(
     (section) => section.group === 'host'
   );
@@ -59,6 +64,13 @@ function SettingsDialogNavigation({
     value: host.id,
     label: host.status != null ? `${host.label} (${host.status})` : host.label,
   }));
+  const hostSettingsDisabled = !hostsResolved || !selectedHost;
+  const hostHint = !hostsResolved
+    ? t('settings.general.loading')
+    : availableHosts.length === 0
+      ? t('settings.hostPicker.pairMachineHint')
+      : t('settings.hostPicker.selectMachineHint');
+
   const handlePairOtherMachines = () => {
     onSectionSelect('relay');
   };
@@ -70,15 +82,22 @@ function SettingsDialogNavigation({
     if (!section) return null;
     const Icon = section.icon;
     const isActive = activeSection === section.id;
+    const isDisabled =
+      isHostSpecificSettingsSection(section.id) && hostSettingsDisabled;
     return (
       <button
         key={section.id}
+        type="button"
         onClick={() => onSectionSelect(section.id)}
+        disabled={isDisabled}
+        aria-disabled={isDisabled}
         className={cn(
           'flex items-center gap-3 text-left px-3 py-2 rounded-sm text-sm transition-colors',
-          isActive
-            ? 'bg-brand/10 text-brand font-medium'
-            : 'text-normal hover:bg-primary/10'
+          isDisabled
+            ? 'text-low opacity-50 cursor-not-allowed'
+            : isActive
+              ? 'bg-brand/10 text-brand font-medium'
+              : 'text-normal hover:bg-primary/10'
         )}
       >
         <Icon className="size-icon-sm shrink-0" weight="bold" />
@@ -111,6 +130,9 @@ function SettingsDialogNavigation({
             onChange={setSelectedHostId}
             placeholder={t('settings.layout.nav.selectHost')}
           />
+          {hostSettingsDisabled && (
+            <p className="mt-2 px-1 text-xs text-low">{hostHint}</p>
+          )}
         </div>
         <div className="flex flex-col gap-1">
           {hostSections.map((section) => renderSectionButton(section.id))}
@@ -317,9 +339,13 @@ function SettingsDialogContent({
                       initialState={initialState}
                     />
                   </SettingsMachineUserSystemProvider>
-                ) : !hostsResolved || availableHosts.length > 0 ? (
+                ) : !hostsResolved ? (
                   <div className="px-6 py-8 text-sm text-low">
                     {t('settings.general.loading')}
+                  </div>
+                ) : availableHosts.length > 0 ? (
+                  <div className="px-6 py-8 text-sm text-low">
+                    {t('settings.hostPicker.selectMachineHint')}
                   </div>
                 ) : (
                   <div className="px-6 py-8 text-sm text-low">

@@ -372,7 +372,6 @@ export function RemoteCloudHostsSettingsCardContent({
               </div>
             )}
 
-
             {!isLoading && connectedHosts.length > 0 && (
               <div className="space-y-2">
                 {connectedHosts.map((host) => {
@@ -389,7 +388,9 @@ export function RemoteCloudHostsSettingsCardContent({
                       ].join(' ')}
                       onClick={(event) => {
                         const target = event.target as HTMLElement | null;
-                        if (target?.closest('[data-relay-host-action="remove"]')) {
+                        if (
+                          target?.closest('[data-relay-host-action="remove"]')
+                        ) {
                           return;
                         }
                         void handleGoToHostWorkspaces(host.id, host.status);
@@ -414,7 +415,8 @@ export function RemoteCloudHostsSettingsCardContent({
                             'settings.relay.remoteCloudHost.remove',
                             'Remove'
                           )}
-                          onClick={() => {
+                          onClick={(event) => {
+                            event.stopPropagation();
                             void handleRemove(host.id);
                           }}
                           disabled={isRemoving}
