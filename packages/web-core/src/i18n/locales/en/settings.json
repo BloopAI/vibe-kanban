@@ -545,6 +545,12 @@
         "loginRequired": "Log in to generate a pairing code.",
         "fetchError": "Failed to fetch pairing code.",
         "show": "Show pairing code"
+      },
+      "host": {
+        "label": "Host"
+      },
+      "client": {
+        "label": "Client"
       }
     },
     "remoteProjects": {

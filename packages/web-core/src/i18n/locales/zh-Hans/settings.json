@@ -536,6 +536,12 @@
         "fetchError": "Failed to fetch pairing code.",
         "show": "Show pairing code"
       },
+      "host": {
+        "label": "主机"
+      },
+      "client": {
+        "label": "客户端"
+      },
       "overview": {
         "available": "Available",
         "unavailable": "Unavailable"

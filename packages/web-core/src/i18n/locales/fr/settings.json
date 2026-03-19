@@ -536,6 +536,12 @@
         "fetchError": "Failed to fetch pairing code.",
         "show": "Show pairing code"
       },
+      "host": {
+        "label": "Hôte"
+      },
+      "client": {
+        "label": "Client"
+      },
       "overview": {
         "available": "Available",
         "unavailable": "Unavailable"
