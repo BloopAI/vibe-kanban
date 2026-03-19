@@ -349,10 +349,7 @@ export function RemoteCloudHostsSettingsCardContent({
               setSuccessMessage(null);
               setShowConnectForm((current) => !current);
             }}
-            disabled={
-              relayHostsLoading ||
-              (relayHostOptions.length === 0 && !showConnectForm)
-            }
+            disabled={relayHostsLoading}
           />
         </div>
 

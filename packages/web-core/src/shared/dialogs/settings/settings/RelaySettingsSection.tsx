@@ -149,25 +149,32 @@ function RelayRoleChoice({
 
 function RolePanel({
   title,
+  description,
   docsUrl,
   docsLabel,
   children,
 }: {
   title: string;
+  description?: string;
   docsUrl?: string;
   docsLabel?: string;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-sm border border-border bg-panel/95 shadow-sm">
-      <div className="border-b border-border bg-secondary/35 px-5 py-3 flex items-center justify-between gap-4">
-        <h3 className="text-base font-semibold text-high">{title}</h3>
+      <div className="border-b border-border bg-secondary/35 px-5 py-3 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="text-base font-semibold text-high">{title}</h3>
+          {description && (
+            <p className="mt-0.5 text-sm text-low">{description}</p>
+          )}
+        </div>
         {docsUrl && docsLabel && (
           <a
             href={docsUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-brand hover:underline shrink-0"
+            className="text-sm text-brand hover:underline shrink-0 mt-0.5"
           >
             {docsLabel}
           </a>
@@ -654,6 +661,10 @@ function RemoteRelaySettingsSectionContent({
   return (
     <RolePanel
       title={t('settings.relay.client.panelTitle', 'Connect to a host')}
+      description={t(
+        'settings.relay.client.panelDescription',
+        'Control workspaces on another device by pairing to it with a one-time code.'
+      )}
       docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
       docsLabel={t('settings.relay.docsLink', 'Read docs')}
     >
