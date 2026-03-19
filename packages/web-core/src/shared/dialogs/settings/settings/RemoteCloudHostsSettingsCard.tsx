@@ -387,9 +387,13 @@ export function RemoteCloudHostsSettingsCardContent({
                           ? 'opacity-80'
                           : 'cursor-pointer hover:bg-secondary/50',
                       ].join(' ')}
-                      onClick={() =>
-                        void handleGoToHostWorkspaces(host.id, host.status)
-                      }
+                      onClick={(event) => {
+                        const target = event.target as HTMLElement | null;
+                        if (target?.closest('[data-relay-host-action="remove"]')) {
+                          return;
+                        }
+                        void handleGoToHostWorkspaces(host.id, host.status);
+                      }}
                       role="button"
                       tabIndex={0}
                     >
@@ -403,18 +407,22 @@ export function RemoteCloudHostsSettingsCardContent({
                             : host.id}
                         </p>
                       </div>
-                      <PrimaryButton
-                        variant="tertiary"
-                        value={t('settings.relay.remoteCloudHost.remove', 'Remove')}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleRemove(host.id);
-                        }}
-                        disabled={isRemoving}
-                        actionIcon={
-                          removingHostId === host.id ? 'spinner' : undefined
-                        }
-                      />
+                      <span data-relay-host-action="remove">
+                        <PrimaryButton
+                          variant="tertiary"
+                          value={t(
+                            'settings.relay.remoteCloudHost.remove',
+                            'Remove'
+                          )}
+                          onClick={() => {
+                            void handleRemove(host.id);
+                          }}
+                          disabled={isRemoving}
+                          actionIcon={
+                            removingHostId === host.id ? 'spinner' : undefined
+                          }
+                        />
+                      </span>
                     </div>
                   );
                 })}
