@@ -54,10 +54,12 @@ const PANEL_FIND_EVENT = 'vk-open-panel-find';
 
 function toSearchableText(value: unknown): string {
   const pieces: string[] = [];
-  const stack: unknown[] = [value];
+  const queue: unknown[] = [value];
+  let cursor = 0;
 
-  while (stack.length > 0) {
-    const current = stack.pop();
+  while (cursor < queue.length) {
+    const current = queue[cursor];
+    cursor += 1;
 
     if (typeof current === 'string') {
       pieces.push(current);
@@ -69,13 +71,13 @@ function toSearchableText(value: unknown): string {
     }
     if (Array.isArray(current)) {
       for (const item of current) {
-        stack.push(item);
+        queue.push(item);
       }
       continue;
     }
     if (current && typeof current === 'object') {
       for (const item of Object.values(current)) {
-        stack.push(item);
+        queue.push(item);
       }
     }
   }
@@ -213,9 +215,6 @@ export const ConversationList = forwardRef<
   >(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
-  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
-    null
-  );
   const pendingUpdateRef = useRef<{
     source: ConversationTimelineSource;
     addType: AddEntryType;
@@ -860,16 +859,13 @@ export const ConversationList = forwardRef<
       if (rafId) cancelAnimationFrame(rafId);
       clearSearchTextHighlightsWithKey(root, CONVERSATION_HIGHLIGHT_KEY);
     };
-  }, [showSearch, searchQuery, conversationRows, currentMatchIdx]);
+  }, [showSearch, searchQuery, conversationRows]);
 
   // Determine if there are entries to show placeholders
   const hasEntries = conversationRows.length > 0;
 
   useEffect(() => {
     return () => {
-      if (highlightTimeoutRef.current) {
-        clearTimeout(highlightTimeoutRef.current);
-      }
       if (panelRef.current) {
         clearSearchTextHighlightsWithKey(
           panelRef.current,
