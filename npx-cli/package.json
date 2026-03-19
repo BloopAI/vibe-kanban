@@ -1,7 +1,7 @@
 {
   "name": "vibe-kanban",
   "private": false,
-  "version": "0.1.33-artef.5",
+  "version": "0.1.33-artef.6",
   "main": "index.js",
   "bin": {
     "vibe-kanban": "bin/cli.js"
