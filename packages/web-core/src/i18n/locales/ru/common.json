@@ -1,0 +1,558 @@
+{
+  "editorNames": {
+    "custom": "Пользовательский"
+  },
+  "buttons": {
+    "save": "Сохранить",
+    "cancel": "Отмена",
+    "send": "Отправить",
+    "delete": "Удалить",
+    "edit": "Редактировать",
+    "create": "Создать",
+    "continue": "Продолжить",
+    "reset": "Сбросить",
+    "manage": "Управление",
+    "connect": "Подключить",
+    "disconnect": "Отключить",
+    "close": "Закрыть",
+    "replay": "Повторить",
+    "discard": "Отменить",
+    "addItem": "Добавить элемент",
+    "reply": "Ответить",
+    "retry": "Повторить",
+    "add": "Добавить"
+  },
+  "form": {
+    "notSpecified": "Не указано",
+    "selectOption": "Выберите вариант..."
+  },
+  "states": {
+    "loading": "Загрузка...",
+    "loadingHistory": "Загрузка истории",
+    "saving": "Сохранение...",
+    "error": "Ошибка",
+    "success": "Успешно",
+    "reconnecting": "Переподключение"
+  },
+  "ok": "ОК",
+  "error": "Ошибка",
+  "errors": {
+    "generic": "Произошла непредвиденная ошибка"
+  },
+  "language": {
+    "browserDefault": "По умолчанию (браузер)"
+  },
+  "conversation": {
+    "plan": "План",
+    "output": "Вывод",
+    "deniedByUser": "{{toolName}} отклонено пользователем",
+    "tool": "Инструмент",
+    "thinking": "Думает",
+    "toolSummary": {
+      "read": "Прочитал {{path}}",
+      "searched": "Искал «{{query}}»",
+      "fetched": "Загрузил {{url}}",
+      "ranCommand": "Выполнил команду",
+      "createdTask": "Создал задачу: {{description}}",
+      "todoOperation": "{{operation}} задачи"
+    },
+    "subagent": {
+      "defaultType": "Субагент"
+    },
+    "loadingEarlierMessages": "Загрузка предыдущих сообщений"
+  },
+  "folderPicker": {
+    "legend": "Нажимайте на названия папок для навигации • Используйте кнопки действий для выбора",
+    "manualPathLabel": "Введите путь вручную:",
+    "go": "Перейти",
+    "searchLabel": "Поиск в текущей директории:",
+    "selectCurrent": "Выбрать текущую",
+    "gitRepo": "git-репозиторий",
+    "selectPath": "Выбрать путь"
+  },
+  "branchSelector": {
+    "placeholder": "Выберите ветку",
+    "searchPlaceholder": "Поиск веток...",
+    "empty": "Ветки не найдены",
+    "badges": {
+      "current": "текущая",
+      "remote": "удалённая"
+    },
+    "currentDisabled": "Нельзя выбрать текущую ветку"
+  },
+  "orgSwitcher": {
+    "organizations": "Организации",
+    "createOrganization": "Создать организацию",
+    "orgSettings": "Настройки организации"
+  },
+  "personal": "Личное",
+  "signIn": "Войти",
+  "signOut": "Выйти",
+  "oauth": {
+    "title": "Вход в Vibe Kanban",
+    "description": "Войдите, чтобы присоединяться к организациям и делиться задачами с командой",
+    "continueWithGitHub": "Продолжить через GitHub",
+    "continueWithGoogle": "Продолжить через Google",
+    "waitingTitle": "Завершите аутентификацию",
+    "waitingDescription": "Открыто всплывающее окно для аутентификации",
+    "waitingForAuth": "Ожидание аутентификации...",
+    "popupInstructions": "Если всплывающее окно не открылось, проверьте настройки блокировщика всплывающих окон.",
+    "back": "Назад",
+    "successTitle": "Аутентификация прошла успешно!",
+    "welcomeBack": "С возвращением, {{name}}",
+    "errorTitle": "Ошибка аутентификации",
+    "errorDescription": "Возникла проблема при аутентификации вашей учётной записи",
+    "tryAgain": "Попробовать снова"
+  },
+  "onboardingSignIn": {
+    "subtitle": "Войдите, чтобы продолжить",
+    "signedInAs": "Вы вошли как {{name}}.",
+    "moreOptions": "Другие варианты",
+    "featureHeader": "Функция",
+    "signedInHeader": "С входом",
+    "skipSignInHeader": "Без входа",
+    "yes": "Да",
+    "no": "Нет"
+  },
+  "toolbar": {
+    "sortBy": "Сортировка",
+    "groupBy": "Группировка"
+  },
+  "sorting": {
+    "ascending": "По возрастанию",
+    "descending": "По убыванию"
+  },
+  "grouping": {
+    "date": "Дата",
+    "assignee": "Исполнитель",
+    "label": "Метка"
+  },
+  "workspaces": {
+    "title": "Воркспейсы",
+    "searchPlaceholder": "Поиск...",
+    "active": "Активные",
+    "archived": "Архивные",
+    "loading": "Загрузка...",
+    "notFound": "Воркспейс не найден",
+    "selectToStart": "Выберите воркспейс для начала работы",
+    "draft": "Черновик",
+    "viewArchive": "Открыть архив",
+    "backToActive": "К активным",
+    "noArchived": "Нет архивных воркспейсов",
+    "noWorkspaces": "Нет воркспейсов",
+    "newWorkspace": "Новый воркспейс",
+    "needsAttention": "Требует внимания",
+    "idle": "Простаивает",
+    "running": "Выполняется",
+    "pin": "Закрепить",
+    "unpin": "Открепить",
+    "archive": "Архивировать",
+    "more": "Ещё действия",
+    "rename": {
+      "title": "Переименовать воркспейс",
+      "description": "Введите новое название для этого воркспейса.",
+      "nameLabel": "Название",
+      "placeholder": "Введите название воркспейса",
+      "action": "Переименовать",
+      "renaming": "Переименование..."
+    },
+    "unlinkFromIssue": "Отвязать от задачи",
+    "deleteWorkspace": "Удалить воркспейс",
+    "unlink": "Отвязать",
+    "delete": "Удалить",
+    "unlinkConfirmMessage": "Вы уверены, что хотите отвязать этот воркспейс от задачи? Воркспейс сохранится, но больше не будет связан с этой задачей.",
+    "deleteConfirmMessage": "Вы уверены, что хотите удалить этот воркспейс? Он будет отвязан от задачи и удалён локально. Это действие нельзя отменить.",
+    "unlinkError": "Не удалось отвязать воркспейс",
+    "deleteError": "Не удалось удалить воркспейс",
+    "linkError": "Не удалось привязать воркспейс",
+    "filesChanged": "{{count}} файлов",
+    "deleteDialog": {
+      "title": "Удалить воркспейс",
+      "description": "Вы уверены, что хотите удалить этот воркспейс? Это действие нельзя отменить.",
+      "deleteBranchLabel": "Удалить ветку",
+      "cannotDeleteOpenPr": "Нельзя удалить ветку, пока открыт PR",
+      "unlinkFromIssueLabel": "Также отвязать от задачи"
+    }
+  },
+  "fileTree": {
+    "searchPlaceholder": "Поиск файлов...",
+    "noResults": "Файлы не найдены",
+    "title": "Файлы",
+    "showGitHubComments": "Показать комментарии GitHub",
+    "hideGitHubComments": "Скрыть комментарии GitHub",
+    "prevGitHubComment": "Предыдущий файл с комментариями",
+    "nextGitHubComment": "Следующий файл с комментариями"
+  },
+  "sections": {
+    "changes": "Изменения",
+    "repositories": "Репозитории",
+    "addRepositories": "Добавить репозитории",
+    "project": "Проект",
+    "processes": "Процессы",
+    "devServer": "Dev-сервер",
+    "advanced": "Дополнительно",
+    "workingBranch": "Рабочая ветка",
+    "recent": "Недавние",
+    "other": "Другое",
+    "devServerPreview": "Предпросмотр dev-сервера",
+    "terminal": "Терминал",
+    "notes": "Заметки"
+  },
+  "notes": {
+    "placeholder": "Добавьте заметки об этом воркспейсе...",
+    "selectWorkspace": "Выберите воркспейс для просмотра заметок"
+  },
+  "actions": {
+    "copyPath": "Копировать путь",
+    "cancel": "Отмена",
+    "saveChanges": "Сохранить изменения",
+    "copied": "Скопировано",
+    "collapse": "Свернуть"
+  },
+  "comments": {
+    "addReviewComment": "Добавить комментарий к ревью",
+    "addPlaceholder": "Добавить комментарий...",
+    "editPlaceholder": "Редактировать комментарий...",
+    "copyToReview": "Скопировать в ревью"
+  },
+  "confirm": {
+    "defaultConfirm": "Подтвердить",
+    "defaultCancel": "Отмена"
+  },
+  "dialogs": {
+    "selectGitRepository": "Выберите Git-репозиторий",
+    "chooseExistingRepo": "Выберите существующий репозиторий из файловой системы"
+  },
+  "empty": {
+    "noChanges": "Нет изменений для отображения"
+  },
+  "commandBar": {
+    "noResults": "Результатов не найдено.",
+    "back": "Назад",
+    "defaultPlaceholder": "Введите команду или выполните поиск...",
+    "selectBranch": "Выберите ветку",
+    "selectBranchFor": "Выберите ветку для {{repoName}}"
+  },
+  "workspacesGuide": {
+    "welcome": {
+      "title": "Добро пожаловать",
+      "content": "Добро пожаловать на страницу воркспейсов. Единое представление воркспейсов всех ваших проектов и самый быстрый способ просмотра работы агентов. Оставляйте отзывы через иконку в панели навигации."
+    },
+    "commandBar": {
+      "title": "Командная строка",
+      "content": "Командная строка — ваш центр навигации. Откройте её с помощью CMD+K для поиска и доступа ко всем действиям в воркспейсе."
+    },
+    "contextBar": {
+      "title": "Контекстная панель",
+      "content": "Контекстная панель позволяет быстро переключаться между панелями. Перетащите её туда, где вам удобно."
+    },
+    "sidebar": {
+      "title": "Боковая панель воркспейсов",
+      "content": "Видьте статус всех воркспейсов одним взглядом. Уведомления подсвечивают те, что требуют внимания. Архивируйте влитые воркспейсы, чтобы боковая панель оставалась чистой."
+    },
+    "multiRepo": {
+      "title": "Поддержка нескольких репозиториев",
+      "content": "Добавляйте несколько репозиториев в один воркспейс. Ссылайтесь на код одного репозитория, работая в другом, или вносите изменения сразу в нескольких репозиториях."
+    },
+    "sessions": {
+      "title": "Множественные сессии",
+      "content": "Создавайте несколько сессий общения с агентом в одном воркспейсе, включая сессии с разными агентами. Это помогает обходить лимиты разговоров или запускать ревью-агентов в отдельных потоках."
+    },
+    "preview": {
+      "title": "Предпросмотр изменений",
+      "content": "Просматривайте свою работу во встроенном браузере, не переключая контекст. Тестируйте на десктопе, мобильных устройствах и пользовательских размерах экрана."
+    },
+    "diffs": {
+      "title": "Диффы и комментарии",
+      "content": "Обновлённая панель диффов включает дерево файлов с изменениями. Комментируйте диффы, чтобы дать обратную связь агенту, и просматривайте комментарии GitHub, когда воркспейс привязан к PR."
+    },
+    "classicUi": {
+      "title": "Вернуться к классическому интерфейсу",
+      "content": "Нажмите на иконку выхода в левой части навигационной панели, чтобы вернуться к классической канбан-доске. Чтобы полностью отключить новый интерфейс, измените параметр «Включить бета-версию воркспейсов» в разделе «Бета-функции» настроек."
+    }
+  },
+  "logs": {
+    "searchLogs": "Поиск в логах",
+    "selectProcessToView": "Выберите процесс для просмотра логов"
+  },
+  "processes": {
+    "noProcesses": "Нет процессов",
+    "terminal": "Терминал"
+  },
+  "search": {
+    "matchCount": "{{current}} из {{total}}",
+    "noMatches": "Совпадений нет"
+  },
+  "contextUsage": {
+    "label": "Использование контекста",
+    "emptyTooltip": "Использование контекста появится после следующего ответа",
+    "tooltip": "Контекст: {{percentage}}% · {{used}} / {{total}} токенов",
+    "ariaLabel": "Использование контекста: {{percentage}}%"
+  },
+  "shortcuts": {
+    "title": "Горячие клавиши",
+    "inWorkspace": "(в воркспейсе)",
+    "sequentialHint": "Последовательные сочетания: нажмите первую клавишу, затем вторую в течение 500 мс.",
+    "configurableHint": "Настраиваются в Настройки → Основные → Ввод сообщений",
+    "groups": {
+      "quickActions": "Быстрые действия",
+      "navigation": "Навигация",
+      "modifiers": "Модификаторы",
+      "goTo": "Перейти к (G ...)",
+      "workspace": "Воркспейс (W ...)",
+      "view": "Вид (V ...)",
+      "issues": "Задачи (I ...)",
+      "git": "Git (X ...)",
+      "yank": "Копировать (Y ...)",
+      "toggle": "Переключить (T ...)",
+      "run": "Запустить (R ...)"
+    },
+    "actions": {
+      "showHelp": "Показать справку",
+      "closeCancel": "Закрыть/отменить",
+      "createNewTask": "Создать новую задачу",
+      "deleteSelected": "Удалить выбранное",
+      "focusSearch": "Фокус на поиск",
+      "moveDown": "Вниз",
+      "moveUp": "Вверх",
+      "moveLeft": "Влево",
+      "moveRight": "Вправо",
+      "openCommandBar": "Открыть командную строку",
+      "formatInlineCode": "Форматировать как код",
+      "sendMessage": "Отправить сообщение",
+      "settings": "Перейти в настройки",
+      "new-workspace": "Новый воркспейс",
+      "duplicate-workspace": "Дублировать воркспейс",
+      "rename-workspace": "Переименовать воркспейс",
+      "pin-workspace": "Закрепить/открепить воркспейс",
+      "archive-workspace": "Архивировать воркспейс",
+      "delete-workspace": "Удалить воркспейс",
+      "toggle-changes-mode": "Панель изменений",
+      "toggle-logs-mode": "Панель логов",
+      "toggle-preview-mode": "Панель предпросмотра",
+      "toggle-left-sidebar": "Боковая панель",
+      "toggle-left-main-panel": "Панель чата",
+      "create-issue": "Создать задачу",
+      "change-issue-status": "Изменить статус",
+      "change-issue-priority": "Изменить приоритет",
+      "change-assignees": "Изменить исполнителей",
+      "make-sub-issue-of": "Сделать подзадачей",
+      "add-sub-issue": "Добавить подзадачу",
+      "remove-parent-issue": "Убрать родителя",
+      "link-workspace": "Привязать воркспейс",
+      "duplicate-issue": "Дублировать задачу",
+      "delete-issue": "Удалить задачу",
+      "git-create-pr": "Создать Pull Request",
+      "git-merge": "Влить ветку",
+      "git-rebase": "Ребейз ветки",
+      "git-push": "Запушить изменения",
+      "copy-path": "Копировать путь",
+      "copy-raw-logs": "Копировать логи",
+      "toggle-dev-server": "Dev-сервер",
+      "toggle-wrap-lines": "Перенос строк",
+      "run-setup-script": "Запустить скрипт настройки",
+      "run-cleanup-script": "Запустить скрипт очистки",
+      "run-archive-script": "Запустить скрипт архивации"
+    }
+  },
+  "typeahead": {
+    "tags": "Теги",
+    "files": "Файлы",
+    "commands": "Команды",
+    "chooseRepo": "Выберите репозиторий",
+    "selectedRepo": "Выбран репозиторий: {{repoName}}",
+    "missingRepo": "Выбранный репозиторий больше недоступен.",
+    "noTagsOrFiles": "Теги и файлы не найдены",
+    "createTag": "Создать новый тег",
+    "noCommands": "Нет доступных команд для этого агента."
+  },
+  "kanban": {
+    "noVisibleStatuses": "Все статусы скрыты. Используйте настройки отображения или переключитесь на другую вкладку.",
+    "noProjectFound": "Проект не найден",
+    "unassigned": "Без исполнителя",
+    "noTagsAvailable": "Нет доступных тегов",
+    "createNewIssue": "Создать новую задачу",
+    "searchTags": "Поиск тегов...",
+    "selectColorFor": "Выберите цвет для",
+    "createTag": "Создать",
+    "noPrCreated": "PR не создан",
+    "noCommentsYet": "Комментариев пока нет",
+    "createdBy": "Создал",
+    "comments": "Комментарии",
+    "enterCommentPlaceholder": "Введите комментарий...",
+    "attachFile": "Прикрепить файл",
+    "attachFileHint": "Прикрепите файлы (макс. 20 МБ каждый)",
+    "dropFilesHere": "Перетащите файлы сюда",
+    "fileDropHint": "Любой тип файла до 20 МБ",
+    "unknownUser": "Неизвестный пользователь",
+    "deletedUser": "Удалённый пользователь",
+    "replyQuotePrefix": "написал:",
+    "moreActions": "Ещё действия",
+    "closePanel": "Закрыть панель",
+    "copyLink": "Копировать ссылку",
+    "issueTitlePlaceholder": "Название задачи...",
+    "issueDescriptionPlaceholder": "Введите описание задачи...",
+    "createDraftWorkspaceImmediately": "Сразу создать черновик воркспейса",
+    "createDraftWorkspaceDescription": "После создания задачи откроется форма создания воркспейса с предзаполненными данными",
+    "createIssue": "Создать задачу",
+    "newIssue": "Новая задача",
+    "previewCodeBlock": "[Блок кода]",
+    "previewImage": "[Изображение]",
+    "previewImageWithName": "[Изображение: {{name}}]",
+    "previewFile": "[Файл]",
+    "previewFileWithName": "[Файл: {{name}}]",
+    "imageAttachmentNameFallback": "Вложение",
+    "removeImage": "Удалить изображение",
+    "maxFilesAtOnce": "Максимум {{count}} файлов за раз",
+    "fileExceedsLimit": "Файл {{filename}} превышает лимит в 20 МБ",
+    "unknownError": "Неизвестная ошибка",
+    "failedToUploadFile": "Не удалось загрузить {{filename}}: {{message}}",
+    "downloadAttachment": "Скачать вложение",
+    "subIssues": "Подзадачи",
+    "noSubIssues": "Нет подзадач",
+    "markIndependentIssue": "Сделать самостоятельной задачей",
+    "parentIssue": "Родитель",
+    "subIssueIndicator": "↳",
+    "viewTabs": {
+      "active": "Активные",
+      "all": "Все"
+    },
+    "loginRequired": {
+      "title": "Требуется вход",
+      "description": "Войдите, чтобы просмотреть этот проект.",
+      "action": "Войти"
+    },
+    "team": "Команда",
+    "personal": "Личное",
+    "searchPlaceholder": "Поиск задач...",
+    "filters": "Фильтры",
+    "clearFilters": "Сбросить фильтры",
+    "filtersDescription": "Настройте фильтры и сортировку для этого представления.",
+    "filterByTag": "Фильтр по тегу",
+    "filterByPriority": "Фильтр по приоритету",
+    "tags": "Теги",
+    "sortBy": "Сортировка",
+    "workspaceSidebar": {
+      "sortDialogTitle": "Сортировка воркспейсов",
+      "sortDialogDescription": "Выберите порядок воркспейсов в боковой панели.",
+      "sortByLabel": "Сортировать по",
+      "sortOrderLabel": "Порядок сортировки",
+      "sortUpdatedAt": "Дата обновления",
+      "sortCreatedAt": "Дата создания",
+      "filterDialogTitle": "Фильтрация воркспейсов",
+      "filterDialogDescription": "Отфильтруйте воркспейсы по проекту и статусу PR.",
+      "projectFilterLabel": "Проект",
+      "prFilterLabel": "PR",
+      "prFilterAll": "Все",
+      "prFilterHasPr": "С PR",
+      "prFilterNoPr": "Без PR",
+      "noProject": "Без проекта",
+      "sortButtonTitle": "Сортировка воркспейсов",
+      "filterButtonTitle": "Фильтрация воркспейсов"
+    },
+    "sortAscending": "По возрастанию",
+    "sortDescending": "По убыванию",
+    "assignee": "Исполнитель",
+    "self": "Я",
+    "priority": "Приоритет",
+    "subIssuesFilterLabel": "Подзадачи",
+    "workspacesFilterLabel": "Воркспейсы",
+    "selectAssignees": "Выберите исполнителей...",
+    "relationships": "Связи",
+    "noRelationships": "Нет связей",
+    "openProjectsGuide": "Руководство по проектам",
+    "editProjectSettings": "Настройки проекта",
+    "linkWorkspace": "Привязать воркспейс...",
+    "createNewWorkspace": "Создать новый воркспейс",
+    "workspaces": "Воркспейсы",
+    "showingWorkspaces": "Показано {{count}} из {{total}}",
+    "changeColor": "Изменить цвет",
+    "editName": "Изменить название",
+    "deleteStatus": "Удалить статус",
+    "cannotDeleteWithIssues": "Сначала переместите задачи",
+    "lastVisibleStatus": "Хотя бы один статус должен быть видимым",
+    "showStatus": "Показать статус",
+    "hideStatus": "Скрыть статус",
+    "newStatus": "Новый статус",
+    "visibleColumns": "Видимые колонки",
+    "dragToRearrange": "Перетащите для изменения порядка",
+    "addColumn": "Добавить колонку",
+    "projectsGuide": {
+      "intro": {
+        "title": "Добро пожаловать",
+        "content": "Добро пожаловать в Vibe Kanban. Используйте разделы справки в этой панели, чтобы узнать, как всё работает, а затем создайте свою первую задачу. Вы можете открыть эту справку или оставить отзыв в любое время через панель навигации."
+      },
+      "welcome": {
+        "title": "Проекты",
+        "content": "Страница проекта — место управления задачами. Вы можете просматривать задачи в виде канбан-доски или списка, фильтровать по статусу, тегу, исполнителю и другим параметрам."
+      },
+      "issues": {
+        "title": "Задачи",
+        "content": "Каждая задача описывает функцию или проблему для решения. У задач есть статусы, приоритеты, исполнители, теги, связи, комментарии, подзадачи и многое другое."
+      },
+      "workspaces": {
+        "title": "Воркспейсы",
+        "content": "Чтобы начать работу над задачей, создайте воркспейс. У одной задачи может быть несколько воркспейсов. Задачи описывают, что нужно сделать, воркспейсы — где это делается."
+      },
+      "organizations": {
+        "title": "Пригласите свою команду",
+        "content": "Мы автоматически создали личную организацию и начальный проект, чтобы вы могли легко начать работу с Vibe Kanban. Вы также можете создать новые организации и пригласить свою команду."
+      }
+    }
+  },
+  "createMode": {
+    "headings": {
+      "repoStep": "С какими репозиториями вы хотите работать?",
+      "chatStep": "Над чем вы хотите работать?"
+    },
+    "repoPicker": {
+      "actions": {
+        "recent": "Недавние",
+        "browse": "Обзор",
+        "create": "Создать"
+      },
+      "setupHintTitle": "Скрипты настройки",
+      "setupHint": "Совет: настройте скрипты для этого репозитория в Настройки → Репозитории",
+      "setupHintDismiss": "Скрыть",
+      "setupHintLink": "Настроить"
+    }
+  },
+  "modelSelector": {
+    "preset": "Пресет",
+    "custom": "Пользовательский",
+    "permissions": "Разрешения",
+    "permissionAuto": "Авто",
+    "permissionAsk": "Спрашивать",
+    "permissionPlan": "План",
+    "agent": "Агент",
+    "default": "По умолчанию",
+    "model": "Модель"
+  },
+  "syncError": {
+    "networkErrors": "Сетевые ошибки",
+    "streamsAffected": "Затронут {{count}} поток",
+    "streamsAffected_other": "Затронуто {{count}} потоков",
+    "status": "(статус {{status}})",
+    "refreshPage": "Обновить страницу"
+  },
+  "migration": {
+    "allProjectsMigrated": "Все ваши проекты уже перенесены в облако.",
+    "continueToProjects": "Перейти к проектам"
+  },
+  "appBar": {
+    "kanban": {
+      "tooltip": "Канбан",
+      "title": "Канбан-доски",
+      "description": "Войдите, чтобы организовать работу агентов с помощью канбан-досок.",
+      "migrateOldProjects": "Перенести старые проекты"
+    }
+  },
+  "askQuestion": {
+    "title": "Агент задаёт вопрос",
+    "selectMultiple": "выбрать несколько",
+    "confirmSelection": "Подтвердить выбор",
+    "submitting": "Отправка ответов...",
+    "answeredCount": "Отвечено на {{count}} вопрос",
+    "answeredCount_other": "Отвечено на {{count}} вопросов"
+  }
+}
