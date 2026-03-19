@@ -12,13 +12,10 @@ import {
   $convertFromMarkdownString,
   type Transformer,
 } from '@lexical/markdown';
+import { getTauriInvoke, isTauriRuntime } from '../lib/platform';
 
 type Props = {
   transformers: Transformer[];
-};
-
-type TauriInternals = {
-  invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
 };
 
 /**
@@ -34,11 +31,9 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
   const shiftHeldRef = useRef(false);
 
   const readRawClipboardText = async (): Promise<string> => {
-    const tauriInvoke = (
-      window as Window & { __TAURI_INTERNALS__?: TauriInternals }
-    ).__TAURI_INTERNALS__?.invoke;
+    const tauriInvoke = getTauriInvoke();
 
-    if (typeof tauriInvoke === 'function') {
+    if (tauriInvoke) {
       try {
         const text = await tauriInvoke('read_clipboard_text');
         if (typeof text === 'string') {
@@ -51,11 +46,6 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
     return navigator.clipboard.readText();
   };
-
-  const isTauriRuntime = (): boolean =>
-    typeof window !== 'undefined' &&
-    typeof (window as Window & { __TAURI_INTERNALS__?: TauriInternals })
-      .__TAURI_INTERNALS__?.invoke === 'function';
 
   useEffect(() => {
     // Track Shift key state during paste shortcut
