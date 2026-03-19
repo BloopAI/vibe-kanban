@@ -71,6 +71,18 @@ function collectTextNodes(root: HTMLElement): Text[] {
   return nodes;
 }
 
+function createHighlightMark(text: string): HTMLElement {
+  const mark = document.createElement('mark');
+  mark.dataset.vkSearchHighlight = 'true';
+  mark.className = 'bg-yellow-500/35 rounded-sm px-[1px]';
+  mark.style.backgroundColor = 'hsl(43 96% 56% / 0.45)';
+  mark.style.borderRadius = '2px';
+  mark.style.padding = '0 1px';
+  mark.style.color = 'inherit';
+  mark.textContent = text;
+  return mark;
+}
+
 export function clearSearchTextHighlights(root: HTMLElement): void {
   clearSearchTextHighlightsWithKey(root, CUSTOM_HIGHLIGHT_KEY);
 }
@@ -137,17 +149,17 @@ export function applySearchTextHighlights(
       }
 
       const end = matchIndex + normalizedQuery.length;
-      if (useCustomHighlights) {
+      const isInShadowRoot = textNode.getRootNode() instanceof ShadowRoot;
+      const shouldUseCustomHighlight = useCustomHighlights && !isInShadowRoot;
+      if (shouldUseCustomHighlight) {
         const range = document.createRange();
         range.setStart(textNode, matchIndex);
         range.setEnd(textNode, end);
         ranges.push(range);
       } else {
-        const mark = document.createElement('mark');
-        mark.dataset.vkSearchHighlight = 'true';
-        mark.className = 'bg-yellow-500/35 rounded-sm px-[1px]';
-        mark.textContent = content.slice(matchIndex, end);
-        fragment.appendChild(mark);
+        fragment.appendChild(
+          createHighlightMark(content.slice(matchIndex, end))
+        );
       }
       count += 1;
 
@@ -155,7 +167,7 @@ export function applySearchTextHighlights(
       matchIndex = lower.indexOf(normalizedQuery, start);
     }
 
-    if (!useCustomHighlights) {
+    if (!useCustomHighlights || textNode.getRootNode() instanceof ShadowRoot) {
       if (start < content.length) {
         fragment.appendChild(document.createTextNode(content.slice(start)));
       }
