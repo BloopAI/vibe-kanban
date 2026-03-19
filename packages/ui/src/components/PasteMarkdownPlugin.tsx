@@ -61,13 +61,24 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         if (isRawPasteCombo) {
           const rootElement = editor.getRootElement();
           const activeEl = document.activeElement;
+          const domSelection = window.getSelection();
+          const hasSelectionInsideEditor =
+            !!rootElement &&
+            !!domSelection?.anchorNode &&
+            rootElement.contains(domSelection.anchorNode);
           const isEditorFocused =
             !!rootElement && !!activeEl && rootElement.contains(activeEl);
+          const shouldHandleRawPaste =
+            isEditorFocused || hasSelectionInsideEditor;
 
-          if (!isEditorFocused) {
+          if (!shouldHandleRawPaste) {
             if (isDebugPasteEnabled()) {
               console.log(
-                '[PasteMarkdownPlugin] raw paste combo ignored (editor not focused)'
+                '[PasteMarkdownPlugin] raw paste combo ignored (editor not focused)',
+                {
+                  activeTag: activeEl?.tagName ?? null,
+                  hasSelectionInsideEditor,
+                }
               );
             }
             return;
