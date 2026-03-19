@@ -600,7 +600,9 @@
       "thisMachine": "This machine",
       "localHost": "Local host",
       "remoteHost": "Remote host",
-      "noHostAvailable": "No host is available for host-specific settings yet."
+      "noHostAvailable": "No host is available for host-specific settings yet.",
+      "pairMachineHint": "Pair a machine to open machine settings.",
+      "selectMachineHint": "Select a machine to open machine settings."
     }
   },
   "integrations": {
