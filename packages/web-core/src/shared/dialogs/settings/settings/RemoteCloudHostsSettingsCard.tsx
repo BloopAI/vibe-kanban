@@ -415,10 +415,7 @@ export function RemoteCloudHostsSettingsCardContent({
                             'settings.relay.remoteCloudHost.remove',
                             'Remove'
                           )}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void handleRemove(host.id);
-                          }}
+                          onClick={() => void handleRemove(host.id)}
                           disabled={isRemoving}
                           actionIcon={
                             removingHostId === host.id ? 'spinner' : undefined
