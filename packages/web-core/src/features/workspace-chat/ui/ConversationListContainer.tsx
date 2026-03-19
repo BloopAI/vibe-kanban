@@ -602,6 +602,11 @@ export const ConversationList = forwardRef<
     });
   }, []);
 
+  useEffect(() => {
+    if (!showSearch) return;
+    focusSearchInput();
+  }, [focusSearchInput, showSearch]);
+
   const searchableTextByPatchKey = useMemo(() => {
     const map = new Map<string, string>();
     for (const row of conversationRows) {
