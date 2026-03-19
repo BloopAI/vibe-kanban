@@ -88,7 +88,7 @@ impl Environment {
 pub struct UserSystemInfo {
     pub version: String,
     pub config: Config,
-    pub analytics_user_id: String,
+    pub machine_id: String,
     pub login_status: LoginStatus,
     #[serde(flatten)]
     pub profiles: ExecutorConfigs,
@@ -115,7 +115,7 @@ async fn get_user_system_info(
     let user_system_info = UserSystemInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         config,
-        analytics_user_id: deployment.user_id().to_string(),
+        machine_id: deployment.user_id().to_string(),
         login_status,
         profiles: ExecutorConfigs::get_cached(),
         environment: Environment::new(),

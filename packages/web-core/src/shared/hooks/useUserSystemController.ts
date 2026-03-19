@@ -41,7 +41,7 @@ export function useUserSystemController({
   const appVersion = userSystemInfo?.version || null;
   const previewProxyPort = userSystemInfo?.preview_proxy_port ?? null;
   const environment = userSystemInfo?.environment || null;
-  const analyticsUserId = userSystemInfo?.analytics_user_id || null;
+  const machineId = userSystemInfo?.machine_id || null;
   const loginStatus = userSystemInfo?.login_status || null;
   const profiles =
     (userSystemInfo?.executors as Record<string, ExecutorProfile> | null) ||
@@ -149,7 +149,7 @@ export function useUserSystemController({
         environment,
         profiles,
         capabilities,
-        analyticsUserId,
+        machineId,
         loginStatus,
       },
       appVersion,
@@ -158,7 +158,7 @@ export function useUserSystemController({
       environment,
       profiles,
       capabilities,
-      analyticsUserId,
+      machineId,
       loginStatus,
       updateConfig,
       saveConfig,
@@ -170,7 +170,7 @@ export function useUserSystemController({
       loading,
     }),
     [
-      analyticsUserId,
+      machineId,
       appVersion,
       capabilities,
       config,

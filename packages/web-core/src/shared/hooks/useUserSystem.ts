@@ -15,7 +15,7 @@ export interface UserSystemState {
   environment: Environment | null;
   profiles: Record<string, ExecutorProfile> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  analyticsUserId: string | null;
+  machineId: string | null;
   loginStatus: LoginStatus | null;
 }
 
@@ -35,7 +35,7 @@ export interface UserSystemContextType {
   environment: Environment | null;
   profiles: Record<string, ExecutorProfile> | null;
   capabilities: Record<string, BaseAgentCapability[]> | null;
-  analyticsUserId: string | null;
+  machineId: string | null;
   loginStatus: LoginStatus | null;
   setEnvironment: (env: Environment | null) => void;
   setProfiles: (profiles: Record<string, ExecutorProfile> | null) => void;

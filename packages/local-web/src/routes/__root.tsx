@@ -13,24 +13,24 @@ import { UserProvider } from '@/shared/providers/remote/UserProvider';
 import '@/app/styles/new/index.css';
 
 function RootRouteComponent() {
-  const { config, analyticsUserId, updateAndSaveConfig } = useUserSystem();
+  const { config, machineId, updateAndSaveConfig } = useUserSystem();
   const posthog = usePostHog();
   const location = useLocation();
 
   useUiPreferencesScratch();
 
   useEffect(() => {
-    if (!posthog || !analyticsUserId) return;
+    if (!posthog || !machineId) return;
 
     if (config?.analytics_enabled) {
       posthog.opt_in_capturing();
-      posthog.identify(analyticsUserId);
+      posthog.identify(machineId);
       console.log('[Analytics] Analytics enabled and user identified');
     } else {
       posthog.opt_out_capturing();
       console.log('[Analytics] Analytics disabled by user preference');
     }
-  }, [config?.analytics_enabled, analyticsUserId, posthog]);
+  }, [config?.analytics_enabled, machineId, posthog]);
 
   useEffect(() => {
     if (!config || !config.remote_onboarding_acknowledged) return;
