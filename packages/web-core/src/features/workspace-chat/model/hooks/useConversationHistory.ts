@@ -1,85 +1,52 @@
 import {
-  CommandExitStatus,
-  ExecutorAction,
   ExecutionProcess,
   ExecutionProcessStatus,
-  NormalizedEntry,
   PatchType,
-  TokenUsageInfo,
-  ToolStatus,
 } from 'shared/types';
 import { useExecutionProcessesContext } from '@/shared/hooks/useExecutionProcessesContext';
-import { useEntries } from '../contexts/EntriesContext';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { streamJsonPatchEntries } from '@/shared/lib/streamJsonPatchEntries';
 import type {
   AddEntryType,
+  ConversationTimelineSource,
   ExecutionProcessStateStore,
-  OnEntriesUpdated,
   PatchTypeWithKey,
   UseConversationHistoryParams,
 } from '@/shared/hooks/useConversationHistory/types';
 
 // Result type for the new UI's conversation history hook
 export interface UseConversationHistoryResult {
-  /** Whether a setup script has already run in this conversation */
-  hasSetupScriptRun: boolean;
-  /** Whether a cleanup script has already run in this conversation */
-  hasCleanupScriptRun: boolean;
-  /** Whether there is currently a running process */
-  hasRunningProcess: boolean;
   /** Whether the conversation only has a single coding agent turn (no follow-ups) */
   isFirstTurn: boolean;
+  /** Whether background batches are still loading older history entries */
+  isLoadingHistory: boolean;
 }
 import {
-  makeLoadingPatch,
   MIN_INITIAL_ENTRIES,
-  nextActionPatch,
   REMAINING_BATCH_SIZE,
 } from '@/shared/hooks/useConversationHistory/constants';
 
-/** Walk the next_action chain to find the first coding agent prompt. */
-function extractPromptFromActionChain(
-  action: ExecutorAction | null
-): string | null {
-  let current = action;
-  while (current) {
-    const typ = current.typ;
-    if (
-      typ.type === 'CodingAgentInitialRequest' ||
-      typ.type === 'CodingAgentFollowUpRequest' ||
-      typ.type === 'ReviewRequest'
-    ) {
-      return typ.prompt;
-    }
-    current = current.next_action;
-  }
-  return null;
-}
-
 export const useConversationHistory = ({
-  attempt,
-  onEntriesUpdated,
+  onTimelineUpdated,
+  scopeKey,
 }: UseConversationHistoryParams): UseConversationHistoryResult => {
   const {
     executionProcessesVisible: executionProcessesRaw,
     isLoading,
     isConnected,
   } = useExecutionProcessesContext();
-  const { setTokenUsageInfo } = useEntries();
   const executionProcesses = useRef<ExecutionProcess[]>(executionProcessesRaw);
   const displayedExecutionProcesses = useRef<ExecutionProcessStateStore>({});
   const loadedInitialEntries = useRef(false);
+  const emittedEmptyInitialRef = useRef(false);
   const streamingProcessIdsRef = useRef<Set<string>>(new Set());
-  const onEntriesUpdatedRef = useRef<OnEntriesUpdated | null>(null);
+  const onTimelineUpdatedRef = useRef<
+    UseConversationHistoryParams['onTimelineUpdated'] | null
+  >(null);
   const previousStatusMapRef = useRef<Map<string, ExecutionProcessStatus>>(
     new Map()
   );
-
-  // Track whether scripts have run in this conversation
-  const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
-  const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
-  const [hasRunningProcess, setHasRunningProcess] = useState(false);
+  const [isLoadingHistoryState, setIsLoadingHistory] = useState(false);
 
   // Derive whether this is the first turn (no follow-up processes exist)
   const isFirstTurn = useMemo(() => {
@@ -97,9 +64,23 @@ export const useConversationHistory = ({
     const state = displayedExecutionProcesses.current;
     mutator(state);
   };
+
+  // The hook owns transport, loading, and reconciliation.
+  // It emits a source model that later derivation layers can transform further.
+
+  const buildTimelineSource = useCallback(
+    (
+      executionProcessState: ExecutionProcessStateStore
+    ): ConversationTimelineSource => ({
+      executionProcessState,
+      liveExecutionProcesses: executionProcesses.current,
+    }),
+    []
+  );
+
   useEffect(() => {
-    onEntriesUpdatedRef.current = onEntriesUpdated;
-  }, [onEntriesUpdated]);
+    onTimelineUpdatedRef.current = onTimelineUpdated;
+  }, [onTimelineUpdated]);
 
   // Keep executionProcesses up to date
   useEffect(() => {
@@ -140,18 +121,10 @@ export const useConversationHistory = ({
     });
   };
 
-  const getLiveExecutionProcess = (
-    executionProcessId: string
-  ): ExecutionProcess | undefined => {
-    return executionProcesses?.current.find(
-      (executionProcess) => executionProcess.id === executionProcessId
-    );
-  };
-
   const patchWithKey = (
     patch: PatchType,
     executionProcessId: string,
-    index: number | 'user' | 'script'
+    index: number
   ) => {
     return {
       ...patch,
@@ -192,38 +165,16 @@ export const useConversationHistory = ({
     );
   };
 
-  const flattenEntriesForEmit = useCallback(
-    (executionProcessState: ExecutionProcessStateStore): PatchTypeWithKey[] => {
-      // Flags to control Next Action bar emit
-      let hasPendingApproval = false;
-      let hasRunningProcess = false;
-      let lastProcessFailedOrKilled = false;
-      let needsSetup = false;
-      let setupHelpText: string | undefined;
-      let latestTokenUsageInfo: TokenUsageInfo | null = null;
+  const emitEntries = useCallback(
+    (
+      executionProcessState: ExecutionProcessStateStore,
+      addEntryType: AddEntryType,
+      loading: boolean
+    ) => {
+      const timelineSource = buildTimelineSource(executionProcessState);
+      let modifiedAddEntryType = addEntryType;
 
-      // Check whether a setup script process exists AND can provide the
-      // initial user prompt via its next_action chain.  When it can, the
-      // user message is emitted from the script branch (after the script
-      // finishes) instead of from the CodingAgentInitialRequest branch –
-      // this avoids a Virtuoso list reorder when the script and coding agent
-      // load at different times.
-      // NOTE: parallel setup scripts (parallel_setup_script = true) have
-      // next_action = null, so extractPromptFromActionChain returns null for
-      // them; in that case we fall back to emitting from the coding-agent
-      // branch as usual.
-      const hasSetupScriptWithPrompt = Object.values(
-        executionProcessState
-      ).some(
-        (p) =>
-          p.executionProcess.executor_action.typ.type === 'ScriptRequest' &&
-          p.executionProcess.executor_action.typ.context === 'SetupScript' &&
-          extractPromptFromActionChain(p.executionProcess.executor_action) !==
-            null
-      );
-
-      // Create user messages + tool calls for setup/cleanup scripts
-      const allEntries = Object.values(executionProcessState)
+      const latestEntry = Object.values(executionProcessState)
         .sort(
           (a, b) =>
             new Date(
@@ -233,295 +184,24 @@ export const useConversationHistory = ({
               b.executionProcess.created_at as unknown as string
             ).getTime()
         )
-        .flatMap((p, index) => {
-          const entries: PatchTypeWithKey[] = [];
-          if (
-            p.executionProcess.executor_action.typ.type ===
-              'CodingAgentInitialRequest' ||
-            p.executionProcess.executor_action.typ.type ===
-              'CodingAgentFollowUpRequest' ||
-            p.executionProcess.executor_action.typ.type === 'ReviewRequest'
-          ) {
-            // Suppress the initial user message when a setup script exists
-            // AND can provide the prompt – the script branch emits it instead
-            // (after the script finishes) to avoid a Virtuoso list reorder.
-            const isInitialWithSetup =
-              p.executionProcess.executor_action.typ.type ===
-                'CodingAgentInitialRequest' && hasSetupScriptWithPrompt;
+        .flatMap((processState) => processState.entries)
+        .at(-1);
 
-            if (!isInitialWithSetup) {
-              const actionType = p.executionProcess.executor_action.typ;
-              const userNormalizedEntry: NormalizedEntry = {
-                entry_type: {
-                  type: 'user_message',
-                },
-                content: actionType.prompt,
-                timestamp: null,
-              };
-              const userPatch: PatchType = {
-                type: 'NORMALIZED_ENTRY',
-                content: userNormalizedEntry,
-              };
-              const userPatchTypeWithKey = patchWithKey(
-                userPatch,
-                p.executionProcess.id,
-                'user'
-              );
-              entries.push(userPatchTypeWithKey);
-            }
-
-            // Extract latest token usage info before filtering
-            const tokenUsageEntry = p.entries.findLast(
-              (e) =>
-                e.type === 'NORMALIZED_ENTRY' &&
-                e.content.entry_type.type === 'token_usage_info'
-            );
-            if (tokenUsageEntry?.type === 'NORMALIZED_ENTRY') {
-              latestTokenUsageInfo = tokenUsageEntry.content
-                .entry_type as TokenUsageInfo;
-            }
-
-            // Remove user messages (replaced with custom one) and token usage info (displayed separately)
-            const entriesExcludingUser = p.entries.filter(
-              (e) =>
-                e.type !== 'NORMALIZED_ENTRY' ||
-                (e.content.entry_type.type !== 'user_message' &&
-                  e.content.entry_type.type !== 'token_usage_info')
-            );
-
-            const hasPendingApprovalEntry = entriesExcludingUser.some(
-              (entry) => {
-                if (entry.type !== 'NORMALIZED_ENTRY') return false;
-                const entryType = entry.content.entry_type;
-                return (
-                  entryType.type === 'tool_use' &&
-                  entryType.status.status === 'pending_approval'
-                );
-              }
-            );
-
-            if (hasPendingApprovalEntry) {
-              hasPendingApproval = true;
-            }
-
-            entries.push(...entriesExcludingUser);
-
-            const liveProcessStatus = getLiveExecutionProcess(
-              p.executionProcess.id
-            )?.status;
-            const isProcessRunning =
-              liveProcessStatus === ExecutionProcessStatus.running;
-            const processFailedOrKilled =
-              liveProcessStatus === ExecutionProcessStatus.failed ||
-              liveProcessStatus === ExecutionProcessStatus.killed;
-
-            if (isProcessRunning) {
-              hasRunningProcess = true;
-            }
-
-            if (
-              processFailedOrKilled &&
-              index === Object.keys(executionProcessState).length - 1
-            ) {
-              lastProcessFailedOrKilled = true;
-
-              // Check if this failed process has a SetupRequired entry
-              const hasSetupRequired = entriesExcludingUser.some((entry) => {
-                if (entry.type !== 'NORMALIZED_ENTRY') return false;
-                if (
-                  entry.content.entry_type.type === 'error_message' &&
-                  entry.content.entry_type.error_type.type === 'setup_required'
-                ) {
-                  setupHelpText = entry.content.content;
-                  return true;
-                }
-                return false;
-              });
-
-              if (hasSetupRequired) {
-                needsSetup = true;
-              }
-            }
-
-            if (isProcessRunning && !hasPendingApprovalEntry) {
-              entries.push(makeLoadingPatch(p.executionProcess.id));
-            }
-          } else if (
-            p.executionProcess.executor_action.typ.type === 'ScriptRequest'
-          ) {
-            // Add setup and cleanup script as a tool call
-            let toolName = '';
-            const scriptContext =
-              p.executionProcess.executor_action.typ.context;
-            switch (scriptContext) {
-              case 'SetupScript':
-                toolName = 'Setup Script';
-                break;
-              case 'CleanupScript':
-                toolName = 'Cleanup Script';
-                break;
-              case 'ArchiveScript':
-                toolName = 'Archive Script';
-                break;
-              case 'ToolInstallScript':
-                toolName = 'Tool Install Script';
-                break;
-              default:
-                return [];
-            }
-
-            // Track that setup/cleanup scripts have run
-            if (scriptContext === 'SetupScript') {
-              setHasSetupScriptRun(true);
-            } else if (scriptContext === 'CleanupScript') {
-              setHasCleanupScriptRun(true);
-            }
-
-            const executionProcess = getLiveExecutionProcess(
-              p.executionProcess.id
-            );
-
-            if (executionProcess?.status === ExecutionProcessStatus.running) {
-              hasRunningProcess = true;
-            }
-
-            if (
-              (executionProcess?.status === ExecutionProcessStatus.failed ||
-                executionProcess?.status === ExecutionProcessStatus.killed) &&
-              index === Object.keys(executionProcessState).length - 1
-            ) {
-              lastProcessFailedOrKilled = true;
-            }
-
-            const exitCode = Number(executionProcess?.exit_code) || 0;
-            const exit_status: CommandExitStatus | null =
-              executionProcess?.status === 'running'
-                ? null
-                : {
-                    type: 'exit_code',
-                    code: exitCode,
-                  };
-
-            const toolStatus: ToolStatus =
-              executionProcess?.status === ExecutionProcessStatus.running
-                ? { status: 'created' }
-                : exitCode === 0
-                  ? { status: 'success' }
-                  : { status: 'failed' };
-
-            const output = p.entries.map((line) => line.content).join('\n');
-
-            const toolNormalizedEntry: NormalizedEntry = {
-              entry_type: {
-                type: 'tool_use',
-                tool_name: toolName,
-                action_type: {
-                  action: 'command_run',
-                  command: p.executionProcess.executor_action.typ.script,
-                  result: {
-                    output,
-                    exit_status,
-                  },
-                  category: 'other',
-                },
-                status: toolStatus,
-              },
-              content: toolName,
-              timestamp: null,
-            };
-            const toolPatch: PatchType = {
-              type: 'NORMALIZED_ENTRY',
-              content: toolNormalizedEntry,
-            };
-            // Use a distinct key suffix so Virtuoso doesn't reuse the
-            // height measured while the script was still streaming logs.
-            const toolPatchWithKey: PatchTypeWithKey = patchWithKey(
-              toolPatch,
-              p.executionProcess.id,
-              'script'
-            );
-
-            entries.push(toolPatchWithKey);
-
-            // After the setup script finishes (success or failure), show the
-            // initial user prompt so the user can see and edit/retry it.
-            // Only emit when the script is no longer running – this preserves
-            // the original UX where the user message appears after the script.
-            if (
-              scriptContext === 'SetupScript' &&
-              index === 0 &&
-              executionProcess?.status !== ExecutionProcessStatus.running
-            ) {
-              const initialPrompt = extractPromptFromActionChain(
-                p.executionProcess.executor_action
-              );
-              if (initialPrompt) {
-                const userNormalizedEntry: NormalizedEntry = {
-                  entry_type: { type: 'user_message' },
-                  content: initialPrompt,
-                  timestamp: null,
-                };
-                const userPatch: PatchType = {
-                  type: 'NORMALIZED_ENTRY',
-                  content: userNormalizedEntry,
-                };
-                entries.push(
-                  patchWithKey(userPatch, p.executionProcess.id, 'user')
-                );
-              }
-            }
-          }
-
-          return entries;
-        });
-
-      // Update running process state
-      setHasRunningProcess(hasRunningProcess);
-
-      // Emit the next action bar if no process running
-      if (!hasRunningProcess && !hasPendingApproval) {
-        allEntries.push(
-          nextActionPatch(
-            lastProcessFailedOrKilled,
-            Object.keys(executionProcessState).length,
-            needsSetup,
-            setupHelpText
-          )
-        );
+      if (
+        latestEntry?.type === 'NORMALIZED_ENTRY' &&
+        latestEntry.content.entry_type.type === 'tool_use' &&
+        latestEntry.content.entry_type.tool_name === 'ExitPlanMode'
+      ) {
+        modifiedAddEntryType = 'plan';
       }
 
-      // Update token usage info in context
-      setTokenUsageInfo(latestTokenUsageInfo);
-
-      return allEntries;
+      onTimelineUpdatedRef.current?.(
+        timelineSource,
+        modifiedAddEntryType,
+        loading
+      );
     },
-    [setTokenUsageInfo]
-  );
-
-  const emitEntries = useCallback(
-    (
-      executionProcessState: ExecutionProcessStateStore,
-      addEntryType: AddEntryType,
-      loading: boolean
-    ) => {
-      const entries = flattenEntriesForEmit(executionProcessState);
-      let modifiedAddEntryType = addEntryType;
-
-      // Modify so that if last entry is ExitPlanMode, emit special plan type
-      if (entries.length > 0) {
-        const lastEntry = entries[entries.length - 1];
-        if (
-          lastEntry.type === 'NORMALIZED_ENTRY' &&
-          lastEntry.content.entry_type.type === 'tool_use' &&
-          lastEntry.content.entry_type.tool_name === 'ExitPlanMode'
-        ) {
-          modifiedAddEntryType = 'plan';
-        }
-      }
-
-      onEntriesUpdatedRef.current?.(entries, modifiedAddEntryType, loading);
-    },
-    [flattenEntriesForEmit]
+    [buildTimelineSource]
   );
 
   // This emits its own events as they are streamed
@@ -577,8 +257,8 @@ export const useConversationHistory = ({
     [loadRunningAndEmit]
   );
 
-  const loadInitialEntries =
-    useCallback(async (): Promise<ExecutionProcessStateStore> => {
+  const loadHistoricEntries = useCallback(
+    async (maxEntries?: number): Promise<ExecutionProcessStateStore> => {
       const localDisplayedExecutionProcesses: ExecutionProcessStateStore = {};
 
       if (!executionProcesses?.current) return localDisplayedExecutionProcesses;
@@ -601,15 +281,17 @@ export const useConversationHistory = ({
         };
 
         if (
-          flattenEntries(localDisplayedExecutionProcesses).length >
-          MIN_INITIAL_ENTRIES
+          maxEntries != null &&
+          flattenEntries(localDisplayedExecutionProcesses).length > maxEntries
         ) {
           break;
         }
       }
 
       return localDisplayedExecutionProcesses;
-    }, [executionProcesses]);
+    },
+    [executionProcesses]
+  );
 
   const loadRemainingEntriesInBatches = useCallback(
     async (batchSize: number): Promise<boolean> => {
@@ -697,43 +379,58 @@ export const useConversationHistory = ({
     }
   }, [idListKey, executionProcessesRaw, emitEntries, isLoading, isConnected]);
 
-  // Initial load when attempt changes
+  useEffect(() => {
+    displayedExecutionProcesses.current = {};
+    loadedInitialEntries.current = false;
+    emittedEmptyInitialRef.current = false;
+    streamingProcessIdsRef.current.clear();
+    previousStatusMapRef.current.clear();
+    emitEntries(displayedExecutionProcesses.current, 'initial', true);
+  }, [scopeKey, emitEntries]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      // Waiting for execution processes to load
-      if (
-        executionProcesses?.current.length === 0 ||
-        loadedInitialEntries.current
-      )
-        return;
+      if (loadedInitialEntries.current) return;
 
-      // Initial entries
-      const allInitialEntries = await loadInitialEntries();
+      if (isLoading) return;
+
+      if (executionProcesses.current.length === 0) {
+        if (emittedEmptyInitialRef.current) return;
+        emittedEmptyInitialRef.current = true;
+        loadedInitialEntries.current = true;
+        emitEntries(displayedExecutionProcesses.current, 'initial', false);
+        return;
+      }
+
+      emittedEmptyInitialRef.current = false;
+      loadedInitialEntries.current = true;
+
+      const allInitialEntries = await loadHistoricEntries(MIN_INITIAL_ENTRIES);
       if (cancelled) return;
       mergeIntoDisplayed((state) => {
         Object.assign(state, allInitialEntries);
       });
       emitEntries(displayedExecutionProcesses.current, 'initial', false);
-      loadedInitialEntries.current = true;
 
-      // Then load the remaining in batches
+      setIsLoadingHistory(true);
       while (
         !cancelled &&
         (await loadRemainingEntriesInBatches(REMAINING_BATCH_SIZE))
       ) {
         if (cancelled) return;
+        emitEntries(displayedExecutionProcesses.current, 'historic', false);
       }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      emitEntries(displayedExecutionProcesses.current, 'historic', false);
+      if (!cancelled) setIsLoadingHistory(false);
     })();
     return () => {
       cancelled = true;
     };
   }, [
-    attempt.id,
+    scopeKey,
     idListKey,
-    loadInitialEntries,
+    isLoading,
+    loadHistoricEntries,
     loadRemainingEntriesInBatches,
     emitEntries,
   ]); // include idListKey so new processes trigger reload
@@ -767,7 +464,7 @@ export const useConversationHistory = ({
       }
     }
   }, [
-    attempt.id,
+    scopeKey,
     idStatusKey,
     emitEntries,
     ensureProcessVisible,
@@ -837,24 +534,7 @@ export const useConversationHistory = ({
         });
       });
     }
-  }, [attempt.id, idListKey, executionProcessesRaw]);
+  }, [scopeKey, idListKey, executionProcessesRaw]);
 
-  useEffect(() => {
-    displayedExecutionProcesses.current = {};
-    loadedInitialEntries.current = false;
-    streamingProcessIdsRef.current.clear();
-    previousStatusMapRef.current.clear();
-    // Reset script run status when attempt changes
-    setHasSetupScriptRun(false);
-    setHasCleanupScriptRun(false);
-    setHasRunningProcess(false);
-    emitEntries(displayedExecutionProcesses.current, 'initial', true);
-  }, [attempt.id, emitEntries]);
-
-  return {
-    hasSetupScriptRun,
-    hasCleanupScriptRun,
-    hasRunningProcess,
-    isFirstTurn,
-  };
+  return { isFirstTurn, isLoadingHistory: isLoadingHistoryState };
 };

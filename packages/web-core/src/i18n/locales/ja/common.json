@@ -61,7 +61,8 @@
     },
     "subagent": {
       "defaultType": "サブエージェント"
-    }
+    },
+    "loadingEarlierMessages": "以前のメッセージを読み込み中"
   },
   "language": {
     "browserDefault": "ブラウザ設定"

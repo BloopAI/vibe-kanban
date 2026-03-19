@@ -1,6 +1,6 @@
 [package]
 name = "workspace-manager"
-version = "0.1.32"
+version = "0.1.33"
 edition = "2024"
 
 [dependencies]

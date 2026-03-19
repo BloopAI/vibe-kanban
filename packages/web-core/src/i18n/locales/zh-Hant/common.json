@@ -53,7 +53,8 @@
     },
     "subagent": {
       "defaultType": "子代理"
-    }
+    },
+    "loadingEarlierMessages": "正在載入先前的訊息"
   },
   "folderPicker": {
     "legend": "點擊資料夾名稱進行導覽 • 使用操作按鈕進行選擇",

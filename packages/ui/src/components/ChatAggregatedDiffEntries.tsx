@@ -267,6 +267,7 @@ export function ChatAggregatedDiffEntries({
         onMouseLeave={() => onHoverChange(false)}
         role="button"
         aria-expanded={expanded}
+        data-scroll-anchor-target=""
       >
         <div className="flex-1 flex items-center gap-base min-w-0">
           <span className="relative shrink-0">

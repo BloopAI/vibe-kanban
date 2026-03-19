@@ -8,7 +8,7 @@ import {
   sortDiffs,
 } from '@/shared/lib/fileTreeUtils';
 import { usePersistedCollapsedPaths } from '@/shared/stores/useUiPreferencesStore';
-import { useWorkspaceContext } from '@/shared/hooks/useWorkspaceContext';
+import { useWorkspaceDiffContext } from '@/shared/hooks/useWorkspaceContext';
 import { useChangesView } from '@/shared/hooks/useChangesView';
 import { getFileIcon } from '@/shared/lib/fileTypeIcon';
 import { useTheme } from '@/shared/hooks/useTheme';
@@ -38,7 +38,6 @@ export function FileTreeContainer({
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const nodeRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-  // Get GitHub comments state from workspace context
   const {
     showGitHubComments,
     setShowGitHubComments,
@@ -46,7 +45,7 @@ export function FileTreeContainer({
     getFilesWithGitHubComments,
     getFirstCommentLineForFile,
     isGitHubCommentsLoading,
-  } = useWorkspaceContext();
+  } = useWorkspaceDiffContext();
 
   const { selectFile, scrollToFile } = useChangesView();
 

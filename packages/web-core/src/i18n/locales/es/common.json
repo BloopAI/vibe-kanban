@@ -61,7 +61,8 @@
     },
     "subagent": {
       "defaultType": "Subagente"
-    }
+    },
+    "loadingEarlierMessages": "Cargando mensajes anteriores"
   },
   "language": {
     "browserDefault": "Predeterminado del navegador"

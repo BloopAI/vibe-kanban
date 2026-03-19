@@ -39,6 +39,7 @@ export const useJsonPatchWsStream = <T extends object>(
   const [data, setData] = useState<T | undefined>(undefined);
   const [isConnected, setIsConnected] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const initializedForEndpointRef = useRef<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const dataRef = useRef<T | undefined>(undefined);
@@ -144,6 +145,7 @@ export const useJsonPatchWsStream = <T extends object>(
 
               // Handle Ready messages (initial data has been sent)
               if ('Ready' in msg) {
+                initializedForEndpointRef.current = endpoint;
                 setIsInitialized(true);
                 setError(null);
               }
@@ -231,5 +233,13 @@ export const useJsonPatchWsStream = <T extends object>(
     retryNonce,
   ]);
 
-  return { data, isConnected, isInitialized, error };
+  const isInitializedForCurrentEndpoint =
+    isInitialized && initializedForEndpointRef.current === endpoint;
+
+  return {
+    data,
+    isConnected,
+    isInitialized: isInitializedForCurrentEndpoint,
+    error,
+  };
 };

@@ -1,4 +1,9 @@
-import { ExecutorAction, PatchType, Workspace } from 'shared/types';
+import {
+  ExecutionProcess,
+  ExecutorAction,
+  PatchType,
+  Workspace,
+} from 'shared/types';
 
 export type PatchTypeWithKey = PatchType & {
   patchKey: string;
@@ -86,8 +91,19 @@ export function isAggregatedThinkingGroup(
 
 export type AddEntryType = 'initial' | 'running' | 'historic' | 'plan';
 
+export interface ConversationTimelineSource {
+  executionProcessState: ExecutionProcessStateStore;
+  liveExecutionProcesses: ExecutionProcess[];
+}
+
 export type OnEntriesUpdated = (
   newEntries: PatchTypeWithKey[],
+  addType: AddEntryType,
+  loading: boolean
+) => void;
+
+export type OnTimelineUpdated = (
+  source: ConversationTimelineSource,
   addType: AddEntryType,
   loading: boolean
 ) => void;
@@ -108,7 +124,9 @@ export type ExecutionProcessStateStore = Record<string, ExecutionProcessState>;
 
 export interface UseConversationHistoryParams {
   attempt: Workspace;
-  onEntriesUpdated: OnEntriesUpdated;
+  onTimelineUpdated?: OnTimelineUpdated;
+  onEntriesUpdated?: OnEntriesUpdated;
+  scopeKey: string;
 }
 
 export interface UseConversationHistoryResult {}
