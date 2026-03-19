@@ -10,11 +10,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import {
   ArrowSquareOutIcon,
-  ArrowsLeftRightIcon,
   BroadcastIcon,
   CheckIcon,
   CopyIcon,
-  DesktopTowerIcon,
   SignInIcon,
   SpinnerIcon,
 } from '@phosphor-icons/react';
@@ -58,70 +56,6 @@ export function RelaySettingsSectionContent({
   return <RemoteRelaySettingsSectionContent initialState={initialState} />;
 }
 
-function RemoteAccessOverview({ runtime }: { runtime: 'local' | 'remote' }) {
-  const { t } = useTranslation(['settings']);
-
-  return (
-    <div className="rounded-sm border border-border bg-gradient-to-br from-brand/10 via-panel to-secondary/50 p-6 md:p-7">
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-brand">
-            <ArrowsLeftRightIcon className="size-icon-xs" weight="bold" />
-            <span>{t('settings.relay.title')}</span>
-          </div>
-          <div>
-            <h3 className="text-lg font-semibold text-high">
-              {t(
-                'settings.relay.overview.title',
-                'This device can participate in remote access in two roles'
-              )}
-            </h3>
-            <p className="mt-1 max-w-2xl text-sm text-low">
-              {runtime === 'local'
-                ? t(
-                    'settings.relay.overview.localDescription',
-                    'This device can accept remote access as a host and can also pair to other hosts as a client.'
-                  )
-                : t(
-                    'settings.relay.overview.remoteDescription',
-                    'From the web, this device acts as a client. You can pair to hosts and reconnect to them here.'
-                  )}
-            </p>
-          </div>
-        </div>
-
-        <div className="grid gap-3 md:min-w-[320px]">
-          <CapabilityBadge
-            icon={<DesktopTowerIcon className="size-icon-sm" weight="bold" />}
-            label={t('settings.relay.overview.hostRole', 'Act as host')}
-            description={
-              runtime === 'local'
-                ? t(
-                    'settings.relay.overview.hostRoleEnabled',
-                    'Other devices can pair to this device.'
-                  )
-                : t(
-                    'settings.relay.overview.hostRoleDisabled',
-                    'Host controls are only available on the local device.'
-                  )
-            }
-            active={runtime === 'local'}
-          />
-          <CapabilityBadge
-            icon={<ArrowSquareOutIcon className="size-icon-sm" weight="bold" />}
-            label={t('settings.relay.overview.clientRole', 'Act as client')}
-            description={t(
-              'settings.relay.overview.clientRoleDescription',
-              'This device can pair to other hosts using a one-time code.'
-            )}
-            active
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function RelayRoleChooser({
   selectedRole,
   onSelect,
@@ -136,18 +70,18 @@ function RelayRoleChooser({
       <div className="border-b border-border bg-secondary/30 px-5 py-4">
         <div className="space-y-1">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
-            {t('settings.relay.roleChooser.eyebrow', 'Choose a role')}
+            {t('settings.relay.roleChooser.eyebrow', 'Remote control roles')}
           </div>
           <h3 className="text-base font-semibold text-high">
             {t(
               'settings.relay.roleChooser.title',
-              'What should this device do?'
+              'This device can act as both a host and a client'
             )}
           </h3>
           <p className="text-sm text-low">
             {t(
               'settings.relay.roleChooser.description',
-              'Pick one path to focus the setup. You can switch roles at any time.'
+              'Use these cards to switch which settings you are editing right now. They are not mutually exclusive, and this machine can be configured for both roles at the same time.'
             )}
           </p>
         </div>
@@ -161,9 +95,9 @@ function RelayRoleChooser({
           title={t('settings.relay.host.eyebrow', 'Act as host')}
           description={t(
             'settings.relay.roleChooser.hostDescription',
-            'Accept incoming remote access and generate pairing codes for this device.'
+            'View and control workspaces that execute on this machine from a 3rd party.'
           )}
-          cta={t('settings.relay.roleChooser.hostAction', 'Set up host')}
+          cta={t('settings.relay.roleChooser.hostAction', 'View host settings')}
           onSelect={onSelect}
         />
         <RelayRoleChoice
@@ -173,9 +107,12 @@ function RelayRoleChooser({
           title={t('settings.relay.client.eyebrow', 'Act as client')}
           description={t(
             'settings.relay.roleChooser.clientDescription',
-            'Pair this device to another host and manage the hosts it can access.'
+            'Use this machine to control workspaces that execute on a 3rd party.'
           )}
-          cta={t('settings.relay.roleChooser.clientAction', 'Set up client')}
+          cta={t(
+            'settings.relay.roleChooser.clientAction',
+            'View client settings'
+          )}
           onSelect={onSelect}
         />
       </div>
@@ -234,47 +171,6 @@ function RelayRoleChoice({
       </div>
       <span className="text-sm font-medium text-brand">{cta}</span>
     </button>
-  );
-}
-
-function CapabilityBadge({
-  icon,
-  label,
-  description,
-  active,
-}: {
-  icon: ReactNode;
-  label: string;
-  description: string;
-  active: boolean;
-}) {
-  const { t } = useTranslation(['settings']);
-
-  return (
-    <div
-      className={
-        active
-          ? 'rounded-sm border border-brand/30 bg-panel/90 px-3 py-2'
-          : 'rounded-sm border border-border bg-secondary/40 px-3 py-2'
-      }
-    >
-      <div className="flex items-center gap-2">
-        <div className={active ? 'text-brand' : 'text-low'}>{icon}</div>
-        <span className="text-sm font-medium text-high">{label}</span>
-        <span
-          className={
-            active
-              ? 'ml-auto rounded-full bg-success/10 px-2 py-0.5 text-[11px] font-medium text-success'
-              : 'ml-auto rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-low'
-          }
-        >
-          {active
-            ? t('settings.relay.overview.available', 'Available')
-            : t('settings.relay.overview.unavailable', 'Unavailable')}
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-low">{description}</p>
-    </div>
   );
 }
 
@@ -498,8 +394,6 @@ function LocalRelaySettingsSectionContent() {
 
   return (
     <div className="space-y-8">
-      <RemoteAccessOverview runtime="local" />
-
       <RelayRoleChooser
         selectedRole={selectedRole}
         onSelect={(role) => setSelectedRole(role)}
