@@ -17,6 +17,10 @@ type Props = {
   transformers: Transformer[];
 };
 
+type TauriInternals = {
+  invoke?: (cmd: string, args?: Record<string, unknown>) => Promise<unknown>;
+};
+
 /**
  * Plugin that handles paste with markdown conversion.
  *
@@ -38,6 +42,35 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
     const storageFlag =
       window.localStorage?.getItem('vibe.debug.paste') === '1';
     return globalFlag || storageFlag;
+  };
+
+  const readRawClipboardText = async (): Promise<string> => {
+    const tauriInvoke = (
+      window as Window & { __TAURI_INTERNALS__?: TauriInternals }
+    ).__TAURI_INTERNALS__?.invoke;
+
+    if (typeof tauriInvoke === 'function') {
+      try {
+        const text = await tauriInvoke('read_clipboard_text');
+        if (typeof text === 'string') {
+          if (isDebugPasteEnabled()) {
+            console.log(
+              '[PasteMarkdownPlugin] using native Tauri clipboard read path'
+            );
+          }
+          return text;
+        }
+      } catch (err) {
+        if (isDebugPasteEnabled()) {
+          console.log(
+            '[PasteMarkdownPlugin] native Tauri clipboard read failed, falling back to navigator.clipboard.readText()',
+            err
+          );
+        }
+      }
+    }
+
+    return navigator.clipboard.readText();
   };
 
   useEffect(() => {
@@ -87,8 +120,7 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
           e.preventDefault();
           e.stopPropagation();
 
-          void navigator.clipboard
-            .readText()
+          void readRawClipboardText()
             .then((text) => {
               if (!text) {
                 if (isDebugPasteEnabled()) {
