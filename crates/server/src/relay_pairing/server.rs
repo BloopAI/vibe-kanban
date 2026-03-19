@@ -187,8 +187,7 @@ impl RelayPairingServer {
         )
         .map_err(|_| ApiError::Unauthorized)?;
 
-        if let Err(error) = self
-            .trusted_key_auth
+        self.trusted_key_auth
             .persist_trusted_client(TrustedRelayClient {
                 client_id: payload.client_id,
                 client_name: payload.client_name.clone(),
@@ -197,10 +196,7 @@ impl RelayPairingServer {
                 client_device: payload.client_device.clone(),
                 public_key_b64: payload.public_key_b64.clone(),
             })
-            .await
-        {
-            tracing::warn!(?error, "Failed to persist trusted relay client");
-        }
+            .await?;
 
         let signing_session_id = self.relay_signing.create_session(client_public_key).await;
 

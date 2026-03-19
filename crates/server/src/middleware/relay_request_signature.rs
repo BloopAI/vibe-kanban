@@ -22,6 +22,11 @@ use crate::{DeploymentImpl, error::ApiError};
 
 pub type RelayRequestSignatureContext = RequestSignature;
 
+/// Maximum body size (50 MiB) for relay-signed requests. Both the request body
+/// (for signature verification) and the response body (for signing) are buffered
+/// into memory. This cap prevents a large payload from causing OOM.
+const RELAY_SIGNED_BODY_MAX_BYTES: usize = 50 * 1024 * 1024;
+
 pub async fn require_relay_request_signature(
     State(deployment): State<DeploymentImpl>,
     request: Request,
@@ -34,9 +39,9 @@ pub async fn require_relay_request_signature(
     let (request_signature, path_and_query) = extract_request_signature(&request)?;
 
     let (parts, body) = request.into_parts();
-    let body_bytes = to_bytes(body, usize::MAX)
+    let body_bytes = to_bytes(body, RELAY_SIGNED_BODY_MAX_BYTES)
         .await
-        .map_err(|_| ApiError::Unauthorized)?;
+        .map_err(|_| ApiError::PayloadTooLarge)?;
 
     if let Err(error) = deployment
         .relay_signing()
@@ -76,9 +81,9 @@ pub async fn sign_relay_response(
 
     let response = next.run(request).await;
     let (mut parts, body) = response.into_parts();
-    let body_bytes = to_bytes(body, usize::MAX)
+    let body_bytes = to_bytes(body, RELAY_SIGNED_BODY_MAX_BYTES)
         .await
-        .map_err(|_| ApiError::Unauthorized)?;
+        .map_err(|_| ApiError::PayloadTooLarge)?;
     let response_timestamp = unix_timestamp_now().map_err(|_| ApiError::Unauthorized)?;
     let response_nonce = Uuid::new_v4();
     let status = parts.status.as_u16();

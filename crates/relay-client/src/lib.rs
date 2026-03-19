@@ -1,4 +1,4 @@
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 use ed25519_dalek::VerifyingKey;
@@ -57,13 +57,21 @@ impl std::fmt::Debug for RelayApiClient {
 }
 
 impl RelayApiClient {
-    pub fn new(base_url: String, access_token: String, signing: RelaySigningService) -> Self {
-        Self {
-            http: Client::new(),
+    pub fn new(
+        base_url: String,
+        access_token: String,
+        signing: RelaySigningService,
+    ) -> Result<Self, RelayApiError> {
+        let http = Client::builder()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
+            .build()?;
+        Ok(Self {
+            http,
             base_url: base_url.trim_end_matches('/').to_string(),
             access_token,
             signing,
-        }
+        })
     }
 
     pub fn base_url(&self) -> &str {
@@ -402,7 +410,7 @@ impl RelayHostTransport {
         );
         let reqwest_method = reqwest::Method::from_bytes(method.as_str().as_bytes())
             .map_err(|e| RelayApiError::Other(format!("Unsupported HTTP method: {e}")))?;
-        let mut builder = Client::new().request(reqwest_method, url);
+        let mut builder = self.api_client.http.request(reqwest_method, url);
 
         for (name, value) in headers {
             if should_forward_request_header(name) {
@@ -487,7 +495,9 @@ impl RelayHostTransport {
             &[],
         );
 
-        let response = Client::new()
+        let response = self
+            .api_client
+            .http
             .get(url)
             .header(SIGNING_SESSION_HEADER, sig.signing_session_id.to_string())
             .header(TIMESTAMP_HEADER, sig.timestamp.to_string())
@@ -533,7 +543,6 @@ pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> Str
     )
 }
 
-#[allow(clippy::result_large_err)]
 fn relay_http_to_ws_url(http_url: &str) -> Result<String, RelayApiError> {
     if let Some(rest) = http_url.strip_prefix("https://") {
         Ok(format!("wss://{rest}"))

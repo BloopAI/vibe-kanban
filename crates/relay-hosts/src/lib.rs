@@ -299,7 +299,8 @@ impl RelayHosts {
             relay_base_url,
             access_token,
             self.runtime.relay_signing.clone(),
-        );
+        )
+        .map_err(RelayPairingClientError::Pairing)?;
         let relay_client::PairRelayHostResult {
             signing_session_id,
             client_id,
@@ -349,12 +350,13 @@ impl RelayHost {
             .ok_or(RelayConnectionError::NotConfigured)?;
         let access_token = remote_client.access_token().await?;
         let cached_auth_state = self.sessions.load_auth_state(self.identity.host_id).await;
+        let relay_client = RelayApiClient::new(
+            relay_base_url,
+            access_token,
+            self.runtime.relay_signing.clone(),
+        )?;
         let transport = RelayHostTransport::bootstrap(
-            RelayApiClient::new(
-                relay_base_url,
-                access_token,
-                self.runtime.relay_signing.clone(),
-            ),
+            relay_client,
             self.identity.clone(),
             cached_auth_state
                 .as_ref()

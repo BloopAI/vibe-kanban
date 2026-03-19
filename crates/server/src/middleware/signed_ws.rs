@@ -23,9 +23,15 @@ struct RelaySigningContext {
     signing: RelaySigningService,
 }
 
+enum SigningMode {
+    LocalPlain,
+    RelaySigned(RelaySigningContext),
+    RelayMissingSession,
+}
+
 pub struct SignedWsUpgrade {
     ws: WebSocketUpgrade,
-    relay_signing: Option<RelaySigningContext>,
+    signing_mode: SigningMode,
 }
 
 impl<S> FromRequestParts<S> for SignedWsUpgrade
@@ -43,12 +49,24 @@ where
             .get::<RelayRequestSignatureContext>()
             .cloned();
 
-        let relay_signing = relay_ctx.map(|request_signature| RelaySigningContext {
-            request_signature,
-            signing: deployment.relay_signing().clone(),
-        });
+        let signing_mode = if let Some(ctx) = relay_ctx {
+            let peer_verify_key = deployment
+                .relay_signing()
+                .get_session_peer_key(ctx.signing_session_id)
+                .await;
+            if peer_verify_key.is_some() {
+                SigningMode::RelaySigned(RelaySigningContext {
+                    request_signature: ctx,
+                    signing: deployment.relay_signing().clone(),
+                })
+            } else {
+                SigningMode::RelayMissingSession
+            }
+        } else {
+            SigningMode::LocalPlain
+        };
 
-        Ok(Self { ws, relay_signing })
+        Ok(Self { ws, signing_mode })
     }
 }
 
@@ -63,7 +81,17 @@ impl SignedWsUpgrade {
         F: FnOnce(MaybeSignedWebSocket) -> Fut + Send + 'static,
         Fut: std::future::Future<Output = ()> + Send + 'static,
     {
-        let relay_signing = self.relay_signing;
+        let relay_signing = match self.signing_mode {
+            SigningMode::RelaySigned(params) => Some(params),
+            SigningMode::LocalPlain => None,
+            SigningMode::RelayMissingSession => {
+                tracing::warn!(
+                    "Rejecting relayed WebSocket upgrade: signing session expired or missing"
+                );
+                return axum::http::StatusCode::UNAUTHORIZED.into_response();
+            }
+        };
+
         self.ws.on_upgrade(move |socket| async move {
             let inner = match relay_signing {
                 Some(ctx) => {
