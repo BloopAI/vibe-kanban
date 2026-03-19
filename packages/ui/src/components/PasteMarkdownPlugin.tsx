@@ -73,6 +73,11 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
     return navigator.clipboard.readText();
   };
 
+  const isTauriRuntime = (): boolean =>
+    typeof window !== 'undefined' &&
+    typeof (window as Window & { __TAURI_INTERNALS__?: TauriInternals })
+      .__TAURI_INTERNALS__?.invoke === 'function';
+
   useEffect(() => {
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -92,6 +97,18 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         // Tauri/WebKit may not dispatch a paste ClipboardEvent for Cmd+Shift+V.
         // Fallback: handle raw paste directly from clipboard on keydown.
         if (isRawPasteCombo) {
+          // Browser should use native paste event path (no clipboard-read
+          // permission prompts). Tauri may not emit paste events, so keep
+          // fallback there only.
+          if (!isTauriRuntime()) {
+            if (isDebugPasteEnabled()) {
+              console.log(
+                '[PasteMarkdownPlugin] skipping keydown raw-paste fallback outside Tauri'
+              );
+            }
+            return;
+          }
+
           const rootElement = editor.getRootElement();
           const activeEl = document.activeElement;
           const domSelection = window.getSelection();
