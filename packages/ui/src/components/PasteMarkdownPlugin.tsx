@@ -44,6 +44,7 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
+        const isRawPasteCombo = e.shiftKey;
         shiftHeldRef.current = e.shiftKey;
         if (isDebugPasteEnabled()) {
           console.log('[PasteMarkdownPlugin] keydown paste combo', {
@@ -53,6 +54,61 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             shiftKey: e.shiftKey,
             shiftHeldRef: shiftHeldRef.current,
           });
+        }
+
+        // Tauri/WebKit may not dispatch a paste ClipboardEvent for Cmd+Shift+V.
+        // Fallback: handle raw paste directly from clipboard on keydown.
+        if (isRawPasteCombo) {
+          const rootElement = editor.getRootElement();
+          const activeEl = document.activeElement;
+          const isEditorFocused =
+            !!rootElement && !!activeEl && rootElement.contains(activeEl);
+
+          if (!isEditorFocused) {
+            if (isDebugPasteEnabled()) {
+              console.log(
+                '[PasteMarkdownPlugin] raw paste combo ignored (editor not focused)'
+              );
+            }
+            return;
+          }
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          void navigator.clipboard
+            .readText()
+            .then((text) => {
+              if (!text) {
+                if (isDebugPasteEnabled()) {
+                  console.log(
+                    '[PasteMarkdownPlugin] raw paste keydown fallback got empty clipboard text'
+                  );
+                }
+                return;
+              }
+
+              editor.update(() => {
+                const selection = $getSelection();
+                if (!$isRangeSelection(selection)) return;
+                selection.insertRawText(text);
+              });
+
+              if (isDebugPasteEnabled()) {
+                console.log(
+                  '[PasteMarkdownPlugin] handled raw paste via keydown fallback',
+                  { plainLength: text.length }
+                );
+              }
+            })
+            .catch((err: unknown) => {
+              if (isDebugPasteEnabled()) {
+                console.log(
+                  '[PasteMarkdownPlugin] raw paste keydown fallback failed',
+                  err
+                );
+              }
+            });
         }
       }
     };
