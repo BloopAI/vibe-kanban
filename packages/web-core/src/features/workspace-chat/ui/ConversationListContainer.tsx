@@ -54,6 +54,7 @@ import {
 } from '@/shared/lib/searchTextHighlight';
 
 const CONVERSATION_HIGHLIGHT_KEY = 'vk-search-highlight-conversation';
+const PANEL_FIND_EVENT = 'vk-open-panel-find';
 
 interface ConversationListProps {
   attempt: WorkspaceWithSession;
@@ -649,6 +650,38 @@ export const ConversationList = forwardRef<
     panelRef.current?.focus({ preventScroll: true });
   }, []);
 
+  const tryOpenDiffsSearch = useCallback((): boolean => {
+    const diffsPanel = document.querySelector<HTMLElement>(
+      '[data-vk-search-panel="diffs"]'
+    );
+    if (!diffsPanel) return false;
+    if (diffsPanel.dataset.vkSearchOpen === 'true') return false;
+
+    window.dispatchEvent(
+      new CustomEvent(PANEL_FIND_EVENT, {
+        detail: { panel: 'diffs' as const, from: 'conversation' as const },
+      })
+    );
+    return true;
+  }, []);
+
+  useEffect(() => {
+    const handleOpenPanelFind = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        panel?: 'conversation' | 'diffs';
+      }>;
+      if (customEvent.detail?.panel !== 'conversation') return;
+      if (showSearch) return;
+      setShowSearch(true);
+      focusSearchInput();
+    };
+
+    window.addEventListener(PANEL_FIND_EVENT, handleOpenPanelFind);
+    return () => {
+      window.removeEventListener(PANEL_FIND_EVENT, handleOpenPanelFind);
+    };
+  }, [focusSearchInput, showSearch]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       const isFindShortcut =
@@ -661,6 +694,11 @@ export const ConversationList = forwardRef<
       }
 
       if (showSearch) {
+        if (tryOpenDiffsSearch()) {
+          event.preventDefault();
+          return;
+        }
+        // If both panel searches are already open, let browser find handle it.
         return;
       }
 
@@ -673,7 +711,7 @@ export const ConversationList = forwardRef<
     return () => {
       window.removeEventListener('keydown', handleKeyDown, true);
     };
-  }, [focusSearchInput, showSearch]);
+  }, [focusSearchInput, showSearch, tryOpenDiffsSearch]);
 
   const renderSearchHighlightedContent = useCallback(
     (row: ConversationRow) => {
@@ -975,6 +1013,8 @@ export const ConversationList = forwardRef<
     <ApprovalFormProvider>
       <div
         ref={panelRef}
+        data-vk-search-panel="conversation"
+        data-vk-search-open={showSearch ? 'true' : 'false'}
         tabIndex={-1}
         onMouseDown={(event) => {
           const target = event.target as HTMLElement;
