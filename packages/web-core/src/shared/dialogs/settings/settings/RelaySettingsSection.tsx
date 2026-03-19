@@ -41,6 +41,9 @@ const RELAY_REMOTE_CONTROL_DOCS_URL =
 interface RelaySettingsSectionInitialState {
   hostId?: string;
 }
+
+type RelayRole = 'host' | 'client';
+
 export function RelaySettingsSectionContent({
   initialState,
 }: {
@@ -59,9 +62,9 @@ function RemoteAccessOverview({ runtime }: { runtime: 'local' | 'remote' }) {
   const { t } = useTranslation(['settings']);
 
   return (
-    <div className="rounded-sm border border-border bg-gradient-to-br from-brand/10 via-panel to-secondary/50 p-5">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div className="space-y-2">
+    <div className="rounded-sm border border-border bg-gradient-to-br from-brand/10 via-panel to-secondary/50 p-6 md:p-7">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+        <div className="space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-brand">
             <ArrowsLeftRightIcon className="size-icon-xs" weight="bold" />
             <span>{t('settings.relay.title')}</span>
@@ -87,7 +90,7 @@ function RemoteAccessOverview({ runtime }: { runtime: 'local' | 'remote' }) {
           </div>
         </div>
 
-        <div className="grid gap-2 md:min-w-[280px]">
+        <div className="grid gap-3 md:min-w-[320px]">
           <CapabilityBadge
             icon={<DesktopTowerIcon className="size-icon-sm" weight="bold" />}
             label={t('settings.relay.overview.hostRole', 'Act as host')}
@@ -116,6 +119,121 @@ function RemoteAccessOverview({ runtime }: { runtime: 'local' | 'remote' }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function RelayRoleChooser({
+  selectedRole,
+  onSelect,
+}: {
+  selectedRole: RelayRole | null;
+  onSelect: (role: RelayRole) => void;
+}) {
+  const { t } = useTranslation(['settings']);
+
+  return (
+    <div className="rounded-sm border border-border bg-panel/95 shadow-sm">
+      <div className="border-b border-border bg-secondary/30 px-5 py-4">
+        <div className="space-y-1">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-low">
+            {t('settings.relay.roleChooser.eyebrow', 'Choose a role')}
+          </div>
+          <h3 className="text-base font-semibold text-high">
+            {t(
+              'settings.relay.roleChooser.title',
+              'What should this device do?'
+            )}
+          </h3>
+          <p className="text-sm text-low">
+            {t(
+              'settings.relay.roleChooser.description',
+              'Pick one path to focus the setup. You can switch roles at any time.'
+            )}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 px-5 py-5 md:grid-cols-2">
+        <RelayRoleChoice
+          role="host"
+          selected={selectedRole === 'host'}
+          icon={<BroadcastIcon className="size-icon-md" weight="bold" />}
+          title={t('settings.relay.host.eyebrow', 'Act as host')}
+          description={t(
+            'settings.relay.roleChooser.hostDescription',
+            'Accept incoming remote access and generate pairing codes for this device.'
+          )}
+          cta={t('settings.relay.roleChooser.hostAction', 'Set up host')}
+          onSelect={onSelect}
+        />
+        <RelayRoleChoice
+          role="client"
+          selected={selectedRole === 'client'}
+          icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
+          title={t('settings.relay.client.eyebrow', 'Act as client')}
+          description={t(
+            'settings.relay.roleChooser.clientDescription',
+            'Pair this device to another host and manage the hosts it can access.'
+          )}
+          cta={t('settings.relay.roleChooser.clientAction', 'Set up client')}
+          onSelect={onSelect}
+        />
+      </div>
+    </div>
+  );
+}
+
+function RelayRoleChoice({
+  role,
+  selected,
+  icon,
+  title,
+  description,
+  cta,
+  onSelect,
+}: {
+  role: RelayRole;
+  selected: boolean;
+  icon: ReactNode;
+  title: string;
+  description: string;
+  cta: string;
+  onSelect: (role: RelayRole) => void;
+}) {
+  const { t } = useTranslation(['settings']);
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(role)}
+      className={
+        selected
+          ? 'flex h-full flex-col items-start gap-4 rounded-sm border border-brand/40 bg-brand/10 p-4 text-left transition-colors'
+          : 'flex h-full flex-col items-start gap-4 rounded-sm border border-border bg-secondary/25 p-4 text-left transition-colors hover:border-brand/30 hover:bg-secondary/45'
+      }
+    >
+      <div
+        className={
+          selected
+            ? 'rounded-sm bg-brand/15 p-2 text-brand'
+            : 'rounded-sm bg-panel p-2 text-low'
+        }
+      >
+        {icon}
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-semibold text-high">{title}</h4>
+          {selected && (
+            <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[11px] font-medium text-brand">
+              {t('settings.relay.roleChooser.selected', 'Selected')}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-low">{description}</p>
+      </div>
+      <span className="text-sm font-medium text-brand">{cta}</span>
+    </button>
   );
 }
 
@@ -256,6 +374,7 @@ function LocalRelaySettingsSectionContent() {
   const [enrollmentError, setEnrollmentError] = useState<string | null>(null);
   const [removingClientId, setRemovingClientId] = useState<string | null>(null);
   const [enrollmentCodeCopied, setEnrollmentCodeCopied] = useState(false);
+  const [selectedRole, setSelectedRole] = useState<RelayRole | null>(null);
 
   const {
     data: pairedClients = [],
@@ -378,8 +497,13 @@ function LocalRelaySettingsSectionContent() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <RemoteAccessOverview runtime="local" />
+
+      <RelayRoleChooser
+        selectedRole={selectedRole}
+        onSelect={(role) => setSelectedRole(role)}
+      />
 
       {error && (
         <div className="bg-error/10 border border-error/50 rounded-sm p-4 text-error">
@@ -393,278 +517,282 @@ function LocalRelaySettingsSectionContent() {
         </div>
       )}
 
-      <RolePanel
-        eyebrow={t('settings.relay.host.eyebrow', 'Act as host')}
-        title={t(
-          'settings.relay.host.title',
-          'Let other devices pair to this device'
-        )}
-        description={
-          <>
+      {selectedRole === 'host' && (
+        <RolePanel
+          eyebrow={t('settings.relay.host.eyebrow', 'Act as host')}
+          title={t(
+            'settings.relay.host.title',
+            'Let other devices pair to this device'
+          )}
+          description={
+            <>
+              {t(
+                'settings.relay.host.description',
+                'Use these controls when this device should accept incoming remote access.'
+              )}{' '}
+              <a
+                href={RELAY_REMOTE_CONTROL_DOCS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-brand hover:underline"
+              >
+                {t('settings.relay.docsLink', 'Read docs')}
+              </a>
+            </>
+          }
+          icon={<BroadcastIcon className="size-icon-md" weight="bold" />}
+        >
+          <InlineNotice>
             {t(
-              'settings.relay.host.description',
-              'Use these controls when this device should accept incoming remote access.'
-            )}{' '}
-            <a
-              href={RELAY_REMOTE_CONTROL_DOCS_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand hover:underline"
-            >
-              {t('settings.relay.docsLink', 'Read docs')}
-            </a>
-          </>
-        }
-        icon={<BroadcastIcon className="size-icon-md" weight="bold" />}
-      >
-        <InlineNotice>
-          {t(
-            'settings.relay.host.summary',
-            'Devices that pair here will see this device as a host.'
-          )}
-        </InlineNotice>
+              'settings.relay.host.summary',
+              'Devices that pair here will see this device as a host.'
+            )}
+          </InlineNotice>
 
-        <SettingsCheckbox
-          id="relay-enabled"
-          label={t('settings.relay.enabled.label')}
-          description={t(
-            'settings.relay.host.enabled.helper',
-            'When enabled, this device can be paired to from the web or another device.'
-          )}
-          checked={draft?.relay_enabled ?? true}
-          onChange={(checked) => updateDraft({ relay_enabled: checked })}
-        />
+          <SettingsCheckbox
+            id="relay-enabled"
+            label={t('settings.relay.enabled.label')}
+            description={t(
+              'settings.relay.host.enabled.helper',
+              'When enabled, this device can be paired to from the web or another device.'
+            )}
+            checked={draft?.relay_enabled ?? true}
+            onChange={(checked) => updateDraft({ relay_enabled: checked })}
+          />
 
-        {draft?.relay_enabled && (
-          <div className="space-y-3 mt-2">
-            <SettingsField
-              label={t('settings.relay.hostName.label', 'Host name')}
-              description={t(
-                'settings.relay.hostName.helper',
-                'Shown when pairing from browser. Leave blank to use the default format.'
-              )}
-            >
-              <SettingsInput
-                value={draft.host_nickname ?? ''}
-                onChange={(value) =>
-                  updateDraft({
-                    host_nickname: value === '' ? null : value,
-                  })
-                }
-                placeholder={t(
-                  'settings.relay.hostName.placeholder',
-                  '<os_type> host (<user_id>)'
+          {draft?.relay_enabled && (
+            <div className="mt-2 space-y-3">
+              <SettingsField
+                label={t('settings.relay.hostName.label', 'Host name')}
+                description={t(
+                  'settings.relay.hostName.helper',
+                  'Shown when pairing from browser. Leave blank to use the default format.'
                 )}
-              />
-            </SettingsField>
+              >
+                <SettingsInput
+                  value={draft.host_nickname ?? ''}
+                  onChange={(value) =>
+                    updateDraft({
+                      host_nickname: value === '' ? null : value,
+                    })
+                  }
+                  placeholder={t(
+                    'settings.relay.hostName.placeholder',
+                    '<os_type> host (<user_id>)'
+                  )}
+                />
+              </SettingsField>
 
-            {isSignedIn ? (
-              <>
-                {!enrollmentCode && (
+              {isSignedIn ? (
+                <>
+                  {!enrollmentCode && (
+                    <PrimaryButton
+                      variant="secondary"
+                      value={t(
+                        'settings.relay.host.enrollmentCode.show',
+                        'Show pairing code for this device'
+                      )}
+                      onClick={handleShowEnrollmentCode}
+                      disabled={enrollmentLoading}
+                      actionIcon={enrollmentLoading ? 'spinner' : undefined}
+                    />
+                  )}
+
+                  {enrollmentError && (
+                    <p className="text-sm text-error">{enrollmentError}</p>
+                  )}
+
+                  {enrollmentCode && (
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-normal">
+                        {t(
+                          'settings.relay.host.enrollmentCode.label',
+                          'Pairing code for this device'
+                        )}
+                      </label>
+                      <div className="relative bg-secondary border border-border rounded-sm px-base py-half font-mono text-lg text-high tracking-widest select-all pr-10">
+                        {enrollmentCode}
+                        <button
+                          onClick={() => {
+                            void navigator.clipboard.writeText(enrollmentCode);
+                            setEnrollmentCodeCopied(true);
+                            setTimeout(
+                              () => setEnrollmentCodeCopied(false),
+                              2000
+                            );
+                          }}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-low hover:text-normal transition-colors rounded-sm"
+                          aria-label={t(
+                            'settings.relay.enrollmentCode.copy',
+                            'Copy code'
+                          )}
+                        >
+                          {enrollmentCodeCopied ? (
+                            <CheckIcon
+                              className="size-icon-sm text-success"
+                              weight="bold"
+                            />
+                          ) : (
+                            <CopyIcon className="size-icon-sm" weight="bold" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="text-sm text-low">
+                        {t(
+                          'settings.relay.host.enrollmentCode.helper',
+                          'Enter this code on the client device that should connect here.'
+                        )}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 pt-2 border-t border-border/70">
+                    <div className="flex items-center justify-between gap-2">
+                      <h4 className="text-sm font-medium text-normal">
+                        {t(
+                          'settings.relay.host.pairedClients.title',
+                          'Devices paired to this host'
+                        )}
+                      </h4>
+                      <div className="flex items-center gap-2 text-xs text-low">
+                        <SpinnerIcon
+                          className="size-icon-xs animate-spin"
+                          weight="bold"
+                        />
+                        <span>
+                          {t(
+                            'settings.relay.host.pairedClients.checking',
+                            'Checking for new client devices'
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {pairedClientsLoading && (
+                      <div className="flex items-center gap-2 text-sm text-low">
+                        <SpinnerIcon
+                          className="size-icon-sm animate-spin"
+                          weight="bold"
+                        />
+                        <span>
+                          {t(
+                            'settings.relay.host.pairedClients.loading',
+                            'Loading paired client devices...'
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {pairedClientsError instanceof Error && (
+                      <p className="text-sm text-error">
+                        {pairedClientsError.message}
+                      </p>
+                    )}
+
+                    {removePairedClientMutation.error instanceof Error && (
+                      <p className="text-sm text-error">
+                        {removePairedClientMutation.error.message}
+                      </p>
+                    )}
+
+                    {!pairedClientsLoading && pairedClients.length === 0 && (
+                      <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
+                        {t(
+                          'settings.relay.host.pairedClients.empty',
+                          'No devices have paired to this host yet.'
+                        )}
+                      </div>
+                    )}
+
+                    {!pairedClientsLoading && pairedClients.length > 0 && (
+                      <div className="space-y-2">
+                        {pairedClients.map((client) => (
+                          <div
+                            key={client.client_id}
+                            className="rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-high truncate">
+                                {client.client_name}
+                              </p>
+                              <p className="text-xs text-low">
+                                {client.client_browser} · {client.client_os} ·{' '}
+                                {formatDeviceLabel(client.client_device)}
+                              </p>
+                            </div>
+                            <PrimaryButton
+                              variant="tertiary"
+                              value={t(
+                                'settings.relay.host.pairedClients.remove',
+                                'Remove'
+                              )}
+                              onClick={() =>
+                                void handleRemovePairedClient(client.client_id)
+                              }
+                              disabled={
+                                removePairedClientMutation.isPending &&
+                                removingClientId === client.client_id
+                              }
+                              actionIcon={
+                                removePairedClientMutation.isPending &&
+                                removingClientId === client.client_id
+                                  ? 'spinner'
+                                  : undefined
+                              }
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-low">
+                    {t(
+                      'settings.relay.host.enrollmentCode.loginRequired',
+                      'Sign in to generate a pairing code for this device.'
+                    )}
+                  </p>
                   <PrimaryButton
                     variant="secondary"
                     value={t(
-                      'settings.relay.host.enrollmentCode.show',
-                      'Show pairing code for this device'
+                      'settings.remoteProjects.loginRequired.action',
+                      'Sign in'
                     )}
-                    onClick={handleShowEnrollmentCode}
-                    disabled={enrollmentLoading}
-                    actionIcon={enrollmentLoading ? 'spinner' : undefined}
-                  />
-                )}
-
-                {enrollmentError && (
-                  <p className="text-sm text-error">{enrollmentError}</p>
-                )}
-
-                {enrollmentCode && (
-                  <div className="space-y-1">
-                    <label className="text-sm font-medium text-normal">
-                      {t(
-                        'settings.relay.host.enrollmentCode.label',
-                        'Pairing code for this device'
-                      )}
-                    </label>
-                    <div className="relative bg-secondary border border-border rounded-sm px-base py-half font-mono text-lg text-high tracking-widest select-all pr-10">
-                      {enrollmentCode}
-                      <button
-                        onClick={() => {
-                          void navigator.clipboard.writeText(enrollmentCode);
-                          setEnrollmentCodeCopied(true);
-                          setTimeout(
-                            () => setEnrollmentCodeCopied(false),
-                            2000
-                          );
-                        }}
-                        className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-low hover:text-normal transition-colors rounded-sm"
-                        aria-label={t(
-                          'settings.relay.enrollmentCode.copy',
-                          'Copy code'
-                        )}
-                      >
-                        {enrollmentCodeCopied ? (
-                          <CheckIcon
-                            className="size-icon-sm text-success"
-                            weight="bold"
-                          />
-                        ) : (
-                          <CopyIcon className="size-icon-sm" weight="bold" />
-                        )}
-                      </button>
-                    </div>
-                    <p className="text-sm text-low">
-                      {t(
-                        'settings.relay.host.enrollmentCode.helper',
-                        'Enter this code on the client device that should connect here.'
-                      )}
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-2 pt-2 border-t border-border/70">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium text-normal">
-                      {t(
-                        'settings.relay.host.pairedClients.title',
-                        'Devices paired to this host'
-                      )}
-                    </h4>
-                    <div className="flex items-center gap-2 text-xs text-low">
-                      <SpinnerIcon
-                        className="size-icon-xs animate-spin"
-                        weight="bold"
-                      />
-                      <span>
-                        {t(
-                          'settings.relay.host.pairedClients.checking',
-                          'Checking for new client devices'
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {pairedClientsLoading && (
-                    <div className="flex items-center gap-2 text-sm text-low">
-                      <SpinnerIcon
-                        className="size-icon-sm animate-spin"
-                        weight="bold"
-                      />
-                      <span>
-                        {t(
-                          'settings.relay.host.pairedClients.loading',
-                          'Loading paired client devices...'
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {pairedClientsError instanceof Error && (
-                    <p className="text-sm text-error">
-                      {pairedClientsError.message}
-                    </p>
-                  )}
-
-                  {removePairedClientMutation.error instanceof Error && (
-                    <p className="text-sm text-error">
-                      {removePairedClientMutation.error.message}
-                    </p>
-                  )}
-
-                  {!pairedClientsLoading && pairedClients.length === 0 && (
-                    <div className="rounded-sm border border-border bg-secondary/30 p-3 text-sm text-low">
-                      {t(
-                        'settings.relay.host.pairedClients.empty',
-                        'No devices have paired to this host yet.'
-                      )}
-                    </div>
-                  )}
-
-                  {!pairedClientsLoading && pairedClients.length > 0 && (
-                    <div className="space-y-2">
-                      {pairedClients.map((client) => (
-                        <div
-                          key={client.client_id}
-                          className="rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-high truncate">
-                              {client.client_name}
-                            </p>
-                            <p className="text-xs text-low">
-                              {client.client_browser} · {client.client_os} ·{' '}
-                              {formatDeviceLabel(client.client_device)}
-                            </p>
-                          </div>
-                          <PrimaryButton
-                            variant="tertiary"
-                            value={t(
-                              'settings.relay.host.pairedClients.remove',
-                              'Remove'
-                            )}
-                            onClick={() =>
-                              void handleRemovePairedClient(client.client_id)
-                            }
-                            disabled={
-                              removePairedClientMutation.isPending &&
-                              removingClientId === client.client_id
-                            }
-                            actionIcon={
-                              removePairedClientMutation.isPending &&
-                              removingClientId === client.client_id
-                                ? 'spinner'
-                                : undefined
-                            }
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                    onClick={() => void OAuthDialog.show({})}
+                  >
+                    <SignInIcon className="size-icon-xs mr-1" weight="bold" />
+                  </PrimaryButton>
                 </div>
-              </>
-            ) : (
-              <div className="space-y-2">
-                <p className="text-sm text-low">
-                  {t(
-                    'settings.relay.host.enrollmentCode.loginRequired',
-                    'Sign in to generate a pairing code for this device.'
-                  )}
-                </p>
-                <PrimaryButton
-                  variant="secondary"
-                  value={t(
-                    'settings.remoteProjects.loginRequired.action',
-                    'Sign in'
-                  )}
-                  onClick={() => void OAuthDialog.show({})}
-                >
-                  <SignInIcon className="size-icon-xs mr-1" weight="bold" />
-                </PrimaryButton>
-              </div>
-            )}
-          </div>
-        )}
-      </RolePanel>
-
-      <RolePanel
-        eyebrow={t('settings.relay.client.eyebrow', 'Act as client')}
-        title={t(
-          'settings.relay.client.panelTitle',
-          'Pair this device to another host'
-        )}
-        description={t(
-          'settings.relay.client.panelDescription',
-          'Use this when this device should connect outward to another host.'
-        )}
-        icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
-      >
-        <InlineNotice>
-          {t(
-            'settings.relay.client.summary',
-            'Hosts listed below are destinations that this device can connect to as a client.'
+              )}
+            </div>
           )}
-        </InlineNotice>
-        <RemoteCloudHostsSettingsCardContent embedded />
-      </RolePanel>
+        </RolePanel>
+      )}
+
+      {selectedRole === 'client' && (
+        <RolePanel
+          eyebrow={t('settings.relay.client.eyebrow', 'Act as client')}
+          title={t(
+            'settings.relay.client.panelTitle',
+            'Pair this device to another host'
+          )}
+          description={t(
+            'settings.relay.client.panelDescription',
+            'Use this when this device should connect outward to another host.'
+          )}
+          icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
+        >
+          <InlineNotice>
+            {t(
+              'settings.relay.client.summary',
+              'Hosts listed below are destinations that this device can connect to as a client.'
+            )}
+          </InlineNotice>
+          <RemoteCloudHostsSettingsCardContent embedded />
+        </RolePanel>
+      )}
 
       <SettingsSaveBar
         show={hasUnsavedChanges}
