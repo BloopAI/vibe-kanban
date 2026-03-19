@@ -201,6 +201,7 @@ export const ConversationList = forwardRef<
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentMatchIdx, setCurrentMatchIdx] = useState(0);
+  const openedFromPanelRef = useRef<'diffs' | null>(null);
   const [hasSetupScriptRun, setHasSetupScriptRun] = useState(false);
   const [hasCleanupScriptRun, setHasCleanupScriptRun] = useState(false);
   const [hasRunningProcess, setHasRunningProcess] = useState(false);
@@ -682,6 +683,7 @@ export const ConversationList = forwardRef<
   }, []);
 
   const closeSearchState = useCallback(() => {
+    openedFromPanelRef.current = null;
     setShowSearch(false);
     setSearchQuery('');
     setCurrentMatchIdx(0);
@@ -724,13 +726,17 @@ export const ConversationList = forwardRef<
       const customEvent = event as CustomEvent<{
         panel?: 'conversation' | 'diffs';
         action?: 'open' | 'close';
+        from?: 'conversation' | 'diffs';
       }>;
       if (customEvent.detail?.panel !== 'conversation') return;
       if (customEvent.detail?.action === 'close') {
+        openedFromPanelRef.current = null;
         closeSearchState();
         return;
       }
       if (showSearch) return;
+      openedFromPanelRef.current =
+        customEvent.detail?.from === 'diffs' ? 'diffs' : null;
       setShowSearch(true);
       focusSearchInput();
     };
@@ -753,6 +759,11 @@ export const ConversationList = forwardRef<
       }
 
       if (showSearch) {
+        if (openedFromPanelRef.current === 'diffs') {
+          openedFromPanelRef.current = null;
+          closeSearchState();
+          return;
+        }
         if (tryOpenDiffsSearch()) {
           event.preventDefault();
           return;
@@ -763,6 +774,7 @@ export const ConversationList = forwardRef<
       }
 
       event.preventDefault();
+      openedFromPanelRef.current = null;
       closeDiffsSearchIfOpen();
       setShowSearch(true);
       focusSearchInput();
