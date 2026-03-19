@@ -66,29 +66,41 @@ function RelayRoleChooser({
   const { t } = useTranslation(['settings']);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
-      <RelayRoleChoice
-        role="host"
-        selected={selectedRole === 'host'}
-        icon={<BroadcastIcon className="size-icon-sm" weight="bold" />}
-        label={t('settings.relay.host.label', 'Host')}
-        description={t(
-          'settings.relay.host.description',
-          'Allow other devices to remotely control workspaces on this machine.'
-        )}
-        onSelect={onSelect}
-      />
-      <RelayRoleChoice
-        role="client"
-        selected={selectedRole === 'client'}
-        icon={<DesktopIcon className="size-icon-sm" weight="bold" />}
-        label={t('settings.relay.client.label', 'Client')}
-        description={t(
-          'settings.relay.client.panelDescription',
-          'Control workspaces on another device by pairing to it with a one-time code.'
-        )}
-        onSelect={onSelect}
-      />
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <a
+          href={RELAY_REMOTE_CONTROL_DOCS_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-brand hover:underline"
+        >
+          {t('settings.relay.docsLink', 'Read docs')}
+        </a>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <RelayRoleChoice
+          role="host"
+          selected={selectedRole === 'host'}
+          icon={<BroadcastIcon className="size-icon-sm" weight="bold" />}
+          label={t('settings.relay.host.label', 'Host')}
+          description={t(
+            'settings.relay.host.description',
+            'Allow other devices to remotely control workspaces on this machine.'
+          )}
+          onSelect={onSelect}
+        />
+        <RelayRoleChoice
+          role="client"
+          selected={selectedRole === 'client'}
+          icon={<DesktopIcon className="size-icon-sm" weight="bold" />}
+          label={t('settings.relay.client.label', 'Client')}
+          description={t(
+            'settings.relay.client.panelDescription',
+            'Control workspaces on another device by pairing to it with a one-time code.'
+          )}
+          onSelect={onSelect}
+        />
+      </div>
     </div>
   );
 }
@@ -640,10 +652,16 @@ function RemoteRelaySettingsSectionContent({
   }
 
   return (
-    <RemoteCloudHostsSettingsCardContent
-      initialHostId={initialState?.hostId}
-      mode="remote"
-    />
+    <RolePanel
+      title={t('settings.relay.client.panelTitle', 'Connect to a host')}
+      docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
+      docsLabel={t('settings.relay.docsLink', 'Read docs')}
+    >
+      <RemoteCloudHostsSettingsCardContent
+        initialHostId={initialState?.hostId}
+        mode="remote"
+      />
+    </RolePanel>
   );
 }
 
