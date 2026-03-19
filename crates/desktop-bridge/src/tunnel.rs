@@ -104,14 +104,48 @@ impl TunnelManager {
         let listener = TcpListener::bind("127.0.0.1:0").await?;
         let local_port = listener.local_addr()?.port();
         let tunnel_id = Uuid::new_v4();
-
         let cancel = CancellationToken::new();
-        let cancel_clone = cancel.clone();
         let relay_session_base_url_owned = relay_session_base_url.to_string();
-        let relay_session_base_url_for_task = relay_session_base_url_owned.clone();
+        {
+            let mut tunnels = self.tunnels.lock().await;
+            if let Some(tunnel) = tunnels.get(&key)
+                && !tunnel.cancel.is_cancelled()
+            {
+                if tunnel.signing_session_id == signing_session_id
+                    && tunnel.relay_session_base_url == relay_session_base_url
+                {
+                    return Ok(tunnel.local_port);
+                }
+
+                tracing::debug!(
+                    previous_relay_session_base_url = %tunnel.relay_session_base_url,
+                    new_relay_session_base_url = %relay_session_base_url,
+                    previous_signing_session_id = %tunnel.signing_session_id,
+                    new_signing_session_id = %signing_session_id,
+                    local_port = tunnel.local_port,
+                    "Replacing tunnel after session rotation"
+                );
+                tunnel.cancel.cancel();
+                tunnels.remove(&key);
+            }
+
+            tunnels.insert(
+                key.clone(),
+                ActiveTunnel {
+                    id: tunnel_id,
+                    local_port,
+                    relay_session_base_url: relay_session_base_url_owned.clone(),
+                    signing_session_id,
+                    cancel: cancel.clone(),
+                },
+            );
+        }
+
+        let cancel_clone = cancel.clone();
+        let relay_session_base_url_for_task = relay_session_base_url_owned;
         let signing = self.signing.clone();
         let tunnels = self.tunnels.clone();
-        let key_clone = key.clone();
+        let key_clone = key;
         let tunnel_id_clone = tunnel_id;
         let api_path = api_path.to_string();
 
@@ -135,17 +169,6 @@ impl TunnelManager {
                 tunnels.remove(&key_clone);
             }
         });
-
-        self.tunnels.lock().await.insert(
-            key,
-            ActiveTunnel {
-                id: tunnel_id,
-                local_port,
-                relay_session_base_url: relay_session_base_url_owned,
-                signing_session_id,
-                cancel,
-            },
-        );
 
         Ok(local_port)
     }
