@@ -30,9 +30,6 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
   const shiftHeldRef = useRef(false);
 
   useEffect(() => {
-    const rootElement = editor.getRootElement();
-    if (!rootElement) return;
-
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
@@ -44,8 +41,10 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
       shiftHeldRef.current = false;
     };
 
-    rootElement.addEventListener('keydown', handleKeyDown);
-    rootElement.addEventListener('keyup', handleKeyUp);
+    // Use window capture listeners so Tauri/WebKit shortcut handling does not
+    // bypass tracking when the event target is outside the editor root.
+    window.addEventListener('keydown', handleKeyDown, true);
+    window.addEventListener('keyup', handleKeyUp, true);
 
     const unregisterPaste = editor.registerCommand(
       PASTE_COMMAND,
@@ -55,10 +54,27 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         const clipboardData = event.clipboardData;
         if (!clipboardData) return false;
 
-        // If HTML exists, let default Lexical handling work
+        const plainText =
+          clipboardData.getData('text/plain') || clipboardData.getData('text');
+
+        // CMD+SHIFT+V: Raw paste must win even when HTML data is present.
+        if (shiftHeldRef.current) {
+          if (!plainText) return false;
+          event.preventDefault();
+
+          editor.update(() => {
+            const selection = $getSelection();
+            if (!$isRangeSelection(selection)) return;
+            selection.insertRawText(plainText);
+          });
+
+          shiftHeldRef.current = false;
+          return true;
+        }
+
+        // If HTML exists, let default Lexical handling work.
         if (clipboardData.getData('text/html')) return false;
 
-        const plainText = clipboardData.getData('text/plain');
         if (!plainText) return false;
 
         event.preventDefault();
@@ -66,12 +82,6 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
         editor.update(() => {
           const selection = $getSelection();
           if (!$isRangeSelection(selection)) return;
-
-          // CMD+SHIFT+V: Raw paste - insert plain text as-is
-          if (shiftHeldRef.current) {
-            selection.insertRawText(plainText);
-            return;
-          }
 
           // CMD+V: Convert markdown and insert at cursor
           // Save selection before any operations that might corrupt it
@@ -101,14 +111,15 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
           }
         });
 
+        shiftHeldRef.current = false;
         return true;
       },
       COMMAND_PRIORITY_LOW
     );
 
     return () => {
-      rootElement.removeEventListener('keydown', handleKeyDown);
-      rootElement.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
       unregisterPaste();
     };
   }, [editor, transformers]);
