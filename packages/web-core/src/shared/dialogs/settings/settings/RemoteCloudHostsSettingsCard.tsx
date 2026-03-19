@@ -343,7 +343,6 @@ export function RemoteCloudHostsSettingsCardContent({
             )}
           </span>
           <PrimaryButton
-            variant="secondary"
             value={t('settings.relay.client.pair.button', 'Pair to a host')}
             onClick={() => {
               setErrorMessage(null);
@@ -420,10 +419,10 @@ export function RemoteCloudHostsSettingsCardContent({
 
   return (
     <SettingsCard
-      title={t('settings.relay.client.title', 'Use this device as a client')}
+      title={t('settings.relay.client.title', 'Connect to a host')}
       description={t(
         'settings.relay.client.description',
-        'Pair this device to other hosts using a one-time code, then reconnect to them from here.'
+        'Control workspaces on another device by pairing to it with a one-time code.'
       )}
     >
       {content}

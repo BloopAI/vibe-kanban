@@ -660,6 +660,7 @@ function RemoteRelaySettingsSectionContent({
       <RemoteCloudHostsSettingsCardContent
         initialHostId={initialState?.hostId}
         mode="remote"
+        embedded
       />
     </RolePanel>
   );
