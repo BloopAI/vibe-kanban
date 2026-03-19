@@ -259,10 +259,6 @@ export function RemoteCloudHostsSettingsCardContent({
 
       <SettingsField
         label={t('settings.relay.client.pair.hostLabel', 'Host to pair to')}
-        description={t(
-          'settings.relay.client.pair.hostHelp',
-          'Choose the host this device should connect to.'
-        )}
       >
         <SettingsSelect
           value={selectedHostId}
