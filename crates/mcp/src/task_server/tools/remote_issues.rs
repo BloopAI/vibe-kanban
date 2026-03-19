@@ -7,7 +7,7 @@ use api_types::{
     SearchIssuesRequest, SortDirection, UpdateIssueRequest,
 };
 use rmcp::{
-    ErrorData, handler::server::tool::Parameters, model::CallToolResult, schemars, tool,
+    ErrorData, handler::server::wrapper::Parameters, model::CallToolResult, schemars, tool,
     tool_router,
 };
 use serde::{Deserialize, Serialize};

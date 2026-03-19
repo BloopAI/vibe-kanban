@@ -23,7 +23,7 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { version = "1.0", features = ["v4", "serde"] }
-rmcp = { version = "0.5.0", features = ["server", "transport-io"] }
+rmcp = { version = "1.2.0", features = ["server", "transport-io"] }
 schemars = { workspace = true }
 sentry = { version = "0.46.2", default-features = false, features = ["anyhow", "backtrace", "panic", "debug-images", "reqwest", "rustls"] }
 reqwest = { workspace = true }

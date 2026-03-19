@@ -44,8 +44,8 @@ impl McpServer {
         let mut router = Self::context_tools_router()
             + Self::workspaces_tools_router()
             + Self::session_tools_router();
-        router.remove_route::<(), ()>("list_workspaces");
-        router.remove_route::<(), ()>("delete_workspace");
+        router.remove_route("list_workspaces");
+        router.remove_route("delete_workspace");
         router
     }
 }
