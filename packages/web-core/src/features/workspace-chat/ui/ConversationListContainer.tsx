@@ -740,11 +740,11 @@ export const ConversationList = forwardRef<
     if (!root) return;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let rafId: number | null = null;
-    let isApplying = false;
+    let applyingDepth = 0;
 
     const apply = () => {
       if (!panelRef.current) return;
-      isApplying = true;
+      applyingDepth += 1;
       clearSearchTextHighlightsWithKey(
         panelRef.current,
         CONVERSATION_HIGHLIGHT_KEY
@@ -756,7 +756,9 @@ export const ConversationList = forwardRef<
           highlightKey: CONVERSATION_HIGHLIGHT_KEY,
         });
       }
-      isApplying = false;
+      queueMicrotask(() => {
+        applyingDepth = Math.max(0, applyingDepth - 1);
+      });
     };
 
     const scheduleApply = () => {
@@ -775,7 +777,7 @@ export const ConversationList = forwardRef<
       };
     }
     const observer = new MutationObserver(() => {
-      if (isApplying) return;
+      if (applyingDepth > 0) return;
       scheduleApply();
     });
 
