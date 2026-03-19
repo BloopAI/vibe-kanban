@@ -248,6 +248,17 @@ export function RemoteCloudHostsSettingsCardContent({
     }
   };
 
+  const handleGoToHostWorkspaces = (hostId: string, status?: string) => {
+    if (status === 'offline') {
+      return;
+    }
+
+    void navigate({
+      to: '/hosts/$hostId/workspaces',
+      params: { hostId },
+    });
+  };
+
   return (
     <div className="space-y-4">
       {successMessage && (
@@ -273,7 +284,7 @@ export function RemoteCloudHostsSettingsCardContent({
             'settings.relay.remoteCloudHost.hostPlaceholder',
             relayHostsLoading
               ? 'Loading hosts...'
-              : relayHosts.length === 0
+              : pairableRelayHosts.length === 0
                 ? 'No hosts available'
                 : 'Select a host'
           )}
@@ -281,7 +292,7 @@ export function RemoteCloudHostsSettingsCardContent({
         />
       </SettingsField>
 
-      {!relayHostsLoading && relayHosts.length === 0 && (
+      {!relayHostsLoading && pairableRelayHosts.length === 0 && (
         <p className="text-sm text-low">
           {t(
             'settings.relay.remoteCloudHost.hostsUnavailable',
@@ -358,37 +369,52 @@ export function RemoteCloudHostsSettingsCardContent({
               </div>
             )}
 
+
             {!isLoading && connectedHosts.length > 0 && (
               <div className="space-y-2">
-                {connectedHosts.map((host) => (
-                  <div
-                    key={host.id}
-                    className="rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-high truncate">
-                        {host.name}
-                      </p>
-                      <p className="text-xs text-low truncate">
-                        {isRemoteMode && host.status
-                          ? `${host.status === 'online' ? 'Online' : 'Offline'}${host.pairedAt ? ` · Paired ${new Date(host.pairedAt).toLocaleDateString()}` : ''}`
-                          : host.id}
-                      </p>
-                    </div>
-                    <PrimaryButton
-                      variant="tertiary"
-                      value={t(
-                        'settings.relay.remoteCloudHost.remove',
-                        'Remove'
-                      )}
-                      onClick={() => void handleRemove(host.id)}
-                      disabled={isRemoving}
-                      actionIcon={
-                        removingHostId === host.id ? 'spinner' : undefined
+                {connectedHosts.map((host) => {
+                  const isOffline = isRemoteMode && host.status === 'offline';
+
+                  return (
+                    <div
+                      key={host.id}
+                      className={[
+                        'rounded-sm border border-border bg-secondary/30 p-3 flex items-center justify-between gap-3',
+                        isOffline
+                          ? 'opacity-80'
+                          : 'cursor-pointer hover:bg-secondary/50',
+                      ].join(' ')}
+                      onClick={() =>
+                        void handleGoToHostWorkspaces(host.id, host.status)
                       }
-                    />
-                  </div>
-                ))}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-high truncate">
+                          {host.name}
+                        </p>
+                        <p className="text-xs text-low truncate">
+                          {isRemoteMode && host.status
+                            ? `${host.status === 'online' ? 'Online' : 'Offline'}${host.pairedAt ? ` · Paired ${new Date(host.pairedAt).toLocaleDateString()}` : ''}`
+                            : host.id}
+                        </p>
+                      </div>
+                      <PrimaryButton
+                        variant="tertiary"
+                        value={t('settings.relay.remoteCloudHost.remove', 'Remove')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void handleRemove(host.id);
+                        }}
+                        disabled={isRemoving}
+                        actionIcon={
+                          removingHostId === host.id ? 'spinner' : undefined
+                        }
+                      />
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
