@@ -600,6 +600,8 @@ function LocalRelaySettingsSectionContent() {
       {selectedRole === 'client' && (
         <RolePanel
           title={t('settings.relay.client.panelTitle', 'Connect to a host')}
+          docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
+          docsLabel={t('settings.relay.docsLink', 'Read docs')}
         >
           <RemoteCloudHostsSettingsCardContent embedded />
         </RolePanel>
