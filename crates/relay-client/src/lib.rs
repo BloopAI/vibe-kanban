@@ -1,11 +1,11 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
-use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
+use ed25519_dalek::VerifyingKey;
 use http::{HeaderMap, HeaderName, Method};
 use relay_control::signing::{
-    self, NONCE_HEADER, REQUEST_SIGNATURE_HEADER, RequestSignature, SIGNING_SESSION_HEADER,
-    TIMESTAMP_HEADER,
+    NONCE_HEADER, REQUEST_SIGNATURE_HEADER, RelaySigningService, RequestSignature,
+    SIGNING_SESSION_HEADER, TIMESTAMP_HEADER,
 };
 use relay_types::{
     FinishSpake2EnrollmentRequest, FinishSpake2EnrollmentResponse, PairRelayHostRequest,
@@ -40,24 +40,38 @@ pub enum RelayApiError {
 const SPAKE2_CLIENT_ID: &[u8] = b"vibe-kanban-browser";
 const SPAKE2_SERVER_ID: &[u8] = b"vibe-kanban-server";
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RelayApiClient {
     http: Client,
     base_url: String,
     access_token: String,
+    signing: RelaySigningService,
+}
+
+impl std::fmt::Debug for RelayApiClient {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RelayApiClient")
+            .field("base_url", &self.base_url)
+            .finish_non_exhaustive()
+    }
 }
 
 impl RelayApiClient {
-    pub fn new(base_url: String, access_token: String) -> Self {
+    pub fn new(base_url: String, access_token: String, signing: RelaySigningService) -> Self {
         Self {
             http: Client::new(),
             base_url: base_url.trim_end_matches('/').to_string(),
             access_token,
+            signing,
         }
     }
 
     pub fn base_url(&self) -> &str {
         &self.base_url
+    }
+
+    pub fn signing(&self) -> &RelaySigningService {
+        &self.signing
     }
 
     fn authenticated_post(&self, url: String) -> reqwest::RequestBuilder {
@@ -110,14 +124,16 @@ impl RelayApiClient {
     pub async fn refresh_signing_session(
         &self,
         remote_session: &RemoteSession,
-        signing_key: &SigningKey,
         client_id: Uuid,
     ) -> Result<RefreshRelaySigningSessionResponse, RelayApiError> {
         let timestamp = unix_timestamp_now()?;
-        let nonce = Uuid::new_v4().simple().to_string();
+        let nonce = Uuid::new_v4().to_string();
         let refresh_message = build_refresh_message(timestamp, &nonce, client_id);
-        let signature_b64 =
-            BASE64_STANDARD.encode(signing_key.sign(refresh_message.as_bytes()).to_bytes());
+        let signature_b64 = BASE64_STANDARD.encode(
+            self.signing
+                .sign_bytes(refresh_message.as_bytes())
+                .to_bytes(),
+        );
 
         let payload = RefreshRelaySigningSessionRequest {
             client_id,
@@ -137,7 +153,6 @@ impl RelayApiClient {
     pub async fn pair_host(
         &self,
         request: &PairRelayHostRequest,
-        signing_key: &SigningKey,
     ) -> Result<PairRelayHostResult, RelayApiError> {
         let remote_session = self.create_session(request.host_id).await?;
 
@@ -168,7 +183,7 @@ impl RelayApiClient {
             RelayApiError::Other("failed to complete relay PAKE handshake".to_string())
         })?;
 
-        let client_public_key = signing_key.verifying_key();
+        let client_public_key = self.signing.server_public_key();
         let client_public_key_b64 = BASE64_STANDARD.encode(client_public_key.as_bytes());
         let client_proof_b64 = build_client_proof(
             &shared_key,
@@ -236,16 +251,14 @@ pub struct RelayHostTransport {
     api_client: RelayApiClient,
     identity: RelayHostIdentity,
     auth_state: RelayAuthState,
-    signing_key: SigningKey,
 }
 
 impl RelayHostTransport {
     pub async fn bootstrap(
         api_client: RelayApiClient,
         identity: RelayHostIdentity,
-        signing_key: SigningKey,
         cached_remote_session: Option<RemoteSession>,
-        cached_signing_session_id: Option<String>,
+        cached_signing_session_id: Option<Uuid>,
     ) -> Result<Self, RelayApiError> {
         let remote_session = match cached_remote_session {
             Some(remote_session) => remote_session,
@@ -254,10 +267,15 @@ impl RelayHostTransport {
         let signing_session_id = match cached_signing_session_id {
             Some(signing_session_id) => signing_session_id,
             None => api_client
-                .refresh_signing_session(&remote_session, &signing_key, identity.client_id)
+                .refresh_signing_session(&remote_session, identity.client_id)
                 .await
-                .map(|response| response.signing_session_id.to_string())?,
+                .map(|response| response.signing_session_id)?,
         };
+
+        api_client
+            .signing()
+            .register_session(signing_session_id, identity.server_verify_key)
+            .await;
 
         Ok(Self {
             api_client,
@@ -266,7 +284,6 @@ impl RelayHostTransport {
                 remote_session,
                 signing_session_id,
             },
-            signing_key,
         })
     }
 
@@ -284,14 +301,6 @@ impl RelayHostTransport {
             self.identity.host_id,
             self.auth_state.remote_session.id,
         )
-    }
-
-    pub fn signing_key(&self) -> &SigningKey {
-        &self.signing_key
-    }
-
-    pub fn server_verify_key(&self) -> &VerifyingKey {
-        &self.identity.server_verify_key
     }
 
     pub async fn send_http(
@@ -377,17 +386,45 @@ impl RelayHostTransport {
         headers: &HeaderMap,
         body: &[u8],
     ) -> Result<reqwest::Response, RelayApiError> {
-        send_signed_http(
-            self.relay_base_url(),
-            &self.auth_state.remote_session,
-            &self.signing_key,
-            &self.auth_state.signing_session_id,
-            method,
+        let signature = self.api_client.signing().sign_request(
+            self.auth_state.signing_session_id,
+            method.as_str(),
             target_path,
-            headers,
             body,
-        )
-        .await
+        );
+        let url = format!(
+            "{}{target_path}",
+            relay_session_url(
+                self.relay_base_url(),
+                self.auth_state.remote_session.host_id,
+                self.auth_state.remote_session.id
+            )
+        );
+        let reqwest_method = reqwest::Method::from_bytes(method.as_str().as_bytes())
+            .map_err(|e| RelayApiError::Other(format!("Unsupported HTTP method: {e}")))?;
+        let mut builder = Client::new().request(reqwest_method, url);
+
+        for (name, value) in headers {
+            if should_forward_request_header(name) {
+                builder = builder.header(name, value);
+            }
+        }
+
+        builder = builder
+            .header(RELAY_HEADER, "1")
+            .header(
+                SIGNING_SESSION_HEADER,
+                signature.signing_session_id.to_string(),
+            )
+            .header(TIMESTAMP_HEADER, signature.timestamp.to_string())
+            .header(NONCE_HEADER, signature.nonce.to_string())
+            .header(REQUEST_SIGNATURE_HEADER, &signature.signature_b64);
+
+        if !body.is_empty() {
+            builder = builder.body(body.to_vec());
+        }
+
+        Ok(builder.send().await?)
     }
 
     async fn connect_ws_once(
@@ -395,43 +432,88 @@ impl RelayHostTransport {
         target_path: &str,
         protocols: Option<&str>,
     ) -> Result<(SignedTungsteniteSocket, Option<String>), RelayApiError> {
-        connect_signed_upstream_ws(
-            self.relay_base_url(),
-            &self.auth_state.remote_session,
-            &self.signing_key,
-            &self.auth_state.signing_session_id,
+        let request_signature = self.api_client.signing().sign_request(
+            self.auth_state.signing_session_id,
+            "GET",
             target_path,
-            protocols,
-            self.identity.server_verify_key,
-        )
-        .await
+            &[],
+        );
+
+        let ws_url = relay_http_to_ws_url(&format!(
+            "{}{target_path}",
+            relay_session_url(
+                self.relay_base_url(),
+                self.auth_state.remote_session.host_id,
+                self.auth_state.remote_session.id
+            )
+        ))?;
+        let mut ws_request = ws_url.into_client_request()?;
+
+        if let Some(value) = protocols
+            && let Ok(header_value) = value.parse()
+        {
+            ws_request
+                .headers_mut()
+                .insert("sec-websocket-protocol", header_value);
+        }
+
+        set_ws_signing_headers(ws_request.headers_mut(), &request_signature);
+
+        let (stream, response) = tokio_tungstenite::connect_async(ws_request).await?;
+
+        let selected_protocol = response
+            .headers()
+            .get("sec-websocket-protocol")
+            .and_then(|value| value.to_str().ok())
+            .map(ToOwned::to_owned);
+
+        let upstream_socket =
+            signed_tungstenite_websocket(self.api_client.signing(), &request_signature, stream)
+                .await
+                .map_err(|e| RelayApiError::Other(e.to_string()))?;
+
+        Ok((upstream_socket, selected_protocol))
     }
 
     async fn get_signed_json_once<TData>(&self, path: &str) -> Result<TData, RelayApiError>
     where
         TData: DeserializeOwned,
     {
-        get_signed_relay_api(
-            self.relay_base_url(),
-            self.identity.host_id,
-            self.auth_state.remote_session.id,
+        let url = format!("{}{path}", self.relay_url());
+        let sig = self.api_client.signing().sign_request(
+            self.auth_state.signing_session_id,
+            "GET",
             path,
-            &self.signing_key,
-            &self.auth_state.signing_session_id,
-        )
-        .await
+            &[],
+        );
+
+        let response = Client::new()
+            .get(url)
+            .header(SIGNING_SESSION_HEADER, sig.signing_session_id.to_string())
+            .header(TIMESTAMP_HEADER, sig.timestamp.to_string())
+            .header(NONCE_HEADER, sig.nonce.to_string())
+            .header(REQUEST_SIGNATURE_HEADER, &sig.signature_b64)
+            .send()
+            .await?
+            .error_for_status()?;
+
+        let payload = response.json::<RelayApiResponse<TData>>().await?;
+        Ok(payload.data)
     }
 
     async fn refresh_signing_session(&mut self) -> Result<(), RelayApiError> {
         let refreshed = self
             .api_client
-            .refresh_signing_session(
-                &self.auth_state.remote_session,
-                &self.signing_key,
-                self.identity.client_id,
-            )
+            .refresh_signing_session(&self.auth_state.remote_session, self.identity.client_id)
             .await?;
-        self.auth_state.signing_session_id = refreshed.signing_session_id.to_string();
+        self.auth_state.signing_session_id = refreshed.signing_session_id;
+        self.api_client
+            .signing()
+            .register_session(
+                refreshed.signing_session_id,
+                self.identity.server_verify_key,
+            )
+            .await;
         Ok(())
     }
 
@@ -449,125 +531,6 @@ pub fn relay_session_url(base_url: &str, host_id: Uuid, session_id: Uuid) -> Str
         "{}/v1/relay/h/{host_id}/s/{session_id}",
         base_url.trim_end_matches('/')
     )
-}
-
-async fn get_signed_relay_api<TData>(
-    base_url: &str,
-    host_id: Uuid,
-    session_id: Uuid,
-    path: &str,
-    signing_key: &SigningKey,
-    signing_session_id: &str,
-) -> Result<TData, RelayApiError>
-where
-    TData: DeserializeOwned,
-{
-    let url = format!("{}{path}", relay_session_url(base_url, host_id, session_id));
-    let sig = signing::build_request_signature(signing_key, signing_session_id, "GET", path, &[]);
-
-    let response = Client::new()
-        .get(url)
-        .header(signing::SIGNING_SESSION_HEADER, &sig.signing_session_id)
-        .header(signing::TIMESTAMP_HEADER, sig.timestamp.to_string())
-        .header(signing::NONCE_HEADER, &sig.nonce)
-        .header(signing::REQUEST_SIGNATURE_HEADER, &sig.signature_b64)
-        .send()
-        .await?
-        .error_for_status()?;
-
-    let payload = response.json::<RelayApiResponse<TData>>().await?;
-    Ok(payload.data)
-}
-
-#[allow(clippy::too_many_arguments)]
-async fn send_signed_http(
-    base_url: &str,
-    remote_session: &RemoteSession,
-    signing_key: &SigningKey,
-    signing_session_id: &str,
-    method: &Method,
-    target_path: &str,
-    headers: &HeaderMap,
-    body: &[u8],
-) -> Result<reqwest::Response, RelayApiError> {
-    let signature = signing::build_request_signature(
-        signing_key,
-        signing_session_id,
-        method.as_str(),
-        target_path,
-        body,
-    );
-    let url = format!(
-        "{}{target_path}",
-        relay_session_url(base_url, remote_session.host_id, remote_session.id)
-    );
-    let mut builder = Client::new().request(method.clone(), url);
-
-    for (name, value) in headers {
-        if should_forward_request_header(name) {
-            builder = builder.header(name, value);
-        }
-    }
-
-    builder = builder
-        .header(RELAY_HEADER, "1")
-        .header(SIGNING_SESSION_HEADER, &signature.signing_session_id)
-        .header(TIMESTAMP_HEADER, signature.timestamp.to_string())
-        .header(NONCE_HEADER, &signature.nonce)
-        .header(REQUEST_SIGNATURE_HEADER, &signature.signature_b64);
-
-    if !body.is_empty() {
-        builder = builder.body(body.to_vec());
-    }
-
-    Ok(builder.send().await?)
-}
-
-async fn connect_signed_upstream_ws(
-    base_url: &str,
-    remote_session: &RemoteSession,
-    signing_key: &SigningKey,
-    signing_session_id: &str,
-    target_path: &str,
-    protocols: Option<&str>,
-    server_verify_key: VerifyingKey,
-) -> Result<(SignedTungsteniteSocket, Option<String>), RelayApiError> {
-    let request_signature =
-        signing::build_request_signature(signing_key, signing_session_id, "GET", target_path, &[]);
-
-    let ws_url = relay_http_to_ws_url(&format!(
-        "{}{target_path}",
-        relay_session_url(base_url, remote_session.host_id, remote_session.id)
-    ))?;
-    let mut ws_request = ws_url.into_client_request()?;
-
-    if let Some(value) = protocols
-        && let Ok(header_value) = value.parse()
-    {
-        ws_request
-            .headers_mut()
-            .insert("sec-websocket-protocol", header_value);
-    }
-
-    set_ws_signing_headers(ws_request.headers_mut(), &request_signature);
-
-    let (stream, response) = tokio_tungstenite::connect_async(ws_request).await?;
-
-    let selected_protocol = response
-        .headers()
-        .get("sec-websocket-protocol")
-        .and_then(|value| value.to_str().ok())
-        .map(ToOwned::to_owned);
-
-    let upstream_socket = signed_tungstenite_websocket(
-        signing_session_id.to_string(),
-        request_signature.nonce,
-        signing_key.clone(),
-        server_verify_key,
-        stream,
-    );
-
-    Ok((upstream_socket, selected_protocol))
 }
 
 #[allow(clippy::result_large_err)]
@@ -592,6 +555,7 @@ fn set_ws_signing_headers(
         SIGNING_SESSION_HEADER,
         signature
             .signing_session_id
+            .to_string()
             .parse()
             .expect("valid header value"),
     );
@@ -605,7 +569,11 @@ fn set_ws_signing_headers(
     );
     headers.insert(
         NONCE_HEADER,
-        signature.nonce.parse().expect("valid header value"),
+        signature
+            .nonce
+            .to_string()
+            .parse()
+            .expect("valid header value"),
     );
     headers.insert(
         REQUEST_SIGNATURE_HEADER,

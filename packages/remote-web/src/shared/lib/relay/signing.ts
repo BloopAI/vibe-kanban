@@ -59,7 +59,7 @@ export async function buildRelaySignature(
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const nonce = crypto.randomUUID().replace(/-/g, "");
+  const nonce = crypto.randomUUID();
   const bodyHashB64 = await sha256Base64(bodyBytes);
 
   const message = [

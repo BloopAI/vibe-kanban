@@ -6,8 +6,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
-use ed25519_dalek::{SigningKey, VerifyingKey};
-use relay_control::signing;
+use relay_control::signing::{self, RelaySigningService};
 use relay_tunnel::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
 use relay_ws::signed_tungstenite_websocket;
 use tokio::{net::TcpListener, sync::Mutex};
@@ -26,18 +25,21 @@ struct ActiveTunnel {
     id: Uuid,
     local_port: u16,
     relay_session_base_url: String,
-    signing_session_id: String,
+    signing_session_id: Uuid,
     cancel: CancellationToken,
 }
 
-#[derive(Default)]
 pub struct TunnelManager {
     tunnels: Arc<Mutex<HashMap<TunnelKey, ActiveTunnel>>>,
+    signing: RelaySigningService,
 }
 
 impl TunnelManager {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(signing: RelaySigningService) -> Self {
+        Self {
+            tunnels: Arc::new(Mutex::new(HashMap::new())),
+            signing,
+        }
     }
 
     /// Get or create a tunnel to the embedded SSH session endpoint.
@@ -46,17 +48,13 @@ impl TunnelManager {
         &self,
         host_id: Uuid,
         relay_session_base_url: &str,
-        signing_key: &SigningKey,
-        signing_session_id: &str,
-        server_verify_key: VerifyingKey,
+        signing_session_id: Uuid,
     ) -> std::io::Result<u16> {
         let local_port = self
             .get_or_create_tunnel_for_path(
                 host_id,
                 relay_session_base_url,
-                signing_key,
                 signing_session_id,
-                server_verify_key,
                 "/api/ssh-session",
             )
             .await?;
@@ -68,9 +66,7 @@ impl TunnelManager {
         &self,
         host_id: Uuid,
         relay_session_base_url: &str,
-        signing_key: &SigningKey,
-        signing_session_id: &str,
-        server_verify_key: VerifyingKey,
+        signing_session_id: Uuid,
         api_path: &str,
     ) -> std::io::Result<u16> {
         let key = TunnelKey {
@@ -113,8 +109,7 @@ impl TunnelManager {
         let cancel_clone = cancel.clone();
         let relay_session_base_url_owned = relay_session_base_url.to_string();
         let relay_session_base_url_for_task = relay_session_base_url_owned.clone();
-        let signing_key = signing_key.clone();
-        let signing_session_id_owned = signing_session_id.to_string();
+        let signing = self.signing.clone();
         let tunnels = self.tunnels.clone();
         let key_clone = key.clone();
         let tunnel_id_clone = tunnel_id;
@@ -124,9 +119,8 @@ impl TunnelManager {
             run_tunnel_listener(
                 listener,
                 &relay_session_base_url_for_task,
-                &signing_key,
-                &signing_session_id_owned,
-                server_verify_key,
+                &signing,
+                signing_session_id,
                 &api_path,
                 cancel_clone,
             )
@@ -148,7 +142,7 @@ impl TunnelManager {
                 id: tunnel_id,
                 local_port,
                 relay_session_base_url: relay_session_base_url_owned,
-                signing_session_id: signing_session_id.to_string(),
+                signing_session_id,
                 cancel,
             },
         );
@@ -160,9 +154,8 @@ impl TunnelManager {
 async fn run_tunnel_listener(
     listener: TcpListener,
     relay_session_base_url: &str,
-    signing_key: &SigningKey,
-    signing_session_id: &str,
-    server_verify_key: VerifyingKey,
+    signing: &RelaySigningService,
+    signing_session_id: Uuid,
     api_path: &str,
     cancel: CancellationToken,
 ) {
@@ -173,16 +166,14 @@ async fn run_tunnel_listener(
                 match result {
                     Ok((tcp_stream, _addr)) => {
                         let relay_session_base_url = relay_session_base_url.to_string();
-                        let signing_key = signing_key.clone();
-                        let signing_session_id = signing_session_id.to_string();
+                        let signing = signing.clone();
                         let api_path = api_path.to_string();
                         tokio::spawn(async move {
                             if let Err(error) = bridge_tcp_to_relay(
                                 tcp_stream,
                                 &relay_session_base_url,
-                                &signing_key,
-                                &signing_session_id,
-                                server_verify_key,
+                                &signing,
+                                signing_session_id,
                                 &api_path,
                             )
                             .await
@@ -205,16 +196,14 @@ async fn run_tunnel_listener(
 async fn bridge_tcp_to_relay(
     mut tcp_stream: tokio::net::TcpStream,
     relay_session_base_url: &str,
-    signing_key: &SigningKey,
-    signing_session_id: &str,
-    server_verify_key: VerifyingKey,
+    signing: &RelaySigningService,
+    signing_session_id: Uuid,
     api_path: &str,
 ) -> anyhow::Result<()> {
     let base = relay_session_base_url.trim_end_matches('/');
     let ws_url = relay_tunnel::http_to_ws_url(&format!("{base}{api_path}"))?;
 
-    let sig =
-        signing::build_request_signature(signing_key, signing_session_id, "GET", api_path, &[]);
+    let sig = signing.sign_request(signing_session_id, "GET", api_path, &[]);
 
     let mut request = ws_url
         .into_client_request()
@@ -222,7 +211,7 @@ async fn bridge_tcp_to_relay(
 
     request.headers_mut().insert(
         signing::SIGNING_SESSION_HEADER,
-        sig.signing_session_id.parse()?,
+        sig.signing_session_id.to_string().parse()?,
     );
     request.headers_mut().insert(
         signing::TIMESTAMP_HEADER,
@@ -230,7 +219,7 @@ async fn bridge_tcp_to_relay(
     );
     request
         .headers_mut()
-        .insert(signing::NONCE_HEADER, sig.nonce.parse()?);
+        .insert(signing::NONCE_HEADER, sig.nonce.to_string().parse()?);
     request.headers_mut().insert(
         signing::REQUEST_SIGNATURE_HEADER,
         sig.signature_b64.parse()?,
@@ -241,13 +230,9 @@ async fn bridge_tcp_to_relay(
             .await
             .context("Failed to connect relay tunnel WS")?;
 
-    let signed_ws = signed_tungstenite_websocket(
-        sig.signing_session_id,
-        sig.nonce,
-        signing_key.clone(),
-        server_verify_key,
-        ws_stream,
-    );
+    let signed_ws = signed_tungstenite_websocket(signing, &sig, ws_stream)
+        .await
+        .context("Failed to create signed WebSocket")?;
 
     let mut ws_io = tungstenite_ws_stream_io(signed_ws);
 

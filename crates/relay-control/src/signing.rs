@@ -24,56 +24,44 @@ pub const REQUEST_SIGNATURE_HEADER: &str = "x-vk-sig-signature";
 
 #[derive(Debug, Clone)]
 pub struct RequestSignature {
-    pub signing_session_id: String,
+    pub signing_session_id: Uuid,
     pub timestamp: i64,
-    pub nonce: String,
+    pub nonce: Uuid,
     pub signature_b64: String,
 }
 
-/// Build the canonical signing message for an HTTP request.
-pub fn build_request_signing_message(
-    timestamp: i64,
+fn build_request_signing_message(
+    sig: &RequestSignature,
     method: &str,
     path_and_query: &str,
-    signing_session_id: &str,
-    nonce: &str,
     body: &[u8],
 ) -> String {
     let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
-    format!("v1|{timestamp}|{method}|{path_and_query}|{signing_session_id}|{nonce}|{body_hash}")
+    format!(
+        "v1|{}|{method}|{path_and_query}|{}|{}|{body_hash}",
+        sig.timestamp, sig.signing_session_id, sig.nonce
+    )
 }
 
-/// Build an Ed25519 request signature for relay proxy authentication.
-pub fn build_request_signature(
+fn build_request_signature(
     signing_key: &SigningKey,
-    signing_session_id: &str,
+    signing_session_id: Uuid,
     method: &str,
     path_and_query: &str,
     body: &[u8],
 ) -> RequestSignature {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
-    let nonce = Uuid::new_v4().simple().to_string();
-
-    let message = build_request_signing_message(
-        timestamp,
-        method,
-        path_and_query,
+    let mut sig = RequestSignature {
         signing_session_id,
-        &nonce,
-        body,
-    );
-    let signature = signing_key.sign(message.as_bytes());
-    let signature_b64 = BASE64_STANDARD.encode(signature.to_bytes());
-
-    RequestSignature {
-        signing_session_id: signing_session_id.to_string(),
-        timestamp,
-        nonce,
-        signature_b64,
-    }
+        timestamp: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64,
+        nonce: Uuid::new_v4(),
+        signature_b64: String::new(),
+    };
+    let message = build_request_signing_message(&sig, method, path_and_query, body);
+    sig.signature_b64 = BASE64_STANDARD.encode(signing_key.sign(message.as_bytes()).to_bytes());
+    sig
 }
 
 // ---------------------------------------------------------------------------
@@ -89,9 +77,9 @@ pub fn build_response_signing_message(
     timestamp: i64,
     status: u16,
     path_and_query: &str,
-    signing_session_id: impl std::fmt::Display,
-    request_nonce: &str,
-    response_nonce: &str,
+    signing_session_id: Uuid,
+    request_nonce: Uuid,
+    response_nonce: Uuid,
     body: &[u8],
 ) -> String {
     let body_hash = BASE64_STANDARD.encode(Sha256::digest(body));
@@ -105,10 +93,10 @@ pub fn build_response_signing_message(
 // ---------------------------------------------------------------------------
 
 struct RelaySigningSession {
-    client_public_key: VerifyingKey,
+    peer_public_key: VerifyingKey,
     created_at: Instant,
     last_used_at: Instant,
-    seen_nonces: HashMap<String, Instant>,
+    seen_nonces: HashMap<Uuid, Instant>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -191,54 +179,83 @@ impl RelaySigningService {
         &self.server_signing_key
     }
 
-    pub async fn create_session(&self, client_public_key: VerifyingKey) -> Uuid {
+    /// Sign an HTTP request for relay proxy authentication.
+    pub fn sign_request(
+        &self,
+        signing_session_id: Uuid,
+        method: &str,
+        path_and_query: &str,
+        body: &[u8],
+    ) -> RequestSignature {
+        build_request_signature(
+            &self.server_signing_key,
+            signing_session_id,
+            method,
+            path_and_query,
+            body,
+        )
+    }
+
+    /// Raw Ed25519 signature over arbitrary bytes.
+    pub fn sign_bytes(&self, message: &[u8]) -> Signature {
+        self.server_signing_key.sign(message)
+    }
+
+    pub async fn create_session(&self, peer_public_key: VerifyingKey) -> Uuid {
         let signing_session_id = Uuid::new_v4();
+        self.register_session(signing_session_id, peer_public_key)
+            .await;
+        signing_session_id
+    }
+
+    /// Register a signing session with a known peer public key.
+    /// On the server this is called via `create_session`; on the client
+    /// it is called after receiving a session ID from the server.
+    pub async fn register_session(&self, signing_session_id: Uuid, peer_public_key: VerifyingKey) {
         let now = Instant::now();
-        let mut sessions = self.sessions.write().await;
-        sessions.insert(
+        self.sessions.write().await.insert(
             signing_session_id,
             RelaySigningSession {
-                client_public_key,
+                peer_public_key,
                 created_at: now,
                 last_used_at: now,
                 seen_nonces: HashMap::new(),
             },
         );
-        signing_session_id
     }
 
-    pub async fn verify_message(
+    /// Verify an HTTP request signature against a signing session.
+    pub async fn verify_request(
         &self,
-        signing_session_id: Uuid,
-        timestamp: i64,
-        nonce: &str,
-        message: &[u8],
-        signature_b64: &str,
+        request_signature: &RequestSignature,
+        method: &str,
+        path_and_query: &str,
+        body: &[u8],
     ) -> Result<(), RelaySignatureValidationError> {
-        if nonce.trim().is_empty() || nonce.len() > 128 {
-            return Err(RelaySignatureValidationError::InvalidNonce);
-        }
+        validate_timestamp(request_signature.timestamp)?;
 
-        validate_timestamp(timestamp)?;
-
-        let signature = parse_signature_b64(signature_b64)?;
-        let mut session = self.get_valid_session(signing_session_id).await?;
+        let signature = parse_signature_b64(&request_signature.signature_b64)?;
+        let mut session = self
+            .get_valid_session(request_signature.signing_session_id)
+            .await?;
 
         session
             .seen_nonces
             .retain(|_, seen_at| Instant::now().duration_since(*seen_at) <= RELAY_NONCE_TTL);
-        if session.seen_nonces.contains_key(nonce) {
+        if session.seen_nonces.contains_key(&request_signature.nonce) {
             return Err(RelaySignatureValidationError::ReplayNonce);
         }
 
+        let message =
+            build_request_signing_message(request_signature, method, path_and_query, body);
         session
-            .client_public_key
-            .verify(message, &signature)
+            .peer_public_key
+            .verify(message.as_bytes(), &signature)
             .map_err(|_| RelaySignatureValidationError::InvalidSignature)?;
 
         session
             .seen_nonces
-            .insert(nonce.to_string(), Instant::now());
+            .insert(request_signature.nonce, Instant::now());
         session.last_used_at = Instant::now();
 
         Ok(())
@@ -252,7 +269,7 @@ impl RelaySigningService {
             if now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
                 && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
             {
-                Some(session.client_public_key)
+                Some(session.peer_public_key)
             } else {
                 None
             }
@@ -267,7 +284,7 @@ impl RelaySigningService {
         sessions.values().any(|session| {
             now.duration_since(session.created_at) <= RELAY_SIGNING_SESSION_TTL
                 && now.duration_since(session.last_used_at) <= RELAY_SIGNING_SESSION_IDLE_TTL
-                && session.client_public_key.as_bytes() == key_bytes
+                && session.peer_public_key.as_bytes() == key_bytes
         })
     }
 

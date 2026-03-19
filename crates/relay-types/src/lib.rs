@@ -35,7 +35,7 @@ pub struct RemoteSession {
 #[derive(Debug, Clone)]
 pub struct RelayAuthState {
     pub remote_session: RemoteSession,
-    pub signing_session_id: String,
+    pub signing_session_id: Uuid,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]

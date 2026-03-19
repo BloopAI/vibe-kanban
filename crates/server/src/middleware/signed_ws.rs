@@ -12,22 +12,20 @@ use axum::{
     response::IntoResponse,
 };
 use deployment::Deployment;
-use ed25519_dalek::{SigningKey, VerifyingKey};
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
+use relay_control::signing::{RelaySigningService, RequestSignature};
 use relay_ws::{SignedAxumSocket, signed_axum_websocket};
 
 use crate::{DeploymentImpl, middleware::RelayRequestSignatureContext};
 
-struct RelaySigningParams {
-    session_id: String,
-    nonce: String,
-    signing_key: SigningKey,
-    verify_key: VerifyingKey,
+struct RelaySigningContext {
+    request_signature: RequestSignature,
+    signing: RelaySigningService,
 }
 
 pub struct SignedWsUpgrade {
     ws: WebSocketUpgrade,
-    relay_signing: Option<RelaySigningParams>,
+    relay_signing: Option<RelaySigningContext>,
 }
 
 impl<S> FromRequestParts<S> for SignedWsUpgrade
@@ -45,21 +43,10 @@ where
             .get::<RelayRequestSignatureContext>()
             .cloned();
 
-        let relay_signing = if let Some(ctx) = relay_ctx {
-            let signing_key = deployment.relay_signing().signing_key().clone();
-            let peer_verify_key = deployment
-                .relay_signing()
-                .get_session_peer_key(ctx.signing_session_id)
-                .await;
-            peer_verify_key.map(|key| RelaySigningParams {
-                session_id: ctx.signing_session_id.to_string(),
-                nonce: ctx.request_nonce,
-                signing_key,
-                verify_key: key,
-            })
-        } else {
-            None
-        };
+        let relay_signing = relay_ctx.map(|request_signature| RelaySigningContext {
+            request_signature,
+            signing: deployment.relay_signing().clone(),
+        });
 
         Ok(Self { ws, relay_signing })
     }
@@ -79,13 +66,20 @@ impl SignedWsUpgrade {
         let relay_signing = self.relay_signing;
         self.ws.on_upgrade(move |socket| async move {
             let inner = match relay_signing {
-                Some(params) => WebSocketInner::Signed(Box::new(signed_axum_websocket(
-                    params.session_id,
-                    params.nonce,
-                    params.signing_key,
-                    params.verify_key,
-                    socket,
-                ))),
+                Some(ctx) => {
+                    match signed_axum_websocket(&ctx.signing, &ctx.request_signature, socket).await
+                    {
+                        Ok(signed) => WebSocketInner::Signed(Box::new(signed)),
+                        Err(e) => {
+                            tracing::warn!(
+                                session_id = %ctx.request_signature.signing_session_id,
+                                error = %e,
+                                "Failed to create signed WebSocket"
+                            );
+                            return;
+                        }
+                    }
+                }
                 None => WebSocketInner::Plain(Box::new(socket)),
             };
             callback(MaybeSignedWebSocket { inner }).await;

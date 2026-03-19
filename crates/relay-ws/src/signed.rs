@@ -1,8 +1,8 @@
 //! Signed WebSocket channel.
 //!
-//! [`SignedWebSocket`] wraps a WS stream, signing outgoing frames via
-//! [`WsFrameSigner::sign_frame`] and verifying incoming frames via
-//! [`WsFrameVerifier::verify_frame`].
+//! [`SignedWebSocket`] wraps a WS stream, encoding outgoing frames via
+//! [`WsFrameSigner::encode`] and decoding incoming frames via
+//! [`WsFrameVerifier::decode`].
 
 use std::{
     marker::PhantomData,
@@ -11,8 +11,8 @@ use std::{
 };
 
 use axum::extract::ws::{Message as AxumMessage, WebSocket};
-use ed25519_dalek::{SigningKey, VerifyingKey};
 use futures_util::{Sink, SinkExt, Stream, StreamExt};
+use relay_control::signing::{RelaySigningService, RequestSignature};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, tungstenite};
 
@@ -33,64 +33,51 @@ pub struct SignedWebSocket<S, M> {
 }
 
 impl<S, M> SignedWebSocket<S, M> {
-    fn new(
+    async fn new(
+        signing: &RelaySigningService,
+        request_signature: &RequestSignature,
         ws: S,
-        signing_session_id: String,
-        request_nonce: String,
-        signing_key: SigningKey,
-        peer_verify_key: VerifyingKey,
-    ) -> Self {
-        Self {
+    ) -> anyhow::Result<Self> {
+        let peer_verify_key = signing
+            .get_session_peer_key(request_signature.signing_session_id)
+            .await
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "No peer key found for signing session {}",
+                    request_signature.signing_session_id
+                )
+            })?;
+        Ok(Self {
             ws,
-            signer: WsFrameSigner::new(
-                signing_session_id.clone(),
-                request_nonce.clone(),
-                signing_key,
-            ),
-            verifier: WsFrameVerifier::new(signing_session_id, request_nonce, peer_verify_key),
+            signer: WsFrameSigner::new(request_signature, signing.clone()),
+            verifier: WsFrameVerifier::new(request_signature, peer_verify_key),
             _message: PhantomData,
-        }
+        })
     }
 }
 
 /// Wrap a tungstenite WebSocket stream into a signed channel.
 ///
-/// Every outgoing frame is Ed25519-signed by [`WsFrameSigner::sign_frame`].
-/// Every incoming frame is verified by [`WsFrameVerifier::verify_frame`].
-pub fn signed_tungstenite_websocket(
-    signing_session_id: String,
-    request_nonce: String,
-    signing_key: SigningKey,
-    peer_verify_key: VerifyingKey,
+/// Every outgoing frame is signed by [`WsFrameSigner::encode`].
+/// Every incoming frame is verified by [`WsFrameVerifier::decode`].
+pub async fn signed_tungstenite_websocket(
+    signing: &RelaySigningService,
+    request_signature: &RequestSignature,
     stream: WebSocketStream<MaybeTlsStream<TcpStream>>,
-) -> SignedTungsteniteSocket {
-    SignedWebSocket::new(
-        stream,
-        signing_session_id,
-        request_nonce,
-        signing_key,
-        peer_verify_key,
-    )
+) -> anyhow::Result<SignedTungsteniteSocket> {
+    SignedWebSocket::new(signing, request_signature, stream).await
 }
 
 /// Wrap an axum WebSocket into a signed channel.
 ///
-/// Every outgoing frame is Ed25519-signed by [`WsFrameSigner::sign_frame`].
-/// Every incoming frame is verified by [`WsFrameVerifier::verify_frame`].
-pub fn signed_axum_websocket(
-    signing_session_id: String,
-    request_nonce: String,
-    signing_key: SigningKey,
-    peer_verify_key: VerifyingKey,
+/// Every outgoing frame is signed by [`WsFrameSigner::encode`].
+/// Every incoming frame is verified by [`WsFrameVerifier::decode`].
+pub async fn signed_axum_websocket(
+    signing: &RelaySigningService,
+    request_signature: &RequestSignature,
     socket: WebSocket,
-) -> SignedAxumSocket {
-    SignedWebSocket::new(
-        socket,
-        signing_session_id,
-        request_nonce,
-        signing_key,
-        peer_verify_key,
-    )
+) -> anyhow::Result<SignedAxumSocket> {
+    SignedWebSocket::new(signing, request_signature, socket).await
 }
 
 impl<S, M, E> SignedWebSocket<S, M>
@@ -101,8 +88,8 @@ where
     M: RelayTransportMessage,
 {
     pub async fn send(&mut self, message: M) -> anyhow::Result<()> {
-        let bytes = self.signer.sign_frame(message.decompose())?;
-        let envelope_msg = M::reconstruct(RelayWsFrame {
+        let bytes = self.signer.encode(message.into_frame())?;
+        let envelope_msg = M::try_from_frame(RelayWsFrame {
             msg_type: RelayWsMessageType::Binary,
             payload: bytes,
         })?;
@@ -118,13 +105,13 @@ where
                 return Ok(None);
             };
             let msg = result.map_err(anyhow::Error::from)?;
-            let frame = msg.decompose();
+            let frame = msg.into_frame();
             match frame.msg_type {
                 RelayWsMessageType::Ping | RelayWsMessageType::Pong => continue,
                 RelayWsMessageType::Close => return Ok(None),
                 RelayWsMessageType::Text | RelayWsMessageType::Binary => {
-                    let decoded = self.verifier.verify_frame(&frame.payload)?;
-                    return Ok(Some(M::reconstruct(decoded)?));
+                    let decoded = self.verifier.decode(&frame.payload)?;
+                    return Ok(Some(M::try_from_frame(decoded)?));
                 }
             }
         }
@@ -157,16 +144,16 @@ where
                 Ok(msg) => msg,
                 Err(e) => return Poll::Ready(Some(Err(anyhow::Error::from(e)))),
             };
-            let frame = msg.decompose();
+            let frame = msg.into_frame();
             match frame.msg_type {
                 RelayWsMessageType::Ping | RelayWsMessageType::Pong => continue,
                 RelayWsMessageType::Close => return Poll::Ready(None),
                 RelayWsMessageType::Text | RelayWsMessageType::Binary => {
-                    let decoded = match this.verifier.verify_frame(&frame.payload) {
+                    let decoded = match this.verifier.decode(&frame.payload) {
                         Ok(decoded) => decoded,
                         Err(e) => return Poll::Ready(Some(Err(e))),
                     };
-                    return Poll::Ready(Some(M::reconstruct(decoded)));
+                    return Poll::Ready(Some(M::try_from_frame(decoded)));
                 }
             }
         }
@@ -189,8 +176,8 @@ where
 
     fn start_send(self: Pin<&mut Self>, item: M) -> Result<(), Self::Error> {
         let this = self.get_mut();
-        let bytes = this.signer.sign_frame(item.decompose())?;
-        let envelope_msg = M::reconstruct(RelayWsFrame {
+        let bytes = this.signer.encode(item.into_frame())?;
+        let envelope_msg = M::try_from_frame(RelayWsFrame {
             msg_type: RelayWsMessageType::Binary,
             payload: bytes,
         })?;

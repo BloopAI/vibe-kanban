@@ -8,7 +8,6 @@ publish = false
 anyhow = "1.0"
 base64 = "0.22"
 dirs = "5"
-ed25519-dalek = { version = "2", features = ["pkcs8"] }
 ssh-key = { version = "0.6", features = ["ed25519"] }
 relay-control = { path = "../relay-control" }
 relay-ws = { path = "../relay-ws" }

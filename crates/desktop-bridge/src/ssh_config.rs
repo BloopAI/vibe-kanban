@@ -6,21 +6,21 @@
 
 use std::{fs, path::PathBuf};
 
-use ed25519_dalek::SigningKey;
+use relay_control::signing::RelaySigningService;
 use sha2::{Digest, Sha256};
 use ssh_key::private::{Ed25519Keypair, Ed25519PrivateKey, KeypairData};
 
 use crate::DesktopBridgeError;
 
-/// Provision an SSH identity for the given signing key and remote host.
+/// Provision an SSH identity for the given signing service and remote host.
 ///
 /// Writes the OpenSSH PEM private key to `~/.vk-ssh/keys/{hash}` and returns
 /// the path and the host alias (`vk-{host_id}`).
 pub fn provision_ssh_key(
-    signing_key: &SigningKey,
+    signing: &RelaySigningService,
     host_id: &str,
 ) -> Result<(PathBuf, String), DesktopBridgeError> {
-    let key_hash = short_key_hash(signing_key);
+    let key_hash = short_key_hash(signing);
     let alias = format!("vk-{host_id}");
 
     let ssh_dir = vk_ssh_dir()?;
@@ -30,7 +30,7 @@ pub fn provision_ssh_key(
     let key_path = keys_dir.join(&key_hash);
 
     // Write the OpenSSH PEM private key
-    let pem = signing_key_to_openssh_pem(signing_key)?;
+    let pem = signing_key_to_openssh_pem(signing)?;
     fs::write(&key_path, pem.as_bytes())?;
 
     #[cfg(unix)]
@@ -93,13 +93,13 @@ fn vk_ssh_dir() -> Result<PathBuf, DesktopBridgeError> {
     Ok(home.join(".vk-ssh"))
 }
 
-fn short_key_hash(key: &SigningKey) -> String {
-    let hash = Sha256::digest(key.verifying_key().as_bytes());
+fn short_key_hash(signing: &RelaySigningService) -> String {
+    let hash = Sha256::digest(signing.server_public_key().as_bytes());
     hash[..8].iter().map(|b| format!("{b:02x}")).collect()
 }
 
-fn signing_key_to_openssh_pem(key: &SigningKey) -> Result<String, DesktopBridgeError> {
-    let ed25519_private = Ed25519PrivateKey::from_bytes(&key.to_bytes());
+fn signing_key_to_openssh_pem(signing: &RelaySigningService) -> Result<String, DesktopBridgeError> {
+    let ed25519_private = Ed25519PrivateKey::from_bytes(&signing.signing_key().to_bytes());
     let keypair = Ed25519Keypair::from(ed25519_private);
     let keypair_data = KeypairData::Ed25519(keypair);
     let private_key = ssh_key::PrivateKey::new(keypair_data, "")?;

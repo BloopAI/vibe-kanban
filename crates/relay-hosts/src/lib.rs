@@ -4,7 +4,6 @@ use chrono::Utc;
 use desktop_bridge::{
     DesktopBridgeError, service::OpenRemoteEditorResponse, tunnel::TunnelManager,
 };
-use ed25519_dalek::{SigningKey, VerifyingKey};
 use http::{HeaderMap, Method};
 pub use relay_client::RelayApiError;
 use relay_client::{RelayApiClient, RelayHostIdentity, RelayHostTransport};
@@ -22,7 +21,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, Default)]
 struct RelaySessionCacheEntry {
     remote_session_id: Option<Uuid>,
-    signing_session_id: Option<String>,
+    signing_session_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,7 +159,7 @@ impl RelaySessionCache {
         let sessions = self.auth_state.read().await;
         let entry = sessions.get(&host_id)?;
         let remote_session_id = entry.remote_session_id?;
-        let signing_session_id = entry.signing_session_id.clone()?;
+        let signing_session_id = entry.signing_session_id?;
 
         Some(RelayAuthState {
             remote_session: RemoteSession {
@@ -175,10 +174,10 @@ impl RelaySessionCache {
         let mut sessions = self.auth_state.write().await;
         let entry = sessions.entry(host_id).or_default();
         entry.remote_session_id = Some(auth_state.remote_session.id);
-        entry.signing_session_id = Some(auth_state.signing_session_id.clone());
+        entry.signing_session_id = Some(auth_state.signing_session_id);
     }
 
-    pub async fn cache_signing_session_id(&self, host_id: Uuid, session_id: String) {
+    pub async fn cache_signing_session_id(&self, host_id: Uuid, session_id: Uuid) {
         self.auth_state
             .write()
             .await
@@ -251,9 +250,7 @@ pub enum RelayPairingClientError {
 #[derive(Debug, Clone)]
 struct RelayTunnelAccess {
     relay_url: String,
-    signing_key: SigningKey,
-    signing_session_id: String,
-    server_verify_key: VerifyingKey,
+    signing_session_id: Uuid,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -297,15 +294,18 @@ impl RelayHosts {
             .remote_info
             .get_relay_api_base()
             .ok_or(RelayPairingClientError::NotConfigured)?;
-        let relay_signing = self.runtime.relay_signing.clone();
         let access_token = remote_client.access_token().await?;
-        let relay_client = RelayApiClient::new(relay_base_url, access_token);
+        let relay_client = RelayApiClient::new(
+            relay_base_url,
+            access_token,
+            self.runtime.relay_signing.clone(),
+        );
         let relay_client::PairRelayHostResult {
             signing_session_id,
             client_id,
             server_public_key_b64,
         } = relay_client
-            .pair_host(req, relay_signing.signing_key())
+            .pair_host(req)
             .await
             .map_err(RelayPairingClientError::Pairing)?;
 
@@ -319,7 +319,7 @@ impl RelayHosts {
             )
             .await?;
         self.sessions
-            .cache_signing_session_id(req.host_id, signing_session_id.to_string())
+            .cache_signing_session_id(req.host_id, signing_session_id)
             .await;
         Ok(())
     }
@@ -347,13 +347,15 @@ impl RelayHost {
             .remote_info
             .get_relay_api_base()
             .ok_or(RelayConnectionError::NotConfigured)?;
-        let signing_key = self.runtime.relay_signing.signing_key().clone();
         let access_token = remote_client.access_token().await?;
         let cached_auth_state = self.sessions.load_auth_state(self.identity.host_id).await;
         let transport = RelayHostTransport::bootstrap(
-            RelayApiClient::new(relay_base_url, access_token),
+            RelayApiClient::new(
+                relay_base_url,
+                access_token,
+                self.runtime.relay_signing.clone(),
+            ),
             self.identity.clone(),
-            signing_key,
             cached_auth_state
                 .as_ref()
                 .map(|value| value.remote_session.clone()),
@@ -420,16 +422,14 @@ impl RelayHost {
             .get_or_create_ssh_tunnel(
                 self.identity.host_id,
                 &tunnel_access.relay_url,
-                &tunnel_access.signing_key,
-                &tunnel_access.signing_session_id,
-                tunnel_access.server_verify_key,
+                tunnel_access.signing_session_id,
             )
             .await
             .map_err(OpenRemoteEditorError::CreateTunnel)?;
 
         desktop_bridge::service::open_remote_editor(
             local_port,
-            &tunnel_access.signing_key,
+            &self.runtime.relay_signing,
             &self.identity.host_id.to_string(),
             &editor_path.workspace_path,
             editor_type,
@@ -441,9 +441,7 @@ impl RelayHost {
 fn relay_tunnel_access(transport: &RelayHostTransport) -> RelayTunnelAccess {
     RelayTunnelAccess {
         relay_url: transport.relay_url(),
-        signing_key: transport.signing_key().clone(),
-        signing_session_id: transport.auth_state().signing_session_id.clone(),
-        server_verify_key: *transport.server_verify_key(),
+        signing_session_id: transport.auth_state().signing_session_id,
     }
 }
 

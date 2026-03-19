@@ -238,7 +238,7 @@ impl Deployment for LocalDeployment {
         let file_search_cache = Arc::new(FileSearchCache::new());
 
         let pty = PtyService::new();
-        let tunnel_manager = Arc::new(TunnelManager::new());
+        let tunnel_manager = Arc::new(TunnelManager::new(relay_signing.clone()));
         let relay_hosts = match remote_client.clone().ok() {
             Some(remote_client) => Some(Arc::new(
                 RelayHosts::load(remote_client, remote_info.clone(), relay_signing.clone()).await,
