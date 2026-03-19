@@ -9,10 +9,10 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { cloneDeep, isEqual, merge } from 'lodash';
 import {
-  ArrowSquareOutIcon,
   BroadcastIcon,
   CheckIcon,
   CopyIcon,
+  DesktopIcon,
   SignInIcon,
   SpinnerIcon,
 } from '@phosphor-icons/react';
@@ -81,7 +81,7 @@ function RelayRoleChooser({
         <RelayRoleChoice
           role="client"
           selected={selectedRole === 'client'}
-          icon={<ArrowSquareOutIcon className="size-icon-xs" weight="bold" />}
+          icon={<DesktopIcon className="size-icon-xs" weight="bold" />}
           label={t('settings.relay.client.label', 'Client')}
           onSelect={onSelect}
         />
@@ -611,7 +611,7 @@ function LocalRelaySettingsSectionContent() {
             'settings.relay.client.panelDescription',
             'Pair this device to a remote host using a one-time code.'
           )}
-          icon={<ArrowSquareOutIcon className="size-icon-md" weight="bold" />}
+          icon={<DesktopIcon className="size-icon-md" weight="bold" />}
         >
           <RemoteCloudHostsSettingsCardContent embedded />
         </RolePanel>
