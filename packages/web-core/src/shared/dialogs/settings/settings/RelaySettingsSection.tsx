@@ -66,26 +66,29 @@ function RelayRoleChooser({
   const { t } = useTranslation(['settings']);
 
   return (
-    <div className="flex items-center justify-between gap-4">
-      <span className="text-sm font-medium text-normal">
-        {t('settings.relay.roleChooser.label', 'Remote control')}
-      </span>
-      <div className="flex gap-2">
-        <RelayRoleChoice
-          role="host"
-          selected={selectedRole === 'host'}
-          icon={<BroadcastIcon className="size-icon-xs" weight="bold" />}
-          label={t('settings.relay.host.label', 'Host')}
-          onSelect={onSelect}
-        />
-        <RelayRoleChoice
-          role="client"
-          selected={selectedRole === 'client'}
-          icon={<DesktopIcon className="size-icon-xs" weight="bold" />}
-          label={t('settings.relay.client.label', 'Client')}
-          onSelect={onSelect}
-        />
-      </div>
+    <div className="grid gap-3 sm:grid-cols-2">
+      <RelayRoleChoice
+        role="host"
+        selected={selectedRole === 'host'}
+        icon={<BroadcastIcon className="size-icon-sm" weight="bold" />}
+        label={t('settings.relay.host.label', 'Host')}
+        description={t(
+          'settings.relay.host.description',
+          'Allow other devices to remotely control workspaces on this machine.'
+        )}
+        onSelect={onSelect}
+      />
+      <RelayRoleChoice
+        role="client"
+        selected={selectedRole === 'client'}
+        icon={<DesktopIcon className="size-icon-sm" weight="bold" />}
+        label={t('settings.relay.client.label', 'Client')}
+        description={t(
+          'settings.relay.client.panelDescription',
+          'Pair this device to a remote host using a one-time code.'
+        )}
+        onSelect={onSelect}
+      />
     </div>
   );
 }
@@ -95,12 +98,14 @@ function RelayRoleChoice({
   selected,
   icon,
   label,
+  description,
   onSelect,
 }: {
   role: RelayRole;
   selected: boolean;
   icon: ReactNode;
   label: string;
+  description: string;
   onSelect: (role: RelayRole) => void;
 }) {
   return (
@@ -109,39 +114,52 @@ function RelayRoleChoice({
       onClick={() => onSelect(role)}
       className={
         selected
-          ? 'flex items-center gap-1.5 rounded-sm border border-brand/40 bg-brand/10 px-3 py-1.5 text-sm font-medium text-brand transition-colors'
-          : 'flex items-center gap-1.5 rounded-sm border border-border bg-secondary/25 px-3 py-1.5 text-sm font-medium text-low transition-colors hover:border-brand/30 hover:bg-secondary/45 hover:text-normal'
+          ? 'flex w-full flex-col items-start gap-2 rounded-sm border border-brand/40 bg-brand/10 p-4 text-left transition-colors'
+          : 'flex w-full flex-col items-start gap-2 rounded-sm border border-border bg-secondary/25 p-4 text-left transition-colors hover:border-brand/30 hover:bg-secondary/45'
       }
     >
-      {icon}
-      {label}
+      <div
+        className={
+          selected
+            ? 'rounded-sm bg-brand/15 p-1.5 text-brand'
+            : 'rounded-sm bg-panel p-1.5 text-low'
+        }
+      >
+        {icon}
+      </div>
+      <div>
+        <div className="text-sm font-semibold text-high">{label}</div>
+        <div className="mt-0.5 text-xs text-low">{description}</div>
+      </div>
     </button>
   );
 }
 
 function RolePanel({
   title,
-  description,
-  icon,
+  docsUrl,
+  docsLabel,
   children,
 }: {
   title: string;
-  description: ReactNode;
-  icon: ReactNode;
+  docsUrl?: string;
+  docsLabel?: string;
   children: ReactNode;
 }) {
   return (
     <div className="rounded-sm border border-border bg-panel/95 shadow-sm">
-      <div className="border-b border-border bg-secondary/35 px-5 py-4">
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-sm bg-brand/10 p-2 text-brand">
-            {icon}
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-high">{title}</h3>
-            <p className="text-sm text-low">{description}</p>
-          </div>
-        </div>
+      <div className="border-b border-border bg-secondary/35 px-5 py-3 flex items-center justify-between gap-4">
+        <h3 className="text-base font-semibold text-high">{title}</h3>
+        {docsUrl && docsLabel && (
+          <a
+            href={docsUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-sm text-brand hover:underline shrink-0"
+          >
+            {docsLabel}
+          </a>
+        )}
       </div>
       <div className="space-y-5 px-5 py-5">{children}</div>
     </div>
@@ -353,27 +371,9 @@ function LocalRelaySettingsSectionContent() {
 
       {selectedRole === 'host' && (
         <RolePanel
-          title={t(
-            'settings.relay.host.title',
-            'Accept incoming connections'
-          )}
-          description={
-            <>
-              {t(
-                'settings.relay.host.description',
-                'Allow other devices to remotely control workspaces on this machine.'
-              )}{' '}
-              <a
-                href={RELAY_REMOTE_CONTROL_DOCS_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="text-brand hover:underline"
-              >
-                {t('settings.relay.docsLink', 'Read docs')}
-              </a>
-            </>
-          }
-          icon={<BroadcastIcon className="size-icon-md" weight="bold" />}
+          title={t('settings.relay.host.title', 'Accept incoming connections')}
+          docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
+          docsLabel={t('settings.relay.docsLink', 'Read docs')}
         >
           <SettingsCheckbox
             id="relay-enabled"
@@ -600,11 +600,6 @@ function LocalRelaySettingsSectionContent() {
       {selectedRole === 'client' && (
         <RolePanel
           title={t('settings.relay.client.panelTitle', 'Connect to a host')}
-          description={t(
-            'settings.relay.client.panelDescription',
-            'Pair this device to a remote host using a one-time code.'
-          )}
-          icon={<DesktopIcon className="size-icon-md" weight="bold" />}
         >
           <RemoteCloudHostsSettingsCardContent embedded />
         </RolePanel>
