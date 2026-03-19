@@ -44,16 +44,23 @@ type RelayRole = 'host' | 'client';
 
 export function RelaySettingsSectionContent({
   initialState,
+  onClose,
 }: {
   initialState?: RelaySettingsSectionInitialState;
+  onClose?: () => void;
 }) {
   const runtime = useAppRuntime();
 
   if (runtime === 'local') {
-    return <LocalRelaySettingsSectionContent />;
+    return <LocalRelaySettingsSectionContent onClose={onClose} />;
   }
 
-  return <RemoteRelaySettingsSectionContent initialState={initialState} />;
+  return (
+    <RemoteRelaySettingsSectionContent
+      initialState={initialState}
+      onClose={onClose}
+    />
+  );
 }
 
 function RelayRoleChooser({
@@ -115,7 +122,7 @@ function RelayRoleChoice({
       className={
         selected
           ? 'flex w-full flex-col items-start gap-2 rounded-sm border border-brand/40 bg-brand/10 p-4 text-left transition-colors'
-          : 'flex w-full flex-col items-start gap-2 rounded-sm border border-border bg-secondary/25 p-4 text-left transition-colors hover:border-brand/30 hover:bg-secondary/45'
+          : 'flex w-full flex-col items-start gap-2 rounded-sm border border-border bg-panel p-4 text-left transition-colors hover:border-brand/30 hover:bg-secondary/20'
       }
     >
       <div
@@ -132,37 +139,6 @@ function RelayRoleChoice({
         <div className="mt-0.5 text-xs text-low">{description}</div>
       </div>
     </button>
-  );
-}
-
-function RolePanel({
-  title,
-  docsUrl,
-  docsLabel,
-  children,
-}: {
-  title: string;
-  docsUrl?: string;
-  docsLabel?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="rounded-sm border border-border bg-panel/95 shadow-sm">
-      <div className="border-b border-border bg-secondary/35 px-5 py-3 flex items-center justify-between gap-4">
-        <h3 className="text-base font-semibold text-high">{title}</h3>
-        {docsUrl && docsLabel && (
-          <a
-            href={docsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm text-brand hover:underline shrink-0"
-          >
-            {docsLabel}
-          </a>
-        )}
-      </div>
-      <div className="space-y-5 px-5 py-5">{children}</div>
-    </div>
   );
 }
 
@@ -209,7 +185,11 @@ function SignInPrompt() {
   );
 }
 
-function LocalRelaySettingsSectionContent() {
+function LocalRelaySettingsSectionContent({
+  onClose,
+}: {
+  onClose?: () => void;
+}) {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
   const userSystem = useUserSystem();
@@ -370,10 +350,18 @@ function LocalRelaySettingsSectionContent() {
       )}
 
       {selectedRole === 'host' && (
-        <RolePanel
+        <SettingsCard
           title={t('settings.relay.host.title', 'Accept incoming connections')}
-          docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
-          docsLabel={t('settings.relay.docsLink', 'Read docs')}
+          headerAction={
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          }
         >
           <SettingsCheckbox
             id="relay-enabled"
@@ -594,17 +582,29 @@ function LocalRelaySettingsSectionContent() {
               )}
             </div>
           )}
-        </RolePanel>
+        </SettingsCard>
       )}
 
       {selectedRole === 'client' && (
-        <RolePanel
+        <SettingsCard
           title={t('settings.relay.client.panelTitle', 'Connect to a host')}
-          docsUrl={RELAY_REMOTE_CONTROL_DOCS_URL}
-          docsLabel={t('settings.relay.docsLink', 'Read docs')}
+          headerAction={
+            <a
+              href={RELAY_REMOTE_CONTROL_DOCS_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm text-brand hover:underline"
+            >
+              {t('settings.relay.docsLink', 'Read docs')}
+            </a>
+          }
         >
-          <RemoteCloudHostsSettingsCardContent embedded />
-        </RolePanel>
+          {isSignedIn ? (
+            <RemoteCloudHostsSettingsCardContent onClose={onClose} />
+          ) : (
+            <SignInPrompt />
+          )}
+        </SettingsCard>
       )}
 
       <SettingsSaveBar
@@ -619,8 +619,10 @@ function LocalRelaySettingsSectionContent() {
 
 function RemoteRelaySettingsSectionContent({
   initialState,
+  onClose,
 }: {
   initialState?: RelaySettingsSectionInitialState;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation(['settings']);
   const { isSignedIn } = useAuth();
@@ -640,10 +642,29 @@ function RemoteRelaySettingsSectionContent({
   }
 
   return (
-    <RemoteCloudHostsSettingsCardContent
-      initialHostId={initialState?.hostId}
-      mode="remote"
-    />
+    <SettingsCard
+      title={t('settings.relay.client.panelTitle', 'Connect to a host')}
+      description={t(
+        'settings.relay.client.panelDescription',
+        'Control workspaces on another device by pairing to it with a one-time code.'
+      )}
+      headerAction={
+        <a
+          href={RELAY_REMOTE_CONTROL_DOCS_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-brand hover:underline"
+        >
+          {t('settings.relay.docsLink', 'Read docs')}
+        </a>
+      }
+    >
+      <RemoteCloudHostsSettingsCardContent
+        initialHostId={initialState?.hostId}
+        mode="remote"
+        onClose={onClose}
+      />
+    </SettingsCard>
   );
 }
 

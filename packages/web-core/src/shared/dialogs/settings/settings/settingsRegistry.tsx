@@ -66,7 +66,8 @@ export function isHostSpecificSettingsSection(
 
 export function renderSettingsSection(
   type: SettingsSectionType,
-  initialState?: SettingsSectionInitialState[SettingsSectionType]
+  initialState?: SettingsSectionInitialState[SettingsSectionType],
+  onClose?: () => void
 ) {
   switch (type) {
     case 'general':
@@ -95,6 +96,7 @@ export function renderSettingsSection(
       return (
         <RelaySettingsSectionContent
           initialState={initialState as SettingsSectionInitialState['relay']}
+          onClose={onClose}
         />
       );
     default:
