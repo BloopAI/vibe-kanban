@@ -41,7 +41,7 @@ export function SettingsSection({
       </div>
 
       <div className="space-y-6 px-6 pt-4 overflow-y-auto">
-        {renderSettingsSection(type, initialState)}
+        {renderSettingsSection(type, initialState, onClose)}
       </div>
     </div>
   );

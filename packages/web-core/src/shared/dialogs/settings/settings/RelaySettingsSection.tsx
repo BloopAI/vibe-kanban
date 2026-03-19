@@ -44,16 +44,23 @@ type RelayRole = 'host' | 'client';
 
 export function RelaySettingsSectionContent({
   initialState,
+  onClose,
 }: {
   initialState?: RelaySettingsSectionInitialState;
+  onClose?: () => void;
 }) {
   const runtime = useAppRuntime();
 
   if (runtime === 'local') {
-    return <LocalRelaySettingsSectionContent />;
+    return <LocalRelaySettingsSectionContent onClose={onClose} />;
   }
 
-  return <RemoteRelaySettingsSectionContent initialState={initialState} />;
+  return (
+    <RemoteRelaySettingsSectionContent
+      initialState={initialState}
+      onClose={onClose}
+    />
+  );
 }
 
 function RelayRoleChooser({
@@ -178,7 +185,11 @@ function SignInPrompt() {
   );
 }
 
-function LocalRelaySettingsSectionContent() {
+function LocalRelaySettingsSectionContent({
+  onClose,
+}: {
+  onClose?: () => void;
+}) {
   const { t } = useTranslation(['settings', 'common']);
   const { setDirty: setContextDirty } = useSettingsDirty();
   const userSystem = useUserSystem();
@@ -589,7 +600,7 @@ function LocalRelaySettingsSectionContent() {
           }
         >
           {isSignedIn ? (
-            <RemoteCloudHostsSettingsCardContent />
+            <RemoteCloudHostsSettingsCardContent onClose={onClose} />
           ) : (
             <SignInPrompt />
           )}
@@ -608,8 +619,10 @@ function LocalRelaySettingsSectionContent() {
 
 function RemoteRelaySettingsSectionContent({
   initialState,
+  onClose,
 }: {
   initialState?: RelaySettingsSectionInitialState;
+  onClose?: () => void;
 }) {
   const { t } = useTranslation(['settings']);
   const { isSignedIn } = useAuth();
@@ -649,6 +662,7 @@ function RemoteRelaySettingsSectionContent({
       <RemoteCloudHostsSettingsCardContent
         initialHostId={initialState?.hostId}
         mode="remote"
+        onClose={onClose}
       />
     </SettingsCard>
   );

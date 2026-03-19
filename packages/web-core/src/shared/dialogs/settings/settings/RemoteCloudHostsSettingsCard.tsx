@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams } from '@tanstack/react-router';
-import { useModal } from '@ebay/nice-modal-react';
 import { PrimaryButton } from '@vibe/ui/components/PrimaryButton';
 import {
   usePairRemoteCloudHostMutation,
@@ -29,9 +28,11 @@ import { createRelayClientIdentity } from '@/shared/lib/relayClientIdentity';
 export function RemoteCloudHostsSettingsCardContent({
   initialHostId,
   mode = 'local',
+  onClose,
 }: {
   initialHostId?: string;
   mode?: 'local' | 'remote';
+  onClose?: () => void;
 }) {
   const { t } = useTranslation(['settings', 'common']);
   const navigate = useNavigate();
@@ -72,7 +73,6 @@ export function RemoteCloudHostsSettingsCardContent({
 
     return relayHosts.filter((host) => host.machine_id !== machineId);
   }, [isDevMode, isRemoteMode, machineId, relayHosts]);
-  const modal = useModal();
   const defaultClientName = useMemo(
     () => createRelayClientIdentity().clientName,
     []
@@ -255,7 +255,7 @@ export function RemoteCloudHostsSettingsCardContent({
       return;
     }
 
-    void modal.hide();
+    onClose?.();
     void navigate({
       to: '/hosts/$hostId/workspaces',
       params: { hostId },
