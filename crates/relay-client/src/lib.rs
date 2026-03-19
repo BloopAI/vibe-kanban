@@ -23,6 +23,7 @@ use trusted_key_auth::{
     spake2::normalize_enrollment_code,
     trusted_keys::parse_public_key_base64,
 };
+use utils::http_headers::is_hop_by_hop_header;
 use uuid::Uuid;
 
 pub const RELAY_HEADER: &str = "x-vk-relayed";
@@ -373,17 +374,27 @@ impl RelayHostTransport {
     where
         TData: DeserializeOwned,
     {
-        if let Ok(data) = self.get_signed_json_once(path).await {
-            return Ok(data);
+        let first_err = match self.get_signed_json_once(path).await {
+            Ok(data) => return Ok(data),
+            Err(error) => error,
+        };
+        if !is_http_auth_failure(&first_err) {
+            return Err(first_err);
+        }
+        if self.refresh_signing_session().await.is_err() {
+            return Err(first_err);
         }
 
-        self.refresh_signing_session().await?;
-
-        if let Ok(data) = self.get_signed_json_once(path).await {
-            return Ok(data);
+        let second_err = match self.get_signed_json_once(path).await {
+            Ok(data) => return Ok(data),
+            Err(error) => error,
+        };
+        if !is_http_auth_failure(&second_err) {
+            return Err(second_err);
         }
-
-        self.rotate_remote_session().await?;
+        if self.rotate_remote_session().await.is_err() {
+            return Err(second_err);
+        }
 
         self.get_signed_json_once(path).await
     }
@@ -592,17 +603,6 @@ fn set_ws_signing_headers(
     );
 }
 
-fn is_hop_by_hop_header(name: &str) -> bool {
-    name.eq_ignore_ascii_case("connection")
-        || name.eq_ignore_ascii_case("keep-alive")
-        || name.eq_ignore_ascii_case("proxy-authenticate")
-        || name.eq_ignore_ascii_case("proxy-authorization")
-        || name.eq_ignore_ascii_case("te")
-        || name.eq_ignore_ascii_case("trailer")
-        || name.eq_ignore_ascii_case("transfer-encoding")
-        || name.eq_ignore_ascii_case("upgrade")
-}
-
 fn should_forward_request_header(name: &HeaderName) -> bool {
     let name = name.as_str();
     !name.eq_ignore_ascii_case("host")
@@ -621,6 +621,16 @@ fn is_auth_failure_status(status_code: u16) -> bool {
 fn is_ws_auth_failure(error: &RelayApiError) -> bool {
     if let RelayApiError::WebSocket(tungstenite::Error::Http(response)) = error {
         is_auth_failure_status(response.status().as_u16())
+    } else {
+        false
+    }
+}
+
+fn is_http_auth_failure(error: &RelayApiError) -> bool {
+    if let RelayApiError::Request(request_error) = error
+        && let Some(status) = request_error.status()
+    {
+        is_auth_failure_status(status.as_u16())
     } else {
         false
     }

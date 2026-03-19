@@ -52,9 +52,10 @@ pub fn update_ssh_config(
 ) -> Result<(), DesktopBridgeError> {
     let ssh_dir = vk_ssh_dir()?;
     let config_path = ssh_dir.join("config");
+    let null_known_hosts = if cfg!(windows) { "NUL" } else { "/dev/null" };
 
     let entry = format!(
-        "\nHost {alias}\n    HostName 127.0.0.1\n    Port {port}\n    User vk\n    IdentityFile {key}\n    StrictHostKeyChecking no\n    UserKnownHostsFile /dev/null\n",
+        "\nHost {alias}\n    HostName 127.0.0.1\n    Port {port}\n    User vk\n    IdentityFile {key}\n    StrictHostKeyChecking no\n    UserKnownHostsFile {null_known_hosts}\n",
         key = key_path.display(),
     );
 

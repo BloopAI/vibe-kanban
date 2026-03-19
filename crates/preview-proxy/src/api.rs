@@ -7,13 +7,11 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use utils::http_headers::is_hop_by_hop_header;
 
 use crate::{
     PreviewProxyService,
-    proxy_common::{
-        build_local_upstream_url, extract_ws_protocols, is_hop_by_hop_header,
-        should_forward_request_header,
-    },
+    proxy_common::{build_local_upstream_url, extract_ws_protocols, should_forward_request_header},
     ws_bridge::{bridge_ws, connect_upstream_ws},
 };
 

@@ -5970,6 +5970,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.26.2",
  "tracing",
+ "utils",
  "uuid",
 ]
 
@@ -6403,6 +6404,7 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.26.2",
  "trusted-key-auth",
+ "utils",
  "uuid",
 ]
 

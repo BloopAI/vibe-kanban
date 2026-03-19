@@ -13,6 +13,7 @@ use deployment::Deployment;
 use relay_hosts::HostRelayWsConnection;
 use relay_tunnel::ws_io::ws_copy_bidirectional;
 use relay_ws::SignedTungsteniteSocket;
+use utils::http_headers::is_hop_by_hop_header;
 use uuid::Uuid;
 
 use crate::{DeploymentImpl, error::ApiError};
@@ -118,17 +119,6 @@ fn upstream_api_uri(tail: &str, query: Option<&str>) -> Result<Uri, ApiError> {
 
     uri.parse()
         .map_err(|_| ApiError::BadRequest("Invalid rewritten relay path".to_string()))
-}
-
-fn is_hop_by_hop_header(name: &str) -> bool {
-    name.eq_ignore_ascii_case("connection")
-        || name.eq_ignore_ascii_case("keep-alive")
-        || name.eq_ignore_ascii_case("proxy-authenticate")
-        || name.eq_ignore_ascii_case("proxy-authorization")
-        || name.eq_ignore_ascii_case("te")
-        || name.eq_ignore_ascii_case("trailer")
-        || name.eq_ignore_ascii_case("transfer-encoding")
-        || name.eq_ignore_ascii_case("upgrade")
 }
 
 fn relay_http_response(response: reqwest::Response) -> Response {
