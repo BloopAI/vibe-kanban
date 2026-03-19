@@ -18,6 +18,7 @@ import {
 } from './SettingsComponents';
 import { PairingCodeInput } from './PairingCodeInput';
 import { normalizeEnrollmentCode } from '@/shared/lib/relayPake';
+import { useUserSystem } from '@/shared/hooks/useUserSystem';
 import {
   usePairRelayHostMutation,
   useRelayRemoteHostsQuery,
@@ -45,6 +46,7 @@ export function RemoteCloudHostsSettingsCardContent({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [removingHostId, setRemovingHostId] = useState<string | null>(null);
   const hasAppliedInitialHostRef = useRef(false);
+  const { machineId } = useUserSystem();
 
   const { data: relayHosts = [], isLoading: relayHostsLoading } = useQuery({
     ...useRelayRemoteHostsQuery(),
@@ -65,22 +67,30 @@ export function RemoteCloudHostsSettingsCardContent({
     usePairRelayHostMutation();
   const { mutateAsync: removeRemoteHost, isPending: isRemovingRemote } =
     useRemovePairedRelayHostMutation();
+  const isDevMode = import.meta.env.DEV;
+  const pairableRelayHosts = useMemo(() => {
+    if (isRemoteMode || !machineId || isDevMode) {
+      return relayHosts;
+    }
+
+    return relayHosts.filter((host) => host.machine_id !== machineId);
+  }, [isDevMode, isRemoteMode, machineId, relayHosts]);
 
   useEffect(() => {
-    if (relayHosts.length === 0) {
+    if (pairableRelayHosts.length === 0) {
       setSelectedHostId(undefined);
       return;
     }
 
     if (!selectedHostId) {
-      setSelectedHostId(relayHosts[0].id);
+      setSelectedHostId(pairableRelayHosts[0].id);
       return;
     }
 
-    if (!relayHosts.some((host) => host.id === selectedHostId)) {
-      setSelectedHostId(relayHosts[0].id);
+    if (!pairableRelayHosts.some((host) => host.id === selectedHostId)) {
+      setSelectedHostId(pairableRelayHosts[0].id);
     }
-  }, [relayHosts, selectedHostId]);
+  }, [pairableRelayHosts, selectedHostId]);
 
   useEffect(() => {
     if (!initialHostId || hasAppliedInitialHostRef.current) {
@@ -91,7 +101,9 @@ export function RemoteCloudHostsSettingsCardContent({
       return;
     }
 
-    const initialHost = relayHosts.find((host) => host.id === initialHostId);
+    const initialHost = pairableRelayHosts.find(
+      (host) => host.id === initialHostId
+    );
     if (!initialHost) {
       hasAppliedInitialHostRef.current = true;
       return;
@@ -102,15 +114,15 @@ export function RemoteCloudHostsSettingsCardContent({
     setErrorMessage(null);
     setSuccessMessage(null);
     hasAppliedInitialHostRef.current = true;
-  }, [initialHostId, relayHosts, relayHostsLoading]);
+  }, [initialHostId, pairableRelayHosts, relayHostsLoading]);
 
   const relayHostOptions = useMemo(
     () =>
-      relayHosts.map((host) => ({
+      pairableRelayHosts.map((host) => ({
         value: host.id,
         label: host.name,
       })),
-    [relayHosts]
+    [pairableRelayHosts]
   );
 
   const connectedHosts = useMemo(() => {
@@ -164,7 +176,9 @@ export function RemoteCloudHostsSettingsCardContent({
       return;
     }
 
-    const selectedHost = relayHosts.find((host) => host.id === selectedHostId);
+    const selectedHost = pairableRelayHosts.find(
+      (host) => host.id === selectedHostId
+    );
     if (!selectedHost) {
       setErrorMessage(
         t(

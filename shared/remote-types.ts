@@ -62,7 +62,7 @@ export type UserData = { user_id: string, first_name: string | null, last_name: 
 
 export type User = { id: string, email: string, first_name: string | null, last_name: string | null, username: string | null, created_at: string, updated_at: string, };
 
-export type RelayHost = { id: string, owner_user_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
+export type RelayHost = { id: string, owner_user_id: string, machine_id: string, name: string, status: string, last_seen_at: string | null, agent_version: string | null, created_at: string, updated_at: string, access_role: string, };
 
 export type ListRelayHostsResponse = { hosts: Array<RelayHost>, };
 

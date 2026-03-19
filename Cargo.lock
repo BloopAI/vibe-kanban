@@ -7706,6 +7706,7 @@ dependencies = [
  "notify-rust",
  "once_cell",
  "os_info",
+ "relay-types",
  "reqwest 0.13.2",
  "rust-embed",
  "serde",

@@ -7,6 +7,7 @@ use uuid::Uuid;
 pub struct RelayHost {
     pub id: Uuid,
     pub owner_user_id: Uuid,
+    pub machine_id: String,
     pub name: String,
     pub status: String,
     pub last_seen_at: Option<DateTime<Utc>>,

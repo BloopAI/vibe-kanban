@@ -51,6 +51,7 @@ impl<'a> HostRepository<'a> {
             SELECT
                 h.id,
                 h.owner_user_id,
+                h.machine_id,
                 h.name,
                 h.status,
                 h.last_seen_at,
