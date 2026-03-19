@@ -10,6 +10,7 @@ pub mod db;
 pub mod digest;
 pub mod github_app;
 pub mod mail;
+pub mod mcp;
 mod middleware;
 pub mod mutation_definition;
 pub mod notifications;

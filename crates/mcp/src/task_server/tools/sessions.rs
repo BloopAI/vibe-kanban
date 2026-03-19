@@ -9,7 +9,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::McpServer;
+use super::{McpServer, ToolCallError};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct CreateSessionRequest {
@@ -153,10 +153,10 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
             Ok(id) => id,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
 
         let payload = CreateSessionPayload {
@@ -197,10 +197,10 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
             Ok(id) => id,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
 
         let url = self.url(&format!("/api/sessions?workspace_id={workspace_id}"));
@@ -233,7 +233,7 @@ impl McpServer {
             Err(error_result) => return Ok(error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
 
         let payload = UpdateSessionPayload {
@@ -272,7 +272,7 @@ impl McpServer {
             Err(error_result) => return Ok(error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
         if self.orchestrator_session_id() == Some(session_id) {
             return Self::err(
@@ -286,7 +286,7 @@ impl McpServer {
 
         let executor_config = match Self::executor_config_payload_for_session(&session) {
             Ok(config) => config,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
 
         let payload = FollowUpPayload {
@@ -307,7 +307,7 @@ impl McpServer {
         let execution_id = execution_process.id.to_string();
         let execution = match Self::serialize_execution_process(&execution_process) {
             Ok(value) => value,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
 
         Self::success(&RunCodingAgentInSessionResponse {
@@ -335,14 +335,14 @@ impl McpServer {
             Err(error_result) => return Ok(error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(session.workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
 
         let is_finished = execution_process.status != ExecutionProcessStatus::Running;
 
         let execution_process_value = match Self::serialize_execution_process(&execution_process) {
             Ok(value) => value,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
 
         Self::success(&GetExecutionResponse {
@@ -359,7 +359,7 @@ impl McpServer {
 impl McpServer {
     fn executor_config_payload_for_session(
         session: &Session,
-    ) -> Result<ExecutorConfigPayload, CallToolResult> {
+    ) -> Result<ExecutorConfigPayload, ToolCallError> {
         Ok(ExecutorConfigPayload {
             executor: Self::normalize_executor_name(session.executor.as_deref())?,
             variant: None,
@@ -385,13 +385,14 @@ impl McpServer {
 
     fn serialize_execution_process(
         execution_process: &ExecutionProcess,
-    ) -> Result<serde_json::Value, CallToolResult> {
+    ) -> Result<serde_json::Value, ToolCallError> {
         serde_json::to_value(execution_process).map_err(|error| {
             Self::err(
                 "Failed to serialize execution process response".to_string(),
                 Some(error.to_string()),
             )
             .unwrap()
+            .into()
         })
     }
 }

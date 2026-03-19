@@ -332,18 +332,25 @@ impl OAuthHandoffService {
 
         let expected_code_hash = record
             .app_code_hash
+            .as_deref()
             .ok_or_else(|| HandoffError::Failed("missing_app_code".into()))?;
         let provided_hash = hash_sha256_hex(app_code);
         if provided_hash != expected_code_hash {
             return Err(HandoffError::Failed("invalid_app_code".into()));
         }
 
-        let expected_challenge = record.app_challenge;
         let provided_challenge = hash_sha256_hex(app_verifier);
-        if provided_challenge != expected_challenge {
+        if provided_challenge != record.app_challenge {
             return Err(HandoffError::Failed("invalid_app_verifier".into()));
         }
 
+        self.complete_redemption(record).await
+    }
+
+    async fn complete_redemption(
+        &self,
+        record: OAuthHandoff,
+    ) -> Result<RedeemResponse, HandoffError> {
         let session_id = record
             .session_id
             .ok_or_else(|| HandoffError::Failed("missing_session".into()))?;
@@ -377,6 +384,8 @@ impl OAuthHandoffService {
             .await?;
 
         session_repo.touch(session.id).await?;
+
+        let repo = OAuthHandoffRepository::new(&self.pool);
         repo.mark_redeemed(record.id).await?;
 
         configure_user_scope(user.id, user.username.as_deref(), Some(user.email.as_str()));

@@ -180,10 +180,10 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
             Ok(id) => id,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
 
         let url = self.url(&format!("/api/workspaces/{}", workspace_id));
@@ -220,10 +220,10 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let workspace_id = match self.resolve_workspace_id(workspace_id) {
             Ok(id) => id,
-            Err(error_result) => return Ok(error_result),
+            Err(error_result) => return Ok(*error_result),
         };
         if let Err(error_result) = self.scope_allows_workspace(workspace_id) {
-            return Ok(error_result);
+            return Ok(*error_result);
         }
 
         let delete_remote = delete_remote.unwrap_or(false);

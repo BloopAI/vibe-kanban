@@ -311,6 +311,28 @@ impl JwtService {
             .map_err(|_| JwtError::EncryptionError)
     }
 
+    pub fn sign_claims<T: Serialize>(&self, claims: &T) -> Result<String, JwtError> {
+        let encoding_key = EncodingKey::from_base64_secret(self.secret.expose_secret())?;
+        Ok(encode(
+            &Header::new(Algorithm::HS256),
+            claims,
+            &encoding_key,
+        )?)
+    }
+
+    pub fn decode_claims<T: serde::de::DeserializeOwned>(
+        &self,
+        token: &str,
+        audience: &str,
+    ) -> Result<T, JwtError> {
+        let decoding_key = DecodingKey::from_base64_secret(self.secret.expose_secret())?;
+        let mut validation = Validation::new(Algorithm::HS256);
+        validation.validate_exp = true;
+        validation.validate_nbf = false;
+        validation.set_audience(&[audience]);
+        Ok(decode::<T>(token, &decoding_key, &validation)?.claims)
+    }
+
     fn derive_key(&self) -> Result<[u8; 32], JwtError> {
         let secret_bytes = STANDARD
             .decode(self.secret.expose_secret())

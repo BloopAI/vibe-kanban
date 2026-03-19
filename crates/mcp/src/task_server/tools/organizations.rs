@@ -100,7 +100,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let organization_id = match self.resolve_organization_id(organization_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(*e),
         };
 
         let url = self.url(&format!("/api/organizations/{}/members", organization_id));

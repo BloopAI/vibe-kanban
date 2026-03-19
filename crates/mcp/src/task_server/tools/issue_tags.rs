@@ -96,7 +96,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(*e),
         };
 
         let url = self.url(&format!("/api/remote/tags?project_id={}", project_id));

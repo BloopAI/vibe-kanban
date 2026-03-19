@@ -142,6 +142,7 @@ pub fn router(state: AppState) -> Router {
         ServeDir::new(static_dir).fallback(ServeFile::new(format!("{static_dir}/index.html")));
 
     Router::<AppState>::new()
+        .merge(crate::mcp::router(state.clone()))
         .nest("/v1", v1_public)
         .nest("/v1", v1_protected)
         .fallback_service(spa)

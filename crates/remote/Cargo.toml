@@ -55,6 +55,8 @@ subtle = "2.5"
 hex = "0.4"
 urlencoding = "2.1"
 url = "2.5"
+rmcp = { version = "1.2.0", features = ["server", "transport-streamable-http-server"] }
+schemars = "1"
 base64 = "0.22"
 aws-sdk-s3 = { version = "1.65", default-features = false, features = ["behavior-version-latest", "rt-tokio"] }
 aws-credential-types = "1.2"

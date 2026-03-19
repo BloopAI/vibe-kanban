@@ -25,6 +25,8 @@ mod sessions;
 mod task_attempts;
 mod workspaces;
 
+type ToolCallError = Box<CallToolResult>;
+
 impl McpServer {
     pub fn global_mode_router() -> rmcp::handler::server::tool::ToolRouter<Self> {
         Self::context_tools_router()
@@ -144,7 +146,7 @@ impl McpServer {
         Ok(())
     }
 
-    fn resolve_workspace_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+    fn resolve_workspace_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolCallError> {
         if let Some(id) = explicit {
             return Ok(id);
         }
@@ -155,10 +157,11 @@ impl McpServer {
             "workspace_id is required (not available from current MCP context)",
             None::<&str>,
         )
-        .unwrap())
+        .unwrap()
+        .into())
     }
 
-    fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), CallToolResult> {
+    fn scope_allows_workspace(&self, workspace_id: Uuid) -> Result<(), ToolCallError> {
         if matches!(self.mode(), McpMode::Orchestrator)
             && let Some(scoped_workspace_id) = self.scoped_workspace_id()
             && scoped_workspace_id != workspace_id
@@ -170,7 +173,8 @@ impl McpServer {
                     workspace_id, scoped_workspace_id
                 )),
             )
-            .unwrap());
+            .unwrap()
+            .into());
         }
 
         Ok(())
@@ -222,7 +226,7 @@ impl McpServer {
     }
 
     // Resolves a project_id from an explicit parameter or falls back to context.
-    fn resolve_project_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+    fn resolve_project_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolCallError> {
         if let Some(id) = explicit {
             return Ok(id);
         }
@@ -235,11 +239,12 @@ impl McpServer {
             "project_id is required (not available from workspace context)",
             None::<&str>,
         )
-        .unwrap())
+        .unwrap()
+        .into())
     }
 
     // Resolves an organization_id from an explicit parameter or falls back to context.
-    fn resolve_organization_id(&self, explicit: Option<Uuid>) -> Result<Uuid, CallToolResult> {
+    fn resolve_organization_id(&self, explicit: Option<Uuid>) -> Result<Uuid, ToolCallError> {
         if let Some(id) = explicit {
             return Ok(id);
         }
@@ -252,7 +257,8 @@ impl McpServer {
             "organization_id is required (not available from workspace context)",
             None::<&str>,
         )
-        .unwrap())
+        .unwrap()
+        .into())
     }
 
     // Fetches project statuses for a project.
@@ -335,14 +341,16 @@ impl McpServer {
             .await
     }
 
-    fn parse_executor_agent(executor: &str) -> Result<BaseCodingAgent, CallToolResult> {
+    fn parse_executor_agent(executor: &str) -> Result<BaseCodingAgent, ToolCallError> {
         let normalized = executor.replace('-', "_").to_ascii_uppercase();
         BaseCodingAgent::from_str(&normalized).map_err(|_| {
-            Self::err(format!("Unknown executor '{executor}'."), None::<String>).unwrap()
+            Self::err(format!("Unknown executor '{executor}'."), None::<String>)
+                .unwrap()
+                .into()
         })
     }
 
-    fn normalize_executor_name(executor: Option<&str>) -> Result<String, CallToolResult> {
+    fn normalize_executor_name(executor: Option<&str>) -> Result<String, ToolCallError> {
         let Some(executor) = executor.map(str::trim).filter(|value| !value.is_empty()) else {
             return Ok("CODEX".to_string());
         };
@@ -355,6 +363,7 @@ impl McpServer {
                     None::<String>,
                 )
                 .unwrap()
+                .into()
             })
     }
 

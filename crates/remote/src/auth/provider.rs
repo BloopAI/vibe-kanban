@@ -97,6 +97,12 @@ impl ProviderRegistry {
     pub fn is_empty(&self) -> bool {
         self.providers.is_empty()
     }
+
+    pub fn names(&self) -> Vec<String> {
+        let mut names = self.providers.keys().cloned().collect::<Vec<_>>();
+        names.sort();
+        names
+    }
 }
 
 pub struct GitHubOAuthProvider {

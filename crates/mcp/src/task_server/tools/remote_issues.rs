@@ -13,7 +13,7 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::McpServer;
+use super::{McpServer, ToolCallError};
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
 struct McpCreateIssueRequest {
@@ -267,7 +267,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(*e),
         };
 
         let expanded_description = match description {
@@ -283,7 +283,7 @@ impl McpServer {
         let priority = match priority {
             Some(p) => match Self::parse_issue_priority(&p) {
                 Ok(priority) => Some(priority),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(*e),
             },
             None => None,
         };
@@ -339,7 +339,7 @@ impl McpServer {
     ) -> Result<CallToolResult, ErrorData> {
         let project_id = match self.resolve_project_id(project_id) {
             Ok(id) => id,
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(*e),
         };
 
         let project_statuses = match self.fetch_project_statuses(project_id).await {
@@ -387,18 +387,18 @@ impl McpServer {
         let priority = match priority {
             Some(priority) => match Self::parse_issue_priority(&priority) {
                 Ok(priority) => Some(priority),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(*e),
             },
             None => None,
         };
 
         let sort_field = match Self::parse_issue_sort_field(sort_field.as_deref()) {
             Ok(value) => Some(value),
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(*e),
         };
         let sort_direction = match Self::parse_sort_direction(sort_direction.as_deref()) {
             Ok(value) => Some(value),
-            Err(e) => return Ok(e),
+            Err(e) => return Ok(*e),
         };
 
         let matching_tag_ids = match tag_name.as_deref() {
@@ -523,7 +523,7 @@ impl McpServer {
         let priority = if let Some(priority) = priority {
             match Self::parse_issue_priority(&priority) {
                 Ok(parsed) => Some(Some(parsed)),
-                Err(e) => return Ok(e),
+                Err(e) => return Ok(*e),
             }
         } else {
             None
@@ -582,7 +582,7 @@ impl McpServer {
 }
 
 impl McpServer {
-    fn parse_issue_sort_field(sort_field: Option<&str>) -> Result<IssueSortField, CallToolResult> {
+    fn parse_issue_sort_field(sort_field: Option<&str>) -> Result<IssueSortField, ToolCallError> {
         match sort_field.unwrap_or("sort_order").trim().to_ascii_lowercase().as_str() {
             "sort_order" => Ok(IssueSortField::SortOrder),
             "priority" => Ok(IssueSortField::Priority),
@@ -596,11 +596,12 @@ impl McpServer {
                 ),
                 None::<String>,
             )
-            .unwrap()),
+            .unwrap()
+            .into()),
         }
     }
 
-    fn parse_sort_direction(sort_direction: Option<&str>) -> Result<SortDirection, CallToolResult> {
+    fn parse_sort_direction(sort_direction: Option<&str>) -> Result<SortDirection, ToolCallError> {
         match sort_direction
             .unwrap_or("asc")
             .trim()
@@ -616,7 +617,8 @@ impl McpServer {
                 ),
                 None::<String>,
             )
-            .unwrap()),
+            .unwrap()
+            .into()),
         }
     }
 
@@ -849,7 +851,7 @@ impl McpServer {
             .collect()
     }
 
-    fn parse_issue_priority(priority: &str) -> Result<IssuePriority, CallToolResult> {
+    fn parse_issue_priority(priority: &str) -> Result<IssuePriority, ToolCallError> {
         match priority.trim().to_ascii_lowercase().as_str() {
             "urgent" => Ok(IssuePriority::Urgent),
             "high" => Ok(IssuePriority::High),
@@ -862,7 +864,8 @@ impl McpServer {
                 ),
                 None::<String>,
             )
-            .unwrap()),
+            .unwrap()
+            .into()),
         }
     }
 
