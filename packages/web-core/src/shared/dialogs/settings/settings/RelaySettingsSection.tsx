@@ -66,21 +66,26 @@ function RelayRoleChooser({
   const { t } = useTranslation(['settings']);
 
   return (
-    <div className="flex justify-end gap-2">
-      <RelayRoleChoice
-        role="host"
-        selected={selectedRole === 'host'}
-        icon={<BroadcastIcon className="size-icon-xs" weight="bold" />}
-        label={t('settings.relay.host.label', 'Host')}
-        onSelect={onSelect}
-      />
-      <RelayRoleChoice
-        role="client"
-        selected={selectedRole === 'client'}
-        icon={<DesktopIcon className="size-icon-xs" weight="bold" />}
-        label={t('settings.relay.client.label', 'Client')}
-        onSelect={onSelect}
-      />
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-sm font-medium text-normal">
+        {t('settings.relay.roleChooser.label', 'Remote control')}
+      </span>
+      <div className="flex gap-2">
+        <RelayRoleChoice
+          role="host"
+          selected={selectedRole === 'host'}
+          icon={<BroadcastIcon className="size-icon-xs" weight="bold" />}
+          label={t('settings.relay.host.label', 'Host')}
+          onSelect={onSelect}
+        />
+        <RelayRoleChoice
+          role="client"
+          selected={selectedRole === 'client'}
+          icon={<DesktopIcon className="size-icon-xs" weight="bold" />}
+          label={t('settings.relay.client.label', 'Client')}
+          onSelect={onSelect}
+        />
+      </div>
     </div>
   );
 }
