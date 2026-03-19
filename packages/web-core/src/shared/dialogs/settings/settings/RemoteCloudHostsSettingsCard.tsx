@@ -23,6 +23,7 @@ import {
   useRelayRemotePairedHostsQuery,
   useRemovePairedRelayHostMutation,
 } from './useRelayRemoteHostMutations';
+import { createRelayClientIdentity } from '@/shared/lib/relayClientIdentity';
 
 export function RemoteCloudHostsSettingsCardContent({
   initialHostId,
@@ -70,6 +71,10 @@ export function RemoteCloudHostsSettingsCardContent({
 
     return relayHosts.filter((host) => host.machine_id !== machineId);
   }, [isDevMode, isRemoteMode, machineId, relayHosts]);
+  const defaultClientName = useMemo(
+    () => createRelayClientIdentity().clientName,
+    []
+  );
 
   useEffect(() => {
     if (pairableRelayHosts.length === 0) {
@@ -183,7 +188,7 @@ export function RemoteCloudHostsSettingsCardContent({
     }
 
     const normalizedCode = normalizeEnrollmentCode(pairingCode);
-    const effectiveHostName = hostName.trim() || selectedHost.name;
+    const effectiveHostName = hostName.trim() || defaultClientName;
 
     try {
       if (isRemoteMode) {
@@ -298,7 +303,7 @@ export function RemoteCloudHostsSettingsCardContent({
               onChange={setHostName}
               placeholder={t(
                 'settings.relay.remoteCloudHost.namePlaceholder',
-                'Production Host'
+                defaultClientName
               )}
             />
           </SettingsField>
