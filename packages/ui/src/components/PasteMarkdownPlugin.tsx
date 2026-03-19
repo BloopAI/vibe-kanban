@@ -28,16 +28,31 @@ type Props = {
 export function PasteMarkdownPlugin({ transformers }: Props) {
   const [editor] = useLexicalComposerContext();
   const shiftHeldRef = useRef(false);
+  const debugPaste =
+    typeof window !== 'undefined' &&
+    Boolean((window as Window & { __VIBE_DEBUG_PASTE__?: boolean }).__VIBE_DEBUG_PASTE__);
 
   useEffect(() => {
     // Track Shift key state during paste shortcut
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'v') {
         shiftHeldRef.current = e.shiftKey;
+        if (debugPaste) {
+          console.debug('[PasteMarkdownPlugin] keydown paste combo', {
+            key: e.key,
+            metaKey: e.metaKey,
+            ctrlKey: e.ctrlKey,
+            shiftKey: e.shiftKey,
+            shiftHeldRef: shiftHeldRef.current,
+          });
+        }
       }
     };
 
     const handleKeyUp = () => {
+      if (debugPaste && shiftHeldRef.current) {
+        console.debug('[PasteMarkdownPlugin] keyup reset shift state');
+      }
       shiftHeldRef.current = false;
     };
 
@@ -56,6 +71,17 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
 
         const plainText =
           clipboardData.getData('text/plain') || clipboardData.getData('text');
+        const htmlText = clipboardData.getData('text/html');
+
+        if (debugPaste) {
+          console.debug('[PasteMarkdownPlugin] paste event received', {
+            shiftHeldRef: shiftHeldRef.current,
+            hasHtml: Boolean(htmlText),
+            htmlLength: htmlText.length,
+            plainLength: plainText.length,
+            types: clipboardData.types ? Array.from(clipboardData.types) : [],
+          });
+        }
 
         // CMD+SHIFT+V: Raw paste must win even when HTML data is present.
         if (shiftHeldRef.current) {
@@ -68,12 +94,22 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             selection.insertRawText(plainText);
           });
 
+          if (debugPaste) {
+            console.debug('[PasteMarkdownPlugin] handled raw paste');
+          }
           shiftHeldRef.current = false;
           return true;
         }
 
         // If HTML exists, let default Lexical handling work.
-        if (clipboardData.getData('text/html')) return false;
+        if (htmlText) {
+          if (debugPaste) {
+            console.debug(
+              '[PasteMarkdownPlugin] skipping markdown conversion because HTML is present'
+            );
+          }
+          return false;
+        }
 
         if (!plainText) return false;
 
@@ -108,9 +144,17 @@ export function PasteMarkdownPlugin({ transformers }: Props) {
             // we have a valid selection context for the fallback
             $setSelection(savedSelection);
             savedSelection.insertRawText(plainText);
+            if (debugPaste) {
+              console.debug(
+                '[PasteMarkdownPlugin] markdown conversion failed, used raw text fallback'
+              );
+            }
           }
         });
 
+        if (debugPaste) {
+          console.debug('[PasteMarkdownPlugin] handled markdown/plain paste');
+        }
         shiftHeldRef.current = false;
         return true;
       },
