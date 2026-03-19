@@ -7,7 +7,6 @@ import {
   $isRangeSelection,
   $isTextNode,
   $isElementNode,
-  $createTextNode,
   $createRangeSelection,
   $setSelection,
 } from 'lexical';
@@ -75,16 +74,26 @@ export function MarkdownListContinuePlugin() {
         const text = parent.getTextContent();
         const currentLineStart = text.lastIndexOf('\n') + 1;
         const currentLine = text.slice(currentLineStart);
+        const anchorLineStart = anchorText.lastIndexOf('\n') + 1;
 
-        const replaceParagraphText = (nextText: string) => {
-          parent.clear();
-          const nextNode = $createTextNode(nextText);
-          parent.append(nextNode);
-          const nodeKey = nextNode.getKey();
+        const replaceAnchorCurrentLine = (replacement: string) => {
+          const nextText = `${anchorText.slice(0, anchorLineStart)}${replacement}`;
+          anchorNode.setTextContent(nextText);
           const newSel = $createRangeSelection();
-          const newOffset = nextText.length;
-          newSel.anchor.set(nodeKey, newOffset, 'text');
-          newSel.focus.set(nodeKey, newOffset, 'text');
+
+          // Keep caret visually on the blank line when text ends with '\n'.
+          if (nextText.endsWith('\n')) {
+            const parentKey = parent.getKey();
+            const childCount = parent.getChildrenSize();
+            newSel.anchor.set(parentKey, childCount, 'element');
+            newSel.focus.set(parentKey, childCount, 'element');
+          } else {
+            const nodeKey = anchorNode.getKey();
+            const newOffset = nextText.length;
+            newSel.anchor.set(nodeKey, newOffset, 'text');
+            newSel.focus.set(nodeKey, newOffset, 'text');
+          }
+
           $setSelection(newSel);
         };
 
@@ -92,9 +101,7 @@ export function MarkdownListContinuePlugin() {
         const emptyBullet = currentLine.match(BULLET_PREFIX_RE);
         if (emptyBullet) {
           event.preventDefault();
-          // Remove only the current empty list marker and keep previous lines.
-          const nextText = `${text.slice(0, currentLineStart)}${emptyBullet[1]}`;
-          replaceParagraphText(nextText);
+          replaceAnchorCurrentLine(emptyBullet[1]);
           return true;
         }
 
@@ -102,8 +109,7 @@ export function MarkdownListContinuePlugin() {
         const emptyNumber = currentLine.match(NUMBER_PREFIX_RE);
         if (emptyNumber) {
           event.preventDefault();
-          const nextText = `${text.slice(0, currentLineStart)}${emptyNumber[1]}`;
-          replaceParagraphText(nextText);
+          replaceAnchorCurrentLine(emptyNumber[1]);
           return true;
         }
 
