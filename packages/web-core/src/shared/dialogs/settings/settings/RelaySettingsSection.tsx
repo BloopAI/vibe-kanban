@@ -85,7 +85,7 @@ function RelayRoleChooser({
         label={t('settings.relay.client.label', 'Client')}
         description={t(
           'settings.relay.client.panelDescription',
-          'Pair this device to a remote host using a one-time code.'
+          'Control workspaces on another device by pairing to it with a one-time code.'
         )}
         onSelect={onSelect}
       />
@@ -631,7 +631,7 @@ function RemoteRelaySettingsSectionContent({
         title={t('settings.relay.client.title', 'Connect to a host')}
         description={t(
           'settings.relay.client.description',
-          'Pair this device to a remote host using a one-time code.'
+          'Control workspaces on another device by pairing to it with a one-time code.'
         )}
       >
         <SignInPrompt />
