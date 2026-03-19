@@ -1,18 +1,15 @@
 use axum::{
     Router,
-    extract::{
-        Path, Request, State,
-        ws::{WebSocketUpgrade, rejection::WebSocketUpgradeRejection},
-    },
+    extract::{Path, Request, State, ws::rejection::WebSocketUpgradeRejection},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::any,
 };
 use deployment::Deployment;
+use relay_tunnel::ws_io::{axum_to_tungstenite, tungstenite_to_axum, ws_copy_bidirectional};
+use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
-use crate::DeploymentImpl;
-
-type MaybeWsUpgrade = Result<WebSocketUpgrade, WebSocketUpgradeRejection>;
+use crate::{DeploymentImpl, middleware::signed_ws::SignedWsUpgrade};
 
 pub fn api_router() -> Router<DeploymentImpl> {
     Router::new()
@@ -29,33 +26,106 @@ pub fn subdomain_router(deployment: DeploymentImpl) -> Router {
 async fn proxy_preview_request_no_tail(
     State(deployment): State<DeploymentImpl>,
     Path(target_port): Path<u16>,
-    ws_upgrade: MaybeWsUpgrade,
+    ws_upgrade: Result<SignedWsUpgrade, WebSocketUpgradeRejection>,
     request: Request,
 ) -> Response {
-    preview_proxy::proxy_api_request(
-        deployment.preview_proxy(),
-        target_port,
-        String::new(),
-        ws_upgrade,
-        request,
-    )
-    .await
+    match ws_upgrade {
+        Ok(ws) => forward_preview_ws(ws, target_port, String::new(), request).await,
+        Err(rejection) => {
+            preview_proxy::proxy_api_request(
+                deployment.preview_proxy(),
+                target_port,
+                String::new(),
+                Err(rejection),
+                request,
+            )
+            .await
+        }
+    }
 }
 
 async fn proxy_preview_request(
     State(deployment): State<DeploymentImpl>,
     Path((target_port, tail)): Path<(u16, String)>,
-    ws_upgrade: MaybeWsUpgrade,
+    ws_upgrade: Result<SignedWsUpgrade, WebSocketUpgradeRejection>,
     request: Request,
 ) -> Response {
-    preview_proxy::proxy_api_request(
-        deployment.preview_proxy(),
-        target_port,
-        tail,
-        ws_upgrade,
-        request,
-    )
-    .await
+    match ws_upgrade {
+        Ok(ws) => forward_preview_ws(ws, target_port, tail, request).await,
+        Err(rejection) => {
+            preview_proxy::proxy_api_request(
+                deployment.preview_proxy(),
+                target_port,
+                tail,
+                Err(rejection),
+                request,
+            )
+            .await
+        }
+    }
+}
+
+async fn forward_preview_ws(
+    ws: SignedWsUpgrade,
+    target_port: u16,
+    tail: String,
+    request: Request,
+) -> Response {
+    let query = request.uri().query().unwrap_or_default();
+    let normalized = tail.trim_start_matches('/');
+    let ws_url = if normalized.is_empty() {
+        format!("ws://localhost:{target_port}/?{query}")
+    } else if query.is_empty() {
+        format!("ws://localhost:{target_port}/{normalized}")
+    } else {
+        format!("ws://localhost:{target_port}/{normalized}?{query}")
+    };
+
+    let protocols = request
+        .headers()
+        .get("sec-websocket-protocol")
+        .and_then(|v| v.to_str().ok())
+        .map(ToOwned::to_owned);
+
+    let upstream_ws = match connect_upstream_ws(&ws_url, protocols.as_deref()).await {
+        Ok(ws) => ws,
+        Err(error) => {
+            tracing::warn!(?error, "Failed to connect preview upstream WebSocket");
+            return (StatusCode::BAD_GATEWAY, "Preview WebSocket unavailable").into_response();
+        }
+    };
+
+    ws.on_upgrade(move |client| async move {
+        if let Err(error) = ws_copy_bidirectional(
+            client,
+            upstream_ws,
+            axum_to_tungstenite,
+            tungstenite_to_axum,
+        )
+        .await
+        {
+            tracing::debug!(?error, "Preview WS bridge closed with error");
+        }
+    })
+    .into_response()
+}
+
+async fn connect_upstream_ws(
+    ws_url: &str,
+    protocols: Option<&str>,
+) -> anyhow::Result<
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>,
+> {
+    let mut request = ws_url.into_client_request()?;
+    if let Some(protocols) = protocols
+        && !protocols.trim().is_empty()
+    {
+        request
+            .headers_mut()
+            .insert("sec-websocket-protocol", protocols.parse()?);
+    }
+    let (stream, _response) = tokio_tungstenite::connect_async(request).await?;
+    Ok(stream)
 }
 
 async fn subdomain_proxy_request(
