@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { createFileRoute, useParams } from '@tanstack/react-router';
+import { Provider as NiceModalProvider } from '@ebay/nice-modal-react';
 import { SequenceTrackerProvider } from '@/shared/keyboard/SequenceTracker';
 import { SequenceIndicator } from '@/shared/keyboard/SequenceIndicator';
 import { useWorkspaceShortcuts } from '@/shared/keyboard/useWorkspaceShortcuts';
@@ -47,7 +48,12 @@ function AppRouteProviders({ children }: { children: ReactNode }) {
       <WorkspaceProvider>
         <ExecutionProcessesProviderWrapper>
           <LogsPanelProvider>
-            <ActionsProvider>{children}</ActionsProvider>
+            <ActionsProvider>
+              {/* NiceModal renders dialogs as siblings of children at the
+                  Provider level, so it must be inside all providers that
+                  dialogs depend on (Workspace, Actions, etc.). */}
+              <NiceModalProvider>{children}</NiceModalProvider>
+            </ActionsProvider>
           </LogsPanelProvider>
         </ExecutionProcessesProviderWrapper>
       </WorkspaceProvider>
