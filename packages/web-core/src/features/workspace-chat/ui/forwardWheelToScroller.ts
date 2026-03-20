@@ -22,8 +22,7 @@ export function forwardWheelToScroller(
   let delta = e.deltaY;
 
   if (e.deltaMode === DOM_DELTA_LINE) {
-    const lineHeight =
-      parseFloat(getComputedStyle(scrollEl).lineHeight) || 16;
+    const lineHeight = parseFloat(getComputedStyle(scrollEl).lineHeight) || 16;
     delta *= lineHeight;
   } else if (e.deltaMode === DOM_DELTA_PAGE) {
     delta *= scrollEl.clientHeight;

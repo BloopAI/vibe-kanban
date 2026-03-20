@@ -186,7 +186,9 @@ export function VSCodeWorkspacePage() {
                 ) : (
                   <div
                     className="flex-1 min-h-0 overflow-hidden flex justify-center"
-                    onWheel={(e) => forwardWheelToScroller(e, conversationListRef)}
+                    onWheel={(e) =>
+                      forwardWheelToScroller(e, conversationListRef)
+                    }
                   >
                     <div className="w-chat max-w-full h-full">
                       <RetryUiProvider workspaceId={workspaceWithSession.id}>
