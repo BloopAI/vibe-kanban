@@ -1,5 +1,5 @@
 use axum::extract::ws::WebSocket;
-use relay_tunnel::ws_io::{axum_to_tungstenite, tungstenite_to_axum, ws_copy_bidirectional};
+use relay_tunnel_core::ws_io::{axum_to_tungstenite, tungstenite_to_axum, ws_copy_bidirectional};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 
 pub type UpstreamWebSocket =

@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 relay-control = { path = "../relay-control" }
-relay-tunnel = { path = "../relay-tunnel" }
 russh = "0.48"
 russh-keys = "0.48"
 russh-sftp = "2.0"

@@ -7,7 +7,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Context as _;
 use relay_control::signing::{self, RelaySigningService};
-use relay_tunnel::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
+use relay_tunnel_core::{tls::ws_connector, ws_io::tungstenite_ws_stream_io};
 use relay_ws::signed_tungstenite_websocket;
 use tokio::{net::TcpListener, sync::Mutex};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -224,7 +224,7 @@ async fn bridge_tcp_to_relay(
     api_path: &str,
 ) -> anyhow::Result<()> {
     let base = relay_session_base_url.trim_end_matches('/');
-    let ws_url = relay_tunnel::http_to_ws_url(&format!("{base}{api_path}"))?;
+    let ws_url = relay_tunnel_core::http_to_ws_url(&format!("{base}{api_path}"))?;
 
     let sig = signing.sign_request(signing_session_id, "GET", api_path, &[]);
 

@@ -27,6 +27,7 @@ members = [
     "crates/desktop-bridge",
     "crates/tauri-app",
     "crates/preview-proxy",
+    "crates/relay-tunnel-core",
 ]
 exclude = ["crates/remote", "crates/relay-tunnel"]
 

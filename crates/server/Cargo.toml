@@ -25,7 +25,7 @@ relay-ws = { path = "../relay-ws" }
 relay-client = { path = "../relay-client" }
 relay-hosts = { path = "../relay-hosts" }
 relay-types = { path = "../relay-types" }
-relay-tunnel = { path = "../relay-tunnel" }
+relay-tunnel-core = { path = "../relay-tunnel-core" }
 desktop-bridge = { path = "../desktop-bridge" }
 preview-proxy = { path = "../preview-proxy" }
 trusted-key-auth = { path = "../trusted-key-auth" }

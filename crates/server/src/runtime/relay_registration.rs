@@ -3,7 +3,7 @@
 
 use anyhow::Context as _;
 use deployment::Deployment as _;
-use relay_tunnel::client::{RelayClientConfig, start_relay_client};
+use relay_tunnel_core::client::{RelayClientConfig, start_relay_client};
 use services::services::{config::Config, remote_client::RemoteClient};
 
 use crate::DeploymentImpl;

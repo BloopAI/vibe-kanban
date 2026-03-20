@@ -11,7 +11,7 @@ use axum::{
 };
 use deployment::Deployment;
 use relay_hosts::HostRelayWsConnection;
-use relay_tunnel::ws_io::ws_copy_bidirectional;
+use relay_tunnel_core::ws_io::ws_copy_bidirectional;
 use relay_ws::SignedTungsteniteSocket;
 use utils::http_headers::is_hop_by_hop_header;
 use uuid::Uuid;
@@ -149,8 +149,8 @@ async fn bridge_ws(
     ws_copy_bidirectional(
         client_socket,
         upstream,
-        relay_tunnel::ws_io::axum_to_tungstenite,
-        relay_tunnel::ws_io::tungstenite_to_axum,
+        relay_tunnel_core::ws_io::axum_to_tungstenite,
+        relay_tunnel_core::ws_io::tungstenite_to_axum,
     )
     .await
 }

@@ -34,6 +34,7 @@ COPY crates/deployment/Cargo.toml crates/deployment/Cargo.toml
 COPY crates/review/Cargo.toml crates/review/Cargo.toml
 COPY crates/api-types crates/api-types
 COPY crates/relay-types crates/relay-types
+COPY crates/relay-tunnel-core crates/relay-tunnel-core
 COPY crates/relay-tunnel crates/relay-tunnel
 
 RUN mkdir -p /app/bin
